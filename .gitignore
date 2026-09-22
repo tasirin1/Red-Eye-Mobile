@@ -66,3 +66,5 @@ Thumbs.db
 # Lint
 lint-results.html
 lint-results.xml
+*.p12
+release.p12

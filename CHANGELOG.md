@@ -4,6 +4,12 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-22
+
+### Fixed
+- APK release sekarang ditandatangani (keystore `PKCS12` via Secrets) sehingga bisa diinstall — sebelumnya `unsigned` dan ditolak Android.
+- Tanpa keystore (build check biasa), release fallback ke debug key agar tetap terinstall untuk testing.
+
 ## [1.1.0] - 2026-09-22
 
 ### Added
