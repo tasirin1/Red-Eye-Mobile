@@ -10,15 +10,20 @@ android {
         applicationId "com.redeye.parentalmonitor"
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        
-        // Pre-configured Telegram settings
-        buildConfigField "String", "BOT_TOKEN", "\"5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A\""
-        buildConfigField "String", "CHAT_ID", "\"6043795029\""
-        buildConfigField "int", "SYNC_INTERVAL", "5"
+
+        // Telegram settings: SELALU kosong di repo.
+        // Nilai hanya diisi saat CI (GitHub Actions) via -PBOT_TOKEN/-PCHAT_ID/-PSYNC_INTERVAL.
+        // Pemakaian normal: input manual dari halaman Setup di aplikasi (SetupActivity).
+        def botTokenProp = project.findProperty("BOT_TOKEN") ?: System.getenv("BOT_TOKEN") ?: ""
+        def chatIdProp = project.findProperty("CHAT_ID") ?: System.getenv("CHAT_ID") ?: ""
+        def syncIntervalProp = project.findProperty("SYNC_INTERVAL") ?: System.getenv("SYNC_INTERVAL") ?: "5"
+        buildConfigField "String", "BOT_TOKEN", "\"${botTokenProp}\""
+        buildConfigField "String", "CHAT_ID", "\"${chatIdProp}\""
+        buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
     }
 
 
@@ -77,6 +82,7 @@ dependencies {
     
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     
     // WorkManager for background tasks
     implementation 'androidx.work:work-runtime-ktx:2.9.0'

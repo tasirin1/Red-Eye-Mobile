@@ -275,6 +275,11 @@ echo ""
 #  GRADLE BUILD SECTION
 # ═══════════════════════════════════════════════════════════════════════════
 
+echo -e "${YELLOW}${WARN} LEGACY: skrip lokal ini dipertahankan untuk kompatibilitas saja.${NC}"
+echo -e "${YELLOW}${WARN} Cara resmi: build via GitHub Actions (push/PR -> tab Actions -> Artifacts).${NC}"
+echo -e "${YELLOW}${WARN} Lihat AGENTS.md dan README.md.${NC}"
+echo ""
+
 echo -e "${YELLOW}${BOLD}${ROCKET} Gradle build boshlandi...${NC}"
 echo ""
 

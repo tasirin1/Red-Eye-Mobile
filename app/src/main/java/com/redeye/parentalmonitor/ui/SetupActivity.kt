@@ -1,0 +1,211 @@
+package com.redeye.parentalmonitor.ui
+
+import android.Manifest
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
+import com.redeye.parentalmonitor.R
+import com.redeye.parentalmonitor.data.PreferencesManager
+import com.redeye.parentalmonitor.network.TelegramClient
+import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.receiver.AdminReceiver
+import com.redeye.parentalmonitor.service.MonitoringService
+import kotlinx.coroutines.launch
+
+class SetupActivity : AppCompatActivity() {
+
+    private lateinit var prefs: PreferencesManager
+    private lateinit var botTokenInput: TextInputEditText
+    private lateinit var chatIdInput: TextInputEditText
+    private lateinit var syncIntervalInput: TextInputEditText
+    private lateinit var statusText: TextView
+
+    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.CAMERA
+        )
+    } else {
+        arrayOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.CAMERA
+        )
+    }
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { updateStatus() }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_setup)
+
+        prefs = PreferencesManager(this)
+        supportActionBar?.title = getString(R.string.setup_title)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        botTokenInput = findViewById(R.id.setupBotTokenInput)
+        chatIdInput = findViewById(R.id.setupChatIdInput)
+        syncIntervalInput = findViewById(R.id.setupSyncIntervalInput)
+        statusText = findViewById(R.id.setupStatusText)
+
+        botTokenInput.setText(prefs.botToken)
+        chatIdInput.setText(prefs.chatId)
+        syncIntervalInput.setText(prefs.syncInterval.toString())
+
+        findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
+        findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
+        findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
+            permissionLauncher.launch(requiredPermissions)
+        }
+        findViewById<MaterialButton>(R.id.setupAdminButton).setOnClickListener { activateDeviceAdmin() }
+        findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
+
+        updateStatus()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateStatus()
+    }
+
+    private fun saveSettings(): Boolean {
+        val token = botTokenInput.text.toString().trim()
+        val chatId = chatIdInput.text.toString().trim()
+        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: 5
+
+        if (token.isEmpty() || chatId.isEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (!token.contains(":")) {
+            Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        prefs.botToken = token
+        prefs.chatId = chatId
+        prefs.syncInterval = interval.coerceIn(1, 1440)
+
+        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+        updateStatus()
+        return true
+    }
+
+    private fun testConnection() {
+        if (!saveSettings()) return
+        val token = prefs.botToken
+        val chatId = prefs.chatId
+
+        Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            try {
+                val url = "https://api.telegram.org/bot$token/sendMessage"
+                val resp = TelegramClient.api.sendMessage(
+                    url,
+                    TelegramMessage(chatId = chatId, text = getString(R.string.setup_test_ok))
+                )
+                if (resp.isSuccessful && resp.body()?.ok == true) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, e.message ?: ""), Toast.LENGTH_LONG).show()
+            }
+            updateStatus()
+        }
+    }
+
+    private fun hasAllPermissions(): Boolean {
+        return requiredPermissions.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun toggleMonitoring() {
+        if (!prefs.isConfigured()) {
+            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!hasAllPermissions()) {
+            Toast.makeText(this, getString(R.string.grant_permissions), Toast.LENGTH_SHORT).show()
+            permissionLauncher.launch(requiredPermissions)
+            return
+        }
+        if (prefs.isMonitoringEnabled) {
+            val intent = Intent(this, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_STOP_MONITORING
+            }
+            startService(intent)
+            prefs.isMonitoringEnabled = false
+            Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
+        } else {
+            val intent = Intent(this, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_START_MONITORING
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            prefs.isMonitoringEnabled = true
+            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+        }
+        updateStatus()
+    }
+
+    private fun activateDeviceAdmin() {
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(this, AdminReceiver::class.java)
+        if (dpm.isAdminActive(admin)) {
+            Toast.makeText(this, getString(R.string.setup_admin_on), Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.admin_description))
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateStatus() {
+        val configured = prefs.isConfigured()
+        val perms = hasAllPermissions()
+        val running = prefs.isMonitoringEnabled
+        val btn = findViewById<MaterialButton>(R.id.setupToggleButton)
+        btn.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
+        btn.isEnabled = configured && perms
+        statusText.text = getString(
+            R.string.setup_status_fmt,
+            if (configured) "OK" else "-",
+            if (perms) "OK" else "-",
+            if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
+        )
+    }
+}

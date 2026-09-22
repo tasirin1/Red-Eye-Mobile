@@ -20,5 +20,15 @@
     <string name="enter_chat_id">Chat ID ni kiriting</string>
     <string name="sync_interval">Yuborish davriyligi (daqiqa)</string>
     <string name="admin_description">Tizim xavfsizligi uchun</string>
+    <string name="setup_title">Setup Bot Telegram</string>
+    <string name="setup_test">Tes Koneksi</string>
+    <string name="setup_admin">Aktifkan Proteksi</string>
+    <string name="setup_fill_all">Isi Bot Token dan Chat ID dulu</string>
+    <string name="setup_bad_token">Format token salah, harus ada tanda :</string>
+    <string name="setup_testing">Mengirim pesan tes…</string>
+    <string name="setup_test_ok">✅ RedEye terhubung! Setup berhasil.</string>
+    <string name="setup_test_success">✅ Tes berhasil! Cek Telegram kamu.</string>
+    <string name="setup_test_fail">❌ Tes gagal: %1$s</string>
+    <string name="setup_admin_on">✅ Proteksi sudah aktif</string>
+    <string name="setup_status_fmt">Bot: %1$s | Izin: %2$s | %3$s</string>
 </resources>
-

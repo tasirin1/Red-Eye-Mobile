@@ -57,6 +57,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.SetupActivity"
+            android:exported="false" />
+
         <!-- Monitoring service -->
         <service
             android:name=".service.MonitoringService"

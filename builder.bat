@@ -1,4 +1,6 @@
 @echo off
+echo [LEGACY] Skrip lokal ini dipertahankan untuk kompatibilitas saja.
+echo [LEGACY] Cara resmi: build via GitHub Actions, lihat AGENTS.md dan README.md.
 REM ═══════════════════════════════════════════════════════════════════════════
 REM  ██████╗ ███████╗██████╗     ███████╗██╗   ██╗███████╗
 REM  ██╔══██╗██╔════╝██╔══██╗    ██╔════╝╚██╗ ██╔╝██╔════╝

