@@ -4,6 +4,12 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-22
+
+### Changed
+- APK release kini ditandatangani dengan keystore milik Tasirin (alias `tasirin`).
+- Wajib uninstall v1.1.0/v1.1.1 dulu sebelum install v1.1.2 karena kunci tanda tangan berbeda.
+
 ## [1.1.1] - 2026-09-22
 
 ### Fixed
