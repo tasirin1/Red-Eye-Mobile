@@ -50,9 +50,45 @@ class CameraService(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun capturePhoto(onPhotoTaken: (File) -> Unit, onError: (Exception) -> Unit) {
+    fun capturePhoto(
+        onPhotoTaken: (File) -> Unit,
+        onError: (Exception) -> Unit,
+        onTrace: (String) -> Unit = {},
+        timeoutMs: Long = 45_000L
+    ) {
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        var timeoutRunnable: Runnable? = null
+
+        fun finishWithError(e: Exception) {
+            if (done.compareAndSet(false, true)) {
+                try {
+                    timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
+                } catch (_: Exception) {
+                }
+                cleanup()
+                onError(e)
+            }
+        }
+
+        fun finishWithPhoto(file: File) {
+            if (done.compareAndSet(false, true)) {
+                try {
+                    timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
+                } catch (_: Exception) {
+                }
+                onPhotoTaken(file)
+                Log.i(TAG, "✓ Photo saved: ${file.absolutePath}")
+            } else {
+                try {
+                    file.delete()
+                } catch (_: Exception) {
+                }
+            }
+        }
+
         try {
             Log.i(TAG, "Starting photo capture...")
+            onTrace("trace: starting capture")
             startBackgroundThread()
 
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -60,34 +96,40 @@ class CameraService(private val context: Context) {
 
             if (cameraId == null) {
                 stopBackgroundThread()
-                onError(Exception("Front camera not found"))
+                finishWithError(Exception("Front camera not found"))
                 return
             }
 
             Log.d(TAG, "Using camera ID: $cameraId")
 
+            timeoutRunnable = Runnable {
+                Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
+                onTrace("trace: TIMEOUT waiting for camera")
+                finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
+            }
+            backgroundHandler?.postDelayed(timeoutRunnable!!, timeoutMs)
+
             // Setup ImageReader
-            imageReader = ImageReader.newInstance(IMAGE_WIDTH, IMAGE_HEIGHT, ImageFormat.JPEG, 1)
+            val photoSize = choosePhotoSize(cameraManager, cameraId)
+            imageReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 1)
             imageReader?.setOnImageAvailableListener({ reader ->
                 try {
+                    onTrace("trace: image arrived")
                     val image = reader.acquireLatestImage()
                     image?.let {
                         val file = saveImage(it)
                         it.close()
-                        
-                        // Cleanup
+
                         captureSession?.close()
                         cameraDevice?.close()
                         imageReader?.close()
                         stopBackgroundThread()
-                        
-                        onPhotoTaken(file)
-                        Log.i(TAG, "✓ Photo saved: ${file.absolutePath}")
+
+                        finishWithPhoto(file)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing image", e)
-                    cleanup()
-                    onError(e)
+                    finishWithError(e)
                 }
             }, backgroundHandler)
 
@@ -96,26 +138,24 @@ class CameraService(private val context: Context) {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
                     Log.d(TAG, "Camera opened successfully")
-                    createCaptureSession(camera, onError)
+                    onTrace("trace: camera opened")
+                    createCaptureSession(camera, ::finishWithError, { onTrace(it) })
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
                     Log.w(TAG, "Camera disconnected")
-                    cleanup()
-                    onError(Exception("Camera disconnected"))
+                    finishWithError(Exception("Camera disconnected"))
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     Log.e(TAG, "Camera error: $error")
-                    cleanup()
-                    onError(Exception("Camera error: $error"))
+                    finishWithError(Exception("Camera error: $error"))
                 }
             }, backgroundHandler)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing photo", e)
-            cleanup()
-            onError(e)
+            finishWithError(e)
         }
     }
 
@@ -132,12 +172,16 @@ class CameraService(private val context: Context) {
         }
     }
 
-    private fun createCaptureSession(camera: CameraDevice, onError: (Exception) -> Unit) {
+    private fun createCaptureSession(
+        camera: CameraDevice,
+        onError: (Exception) -> Unit,
+        onTrace: (String) -> Unit = {}
+    ) {
         try {
             val surface = imageReader!!.surface
             val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(surface)
-            
+
             // Auto settings
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
             captureBuilder.set(CaptureRequest.JPEG_QUALITY, 85.toByte())
@@ -148,19 +192,19 @@ class CameraService(private val context: Context) {
                     override fun onConfigured(session: CameraCaptureSession) {
                         captureSession = session
                         Log.d(TAG, "Capture session configured")
+                        onTrace("trace: session configured")
                         try {
                             session.capture(captureBuilder.build(), null, backgroundHandler)
                             Log.d(TAG, "Capture request sent")
+                            onTrace("trace: capture request sent")
                         } catch (e: Exception) {
                             Log.e(TAG, "Error capturing", e)
-                            cleanup()
                             onError(e)
                         }
                     }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {
                         Log.e(TAG, "Capture session configuration failed")
-                        cleanup()
                         onError(Exception("Session configuration failed"))
                     }
                 },
@@ -168,8 +212,25 @@ class CameraService(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error creating capture session", e)
-            cleanup()
             onError(e)
+        }
+    }
+
+    private fun choosePhotoSize(cameraManager: CameraManager, cameraId: String): Pair<Int, Int> {
+        return try {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val sizes = map?.getOutputSizes(ImageFormat.JPEG)
+            if (sizes.isNullOrEmpty()) {
+                IMAGE_WIDTH to IMAGE_HEIGHT
+            } else {
+                sizes.firstOrNull { it.width == IMAGE_WIDTH && it.height == IMAGE_HEIGHT }
+                    ?.let { it.width to it.height }
+                    ?: (sizes[0].width to sizes[0].height)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error choosing photo size", e)
+            IMAGE_WIDTH to IMAGE_HEIGHT
         }
     }
 

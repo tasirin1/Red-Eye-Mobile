@@ -4,6 +4,14 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-09-23
+
+### Fixed
+- Photo capture from background now declares the camera foreground-service type on Android 10-13, where it was previously missing and the OS could refuse camera access.
+- Manual `/photo` always replies with the final result (sent or failure reason) instead of stopping at `Taking photo now…`.
+- Concurrent captures no longer fight over the camera; a busy camera replies to retry instead of failing silently.
+- Photo size falls back to a device-supported JPEG resolution when `1280x720` is unavailable.
+
 ## [1.1.4] - 2026-09-23
 
 ### Added

