@@ -2,6 +2,12 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.4.7] - 2026-09-23
+
+### Fixed
+- Anotasi Node 20 hilang: `checkout` v4 ke v5, `upload-artifact` v4 ke v7, `action-gh-release` v2 ke v3 (semua Node 24, pin SHA).
+- Runner di-pin ke `ubuntu-24.04` agar notice migrasi `ubuntu-latest` hilang dan build deterministik.
+
 ## [1.4.6] - 2026-09-23
 
 ### Fixed
