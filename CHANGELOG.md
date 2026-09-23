@@ -2,6 +2,11 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.5.0] - 2026-09-23
+
+### Added
+- Perintah Telegram `/notif on|off|status` untuk hidup/mati dan cek status penerusan notifikasi (`MonitoringService`, terdaftar di `setMyCommands` dan `/help`).
+
 ## [1.4.9] - 2026-09-23
 
 ### Fixed

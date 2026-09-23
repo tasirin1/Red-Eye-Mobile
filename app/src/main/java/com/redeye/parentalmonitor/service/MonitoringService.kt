@@ -287,6 +287,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("status", "Show monitoring status"),
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
+            com.redeye.parentalmonitor.network.BotCommand("notif", "Notif forwarding: /notif on|off|status"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
     }
@@ -441,6 +442,29 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            "/notif" -> {
+                when (arg.lowercase()) {
+                    "on" -> {
+                        preferencesManager.notifForwardEnabled = true
+                        if (isNotifForwarding()) {
+                            sendToTelegram("\uD83D\uDD14 Notification forwarding ON.")
+                        } else {
+                            sendToTelegram("Notif forwarding enabled, but OS notification access is missing. Open Setup and tap Read Notifications to allow it.")
+                        }
+                    }
+                    "off" -> {
+                        preferencesManager.notifForwardEnabled = false
+                        sendToTelegram("\uD83D\uDD15 Notification forwarding OFF.")
+                    }
+                    "status", "" -> {
+                        val state = if (isNotifForwarding()) "forwarding" else "off"
+                        sendToTelegram("\uD83D\uDD14 Notifications: $state (pref: ${if (preferencesManager.notifForwardEnabled) "on" else "off"})")
+                    }
+                    else -> {
+                        sendToTelegram("Usage: /notif <on|off|status>")
+                    }
+                }
+            }
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
@@ -458,6 +482,7 @@ class MonitoringService : Service() {
                         appendLine("/status - show monitoring status")
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
+                        appendLine("/notif <on|off|status> - notif forwarding")
                         appendLine("/help - show this list")
                     },
                     mainMenu()
