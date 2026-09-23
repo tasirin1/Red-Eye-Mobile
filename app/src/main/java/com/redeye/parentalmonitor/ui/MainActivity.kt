@@ -271,6 +271,37 @@ class MainActivity : AppCompatActivity() {
     // DEVICE ADMIN FUNCTIONS (UNINSTALL PROTECTION)
     // ═══════════════════════════════════════════════════════════
     
+    private fun requestPermissions() {
+        permissionLauncher.launch(requiredPermissions)
+    }
+
+    private fun hasAllPermissions(): Boolean {
+        return requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun startMonitoringService() {
+        android.util.Log.d("MainActivity", "Creating service intent...")
+        val intent = Intent(this, MonitoringService::class.java).apply {
+            action = MonitoringService.ACTION_START_MONITORING
+        }
+
+        android.util.Log.d("MainActivity", "Starting service...")
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+                android.util.Log.i("MainActivity", "Started as foreground service")
+            } else {
+                startService(intent)
+                android.util.Log.i("MainActivity", "Started as regular service")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to start service", e)
+            throw e
+        }
+    }
+
     private fun isDeviceAdminActive(): Boolean {
         val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val adminComponent = ComponentName(this, AdminReceiver::class.java)
