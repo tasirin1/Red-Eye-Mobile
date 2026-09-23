@@ -27,6 +27,6 @@ object MessageScheduler {
             .build()
 
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, sendRequest)
+            .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, sendRequest)
     }
 }

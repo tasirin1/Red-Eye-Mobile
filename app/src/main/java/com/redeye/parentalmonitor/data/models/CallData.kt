@@ -1,6 +1,7 @@
 package com.redeye.parentalmonitor.data.models
 
 data class CallData(
+    val id: Long = 0L,
     val number: String,
     val name: String?,
     val date: Long,

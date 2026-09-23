@@ -16,5 +16,17 @@ object NetworkUtils {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
-}
 
+    fun parseRetryAfter(errorBody: String?): Long {
+        return try {
+            com.google.gson.JsonParser.parseString(errorBody)
+                ?.asJsonObject
+                ?.getAsJsonObject("parameters")
+                ?.get("retry_after")
+                ?.asLong
+                ?.coerceIn(1, 300) ?: 5L
+        } catch (e: Exception) {
+            5L
+        }
+    }
+}

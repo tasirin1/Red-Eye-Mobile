@@ -2,7 +2,6 @@ package com.redeye.parentalmonitor.network
 
 import com.google.gson.annotations.SerializedName
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -44,7 +43,8 @@ data class TelegramChat(
 data class TelegramIncomingMessage(
     @SerializedName("message_id") val messageId: Long,
     @SerializedName("chat") val chat: TelegramChat,
-    @SerializedName("text") val text: String?
+    @SerializedName("text") val text: String?,
+    @SerializedName("date") val date: Long = 0
 )
 
 data class TelegramUpdate(
@@ -95,12 +95,7 @@ interface TelegramApi {
 object TelegramClient {
     private const val BASE_URL = "https://api.telegram.org/"
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.NONE
-    }
-
     private val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
@@ -114,4 +109,3 @@ object TelegramClient {
 
     val api: TelegramApi = retrofit.create(TelegramApi::class.java)
 }
-

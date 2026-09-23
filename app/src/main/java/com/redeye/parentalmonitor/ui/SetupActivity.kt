@@ -166,7 +166,7 @@ class SetupActivity : AppCompatActivity() {
     private fun saveSettings(): Boolean {
         val token = botTokenInput.text.toString().trim()
         val chatId = chatIdInput.text.toString().trim()
-        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: 5
+        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
 
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
@@ -240,6 +240,7 @@ class SetupActivity : AppCompatActivity() {
             }
             startService(intent)
             prefs.isMonitoringEnabled = false
+            prefs.userDisabledMonitoring = true
             Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
         } else {
             val intent = Intent(this, MonitoringService::class.java).apply {
@@ -251,6 +252,7 @@ class SetupActivity : AppCompatActivity() {
                 startService(intent)
             }
             prefs.isMonitoringEnabled = true
+            prefs.userDisabledMonitoring = false
             Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         }
         updateStatus()
@@ -267,9 +269,7 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         try {
-            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = android.net.Uri.parse("package:$packageName")
-            }
+            val intent = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
             startActivity(intent)
         } catch (e: Exception) {
             Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
@@ -348,7 +348,7 @@ class SetupActivity : AppCompatActivity() {
             if (configured) "OK" else "-",
             if (perms) "OK" else "-",
             if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\n" + getString(
+        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "plaintext") + "\n" + getString(
             R.string.setup_location_fmt,
             if (hasForegroundLocation()) "OK" else "-",
             if (hasBackgroundLocation()) "OK" else "-"

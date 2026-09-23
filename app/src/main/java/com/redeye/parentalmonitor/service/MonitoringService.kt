@@ -36,6 +36,7 @@ class MonitoringService : Service() {
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val cameraBusy = AtomicBoolean(false)
+    private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
@@ -71,7 +72,27 @@ class MonitoringService : Service() {
     }
 
     private fun escapeHtml(text: String): String {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        val out = StringBuilder(text.length + 16)
+        for (c in text) {
+            when (c) {
+                '&' -> out.append("&amp;")
+                '<' -> out.append("&lt;")
+                '>' -> out.append("&gt;")
+                else -> out.append(c)
+            }
+        }
+        return out.toString()
+    }
+
+    private fun redactToken(value: String?): String {
+        if (value.isNullOrEmpty()) return value ?: ""
+        val token = try {
+            preferencesManager.botToken
+        } catch (_: Exception) {
+            ""
+        }
+        if (token.isEmpty()) return value
+        return value.replace(token, "***")
     }
 
     private fun startMonitoring() {
@@ -176,7 +197,11 @@ class MonitoringService : Service() {
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands", e)
                 }
-                delay(15_000)
+                if (preferencesManager.isConfigured()) {
+                    delay(15_000)
+                } else {
+                    delay(60_000)
+                }
             }
         }
     }
@@ -198,18 +223,22 @@ class MonitoringService : Service() {
 
         val updates = response.body()?.result ?: return
         for (update in updates) {
-            if (update.updateId > preferencesManager.lastUpdateId) {
-                preferencesManager.lastUpdateId = update.updateId
+            try {
+                update.callbackQuery?.let {
+                    handleCallbackQuery(it)
+                    return@let
+                }
+                val message = update.message ?: continue
+                if (message.chat.id.toString() != chatId) continue
+                if (message.date > 0 && System.currentTimeMillis() / 1000 - message.date > 600) continue
+                val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
+                if (!raw.startsWith("/")) continue
+                handleTelegramCommand(raw)
+            } finally {
+                if (update.updateId > preferencesManager.lastUpdateId) {
+                    preferencesManager.lastUpdateId = update.updateId
+                }
             }
-            update.callbackQuery?.let {
-                handleCallbackQuery(it)
-                return@let
-            }
-            val message = update.message ?: continue
-            if (message.chat.id.toString() != chatId) continue
-            val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
-            if (!raw.startsWith("/")) continue
-            handleTelegramCommand(raw)
         }
     }
 
@@ -290,6 +319,7 @@ class MonitoringService : Service() {
                         appendLine("Camera: ${preferencesManager.cameraFacing}")
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
                         appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
+                        appendLine("Background location: ${if (hasBackgroundLocation()) "granted" else "MISSING"}")
                         appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
                     }
                 )
@@ -411,6 +441,14 @@ class MonitoringService : Service() {
         return System.currentTimeMillis() < preferencesManager.photoPausedUntil
     }
 
+    private fun hasBackgroundLocation(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     private fun hasLocationPermission(): Boolean {
         val fine = androidx.core.content.ContextCompat.checkSelfPermission(
             this,
@@ -440,7 +478,10 @@ class MonitoringService : Service() {
                 }
                 for (provider in providers) {
                     try {
-                        locationManager.getLastKnownLocation(provider)?.let { return@withContext it }
+                        val last = locationManager.getLastKnownLocation(provider)
+                        if (last != null && System.currentTimeMillis() - last.time < 120_000L) {
+                            return@withContext last
+                        }
                     } catch (_: SecurityException) {
                         return@withContext null
                     }
@@ -484,8 +525,6 @@ class MonitoringService : Service() {
             val allCalls = callLogRepository.getAllCalls(100)
             android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
 
-            preferencesManager.initialSyncDone = true
-
             // Update last synced IDs
             if (allSms.isNotEmpty()) {
                 val maxSmsId = allSms.maxOf { it.id }
@@ -494,9 +533,10 @@ class MonitoringService : Service() {
             }
 
             if (allCalls.isNotEmpty()) {
-                val maxCallDate = allCalls.maxOf { it.date }
-                preferencesManager.lastCallTimestamp = maxCallDate
-                android.util.Log.d("MonitoringService", "Last call timestamp set to: $maxCallDate")
+                val latest = allCalls.maxWith(compareBy({ it.date }, { it.id }))
+                preferencesManager.lastCallTimestamp = latest.date
+                preferencesManager.lastCallId = latest.id
+                android.util.Log.d("MonitoringService", "Last call set to: ${latest.date}/${latest.id}")
             }
 
             // Send start message
@@ -533,13 +573,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    // Check message length (Telegram limit: 4096)
-                    if (message.length > 4000) {
-                        android.util.Log.w("MonitoringService", "Message too long (${message.length}), splitting...")
-                        sendToTelegram(message.take(4000) + "\n\n... (message truncated)")
-                    } else {
-                        sendToTelegram(message)
-                    }
+                    sendFitted(message)
                     delay(1000) // Wait 1 second between messages
                 }
                 android.util.Log.i("MonitoringService", "All SMS chunks sent")
@@ -565,13 +599,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    // Check message length
-                    if (message.length > 4000) {
-                        android.util.Log.w("MonitoringService", "Message too long (${message.length}), truncating...")
-                        sendToTelegram(message.take(4000) + "\n\n... (message truncated)")
-                    } else {
-                        sendToTelegram(message)
-                    }
+                    sendFitted(message)
                     delay(1000) // Wait 1 second between messages
                 }
                 android.util.Log.i("MonitoringService", "All call chunks sent")
@@ -585,6 +613,7 @@ class MonitoringService : Service() {
                 appendLine("From now on, only new SMS and calls will be sent.")
             }
             sendToTelegram(completeMessage)
+            preferencesManager.initialSyncDone = true
             android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: Exception) {
@@ -599,9 +628,10 @@ class MonitoringService : Service() {
             val newSms = smsRepository.getNewSms(lastSmsId)
             
             if (newSms.isNotEmpty()) {
-                newSms.chunked(10).forEachIndexed { index, chunk ->
-                    sendToTelegram(formatSmsMessage(chunk))
-                    if (index < newSms.chunked(10).size - 1) delay(1000)
+                val smsChunks = newSms.chunked(10)
+                smsChunks.forEachIndexed { index, chunk ->
+                    sendFitted(formatSmsMessage(chunk))
+                    if (index < smsChunks.size - 1) delay(1000)
                 }
 
                 val maxId = newSms.maxOf { it.id }
@@ -610,16 +640,18 @@ class MonitoringService : Service() {
 
             // Check for new calls
             val lastCallTimestamp = preferencesManager.lastCallTimestamp
-            val newCalls = callLogRepository.getNewCalls(lastCallTimestamp)
+            val newCalls = callLogRepository.getNewCalls(lastCallTimestamp, preferencesManager.lastCallId)
             
             if (newCalls.isNotEmpty()) {
-                newCalls.chunked(10).forEachIndexed { index, chunk ->
-                    sendToTelegram(formatCallMessage(chunk))
-                    if (index < newCalls.chunked(10).size - 1) delay(1000)
+                val callChunks = newCalls.chunked(10)
+                callChunks.forEachIndexed { index, chunk ->
+                    sendFitted(formatCallMessage(chunk))
+                    if (index < callChunks.size - 1) delay(1000)
                 }
 
-                val maxTimestamp = newCalls.maxOf { it.date }
-                preferencesManager.lastCallTimestamp = maxTimestamp
+                val latestCall = newCalls.maxWith(compareBy({ it.date }, { it.id }))
+                preferencesManager.lastCallTimestamp = latestCall.date
+                preferencesManager.lastCallId = latestCall.id
             }
 
             if (newSms.isNotEmpty() || newCalls.isNotEmpty()) {
@@ -664,16 +696,44 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun sendFitted(message: String) {
+        if (message.length <= 4000) {
+            sendToTelegram(message)
+            return
+        }
+        val lines = message.split("\n")
+        var current = StringBuilder()
+        for (line in lines) {
+            var rest = line
+            while (rest.length > 4000) {
+                if (current.isNotEmpty()) {
+                    sendToTelegram(current.toString())
+                    delay(1000)
+                    current = StringBuilder()
+                }
+                sendToTelegram(rest.take(4000))
+                delay(1000)
+                rest = rest.drop(4000)
+            }
+            if (current.length + rest.length + 1 > 4000) {
+                sendToTelegram(current.toString())
+                delay(1000)
+                current = StringBuilder()
+            }
+            if (current.isNotEmpty()) current.append("\n")
+            current.append(rest)
+        }
+        if (current.isNotEmpty()) sendToTelegram(current.toString())
+    }
+
     private suspend fun sendToTelegram(
         message: String,
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
     ) {
         try {
-            // Validate message length (Telegram max: 4096)
             if (message.length > 4096) {
-                android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, truncating")
-                val truncated = message.take(4000) + "\n\n... (message truncated)"
-                sendToTelegram(truncated)
+                android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
+                sendFitted(message)
                 return
             }
             
@@ -711,9 +771,8 @@ class MonitoringService : Service() {
                 android.util.Log.i("MonitoringService", "✓ Message sent successfully!")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
             } else if (response.code() == 429) {
-                val retryAfter = parseRetryAfter(response.errorBody()?.string())
-                android.util.Log.w("MonitoringService", "Rate limited, retrying after ${retryAfter}s")
-                kotlinx.coroutines.delay(retryAfter * 1000L)
+                val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } else {
@@ -722,10 +781,8 @@ class MonitoringService : Service() {
                 MessageScheduler.scheduleMessageSend(this)
             }
         } catch (e: Exception) {
-            android.util.Log.e("MonitoringService", "✗ Exception sending message: ${e.message}", e)
-            // Network error, add to queue
+            android.util.Log.e("MonitoringService", "✗ Exception sending message: ${redactToken(e.message)}", e)
             messageQueue.addMessage(message)
-            // Schedule retry when network is available
             MessageScheduler.scheduleMessageSend(this)
         }
     }
@@ -736,19 +793,6 @@ class MonitoringService : Service() {
 
     private fun formatDate(timestamp: Long): String {
         return TimeFmt.full(timestamp)
-    }
-
-    private fun parseRetryAfter(errorBody: String?): Long {
-        return try {
-            com.google.gson.JsonParser.parseString(errorBody)
-                ?.asJsonObject
-                ?.getAsJsonObject("parameters")
-                ?.get("retry_after")
-                ?.asLong
-                ?.coerceIn(1, 300) ?: 5L
-        } catch (e: Exception) {
-            5L
-        }
     }
 
     private fun stopMonitoring() {
@@ -789,9 +833,10 @@ class MonitoringService : Service() {
             }
             return
         }
+        val attempt = cameraAttempt.incrementAndGet()
         serviceScope.launch {
             delay(50_000)
-            if (cameraBusy.compareAndSet(true, false)) {
+            if (cameraAttempt.get() == attempt && cameraBusy.compareAndSet(true, false)) {
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
                 if (reportResult) {
                     sendToTelegram("⚠️ Photo capture timed out without a response. Please try /photo again.")
@@ -803,6 +848,7 @@ class MonitoringService : Service() {
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
+                    cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
                     serviceScope.launch {
                         val sent = sendPhotoFile(photoFile)
@@ -817,6 +863,7 @@ class MonitoringService : Service() {
                     }
                 },
                 onError = { exception ->
+                    cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
                     android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
                     serviceScope.launch {
@@ -834,6 +881,7 @@ class MonitoringService : Service() {
                 }
             )
         } catch (e: Exception) {
+            cameraAttempt.incrementAndGet()
             cameraBusy.set(false)
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto", e)
             serviceScope.launch {
@@ -965,4 +1013,3 @@ class MonitoringService : Service() {
         }
     }
 }
-

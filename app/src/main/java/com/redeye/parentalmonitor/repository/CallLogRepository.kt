@@ -9,6 +9,7 @@ import com.redeye.parentalmonitor.data.models.CallData
 class CallLogRepository(private val context: Context) {
 
     private val projection = arrayOf(
+        CallLog.Calls._ID,
         CallLog.Calls.NUMBER,
         CallLog.Calls.CACHED_NAME,
         CallLog.Calls.DATE,
@@ -17,11 +18,12 @@ class CallLogRepository(private val context: Context) {
     )
     private val contactCache = mutableMapOf<String, String?>()
 
-    fun getNewCalls(afterTimestamp: Long, limit: Int = 50): List<CallData> {
+    fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
         return queryCalls(
-            selection = "${CallLog.Calls.DATE} > ?",
-            args = arrayOf(afterTimestamp.toString()),
-            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit"
+            selection = "${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?)",
+            args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString()),
+            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            limit = 500
         )
     }
 
@@ -29,11 +31,12 @@ class CallLogRepository(private val context: Context) {
         return queryCalls(
             selection = null,
             args = null,
-            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit"
+            sortOrder = "${CallLog.Calls.DATE} DESC",
+            limit = limit
         )
     }
 
-    private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String): List<CallData> {
+    private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
             context.contentResolver.query(
@@ -43,16 +46,18 @@ class CallLogRepository(private val context: Context) {
                 args,
                 sortOrder
             )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(CallLog.Calls._ID)
                 val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
                 val nameIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
                 val dateIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
                 val typeIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-                while (cursor.moveToNext()) {
+                while (cursor.moveToNext() && result.size < limit) {
                     try {
                         val number = cursor.getString(numberIndex) ?: "Unknown"
                         result.add(
                             CallData(
+                                id = cursor.getLong(idIndex),
                                 number = number,
                                 name = cursor.getString(nameIndex) ?: lookupContact(number),
                                 date = cursor.getLong(dateIndex),

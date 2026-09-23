@@ -89,6 +89,13 @@ class MessageQueue(context: Context) {
         } catch (e: Exception) {
             mutableListOf()
         }
+        val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
+        val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()
+        if (fresh.size != loaded.size) {
+            android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
+            writeLocked(fresh)
+            return fresh
+        }
         cached = loaded
         return loaded
     }

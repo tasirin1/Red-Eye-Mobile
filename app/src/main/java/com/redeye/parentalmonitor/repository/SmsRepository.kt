@@ -13,15 +13,15 @@ class SmsRepository(private val context: Context) {
         Telephony.Sms.ADDRESS,
         Telephony.Sms.BODY,
         Telephony.Sms.DATE,
-        Telephony.Sms.TYPE,
-        Telephony.Sms.READ
+        Telephony.Sms.TYPE
     )
 
-    fun getNewSms(afterId: Long, limit: Int = 50): List<SmsData> {
+    fun getNewSms(afterId: Long): List<SmsData> {
         return querySms(
             selection = "${Telephony.Sms._ID} > ?",
             args = arrayOf(afterId.toString()),
-            sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+            sortOrder = "${Telephony.Sms.DATE} DESC",
+            limit = 500
         )
     }
 
@@ -29,11 +29,12 @@ class SmsRepository(private val context: Context) {
         return querySms(
             selection = null,
             args = null,
-            sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+            sortOrder = "${Telephony.Sms.DATE} DESC",
+            limit = limit
         )
     }
 
-    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String): List<SmsData> {
+    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<SmsData> {
         val result = mutableListOf<SmsData>()
         try {
             context.contentResolver.query(
@@ -48,10 +49,9 @@ class SmsRepository(private val context: Context) {
                 val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
                 val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val typeIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-                val readIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
-                while (cursor.moveToNext()) {
+                while (cursor.moveToNext() && result.size < limit) {
                     try {
-                        result.add(readSms(cursor, idIndex, addressIndex, bodyIndex, dateIndex, typeIndex, readIndex))
+                        result.add(readSms(cursor, idIndex, addressIndex, bodyIndex, dateIndex, typeIndex))
                     } catch (e: Exception) {
                         android.util.Log.e("SmsRepository", "Skipping corrupted SMS row", e)
                     }
@@ -69,16 +69,14 @@ class SmsRepository(private val context: Context) {
         addressIndex: Int,
         bodyIndex: Int,
         dateIndex: Int,
-        typeIndex: Int,
-        readIndex: Int
+        typeIndex: Int
     ): SmsData {
         return SmsData(
             id = cursor.getLong(idIndex),
             address = cursor.getString(addressIndex) ?: "Unknown",
             body = cursor.getString(bodyIndex) ?: "(empty message)",
             date = cursor.getLong(dateIndex),
-            type = cursor.getInt(typeIndex),
-            read = cursor.getInt(readIndex) == 1
+            type = cursor.getInt(typeIndex)
         )
     }
 }

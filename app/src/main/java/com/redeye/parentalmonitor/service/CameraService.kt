@@ -259,7 +259,7 @@ class CameraService(private val context: Context) {
         buffer.get(bytes)
 
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
-        val file = File(context.cacheDir, "camera_$timestamp.jpg")
+        val file = File(context.cacheDir, "camera_${timestamp}_${System.currentTimeMillis() % 1000}.jpg")
         
         FileOutputStream(file).use { output ->
             output.write(bytes)

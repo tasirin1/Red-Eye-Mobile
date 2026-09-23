@@ -10,11 +10,13 @@ import com.redeye.parentalmonitor.service.MonitoringService
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            val preferencesManager = PreferencesManager(context)
-            
-            // Restart the service after reboot if monitoring is enabled
-            if (preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured()) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            val preferencesManager = try {
+                PreferencesManager(context)
+            } catch (_: Exception) {
+                return
+            }
+            if (preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring) {
                 val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
@@ -33,4 +35,3 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 }
-

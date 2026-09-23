@@ -3,11 +3,11 @@ package com.redeye.parentalmonitor.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.google.gson.JsonParser
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
 class SendMessageWorker(
@@ -37,7 +37,7 @@ class SendMessageWorker(
                     SendOutcome.SENT -> {
                         messageQueue.removeMessage(queuedMessage.id)
                         successCount++
-                        delay(500)
+                        delay(200)
                     }
                     SendOutcome.RATE_LIMITED -> {
                         failCount++
@@ -83,7 +83,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.SENT
             } else if (response.code() == 429) {
-                val retryAfter = parseRetryAfter(response.errorBody()?.string())
+                val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("SendMessageWorker", "Rate limited, retry after ${retryAfter}s")
                 SendOutcome.RATE_LIMITED
             } else {
@@ -91,19 +91,6 @@ class SendMessageWorker(
             }
         } catch (e: Exception) {
             SendOutcome.FAILED
-        }
-    }
-
-    private fun parseRetryAfter(errorBody: String?): Long {
-        return try {
-            JsonParser.parseString(errorBody)
-                ?.asJsonObject
-                ?.getAsJsonObject("parameters")
-                ?.get("retry_after")
-                ?.asLong
-                ?.coerceIn(1, 300) ?: 5L
-        } catch (e: Exception) {
-            5L
         }
     }
 }

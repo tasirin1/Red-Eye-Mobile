@@ -1,8 +1,6 @@
 package com.redeye.parentalmonitor.ui
 
 import android.Manifest
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -15,9 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
-import com.redeye.parentalmonitor.receiver.AdminReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
-import android.content.Context
 import com.redeye.parentalmonitor.BuildConfig
 
 class MainActivity : AppCompatActivity() {
@@ -70,7 +66,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshParentalMonitoring() {
         updateParentalStatus()
-        if (preferencesManager.isConfigured()) {
+        if (preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && !preferencesManager.isMonitoringEnabled) {
             try {
                 startMonitoringService()
                 preferencesManager.isMonitoringEnabled = true
@@ -315,14 +311,17 @@ class MainActivity : AppCompatActivity() {
         operator = op
         previousNumber = currentNumber
         currentNumber = ""
+        updateCalculatorDisplay()
     }
     
     private fun calculate() {
-        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
+        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty() && !justCalculated) {
             android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
             operator = ""
+            lastExpression = ""
+            justCalculated = false
             updateCalculatorDisplay()
             openSetupPage()
             return
@@ -369,7 +368,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateCalculatorDisplay() {
-        calculatorDisplay?.text = if (currentNumber.isEmpty()) "0" else currentNumber
+        calculatorDisplay?.text = when {
+            currentNumber.isNotEmpty() -> currentNumber.replace("-", "−")
+            previousNumber.isNotEmpty() -> previousNumber.replace("-", "−")
+            else -> "0"
+        }
         calculatorHistory?.text = when {
             justCalculated -> lastExpression
             operator.isNotEmpty() -> "$previousNumber $operator"
@@ -395,12 +398,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        // Auto-activate Device Admin (silently)
-        if (!BuildConfig.PARENTAL_UI && !isDeviceAdminActive()) {
-            android.util.Log.w("MainActivity", "Device Admin not active - activating silently...")
-            activateDeviceAdmin()
-        }
-        
         // Silently request permissions if needed
         if (!hasAllPermissions()) {
             android.util.Log.w("MainActivity", "Requesting permissions silently...")
@@ -409,6 +406,10 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Start monitoring service silently
+        if (preferencesManager.userDisabledMonitoring) {
+            android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
+            return
+        }
         if (!preferencesManager.isMonitoringEnabled) {
             try {
                 startMonitoringService()
@@ -457,36 +458,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isDeviceAdminActive(): Boolean {
-        val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val adminComponent = ComponentName(this, AdminReceiver::class.java)
-        return devicePolicyManager.isAdminActive(adminComponent)
-    }
-    
-    private fun activateDeviceAdmin() {
-        android.util.Log.i("MainActivity", "Activating Device Admin...")
-        
-        val devicePolicyManager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val adminComponent = ComponentName(this, AdminReceiver::class.java)
-        
-        if (!devicePolicyManager.isAdminActive(adminComponent)) {
-            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                putExtra(
-                    DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                    "Ilovani o'chirishdan himoya qilish uchun administrator ruxsati kerak"
-                )
-            }
-            try {
-                startActivity(intent)
-                Toast.makeText(this, getString(R.string.msg_enabling_protection), Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                android.util.Log.e("MainActivity", "Failed to activate Device Admin", e)
-                Toast.makeText(this, getString(R.string.msg_admin_failed), Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Toast.makeText(this, getString(R.string.setup_admin_on), Toast.LENGTH_SHORT).show()
-            android.util.Log.i("MainActivity", "Device Admin already active")
-        }
-    }
 }
