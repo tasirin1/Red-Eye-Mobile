@@ -4,6 +4,22 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-09-23
+
+### Added
+- Setup buttons: Disable Battery Restriction (anti-kill) and Send Status Now (direct proof).
+- Setup status line shows battery restriction state.
+
+### Fixed
+- Photo failures are now reported to Telegram (throttled) instead of logcat-only.
+- Failed photos are kept and retried on the next successful send (max 3 per cycle).
+- `/status` shows camera permission state and last photo time.
+- Photo upload failures reported to Telegram with HTTP code + retry.
+
+### Added
+- Photo interval setting on the setup page (1–60 min, default 1).
+- Two-way Telegram commands: `/photo` (capture now), `/status`, `/help` — owner chat only.
+
 ## [1.1.3] - 2026-09-23
 
 ### Fixed

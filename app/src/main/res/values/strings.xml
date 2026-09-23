@@ -19,10 +19,15 @@
     <string name="enter_bot_token">Enter bot token</string>
     <string name="enter_chat_id">Enter chat ID</string>
     <string name="sync_interval">Sync interval (minutes)</string>
+    <string name="camera_interval">Photo interval (minutes)</string>
     <string name="admin_description">Required to protect the app from uninstallation</string>
     <string name="setup_title">Telegram Bot Setup</string>
     <string name="setup_test">Test Connection</string>
     <string name="setup_admin">Enable Protection</string>
+    <string name="setup_battery">Disable Battery Restriction</string>
+    <string name="setup_battery_on">✅ Battery restriction already off</string>
+    <string name="setup_send_status">Send Status Now</string>
+    <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
     <string name="setup_testing">Sending test message…</string>

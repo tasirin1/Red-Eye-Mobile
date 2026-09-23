@@ -29,6 +29,7 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var botTokenInput: TextInputEditText
     private lateinit var chatIdInput: TextInputEditText
     private lateinit var syncIntervalInput: TextInputEditText
+    private lateinit var cameraIntervalInput: TextInputEditText
     private lateinit var statusText: TextView
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -63,11 +64,13 @@ class SetupActivity : AppCompatActivity() {
         botTokenInput = findViewById(R.id.setupBotTokenInput)
         chatIdInput = findViewById(R.id.setupChatIdInput)
         syncIntervalInput = findViewById(R.id.setupSyncIntervalInput)
+        cameraIntervalInput = findViewById(R.id.setupCameraIntervalInput)
         statusText = findViewById(R.id.setupStatusText)
 
         botTokenInput.setText(prefs.botToken)
         chatIdInput.setText(prefs.chatId)
         syncIntervalInput.setText(prefs.syncInterval.toString())
+        cameraIntervalInput.setText(prefs.cameraInterval.toString())
 
         findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
@@ -76,6 +79,8 @@ class SetupActivity : AppCompatActivity() {
         }
         findViewById<MaterialButton>(R.id.setupAdminButton).setOnClickListener { activateDeviceAdmin() }
         findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
+        findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
+        findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
 
         updateStatus()
     }
@@ -104,9 +109,12 @@ class SetupActivity : AppCompatActivity() {
             return false
         }
 
+        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: 1
+
         prefs.botToken = token
         prefs.chatId = chatId
         prefs.syncInterval = interval.coerceIn(1, 1440)
+        prefs.cameraInterval = cameraInterval.coerceIn(1, 60)
 
         Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         updateStatus()
@@ -176,6 +184,65 @@ class SetupActivity : AppCompatActivity() {
         updateStatus()
     }
 
+    private fun isBatteryExempt(): Boolean {
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun requestBatteryExemption() {
+        if (isBatteryExempt()) {
+            Toast.makeText(this, getString(R.string.setup_battery_on), Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = android.net.Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun sendStatusNow() {
+        if (!prefs.isConfigured()) {
+            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                val token = prefs.botToken
+                val chatId = prefs.chatId
+                val lastSync = prefs.lastSyncTime
+                val text = buildString {
+                    appendLine("📊 <b>Status</b> (direct)")
+                    appendLine("Monitoring flag: ${if (prefs.isMonitoringEnabled) "ON" else "OFF"}")
+                    appendLine("Last sync: ${if (lastSync > 0) formatStatusTime(lastSync) else getString(R.string.never)}")
+                    appendLine("Last photo: ${if (prefs.lastPhotoTime > 0) formatStatusTime(prefs.lastPhotoTime) else getString(R.string.never)}")
+                    appendLine("Battery restriction: ${if (isBatteryExempt()) "off" else "ON — tap Disable Battery Restriction"}")
+                }
+                val url = "https://api.telegram.org/bot$token/sendMessage"
+                val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
+                if (resp.isSuccessful && resp.body()?.ok == true) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_status_sent), Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, e.message ?: ""), Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun formatStatusTime(timestamp: Long): String {
+        return try {
+            java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.getDefault())
+                .format(java.util.Date(timestamp))
+        } catch (e: Exception) {
+            timestamp.toString()
+        }
+    }
+
     private fun activateDeviceAdmin() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, AdminReceiver::class.java)
@@ -206,6 +273,6 @@ class SetupActivity : AppCompatActivity() {
             if (configured) "OK" else "-",
             if (perms) "OK" else "-",
             if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        )
+        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted")
     }
 }

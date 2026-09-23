@@ -9,6 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -26,7 +27,32 @@ data class TelegramResponse(
     @SerializedName("result") val result: Any?
 )
 
+data class TelegramChat(
+    @SerializedName("id") val id: Long
+)
+
+data class TelegramIncomingMessage(
+    @SerializedName("message_id") val messageId: Long,
+    @SerializedName("chat") val chat: TelegramChat,
+    @SerializedName("text") val text: String?
+)
+
+data class TelegramUpdate(
+    @SerializedName("update_id") val updateId: Long,
+    @SerializedName("message") val message: TelegramIncomingMessage?
+)
+
+data class TelegramUpdatesResponse(
+    @SerializedName("ok") val ok: Boolean,
+    @SerializedName("result") val result: List<TelegramUpdate>?
+)
+
 interface TelegramApi {
+    @GET
+    suspend fun getUpdates(
+        @Url url: String
+    ): Response<TelegramUpdatesResponse>
+
     @POST
     suspend fun sendMessage(
         @Url url: String,

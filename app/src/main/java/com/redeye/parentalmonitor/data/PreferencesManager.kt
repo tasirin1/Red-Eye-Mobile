@@ -33,6 +33,10 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SMS_ID = "last_sms_id"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
+        private const val KEY_CAMERA_INTERVAL = "camera_interval"
+        private const val KEY_LAST_UPDATE_ID = "last_update_id"
+        private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
+        private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
     }
 
     var botToken: String
@@ -66,6 +70,22 @@ class PreferencesManager(context: Context) {
     var initialSyncDone: Boolean
         get() = sharedPreferences.getBoolean(KEY_INITIAL_SYNC_DONE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
+
+    var cameraInterval: Int
+        get() = sharedPreferences.getInt(KEY_CAMERA_INTERVAL, 1)
+        set(value) = sharedPreferences.edit().putInt(KEY_CAMERA_INTERVAL, value).apply()
+
+    var lastUpdateId: Long
+        get() = sharedPreferences.getLong(KEY_LAST_UPDATE_ID, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
+
+    var lastPhotoTime: Long
+        get() = sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_TIME, value).apply()
+
+    var lastCameraErrorNotice: Long
+        get() = sharedPreferences.getLong(KEY_LAST_CAM_ERR_NOTICE, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_CAM_ERR_NOTICE, value).apply()
 
     fun isConfigured(): Boolean {
         return botToken.isNotEmpty() && chatId.isNotEmpty()

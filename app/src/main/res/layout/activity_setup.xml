@@ -89,6 +89,23 @@
 
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:hint="@string/camera_interval"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/setupCameraIntervalInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:text="1"
+                        android:singleLine="true" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/setupSaveButton"
                     android:layout_width="match_parent"
@@ -135,6 +152,22 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/setup_admin"
                     app:icon="@android:drawable/ic_lock_lock" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupBatteryButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/setup_battery"
+                    app:icon="@android:drawable/ic_lock_idle_alarm" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupSendStatusButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/setup_send_status"
+                    app:icon="@android:drawable/ic_menu_info_details" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/setupToggleButton"

