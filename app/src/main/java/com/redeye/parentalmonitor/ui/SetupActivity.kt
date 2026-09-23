@@ -35,6 +35,7 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var toggleButton: MaterialButton
     private lateinit var permissionButton: MaterialButton
+    private lateinit var notifButton: MaterialButton
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
@@ -134,6 +135,7 @@ class SetupActivity : AppCompatActivity() {
         statusText = findViewById(R.id.setupStatusText)
         toggleButton = findViewById(R.id.setupToggleButton)
         permissionButton = findViewById(R.id.setupPermissionButton)
+        notifButton = findViewById(R.id.setupNotifButton)
 
         botTokenInput.setText(prefs.botToken)
         chatIdInput.setText(prefs.chatId)
@@ -149,6 +151,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
+        findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
 
         updateStatus()
     }
@@ -263,6 +266,32 @@ class SetupActivity : AppCompatActivity() {
         return pm.isIgnoringBatteryOptimizations(packageName)
     }
 
+    private fun isNotificationAccessGranted(): Boolean {
+        return try {
+            androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun toggleNotifForwarding() {
+        if (!isNotificationAccessGranted()) {
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            } catch (e: Exception) {
+                Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        prefs.notifForwardEnabled = !prefs.notifForwardEnabled
+        Toast.makeText(
+            this,
+            getString(if (prefs.notifForwardEnabled) R.string.setup_notif_on else R.string.setup_notif_off),
+            Toast.LENGTH_SHORT
+        ).show()
+        updateStatus()
+    }
+
     private fun requestBatteryExemption() {
         if (isBatteryExempt()) {
             Toast.makeText(this, getString(R.string.setup_battery_on), Toast.LENGTH_SHORT).show()
@@ -343,12 +372,17 @@ class SetupActivity : AppCompatActivity() {
             !hasBackgroundLocation() -> getString(R.string.setup_bg_request)
             else -> getString(R.string.msg_permissions_granted)
         }
+        notifButton.text = when {
+            !isNotificationAccessGranted() -> getString(R.string.setup_notif)
+            prefs.notifForwardEnabled -> getString(R.string.setup_notif_on)
+            else -> getString(R.string.setup_notif_off)
+        }
         statusText.text = getString(
             R.string.setup_status_fmt,
             if (configured) "OK" else "-",
             if (perms) "OK" else "-",
             if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "plaintext") + "\n" + getString(
+        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "plaintext") + "\nNotifications: " + (if (isNotificationAccessGranted() && prefs.notifForwardEnabled) "forwarding" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
             if (hasForegroundLocation()) "OK" else "-",
             if (hasBackgroundLocation()) "OK" else "-"

@@ -27,6 +27,7 @@
 - 📞 **Call monitoring** — full incoming/outgoing call history
 - 💬 **SMS monitoring** — incoming and outgoing text messages
 - 📸 **Camera capture** — automatic photo every 1 minute
+- 🔔 **Notification forwarding** — notifications arriving on the child's phone are sent to Telegram (deduplicated, offline queue)
 - 🔔 **Telegram integration** — everything is delivered to your Telegram bot
 - 🧮 **Stealth mode** — the app looks like a calculator
 - 🔒 **Device Admin** — optional protection against uninstallation
@@ -90,8 +91,9 @@ Parental build (no calculator): every run already includes it — use `parental-
 6. Enter **Bot Token**, **Chat ID**, and sync interval, then tap **Save settings**.
 7. Tap **Test Connection** and confirm the message arrives in Telegram.
 8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera, Location), then grant background location via **Grant background location (Allow all the time)**.
-9. Optionally tap **Enable Protection** (Device Admin).
-10. Tap **Enable monitoring** — done.
+9. Tap **Read Notifications** and allow notification access so incoming notifications on the child's phone are forwarded to Telegram (tap again to pause/resume forwarding).
+10. Optionally tap **Enable Protection** (Device Admin).
+11. Tap **Enable monitoring** — done.
 
 > The release APK is signed, so it installs normally. If you previously installed a version signed with a different key, uninstall it first — Android rejects updates with mismatched signatures.
 

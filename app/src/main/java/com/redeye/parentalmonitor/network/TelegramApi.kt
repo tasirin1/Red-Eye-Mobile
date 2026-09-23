@@ -64,6 +64,15 @@ data class TelegramUpdatesResponse(
     @SerializedName("result") val result: List<TelegramUpdate>?
 )
 
+data class BotCommand(
+    @SerializedName("command") val command: String,
+    @SerializedName("description") val description: String
+)
+
+data class SetMyCommandsRequest(
+    @SerializedName("commands") val commands: List<BotCommand>
+)
+
 interface TelegramApi {
     @GET
     suspend fun getUpdates(
@@ -80,6 +89,12 @@ interface TelegramApi {
     suspend fun answerCallbackQuery(
         @Url url: String,
         @Body body: Map<String, String>
+    ): Response<TelegramResponse>
+
+    @POST
+    suspend fun setMyCommands(
+        @Url url: String,
+        @Body body: SetMyCommandsRequest
     ): Response<TelegramResponse>
     
     @Multipart

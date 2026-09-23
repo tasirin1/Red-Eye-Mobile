@@ -59,6 +59,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_MONITORING_PAUSED = "monitoring_paused"
         private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         private const val KEY_CAMERA_FACING = "camera_facing"
+        private const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
     }
 
     var botToken: String
@@ -132,4 +133,8 @@ class PreferencesManager(context: Context) {
     fun isConfigured(): Boolean {
         return botToken.isNotEmpty() && chatId.isNotEmpty()
     }
+
+    var notifForwardEnabled: Boolean
+        get() = sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIF_FORWARD, value).apply()
 }

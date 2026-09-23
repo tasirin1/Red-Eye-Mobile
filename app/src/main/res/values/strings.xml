@@ -30,6 +30,9 @@
     <string name="setup_bg_granted">Background location granted</string>
     <string name="setup_location_fmt">Location: foreground %1$s | background %2$s</string>
     <string name="setup_send_status">Send Status Now</string>
+    <string name="setup_notif">Read Notifications</string>
+    <string name="setup_notif_on">Notification forwarding ON</string>
+    <string name="setup_notif_off">Notification forwarding OFF</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>

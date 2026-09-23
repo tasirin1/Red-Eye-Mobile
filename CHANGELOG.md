@@ -2,6 +2,19 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.4.8] - 2026-09-23
+
+### Added
+- Penerusan notifikasi HP anak ke Telegram via `NotificationForwarderService` (dedupe 5 menit, antre offline, hormati pause/disable; tombol `Read Notifications` + status di Setup dan `/status`).
+- Menu perintah resmi Telegram via `setMyCommands`; notifikasi selesai sync memuat snapshot status kini.
+
+## [Unreleased]
+
+### Added
+- Penerusan notifikasi HP anak ke Telegram via `NotificationListenerService` (`NotificationForwarderService`): judul + isi notifikasi dikirim sebagai pesan 🔔, dengan dedupe 5 menit, skip ongoing, antre offline, dan hormati pause/disable monitoring.
+- Menu perintah resmi Telegram via `setMyCommands` (`BotCommand`, `registerBotCommands`) sehingga 12 perintah tak lagi tersebar; didaftarkan tiap service start.
+- Notifikasi selesai sync kini memuat snapshot status kini (monitoring, interval data, foto, antrean) plus petunjuk menu perintah.
+
 ## [1.4.7] - 2026-09-23
 
 ### Fixed
