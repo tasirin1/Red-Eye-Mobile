@@ -40,12 +40,30 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Build Debug + Release APK
+      - name: Build Standard Debug + Release APK
         run: gradle assembleDebug assembleRelease --stacktrace
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
+          PARENTAL_UI: "false"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Stash standard APKs
+        run: |
+          mkdir -p /tmp/standard-debug /tmp/standard-release
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/standard-debug/
+          cp app/build/outputs/apk/release/app-release.apk /tmp/standard-release/
+
+      - name: Build Parental Debug + Release APK
+        run: gradle assembleDebug assembleRelease --stacktrace
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
+          PARENTAL_UI: "true"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -53,8 +71,10 @@ jobs:
       - name: Rename APKs with tag
         run: |
           TAG="${GITHUB_REF_NAME}"
-          cp app/build/outputs/apk/debug/app-debug.apk "redeye-${TAG}-debug.apk"
-          cp app/build/outputs/apk/release/app-release.apk "redeye-${TAG}-release.apk"
+          cp /tmp/standard-debug/app-debug.apk "redeye-${TAG}-debug.apk"
+          cp /tmp/standard-release/app-release.apk "redeye-${TAG}-release.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "parental-${TAG}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk "parental-${TAG}-release.apk"
           ls -la *.apk
 
       - name: Publish GitHub Release
@@ -62,4 +82,5 @@ jobs:
         with:
           files: |
             redeye-*.apk
+            parental-*.apk
           generate_release_notes: true

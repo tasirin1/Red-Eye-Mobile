@@ -58,7 +58,7 @@
 
 1. Push to `main`, open a PR, or run the workflow manually (**Actions > Build APK > Run workflow**).
 2. Open the finished run and download the artifacts: `app-debug` / `app-release`.
-3. For an official installable file, use the **Releases** page — each `vX.Y.Z` tag publishes signed APKs (e.g. `redeye-v1.1.2-release.apk`).
+3. For an official installable file, use the **Releases** page — each `vX.Y.Z` tag publishes signed APKs: standard (`redeye-vX.Y.Z-release.apk`) and **Parental Control Edition** (`parental-vX.Y.Z-release.apk`, `PARENTAL_UI=true`, package `com.redeye.parentalcontrol`).
 
 Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
