@@ -5,6 +5,9 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 ## [Unreleased]
 
 ### Added
+- Parental edition rebrand: `PARENTAL_UI` builds use applicationId `com.redeye.parentalcontrol`, label `Parental Control`, and a shield icon (no Calculator traces).
+
+### Added
 - `PARENTAL_UI` build flag: launcher shows a Parental Control page (grant-all-permissions only) instead of the calculator; token prefilled from `BuildConfig`. `Build APK` workflow gained a `parental_ui` dispatch input.
 
 ## [1.3.0] - 2026-09-23

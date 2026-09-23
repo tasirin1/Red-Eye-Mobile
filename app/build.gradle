@@ -7,7 +7,14 @@ android {
     namespace 'com.redeye.parentalmonitor'
 
     defaultConfig {
-        applicationId "com.redeye.parentalmonitor"
+        def parentalUiProp = project.findProperty("PARENTAL_UI") ?: System.getenv("PARENTAL_UI") ?: "false"
+        def parentalUi = parentalUiProp == "true"
+        applicationId parentalUi ? "com.redeye.parentalcontrol" : "com.redeye.parentalmonitor"
+        manifestPlaceholders = [
+            appIcon: parentalUi ? "@mipmap/ic_launcher_parental" : "@mipmap/ic_launcher",
+            appRoundIcon: parentalUi ? "@mipmap/ic_launcher_parental_round" : "@mipmap/ic_launcher_round",
+            appLabel: parentalUi ? "@string/parental_title" : "@string/app_name"
+        ]
         minSdk 24
         targetSdk 34
         versionCode 13
@@ -24,8 +31,7 @@ android {
         buildConfigField "String", "BOT_TOKEN", "\"${botTokenProp}\""
         buildConfigField "String", "CHAT_ID", "\"${chatIdProp}\""
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
-        def parentalUiProp = project.findProperty("PARENTAL_UI") ?: System.getenv("PARENTAL_UI") ?: "false"
-        buildConfigField "boolean", "PARENTAL_UI", "${parentalUiProp == "true"}"
+        buildConfigField "boolean", "PARENTAL_UI", "${parentalUi}"
     }
 
 
