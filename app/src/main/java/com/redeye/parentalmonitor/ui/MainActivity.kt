@@ -59,13 +59,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        if (BuildConfig.PARENTAL_UI) updateParentalStatus()
+        if (BuildConfig.PARENTAL_UI) refreshParentalMonitoring()
     }
 
     private val parentalBackgroundLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {
-        if (BuildConfig.PARENTAL_UI) updateParentalStatus()
+        if (BuildConfig.PARENTAL_UI) refreshParentalMonitoring()
+    }
+
+    private fun refreshParentalMonitoring() {
+        updateParentalStatus()
+        if (preferencesManager.isConfigured()) {
+            try {
+                startMonitoringService()
+                preferencesManager.isMonitoringEnabled = true
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun hasForegroundLocation(): Boolean {
