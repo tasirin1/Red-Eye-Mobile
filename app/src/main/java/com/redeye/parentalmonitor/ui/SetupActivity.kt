@@ -113,7 +113,7 @@ class SetupActivity : AppCompatActivity() {
             return false
         }
 
-        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: 1
+        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
 
         prefs.botToken = token
         prefs.chatId = chatId

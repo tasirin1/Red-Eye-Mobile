@@ -3,7 +3,6 @@ package com.redeye.parentalmonitor.data
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.models.QueuedMessage
@@ -11,9 +10,7 @@ import com.redeye.parentalmonitor.data.models.QueuedMessage
 class MessageQueue(context: Context) {
 
     private val sharedPreferences: SharedPreferences = try {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
+        val masterKey = PreferencesManager.getMasterKey(context)
         EncryptedSharedPreferences.create(
             context,
             "encrypted_queue",

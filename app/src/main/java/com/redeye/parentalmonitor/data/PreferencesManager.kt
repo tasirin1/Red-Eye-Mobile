@@ -7,9 +7,7 @@ import androidx.security.crypto.MasterKey
 
 class PreferencesManager(context: Context) {
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val masterKey = getMasterKey(context)
 
     private val sharedPreferences: SharedPreferences = try {
         EncryptedSharedPreferences.create(
@@ -25,6 +23,17 @@ class PreferencesManager(context: Context) {
     }
 
     companion object {
+        @Volatile
+        private var sharedMasterKey: MasterKey? = null
+
+        fun getMasterKey(context: Context): MasterKey {
+            return sharedMasterKey ?: synchronized(this) {
+                sharedMasterKey ?: MasterKey.Builder(context.applicationContext)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                    .also { sharedMasterKey = it }
+            }
+        }
         private const val KEY_BOT_TOKEN = "bot_token"
         private const val KEY_CHAT_ID = "chat_id"
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"

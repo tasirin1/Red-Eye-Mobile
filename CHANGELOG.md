@@ -4,6 +4,22 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-23
+
+### Fixed
+- Escape HTML in SMS/call content so messages containing `<>\&` no longer fail with HTTP 400.
+- Queue retry is now scheduled on every queued message (offline included), so the offline queue actually drains.
+- Service restart by the system (null intent) resumes monitoring instead of idling without foreground.
+- History sync marks completion before sending, preventing duplicate resends after a restart.
+- Empty photo-interval field keeps the current setting instead of silently resetting to 1.
+
+### Changed
+- Removed dead `AutoConfig` reflection and the debug-only settings UI from `MainActivity`; deleted unused `activity_main.xml`.
+- `MasterKey` is created once per process and shared by `PreferencesManager` and `MessageQueue`.
+- Removed duplicate `getAllSms`; `CallLogRepository` contact cache persists across queries (capped at 500).
+- `NetworkUtils` simplified for `minSdk 24` (dead pre-M branch removed); redundant `printStackTrace` calls removed.
+- Photo size prefers an exact match, then the smallest resolution >= 640px wide, keeping uploads small.
+
 ## [1.1.9] - 2026-09-23
 
 ### Added
