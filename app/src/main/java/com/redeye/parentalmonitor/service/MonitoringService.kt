@@ -541,6 +541,15 @@ class MonitoringService : Service() {
             }
             return
         }
+        serviceScope.launch {
+            delay(70_000)
+            if (cameraBusy.compareAndSet(true, false)) {
+                android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
+                if (reportResult) {
+                    sendToTelegram("⚠️ Photo capture timed out without a response. Please try /photo again.")
+                }
+            }
+        }
         try {
             android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(

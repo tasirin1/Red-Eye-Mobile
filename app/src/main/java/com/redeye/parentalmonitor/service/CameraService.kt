@@ -38,11 +38,14 @@ class CameraService(private val context: Context) {
     }
 
     fun stopBackgroundThread() {
-        backgroundThread?.quitSafely()
+        val thread = backgroundThread
+        backgroundThread = null
+        backgroundHandler = null
+        thread?.quitSafely()
         try {
-            backgroundThread?.join()
-            backgroundThread = null
-            backgroundHandler = null
+            if (thread != null && Thread.currentThread() !== thread) {
+                thread.join()
+            }
             Log.i(TAG, "Background thread stopped")
         } catch (e: InterruptedException) {
             Log.e(TAG, "Error stopping background thread", e)
