@@ -2,6 +2,13 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.4.5] - 2026-09-23
+
+### Fixed
+- Nol warning Kotlin: `when` tanpa `val` tak terpakai di `SendMessageWorker`, tanpa `!!` di `CameraService`.
+- API deprecated platform (`EncryptedSharedPreferences`/`MasterKey`, `createCaptureSession`, `requestSingleUpdate`) ditandai `@Suppress("DEPRECATION")`; migrasi ditunda karena butuh refactor async.
+- `setup-java` v4 (deprecated) naik ke v5 dengan pin SHA.
+
 ## [1.4.4] - 2026-09-23
 
 ### Security

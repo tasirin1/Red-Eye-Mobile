@@ -7,6 +7,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 
+@Suppress("DEPRECATION")
 class MessageQueue(context: Context) {
 
     private val sharedPreferences: SharedPreferences = try {

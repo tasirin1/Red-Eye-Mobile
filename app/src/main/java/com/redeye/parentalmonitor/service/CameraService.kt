@@ -111,12 +111,13 @@ class CameraService(private val context: Context) {
 
             Log.d(TAG, "Using camera ID: $cameraId")
 
-            timeoutRunnable = Runnable {
+            val timeout = Runnable {
                 Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
                 onTrace("trace: TIMEOUT waiting for camera")
                 finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
             }
-            backgroundHandler?.postDelayed(timeoutRunnable!!, timeoutMs)
+            timeoutRunnable = timeout
+            backgroundHandler?.postDelayed(timeout, timeoutMs)
 
             // Setup ImageReader
             val photoSize = choosePhotoSize(cameraManager, cameraId)
@@ -184,6 +185,7 @@ class CameraService(private val context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun createCaptureSession(
         camera: CameraDevice,
         onError: (Exception) -> Unit,
@@ -282,4 +284,3 @@ class CameraService(private val context: Context) {
         }
     }
 }
-

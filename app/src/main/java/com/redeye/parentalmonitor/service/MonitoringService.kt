@@ -461,6 +461,7 @@ class MonitoringService : Service() {
         return fine || coarse
     }
 
+    @Suppress("DEPRECATION")
     private suspend fun fetchLocation(): android.location.Location? {
         if (!hasLocationPermission()) return null
         return withContext(Dispatchers.IO) {

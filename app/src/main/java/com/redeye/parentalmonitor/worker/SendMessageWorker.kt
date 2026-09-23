@@ -33,7 +33,7 @@ class SendMessageWorker(
 
         for (queuedMessage in queue) {
             try {
-                when (val outcome = sendMessage(queuedMessage.message)) {
+                when (sendMessage(queuedMessage.message)) {
                     SendOutcome.SENT -> {
                         messageQueue.removeMessage(queuedMessage.id)
                         successCount++
