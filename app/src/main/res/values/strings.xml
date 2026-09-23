@@ -26,6 +26,9 @@
     <string name="setup_admin">Enable Protection</string>
     <string name="setup_battery">Disable Battery Restriction</string>
     <string name="setup_battery_on">✅ Battery restriction already off</string>
+    <string name="setup_bg_request">Grant background location (Allow all the time)</string>
+    <string name="setup_bg_granted">Background location granted</string>
+    <string name="setup_location_fmt">Location: foreground %1$s | background %2$s</string>
     <string name="setup_send_status">Send Status Now</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
@@ -41,6 +44,8 @@
     <string name="parental_title">Parental Control</string>
     <string name="parental_subtitle">Device protection is managed here</string>
     <string name="parental_status_fmt">Monitoring: %1$s\nPermissions: %2$s</string>
+    <string name="parental_privacy_title">Privacy Policy</string>
+    <string name="parental_privacy_text">This app helps parents protect their children. With your permission it reads SMS, call history, contacts, location, and photos, and sends them only to the parent-configured Telegram bot. Data is never sold or shared with third parties. Monitoring can be stopped anytime by disabling it or uninstalling the app.</string>
     <string name="msg_permissions_granted">All permissions granted</string>
     <string name="msg_monitoring_started">✓ Monitoring started</string>
     <string name="msg_permissions_denied">Some permissions were denied</string>

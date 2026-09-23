@@ -5,8 +5,10 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,7 +57,65 @@ class SetupActivity : AppCompatActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if ((fine || coarse) && !hasBackgroundLocation()) {
+                try {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (_: Exception) {
+                }
+            }
+        }
+        updateStatus()
+    }
+
+    private val backgroundPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
     ) { updateStatus() }
+
+    private fun hasForegroundLocation(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    private fun hasBackgroundLocation(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return true
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestLocationPermissions() {
+        if (!hasAllPermissions()) {
+            permissionLauncher.launch(requiredPermissions)
+            return
+        }
+        if (!hasBackgroundLocation()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (e: Exception) {
+                    openAppSettings()
+                }
+            }
+            return
+        }
+        Toast.makeText(this, getString(R.string.setup_bg_granted), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openAppSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,7 +139,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
         findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
-            permissionLauncher.launch(requiredPermissions)
+            requestLocationPermissions()
         }
         findViewById<MaterialButton>(R.id.setupAdminButton).setOnClickListener { activateDeviceAdmin() }
         findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
@@ -163,8 +223,12 @@ class SetupActivity : AppCompatActivity() {
         }
         if (!hasAllPermissions()) {
             Toast.makeText(this, getString(R.string.grant_permissions), Toast.LENGTH_SHORT).show()
-            permissionLauncher.launch(requiredPermissions)
+            requestLocationPermissions()
             return
+        }
+        if (!hasBackgroundLocation()) {
+            Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+            requestLocationPermissions()
         }
         if (prefs.isMonitoringEnabled) {
             val intent = Intent(this, MonitoringService::class.java).apply {
@@ -272,11 +336,21 @@ class SetupActivity : AppCompatActivity() {
         val btn = findViewById<MaterialButton>(R.id.setupToggleButton)
         btn.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
         btn.isEnabled = configured && perms
+        val permBtn = findViewById<MaterialButton>(R.id.setupPermissionButton)
+        permBtn.text = when {
+            !perms -> getString(R.string.grant_permissions)
+            !hasBackgroundLocation() -> getString(R.string.setup_bg_request)
+            else -> getString(R.string.msg_permissions_granted)
+        }
         statusText.text = getString(
             R.string.setup_status_fmt,
             if (configured) "OK" else "-",
             if (perms) "OK" else "-",
             if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted")
+        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\n" + getString(
+            R.string.setup_location_fmt,
+            if (hasForegroundLocation()) "OK" else "-",
+            if (hasBackgroundLocation()) "OK" else "-"
+        )
     }
 }

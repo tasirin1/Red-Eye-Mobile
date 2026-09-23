@@ -88,7 +88,7 @@ class MonitoringService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
         
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) {
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG || com.redeye.parentalmonitor.BuildConfig.PARENTAL_UI) {
             // DEBUG: Show detailed notification
             notificationBuilder
                 .setContentTitle(getString(R.string.notification_title))
@@ -109,13 +109,13 @@ class MonitoringService : Service() {
             startForeground(
                 NOTIFICATION_ID, 
                 notificationBuilder.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
             )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID,
                 notificationBuilder.build(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
             )
         } else {
             startForeground(NOTIFICATION_ID, notificationBuilder.build())

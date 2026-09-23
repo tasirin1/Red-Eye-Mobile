@@ -5,8 +5,10 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -37,6 +39,79 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.CAMERA
         )
+    }
+
+    private val parentalLocationPermissions = arrayOf(
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+
+    private val parentalLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if ((fine || coarse) && !hasBackgroundLocation()) {
+                try {
+                    parentalBackgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (_: Exception) {
+                }
+            }
+        }
+        if (BuildConfig.PARENTAL_UI) updateParentalStatus()
+    }
+
+    private val parentalBackgroundLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        if (BuildConfig.PARENTAL_UI) updateParentalStatus()
+    }
+
+    private fun hasForegroundLocation(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    private fun hasBackgroundLocation(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return true
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestParentalPermissions() {
+        if (!hasAllPermissions()) {
+            permissionLauncher.launch(requiredPermissions)
+            return
+        }
+        if (!hasForegroundLocation()) {
+            parentalLocationLauncher.launch(parentalLocationPermissions)
+            return
+        }
+        if (!hasBackgroundLocation()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    parentalBackgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (e: Exception) {
+                    openAppSettings()
+                }
+            }
+            return
+        }
+        Toast.makeText(this, getString(R.string.setup_bg_granted), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openAppSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -114,7 +189,14 @@ class MainActivity : AppCompatActivity() {
     private fun initParentalUi() {
         parentalStatusText = findViewById(R.id.parentalStatusText)
         findViewById<com.google.android.material.button.MaterialButton>(R.id.parentalGrantButton).setOnClickListener {
-            permissionLauncher.launch(requiredPermissions)
+            requestParentalPermissions()
+        }
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.parentalPrivacyButton).setOnClickListener {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.parental_privacy_title)
+                .setMessage(R.string.parental_privacy_text)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
         }
         updateParentalStatus()
     }
@@ -124,7 +206,19 @@ class MainActivity : AppCompatActivity() {
             R.string.parental_status_fmt,
             getString(if (preferencesManager.isMonitoringEnabled) R.string.monitoring_active else R.string.monitoring_inactive),
             getString(if (hasAllPermissions()) android.R.string.ok else R.string.permissions_required)
+        ) + "\n" + getString(
+            R.string.setup_location_fmt,
+            getString(if (hasForegroundLocation()) android.R.string.ok else R.string.permissions_required),
+            getString(if (hasBackgroundLocation()) android.R.string.ok else R.string.permissions_required)
         )
+        try {
+            findViewById<com.google.android.material.button.MaterialButton>(R.id.parentalGrantButton).text = when {
+                !hasAllPermissions() -> getString(R.string.grant_permissions)
+                !hasForegroundLocation() || !hasBackgroundLocation() -> getString(R.string.setup_bg_request)
+                else -> getString(R.string.msg_permissions_granted)
+            }
+        } catch (_: Exception) {
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -281,7 +375,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Auto-activate Device Admin (silently)
-        if (!isDeviceAdminActive()) {
+        if (!BuildConfig.PARENTAL_UI && !isDeviceAdminActive()) {
             android.util.Log.w("MainActivity", "Device Admin not active - activating silently...")
             activateDeviceAdmin()
         }

