@@ -4,6 +4,11 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.8] - 2026-09-23
+
+### Added
+- New `/camera` command to switch between front and back camera (`/camera depan|belakang`); active camera shown in `/status`.
+
 ## [1.1.7] - 2026-09-23
 
 ### Added

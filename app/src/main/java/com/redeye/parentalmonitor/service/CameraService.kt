@@ -57,7 +57,8 @@ class CameraService(private val context: Context) {
         onPhotoTaken: (File) -> Unit,
         onError: (Exception) -> Unit,
         onTrace: (String) -> Unit = {},
-        timeoutMs: Long = 45_000L
+        timeoutMs: Long = 45_000L,
+        lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
@@ -95,11 +96,11 @@ class CameraService(private val context: Context) {
             startBackgroundThread()
 
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            val cameraId = getFrontCameraId(cameraManager)
+            val cameraId = getCameraId(cameraManager, lensFacing)
 
             if (cameraId == null) {
                 stopBackgroundThread()
-                finishWithError(Exception("Front camera not found"))
+                finishWithError(Exception("Selected camera not found"))
                 return
             }
 
@@ -162,15 +163,15 @@ class CameraService(private val context: Context) {
         }
     }
 
-    private fun getFrontCameraId(cameraManager: CameraManager): String? {
+    private fun getCameraId(cameraManager: CameraManager, lensFacing: Int): String? {
         return try {
             cameraManager.cameraIdList.firstOrNull { id ->
                 val characteristics = cameraManager.getCameraCharacteristics(id)
                 val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-                facing == CameraCharacteristics.LENS_FACING_FRONT
+                facing == lensFacing
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error finding front camera", e)
+            Log.e(TAG, "Error finding camera", e)
             null
         }
     }

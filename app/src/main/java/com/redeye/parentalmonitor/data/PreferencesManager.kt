@@ -39,6 +39,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_MONITORING_PAUSED = "monitoring_paused"
         private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
+        private const val KEY_CAMERA_FACING = "camera_facing"
     }
 
     var botToken: String
@@ -96,6 +97,10 @@ class PreferencesManager(context: Context) {
     var photoPausedUntil: Long
         get() = sharedPreferences.getLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_UNTIL, value).apply()
+
+    var cameraFacing: String
+        get() = sharedPreferences.getString(KEY_CAMERA_FACING, "front") ?: "front"
+        set(value) = sharedPreferences.edit().putString(KEY_CAMERA_FACING, value).apply()
 
     fun isConfigured(): Boolean {
         return botToken.isNotEmpty() && chatId.isNotEmpty()
