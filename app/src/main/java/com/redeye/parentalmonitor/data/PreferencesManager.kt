@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.redeye.parentalmonitor.data
 
 import android.content.Context
@@ -5,7 +7,6 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-@Suppress("DEPRECATION")
 class PreferencesManager(context: Context) {
 
     private val masterKey = getMasterKey(context)
