@@ -45,7 +45,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val appLabel = try {
             val info = packageManager.getApplicationInfo(sbn.packageName, 0)
-            packageManager.getApplicationLabel(info)?.toString() ?: sbn.packageName
+            "${packageManager.getApplicationLabel(info)}"
         } catch (_: Exception) {
             sbn.packageName
         }
