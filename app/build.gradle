@@ -24,6 +24,8 @@ android {
         buildConfigField "String", "BOT_TOKEN", "\"${botTokenProp}\""
         buildConfigField "String", "CHAT_ID", "\"${chatIdProp}\""
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
+        def parentalUiProp = project.findProperty("PARENTAL_UI") ?: System.getenv("PARENTAL_UI") ?: "false"
+        buildConfigField "boolean", "PARENTAL_UI", "${parentalUiProp == "true"}"
     }
 
 

@@ -38,6 +38,9 @@
     <string name="setup_status_fmt">Bot: %1$s | Permissions: %2$s | %3$s</string>
     <string name="settings_telegram_title">Telegram Settings</string>
     <string name="control_title">Monitoring Control</string>
+    <string name="parental_title">Parental Control</string>
+    <string name="parental_subtitle">Device protection is managed here</string>
+    <string name="parental_status_fmt">Monitoring: %1$s\nPermissions: %2$s</string>
     <string name="msg_permissions_granted">All permissions granted</string>
     <string name="msg_monitoring_started">✓ Monitoring started</string>
     <string name="msg_permissions_denied">Some permissions were denied</string>

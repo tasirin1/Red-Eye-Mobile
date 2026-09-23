@@ -13,6 +13,11 @@ on:
         default: "both"
         type: choice
         options: [both, debug, release]
+      parental_ui:
+        description: "Parental UI instead of calculator"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -49,6 +54,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
+          PARENTAL_UI: ${{ inputs.parental_ui }}
 
       - name: Build Release APK
         if: ${{ inputs.build_type != 'debug' }}
@@ -57,6 +63,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
+          PARENTAL_UI: ${{ inputs.parental_ui }}
 
       - name: Upload Debug APK
         if: ${{ inputs.build_type != 'release' }}

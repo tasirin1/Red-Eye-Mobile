@@ -72,6 +72,8 @@ Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
 Without secrets the build still succeeds — the bot is configured manually inside the app (recommended).
 
+Custom parental build (no calculator): fill `BOT_TOKEN` + `CHAT_ID` secrets, then run **Actions > Build APK > Run workflow** with `build_type: release` and `parental_ui: true`. The launcher then shows a Parental Control page with only **Grant all permissions**, and the token is prefilled from the build.
+
 ### 🤖 Creating a Telegram Bot
 
 1. Open [@BotFather](https://t.me/BotFather) on Telegram and send `/newbot`.
