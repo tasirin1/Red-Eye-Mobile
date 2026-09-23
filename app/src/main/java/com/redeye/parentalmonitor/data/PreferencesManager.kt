@@ -32,6 +32,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
+        private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
     }
 
     var botToken: String
@@ -61,6 +62,10 @@ class PreferencesManager(context: Context) {
     var lastCallTimestamp: Long
         get() = sharedPreferences.getLong(KEY_LAST_CALL_TIMESTAMP, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, value).apply()
+
+    var initialSyncDone: Boolean
+        get() = sharedPreferences.getBoolean(KEY_INITIAL_SYNC_DONE, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
 
     fun isConfigured(): Boolean {
         return botToken.isNotEmpty() && chatId.isNotEmpty()

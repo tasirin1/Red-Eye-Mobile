@@ -4,6 +4,21 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-09-23
+
+### Fixed
+- Monitoring loops no longer duplicate on restart; history dump runs once per device.
+- Sync loops honor the user-configured interval; calculator clears cleanly after Error.
+- Camera thread no longer leaks when no front camera; failed photos kept with cache cap.
+- Telegram 429 rate limits respected with retry-after; queue IDs collision-free with bounded retries.
+- Removed dead `SmsObserverService`, dead manifest receiver, and dead release-mode handler.
+- Repositories deduplicated; contact lookups memoized; date formatting via shared `TimeFmt`.
+
+### Security
+- Bot token no longer logged anywhere; HTTP logging disabled in release builds.
+- Offline queue stored encrypted; app backup disabled (`allowBackup=false`).
+- All user-visible text (including bot messages) switched to English.
+
 ## [1.1.2] - 2026-09-22
 
 ### Changed

@@ -13,7 +13,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             val preferencesManager = PreferencesManager(context)
             
-            // Agar nazorat yoqilgan bo'lsa, xizmatni qayta ishga tushirish
+            // Restart the service after reboot if monitoring is enabled
             if (preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured()) {
                 val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING

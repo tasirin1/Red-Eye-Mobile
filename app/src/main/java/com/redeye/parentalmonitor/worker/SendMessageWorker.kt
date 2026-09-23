@@ -3,6 +3,7 @@ package com.redeye.parentalmonitor.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.google.gson.JsonParser
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
@@ -18,16 +19,11 @@ class SendMessageWorker(
     private val preferencesManager = PreferencesManager(context)
 
     override suspend fun doWork(): Result {
-        android.util.Log.i("SendMessageWorker", "=== Starting message send worker ===")
-        
         if (!preferencesManager.isConfigured()) {
-            android.util.Log.e("SendMessageWorker", "Not configured, aborting")
             return Result.failure()
         }
 
         val queue = messageQueue.getQueue()
-        android.util.Log.i("SendMessageWorker", "Queue size: ${queue.size}")
-        
         if (queue.isEmpty()) {
             return Result.success()
         }
@@ -37,75 +33,78 @@ class SendMessageWorker(
 
         for (queuedMessage in queue) {
             try {
-                android.util.Log.d("SendMessageWorker", "Attempting to send queued message (retry: ${queuedMessage.retryCount})")
-                val success = sendMessage(queuedMessage.message)
-                if (success) {
-                    android.util.Log.i("SendMessageWorker", "✓ Queued message sent successfully")
-                    messageQueue.removeMessage(queuedMessage.id)
-                    successCount++
-                    delay(500) // Small delay between messages
-                } else {
-                    android.util.Log.w("SendMessageWorker", "✗ Failed to send queued message")
-                    // Increment retry count
-                    messageQueue.updateRetryCount(queuedMessage.id)
-                    failCount++
-                    
-                    // Remove if too many retries
-                    if (queuedMessage.retryCount >= 5) {
-                        android.util.Log.w("SendMessageWorker", "Message exceeded retry limit, removing from queue")
+                when (val outcome = sendMessage(queuedMessage.message)) {
+                    SendOutcome.SENT -> {
                         messageQueue.removeMessage(queuedMessage.id)
+                        successCount++
+                        delay(500)
+                    }
+                    SendOutcome.RATE_LIMITED -> {
+                        failCount++
+                        return Result.retry()
+                    }
+                    SendOutcome.FAILED -> {
+                        val retries = messageQueue.incrementRetry(queuedMessage.id)
+                        if (retries >= MessageQueue.MAX_RETRIES || retries < 0) {
+                            messageQueue.removeMessage(queuedMessage.id)
+                        }
+                        failCount++
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SendMessageWorker", "Exception processing message", e)
-                e.printStackTrace()
                 failCount++
             }
         }
 
-        android.util.Log.i("SendMessageWorker", "Worker complete - Success: $successCount, Failed: $failCount")
-        
         return if (failCount == 0) {
             Result.success()
-        } else if (successCount > 0) {
-            Result.retry() // Some succeeded, retry for the rest
+        } else if (runAttemptCount >= 5) {
+            Result.failure()
         } else {
-            Result.retry() // All failed, retry later
+            Result.retry()
         }
     }
 
-    private suspend fun sendMessage(message: String): Boolean {
+    private enum class SendOutcome { SENT, FAILED, RATE_LIMITED }
+
+    private suspend fun sendMessage(message: String): SendOutcome {
         return try {
             val botToken = preferencesManager.botToken
             val chatId = preferencesManager.chatId
-
-            android.util.Log.d("SendMessageWorker", "Bot: ${botToken.take(20)}..., Chat: $chatId")
-
-            val telegramMessage = TelegramMessage(
-                chatId = chatId,
-                text = message,
-                parseMode = "HTML"
-            )
+            if (botToken.isEmpty() || chatId.isEmpty()) return SendOutcome.FAILED
 
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
-            android.util.Log.d("SendMessageWorker", "URL: $url")
-            val response = TelegramClient.api.sendMessage(url, telegramMessage)
-            
-            android.util.Log.d("SendMessageWorker", "Response code: ${response.code()}, successful: ${response.isSuccessful}")
-            
+            val response = TelegramClient.api.sendMessage(
+                url,
+                TelegramMessage(chatId = chatId, text = message, parseMode = "HTML")
+            )
+
             if (response.isSuccessful && response.body()?.ok == true) {
-                android.util.Log.i("SendMessageWorker", "✓ Telegram API returned success")
-                true
+                SendOutcome.SENT
+            } else if (response.code() == 429) {
+                val retryAfter = parseRetryAfter(response.errorBody()?.string())
+                android.util.Log.w("SendMessageWorker", "Rate limited, retry after ${retryAfter}s")
+                delay(retryAfter * 1000L)
+                SendOutcome.RATE_LIMITED
             } else {
-                android.util.Log.e("SendMessageWorker", "✗ Telegram API error: ${response.code()} - ${response.message()}")
-                android.util.Log.e("SendMessageWorker", "Error: ${response.errorBody()?.string()}")
-                false
+                SendOutcome.FAILED
             }
         } catch (e: Exception) {
-            android.util.Log.e("SendMessageWorker", "✗ Exception: ${e.message}", e)
-            e.printStackTrace()
-            false
+            SendOutcome.FAILED
+        }
+    }
+
+    private fun parseRetryAfter(errorBody: String?): Long {
+        return try {
+            JsonParser.parseString(errorBody)
+                ?.asJsonObject
+                ?.getAsJsonObject("parameters")
+                ?.get("retry_after")
+                ?.asLong
+                ?.coerceIn(1, 300) ?: 5L
+        } catch (e: Exception) {
+            5L
         }
     }
 }
-

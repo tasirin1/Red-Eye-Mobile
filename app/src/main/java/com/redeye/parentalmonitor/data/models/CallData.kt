@@ -9,10 +9,10 @@ data class CallData(
 ) {
     fun getTypeString(): String {
         return when (type) {
-            1 -> "Kiruvchi"
-            2 -> "Chiquvchi"
-            3 -> "Javobsiz"
-            else -> "Noma'lum"
+            1 -> "Incoming"
+            2 -> "Outgoing"
+            3 -> "Missed"
+            else -> "Unknown"
         }
     }
     

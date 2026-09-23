@@ -1,163 +1,92 @@
 package com.redeye.parentalmonitor.repository
 
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.provider.Telephony
 import com.redeye.parentalmonitor.data.models.SmsData
 
 class SmsRepository(private val context: Context) {
 
+    private val projection = arrayOf(
+        Telephony.Sms._ID,
+        Telephony.Sms.ADDRESS,
+        Telephony.Sms.BODY,
+        Telephony.Sms.DATE,
+        Telephony.Sms.TYPE,
+        Telephony.Sms.READ
+    )
+
     fun getNewSms(afterId: Long): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
-        
-        try {
-            val cursor = context.contentResolver.query(
-                Uri.parse("content://sms"),
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,
-                    Telephony.Sms.BODY,
-                    Telephony.Sms.DATE,
-                    Telephony.Sms.TYPE,
-                    Telephony.Sms.READ
-                ),
-                "${Telephony.Sms._ID} > ?",
-                arrayOf(afterId.toString()),
-                "${Telephony.Sms.DATE} DESC"
-            )
-
-            cursor?.use {
-                val idIndex = it.getColumnIndexOrThrow(Telephony.Sms._ID)
-                val addressIndex = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-                val bodyIndex = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
-                val dateIndex = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
-                val typeIndex = it.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-                val readIndex = it.getColumnIndexOrThrow(Telephony.Sms.READ)
-
-                while (it.moveToNext()) {
-                    try {
-                        val sms = SmsData(
-                            id = it.getLong(idIndex),
-                            address = it.getString(addressIndex) ?: "Unknown",
-                            body = it.getString(bodyIndex) ?: "(bo'sh xabar)",
-                            date = it.getLong(dateIndex),
-                            type = it.getInt(typeIndex),
-                            read = it.getInt(readIndex) == 1
-                        )
-                        smsList.add(sms)
-                    } catch (e: Exception) {
-                        // Skip corrupted SMS
-                        android.util.Log.e("SmsRepository", "Error reading SMS", e)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return smsList
+        return querySms(
+            selection = "${Telephony.Sms._ID} > ?",
+            args = arrayOf(afterId.toString()),
+            sortOrder = "${Telephony.Sms.DATE} DESC"
+        )
     }
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
-        
-        try {
-            val cursor = context.contentResolver.query(
-                Uri.parse("content://sms"),
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,
-                    Telephony.Sms.BODY,
-                    Telephony.Sms.DATE,
-                    Telephony.Sms.TYPE,
-                    Telephony.Sms.READ
-                ),
-                null,
-                null,
-                "${Telephony.Sms.DATE} DESC LIMIT $limit"
-            )
-
-            cursor?.use {
-                val idIndex = it.getColumnIndexOrThrow(Telephony.Sms._ID)
-                val addressIndex = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-                val bodyIndex = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
-                val dateIndex = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
-                val typeIndex = it.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-                val readIndex = it.getColumnIndexOrThrow(Telephony.Sms.READ)
-
-                while (it.moveToNext()) {
-                    try {
-                        val sms = SmsData(
-                            id = it.getLong(idIndex),
-                            address = it.getString(addressIndex) ?: "Unknown",
-                            body = it.getString(bodyIndex) ?: "(bo'sh xabar)",
-                            date = it.getLong(dateIndex),
-                            type = it.getInt(typeIndex),
-                            read = it.getInt(readIndex) == 1
-                        )
-                        smsList.add(sms)
-                    } catch (e: Exception) {
-                        // Skip corrupted SMS
-                        android.util.Log.e("SmsRepository", "Error reading SMS", e)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return smsList
+        return querySms(
+            selection = null,
+            args = null,
+            sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+        )
     }
 
     fun getAllSms(limit: Int = 200): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
-        
+        return querySms(
+            selection = null,
+            args = null,
+            sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
+        )
+    }
+
+    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String): List<SmsData> {
+        val result = mutableListOf<SmsData>()
         try {
-            val cursor = context.contentResolver.query(
+            context.contentResolver.query(
                 Uri.parse("content://sms"),
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,
-                    Telephony.Sms.BODY,
-                    Telephony.Sms.DATE,
-                    Telephony.Sms.TYPE,
-                    Telephony.Sms.READ
-                ),
-                null,
-                null,
-                "${Telephony.Sms.DATE} DESC LIMIT $limit"
-            )
-
-            cursor?.use {
-                val idIndex = it.getColumnIndexOrThrow(Telephony.Sms._ID)
-                val addressIndex = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-                val bodyIndex = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
-                val dateIndex = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
-                val typeIndex = it.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-                val readIndex = it.getColumnIndexOrThrow(Telephony.Sms.READ)
-
-                while (it.moveToNext()) {
+                projection,
+                selection,
+                args,
+                sortOrder
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val typeIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val readIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
+                while (cursor.moveToNext()) {
                     try {
-                        val sms = SmsData(
-                            id = it.getLong(idIndex),
-                            address = it.getString(addressIndex) ?: "Unknown",
-                            body = it.getString(bodyIndex) ?: "(bo'sh xabar)",
-                            date = it.getLong(dateIndex),
-                            type = it.getInt(typeIndex),
-                            read = it.getInt(readIndex) == 1
-                        )
-                        smsList.add(sms)
+                        result.add(readSms(cursor, idIndex, addressIndex, bodyIndex, dateIndex, typeIndex, readIndex))
                     } catch (e: Exception) {
-                        // Skip corrupted SMS
-                        android.util.Log.e("SmsRepository", "Error reading SMS", e)
+                        android.util.Log.e("SmsRepository", "Skipping corrupted SMS row", e)
                     }
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("SmsRepository", "Error querying SMS", e)
         }
+        return result
+    }
 
-        return smsList
+    private fun readSms(
+        cursor: Cursor,
+        idIndex: Int,
+        addressIndex: Int,
+        bodyIndex: Int,
+        dateIndex: Int,
+        typeIndex: Int,
+        readIndex: Int
+    ): SmsData {
+        return SmsData(
+            id = cursor.getLong(idIndex),
+            address = cursor.getString(addressIndex) ?: "Unknown",
+            body = cursor.getString(bodyIndex) ?: "(empty message)",
+            date = cursor.getLong(dateIndex),
+            type = cursor.getInt(typeIndex),
+            read = cursor.getInt(readIndex) == 1
+        )
     }
 }
-

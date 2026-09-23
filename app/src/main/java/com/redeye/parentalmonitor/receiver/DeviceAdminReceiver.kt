@@ -4,6 +4,7 @@ import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import com.redeye.parentalmonitor.R
 
 class AdminReceiver : DeviceAdminReceiver() {
 
@@ -15,12 +16,12 @@ class AdminReceiver : DeviceAdminReceiver() {
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
         android.util.Log.w("AdminReceiver", "Device Admin disabled!")
-        Toast.makeText(context, "⚠️ Himoya o'chirildi!", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, context.getString(R.string.admin_disabled), Toast.LENGTH_LONG).show()
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
         android.util.Log.w("AdminReceiver", "Attempting to disable Device Admin!")
-        return "⚠️ Diqqat! Bu ilovani o'chirishdan oldin Device Admin'ni o'chirish kerak!"
+        return context.getString(R.string.admin_disable_warning)
     }
 }
 

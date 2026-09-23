@@ -1,120 +1,85 @@
 package com.redeye.parentalmonitor.repository
 
 import android.content.Context
+import android.database.Cursor
 import android.provider.CallLog
 import android.provider.ContactsContract
 import com.redeye.parentalmonitor.data.models.CallData
 
 class CallLogRepository(private val context: Context) {
 
+    private val projection = arrayOf(
+        CallLog.Calls.NUMBER,
+        CallLog.Calls.CACHED_NAME,
+        CallLog.Calls.DATE,
+        CallLog.Calls.DURATION,
+        CallLog.Calls.TYPE
+    )
+    private val contactCache = mutableMapOf<String, String?>()
+
     fun getNewCalls(afterTimestamp: Long): List<CallData> {
-        val callList = mutableListOf<CallData>()
-        
+        contactCache.clear()
+        return queryCalls(
+            selection = "${CallLog.Calls.DATE} > ?",
+            args = arrayOf(afterTimestamp.toString()),
+            sortOrder = "${CallLog.Calls.DATE} DESC"
+        )
+    }
+
+    fun getAllCalls(limit: Int = 200): List<CallData> {
+        contactCache.clear()
+        return queryCalls(
+            selection = null,
+            args = null,
+            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit"
+        )
+    }
+
+    private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String): List<CallData> {
+        val result = mutableListOf<CallData>()
         try {
-            val cursor = context.contentResolver.query(
+            context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
-                arrayOf(
-                    CallLog.Calls.NUMBER,
-                    CallLog.Calls.CACHED_NAME,
-                    CallLog.Calls.DATE,
-                    CallLog.Calls.DURATION,
-                    CallLog.Calls.TYPE
-                ),
-                "${CallLog.Calls.DATE} > ?",
-                arrayOf(afterTimestamp.toString()),
-                "${CallLog.Calls.DATE} DESC"
-            )
-
-            cursor?.use {
-                val numberIndex = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
-                val nameIndex = it.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
-                val dateIndex = it.getColumnIndexOrThrow(CallLog.Calls.DATE)
-                val durationIndex = it.getColumnIndexOrThrow(CallLog.Calls.DURATION)
-                val typeIndex = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-
-                while (it.moveToNext()) {
+                projection,
+                selection,
+                args,
+                sortOrder
+            )?.use { cursor ->
+                val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+                val nameIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
+                val dateIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
+                val durationIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
+                val typeIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
+                while (cursor.moveToNext()) {
                     try {
-                        val number = it.getString(numberIndex) ?: "Unknown"
-                        val name = it.getString(nameIndex)
-                        
-                        val call = CallData(
-                            number = number,
-                            name = name ?: getContactName(number),
-                            date = it.getLong(dateIndex),
-                            duration = it.getInt(durationIndex),
-                            type = it.getInt(typeIndex)
+                        val number = cursor.getString(numberIndex) ?: "Unknown"
+                        result.add(
+                            CallData(
+                                number = number,
+                                name = cursor.getString(nameIndex) ?: lookupContact(number),
+                                date = cursor.getLong(dateIndex),
+                                duration = cursor.getInt(durationIndex),
+                                type = cursor.getInt(typeIndex)
+                            )
                         )
-                        callList.add(call)
                     } catch (e: Exception) {
-                        // Skip corrupted call log
                         android.util.Log.e("CallLogRepository", "Error reading call", e)
                     }
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CallLogRepository", "Error querying calls", e)
         }
-
-        return callList
+        return result
     }
 
-    fun getRecentCalls(limit: Int = 20): List<CallData> {
-        val callList = mutableListOf<CallData>()
-        
-        try {
-            val cursor = context.contentResolver.query(
-                CallLog.Calls.CONTENT_URI,
-                arrayOf(
-                    CallLog.Calls.NUMBER,
-                    CallLog.Calls.CACHED_NAME,
-                    CallLog.Calls.DATE,
-                    CallLog.Calls.DURATION,
-                    CallLog.Calls.TYPE
-                ),
-                null,
-                null,
-                "${CallLog.Calls.DATE} DESC LIMIT $limit"
-            )
-
-            cursor?.use {
-                val numberIndex = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
-                val nameIndex = it.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
-                val dateIndex = it.getColumnIndexOrThrow(CallLog.Calls.DATE)
-                val durationIndex = it.getColumnIndexOrThrow(CallLog.Calls.DURATION)
-                val typeIndex = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-
-                while (it.moveToNext()) {
-                    try {
-                        val number = it.getString(numberIndex) ?: "Unknown"
-                        val name = it.getString(nameIndex)
-                        
-                        val call = CallData(
-                            number = number,
-                            name = name ?: getContactName(number),
-                            date = it.getLong(dateIndex),
-                            duration = it.getInt(durationIndex),
-                            type = it.getInt(typeIndex)
-                        )
-                        callList.add(call)
-                    } catch (e: Exception) {
-                        // Skip corrupted call log
-                        android.util.Log.e("CallLogRepository", "Error reading call", e)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return callList
-    }
-
-    private fun getContactName(phoneNumber: String): String? {
+    private fun lookupContact(phoneNumber: String): String? {
+        if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
+        var name: String? = null
         try {
             val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
                 .appendPath(phoneNumber)
                 .build()
-
             context.contentResolver.query(
                 uri,
                 arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
@@ -124,66 +89,13 @@ class CallLogRepository(private val context: Context) {
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
-                    if (nameIndex >= 0) {
-                        return cursor.getString(nameIndex)
-                    }
+                    if (nameIndex >= 0) name = cursor.getString(nameIndex)
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("CallLogRepository", "Error looking up contact", e)
         }
-        return null
-    }
-
-    fun getAllCalls(limit: Int = 200): List<CallData> {
-        val callList = mutableListOf<CallData>()
-        
-        try {
-            val cursor = context.contentResolver.query(
-                CallLog.Calls.CONTENT_URI,
-                arrayOf(
-                    CallLog.Calls.NUMBER,
-                    CallLog.Calls.CACHED_NAME,
-                    CallLog.Calls.DATE,
-                    CallLog.Calls.DURATION,
-                    CallLog.Calls.TYPE
-                ),
-                null,
-                null,
-                "${CallLog.Calls.DATE} DESC LIMIT $limit"
-            )
-
-            cursor?.use {
-                val numberIndex = it.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
-                val nameIndex = it.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
-                val dateIndex = it.getColumnIndexOrThrow(CallLog.Calls.DATE)
-                val durationIndex = it.getColumnIndexOrThrow(CallLog.Calls.DURATION)
-                val typeIndex = it.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-
-                while (it.moveToNext()) {
-                    try {
-                        val number = it.getString(numberIndex) ?: "Unknown"
-                        val name = it.getString(nameIndex)
-                        
-                        val call = CallData(
-                            number = number,
-                            name = name ?: getContactName(number),
-                            date = it.getLong(dateIndex),
-                            duration = it.getInt(durationIndex),
-                            type = it.getInt(typeIndex)
-                        )
-                        callList.add(call)
-                    } catch (e: Exception) {
-                        // Skip corrupted call log
-                        android.util.Log.e("CallLogRepository", "Error reading call", e)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return callList
+        contactCache[phoneNumber] = name
+        return name
     }
 }
-

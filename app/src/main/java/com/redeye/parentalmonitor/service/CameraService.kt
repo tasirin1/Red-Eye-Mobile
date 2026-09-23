@@ -15,8 +15,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
-import java.text.SimpleDateFormat
-import java.util.*
+import com.redeye.parentalmonitor.utils.TimeFmt
 
 class CameraService(private val context: Context) {
 
@@ -60,6 +59,7 @@ class CameraService(private val context: Context) {
             val cameraId = getFrontCameraId(cameraManager)
 
             if (cameraId == null) {
+                stopBackgroundThread()
                 onError(Exception("Front camera not found"))
                 return
             }
@@ -178,7 +178,7 @@ class CameraService(private val context: Context) {
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
 
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
         val file = File(context.cacheDir, "camera_$timestamp.jpg")
         
         FileOutputStream(file).use { output ->

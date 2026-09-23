@@ -10,9 +10,9 @@ data class SmsData(
 ) {
     fun getTypeString(): String {
         return when (type) {
-            1 -> "Qabul qilindi"
-            2 -> "Yuborildi"
-            else -> "Noma'lum"
+            1 -> "Received"
+            2 -> "Sent"
+            else -> "Unknown"
         }
     }
 }

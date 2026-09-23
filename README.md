@@ -1,15 +1,8 @@
 # 📱 Red Eye Mobile
 
-> **Build policy: JANGAN install Android SDK lokal. Build SELALU di GitHub.**
-> Push ke `main` / buka PR / Run workflow manual (`Actions > Build APK`), lalu unduh artifacts `app-debug` / `app-release`.
-> Secrets opsional: `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` (repo Settings > Secrets and variables > Actions).
-> Tanpa secret pun APK tetap jadi — token diisi manual dari halaman Setup di aplikasi (`SetupActivity`, via kalkulator `1234` + `=`).
-> `builder.sh` / `builder.bat` = LEGACY, dipertahankan untuk kompatibilitas saja. Detail aturan: `AGENTS.md`. Riwayat: `CHANGELOG.md`.
-
-
 <div align="center">
 
-**Aqlli va yashirin bolalar telefonini nazorat qilish dasturi**
+**Smart parental phone monitoring app with Telegram integration**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Android-green.svg)](https://www.android.com)
@@ -18,352 +11,99 @@
 
 **Developer: Akhatkulov**
 
-[English](#english) | [O'zbek](#uzbek)
-
 </div>
 
----
-
-## 🇺🇿 <a name="uzbek"></a>O'ZBEKCHA
-
-### 📋 Tavsif
-
-**Red Eye Mobile** — bu ota-onalar uchun maxsus yaratilgan Android nazorat dasturi bo'lib, u farzandingizning telefon faoliyatini Telegram orqali kuzatish imkonini beradi. Dastur "Kalkulator" qiyofasida ishlab, to'liq yashirin rejimda ishlaydi.
-
-### ✨ Asosiy Xususiyatlar
-
-- 📞 **Qo'ng'iroqlar Nazorati** — Barcha kiruvchi va chiquvchi qo'ng'iroqlar tarixi
-- 💬 **SMS Nazorati** — Kiruvchi va chiquvchi SMS xabarlar
-- 📸 **Kamera Nazorati** — Har 1 daqiqada avtomatik rasm olish
-- 🔔 **Telegram Integratsiya** — Barcha ma'lumotlar Telegram botga yuboriladi
-- 🧮 **Yashirin Rejim** — Dastur kalkulyator ko'rinishida
-- 🔒 **Device Admin** — Oson o'chirilishdan himoya
-- 🔄 **Avtomatik Ishga Tushish** — Telefon restart bo'lganda ham avtomatik ishlaydi
-- 🌐 **Offline Rejim** — Internet bo'lmasa xabarlar navbatga qo'yiladi
-
-### 🏗️ Texnologiyalar
-
-```
-🔹 Kotlin — Asosiy dasturlash tili
-🔹 Retrofit — Telegram API bilan aloqa
-🔹 Coroutines — Asinxron operatsiyalar
-🔹 WorkManager — Background ishlar
-🔹 Camera2 API — Rasm olish
-🔹 Foreground Service — Doimiy monitoring
-🔹 Device Admin API — Xavfsizlik
-```
-
-### 📦 Tizim Talablari
-
-- **Android OS**: 8.0 (API 26) va yuqori
-- **RAM**: Minimal 2GB
-- **Storage**: 50MB bo'sh joy
-- **Ruxsatlar**: SMS, Qo'ng'iroqlar, Kamera, Storage
-
-### 🚀 O'rnatish
-
-#### 1️⃣ Android SDK O'rnatish
-
-```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install -y openjdk-17-jdk android-sdk
-
-# macOS
-brew install android-sdk
-brew install openjdk@17
-
-# Windows
-# Android Studio'dan SDK Manager orqali o'rnatish
-```
-
-#### 2️⃣ SDK Path Sozlash
-
-```bash
-# Linux/macOS
-echo "sdk.dir=$HOME/Android/Sdk" > local.properties
-
-# Windows
-echo "sdk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk" > local.properties
-```
-
-#### 3️⃣ Telegram Bot Yaratish
-
-1. Telegram'da [@BotFather](https://t.me/BotFather)ga o'ting
-2. `/newbot` buyrug'ini yuboring
-3. Bot nomini kiriting
-4. **Bot Token**ni saqlang (masalan: `<YOUR_BOT_TOKEN>`)
-5. O'z Telegram ID'ingizni [@userinfobot](https://t.me/userinfobot)dan oling
-
-#### 4️⃣ APK Build Qilish (LEGACY — gunakan GitHub Actions)
-
-```bash
-# Linux/macOS
-./builder.sh YOUR_BOT_TOKEN YOUR_CHAT_ID 5
-
-# Windows
-builder.bat YOUR_BOT_TOKEN YOUR_CHAT_ID 5
-```
-
-**Misol:**
-```bash
-./builder.sh <YOUR_BOT_TOKEN> <YOUR_CHAT_ID> 5
-```
-
-#### 5️⃣ APK O'rnatish
-
-1. `output/parental-monitor-release.apk` faylini telefonga ko'chiring
-2. Fayl menejerdan APK'ni oching
-3. "Unknown sources"ga ruxsat bering
-4. O'rnatishni tasdiqlang
-
-### 🔧 Sozlash
-
-#### Telefonda Birinchi Ishga Tushirish
-
-1. **Kalkulator** ikonkasini bosing
-2. Kalkulyatorda `1234=` ni kiriting (maxfiy kod)
-3. Device Admin ruxsatini tasdiqlang
-4. Barcha kerakli ruxsatlarni bering:
-   - 📞 Telefon (qo'ng'iroqlar)
-   - 💬 SMS
-   - 📸 Kamera
-   - 📁 Storage
-5. Dastur avtomatik ishga tushadi
-
-### 📱 Foydalanish
-
-Dastur o'rnatilgandan keyin:
-
-1. ✅ **Avtomatik monitoring boshlanadi**
-2. 📊 **Har 5 daqiqada** (yoki siz sozlagan vaqtda) yangi ma'lumotlar yuboriladi
-3. 📸 **Har 1 daqiqada** oldingi va orqa kameradan rasm olinadi
-4. 📱 **Telegram botingizga** barcha ma'lumotlar keladi
-5. 🔄 **Telefon restart** bo'lsa ham avtomatik ishga tushadi
-
-### 🎯 Telegram'da Qabul Qilinadigan Ma'lumotlar
-
-```
-📞 QOʻNGʻIROQ
-Ism: John Doe
-Raqam: +998901234567
-Turi: Kiruvchi
-Davomiyligi: 02:35
-Sana: 19.10.2025 14:30
-
-💬 SMS
-Kimdan: +998901234567
-Xabar: Salom, qalaysan?
-Sana: 19.10.2025 14:28
-
-📸 RASM
-19.10.2025 14:32
-[JPEG rasm fayli]
-```
-
-### 🛡️ Xavfsizlik
-
-- ✅ Dastur faqat siz ko'rsatgan Telegram botga ma'lumot yuboradi
-- ✅ Hech qanday ma'lumot boshqa joyga saqlanmaydi
-- ✅ Device Admin himoyasi noto'g'ri o'chirishdan saqlaydi
-- ⚠️ **MUHIM**: APK ichida bot tokeningiz bor — boshqalarga BERMANG!
-
-### ⚙️ Sozlamalar (builder.sh)
-
-```bash
-./builder.sh BOT_TOKEN CHAT_ID INTERVAL
-
-BOT_TOKEN  — Telegram bot tokeni
-CHAT_ID    — Sizning Telegram ID'ingiz
-INTERVAL   — Monitoring davomiyligi (daqiqalarda, default: 5)
-```
-
-### 🔧 Muammolarni Hal Qilish
-
-| Muammo | Yechim |
-|--------|--------|
-| Dastur ishga tushmayapti | Barcha ruxsatlar berilganini tekshiring |
-| Telegram'ga xabar kelmayapti | Bot token va Chat ID to'g'riligini tekshiring |
-| Kamera ishlayapti | Android 10+ da kamera faqat foreground'da ishlaydi |
-| Dastur o'chib ketayapti | Battery optimization'dan chiqaring |
-| O'chirib bo'lmayapti | Settings → Security → Device Admin → O'chirish |
-
-### 📂 Loyiha Strukturasi
-
-```
-red-eye-mobile/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/redeye/parentalmonitor/
-│   │   │   ├── data/              # Ma'lumotlar modellari
-│   │   │   ├── network/           # Telegram API
-│   │   │   ├── receiver/          # Broadcast receivers
-│   │   │   ├── repository/        # Ma'lumotlar repositoriyalari
-│   │   │   ├── service/           # Background servislar
-│   │   │   ├── ui/                # UI komponentlar
-│   │   │   ├── utils/             # Yordamchi sinflar
-│   │   │   └── worker/            # WorkManager tasks
-│   │   ├── res/                   # Resurslar (layout, drawable, etc)
-│   │   └── AndroidManifest.xml    # App konfiguratsiyasi
-│   └── build.gradle               # Build konfiguratsiyasi
-├── builder.sh                     # Build script (Linux/macOS)
-├── builder.bat                    # Build script (Windows)
-├── LICENSE                        # MIT License
-└── README.md                      # Bu fayl
-```
-
-### 🤝 Hissa Qo'shish
-
-Pull request'lar xush kelibsiz! Katta o'zgarishlar uchun avval issue oching.
-
-### 📄 Litsenziya
-
-Bu loyiha [MIT License](LICENSE) ostida tarqatiladi.
-
-### ⚖️ Qonuniy Ogohlantirish
-
-⚠️ **MUHIM**: Bu dastur faqat qonuniy ota-ona nazorati uchun mo'ljallangan. 
-
-- ✅ Faqat o'z farzandingiz telefonida foydalaning
-- ✅ Mahalliy qonunlarga rioya qiling
-- ❌ Boshqa odamlarni izlash uchun ishlatmang
-- ❌ Shaxsiy hayotga kirish qonun buzilishidir
-
-**Dasturchi noto'g'ri foydalanish uchun javobgar emas.**
-
-### 📞 Bog'lanish
-
-- **Developer**: Akhatkulov
-- **GitHub**: [github.com/akhatkulov](https://github.com/akhatkulov)
-- **Telegram**: [@akhatkulov](https://t.me/akhatkulov)
-
-### 🎉 Minnatdorchilik
-
-- [Telegram Bot API](https://core.telegram.org/bots/api) — Messaging integration
-- [Square Retrofit](https://square.github.io/retrofit/) — HTTP client
-- [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) — Asynchronous programming
-- [Android Jetpack](https://developer.android.com/jetpack) — Modern Android development
+> **Build policy: do NOT install the Android SDK locally. Builds ALWAYS run on GitHub Actions.**
+> See `AGENTS.md` for repo rules and `CHANGELOG.md` for history.
 
 ---
-
-## 🇬🇧 <a name="english"></a>ENGLISH
 
 ### 📋 Description
 
-**Red Eye Mobile** is a specialized Android parental monitoring application that allows parents to track their child's phone activity via Telegram. The app operates in complete stealth mode, disguised as a "Calculator" app.
+**Red Eye Mobile** is an Android monitoring app for parents. It lets you follow your child's phone activity via Telegram. The app disguises itself as an elegant **Calculator** and runs in stealth mode.
 
 ### ✨ Key Features
 
-- 📞 **Call Monitoring** — Track all incoming and outgoing calls
-- 💬 **SMS Monitoring** — Monitor incoming and outgoing text messages
-- 📸 **Camera Monitoring** — Automatic photo capture every 1 minute
-- 🔔 **Telegram Integration** — All data sent to your Telegram bot
-- 🧮 **Stealth Mode** — App appears as a calculator
-- 🔒 **Device Admin** — Protection against easy removal
-- 🔄 **Auto-start** — Automatically starts after phone reboot
-- 🌐 **Offline Mode** — Messages queued when offline
+- 📞 **Call monitoring** — full incoming/outgoing call history
+- 💬 **SMS monitoring** — incoming and outgoing text messages
+- 📸 **Camera capture** — automatic photo every 1 minute
+- 🔔 **Telegram integration** — everything is delivered to your Telegram bot
+- 🧮 **Stealth mode** — the app looks like a calculator
+- 🔒 **Device Admin** — optional protection against uninstallation
+- 🔄 **Auto-start** — resumes automatically after reboot
+- 🌐 **Offline mode** — messages are queued when there is no internet
 
 ### 🏗️ Technology Stack
 
 ```
-🔹 Kotlin — Primary language
-🔹 Retrofit — Telegram API communication
-🔹 Coroutines — Asynchronous operations
-🔹 WorkManager — Background tasks
-🔹 Camera2 API — Photo capture
-🔹 Foreground Service — Continuous monitoring
-🔹 Device Admin API — Security
+🔹 Kotlin — main language
+🔹 Retrofit — Telegram API client
+🔹 Coroutines — async operations
+🔹 WorkManager — background jobs
+🔹 Camera2 API — photo capture
+🔹 Foreground Service — persistent monitoring
+🔹 Device Admin API — uninstall protection
 ```
 
-### 📦 System Requirements
+### 📦 Requirements
 
 - **Android OS**: 8.0 (API 26) or higher
-- **RAM**: Minimum 2GB
-- **Storage**: 50MB free space
-- **Permissions**: SMS, Phone, Camera, Storage
+- **RAM**: 2 GB minimum
+- **Storage**: 50 MB free
+- **Permissions**: SMS, Call Log, Contacts, Camera
 
-### 🚀 Installation
+---
 
-#### 1️⃣ Install Android SDK
+### 🚀 Getting the APK (GitHub Actions)
 
-```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install -y openjdk-17-jdk android-sdk
+1. Push to `main`, open a PR, or run the workflow manually (**Actions > Build APK > Run workflow**).
+2. Open the finished run and download the artifacts: `app-debug` / `app-release`.
+3. For an official installable file, use the **Releases** page — each `vX.Y.Z` tag publishes signed APKs (e.g. `redeye-v1.1.2-release.apk`).
 
-# macOS
-brew install android-sdk
-brew install openjdk@17
+Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
-# Windows
-# Install via SDK Manager in Android Studio
-```
+| Secret | Purpose |
+|--------|---------|
+| `BOT_TOKEN` | Pre-fill Telegram bot token at build time |
+| `CHAT_ID` | Pre-fill Telegram chat ID at build time |
+| `SYNC_INTERVAL` | Sync interval in minutes (default `5`) |
+| `ANDROID_KEYSTORE_BASE64` | Release keystore for signed APKs |
+| `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` | Keystore credentials |
 
-#### 2️⃣ Configure SDK Path
+Without secrets the build still succeeds — the bot is configured manually inside the app (recommended).
 
-```bash
-# Linux/macOS
-echo "sdk.dir=$HOME/Android/Sdk" > local.properties
+### 🤖 Creating a Telegram Bot
 
-# Windows
-echo "sdk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk" > local.properties
-```
+1. Open [@BotFather](https://t.me/BotFather) on Telegram and send `/newbot`.
+2. Follow the steps and save the **Bot Token** (format: `<YOUR_BOT_TOKEN>`).
+3. Get your numeric Telegram ID from [@userinfobot](https://t.me/userinfobot) — this is the **Chat ID**.
 
-#### 3️⃣ Create Telegram Bot
+### 📲 Installing & Setting Up
 
-1. Go to [@BotFather](https://t.me/BotFather) on Telegram
-2. Send `/newbot` command
-3. Enter bot name
-4. Save the **Bot Token** (e.g., `<YOUR_BOT_TOKEN>`)
-5. Get your Telegram ID from [@userinfobot](https://t.me/userinfobot)
+1. Copy the APK to the phone and open it from a file manager.
+2. Allow **Unknown sources** / **Install unknown apps** when asked.
+3. If Play Protect warns you, tap **Details > Install anyway** (expected for this permission set — see Troubleshooting).
+4. Open the **Calculator** app.
+5. Type `1234` then press `=` — the **Telegram Bot Setup** page opens.
+6. Enter **Bot Token**, **Chat ID**, and sync interval, then tap **Save settings**.
+7. Tap **Test Connection** and confirm the message arrives in Telegram.
+8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera).
+9. Optionally tap **Enable Protection** (Device Admin).
+10. Tap **Enable monitoring** — done.
 
-#### 4️⃣ Build APK (LEGACY — use GitHub Actions)
-
-```bash
-# Linux/macOS
-./builder.sh YOUR_BOT_TOKEN YOUR_CHAT_ID 5
-
-# Windows
-builder.bat YOUR_BOT_TOKEN YOUR_CHAT_ID 5
-```
-
-**Example:**
-```bash
-./builder.sh <YOUR_BOT_TOKEN> <YOUR_CHAT_ID> 5
-```
-
-#### 5️⃣ Install APK
-
-1. Copy `output/parental-monitor-release.apk` to target phone
-2. Open APK from file manager
-3. Allow "Unknown sources"
-4. Confirm installation
-
-### 🔧 Configuration
-
-#### First Launch on Phone
-
-1. Tap the **Calculator** icon
-2. Enter `1234=` on calculator (secret code)
-3. Confirm Device Admin permission
-4. Grant all required permissions:
-   - 📞 Phone (calls)
-   - 💬 SMS
-   - 📸 Camera
-   - 📁 Storage
-5. App will start automatically
+> The release APK is signed, so it installs normally. If you previously installed a version signed with a different key, uninstall it first — Android rejects updates with mismatched signatures.
 
 ### 📱 Usage
 
-After installation:
+After setup:
 
-1. ✅ **Monitoring starts automatically**
-2. 📊 **Every 5 minutes** (or your configured interval) new data is sent
-3. 📸 **Every 1 minute** photos are captured from front and back cameras
-4. 📱 **Data sent to your Telegram bot**
-5. 🔄 **Auto-restarts** after phone reboot
+1. ✅ Monitoring starts automatically
+2. 📊 New data is sent every interval you configured
+3. 📸 Photos are captured from the cameras every 1 minute
+4. 📱 Everything arrives in your Telegram bot
+5. 🔄 Monitoring resumes automatically after reboot
 
-### 🎯 Data Received in Telegram
+### 🎯 What You Receive in Telegram
 
 ```
 📞 CALL
@@ -385,30 +125,21 @@ Date: 19.10.2025 14:28
 
 ### 🛡️ Security
 
-- ✅ App only sends data to your specified Telegram bot
-- ✅ No data is stored elsewhere
-- ✅ Device Admin protection prevents easy removal
-- ⚠️ **IMPORTANT**: APK contains your bot token — DO NOT SHARE WITH OTHERS!
-
-### ⚙️ Configuration (builder.sh)
-
-```bash
-./builder.sh BOT_TOKEN CHAT_ID INTERVAL
-
-BOT_TOKEN  — Telegram bot token
-CHAT_ID    — Your Telegram ID
-INTERVAL   — Monitoring interval (in minutes, default: 5)
-```
+- ✅ The app only sends data to the Telegram bot you configured
+- ✅ No data is stored anywhere else
+- ✅ Optional Device Admin protection prevents easy removal
+- ⚠️ **IMPORTANT**: a pre-configured APK contains your bot token — never share it!
 
 ### 🔧 Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| App not starting | Verify all permissions are granted |
-| No messages in Telegram | Check bot token and Chat ID |
-| Camera not working | On Android 10+, camera only works in foreground |
-| App keeps stopping | Disable battery optimization |
-| Can't uninstall | Settings → Security → Device Admin → Deactivate |
+| Play Protect blocks install | Details > Install anyway, or temporarily disable Play Protect scanning |
+| "App not installed" | Uninstall previous version first (signature mismatch) |
+| No messages in Telegram | Check token/Chat ID via Test Connection on the setup page |
+| Monitoring doesn't start | Grant all permissions, disable battery optimization |
+| Camera not working | On Android 10+, camera capture needs the app in foreground |
+| Can't uninstall | Settings → Security → Device Admin → deactivate first |
 
 ### 📂 Project Structure
 
@@ -417,26 +148,28 @@ red-eye-mobile/
 ├── app/
 │   ├── src/main/
 │   │   ├── java/com/redeye/parentalmonitor/
-│   │   │   ├── data/              # Data models
-│   │   │   ├── network/           # Telegram API
-│   │   │   ├── receiver/          # Broadcast receivers
-│   │   │   ├── repository/        # Data repositories
-│   │   │   ├── service/           # Background services
-│   │   │   ├── ui/                # UI components
-│   │   │   ├── utils/             # Utility classes
+│   │   │   ├── data/              # Models, encrypted preferences
+│   │   │   ├── network/           # Telegram API client
+│   │   │   ├── receiver/          # Boot / network / admin receivers
+│   │   │   ├── repository/        # SMS & call-log repositories
+│   │   │   ├── service/           # Monitoring & camera services
+│   │   │   ├── ui/                # MainActivity (calculator), SetupActivity
+│   │   │   ├── utils/             # Helpers
 │   │   │   └── worker/            # WorkManager tasks
-│   │   ├── res/                   # Resources (layout, drawable, etc)
-│   │   └── AndroidManifest.xml    # App configuration
-│   └── build.gradle               # Build configuration
-├── builder.sh                     # Build script (Linux/macOS)
-├── builder.bat                    # Build script (Windows)
-├── LICENSE                        # MIT License
-└── README.md                      # This file
+│   │   ├── res/                   # Layouts, drawables, strings (English)
+│   │   └── AndroidManifest.xml
+│   └── build.gradle
+├── .github/workflows/
+│   ├── build.yml                  # Cloud build (debug + release artifacts)
+│   └── release.yml                # Signed release APKs on v* tags
+├── AGENTS.md                      # Repo rules (cloud build only)
+├── CHANGELOG.md                   # Release history
+└── builder.sh / builder.bat       # LEGACY local scripts (kept for compatibility)
 ```
 
 ### 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first.
+Pull requests are welcome! For major changes, please open an issue first. Remember: no local SDK builds, no secrets in code — see `AGENTS.md`.
 
 ### 📄 License
 
@@ -444,11 +177,11 @@ This project is licensed under the [MIT License](LICENSE).
 
 ### ⚖️ Legal Disclaimer
 
-⚠️ **IMPORTANT**: This software is intended for legal parental monitoring purposes only.
+⚠️ **IMPORTANT**: this software is intended for legal parental monitoring only.
 
 - ✅ Use only on your own child's phone
 - ✅ Comply with local laws
-- ❌ Do not use to spy on others
+- ❌ Do not use to spy on other people
 - ❌ Invasion of privacy is illegal
 
 **The developer is not responsible for misuse.**
@@ -461,10 +194,10 @@ This project is licensed under the [MIT License](LICENSE).
 
 ### 🎉 Acknowledgments
 
-- [Telegram Bot API](https://core.telegram.org/bots/api) — Messaging integration
+- [Telegram Bot API](https://core.telegram.org/bots/api) — messaging integration
 - [Square Retrofit](https://square.github.io/retrofit/) — HTTP client
-- [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) — Asynchronous programming
-- [Android Jetpack](https://developer.android.com/jetpack) — Modern Android development
+- [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) — async programming
+- [Android Jetpack](https://developer.android.com/jetpack) — modern Android development
 
 ---
 
@@ -472,7 +205,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 **Made with ❤️ by Akhatkulov**
 
-**Red Eye Mobile** © 2025
-
 </div>
-
