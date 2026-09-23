@@ -19,6 +19,7 @@ class MessageQueue(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
+        android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using plaintext fallback", e)
         context.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
     }
     private val gson = Gson()
@@ -37,6 +38,7 @@ class MessageQueue(context: Context) {
             queue.add(QueuedMessage(message = message))
             while (queue.size > MAX_QUEUE_SIZE) {
                 queue.removeAt(0)
+                android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
             }
             writeLocked(queue)
         }
@@ -96,6 +98,14 @@ class MessageQueue(context: Context) {
         sharedPreferences.edit().putString(KEY_QUEUE, gson.toJson(queue)).apply()
     }
 
-    fun hasMessages(): Boolean = getQueue().isNotEmpty()
-    fun getQueueSize(): Int = getQueue().size
+    fun hasMessages(): Boolean {
+        synchronized(lock) {
+            return readLocked().isNotEmpty()
+        }
+    }
+    fun getQueueSize(): Int {
+        synchronized(lock) {
+            return readLocked().size
+        }
+    }
 }

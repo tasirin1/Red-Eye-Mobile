@@ -18,11 +18,16 @@ class BootReceiver : BroadcastReceiver() {
                 val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
+
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("BootReceiver", "Service start blocked after reboot, scheduling queue drain", e)
+                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context)
                 }
             }
         }

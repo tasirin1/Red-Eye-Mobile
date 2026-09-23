@@ -99,6 +99,11 @@ class CameraService(private val context: Context) {
             val cameraId = getCameraId(cameraManager, lensFacing)
 
             if (cameraId == null) {
+                try {
+                    imageReader?.close()
+                } catch (_: Exception) {
+                }
+                imageReader = null
                 stopBackgroundThread()
                 finishWithError(Exception("Selected camera not found"))
                 return
@@ -125,8 +130,11 @@ class CameraService(private val context: Context) {
                         it.close()
 
                         captureSession?.close()
+                        captureSession = null
                         cameraDevice?.close()
+                        cameraDevice = null
                         imageReader?.close()
+                        imageReader = null
                         stopBackgroundThread()
 
                         finishWithPhoto(file)
@@ -263,8 +271,11 @@ class CameraService(private val context: Context) {
     private fun cleanup() {
         try {
             captureSession?.close()
+            captureSession = null
             cameraDevice?.close()
+            cameraDevice = null
             imageReader?.close()
+            imageReader = null
             stopBackgroundThread()
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup", e)

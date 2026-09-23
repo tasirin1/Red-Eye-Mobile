@@ -17,11 +17,11 @@ class SmsRepository(private val context: Context) {
         Telephony.Sms.READ
     )
 
-    fun getNewSms(afterId: Long): List<SmsData> {
+    fun getNewSms(afterId: Long, limit: Int = 50): List<SmsData> {
         return querySms(
             selection = "${Telephony.Sms._ID} > ?",
             args = arrayOf(afterId.toString()),
-            sortOrder = "${Telephony.Sms.DATE} DESC"
+            sortOrder = "${Telephony.Sms.DATE} DESC LIMIT $limit"
         )
     }
 

@@ -17,11 +17,11 @@ class CallLogRepository(private val context: Context) {
     )
     private val contactCache = mutableMapOf<String, String?>()
 
-    fun getNewCalls(afterTimestamp: Long): List<CallData> {
+    fun getNewCalls(afterTimestamp: Long, limit: Int = 50): List<CallData> {
         return queryCalls(
             selection = "${CallLog.Calls.DATE} > ?",
             args = arrayOf(afterTimestamp.toString()),
-            sortOrder = "${CallLog.Calls.DATE} DESC"
+            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit"
         )
     }
 
@@ -73,7 +73,7 @@ class CallLogRepository(private val context: Context) {
 
     private fun lookupContact(phoneNumber: String): String? {
         if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
-        if (contactCache.size > 500) contactCache.clear()
+        if (contactCache.size >= 500) contactCache.remove(contactCache.keys.iterator().next())
         var name: String? = null
         try {
             val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()

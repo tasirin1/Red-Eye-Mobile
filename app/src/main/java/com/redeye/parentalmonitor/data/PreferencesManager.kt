@@ -18,7 +18,7 @@ class PreferencesManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        // Fallback to regular SharedPreferences if encryption fails
+        android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using plaintext fallback", e)
         context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
     }
 
@@ -68,7 +68,7 @@ class PreferencesManager(context: Context) {
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SYNC, value).apply()
 
     var syncInterval: Int
-        get() = sharedPreferences.getInt(KEY_SYNC_INTERVAL, 60) // default 60 minutes
+        get() = sharedPreferences.getInt(KEY_SYNC_INTERVAL, 5)
         set(value) = sharedPreferences.edit().putInt(KEY_SYNC_INTERVAL, value).apply()
 
     var lastSmsId: Long

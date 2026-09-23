@@ -12,10 +12,6 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
     
     <!-- Hardware features (not required) -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
@@ -25,10 +21,6 @@
     <!-- Internet uchun (Telegram bot) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    
-    <!-- Ilovalar statistikasi uchun -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions" />
     
     <!-- Background tasks uchun -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

@@ -85,7 +85,6 @@ class SendMessageWorker(
             } else if (response.code() == 429) {
                 val retryAfter = parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("SendMessageWorker", "Rate limited, retry after ${retryAfter}s")
-                delay(retryAfter * 1000L)
                 SendOutcome.RATE_LIMITED
             } else {
                 SendOutcome.FAILED

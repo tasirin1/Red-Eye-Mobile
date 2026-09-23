@@ -33,6 +33,8 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var syncIntervalInput: TextInputEditText
     private lateinit var cameraIntervalInput: TextInputEditText
     private lateinit var statusText: TextView
+    private lateinit var toggleButton: MaterialButton
+    private lateinit var permissionButton: MaterialButton
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
@@ -130,6 +132,8 @@ class SetupActivity : AppCompatActivity() {
         syncIntervalInput = findViewById(R.id.setupSyncIntervalInput)
         cameraIntervalInput = findViewById(R.id.setupCameraIntervalInput)
         statusText = findViewById(R.id.setupStatusText)
+        toggleButton = findViewById(R.id.setupToggleButton)
+        permissionButton = findViewById(R.id.setupPermissionButton)
 
         botTokenInput.setText(prefs.botToken)
         chatIdInput.setText(prefs.chatId)
@@ -304,8 +308,7 @@ class SetupActivity : AppCompatActivity() {
 
     private fun formatStatusTime(timestamp: Long): String {
         return try {
-            java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.getDefault())
-                .format(java.util.Date(timestamp))
+            com.redeye.parentalmonitor.utils.TimeFmt.full(timestamp)
         } catch (e: Exception) {
             timestamp.toString()
         }
@@ -333,11 +336,9 @@ class SetupActivity : AppCompatActivity() {
         val configured = prefs.isConfigured()
         val perms = hasAllPermissions()
         val running = prefs.isMonitoringEnabled
-        val btn = findViewById<MaterialButton>(R.id.setupToggleButton)
-        btn.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
-        btn.isEnabled = configured && perms
-        val permBtn = findViewById<MaterialButton>(R.id.setupPermissionButton)
-        permBtn.text = when {
+        toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
+        toggleButton.isEnabled = configured && perms
+        permissionButton.text = when {
             !perms -> getString(R.string.grant_permissions)
             !hasBackgroundLocation() -> getString(R.string.setup_bg_request)
             else -> getString(R.string.msg_permissions_granted)
