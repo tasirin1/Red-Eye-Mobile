@@ -4,6 +4,11 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.1.9] - 2026-09-23
+
+### Added
+- Photo interval `0` means manual-only mode: no automatic photos, capture solely via `/photo`. Settable from Setup or `/photointerval 0`.
+
 ## [1.1.8] - 2026-09-23
 
 ### Added

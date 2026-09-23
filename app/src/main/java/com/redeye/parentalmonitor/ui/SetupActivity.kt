@@ -118,7 +118,7 @@ class SetupActivity : AppCompatActivity() {
         prefs.botToken = token
         prefs.chatId = chatId
         prefs.syncInterval = interval.coerceIn(1, 1440)
-        prefs.cameraInterval = cameraInterval.coerceIn(1, 60)
+        prefs.cameraInterval = cameraInterval.coerceIn(0, 60)
 
         Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         updateStatus()
