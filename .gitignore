@@ -36,6 +36,7 @@ app/src/main/java/com/redeye/parentalmonitor/utils/AutoConfig.kt
 
 # Output directory
 output/
+apks/
 
 # Logs
 *.log

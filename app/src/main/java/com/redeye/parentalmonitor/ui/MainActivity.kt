@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         
         // Operator buttons
         findViewById<android.widget.Button>(R.id.btnPlus).setOnClickListener { setOperator("+") }
-        findViewById<android.widget.Button>(R.id.btnMinus).setOnClickListener { setOperator("-") }
+        findViewById<android.widget.Button>(R.id.btnMinus).setOnClickListener { setOperator("−") }
         findViewById<android.widget.Button>(R.id.btnMultiply).setOnClickListener { setOperator("×") }
         findViewById<android.widget.Button>(R.id.btnDivide).setOnClickListener { setOperator("÷") }
         
@@ -278,27 +278,39 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun appendNumber(number: String) {
-        justCalculated = false
+        if (justCalculated) {
+            currentNumber = ""
+            lastExpression = ""
+            justCalculated = false
+        }
         if (currentNumber == "Error") {
             currentNumber = ""
             previousNumber = ""
             operator = ""
         }
-        if (currentNumber == "0" && number != ".") {
+        if (number == ".") {
+            if (currentNumber.contains(".")) return
+            if (currentNumber.isEmpty()) {
+                currentNumber = "0."
+            } else {
+                currentNumber += "."
+            }
+        } else if (currentNumber == "0") {
             currentNumber = number
         } else {
-            if (number == "." && currentNumber.contains(".")) return
+            if (currentNumber.count { it.isDigit() } >= 12) return
             currentNumber += number
         }
-        
+
         updateCalculatorDisplay()
     }
     
     private fun setOperator(op: String) {
         justCalculated = false
-        if (currentNumber.isEmpty()) return
+        if (currentNumber.isEmpty() || currentNumber == "Error") return
         if (previousNumber.isNotEmpty()) {
             calculate()
+            if (currentNumber == "Error" || currentNumber.isEmpty()) return
         }
         operator = op
         previousNumber = currentNumber
@@ -324,19 +336,13 @@ class MainActivity : AppCompatActivity() {
         
         val result = when (operator) {
             "+" -> num1 + num2
-            "-" -> num1 - num2
+            "−" -> num1 - num2
             "×" -> num1 * num2
             "÷" -> if (num2 != 0.0) num1 / num2 else Double.NaN
             else -> num2
         }
-        
-        currentNumber = if (result.isNaN() || result.isInfinite()) {
-            "Error"
-        } else if (result % 1.0 == 0.0) {
-            result.toInt().toString()
-        } else {
-            result.toString()
-        }
+
+        currentNumber = formatResult(result)
 
         lastExpression = "$previousNumber $operator $currentStr ="
         justCalculated = true
@@ -345,6 +351,14 @@ class MainActivity : AppCompatActivity() {
         updateCalculatorDisplay()
     }
     
+    private fun formatResult(result: Double): String {
+        if (result.isNaN() || result.isInfinite()) return "Error"
+        if (result % 1.0 == 0.0 && result >= Long.MIN_VALUE.toDouble() && result <= Long.MAX_VALUE.toDouble()) {
+            return result.toLong().toString()
+        }
+        return String.format(java.util.Locale.US, "%.8f", result).trimEnd('0').trimEnd('.')
+    }
+
     private fun clear() {
         currentNumber = ""
         previousNumber = ""

@@ -3,21 +3,17 @@ name: Build APK
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: "Tipe build"
-        required: false
-        default: "both"
-        type: choice
-        options: [both, debug, release]
-      parental_ui:
-        description: "Parental UI instead of calculator"
-        required: false
-        default: false
-        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -47,36 +43,68 @@ jobs:
           unzip -q /tmp/gradle.zip -d /opt
           echo "/opt/gradle-8.2/bin" >> "$GITHUB_PATH"
 
-      - name: Build Debug APK
-        if: ${{ inputs.build_type != 'release' }}
-        run: gradle assembleDebug --stacktrace
+      - name: Decode release keystore
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/release.p12
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Build Standard APKs
+        run: gradle assembleDebug assembleRelease --stacktrace
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
-          PARENTAL_UI: ${{ inputs.parental_ui }}
+          PARENTAL_UI: "false"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build Release APK
-        if: ${{ inputs.build_type != 'debug' }}
-        run: gradle assembleRelease --stacktrace
+      - name: Stash standard APKs
+        run: |
+          mkdir -p /tmp/standard
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/standard/
+          cp app/build/outputs/apk/release/app-release.apk /tmp/standard/
+
+      - name: Build Parental APKs
+        run: gradle assembleDebug assembleRelease --stacktrace
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
-          PARENTAL_UI: ${{ inputs.parental_ui }}
+          PARENTAL_UI: "true"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Debug APK
-        if: ${{ inputs.build_type != 'release' }}
+      - name: Rename APKs
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            SUFFIX="-${GITHUB_REF_NAME}"
+          else
+            SUFFIX=""
+          fi
+          mkdir -p apks
+          cp /tmp/standard/app-debug.apk "apks/redeye${SUFFIX}-debug.apk"
+          cp /tmp/standard/app-release.apk "apks/redeye${SUFFIX}-release.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "apks/parental${SUFFIX}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk "apks/parental${SUFFIX}-release.apk"
+          ls -la apks/
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: apks
+          path: apks/*.apk
           if-no-files-found: error
 
-      - name: Upload Release APK
-        if: ${{ inputs.build_type != 'debug' }}
-        uses: actions/upload-artifact@v4
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
+          files: |
+            apks/redeye-*.apk
+            apks/parental-*.apk
+          generate_release_notes: true
