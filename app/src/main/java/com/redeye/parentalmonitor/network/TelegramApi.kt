@@ -19,7 +19,17 @@ import java.util.concurrent.TimeUnit
 data class TelegramMessage(
     @SerializedName("chat_id") val chatId: String,
     @SerializedName("text") val text: String,
-    @SerializedName("parse_mode") val parseMode: String = "HTML"
+    @SerializedName("parse_mode") val parseMode: String = "HTML",
+    @SerializedName("reply_markup") val replyMarkup: InlineKeyboardMarkup? = null
+)
+
+data class InlineButton(
+    @SerializedName("text") val text: String,
+    @SerializedName("callback_data") val callbackData: String
+)
+
+data class InlineKeyboardMarkup(
+    @SerializedName("inline_keyboard") val inlineKeyboard: List<List<InlineButton>>
 )
 
 data class TelegramResponse(
@@ -39,6 +49,13 @@ data class TelegramIncomingMessage(
 
 data class TelegramUpdate(
     @SerializedName("update_id") val updateId: Long,
+    @SerializedName("message") val message: TelegramIncomingMessage?,
+    @SerializedName("callback_query") val callbackQuery: TelegramCallbackQuery? = null
+)
+
+data class TelegramCallbackQuery(
+    @SerializedName("id") val id: String,
+    @SerializedName("data") val data: String?,
     @SerializedName("message") val message: TelegramIncomingMessage?
 )
 
@@ -57,6 +74,12 @@ interface TelegramApi {
     suspend fun sendMessage(
         @Url url: String,
         @Body message: TelegramMessage
+    ): Response<TelegramResponse>
+
+    @POST
+    suspend fun answerCallbackQuery(
+        @Url url: String,
+        @Body body: Map<String, String>
     ): Response<TelegramResponse>
     
     @Multipart

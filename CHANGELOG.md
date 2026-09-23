@@ -4,6 +4,11 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-23
+
+### Added
+- One-tap inline buttons under `/help`: photo, location, calls, SMS, front/back camera, 60-min pause, resume, battery, status.
+
 ## [1.2.0] - 2026-09-23
 
 ### Fixed
