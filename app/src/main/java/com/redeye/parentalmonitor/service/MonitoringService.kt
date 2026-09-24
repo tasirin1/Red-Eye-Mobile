@@ -264,7 +264,7 @@ class MonitoringService : Service() {
         var remaining = totalMs
         if (remaining <= 0L) return
         while (remaining > 0) {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             delay(minOf(remaining, 60_000L))
             remaining -= 60_000L
         }
