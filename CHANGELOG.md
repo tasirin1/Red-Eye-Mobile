@@ -2,6 +2,22 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.6.4] - 2026-09-24
+
+### Fixed
+- `MonitoringService.checkAndSendNewData` menandai `lastSmsId`/`lastCallTimestamp` per chunk dan mengambil halaman lanjutan bila backlog >500, sehingga crash tidak mengulang batch dan kelebihan data tidak hilang.
+- Sync awal idempoten via `initialSyncStarted` persisten: restart saat riwayat setengah terkirim tidak mengulang 100 SMS + 100 calls.
+- Perintah Telegram yang masuk saat offline tetap dieksekusi; filter basi 600 detik yang membuang diam-diam dihapus.
+- `CameraService` ganti `backgroundThread!!`/`fallback!!` dengan guard aman dan `join(2_000)` ber-timeout.
+- `NotificationForwarderService` kunci dedup kini menyertakan ID notifikasi dengan jendela 60 detik agar pesan sah yang berulang tidak ikut terbuang.
+- `SendMessageWorker` memakai `registerFailures()` bulk satu tulis per run.
+
+### Changed
+- Kredensial Telegram di-cache di `MonitoringService` dan status jaringan di-cache 20 detik, hilangkan puluhan dekripsi dan query per batch.
+- Loop kamera tidur 5 menit saat interval 0 alih-alih bangun tiap 60 detik.
+- Delay history 2000/1000ms jadi 500ms dan jeda worker 200ms jadi 100ms.
+- `MessageQueue.registerFailures()` menggantikan tulis-ulang per pesan gagal.
+
 ## [1.6.3] - 2026-09-24
 
 ### Security

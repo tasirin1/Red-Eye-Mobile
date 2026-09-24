@@ -28,25 +28,22 @@ class SendMessageWorker(
         }
 
         val sentIds = mutableListOf<String>()
-        val dropIds = mutableListOf<String>()
+        val failedIds = mutableListOf<String>()
         var rateLimited = false
 
         for (queuedMessage in queue) {
             try {
-                when (val outcome = sendMessage(queuedMessage.message)) {
+                when (sendMessage(queuedMessage.message)) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
-                        delay(200)
+                        delay(100)
                     }
                     is SendOutcome.RateLimited -> {
                         rateLimited = true
                         break
                     }
                     SendOutcome.Failed -> {
-                        val retries = messageQueue.incrementRetry(queuedMessage.id)
-                        if (retries >= MessageQueue.MAX_RETRIES || retries < 0) {
-                            dropIds.add(queuedMessage.id)
-                        }
+                        failedIds.add(queuedMessage.id)
                     }
                 }
             } catch (e: Exception) {
@@ -57,8 +54,8 @@ class SendMessageWorker(
         if (sentIds.isNotEmpty()) {
             messageQueue.removeMessages(sentIds)
         }
-        if (dropIds.isNotEmpty()) {
-            messageQueue.removeMessages(dropIds)
+        if (failedIds.isNotEmpty()) {
+            messageQueue.registerFailures(failedIds)
         }
 
         if (rateLimited) {

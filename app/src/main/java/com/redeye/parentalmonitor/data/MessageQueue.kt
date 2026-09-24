@@ -89,6 +89,38 @@ class MessageQueue(context: Context) {
         }
     }
 
+    fun registerFailures(messageIds: Collection<String>): List<String> {
+        if (messageIds.isEmpty()) return emptyList()
+        synchronized(lock) {
+            if (volatileOnly) {
+                val drop = mutableListOf<String>()
+                for (i in volatileQueue.indices) {
+                    val queued = volatileQueue[i]
+                    if (queued.id in messageIds) {
+                        val updated = queued.copy(retryCount = queued.retryCount + 1)
+                        volatileQueue[i] = updated
+                        if (updated.retryCount >= MAX_RETRIES) drop.add(updated.id)
+                    }
+                }
+                volatileQueue.removeAll { it.id in drop }
+                return drop
+            }
+            val queue = readLocked().toMutableList()
+            val drop = mutableListOf<String>()
+            for (i in queue.indices) {
+                val queued = queue[i]
+                if (queued.id in messageIds) {
+                    val updated = queued.copy(retryCount = queued.retryCount + 1)
+                    queue[i] = updated
+                    if (updated.retryCount >= MAX_RETRIES) drop.add(updated.id)
+                }
+            }
+            queue.removeAll { it.id in drop }
+            writeLocked(queue)
+            return drop
+        }
+    }
+
     fun incrementRetry(messageId: String): Int {
         synchronized(lock) {
             if (volatileOnly) {

@@ -64,6 +64,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_CALL_ID = "last_call_id"
         private const val KEY_USER_DISABLED = "user_disabled_monitoring"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
+        private const val KEY_INITIAL_SYNC_STARTED = "initial_sync_started"
         private const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
@@ -114,6 +115,10 @@ class PreferencesManager(context: Context) {
     var initialSyncDone: Boolean
         get() = sharedPreferences.getBoolean(KEY_INITIAL_SYNC_DONE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
+
+    var initialSyncStarted: Boolean
+        get() = sharedPreferences.getBoolean(KEY_INITIAL_SYNC_STARTED, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, value).apply()
 
     var cameraInterval: Int
         get() = sharedPreferences.getInt(KEY_CAMERA_INTERVAL, 1)

@@ -40,8 +40,20 @@ class CameraService(private val context: Context) {
             backgroundThread?.quitSafely()
         } catch (_: Exception) {
         }
-        backgroundThread = HandlerThread("CameraBackground").also { it.start() }
-        backgroundHandler = Handler(backgroundThread!!.looper)
+        val thread = HandlerThread("CameraBackground")
+        try {
+            thread.start()
+        } catch (_: Exception) {
+            return
+        }
+        val looper = try {
+            thread.looper
+        } catch (_: Exception) {
+            try { thread.quitSafely() } catch (_: Exception) { }
+            return
+        }
+        backgroundThread = thread
+        backgroundHandler = Handler(looper)
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread started")
     }
 
@@ -52,7 +64,7 @@ class CameraService(private val context: Context) {
         thread?.quitSafely()
         try {
             if (thread != null && Thread.currentThread() !== thread) {
-                thread.join()
+                try { thread.join(2_000) } catch (_: InterruptedException) { }
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread stopped")
         } catch (e: InterruptedException) {
@@ -235,7 +247,8 @@ class CameraService(private val context: Context) {
                 onTrace("trace: metering timeout")
                 fireStill()
             }
-            backgroundHandler?.postDelayed(fallback!!, 5_000L)
+            val pending = fallback ?: return
+            backgroundHandler?.postDelayed(pending, 5_000L)
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             val meterSurface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
             meteringBuilder.addTarget(meterSurface)
