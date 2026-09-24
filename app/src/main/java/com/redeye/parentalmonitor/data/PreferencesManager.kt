@@ -74,6 +74,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         private const val KEY_CAMERA_FACING = "camera_facing"
         private const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
+        private const val KEY_CRED_ERROR = "credential_error"
+        private const val KEY_CRED_ERROR_AT = "credential_error_at"
+        private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
     }
 
     var botToken: String
@@ -159,6 +162,18 @@ class PreferencesManager(context: Context) {
     var notifForwardEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIF_FORWARD, value).apply()
+
+    var credentialError: String
+        get() = sharedPreferences.getString(KEY_CRED_ERROR, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_CRED_ERROR, value).apply()
+
+    var credentialErrorAt: Long
+        get() = sharedPreferences.getLong(KEY_CRED_ERROR_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_CRED_ERROR_AT, value).apply()
+
+    var commandsTokenHash: String
+        get() = sharedPreferences.getString(KEY_COMMANDS_TOKEN_HASH, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_COMMANDS_TOKEN_HASH, value).apply()
 
 private class MemoryPrefs : SharedPreferences {
     private val data = java.util.concurrent.ConcurrentHashMap<String, Any?>()

@@ -18,7 +18,7 @@ class BootRestartWorker(
         val prefs = try {
             PreferencesManager.getInstance(appContext)
         } catch (_: Exception) {
-            return if (runAttemptCount < 5) Result.retry() else Result.failure()
+            return if (runAttemptCount < 1) Result.retry() else Result.failure()
         }
         if (!prefs.isMonitoringEnabled || !prefs.isConfigured() || prefs.userDisabledMonitoring) {
             return Result.success()
@@ -33,9 +33,15 @@ class BootRestartWorker(
                 appContext.startService(serviceIntent)
             }
             Result.success()
+        } catch (e: SecurityException) {
+            android.util.Log.w("BootRestartWorker", "FGS start denied, surrendering", e)
+            Result.success()
+        } catch (e: IllegalStateException) {
+            android.util.Log.w("BootRestartWorker", "FGS start blocked by system, surrendering", e)
+            Result.success()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
-            if (runAttemptCount < 5) Result.retry() else Result.failure()
+            if (runAttemptCount < 1) Result.retry() else Result.failure()
         }
     }
 }

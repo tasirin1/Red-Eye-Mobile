@@ -43,6 +43,8 @@
     <string name="setup_test_fail">❌ Test failed: %1$s</string>
     <string name="setup_admin_on">✅ Protection already enabled</string>
     <string name="setup_status_fmt">Bot: %1$s | Permissions: %2$s | %3$s</string>
+    <string name="setup_consent_title">Explicit consent required</string>
+    <string name="setup_consent_text">This app monitors SMS, call log, location (including background), camera captures, and notifications, and forwards them to your Telegram. Device Admin and battery exemption are used only to keep monitoring running. Tap OK to consent and start monitoring.</string>
     <string name="settings_telegram_title">Telegram Settings</string>
     <string name="control_title">Monitoring Control</string>
     <string name="msg_permissions_granted">All permissions granted</string>

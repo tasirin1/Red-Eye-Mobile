@@ -82,9 +82,8 @@ class CallLogRepository(private val context: Context) {
 
     private fun cachedContact(phoneNumber: String): String? {
         synchronized(contactCache) {
-            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
+            return contactCache.getOrElse(phoneNumber) { return null }
         }
-        return null
     }
 
     fun resolveContact(phoneNumber: String): String? {

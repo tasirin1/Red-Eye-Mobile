@@ -30,14 +30,15 @@ class MessageQueue(context: Context) {
         volatileOnly = true
         null
     }
-    private val gson = Gson()
     private val lock = Any()
     private var cached: MutableList<QueuedMessage>? = null
+    private val listType = object : TypeToken<MutableList<QueuedMessage>>() {}.type
 
     companion object {
         private const val KEY_QUEUE = "queued_messages"
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_RETRIES = 5
+        private val gson = Gson()
     }
 
     fun addMessage(message: String) {
@@ -154,8 +155,7 @@ class MessageQueue(context: Context) {
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()
             else {
-                val type = object : TypeToken<MutableList<QueuedMessage>>() {}.type
-                gson.fromJson<MutableList<QueuedMessage>>(json, type) ?: mutableListOf()
+                gson.fromJson<MutableList<QueuedMessage>>(json, listType) ?: mutableListOf()
             }
         } catch (e: Exception) {
             mutableListOf()

@@ -1,5 +1,6 @@
 package com.redeye.parentalmonitor.network
 
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
 import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
@@ -34,7 +35,7 @@ data class InlineKeyboardMarkup(
 
 data class TelegramResponse(
     @SerializedName("ok") val ok: Boolean,
-    @SerializedName("result") val result: Any?
+    @SerializedName("result") val result: JsonElement?
 )
 
 data class TelegramChat(

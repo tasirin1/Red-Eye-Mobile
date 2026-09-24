@@ -30,7 +30,7 @@ object MessageScheduler {
                 .build()
 
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, sendRequest)
+                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, sendRequest)
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)
@@ -43,7 +43,7 @@ object MessageScheduler {
             val restartRequest = OneTimeWorkRequestBuilder<BootRestartWorker>()
                 .setBackoffCriteria(
                     androidx.work.BackoffPolicy.EXPONENTIAL,
-                    10,
+                    30,
                     TimeUnit.SECONDS
                 )
                 .build()

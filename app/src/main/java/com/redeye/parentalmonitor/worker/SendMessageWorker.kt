@@ -29,6 +29,7 @@ class SendMessageWorker(
 
         val sentIds = mutableListOf<String>()
         val failedIds = mutableListOf<String>()
+        val authFailedIds = mutableListOf<String>()
         var rateLimited = false
 
         for (queuedMessage in queue) {
@@ -42,23 +43,50 @@ class SendMessageWorker(
                         rateLimited = true
                         break
                     }
+                    is SendOutcome.AuthFailed -> {
+                        authFailedIds.add(queuedMessage.id)
+                    }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SendMessageWorker", "Exception processing message", e)
+                failedIds.add(queuedMessage.id)
             }
         }
 
         if (sentIds.isNotEmpty()) {
             messageQueue.removeMessages(sentIds)
+            try {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+            } catch (_: Exception) {
+            }
         }
+        if (authFailedIds.isNotEmpty()) {
+            messageQueue.removeMessages(authFailedIds)
+            try {
+                preferencesManager.credentialError = "401"
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            android.util.Log.e("SendMessageWorker", "Auth rejected, dropped ${authFailedIds.size} message(s) without retry")
+        }
+        var pendingTransient = false
         if (failedIds.isNotEmpty()) {
-            messageQueue.registerFailures(failedIds)
+            val dropped = try {
+                messageQueue.registerFailures(failedIds)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            pendingTransient = failedIds.size > dropped.size
         }
 
         if (rateLimited) {
+            return Result.retry()
+        }
+        if (pendingTransient && messageQueue.hasMessages()) {
             return Result.retry()
         }
         return Result.success()
@@ -68,6 +96,7 @@ class SendMessageWorker(
         object Sent : SendOutcome
         object Failed : SendOutcome
         object RateLimited : SendOutcome
+        object AuthFailed : SendOutcome
     }
 
     private suspend fun sendMessage(message: String): SendOutcome {
@@ -87,6 +116,8 @@ class SendMessageWorker(
             } else if (response.code() == 429) {
                 android.util.Log.w("SendMessageWorker", "Rate limited, retrying with backoff")
                 SendOutcome.RateLimited
+            } else if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+                SendOutcome.AuthFailed
             } else {
                 SendOutcome.Failed
             }

@@ -28,3 +28,11 @@
 }
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 
+-keep class com.redeye.parentalmonitor.data.models.** { *; }
+-keep class com.redeye.parentalmonitor.network.** { *; }
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+-keep class com.redeye.parentalmonitor.service.** { *; }
+-keep class com.redeye.parentalmonitor.worker.** { *; }
+-keep class com.redeye.parentalmonitor.receiver.** { *; }

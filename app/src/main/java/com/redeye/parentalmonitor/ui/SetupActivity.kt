@@ -245,26 +245,41 @@ class SetupActivity : AppCompatActivity() {
             val intent = Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_STOP_MONITORING
             }
-            startService(intent)
-            prefs.isMonitoringEnabled = false
-            prefs.userDisabledMonitoring = true
-            Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
-        } else {
-            val intent = Intent(this, MonitoringService::class.java).apply {
-                action = MonitoringService.ACTION_START_MONITORING
-            }
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
-                } else {
-                    startService(intent)
-                }
-                prefs.isMonitoringEnabled = true
-                prefs.userDisabledMonitoring = false
-                Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+                startService(intent)
+                prefs.isMonitoringEnabled = false
+                prefs.userDisabledMonitoring = true
+                Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
             }
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_consent_title))
+                .setMessage(getString(R.string.setup_consent_text))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok) { _, _ -> startMonitoringConfirmed() }
+                .show()
+            return
+        }
+        updateStatus()
+    }
+
+    private fun startMonitoringConfirmed() {
+        val intent = Intent(this, MonitoringService::class.java).apply {
+            action = MonitoringService.ACTION_START_MONITORING
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            prefs.isMonitoringEnabled = true
+            prefs.userDisabledMonitoring = false
+            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
         }
         updateStatus()
     }
@@ -385,12 +400,14 @@ class SetupActivity : AppCompatActivity() {
             prefs.notifForwardEnabled -> getString(R.string.setup_notif_on)
             else -> getString(R.string.setup_notif_off)
         }
+        val credErr = try { prefs.credentialError } catch (_: Exception) { "" }
+        val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
         statusText.text = getString(
             R.string.setup_status_fmt,
             if (configured) "OK" else "-",
             if (perms) "OK" else "-",
             if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "plaintext") + "\nNotifications: " + (if (isNotificationAccessGranted() && prefs.notifForwardEnabled) "forwarding" else "off") + "\n" + getString(
+        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + "\nNotifications: " + (if (isNotificationAccessGranted() && prefs.notifForwardEnabled) "forwarding" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
             if (hasForegroundLocation()) "OK" else "-",
             if (hasBackgroundLocation()) "OK" else "-"

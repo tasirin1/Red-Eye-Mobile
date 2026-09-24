@@ -33,6 +33,7 @@ class CameraService(private val context: Context) {
 
     private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
 
     fun startBackgroundThread() {
         if (backgroundThread?.isAlive == true && backgroundHandler != null) return
@@ -361,6 +362,7 @@ class CameraService(private val context: Context) {
     }
 
     private fun choosePhotoSize(cameraManager: CameraManager, cameraId: String): Pair<Int, Int> {
+        photoSizeCache[cameraId]?.let { return it }
         return try {
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
@@ -372,7 +374,7 @@ class CameraService(private val context: Context) {
                     kotlin.math.abs(it.width - IMAGE_WIDTH) + kotlin.math.abs(it.height - IMAGE_HEIGHT)
                 }
                 if (chosen != null) {
-                    chosen.width to chosen.height
+                    (chosen.width to chosen.height).also { photoSizeCache[cameraId] = it }
                 } else {
                     IMAGE_WIDTH to IMAGE_HEIGHT
                 }
@@ -385,16 +387,17 @@ class CameraService(private val context: Context) {
 
     private fun saveImage(image: Image): File {
         val buffer: ByteBuffer = image.planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
         val file = File(context.cacheDir, "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
-        
-        FileOutputStream(file).use { output ->
-            output.write(bytes)
+        java.io.BufferedOutputStream(FileOutputStream(file), 8192).use { output ->
+            val chunk = ByteArray(8192)
+            while (buffer.hasRemaining()) {
+                val n = kotlin.math.min(chunk.size, buffer.remaining())
+                buffer.get(chunk, 0, n)
+                output.write(chunk, 0, n)
+            }
+            output.flush()
         }
-        
         return file
     }
 

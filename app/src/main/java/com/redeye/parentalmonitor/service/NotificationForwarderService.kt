@@ -19,6 +19,11 @@ import kotlinx.coroutines.launch
 class NotificationForwarderService : NotificationListenerService() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val appLabelCache = object : LinkedHashMap<String, String>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean {
+            return size > 100
+        }
+    }
     private val lastSent = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 200
@@ -71,9 +76,11 @@ class NotificationForwarderService : NotificationListenerService() {
             if (now - (lastSent[key] ?: 0L) < 60_000L) return
             lastSent[key] = now
         }
-        val appLabel = try {
+        val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
             val info = packageManager.getApplicationInfo(pkg, 0)
-            "${packageManager.getApplicationLabel(info)}"
+            "${packageManager.getApplicationLabel(info)}".also { label ->
+                synchronized(appLabelCache) { appLabelCache[pkg] = label }
+            }
         } catch (_: Exception) {
             pkg
         }
@@ -127,9 +134,18 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private suspend fun forwardToTelegram(message: String) {
         try {
-            val prefs = prefsRef ?: return
-            val botToken = prefs.botToken
-            val chatId = prefs.chatId
+            val prefs = prefsRef ?: try {
+                PreferencesManager.getInstance(this).also { prefsRef = it }
+            } catch (_: Exception) {
+                try {
+                    (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+                return
+            }
+            val botToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val chatId = try { prefs.chatId } catch (_: Exception) { "" }
             if (botToken.isEmpty() || chatId.isEmpty()) return
             if (!NetworkUtils.isNetworkAvailable(this)) {
                 (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
@@ -139,6 +155,15 @@ class NotificationForwarderService : NotificationListenerService() {
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) return
+            if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+                android.util.Log.e("NotifForwarder", "Auth rejected, dropping notification without queue")
+                try {
+                    prefs.credentialError = response.code().toString()
+                    prefs.credentialErrorAt = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
+                return
+            }
             (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: Exception) {
