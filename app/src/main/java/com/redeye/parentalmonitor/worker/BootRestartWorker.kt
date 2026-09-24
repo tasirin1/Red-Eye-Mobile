@@ -20,13 +20,20 @@ class BootRestartWorker(
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
         } catch (_: Exception) {
-            return if (runAttemptCount < 1) Result.retry() else Result.failure()
+            return if (runAttemptCount < 5) Result.retry() else Result.failure()
+        }
+        try {
+            if (android.os.SystemClock.elapsedRealtime() < prefs.credentialErrorAt) {
+                prefs.credentialError = ""
+                prefs.credentialErrorAt = 0L
+            }
+        } catch (_: Exception) {
         }
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring) {
             return Result.success()
         }
         if (!prefs.isMonitoringEnabled || !prefs.isConfigured()) {
-            return if (runAttemptCount < 1) Result.retry() else Result.success()
+            return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         return try {
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
@@ -39,16 +46,16 @@ class BootRestartWorker(
             }
             Result.success()
         } catch (e: SecurityException) {
-            android.util.Log.w("BootRestartWorker", "FGS start denied, surrendering", e)
+            android.util.Log.w("BootRestartWorker", "FGS start denied, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
-            Result.success()
+            if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: IllegalStateException) {
-            android.util.Log.w("BootRestartWorker", "FGS start blocked by system, surrendering", e)
+            android.util.Log.w("BootRestartWorker", "FGS start blocked by system, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
-            Result.success()
+            if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
-            if (runAttemptCount < 1) Result.retry() else Result.failure()
+            if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
     }
 }

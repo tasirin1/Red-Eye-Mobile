@@ -15,7 +15,10 @@ class SendMessageWorker(
 ) : CoroutineWorker(context, params) {
 
     private val messageQueue = MessageQueue(context.applicationContext)
-    private val preferencesManager = PreferencesManager.getInstance(context)
+    private val preferencesManager: PreferencesManager by lazy {
+        try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
+        PreferencesManager.getInstance(context.applicationContext)
+    }
 
     override suspend fun doWork(): Result {
         try {

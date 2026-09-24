@@ -13,7 +13,9 @@ class BootReceiver : BroadcastReceiver() {
     companion object {
         private val BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_USER_UNLOCKED,
+            Intent.ACTION_USER_PRESENT
         )
     }
 
@@ -30,6 +32,13 @@ class BootReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             MessageScheduler.scheduleBootRestart(appContext)
             return
+        }
+        try {
+            if (android.os.SystemClock.elapsedRealtime() < preferencesManager.credentialErrorAt) {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+            }
+        } catch (_: Exception) {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
         if (!preferencesManager.isMonitoringEnabled || !preferencesManager.isConfigured()) {

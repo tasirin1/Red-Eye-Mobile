@@ -72,6 +72,7 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         preferencesManager = PreferencesManager.getInstance(this)
         refreshCreds()
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -350,6 +351,13 @@ class MonitoringService : Service() {
                     android.util.Log.e("MonitoringService", "Error polling commands", e)
                 }
                 if (!preferencesManager.isConfigured()) {
+                    try {
+                        if (PreferencesManager.refreshInstance(this)) {
+                            preferencesManager = PreferencesManager.getInstance(this)
+                            refreshCreds()
+                        }
+                    } catch (_: Exception) {
+                    }
                     delay(60_000)
                 } else if (!hasNetwork()) {
                     delay(60_000)
@@ -365,7 +373,14 @@ class MonitoringService : Service() {
     private fun authBlocked(): Boolean {
         return try {
             val err = preferencesManager.credentialError
-            err.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - preferencesManager.credentialErrorAt < 30 * 60_000L
+            if (err.isEmpty()) return false
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now < preferencesManager.credentialErrorAt) {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+                return false
+            }
+            now - preferencesManager.credentialErrorAt < 30 * 60_000L
         } catch (_: Exception) {
             false
         }

@@ -22,7 +22,9 @@ class ParentalMonitorApp : Application() {
 
     private fun migrateLegacyConsent() {
         try {
+            try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
             val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this)
+            if (!prefs.isStorageEncrypted) return
             if (prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring && !prefs.userConsentedMonitoring) {
                 prefs.userConsentedMonitoring = true
             }
