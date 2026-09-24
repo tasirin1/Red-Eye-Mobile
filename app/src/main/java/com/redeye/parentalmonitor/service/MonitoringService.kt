@@ -243,6 +243,7 @@ class MonitoringService : Service() {
         }
         startCommandPolling()
         startLoopWatchdog()
+        MessageScheduler.scheduleWatchdog(this)
         MessageScheduler.scheduleMessageSend(this)
         serviceScope.launch {
             registerBotCommands()

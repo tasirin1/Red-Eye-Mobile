@@ -26,6 +26,7 @@ class BootReceiver : BroadcastReceiver() {
             if (!data.contains(context.packageName)) return
         }
         val appContext = context.applicationContext
+        MessageScheduler.scheduleWatchdog(appContext)
         val preferencesManager = try {
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)

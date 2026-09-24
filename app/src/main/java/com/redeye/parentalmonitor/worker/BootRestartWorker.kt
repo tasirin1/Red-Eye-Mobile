@@ -1,10 +1,16 @@
 package com.redeye.parentalmonitor.worker
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.redeye.parentalmonitor.ParentalMonitorApp
+import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.MessageScheduler
@@ -14,8 +20,25 @@ class BootRestartWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val notification = NotificationCompat.Builder(applicationContext, ParentalMonitorApp.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setOngoing(true)
+            .setSilent(true)
+            .build()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(NOTIF_ID, notification)
+        }
+    }
+
     override suspend fun doWork(): Result {
         val appContext = applicationContext
+        try {
+            setForeground(getForegroundInfo())
+        } catch (_: Exception) {
+        }
         val prefs = try {
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
@@ -35,6 +58,11 @@ class BootRestartWorker(
         if (!prefs.isMonitoringEnabled || !prefs.isConfigured()) {
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
+        MessageScheduler.scheduleWatchdog(appContext)
+        if (isServiceRunning(appContext)) {
+            MessageScheduler.scheduleMessageSend(appContext)
+            return Result.success()
+        }
         return try {
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
@@ -44,6 +72,7 @@ class BootRestartWorker(
             } else {
                 appContext.startService(serviceIntent)
             }
+            MessageScheduler.scheduleMessageSend(appContext)
             Result.success()
         } catch (e: SecurityException) {
             android.util.Log.w("BootRestartWorker", "FGS start denied, will retry", e)
@@ -57,5 +86,21 @@ class BootRestartWorker(
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isServiceRunning(context: Context): Boolean {
+        return try {
+            val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            manager.getRunningServices(Int.MAX_VALUE).any {
+                it.service.className == MonitoringService::class.java.name
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    companion object {
+        private const val NOTIF_ID = 2
     }
 }
