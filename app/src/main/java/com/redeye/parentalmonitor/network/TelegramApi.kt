@@ -106,6 +106,15 @@ interface TelegramApi {
     
     @Multipart
     @POST
+    suspend fun sendAudio(
+        @Url url: String,
+        @Part("chat_id") chatId: RequestBody,
+        @Part("caption") caption: RequestBody?,
+        @Part audio: MultipartBody.Part
+    ): Response<TelegramResponse>
+
+    @Multipart
+    @POST
     suspend fun sendPhoto(
         @Url url: String,
         @Part("chat_id") chatId: RequestBody,

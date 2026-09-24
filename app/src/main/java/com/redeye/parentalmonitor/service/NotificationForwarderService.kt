@@ -51,6 +51,27 @@ class NotificationForwarderService : NotificationListenerService() {
     private var cfgForward = true
     private var cfgConfigured = false
 
+    data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
+
+    companion object {
+        private const val MAX_HISTORY = 20
+        private val history = ArrayDeque<NotifRecord>()
+        private val historyLock = Any()
+
+        fun record(app: String, title: String, text: String) {
+            synchronized(historyLock) {
+                history.addLast(NotifRecord(app, title, text, System.currentTimeMillis()))
+                while (history.size > MAX_HISTORY) history.removeFirst()
+            }
+        }
+
+        fun history(): List<NotifRecord> {
+            synchronized(historyLock) {
+                return history.toList()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         scope.launch {
@@ -128,6 +149,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (title.isNotEmpty()) appendLine("Title: ${escapeHtml(title.take(200))}")
             if (text.isNotEmpty()) appendLine("Text: ${escapeHtml(text.take(300))}")
         }
+        record(appLabel, title, text)
         forwardToTelegram(message, pkg)
     }
 

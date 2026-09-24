@@ -44,6 +44,8 @@ class SetupActivity : AppCompatActivity() {
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.CAMERA,
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION
         )
@@ -53,6 +55,8 @@ class SetupActivity : AppCompatActivity() {
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.CAMERA,
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.RECORD_AUDIO,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION
         )

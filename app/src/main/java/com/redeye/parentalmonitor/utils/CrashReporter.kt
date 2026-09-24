@@ -26,7 +26,7 @@ object CrashReporter {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             try {
-                savePending(appContext, buildReport(appContext, thread, error))
+                saveNow(appContext, thread, error)
             } catch (_: Exception) {
             } finally {
                 previous?.uncaughtException(thread, error)
@@ -48,6 +48,17 @@ object CrashReporter {
         } catch (_: Exception) {
             null
         }
+    }
+
+    fun saveNow(context: Context, thread: Thread, error: Throwable) {
+        try {
+            savePending(context.applicationContext, buildReport(context.applicationContext, thread, error))
+        } catch (_: Exception) {
+        }
+    }
+
+    fun saveNow(context: Context, error: Throwable) {
+        saveNow(context, Thread.currentThread(), error)
     }
 
     private fun pendingFile(context: Context): File {
