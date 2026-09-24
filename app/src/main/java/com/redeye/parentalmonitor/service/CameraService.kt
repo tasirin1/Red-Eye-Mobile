@@ -42,7 +42,7 @@ class CameraService(private val context: Context) {
         }
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         backgroundHandler = Handler(backgroundThread!!.looper)
-        Log.i(TAG, "Background thread started")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread started")
     }
 
     fun stopBackgroundThread() {
@@ -54,7 +54,7 @@ class CameraService(private val context: Context) {
             if (thread != null && Thread.currentThread() !== thread) {
                 thread.join()
             }
-            Log.i(TAG, "Background thread stopped")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread stopped")
         } catch (e: InterruptedException) {
             Log.e(TAG, "Error stopping background thread", e)
         }
@@ -95,7 +95,7 @@ class CameraService(private val context: Context) {
                 } catch (_: Exception) {
                 }
                 onPhotoTaken(file)
-                Log.i(TAG, "✓ Photo saved: ${file.absolutePath}")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Photo saved")
             } else {
                 try {
                     file.delete()
@@ -105,7 +105,7 @@ class CameraService(private val context: Context) {
         }
 
         try {
-            Log.i(TAG, "Starting photo capture...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Starting photo capture")
             onTrace("trace: starting capture")
             startBackgroundThread()
 
@@ -123,7 +123,7 @@ class CameraService(private val context: Context) {
                 return
             }
 
-            Log.d(TAG, "Using camera ID: $cameraId")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Using camera ID: $cameraId")
             stillArmed.set(false)
 
             val timeout = Runnable {
@@ -174,7 +174,7 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
-                    Log.d(TAG, "Camera opened successfully")
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
                     onTrace("trace: camera opened")
                     createCaptureSession(camera, jpegOrientation, ::finishWithError, { onTrace(it) })
                 }
@@ -220,7 +220,7 @@ class CameraService(private val context: Context) {
                     }
                     captureBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE)
                     session.capture(captureBuilder.build(), null, backgroundHandler)
-                    Log.d(TAG, "Capture request sent")
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture request sent")
                     onTrace("trace: capture request sent")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error capturing", e)
@@ -237,7 +237,8 @@ class CameraService(private val context: Context) {
             }
             backgroundHandler?.postDelayed(fallback!!, 5_000L)
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            meteringBuilder.addTarget(imageReader!!.surface)
+            val meterSurface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
+            meteringBuilder.addTarget(meterSurface)
             meteringBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
             session.setRepeatingRequest(
                 meteringBuilder.build(),
@@ -316,7 +317,7 @@ class CameraService(private val context: Context) {
         onTrace: (String) -> Unit = {}
     ) {
         try {
-            val surface = imageReader!!.surface
+            val surface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
             val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(surface)
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -328,7 +329,7 @@ class CameraService(private val context: Context) {
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
                         captureSession = session
-                        Log.d(TAG, "Capture session configured")
+                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture session configured")
                         onTrace("trace: session configured")
                         runMeteredCapture(camera, session, captureBuilder, onError, onTrace)
                     }
@@ -354,11 +355,9 @@ class CameraService(private val context: Context) {
             if (sizes.isNullOrEmpty()) {
                 IMAGE_WIDTH to IMAGE_HEIGHT
             } else {
-                val below = sizes.filter { it.width <= IMAGE_WIDTH }
-                val chosen = below.firstOrNull { it.width == IMAGE_WIDTH && it.height == IMAGE_HEIGHT }
-                    ?: below.filter { it.width >= 640 }.minByOrNull { it.width * it.height }
-                    ?: below.maxByOrNull { it.width * it.height }
-                    ?: sizes.minByOrNull { it.width * it.height }
+                val chosen = sizes.minByOrNull {
+                    kotlin.math.abs(it.width - IMAGE_WIDTH) + kotlin.math.abs(it.height - IMAGE_HEIGHT)
+                }
                 if (chosen != null) {
                     chosen.width to chosen.height
                 } else {
@@ -377,7 +376,7 @@ class CameraService(private val context: Context) {
         buffer.get(bytes)
 
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
-        val file = File(context.cacheDir, "camera_${timestamp}_${System.currentTimeMillis() % 1000}.jpg")
+        val file = File(context.cacheDir, "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
         
         FileOutputStream(file).use { output ->
             output.write(bytes)

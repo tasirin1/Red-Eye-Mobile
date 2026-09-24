@@ -13,7 +13,9 @@ class MessageQueue(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val sharedPreferences: SharedPreferences = try {
+    private var volatileOnly = false
+    private val volatileQueue = mutableListOf<QueuedMessage>()
+    private val sharedPreferences: SharedPreferences? = try {
         val masterKey = PreferencesManager.getMasterKey(appContext)
         EncryptedSharedPreferences.create(
             appContext,
@@ -23,8 +25,10 @@ class MessageQueue(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using plaintext fallback", e)
-        appContext.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
+        android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
+        try { appContext.deleteSharedPreferences("message_queue") } catch (_: Exception) { }
+        volatileOnly = true
+        null
     }
     private val gson = Gson()
     private val lock = Any()
@@ -38,6 +42,11 @@ class MessageQueue(context: Context) {
 
     fun addMessage(message: String) {
         synchronized(lock) {
+            if (volatileOnly) {
+                volatileQueue.add(QueuedMessage(message = message))
+                while (volatileQueue.size > MAX_QUEUE_SIZE) volatileQueue.removeAt(0)
+                return
+            }
             val queue = readLocked().toMutableList()
             queue.add(QueuedMessage(message = message))
             while (queue.size > MAX_QUEUE_SIZE) {
@@ -50,12 +59,17 @@ class MessageQueue(context: Context) {
 
     fun getQueue(): List<QueuedMessage> {
         synchronized(lock) {
+            if (volatileOnly) return volatileQueue.toList()
             return readLocked().toList()
         }
     }
 
     fun removeMessage(messageId: String) {
         synchronized(lock) {
+            if (volatileOnly) {
+                volatileQueue.removeAll { it.id == messageId }
+                return
+            }
             val queue = readLocked().toMutableList()
             queue.removeAll { it.id == messageId }
             writeLocked(queue)
@@ -65,6 +79,10 @@ class MessageQueue(context: Context) {
     fun removeMessages(messageIds: Collection<String>) {
         if (messageIds.isEmpty()) return
         synchronized(lock) {
+            if (volatileOnly) {
+                volatileQueue.removeAll { it.id in messageIds }
+                return
+            }
             val queue = readLocked().toMutableList()
             queue.removeAll { it.id in messageIds }
             writeLocked(queue)
@@ -73,6 +91,13 @@ class MessageQueue(context: Context) {
 
     fun incrementRetry(messageId: String): Int {
         synchronized(lock) {
+            if (volatileOnly) {
+                val index = volatileQueue.indexOfFirst { it.id == messageId }
+                if (index < 0) return -1
+                val updated = volatileQueue[index].copy(retryCount = volatileQueue[index].retryCount + 1)
+                volatileQueue[index] = updated
+                return updated.retryCount
+            }
             val queue = readLocked().toMutableList()
             val index = queue.indexOfFirst { it.id == messageId }
             if (index < 0) return -1
@@ -86,13 +111,14 @@ class MessageQueue(context: Context) {
     fun clearQueue() {
         synchronized(lock) {
             cached = mutableListOf()
-            sharedPreferences.edit().remove(KEY_QUEUE).commit()
+            volatileQueue.clear()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
         }
     }
 
     private fun readLocked(): MutableList<QueuedMessage> {
         cached?.let { return it }
-        val json = sharedPreferences.getString(KEY_QUEUE, null)
+        val json = sharedPreferences?.getString(KEY_QUEUE, null)
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()
             else {
@@ -115,16 +141,18 @@ class MessageQueue(context: Context) {
 
     private fun writeLocked(queue: List<QueuedMessage>) {
         cached = queue.toMutableList()
-        sharedPreferences.edit().putString(KEY_QUEUE, gson.toJson(queue)).commit()
+        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
     }
 
     fun hasMessages(): Boolean {
         synchronized(lock) {
+            if (volatileOnly) return volatileQueue.isNotEmpty()
             return readLocked().isNotEmpty()
         }
     }
     fun getQueueSize(): Int {
         synchronized(lock) {
+            if (volatileOnly) return volatileQueue.size
             return readLocked().size
         }
     }

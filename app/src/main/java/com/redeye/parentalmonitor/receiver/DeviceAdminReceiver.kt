@@ -10,7 +10,7 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onEnabled(context: Context, intent: Intent) {
         super.onEnabled(context, intent)
-        android.util.Log.i("AdminReceiver", "Device Admin enabled")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("AdminReceiver", "Device Admin enabled")
     }
 
     override fun onDisabled(context: Context, intent: Intent) {

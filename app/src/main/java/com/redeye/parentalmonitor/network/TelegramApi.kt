@@ -1,6 +1,7 @@
 package com.redeye.parentalmonitor.network
 
 import com.google.gson.annotations.SerializedName
+import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -53,8 +54,13 @@ data class TelegramUpdate(
     @SerializedName("callback_query") val callbackQuery: TelegramCallbackQuery? = null
 )
 
+data class TelegramUser(
+    @SerializedName("id") val id: Long
+)
+
 data class TelegramCallbackQuery(
     @SerializedName("id") val id: String,
+    @SerializedName("from") val from: TelegramUser?,
     @SerializedName("data") val data: String?,
     @SerializedName("message") val message: TelegramIncomingMessage?
 )
@@ -111,9 +117,10 @@ object TelegramClient {
     private const val BASE_URL = "https://api.telegram.org/"
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
     private val retrofit = Retrofit.Builder()

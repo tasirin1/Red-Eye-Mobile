@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 29
-        versionName "1.6.2"
+        versionCode 30
+        versionName "1.6.3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -54,13 +54,19 @@ android {
     compileSdk 35
 
 
+    def keystorePwd = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD")
+    def keyAliasVal = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS")
+    def keyPwd = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD")
+    if (file("release.p12").exists() && (keystorePwd == null || keyAliasVal == null || keyPwd == null)) {
+        throw new GradleException("release.p12 present but KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD missing")
+    }
     signingConfigs {
         release {
             storeFile file("release.p12")
             storeType "PKCS12"
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD") ?: "android"
-            keyAlias System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") ?: "redeye"
-            keyPassword System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") ?: "android"
+            storePassword keystorePwd
+            keyAlias keyAliasVal
+            keyPassword keyPwd
         }
     }
 

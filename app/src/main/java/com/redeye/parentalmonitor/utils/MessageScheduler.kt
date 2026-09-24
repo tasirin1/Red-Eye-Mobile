@@ -30,7 +30,7 @@ object MessageScheduler {
                 .build()
 
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, sendRequest)
+                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, sendRequest)
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)

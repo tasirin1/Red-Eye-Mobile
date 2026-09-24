@@ -63,7 +63,7 @@ class CallLogRepository(private val context: Context) {
                             CallData(
                                 id = cursor.getLong(idIndex),
                                 number = number,
-                                name = cursor.getString(nameIndex) ?: lookupContact(number),
+                                name = cursor.getString(nameIndex) ?: cachedContact(number),
                                 date = cursor.getLong(dateIndex),
                                 duration = cursor.getInt(durationIndex),
                                 type = cursor.getInt(typeIndex)
@@ -78,6 +78,17 @@ class CallLogRepository(private val context: Context) {
             android.util.Log.e("CallLogRepository", "Error querying calls", e)
         }
         return result
+    }
+
+    private fun cachedContact(phoneNumber: String): String? {
+        synchronized(contactCache) {
+            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
+        }
+        return null
+    }
+
+    fun resolveContact(phoneNumber: String): String? {
+        return lookupContact(phoneNumber)
     }
 
     private fun lookupContact(phoneNumber: String): String? {

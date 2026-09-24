@@ -36,9 +36,7 @@ class BootReceiver : BroadcastReceiver() {
         if (!tryStartService(appContext)) {
             MessageScheduler.scheduleMessageSend(appContext)
             MessageScheduler.scheduleBootRestart(appContext)
-            return
         }
-        MessageScheduler.scheduleBootRestart(appContext)
     }
 
     private fun tryStartService(context: Context): Boolean {

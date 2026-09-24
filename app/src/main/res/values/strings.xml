@@ -36,6 +36,7 @@
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
+    <string name="setup_bad_chat">Invalid chat ID format, must be numeric</string>
     <string name="setup_testing">Sending test message…</string>
     <string name="setup_test_ok">✅ RedEye connected! Setup successful.</string>
     <string name="setup_test_success">✅ Test successful! Check your Telegram.</string>

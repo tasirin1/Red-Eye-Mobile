@@ -7,7 +7,6 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
-import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
 class SendMessageWorker(
@@ -30,7 +29,7 @@ class SendMessageWorker(
 
         val sentIds = mutableListOf<String>()
         val dropIds = mutableListOf<String>()
-        var rateLimitedAfter: Long = 0L
+        var rateLimited = false
 
         for (queuedMessage in queue) {
             try {
@@ -40,7 +39,7 @@ class SendMessageWorker(
                         delay(200)
                     }
                     is SendOutcome.RateLimited -> {
-                        rateLimitedAfter = outcome.retryAfter
+                        rateLimited = true
                         break
                     }
                     SendOutcome.Failed -> {
@@ -62,8 +61,7 @@ class SendMessageWorker(
             messageQueue.removeMessages(dropIds)
         }
 
-        if (rateLimitedAfter > 0) {
-            delay(rateLimitedAfter * 1000L)
+        if (rateLimited) {
             return Result.retry()
         }
         return Result.success()
@@ -72,7 +70,7 @@ class SendMessageWorker(
     private sealed interface SendOutcome {
         object Sent : SendOutcome
         object Failed : SendOutcome
-        data class RateLimited(val retryAfter: Long) : SendOutcome
+        object RateLimited : SendOutcome
     }
 
     private suspend fun sendMessage(message: String): SendOutcome {
@@ -90,9 +88,8 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 429) {
-                val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
-                android.util.Log.w("SendMessageWorker", "Rate limited, retry after ${retryAfter}s")
-                SendOutcome.RateLimited(retryAfter)
+                android.util.Log.w("SendMessageWorker", "Rate limited, retrying with backoff")
+                SendOutcome.RateLimited
             } else {
                 SendOutcome.Failed
             }

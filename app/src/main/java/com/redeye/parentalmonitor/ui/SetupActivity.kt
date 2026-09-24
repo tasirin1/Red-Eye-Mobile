@@ -169,14 +169,18 @@ class SetupActivity : AppCompatActivity() {
     private fun saveSettings(): Boolean {
         val token = botTokenInput.text.toString().trim()
         val chatId = chatIdInput.text.toString().trim()
-        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
+        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: prefs.syncInterval
 
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return false
         }
-        if (!token.contains(":")) {
+        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{10,}$"))) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+            return false
+        }
+        if (!chatId.matches(Regex("^-?[0-9]+$"))) {
+            Toast.makeText(this, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
             return false
         }
 
