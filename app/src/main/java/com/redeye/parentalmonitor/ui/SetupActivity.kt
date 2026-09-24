@@ -279,6 +279,7 @@ class SetupActivity : AppCompatActivity() {
         if (!hasBackgroundLocation()) {
             Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
             requestLocationPermissions()
+            return
         }
         if (prefs.isMonitoringEnabled) {
             val intent = Intent(this, MonitoringService::class.java).apply {

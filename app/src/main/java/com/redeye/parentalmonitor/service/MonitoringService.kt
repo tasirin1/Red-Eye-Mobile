@@ -156,7 +156,7 @@ class MonitoringService : Service() {
         if (hasCameraPermission()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         }
-        if (hasLocationPermission()) {
+        if (hasLocationPermission() && hasBackgroundLocation()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
         val foregroundNotification = try {
