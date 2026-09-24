@@ -33,6 +33,9 @@ class SendMessageWorker(
         var rateLimited = false
         var capped = false
         var processed = 0
+        val runToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        val runChatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
+        if (runToken.isEmpty() || runChatId.isEmpty()) return Result.success()
 
         for (queuedMessage in queue) {
             if (processed >= 20) {
@@ -41,7 +44,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                when (sendMessage(queuedMessage.message)) {
+                when (sendMessage(queuedMessage.message, runToken, runChatId)) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
                         delay(100)
@@ -106,12 +109,8 @@ class SendMessageWorker(
         object AuthFailed : SendOutcome
     }
 
-    private suspend fun sendMessage(message: String): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val botToken = preferencesManager.botToken
-            val chatId = preferencesManager.chatId
-            if (botToken.isEmpty() || chatId.isEmpty()) return SendOutcome.Failed
-
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,

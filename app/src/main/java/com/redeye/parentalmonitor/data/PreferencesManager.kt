@@ -237,8 +237,15 @@ private class MemoryPrefs : SharedPreferences {
             for ((k, v) in pending) {
                 if (v == null) data.remove(k) else data[k] = v
             }
+            val changed = HashSet(pending.keys)
             pending.clear()
             clearAll = false
+            val copy = synchronized(listeners) { ArrayList(listeners) }
+            for (l in copy) {
+                for (k in changed) {
+                    try { l.onSharedPreferenceChanged(this@MemoryPrefs, k) } catch (_: Exception) { }
+                }
+            }
         }
     }
 }

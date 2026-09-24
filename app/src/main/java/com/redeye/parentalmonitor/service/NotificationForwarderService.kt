@@ -41,6 +41,15 @@ class NotificationForwarderService : NotificationListenerService() {
     }
     private val pkgHitsLock = Any()
     private var lastRebindAt = 0L
+    private var netCheckAt = 0L
+    private var netCached = false
+    private var cachedFwdToken = ""
+    private var cachedFwdChat = ""
+    private var fwdCredsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    private var cfgCheckAt = 0L
+    private var cfgEnabled = false
+    private var cfgForward = true
+    private var cfgConfigured = false
 
     override fun onCreate() {
         super.onCreate()
@@ -48,10 +57,23 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
                 queueRef = MessageQueue(this@NotificationForwarderService)
+                refreshFwdCreds()
+                fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                    if (key == "bot_token" || key == "chat_id") refreshFwdCreds()
+                }
+                try { prefsRef?.registerChangeListener(fwdCredsListener!!) } catch (_: Exception) { }
                 prefsRef?.isConfigured()
                 queueRef?.hasMessages()
             } catch (_: Exception) {
             }
+        }
+    }
+
+    private fun refreshFwdCreds() {
+        try {
+            cachedFwdToken = prefsRef?.botToken.orEmpty()
+            cachedFwdChat = prefsRef?.chatId.orEmpty()
+        } catch (_: Exception) {
         }
     }
 
@@ -72,14 +94,21 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             return
         }
-        if (!prefs.isMonitoringEnabled || prefs.monitoringPaused || prefs.userDisabledMonitoring) return
-        if (!prefs.notifForwardEnabled || !prefs.isConfigured()) return
+        val nowCfg = android.os.SystemClock.elapsedRealtime()
+        if (nowCfg - cfgCheckAt > 30_000L) {
+            cfgCheckAt = nowCfg
+            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring } catch (_: Exception) { false }
+            cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
+            cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
+        }
+        if (!cfgEnabled) return
+        if (!cfgForward || !cfgConfigured) return
         val extras = notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         if (title.isEmpty() && text.isEmpty()) return
         val key = pkg + "#" + notifId + "\n" + title + "\n" + text
-        val now = System.currentTimeMillis()
+        val now = android.os.SystemClock.elapsedRealtime()
         synchronized(lastSent) {
             if (now - (lastSent[key] ?: 0L) < 60_000L) return
             lastSent[key] = now
@@ -127,6 +156,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
         scope.cancel()
         super.onDestroy()
     }
@@ -181,10 +211,16 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 return
             }
-            val botToken = try { prefs.botToken } catch (_: Exception) { "" }
-            val chatId = try { prefs.chatId } catch (_: Exception) { "" }
+            if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
+            val botToken = cachedFwdToken
+            val chatId = cachedFwdChat
             if (botToken.isEmpty() || chatId.isEmpty()) return
-            if (!NetworkUtils.isNetworkAvailable(this)) {
+            val nowNet = android.os.SystemClock.elapsedRealtime()
+            if (nowNet - netCheckAt > 20_000L) {
+                netCheckAt = nowNet
+                netCached = NetworkUtils.isNetworkAvailable(this)
+            }
+            if (!netCached) {
                 (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
                 return
@@ -192,7 +228,7 @@ class NotificationForwarderService : NotificationListenerService() {
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
-                if (pkg.isNotEmpty()) pkgRecord(pkg, System.currentTimeMillis())
+                if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                 return
             }
             if (response.code() == 400 || response.code() == 401 || response.code() == 403) {

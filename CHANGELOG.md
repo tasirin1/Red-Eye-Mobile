@@ -2,6 +2,30 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.6.7] - 2026-09-24
+
+### Fixed
+- `SetupActivity.testConnection` selalu menandai `credentialError` saat `400`/`401`/`403` termasuk install segar; tulis prefs pindah ke `Dispatchers.IO`.
+- Sync awal yang terpotong kini dilanjutkan ulang, bukan ditandai selesai; `initialSyncJob` dibatalkan saat monitoring dimatikan.
+- Backfill `userConsentedMonitoring` di `ParentalMonitorApp` agar pengguna lama tetap auto-start setelah reboot.
+- Loop `monitoring`/`kamera`/`command` guard identitas job agar restart cepat tak ganda.
+- `chunkedDelay` tanpa lantai 60 detik agar jeda foto pendek tak overshoot.
+- Throttle notif kamera dan kuota `pkgHits` pakai `elapsedRealtime`.
+- `checkAndSendNewData` dibatasi 1 halaman per tipe per siklus agar interval sinkronisasi dihormati.
+- `NotificationForwarderService` cache kredensial + listener; `MainActivity` ikut meminta lokasi foreground.
+
+
+### Fixed
+- `MonitoringService.shouldAutoResume`, `BootReceiver`, `BootRestartWorker` mensyaratkan `userConsentedMonitoring` agar reboot tak melewati persetujuan.
+- Loop `monitoring`/`kamera`/`command` melempar ulang `CancellationException` agar `restartCameraLoop` tak tertelan.
+- `SetupActivity.testConnection` menguji kredensial input dulu dan hanya menyimpan token saat sukses; token bagus tak lagi tertimpa token gagal.
+- Backlog foto naik ke 10 (`pendingPhotoCount`, `flushPendingPhotos`, `prunePhotoCache` FIFO) agar antrean offline terkuras.
+- Polling `getUpdates` kembali `timeout=10` (long-poll) untuk hemat radio.
+- `SendMessageWorker` baca token/chat sekali per run; `redactToken` pakai cache `sendCreds`.
+- `NotificationForwarderService` cache konfigurasi 30 detik + status jaringan 20 detik agar banjir notifikasi tak membombardir keystore.
+- Restart loop kamera tunggal via listener `camera_interval`/`monitoring_paused`/`photo_paused_until`; panggilan eksplisit ganda di handler dihapus.
+- `MemoryPrefs.apply` memberitahu listener agar fallback volatil tetap refresh kredensial.
+
 ## [1.6.6] - 2026-09-24
 
 ### Added

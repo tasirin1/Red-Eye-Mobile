@@ -202,34 +202,62 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
-        if (!saveSettings()) return
-        val token = prefs.botToken
-        val chatId = prefs.chatId
-
+        val token = botTokenInput.text.toString().trim()
+        val chatId = chatIdInput.text.toString().trim()
+        if (token.isEmpty() || chatId.isEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$")) || !chatId.matches(Regex("^-?[0-9]+$"))) {
+            Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: prefs.syncInterval
+        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
+        val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
-                val resp = TelegramClient.api.sendMessage(
-                    url,
-                    TelegramMessage(chatId = chatId, text = getString(R.string.setup_test_ok))
-                )
+                val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
-                    prefs.credentialError = ""
-                    prefs.credentialErrorAt = 0L
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+                    persistTestSettings(token, chatId, interval, cameraInterval)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+                    }
                 } else {
                     if (resp.code() == 400 || resp.code() == 401 || resp.code() == 403) {
                         prefs.credentialError = resp.code().toString()
                         prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                     }
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
+                    val code = resp.code()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                    }
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, e.message ?: ""), Toast.LENGTH_LONG).show()
+                val detail = e.message ?: ""
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, detail), Toast.LENGTH_LONG).show()
+                }
             }
-            updateStatus()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                updateStatus()
+            }
         }
+    }
+
+    private fun persistTestSettings(token: String, chatId: String, interval: Int, cameraInterval: Int) {
+        if (token != prefs.botToken || chatId != prefs.chatId) {
+            prefs.commandsTokenHash = ""
+        }
+        prefs.botToken = token
+        prefs.chatId = chatId
+        prefs.syncInterval = interval.coerceIn(1, 1440)
+        prefs.cameraInterval = cameraInterval.coerceIn(0, 60)
+        prefs.credentialError = ""
+        prefs.credentialErrorAt = 0L
     }
 
     private fun hasAllPermissions(): Boolean {

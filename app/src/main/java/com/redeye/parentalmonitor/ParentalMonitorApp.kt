@@ -14,7 +14,18 @@ class ParentalMonitorApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        migrateLegacyConsent()
         createNotificationChannel()
+    }
+
+    private fun migrateLegacyConsent() {
+        try {
+            val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this)
+            if (prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring && !prefs.userConsentedMonitoring) {
+                prefs.userConsentedMonitoring = true
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun createNotificationChannel() {

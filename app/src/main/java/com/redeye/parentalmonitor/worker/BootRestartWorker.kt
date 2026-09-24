@@ -20,7 +20,7 @@ class BootRestartWorker(
         } catch (_: Exception) {
             return if (runAttemptCount < 1) Result.retry() else Result.failure()
         }
-        if (!prefs.isMonitoringEnabled || !prefs.isConfigured() || prefs.userDisabledMonitoring) {
+        if (!prefs.isMonitoringEnabled || !prefs.isConfigured() || prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring) {
             return Result.success()
         }
         return try {
