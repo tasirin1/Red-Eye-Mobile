@@ -69,13 +69,16 @@ jobs:
           mkdir -p apks
           cp app/build/outputs/apk/debug/app-debug.apk "apks/redeye${SUFFIX}-debug.apk"
           cp app/build/outputs/apk/release/app-release.apk "apks/redeye${SUFFIX}-release.apk"
+          cp app/build/outputs/mapping/release/mapping.txt "apks/redeye${SUFFIX}-mapping.txt" 2>/dev/null || true
           ls -la apks/
 
       - name: Upload APKs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: apks
-          path: apks/*.apk
+          path: |
+            apks/*.apk
+            apks/*-mapping.txt
           if-no-files-found: error
 
       - name: Publish GitHub Release

@@ -25,11 +25,7 @@ class ParentalMonitorApp : Application() {
                 NotificationManager.IMPORTANCE_MIN
             }
 
-            val channelName = if (BuildConfig.DEBUG) {
-                CHANNEL_NAME
-            } else {
-                "System Service"
-            }
+            val channelName = CHANNEL_NAME
             
             val channel = NotificationChannel(
                 CHANNEL_ID,

@@ -48,13 +48,13 @@ class MessageQueue(context: Context) {
                 while (volatileQueue.size > MAX_QUEUE_SIZE) volatileQueue.removeAt(0)
                 return
             }
-            val queue = readLocked().toMutableList()
+            val queue = readLocked()
             queue.add(QueuedMessage(message = message))
             while (queue.size > MAX_QUEUE_SIZE) {
                 queue.removeAt(0)
                 android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
             }
-            writeLocked(queue)
+            persistLocked(queue)
         }
     }
 
@@ -84,9 +84,9 @@ class MessageQueue(context: Context) {
                 volatileQueue.removeAll { it.id in messageIds }
                 return
             }
-            val queue = readLocked().toMutableList()
+            val queue = readLocked()
             queue.removeAll { it.id in messageIds }
-            writeLocked(queue)
+            persistLocked(queue)
         }
     }
 
@@ -106,7 +106,7 @@ class MessageQueue(context: Context) {
                 volatileQueue.removeAll { it.id in drop }
                 return drop
             }
-            val queue = readLocked().toMutableList()
+            val queue = readLocked()
             val drop = mutableListOf<String>()
             for (i in queue.indices) {
                 val queued = queue[i]
@@ -117,7 +117,7 @@ class MessageQueue(context: Context) {
                 }
             }
             queue.removeAll { it.id in drop }
-            writeLocked(queue)
+            persistLocked(queue)
             return drop
         }
     }
@@ -173,6 +173,11 @@ class MessageQueue(context: Context) {
 
     private fun writeLocked(queue: List<QueuedMessage>) {
         cached = queue.toMutableList()
+        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
+    }
+
+    private fun persistLocked(queue: MutableList<QueuedMessage>) {
+        cached = queue
         sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
     }
 

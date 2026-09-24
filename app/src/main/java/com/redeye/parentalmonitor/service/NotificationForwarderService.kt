@@ -33,6 +33,14 @@ class NotificationForwarderService : NotificationListenerService() {
     private var prefsRef: PreferencesManager? = null
     @Volatile
     private var queueRef: MessageQueue? = null
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+    private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
+            return size > 200
+        }
+    }
+    private val pkgHitsLock = Any()
+    private var lastRebindAt = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -84,13 +92,14 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             pkg
         }
+        if (pkgFull(pkg, now)) return
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
             appendLine("App: ${escapeHtml(appLabel)}")
             if (title.isNotEmpty()) appendLine("Title: ${escapeHtml(title.take(200))}")
             if (text.isNotEmpty()) appendLine("Text: ${escapeHtml(text.take(300))}")
         }
-        forwardToTelegram(message)
+        forwardToTelegram(message, pkg)
     }
 
     override fun onListenerConnected() {
@@ -108,6 +117,9 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         android.util.Log.w("NotifForwarder", "Notification listener disconnected")
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastRebindAt < 60_000L) return
+        lastRebindAt = now
         try {
             requestRebind(ComponentName(this, NotificationForwarderService::class.java))
         } catch (_: Exception) {
@@ -132,7 +144,32 @@ class NotificationForwarderService : NotificationListenerService() {
         return out.toString()
     }
 
-    private suspend fun forwardToTelegram(message: String) {
+    private fun pkgFull(pkg: String, now: Long): Boolean {
+        synchronized(pkgHitsLock) {
+            val q = pkgHits[pkg] ?: return false
+            while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
+            return q.size >= 5
+        }
+    }
+
+    private fun pkgRecord(pkg: String, now: Long) {
+        synchronized(pkgHitsLock) {
+            val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
+            while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
+            q.addLast(now)
+        }
+    }
+
+    private suspend fun forwardToTelegram(message: String, pkg: String = "") {
+        if (inFlight.incrementAndGet() > 4) {
+            inFlight.decrementAndGet()
+            try {
+                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
+            return
+        }
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { prefsRef = it }
@@ -154,12 +191,15 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
-            if (response.isSuccessful && response.body()?.ok == true) return
+            if (response.isSuccessful && response.body()?.ok == true) {
+                if (pkg.isNotEmpty()) pkgRecord(pkg, System.currentTimeMillis())
+                return
+            }
             if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("NotifForwarder", "Auth rejected, dropping notification without queue")
                 try {
                     prefs.credentialError = response.code().toString()
-                    prefs.credentialErrorAt = System.currentTimeMillis()
+                    prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                 } catch (_: Exception) {
                 }
                 return
@@ -173,6 +213,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
+        } finally {
+            inFlight.decrementAndGet()
         }
     }
 }

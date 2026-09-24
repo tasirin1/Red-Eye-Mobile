@@ -175,7 +175,7 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return false
         }
-        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{10,}$"))) {
+        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$"))) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return false
         }
@@ -186,6 +186,11 @@ class SetupActivity : AppCompatActivity() {
 
         val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
 
+        if (token != prefs.botToken || chatId != prefs.chatId) {
+            prefs.commandsTokenHash = ""
+            prefs.credentialError = ""
+            prefs.credentialErrorAt = 0L
+        }
         prefs.botToken = token
         prefs.chatId = chatId
         prefs.syncInterval = interval.coerceIn(1, 1440)
@@ -210,8 +215,14 @@ class SetupActivity : AppCompatActivity() {
                     TelegramMessage(chatId = chatId, text = getString(R.string.setup_test_ok))
                 )
                 if (resp.isSuccessful && resp.body()?.ok == true) {
+                    prefs.credentialError = ""
+                    prefs.credentialErrorAt = 0L
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
                 } else {
+                    if (resp.code() == 400 || resp.code() == 401 || resp.code() == 403) {
+                        prefs.credentialError = resp.code().toString()
+                        prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                    }
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
@@ -277,6 +288,7 @@ class SetupActivity : AppCompatActivity() {
             }
             prefs.isMonitoringEnabled = true
             prefs.userDisabledMonitoring = false
+            prefs.userConsentedMonitoring = true
             Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -348,6 +360,8 @@ class SetupActivity : AppCompatActivity() {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
+                    prefs.credentialError = ""
+                    prefs.credentialErrorAt = 0L
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_status_sent), Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
@@ -385,32 +399,46 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
-        val configured = prefs.isConfigured()
-        val perms = hasAllPermissions()
-        val running = prefs.isMonitoringEnabled
-        toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
-        toggleButton.isEnabled = configured && perms
-        permissionButton.text = when {
-            !perms -> getString(R.string.grant_permissions)
-            !hasBackgroundLocation() -> getString(R.string.setup_bg_request)
-            else -> getString(R.string.msg_permissions_granted)
-        }
-        notifButton.text = when {
-            !isNotificationAccessGranted() -> getString(R.string.setup_notif)
-            prefs.notifForwardEnabled -> getString(R.string.setup_notif_on)
-            else -> getString(R.string.setup_notif_off)
-        }
-        val credErr = try { prefs.credentialError } catch (_: Exception) { "" }
-        val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
-        statusText.text = getString(
-            R.string.setup_status_fmt,
-            if (configured) "OK" else "-",
-            if (perms) "OK" else "-",
-            if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-        ) + "\nBattery: " + (if (isBatteryExempt()) "unrestricted" else "restricted") + "\nStorage: " + (if (prefs.isStorageEncrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + "\nNotifications: " + (if (isNotificationAccessGranted() && prefs.notifForwardEnabled) "forwarding" else "off") + "\n" + getString(
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
+            fun s(key: String): String = snap[key] as? String ?: ""
+            fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
+            val configured = s("bot_token").isNotEmpty() && s("chat_id").isNotEmpty()
+            val perms = hasAllPermissions()
+            val running = b("monitoring_enabled", false)
+            val bg = hasBackgroundLocation()
+            val fg = hasForegroundLocation()
+            val exempt = isBatteryExempt()
+            val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
+            val credErr = s("credential_error")
+            val notifOn = b("notif_forward_enabled", true)
+            val listener = isNotificationAccessGranted()
+            val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
+            val body = getString(
+                R.string.setup_status_fmt,
+                if (configured) "OK" else "-",
+                if (perms) "OK" else "-",
+                if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
-            if (hasForegroundLocation()) "OK" else "-",
-            if (hasBackgroundLocation()) "OK" else "-"
-        )
+            if (fg) "OK" else "-",
+            if (bg) "OK" else "-"
+            )
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            statusText.text = body
+            toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
+            toggleButton.isEnabled = configured && perms
+            permissionButton.text = when {
+                !perms -> getString(R.string.grant_permissions)
+                !bg -> getString(R.string.setup_bg_request)
+                else -> getString(R.string.msg_permissions_granted)
+            }
+            notifButton.text = when {
+                !listener -> getString(R.string.setup_notif)
+                notifOn -> getString(R.string.setup_notif_on)
+                else -> getString(R.string.setup_notif_off)
+            }
+            }
+        }
     }
 }

@@ -34,7 +34,6 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (!preferencesManager.isMonitoringEnabled || !preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
         if (!tryStartService(appContext)) {
-            MessageScheduler.scheduleMessageSend(appContext)
             MessageScheduler.scheduleBootRestart(appContext)
         }
     }

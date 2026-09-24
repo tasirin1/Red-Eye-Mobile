@@ -73,6 +73,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_MONITORING_PAUSED = "monitoring_paused"
         private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         private const val KEY_CAMERA_FACING = "camera_facing"
+        private const val KEY_USER_CONSENTED = "user_consented_monitoring"
         private const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
         private const val KEY_CRED_ERROR = "credential_error"
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
@@ -158,6 +159,26 @@ class PreferencesManager(context: Context) {
     fun isConfigured(): Boolean {
         return botToken.isNotEmpty() && chatId.isNotEmpty()
     }
+
+    fun registerChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        try { sharedPreferences.registerOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+    }
+
+    fun unregisterChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        try { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+    }
+
+    fun snapshot(): Map<String, Any?> {
+        return try {
+            HashMap(sharedPreferences.all)
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    var userConsentedMonitoring: Boolean
+        get() = sharedPreferences.getBoolean(KEY_USER_CONSENTED, false)
+        set(value) = sharedPreferences.edit().putBoolean(KEY_USER_CONSENTED, value).apply()
 
     var notifForwardEnabled: Boolean
         get() = sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true)

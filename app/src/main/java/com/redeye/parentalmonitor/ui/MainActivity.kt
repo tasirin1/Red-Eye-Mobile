@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             
             // RELEASE mode: Auto-start service after permissions granted
-            if (!BuildConfig.DEBUG && preferencesManager.isConfigured()) {
+            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
                 if (!preferencesManager.isMonitoringEnabled) {
                     try {
@@ -255,7 +255,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Start monitoring service silently
-        if (preferencesManager.userDisabledMonitoring) {
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
             return
         }

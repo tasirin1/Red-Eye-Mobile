@@ -19,7 +19,7 @@ class SendMessageWorker(
 
     override suspend fun doWork(): Result {
         if (!preferencesManager.isConfigured()) {
-            return Result.failure()
+            return Result.success()
         }
 
         val queue = messageQueue.getQueue()
@@ -31,8 +31,15 @@ class SendMessageWorker(
         val failedIds = mutableListOf<String>()
         val authFailedIds = mutableListOf<String>()
         var rateLimited = false
+        var capped = false
+        var processed = 0
 
         for (queuedMessage in queue) {
+            if (processed >= 20) {
+                capped = true
+                break
+            }
+            processed++
             try {
                 when (sendMessage(queuedMessage.message)) {
                     is SendOutcome.Sent -> {
@@ -68,7 +75,7 @@ class SendMessageWorker(
             messageQueue.removeMessages(authFailedIds)
             try {
                 preferencesManager.credentialError = "401"
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
             } catch (_: Exception) {
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected, dropped ${authFailedIds.size} message(s) without retry")
@@ -86,7 +93,7 @@ class SendMessageWorker(
         if (rateLimited) {
             return Result.retry()
         }
-        if (pendingTransient && messageQueue.hasMessages()) {
+        if ((pendingTransient || capped) && messageQueue.hasMessages()) {
             return Result.retry()
         }
         return Result.success()

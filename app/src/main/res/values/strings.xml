@@ -20,7 +20,7 @@
     <string name="enter_chat_id">Enter chat ID</string>
     <string name="sync_interval">Sync interval (minutes)</string>
     <string name="camera_interval">Photo interval in minutes (0 = manual only)</string>
-    <string name="admin_description">Required to protect the app from uninstallation</string>
+    <string name="admin_description">Prevents silent uninstallation. Grants screen-lock, login-watch, password and wipe-data policies used only for uninstall protection.</string>
     <string name="setup_title">Telegram Bot Setup</string>
     <string name="setup_test">Test Connection</string>
     <string name="setup_admin">Enable Protection</string>
