@@ -16,8 +16,8 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
         // Pre-configured Telegram settings
-        buildConfigField "String", "BOT_TOKEN", "\"5899601127:AAFejm1J07lWqpUaJbGSRa0A9xgwNgEYs1A\""
-        buildConfigField "String", "CHAT_ID", "\"6043795029\""
+        // Bot credentials must NEVER be baked into the APK. They are entered
+        // manually in the app; only the sync interval comes from CI/local props.
         buildConfigField "int", "SYNC_INTERVAL", "5"
     }
 
@@ -84,7 +84,6 @@ dependencies {
     // Retrofit for HTTP requests (Telegram API)
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     
     // Gson for JSON serialization
     implementation 'com.google.code.gson:gson:2.10.1'
