@@ -204,6 +204,17 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun redactToken(value: String?): String {
+        if (value.isNullOrEmpty()) return ""
+        val token = try {
+            prefsRef?.botToken ?: PreferencesManager.getInstance(this).botToken
+        } catch (_: Exception) {
+            ""
+        }
+        if (token.isEmpty()) return value
+        return value.replace(token, "***")
+    }
+
     private fun queue(): MessageQueue {
         queueRef?.let { return it }
         return MessageQueue(this).also { queueRef = it }
@@ -273,7 +284,7 @@ class NotificationForwarderService : NotificationListenerService() {
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: Exception) {
-            android.util.Log.e("NotifForwarder", "Forward failed", e)
+            android.util.Log.e("NotifForwarder", "Forward failed: ${redactToken(e.message)}")
             try {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)

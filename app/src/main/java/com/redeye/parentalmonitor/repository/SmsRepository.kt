@@ -19,7 +19,7 @@ class SmsRepository(private val context: Context) {
         return querySms(
             selection = "${Telephony.Sms._ID} > ?",
             args = arrayOf(afterId.toString()),
-            sortOrder = "${Telephony.Sms.DATE} DESC",
+            sortOrder = "${Telephony.Sms._ID} DESC",
             limit = 500
         )
     }

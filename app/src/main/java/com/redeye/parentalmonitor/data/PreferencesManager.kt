@@ -79,6 +79,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
         private const val KEY_RING_PREV_VOL = "ring_prev_volume"
+        private const val KEY_RING_SAVED_AT = "ring_saved_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -223,6 +224,10 @@ class PreferencesManager(context: Context) {
     var ringPrevVolume: Int
         get() = sharedPreferences.getInt(KEY_RING_PREV_VOL, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, value).apply()
+
+    var ringSavedAt: Long
+        get() = sharedPreferences.getLong(KEY_RING_SAVED_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_RING_SAVED_AT, value).apply()
 
     private fun putValue(key: String, value: Any?) {
         val editor = sharedPreferences.edit()

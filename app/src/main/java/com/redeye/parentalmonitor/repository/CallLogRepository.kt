@@ -3,7 +3,6 @@ package com.redeye.parentalmonitor.repository
 import android.content.Context
 import android.database.Cursor
 import android.provider.CallLog
-import android.provider.ContactsContract
 import com.redeye.parentalmonitor.data.models.CallData
 
 class CallLogRepository(private val context: Context) {
@@ -16,11 +15,6 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.DURATION,
         CallLog.Calls.TYPE
     )
-    private val contactCache = object : LinkedHashMap<String, String?>(128, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>): Boolean {
-            return size > 500
-        }
-    }
 
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
         return queryCalls(
@@ -63,7 +57,7 @@ class CallLogRepository(private val context: Context) {
                             CallData(
                                 id = cursor.getLong(idIndex),
                                 number = number,
-                                name = cursor.getString(nameIndex) ?: cachedContact(number),
+                                name = cursor.getString(nameIndex),
                                 date = cursor.getLong(dateIndex),
                                 duration = cursor.getInt(durationIndex),
                                 type = cursor.getInt(typeIndex)
@@ -80,13 +74,6 @@ class CallLogRepository(private val context: Context) {
         return result
     }
 
-    private fun cachedContact(phoneNumber: String): String? {
-        synchronized(contactCache) {
-            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
-        }
-        return lookupContact(phoneNumber)
-    }
-
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
         return queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ?",
@@ -96,37 +83,4 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
-    fun resolveContact(phoneNumber: String): String? {
-        return lookupContact(phoneNumber)
-    }
-
-    private fun lookupContact(phoneNumber: String): String? {
-        synchronized(contactCache) {
-            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
-        }
-        var name: String? = null
-        try {
-            val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
-                .appendPath(phoneNumber)
-                .build()
-            context.contentResolver.query(
-                uri,
-                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
-                null,
-                null,
-                null
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
-                    if (nameIndex >= 0) name = cursor.getString(nameIndex)
-                }
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("CallLogRepository", "Error looking up contact", e)
-        }
-        synchronized(contactCache) {
-            contactCache[phoneNumber] = name
-        }
-        return name
-    }
 }

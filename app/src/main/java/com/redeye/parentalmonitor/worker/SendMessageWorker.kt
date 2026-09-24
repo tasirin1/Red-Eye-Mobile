@@ -69,7 +69,7 @@ class SendMessageWorker(
                 }
             } catch (e: Exception) {
                 val detail = (e.message ?: "").let { m -> if (runToken.isNotEmpty()) m.replace(runToken, "***") else m }
-                android.util.Log.e("SendMessageWorker", "Exception processing message: $detail", e)
+                android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
                 failedIds.add(queuedMessage.id)
             }
         }
@@ -99,10 +99,6 @@ class SendMessageWorker(
         }
 
         if (rateLimitedSecs > 0) {
-            try {
-                delay(rateLimitedSecs.coerceIn(1, 60) * 1000L)
-            } catch (_: Exception) {
-            }
             return Result.retry()
         }
         if (messageQueue.hasMessages() && (sentIds.isNotEmpty() || runAttemptCount < 3)) {

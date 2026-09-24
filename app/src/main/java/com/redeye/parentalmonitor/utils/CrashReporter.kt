@@ -135,10 +135,10 @@ object CrashReporter {
             current = current.cause
             depth++
         }
-        var text = "<b>Force close</b>\n<pre>" + Html.escape(body.toString()) + "</pre>"
-        if (token.isNotEmpty()) text = text.replace(token, "***")
-        if (text.length > MAX_CHARS) text = text.take(MAX_CHARS)
-        return text
+        var raw = body.toString()
+        if (token.isNotEmpty()) raw = raw.replace(token, "***")
+        if (raw.length > MAX_CHARS) raw = raw.take(MAX_CHARS)
+        return "<b>Force close</b>\n<pre>" + Html.escape(raw) + "</pre>"
     }
 
 }
