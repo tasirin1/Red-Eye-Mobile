@@ -249,14 +249,18 @@ class SetupActivity : AppCompatActivity() {
             val intent = Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+                prefs.isMonitoringEnabled = true
+                prefs.userDisabledMonitoring = false
+                Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
             }
-            prefs.isMonitoringEnabled = true
-            prefs.userDisabledMonitoring = false
-            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         }
         updateStatus()
     }

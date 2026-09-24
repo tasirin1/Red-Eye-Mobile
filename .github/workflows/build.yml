@@ -54,8 +54,6 @@ jobs:
       - name: Build APKs
         run: gradle assembleDebug assembleRelease --stacktrace
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}

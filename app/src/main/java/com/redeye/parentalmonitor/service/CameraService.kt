@@ -136,7 +136,8 @@ class CameraService(private val context: Context) {
 
             // Setup ImageReader
             val photoSize = choosePhotoSize(cameraManager, cameraId)
-            imageReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 1)
+            val jpegOrientation = getJpegOrientation(cameraManager, cameraId, lensFacing)
+            imageReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
             imageReader?.setOnImageAvailableListener({ reader ->
                 try {
                     onTrace("trace: image arrived")
@@ -175,7 +176,7 @@ class CameraService(private val context: Context) {
                     cameraDevice = camera
                     Log.d(TAG, "Camera opened successfully")
                     onTrace("trace: camera opened")
-                    createCaptureSession(camera, ::finishWithError, { onTrace(it) })
+                    createCaptureSession(camera, jpegOrientation, ::finishWithError, { onTrace(it) })
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
@@ -266,6 +267,34 @@ class CameraService(private val context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun getJpegOrientation(cameraManager: CameraManager, cameraId: String, lensFacing: Int): Int {
+        return try {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+            val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+            val rotation = try {
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                windowManager.defaultDisplay.rotation
+            } catch (_: Exception) {
+                android.view.Surface.ROTATION_0
+            }
+            val degrees = when (rotation) {
+                android.view.Surface.ROTATION_90 -> 90
+                android.view.Surface.ROTATION_180 -> 180
+                android.view.Surface.ROTATION_270 -> 270
+                else -> 0
+            }
+            if (facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                (sensor - degrees + 360) % 360
+            } else {
+                (sensor + degrees) % 360
+            }
+        } catch (_: Exception) {
+            0
+        }
+    }
+
     private fun getCameraId(cameraManager: CameraManager, lensFacing: Int): String? {
         return try {
             cameraManager.cameraIdList.firstOrNull { id ->
@@ -282,6 +311,7 @@ class CameraService(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun createCaptureSession(
         camera: CameraDevice,
+        jpegOrientation: Int,
         onError: (Exception) -> Unit,
         onTrace: (String) -> Unit = {}
     ) {
@@ -289,10 +319,9 @@ class CameraService(private val context: Context) {
             val surface = imageReader!!.surface
             val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(surface)
-
-            // Auto settings
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
             captureBuilder.set(CaptureRequest.JPEG_QUALITY, 85.toByte())
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation)
 
             camera.createCaptureSession(
                 listOf(surface),

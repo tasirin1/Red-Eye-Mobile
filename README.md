@@ -65,8 +65,6 @@ Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
 | Secret | Purpose |
 |--------|---------|
-| `BOT_TOKEN` | Pre-fill Telegram bot token at build time |
-| `CHAT_ID` | Pre-fill Telegram chat ID at build time |
 | `SYNC_INTERVAL` | Sync interval in minutes (default `5`) |
 | `ANDROID_KEYSTORE_BASE64` | Release keystore for signed APKs |
 | `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` | Keystore credentials |

@@ -6,7 +6,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 - JANGAN install Android SDK / build APK secara lokal. Build SELALU di GitHub Actions (`.github/workflows/build.yml`).
 - Di environment lokal/container: cukup edit kode, cek sintaks ringan, dan validasi XML. Tidak perlu `./gradlew`, tidak perlu `local.properties`.
-- JANGAN pernah commit secret (bot token, chat ID) ke repo. `BOT_TOKEN`/`CHAT_ID` default di kode harus string kosong.
+- JANGAN pernah commit secret (bot token, chat ID) ke repo. Kredensial bot tidak dibake ke APK dalam bentuk apa pun; satu-satunya sumber adalah input manual `SetupActivity`.
 
 ## 2. Cara Build yang Benar
 
@@ -14,7 +14,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Pemicu: push ke branch / buka PR ke `main`, push tag `v*`, atau manual via Actions > Build APK > Run workflow. Run yang tersalip otomatis dibatalkan (`concurrency`).
 - Ambil hasil dari tab Actions > Artifacts (`apks`).
 - Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi kedua APK berversi (`redeye-vX.Y.Z-debug.apk`, `redeye-vX.Y.Z-release.apk`).
-- Secret opsional `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Tanpa secret pun build tetap sukses (nilai kosong) karena pemakaian normal memakai input manual di aplikasi.
+- Secret opsional `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Kredensial bot tidak lewat CI sama sekali; konfigurasi selalu input manual di aplikasi.
 
 ## 3. Alur Konfigurasi Bot (Wajib)
 

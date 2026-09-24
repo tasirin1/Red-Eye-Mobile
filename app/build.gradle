@@ -15,20 +15,16 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 28
-        versionName "1.6.1"
+        versionCode 29
+        versionName "1.6.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Telegram settings: SELALU kosong di repo.
-        // Nilai hanya diisi saat CI (GitHub Actions) via -PBOT_TOKEN/-PCHAT_ID/-PSYNC_INTERVAL.
-        // Pemakaian normal: input manual dari halaman Setup di aplikasi (SetupActivity).
-        def botTokenProp = project.findProperty("BOT_TOKEN") ?: System.getenv("BOT_TOKEN") ?: ""
-        def chatIdProp = project.findProperty("CHAT_ID") ?: System.getenv("CHAT_ID") ?: ""
+        // Interval sync default: hanya dari CI via -PSYNC_INTERVAL / env SYNC_INTERVAL.
+        // Kredensial bot TIDAK pernah dibake ke APK; satu-satunya sumber adalah
+        // input manual halaman Setup di aplikasi (SetupActivity).
         def syncIntervalProp = project.findProperty("SYNC_INTERVAL") ?: System.getenv("SYNC_INTERVAL") ?: "5"
         if (!"$syncIntervalProp".isInteger()) syncIntervalProp = "5"
-        buildConfigField "String", "BOT_TOKEN", "\"${botTokenProp}\""
-        buildConfigField "String", "CHAT_ID", "\"${chatIdProp}\""
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
     }
 
