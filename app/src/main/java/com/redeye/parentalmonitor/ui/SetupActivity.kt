@@ -82,6 +82,14 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { updateStatus() }
 
+    companion object {
+        private const val STORED_MASK = "••••••••"
+    }
+
+    private fun resolveStored(raw: String, stored: String): String {
+        return if (raw.isEmpty() || raw == STORED_MASK) stored else raw
+    }
+
     private fun hasForegroundLocation(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -141,8 +149,8 @@ class SetupActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.setupPermissionButton)
         notifButton = findViewById(R.id.setupNotifButton)
 
-        botTokenInput.setText(prefs.botToken)
-        chatIdInput.setText(prefs.chatId)
+        botTokenInput.setText(if (prefs.botToken.isEmpty()) "" else STORED_MASK)
+        chatIdInput.setText(if (prefs.chatId.isEmpty()) "" else STORED_MASK)
         syncIntervalInput.setText(prefs.syncInterval.toString())
         cameraIntervalInput.setText(prefs.cameraInterval.toString())
 
@@ -171,8 +179,8 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun saveSettings(): Boolean {
-        val token = botTokenInput.text.toString().trim()
-        val chatId = chatIdInput.text.toString().trim()
+        val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
+        val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
         val interval = syncIntervalInput.text.toString().toIntOrNull() ?: prefs.syncInterval
 
         if (token.isEmpty() || chatId.isEmpty()) {
@@ -206,8 +214,8 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
-        val token = botTokenInput.text.toString().trim()
-        val chatId = chatIdInput.text.toString().trim()
+        val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
+        val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
@@ -436,15 +444,15 @@ class SetupActivity : AppCompatActivity() {
             val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
             fun s(key: String): String = snap[key] as? String ?: ""
             fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
-            val configured = s("bot_token").isNotEmpty() && s("chat_id").isNotEmpty()
+            val configured = s(PreferencesManager.KEY_BOT_TOKEN).isNotEmpty() && s(PreferencesManager.KEY_CHAT_ID).isNotEmpty()
             val perms = hasAllPermissions()
-            val running = b("monitoring_enabled", false)
+            val running = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
-            val credErr = s("credential_error")
-            val notifOn = b("notif_forward_enabled", true)
+            val credErr = s(PreferencesManager.KEY_CRED_ERROR)
+            val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val listener = isNotificationAccessGranted()
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(

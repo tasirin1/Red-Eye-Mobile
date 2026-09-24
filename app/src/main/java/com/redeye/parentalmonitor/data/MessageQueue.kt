@@ -14,7 +14,7 @@ class MessageQueue(context: Context) {
 
     private var volatileOnly = false
     private val volatileQueue = mutableListOf<QueuedMessage>()
-    private val sharedPreferences: SharedPreferences? = try {
+    private var sharedPreferences: SharedPreferences? = try {
         val masterKey = PreferencesManager.getMasterKey(appContext)
         EncryptedSharedPreferences.create(
             appContext,
@@ -38,6 +38,36 @@ class MessageQueue(context: Context) {
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_RETRIES = 5
         private val gson = Gson()
+    }
+
+    fun tryRestorePersistent(): Boolean {
+        synchronized(lock) {
+            if (!volatileOnly) return true
+            return try {
+                val masterKey = PreferencesManager.getMasterKey(appContext)
+                val restored = EncryptedSharedPreferences.create(
+                    appContext,
+                    "encrypted_queue",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+                val pending = volatileQueue.toList()
+                volatileQueue.clear()
+                sharedPreferences = restored
+                volatileOnly = false
+                cached = null
+                if (pending.isNotEmpty()) {
+                    val queue = readLocked().toMutableList()
+                    queue.addAll(pending)
+                    while (queue.size > MAX_QUEUE_SIZE) queue.removeAt(0)
+                    persistLocked(queue)
+                }
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     fun addMessage(message: String) {

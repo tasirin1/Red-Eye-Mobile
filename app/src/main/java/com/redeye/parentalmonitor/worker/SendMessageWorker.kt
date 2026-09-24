@@ -18,6 +18,10 @@ class SendMessageWorker(
     private val preferencesManager = PreferencesManager.getInstance(context)
 
     override suspend fun doWork(): Result {
+        try {
+            messageQueue.tryRestorePersistent()
+        } catch (_: Exception) {
+        }
         if (!preferencesManager.isConfigured()) {
             return Result.success()
         }

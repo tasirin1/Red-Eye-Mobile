@@ -17,6 +17,7 @@ class BootRestartWorker(
     override suspend fun doWork(): Result {
         val appContext = applicationContext
         val prefs = try {
+            PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
         } catch (_: Exception) {
             return if (runAttemptCount < 1) Result.retry() else Result.failure()

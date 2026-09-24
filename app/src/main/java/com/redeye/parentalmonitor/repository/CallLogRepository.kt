@@ -82,8 +82,18 @@ class CallLogRepository(private val context: Context) {
 
     private fun cachedContact(phoneNumber: String): String? {
         synchronized(contactCache) {
-            return contactCache.getOrElse(phoneNumber) { return null }
+            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
         }
+        return lookupContact(phoneNumber)
+    }
+
+    fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
+        return queryCalls(
+            selection = "${CallLog.Calls.NUMBER} LIKE ?",
+            args = arrayOf("%$digits%"),
+            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            limit = limit
+        )
     }
 
     fun resolveContact(phoneNumber: String): String? {

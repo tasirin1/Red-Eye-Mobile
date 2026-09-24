@@ -24,6 +24,15 @@ class SmsRepository(private val context: Context) {
         )
     }
 
+    fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
+        return querySms(
+            selection = "${Telephony.Sms.ADDRESS} LIKE ?",
+            args = arrayOf("%$digits%"),
+            sortOrder = "${Telephony.Sms.DATE} DESC",
+            limit = limit
+        )
+    }
+
     fun getRecentSms(limit: Int = 20): List<SmsData> {
         return querySms(
             selection = null,

@@ -9,12 +9,15 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class NotificationForwarderService : NotificationListenerService() {
 
@@ -34,6 +37,7 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var queueRef: MessageQueue? = null
     private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+    private val fwdMutex = Mutex()
     private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
             return size > 200
@@ -145,9 +149,9 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pkgFull(pkg, now)) return
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
-            appendLine("App: ${escapeHtml(appLabel)}")
-            if (title.isNotEmpty()) appendLine("Title: ${escapeHtml(title.take(200))}")
-            if (text.isNotEmpty()) appendLine("Text: ${escapeHtml(text.take(300))}")
+            appendLine("App: ${Html.escape(appLabel)}")
+            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title.take(200))}")
+            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
         }
         record(appLabel, title, text)
         forwardToTelegram(message, pkg)
@@ -183,18 +187,6 @@ class NotificationForwarderService : NotificationListenerService() {
         super.onDestroy()
     }
 
-    private fun escapeHtml(text: String): String {
-        val out = StringBuilder(text.length + 16)
-        for (c in text) {
-            when (c) {
-                '&' -> out.append("&amp;")
-                '<' -> out.append("&lt;")
-                '>' -> out.append("&gt;")
-                else -> out.append(c)
-            }
-        }
-        return out.toString()
-    }
 
     private fun pkgFull(pkg: String, now: Long): Boolean {
         synchronized(pkgHitsLock) {
@@ -212,22 +204,35 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun queue(): MessageQueue {
+        queueRef?.let { return it }
+        return MessageQueue(this).also { queueRef = it }
+    }
+
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
         if (inFlight.incrementAndGet() > 4) {
             inFlight.decrementAndGet()
             try {
-                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
             return
         }
         try {
+            fwdMutex.withLock { forwardLocked(message, pkg) }
+        } finally {
+            inFlight.decrementAndGet()
+        }
+    }
+
+    private suspend fun forwardLocked(message: String, pkg: String) {
+        try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { prefsRef = it }
             } catch (_: Exception) {
                 try {
-                    (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                    queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -243,7 +248,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 netCached = NetworkUtils.isNetworkAvailable(this)
             }
             if (!netCached) {
-                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
                 return
             }
@@ -262,17 +267,15 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 return
             }
-            (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+            queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed", e)
             try {
-                (queueRef ?: MessageQueue(this).also { queueRef = it }).addMessage(message)
+                queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
-        } finally {
-            inFlight.decrementAndGet()
         }
     }
 }

@@ -54,9 +54,9 @@ class PreferencesManager(context: Context) {
                     .also { sharedMasterKey = it }
             }
         }
-        private const val KEY_BOT_TOKEN = "bot_token"
-        private const val KEY_CHAT_ID = "chat_id"
-        private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
+        const val KEY_BOT_TOKEN = "bot_token"
+        const val KEY_CHAT_ID = "chat_id"
+        const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_LAST_SYNC = "last_sync"
         private const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
@@ -74,10 +74,34 @@ class PreferencesManager(context: Context) {
         private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         private const val KEY_CAMERA_FACING = "camera_facing"
         private const val KEY_USER_CONSENTED = "user_consented_monitoring"
-        private const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
-        private const val KEY_CRED_ERROR = "credential_error"
+        const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
+        const val KEY_CRED_ERROR = "credential_error"
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
+        private const val KEY_RING_PREV_VOL = "ring_prev_volume"
+
+        fun refreshInstance(context: Context): Boolean {
+            synchronized(this) {
+                val current = instance
+                if (current != null && current.isStorageEncrypted) return true
+                return try {
+                    val fresh = PreferencesManager(context.applicationContext)
+                    if (!fresh.isStorageEncrypted) {
+                        if (current == null) instance = fresh
+                        return false
+                    }
+                    if (current != null) {
+                        for ((k, v) in current.snapshot()) {
+                            fresh.putValue(k, v)
+                        }
+                    }
+                    instance = fresh
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
     }
 
     var botToken: String
@@ -195,6 +219,27 @@ class PreferencesManager(context: Context) {
     var commandsTokenHash: String
         get() = sharedPreferences.getString(KEY_COMMANDS_TOKEN_HASH, "") ?: ""
         set(value) = sharedPreferences.edit().putString(KEY_COMMANDS_TOKEN_HASH, value).apply()
+
+    var ringPrevVolume: Int
+        get() = sharedPreferences.getInt(KEY_RING_PREV_VOL, -1)
+        set(value) = sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, value).apply()
+
+    private fun putValue(key: String, value: Any?) {
+        val editor = sharedPreferences.edit()
+        when (value) {
+            null -> editor.remove(key)
+            is String -> editor.putString(key, value)
+            is Int -> editor.putInt(key, value)
+            is Long -> editor.putLong(key, value)
+            is Float -> editor.putFloat(key, value)
+            is Boolean -> editor.putBoolean(key, value)
+            else -> return
+        }
+        try {
+            editor.apply()
+        } catch (_: Exception) {
+        }
+    }
 
 private class MemoryPrefs : SharedPreferences {
     private val data = java.util.concurrent.ConcurrentHashMap<String, Any?>()

@@ -5,4 +5,11 @@
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config>
+        <domain includeSubdomains="false">api.telegram.org</domain>
+        <pin-set expiration="2027-09-24">
+            <pin digest="SHA-256">8Rw90Ej3Ttt8RRkrg+WYDS9n7IS03bk5bjP/UXPtaY8=</pin>
+            <pin digest="SHA-256">Ko8tivDrEjiY90yGasP6ZpBU4jwXvHqVvQI0GS3GNdA=</pin>
+        </pin-set>
+    </domain-config>
 </network-security-config>
