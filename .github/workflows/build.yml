@@ -51,30 +51,12 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Build Standard APKs
+      - name: Build APKs
         run: gradle assembleDebug assembleRelease --stacktrace
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
-          PARENTAL_UI: "false"
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Stash standard APKs
-        run: |
-          mkdir -p /tmp/standard
-          cp app/build/outputs/apk/debug/app-debug.apk /tmp/standard/
-          cp app/build/outputs/apk/release/app-release.apk /tmp/standard/
-
-      - name: Build Parental APKs
-        run: gradle assembleDebug assembleRelease --stacktrace
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
-          PARENTAL_UI: "true"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -87,10 +69,8 @@ jobs:
             SUFFIX=""
           fi
           mkdir -p apks
-          cp /tmp/standard/app-debug.apk "apks/redeye${SUFFIX}-debug.apk"
-          cp /tmp/standard/app-release.apk "apks/redeye${SUFFIX}-release.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "apks/parental${SUFFIX}-debug.apk"
-          cp app/build/outputs/apk/release/app-release.apk "apks/parental${SUFFIX}-release.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "apks/redeye${SUFFIX}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk "apks/redeye${SUFFIX}-release.apk"
           ls -la apks/
 
       - name: Upload APKs
@@ -106,5 +86,4 @@ jobs:
         with:
           files: |
             apks/redeye-*.apk
-            apks/parental-*.apk
           generate_release_notes: true

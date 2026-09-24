@@ -10,10 +10,10 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 ## 2. Cara Build yang Benar
 
-- Satu-satunya workflow adalah `.github/workflows/build.yml`. Setiap run membangun keempat APK sekaligus: standar (`redeye-debug.apk`, `redeye-release.apk`) dan parental (`parental-debug.apk`, `parental-release.apk`, `PARENTAL_UI=true`).
+- Satu-satunya workflow adalah `.github/workflows/build.yml`. Setiap run membangun kedua APK standar sekaligus: `redeye-debug.apk` dan `redeye-release.apk`.
 - Pemicu: push ke branch / buka PR ke `main`, push tag `v*`, atau manual via Actions > Build APK > Run workflow. Run yang tersalip otomatis dibatalkan (`concurrency`).
 - Ambil hasil dari tab Actions > Artifacts (`apks`).
-- Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi keempat APK berversi (`redeye-vX.Y.Z-*.apk`, `parental-vX.Y.Z-*.apk`).
+- Push tag `vX.Y.Z` otomatis menerbitkan GitHub Release berisi kedua APK berversi (`redeye-vX.Y.Z-debug.apk`, `redeye-vX.Y.Z-release.apk`).
 - Secret opsional `BOT_TOKEN`, `CHAT_ID`, `SYNC_INTERVAL` diisi via GitHub Secrets — dibaca workflow sebagai env dan diteruskan ke Gradle property (`-P` / env). Tanpa secret pun build tetap sukses (nilai kosong) karena pemakaian normal memakai input manual di aplikasi.
 
 ## 3. Alur Konfigurasi Bot (Wajib)

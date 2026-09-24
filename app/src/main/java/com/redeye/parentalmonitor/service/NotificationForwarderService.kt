@@ -19,14 +19,27 @@ import kotlinx.coroutines.launch
 class NotificationForwarderService : NotificationListenerService() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val lastSent = mutableMapOf<String, Long>()
+    private val lastSent = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > 200
+        }
+    }
+    private val prefsLazy by lazy { PreferencesManager.getInstance(this) }
+    private val queueLazy by lazy { MessageQueue(this) }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val notification = sbn?.notification ?: return
-        if (sbn.packageName == packageName) return
+        val pkg = sbn.packageName ?: return
+        if (pkg == packageName) return
         if (notification.flags and Notification.FLAG_ONGOING_EVENT != 0) return
+        scope.launch {
+            handlePosted(pkg, notification)
+        }
+    }
+
+    private suspend fun handlePosted(pkg: String, notification: Notification) {
         val prefs = try {
-            PreferencesManager(this)
+            prefsLazy
         } catch (_: Exception) {
             return
         }
@@ -36,18 +49,17 @@ class NotificationForwarderService : NotificationListenerService() {
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         if (title.isEmpty() && text.isEmpty()) return
-        val key = sbn.packageName + "\n" + title + "\n" + text
+        val key = pkg + "\n" + title + "\n" + text
         val now = System.currentTimeMillis()
         synchronized(lastSent) {
             if (now - (lastSent[key] ?: 0L) < 5 * 60_000L) return
-            if (lastSent.size > 200) lastSent.clear()
             lastSent[key] = now
         }
         val appLabel = try {
-            val info = packageManager.getApplicationInfo(sbn.packageName, 0)
+            val info = packageManager.getApplicationInfo(pkg, 0)
             "${packageManager.getApplicationLabel(info)}"
         } catch (_: Exception) {
-            sbn.packageName
+            pkg
         }
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
@@ -55,13 +67,18 @@ class NotificationForwarderService : NotificationListenerService() {
             if (title.isNotEmpty()) appendLine("Title: ${escapeHtml(title.take(200))}")
             if (text.isNotEmpty()) appendLine("Text: ${escapeHtml(text.take(300))}")
         }
-        scope.launch {
-            forwardToTelegram(message)
-        }
+        forwardToTelegram(message)
     }
 
     override fun onListenerConnected() {
         android.util.Log.i("NotifForwarder", "Notification listener connected")
+        scope.launch {
+            try {
+                prefsLazy.isConfigured()
+                queueLazy.hasMessages()
+            } catch (_: Exception) {
+            }
+        }
     }
 
     override fun onListenerDisconnected() {
@@ -92,24 +109,24 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private suspend fun forwardToTelegram(message: String) {
         try {
-            val prefs = PreferencesManager(this)
+            val prefs = prefsLazy
             val botToken = prefs.botToken
             val chatId = prefs.chatId
             if (botToken.isEmpty() || chatId.isEmpty()) return
             if (!NetworkUtils.isNetworkAvailable(this)) {
-                MessageQueue(this).addMessage(message)
+                queueLazy.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
                 return
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) return
-            MessageQueue(this).addMessage(message)
+            queueLazy.addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed", e)
             try {
-                MessageQueue(this).addMessage(message)
+                queueLazy.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }

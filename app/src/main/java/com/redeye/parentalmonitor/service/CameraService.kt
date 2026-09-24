@@ -31,7 +31,14 @@ class CameraService(private val context: Context) {
         private const val IMAGE_HEIGHT = 720
     }
 
+    private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun startBackgroundThread() {
+        if (backgroundThread?.isAlive == true && backgroundHandler != null) return
+        try {
+            backgroundThread?.quitSafely()
+        } catch (_: Exception) {
+        }
         backgroundThread = HandlerThread("CameraBackground").also { it.start() }
         backgroundHandler = Handler(backgroundThread!!.looper)
         Log.i(TAG, "Background thread started")
@@ -60,11 +67,16 @@ class CameraService(private val context: Context) {
         timeoutMs: Long = 45_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
+        if (!capturing.compareAndSet(false, true)) {
+            onError(Exception("Camera is busy"))
+            return
+        }
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
+                capturing.set(false)
                 try {
                     timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
                 } catch (_: Exception) {
@@ -76,6 +88,7 @@ class CameraService(private val context: Context) {
 
         fun finishWithPhoto(file: File) {
             if (done.compareAndSet(false, true)) {
+                capturing.set(false)
                 try {
                     timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
                 } catch (_: Exception) {

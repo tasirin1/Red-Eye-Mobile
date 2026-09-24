@@ -16,7 +16,11 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.DURATION,
         CallLog.Calls.TYPE
     )
-    private val contactCache = mutableMapOf<String, String?>()
+    private val contactCache = object : LinkedHashMap<String, String?>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>): Boolean {
+            return size > 500
+        }
+    }
 
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
         return queryCalls(
@@ -77,8 +81,9 @@ class CallLogRepository(private val context: Context) {
     }
 
     private fun lookupContact(phoneNumber: String): String? {
-        if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
-        if (contactCache.size >= 500) contactCache.remove(contactCache.keys.iterator().next())
+        synchronized(contactCache) {
+            if (contactCache.containsKey(phoneNumber)) return contactCache[phoneNumber]
+        }
         var name: String? = null
         try {
             val uri = ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
@@ -99,7 +104,9 @@ class CallLogRepository(private val context: Context) {
         } catch (e: Exception) {
             android.util.Log.e("CallLogRepository", "Error looking up contact", e)
         }
-        contactCache[phoneNumber] = name
+        synchronized(contactCache) {
+            contactCache[phoneNumber] = name
+        }
         return name
     }
 }

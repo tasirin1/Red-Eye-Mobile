@@ -15,8 +15,8 @@ class SendMessageWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    private val messageQueue = MessageQueue(context)
-    private val preferencesManager = PreferencesManager(context)
+    private val messageQueue = MessageQueue(context.applicationContext)
+    private val preferencesManager = PreferencesManager.getInstance(context)
 
     override suspend fun doWork(): Result {
         if (!preferencesManager.isConfigured()) {
@@ -28,51 +28,58 @@ class SendMessageWorker(
             return Result.success()
         }
 
-        var successCount = 0
-        var failCount = 0
+        val sentIds = mutableListOf<String>()
+        val dropIds = mutableListOf<String>()
+        var rateLimitedAfter: Long = 0L
 
         for (queuedMessage in queue) {
             try {
-                when (sendMessage(queuedMessage.message)) {
-                    SendOutcome.SENT -> {
-                        messageQueue.removeMessage(queuedMessage.id)
-                        successCount++
+                when (val outcome = sendMessage(queuedMessage.message)) {
+                    is SendOutcome.Sent -> {
+                        sentIds.add(queuedMessage.id)
                         delay(200)
                     }
-                    SendOutcome.RATE_LIMITED -> {
-                        failCount++
-                        return Result.retry()
+                    is SendOutcome.RateLimited -> {
+                        rateLimitedAfter = outcome.retryAfter
+                        break
                     }
-                    SendOutcome.FAILED -> {
+                    SendOutcome.Failed -> {
                         val retries = messageQueue.incrementRetry(queuedMessage.id)
                         if (retries >= MessageQueue.MAX_RETRIES || retries < 0) {
-                            messageQueue.removeMessage(queuedMessage.id)
+                            dropIds.add(queuedMessage.id)
                         }
-                        failCount++
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("SendMessageWorker", "Exception processing message", e)
-                failCount++
             }
         }
 
-        return if (failCount == 0) {
-            Result.success()
-        } else if (runAttemptCount >= 5) {
-            Result.failure()
-        } else {
-            Result.retry()
+        if (sentIds.isNotEmpty()) {
+            messageQueue.removeMessages(sentIds)
         }
+        if (dropIds.isNotEmpty()) {
+            messageQueue.removeMessages(dropIds)
+        }
+
+        if (rateLimitedAfter > 0) {
+            delay(rateLimitedAfter * 1000L)
+            return Result.retry()
+        }
+        return Result.success()
     }
 
-    private enum class SendOutcome { SENT, FAILED, RATE_LIMITED }
+    private sealed interface SendOutcome {
+        object Sent : SendOutcome
+        object Failed : SendOutcome
+        data class RateLimited(val retryAfter: Long) : SendOutcome
+    }
 
     private suspend fun sendMessage(message: String): SendOutcome {
         return try {
             val botToken = preferencesManager.botToken
             val chatId = preferencesManager.chatId
-            if (botToken.isEmpty() || chatId.isEmpty()) return SendOutcome.FAILED
+            if (botToken.isEmpty() || chatId.isEmpty()) return SendOutcome.Failed
 
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
@@ -81,16 +88,16 @@ class SendMessageWorker(
             )
 
             if (response.isSuccessful && response.body()?.ok == true) {
-                SendOutcome.SENT
+                SendOutcome.Sent
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("SendMessageWorker", "Rate limited, retry after ${retryAfter}s")
-                SendOutcome.RATE_LIMITED
+                SendOutcome.RateLimited(retryAfter)
             } else {
-                SendOutcome.FAILED
+                SendOutcome.Failed
             }
         } catch (e: Exception) {
-            SendOutcome.FAILED
+            SendOutcome.Failed
         }
     }
 }

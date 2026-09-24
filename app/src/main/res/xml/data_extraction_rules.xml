@@ -2,6 +2,9 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="secure_prefs" />
+        <exclude domain="sharedpref" path="secure_prefs_fallback" />
+        <exclude domain="sharedpref" path="message_queue" />
+        <exclude domain="sharedpref" path="encrypted_queue" />
     </cloud-backup>
 </data-extraction-rules>
 

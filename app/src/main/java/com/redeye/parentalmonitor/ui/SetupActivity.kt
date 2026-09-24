@@ -124,7 +124,7 @@ class SetupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setup)
 
-        prefs = PreferencesManager(this)
+        prefs = PreferencesManager.getInstance(this)
         supportActionBar?.title = getString(R.string.setup_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

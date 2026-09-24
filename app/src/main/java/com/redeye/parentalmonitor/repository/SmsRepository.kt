@@ -2,7 +2,6 @@ package com.redeye.parentalmonitor.repository
 
 import android.content.Context
 import android.database.Cursor
-import android.net.Uri
 import android.provider.Telephony
 import com.redeye.parentalmonitor.data.models.SmsData
 
@@ -38,7 +37,7 @@ class SmsRepository(private val context: Context) {
         val result = mutableListOf<SmsData>()
         try {
             context.contentResolver.query(
-                Uri.parse("content://sms"),
+                Telephony.Sms.CONTENT_URI,
                 projection,
                 selection,
                 args,

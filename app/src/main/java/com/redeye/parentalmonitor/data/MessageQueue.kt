@@ -11,10 +11,12 @@ import com.redeye.parentalmonitor.data.models.QueuedMessage
 
 class MessageQueue(context: Context) {
 
+    private val appContext = context.applicationContext
+
     private val sharedPreferences: SharedPreferences = try {
-        val masterKey = PreferencesManager.getMasterKey(context)
+        val masterKey = PreferencesManager.getMasterKey(appContext)
         EncryptedSharedPreferences.create(
-            context,
+            appContext,
             "encrypted_queue",
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
@@ -22,7 +24,7 @@ class MessageQueue(context: Context) {
         )
     } catch (e: Exception) {
         android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using plaintext fallback", e)
-        context.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
+        appContext.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
     }
     private val gson = Gson()
     private val lock = Any()
@@ -60,6 +62,15 @@ class MessageQueue(context: Context) {
         }
     }
 
+    fun removeMessages(messageIds: Collection<String>) {
+        if (messageIds.isEmpty()) return
+        synchronized(lock) {
+            val queue = readLocked().toMutableList()
+            queue.removeAll { it.id in messageIds }
+            writeLocked(queue)
+        }
+    }
+
     fun incrementRetry(messageId: String): Int {
         synchronized(lock) {
             val queue = readLocked().toMutableList()
@@ -75,7 +86,7 @@ class MessageQueue(context: Context) {
     fun clearQueue() {
         synchronized(lock) {
             cached = mutableListOf()
-            sharedPreferences.edit().remove(KEY_QUEUE).apply()
+            sharedPreferences.edit().remove(KEY_QUEUE).commit()
         }
     }
 
@@ -104,7 +115,7 @@ class MessageQueue(context: Context) {
 
     private fun writeLocked(queue: List<QueuedMessage>) {
         cached = queue.toMutableList()
-        sharedPreferences.edit().putString(KEY_QUEUE, gson.toJson(queue)).apply()
+        sharedPreferences.edit().putString(KEY_QUEUE, gson.toJson(queue)).commit()
     }
 
     fun hasMessages(): Boolean {
