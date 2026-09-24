@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 
 class MessageQueue(context: Context) {
@@ -32,7 +31,7 @@ class MessageQueue(context: Context) {
     }
     private val lock = Any()
     private var cached: MutableList<QueuedMessage>? = null
-    private val listType = object : TypeToken<MutableList<QueuedMessage>>() {}.type
+    private val arrayType = Array<QueuedMessage>::class.java
 
     companion object {
         private const val KEY_QUEUE = "queued_messages"
@@ -155,7 +154,7 @@ class MessageQueue(context: Context) {
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()
             else {
-                gson.fromJson<MutableList<QueuedMessage>>(json, listType) ?: mutableListOf()
+                gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
             }
         } catch (e: Exception) {
             mutableListOf()

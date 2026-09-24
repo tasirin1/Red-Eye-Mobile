@@ -28,6 +28,8 @@
 }
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
 -keep class com.redeye.parentalmonitor.data.models.** { *; }
 -keep class com.redeye.parentalmonitor.network.** { *; }
 -keepclassmembers class * {
