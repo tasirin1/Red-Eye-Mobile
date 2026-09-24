@@ -84,6 +84,8 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
+        private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$")
+        private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
     }
 
     private fun resolveStored(raw: String, stored: String): String {
@@ -136,6 +138,7 @@ class SetupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setup)
 
+        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         prefs = PreferencesManager.getInstance(this)
         supportActionBar?.title = getString(R.string.setup_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -187,11 +190,11 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return false
         }
-        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$"))) {
+        if (!token.matches(TOKEN_REGEX)) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return false
         }
-        if (!chatId.matches(Regex("^-?[0-9]+$"))) {
+        if (!chatId.matches(CHAT_ID_REGEX)) {
             Toast.makeText(this, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
             return false
         }
@@ -220,7 +223,7 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
         }
-        if (!token.matches(Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$")) || !chatId.matches(Regex("^-?[0-9]+$"))) {
+        if (!token.matches(TOKEN_REGEX) || !chatId.matches(CHAT_ID_REGEX)) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return
         }
@@ -386,7 +389,7 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
         }
-        lifecycleScope.launch {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val token = prefs.botToken
                 val chatId = prefs.chatId
@@ -400,15 +403,21 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
-                if (resp.isSuccessful && resp.body()?.ok == true) {
+                val ok = resp.isSuccessful && resp.body()?.ok == true
+                if (ok) {
                     prefs.credentialError = ""
                     prefs.credentialErrorAt = 0L
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_status_sent), Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, resp.code()), Toast.LENGTH_LONG).show()
+                }
+                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, resp.code())
+                val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, toastRes, toastLen).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, e.message ?: ""), Toast.LENGTH_LONG).show()
+                val failure = getString(R.string.setup_test_fail, e.message ?: "")
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, failure, Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

@@ -7,6 +7,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
 class SendMessageWorker(
@@ -37,8 +38,7 @@ class SendMessageWorker(
         val sentIds = mutableListOf<String>()
         val failedIds = mutableListOf<String>()
         val authFailedIds = mutableListOf<String>()
-        var rateLimited = false
-        var capped = false
+        var rateLimitedSecs = 0L
         var processed = 0
         val runToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
         val runChatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
@@ -46,18 +46,18 @@ class SendMessageWorker(
 
         for (queuedMessage in queue) {
             if (processed >= 20) {
-                capped = true
                 break
             }
             processed++
             try {
-                when (sendMessage(queuedMessage.message, runToken, runChatId)) {
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId)
+                when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
                         delay(100)
                     }
                     is SendOutcome.RateLimited -> {
-                        rateLimited = true
+                        rateLimitedSecs = outcome.retryAfterSecs
                         break
                     }
                     is SendOutcome.AuthFailed -> {
@@ -68,7 +68,8 @@ class SendMessageWorker(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("SendMessageWorker", "Exception processing message", e)
+                val detail = (e.message ?: "").let { m -> if (runToken.isNotEmpty()) m.replace(runToken, "***") else m }
+                android.util.Log.e("SendMessageWorker", "Exception processing message: $detail", e)
                 failedIds.add(queuedMessage.id)
             }
         }
@@ -90,20 +91,21 @@ class SendMessageWorker(
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected, dropped ${authFailedIds.size} message(s) without retry")
         }
-        var pendingTransient = false
         if (failedIds.isNotEmpty()) {
-            val dropped = try {
+            try {
                 messageQueue.registerFailures(failedIds)
             } catch (_: Exception) {
-                emptyList()
             }
-            pendingTransient = failedIds.size > dropped.size
         }
 
-        if (rateLimited) {
+        if (rateLimitedSecs > 0) {
+            try {
+                delay(rateLimitedSecs.coerceIn(1, 60) * 1000L)
+            } catch (_: Exception) {
+            }
             return Result.retry()
         }
-        if ((pendingTransient || capped) && messageQueue.hasMessages()) {
+        if (messageQueue.hasMessages() && (sentIds.isNotEmpty() || runAttemptCount < 3)) {
             return Result.retry()
         }
         return Result.success()
@@ -112,7 +114,7 @@ class SendMessageWorker(
     private sealed interface SendOutcome {
         object Sent : SendOutcome
         object Failed : SendOutcome
-        object RateLimited : SendOutcome
+        class RateLimited(val retryAfterSecs: Long) : SendOutcome
         object AuthFailed : SendOutcome
     }
 
@@ -127,9 +129,14 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 429) {
-                android.util.Log.w("SendMessageWorker", "Rate limited, retrying with backoff")
-                SendOutcome.RateLimited
-            } else if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+                val retryAfterSecs = try {
+                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                } catch (_: Exception) {
+                    5L
+                }
+                android.util.Log.w("SendMessageWorker", "Rate limited, retrying after ${retryAfterSecs}s")
+                SendOutcome.RateLimited(retryAfterSecs)
+            } else if (response.code() == 401 || response.code() == 403) {
                 SendOutcome.AuthFailed
             } else {
                 SendOutcome.Failed

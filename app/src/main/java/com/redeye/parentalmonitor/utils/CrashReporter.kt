@@ -88,6 +88,7 @@ object CrashReporter {
             return
         }
         if (!NetworkUtils.isNetworkAvailable(context)) return
+        try { PreferencesManager.refreshInstance(context) } catch (_: Exception) { }
         val prefs = PreferencesManager.getInstance(context)
         val token = try {
             prefs.botToken

@@ -420,10 +420,11 @@ class CameraService(private val context: Context) {
             if (sizes.isNullOrEmpty()) {
                 IMAGE_WIDTH to IMAGE_HEIGHT
             } else {
+                val targetArea = (IMAGE_WIDTH * IMAGE_HEIGHT).toDouble()
                 val chosen = sizes.minByOrNull {
-                    val aspectDiff = kotlin.math.abs(it.width * 9 - it.height * 16) / 16.0
-                    val areaDiff = kotlin.math.abs(it.width * it.height - IMAGE_WIDTH * IMAGE_HEIGHT) / 1000.0
-                    aspectDiff + areaDiff
+                    val aspectScore = kotlin.math.abs(it.width.toDouble() / it.height - 16.0 / 9.0)
+                    val areaScore = kotlin.math.abs(it.width * it.height - targetArea) / targetArea
+                    aspectScore + areaScore
                 }
                 if (chosen != null) {
                     (chosen.width to chosen.height).also { photoSizeCache[cameraId] = it }

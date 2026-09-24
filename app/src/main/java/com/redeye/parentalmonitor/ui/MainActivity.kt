@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
         
+        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         preferencesManager = PreferencesManager.getInstance(this)
 
         if (!BuildConfig.DEBUG) {

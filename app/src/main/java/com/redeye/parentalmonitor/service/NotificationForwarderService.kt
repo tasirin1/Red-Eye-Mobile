@@ -122,7 +122,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val nowCfg = android.os.SystemClock.elapsedRealtime()
         if (nowCfg - cfgCheckAt > 30_000L) {
             cfgCheckAt = nowCfg
-            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring } catch (_: Exception) { false }
+            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
             cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
             cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
         }
@@ -258,7 +258,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                 return
             }
-            if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+            if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("NotifForwarder", "Auth rejected, dropping notification without queue")
                 try {
                     prefs.credentialError = response.code().toString()
@@ -266,6 +266,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                 }
                 return
+            }
+            if (response.code() == 400) {
+                android.util.Log.w("NotifForwarder", "Bad request (400), queuing notification for retry")
             }
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
