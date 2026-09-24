@@ -230,6 +230,7 @@ class MonitoringService : Service() {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
         startCommandPolling()
         startLoopWatchdog()
+        MessageScheduler.scheduleMessageSend(this)
         serviceScope.launch {
             registerBotCommands()
         }

@@ -32,7 +32,11 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(appContext)
             return
         }
-        if (!preferencesManager.isMonitoringEnabled || !preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
+        if (!preferencesManager.isMonitoringEnabled || !preferencesManager.isConfigured()) {
+            MessageScheduler.scheduleBootRestart(appContext)
+            return
+        }
         if (!tryStartService(appContext)) {
             MessageScheduler.scheduleBootRestart(appContext)
         }
