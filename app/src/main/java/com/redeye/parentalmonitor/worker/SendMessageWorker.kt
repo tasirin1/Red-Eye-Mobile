@@ -29,6 +29,9 @@ class SendMessageWorker(
         if (!preferencesManager.isConfigured()) {
             return Result.success()
         }
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
+            return Result.success()
+        }
 
         val queue = messageQueue.getQueue()
         if (queue.isEmpty()) {

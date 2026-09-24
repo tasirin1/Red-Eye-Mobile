@@ -47,6 +47,8 @@ class MonitoringService : Service() {
     private val cameraBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
+    private var ringJob: Job? = null
+    private var recordJob: Job? = null
     private var watchdogJob: Job? = null
     private var loopWatchdogJob: Job? = null
     private var loopWatchdogNoticeAt = 0L
@@ -73,6 +75,7 @@ class MonitoringService : Service() {
         const val ACTION_START_MONITORING = "START_MONITORING"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
+        private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
     }
@@ -602,6 +605,10 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
+        if (sentAtSec > 0 && System.currentTimeMillis() / 1000L - sentAtSec > COMMAND_MAX_AGE_SEC) {
+            sendToTelegram("\u23F3\uFE0F Command kedaluwarsa (dikirim > ${COMMAND_MAX_AGE_SEC / 60} menit lalu). Kirim ulang.")
+            return
+        }
         val parts = raw.split("\\s+".toRegex(), limit = 2)
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
@@ -858,7 +865,7 @@ class MonitoringService : Service() {
                 if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
-                    serviceScope.launch {
+                    ringJob = serviceScope.launch {
                         try {
                             ringDevice(seconds)
                         } finally {
@@ -885,7 +892,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
-                    serviceScope.launch {
+                    recordJob = serviceScope.launch {
                         try {
                             recordAndSendAudio(seconds)
                         } finally {
@@ -1530,6 +1537,8 @@ class MonitoringService : Service() {
         cameraJob?.cancel()
         commandJob?.cancel()
         initialSyncJob?.cancel()
+        ringJob?.cancel()
+        recordJob?.cancel()
         initialSyncRunning.set(false)
         try {
             loopWatchdogJob?.cancel()
@@ -1803,6 +1812,8 @@ class MonitoringService : Service() {
             sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
             kotlinx.coroutines.delay(seconds * 1000L)
             sendToTelegram("\uD83D\uDD14 Ring finished.")
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F Ring failed.")
         } finally {
@@ -1845,6 +1856,8 @@ class MonitoringService : Service() {
             } else {
                 sendToTelegram("\u26A0\uFE0F Audio recorded but send failed.")
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: SecurityException) {
             sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
         } catch (e: Exception) {

@@ -92,6 +92,17 @@ class SetupActivity : AppCompatActivity() {
         return if (raw.isEmpty() || raw == STORED_MASK) stored else raw
     }
 
+    private fun redactToken(value: String?): String {
+        if (value.isNullOrEmpty()) return ""
+        val token = try {
+            prefs.botToken
+        } catch (_: Exception) {
+            ""
+        }
+        if (token.isEmpty()) return value
+        return value.replace(token, "***")
+    }
+
     private fun hasForegroundLocation(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val coarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -270,7 +281,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-                val detail = e.message ?: ""
+                val detail = redactToken(e.message)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, detail), Toast.LENGTH_LONG).show()
                 }
@@ -433,7 +444,7 @@ class SetupActivity : AppCompatActivity() {
                     if (ok) reviveMonitoringIfNeeded()
                 }
             } catch (e: Exception) {
-                val failure = getString(R.string.setup_test_fail, e.message ?: "")
+                val failure = getString(R.string.setup_test_fail, redactToken(e.message))
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, failure, Toast.LENGTH_LONG).show()
                 }
