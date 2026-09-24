@@ -1,13 +1,30 @@
 package com.redeye.parentalmonitor.data
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 
 class MessageQueue(context: Context) {
 
-    private val sharedPreferences = context.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
+    private val sharedPreferences = try {
+        val appContext = context.applicationContext
+        val masterKey = MasterKey.Builder(appContext)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            appContext,
+            "encrypted_queue",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using plaintext fallback", e)
+        context.applicationContext.getSharedPreferences("message_queue", Context.MODE_PRIVATE)
+    }
     private val gson = Gson()
 
     companion object {
