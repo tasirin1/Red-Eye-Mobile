@@ -178,7 +178,24 @@ class SetupActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        reviveMonitoringIfNeeded()
         updateStatus()
+    }
+
+    private fun reviveMonitoringIfNeeded() {
+        try {
+            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
+                val intent = Intent(this, MonitoringService::class.java).apply {
+                    action = MonitoringService.ACTION_START_MONITORING
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun saveSettings(): Boolean {
@@ -240,6 +257,7 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+                        reviveMonitoringIfNeeded()
                     }
                 } else {
                     if (resp.code() == 400 || resp.code() == 401 || resp.code() == 403) {
@@ -412,6 +430,7 @@ class SetupActivity : AppCompatActivity() {
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, toastRes, toastLen).show()
+                    if (ok) reviveMonitoringIfNeeded()
                 }
             } catch (e: Exception) {
                 val failure = getString(R.string.setup_test_fail, e.message ?: "")

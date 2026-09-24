@@ -96,6 +96,8 @@ class MonitoringService : Service() {
             else -> {
                 if (shouldAutoResume()) {
                     startMonitoring()
+                } else if (needsCredsRetry()) {
+                    MessageScheduler.scheduleBootRestart(this)
                 } else {
                     stopSelf()
                 }
@@ -107,6 +109,14 @@ class MonitoringService : Service() {
     private fun shouldAutoResume(): Boolean {
         return try {
             preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun needsCredsRetry(): Boolean {
+        return try {
+            preferencesManager.isMonitoringEnabled && !preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
         } catch (_: Exception) {
             false
         }

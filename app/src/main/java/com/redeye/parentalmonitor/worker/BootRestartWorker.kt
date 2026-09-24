@@ -77,10 +77,12 @@ class BootRestartWorker(
         } catch (e: SecurityException) {
             android.util.Log.w("BootRestartWorker", "FGS start denied, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
+            postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: IllegalStateException) {
             android.util.Log.w("BootRestartWorker", "FGS start blocked by system, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
+            postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
@@ -100,7 +102,32 @@ class BootRestartWorker(
         }
     }
 
+    private fun postResumeReminder(context: Context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return
+            val tap = android.app.PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            val notification = NotificationCompat.Builder(context, ParentalMonitorApp.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(context.getString(R.string.resume_title))
+                .setContentText(context.getString(R.string.resume_text))
+                .setContentIntent(tap)
+                .setAutoCancel(true)
+                .build()
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            manager.notify(RESUME_NOTIF_ID, notification)
+        } catch (_: Exception) {
+        }
+    }
+
     companion object {
         private const val NOTIF_ID = 2
+        private const val RESUME_NOTIF_ID = 3
     }
 }
