@@ -13,6 +13,7 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - Throttle notif kamera dan kuota `pkgHits` pakai `elapsedRealtime`.
 - `checkAndSendNewData` dibatasi 1 halaman per tipe per siklus agar interval sinkronisasi dihormati.
 - `NotificationForwarderService` cache kredensial + listener; `MainActivity` ikut meminta lokasi foreground.
+- Perbaiki compile error `ensureActive` tanpa receiver di `chunkedDelay` (`v1.6.6` merah karenanya).
 
 
 ### Fixed
