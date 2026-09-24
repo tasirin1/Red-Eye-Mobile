@@ -7,7 +7,7 @@ import androidx.security.crypto.MasterKey
 
 class PreferencesManager(context: Context) {
 
-    private val masterKey = MasterKey.Builder(context)
+    private val masterKey = MasterKey.Builder(context.applicationContext)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
@@ -20,8 +20,8 @@ class PreferencesManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        // Fallback to regular SharedPreferences if encryption fails
-        context.getSharedPreferences("secure_prefs", Context.MODE_PRIVATE)
+        android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using PLAINTEXT fallback storage", e)
+        context.applicationContext.getSharedPreferences("secure_prefs_fallback", Context.MODE_PRIVATE)
     }
 
     companion object {
