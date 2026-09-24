@@ -1587,6 +1587,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             return false
         }
+        return false
     }
 
     private fun cameraFailureHint(reason: String?): String {
