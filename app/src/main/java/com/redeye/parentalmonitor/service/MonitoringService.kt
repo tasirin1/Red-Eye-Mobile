@@ -352,8 +352,8 @@ class MonitoringService : Service() {
                 }
                 if (!preferencesManager.isConfigured()) {
                     try {
-                        if (PreferencesManager.refreshInstance(this)) {
-                            preferencesManager = PreferencesManager.getInstance(this)
+                        if (PreferencesManager.refreshInstance(this@MonitoringService)) {
+                            preferencesManager = PreferencesManager.getInstance(this@MonitoringService)
                             refreshCreds()
                         }
                     } catch (_: Exception) {
