@@ -1585,12 +1585,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
         } catch (_: Exception) {
-        }
-        return try {
-            val userManager = getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
-            userManager.hasUserRestriction(android.os.UserManager.DISALLOW_CAMERA)
-        } catch (_: Exception) {
-            false
+            return false
         }
     }
 
