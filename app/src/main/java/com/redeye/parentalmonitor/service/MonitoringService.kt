@@ -1641,7 +1641,7 @@ class MonitoringService : Service() {
         if (reason == null) return false
         return reason.contains("CAMERA_DISABLED", ignoreCase = true) ||
             reason.contains("disabled by policy", ignoreCase = true) ||
-            reason.contains("Camera error: 1")
+            reason.contains("Camera error: 3")
     }
 
     private fun isCameraDisabledByPolicy(): Boolean {
