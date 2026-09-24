@@ -32,6 +32,7 @@ class CameraService(private val context: Context) {
     }
 
     private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun startBackgroundThread() {
         if (backgroundThread?.isAlive == true && backgroundHandler != null) return
@@ -123,6 +124,7 @@ class CameraService(private val context: Context) {
             }
 
             Log.d(TAG, "Using camera ID: $cameraId")
+            stillArmed.set(false)
 
             val timeout = Runnable {
                 Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
@@ -140,18 +142,26 @@ class CameraService(private val context: Context) {
                     onTrace("trace: image arrived")
                     val image = reader.acquireLatestImage()
                     image?.let {
-                        val file = saveImage(it)
-                        it.close()
+                        if (!stillArmed.get()) {
+                            try {
+                                it.close()
+                            } catch (_: Exception) {
+                            }
+                            onTrace("trace: warmup frame dropped")
+                        } else {
+                            val file = saveImage(it)
+                            it.close()
 
-                        captureSession?.close()
-                        captureSession = null
-                        cameraDevice?.close()
-                        cameraDevice = null
-                        imageReader?.close()
-                        imageReader = null
-                        stopBackgroundThread()
+                            captureSession?.close()
+                            captureSession = null
+                            cameraDevice?.close()
+                            cameraDevice = null
+                            imageReader?.close()
+                            imageReader = null
+                            stopBackgroundThread()
 
-                        finishWithPhoto(file)
+                            finishWithPhoto(file)
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error processing image", e)
@@ -182,6 +192,77 @@ class CameraService(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing photo", e)
             finishWithError(e)
+        }
+    }
+
+    private fun runMeteredCapture(
+        camera: CameraDevice,
+        session: CameraCaptureSession,
+        captureBuilder: CaptureRequest.Builder,
+        onError: (Exception) -> Unit,
+        onTrace: (String) -> Unit
+    ) {
+        val settled = java.util.concurrent.atomic.AtomicBoolean(false)
+        var fallback: Runnable? = null
+
+        fun fireStill() {
+            if (settled.compareAndSet(false, true)) {
+                stillArmed.set(true)
+                try {
+                    fallback?.let { backgroundHandler?.removeCallbacks(it) }
+                } catch (_: Exception) {
+                }
+                try {
+                    try {
+                        session.stopRepeating()
+                    } catch (_: Exception) {
+                    }
+                    captureBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE)
+                    session.capture(captureBuilder.build(), null, backgroundHandler)
+                    Log.d(TAG, "Capture request sent")
+                    onTrace("trace: capture request sent")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error capturing", e)
+                    onError(e)
+                }
+            }
+        }
+
+        try {
+            fallback = Runnable {
+                Log.w(TAG, "Metering timeout, capturing anyway")
+                onTrace("trace: metering timeout")
+                fireStill()
+            }
+            backgroundHandler?.postDelayed(fallback!!, 5_000L)
+            val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            meteringBuilder.addTarget(imageReader!!.surface)
+            meteringBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            session.setRepeatingRequest(
+                meteringBuilder.build(),
+                object : CameraCaptureSession.CaptureCallback() {
+                    override fun onCaptureCompleted(
+                        session: CameraCaptureSession,
+                        request: CaptureRequest,
+                        result: TotalCaptureResult
+                    ) {
+                        val aeState = result.get(CaptureResult.CONTROL_AE_STATE)
+                        if (aeState == null ||
+                            aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED ||
+                            aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ||
+                            aeState == CaptureResult.CONTROL_AE_STATE_LOCKED
+                        ) {
+                            onTrace("trace: metering settled")
+                            fireStill()
+                        }
+                    }
+                },
+                backgroundHandler
+            )
+            onTrace("trace: metering started")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error metering", e)
+            fireStill()
         }
     }
 
@@ -220,14 +301,7 @@ class CameraService(private val context: Context) {
                         captureSession = session
                         Log.d(TAG, "Capture session configured")
                         onTrace("trace: session configured")
-                        try {
-                            session.capture(captureBuilder.build(), null, backgroundHandler)
-                            Log.d(TAG, "Capture request sent")
-                            onTrace("trace: capture request sent")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Error capturing", e)
-                            onError(e)
-                        }
+                        runMeteredCapture(camera, session, captureBuilder, onError, onTrace)
                     }
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {
