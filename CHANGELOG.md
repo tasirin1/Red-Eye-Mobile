@@ -13,7 +13,6 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - `/history` memakai filter `LIKE` di database (`getCallsForNumber`/`getSmsForNumber`) lalu saring digit di memori, bukan memuat 200 panggilan + 100 SMS setiap query.
 - `NotificationForwarderService` serialisasi kirim via `Mutex` + satu accessor `queue()` agar tak membangun `EncryptedSharedPreferences` berulang per notifikasi.
 - `PreferencesManager.refreshInstance` + `MessageQueue.tryRestorePersistent` memulihkan storage terenkripsi saat keystore terkunci sesaat setelah reboot, menutup keracunan singleton volatil permanen.
-- `fetchLocation` memakai overload `Executor` (API 30+) tanpa deprecation.
 - `escapeHtml` disatukan ke `utils/Html` (3 duplikat dihapus).
 
 ### Changed

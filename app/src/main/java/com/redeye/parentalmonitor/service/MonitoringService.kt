@@ -1075,12 +1075,8 @@ class MonitoringService : Service() {
                     override fun onProviderEnabled(provider: String) {}
                 }
                 try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        locationManager.requestSingleUpdate(chosen, androidx.core.content.ContextCompat.getMainExecutor(this@MonitoringService), listener)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
-                    }
+                    @Suppress("DEPRECATION")
+                    locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
                 } catch (_: SecurityException) {
                     return@withContext null
                 }
