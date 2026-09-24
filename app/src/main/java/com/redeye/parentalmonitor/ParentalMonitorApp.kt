@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.redeye.parentalmonitor.utils.CrashReporter
 
 class ParentalMonitorApp : Application() {
 
@@ -14,6 +15,7 @@ class ParentalMonitorApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.install(this)
         migrateLegacyConsent()
         createNotificationChannel()
     }
