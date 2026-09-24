@@ -529,6 +529,20 @@ class MonitoringService : Service() {
         val parts = raw.split("\\s+".toRegex(), limit = 2)
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
+        try {
+            handleTelegramCommandInner(command, arg, sentAtSec)
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "Command failed: $command", e)
+            try {
+                sendToTelegram("\u26A0\uFE0F Command $command failed (${e.message ?: "unknown error"}). Please try again or send /help.")
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L) {
         when (command) {
             "/photo" -> {
                 val lens = arg.substringBefore(" ")
@@ -970,7 +984,9 @@ class MonitoringService : Service() {
                     mainMenu()
                 )
             }
-            else -> { /* ignore unknown input to avoid reply loops */ }
+            else -> {
+                sendToTelegram("\u2753 Unknown command: $command. Send /help for the list.")
+            }
         }
     }
 
@@ -1427,6 +1443,16 @@ class MonitoringService : Service() {
             }
             return
         }
+        if (isCameraDisabledByPolicy()) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("⚠️ Photo capture failed: camera disabled by device policy (CAMERA_DISABLED). " + cameraFailureHint("CAMERA_DISABLED"))
+                } else {
+                    notifyCameraFailure("camera disabled by device policy (CAMERA_DISABLED)")
+                }
+            }
+            return
+        }
         if (!cameraBusy.compareAndSet(false, true)) {
             if (reportResult) {
                 serviceScope.launch {
@@ -1437,23 +1463,32 @@ class MonitoringService : Service() {
         }
         watchdogJob?.cancel()
         val attempt = cameraAttempt.incrementAndGet()
-        watchdogJob = serviceScope.launch {
+        val wd = serviceScope.launch {
             delay(50_000)
             if (cameraAttempt.get() == attempt && cameraBusy.compareAndSet(true, false)) {
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
+                try {
+                    cameraService.forceReset()
+                } catch (_: Exception) {
+                }
                 if (reportResult) {
                     sendToTelegram("⚠️ Photo capture timed out without a response. Please try /photo again.")
                 }
             }
         }
+        watchdogJob = wd
         try {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
+                    if (cameraAttempt.get() != attempt) return@capturePhoto
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
-                    watchdogJob?.cancel()
+                    try {
+                        wd.cancel()
+                    } catch (_: Exception) {
+                    }
                     serviceScope.launch {
                         val sent = sendPhotoFile(photoFile)
                         if (sent) {
@@ -1467,18 +1502,17 @@ class MonitoringService : Service() {
                     }
                 },
                 onError = { exception ->
+                    if (cameraAttempt.get() != attempt) return@capturePhoto
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
-                    watchdogJob?.cancel()
+                    try {
+                        wd.cancel()
+                    } catch (_: Exception) {
+                    }
                     android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
                     serviceScope.launch {
                         if (reportResult) {
-                            val hint = if (!hasCameraPermission()) {
-                                "Open Setup and grant Camera permission."
-                            } else {
-                                "The camera may be in use by another app."
-                            }
-                            sendToTelegram("⚠️ Photo capture failed: ${exception.message ?: "unknown error"}. $hint")
+                            sendToTelegram("⚠️ Photo capture failed: ${exception.message ?: "unknown error"}. " + cameraFailureHint(exception.message))
                         } else {
                             notifyCameraFailure(exception.message ?: "unknown error")
                         }
@@ -1506,12 +1540,7 @@ class MonitoringService : Service() {
             val last = preferencesManager.lastCameraErrorNotice
             if (last in 1L..999_999_999_999L && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
-            val hint = if (!hasCameraPermission()) {
-                "Camera permission is missing — open Setup and grant it."
-            } else {
-                "The camera may be in use by another app."
-            }
-            sendToTelegram("⚠️ Photo capture failed: $reason. $hint")
+            sendToTelegram("⚠️ Photo capture failed: $reason. " + cameraFailureHint(reason))
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice", e)
         }
@@ -1534,6 +1563,41 @@ class MonitoringService : Service() {
             this,
             android.Manifest.permission.CAMERA
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isCameraPolicyError(reason: String?): Boolean {
+        if (reason == null) return false
+        return reason.contains("CAMERA_DISABLED", ignoreCase = true) ||
+            reason.contains("disabled by policy", ignoreCase = true) ||
+            reason.contains("Camera error: 1")
+    }
+
+    private fun isCameraDisabledByPolicy(): Boolean {
+        try {
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            try {
+                if (dpm.getCameraDisabled(null)) return true
+            } catch (_: Exception) {
+            }
+            try {
+                val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
+                if (dpm.getCameraDisabled(admin)) return true
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
+        }
+        return try {
+            val userManager = getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
+            userManager.hasUserRestriction(android.os.UserManager.DISALLOW_CAMERA)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun cameraFailureHint(reason: String?): String {
+        if (!hasCameraPermission()) return "Open Setup and grant Camera permission."
+        if (isCameraPolicyError(reason) || isCameraDisabledByPolicy()) return "Camera is blocked by device policy (another admin app, work profile, or parental control disabled it). Check Settings > Security > Device admin apps, remove the camera restriction, or pause photos with /pausephoto."
+        return "The camera may be in use by another app."
     }
 
     private fun pendingPhotoCount(): Int {

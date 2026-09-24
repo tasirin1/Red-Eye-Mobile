@@ -34,6 +34,30 @@ class CameraService(private val context: Context) {
     private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
+    private var watchdogHandler: Handler? = null
+
+    private fun mainHandler(): Handler? {
+        if (watchdogHandler == null) {
+            try {
+                watchdogHandler = Handler(android.os.Looper.getMainLooper())
+            } catch (_: Exception) {
+            }
+        }
+        return watchdogHandler
+    }
+
+    fun forceReset() {
+        capturing.set(false)
+        try {
+            backgroundHandler?.removeCallbacksAndMessages(null)
+        } catch (_: Exception) {
+        }
+        try {
+            watchdogHandler?.removeCallbacksAndMessages(null)
+        } catch (_: Exception) {
+        }
+        cleanup()
+    }
 
     fun startBackgroundThread() {
         if (backgroundThread?.isAlive == true && backgroundHandler != null) return
@@ -92,7 +116,16 @@ class CameraService(private val context: Context) {
             if (done.compareAndSet(false, true)) {
                 capturing.set(false)
                 try {
-                    timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
+                    timeoutRunnable?.let { r ->
+                        try {
+                            backgroundHandler?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            watchdogHandler?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
+                    }
                 } catch (_: Exception) {
                 }
                 cleanup()
@@ -104,7 +137,16 @@ class CameraService(private val context: Context) {
             if (done.compareAndSet(false, true)) {
                 capturing.set(false)
                 try {
-                    timeoutRunnable?.let { backgroundHandler?.removeCallbacks(it) }
+                    timeoutRunnable?.let { r ->
+                        try {
+                            backgroundHandler?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            watchdogHandler?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
+                    }
                 } catch (_: Exception) {
                 }
                 onPhotoTaken(file)
@@ -121,6 +163,10 @@ class CameraService(private val context: Context) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Starting photo capture")
             onTrace("trace: starting capture")
             startBackgroundThread()
+            if (backgroundHandler == null) {
+                finishWithError(Exception("Camera unavailable (background handler not ready)"))
+                return
+            }
 
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = getCameraId(cameraManager, lensFacing)
@@ -145,7 +191,7 @@ class CameraService(private val context: Context) {
                 finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
             }
             timeoutRunnable = timeout
-            backgroundHandler?.postDelayed(timeout, timeoutMs)
+            (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
 
             // Setup ImageReader
             val photoSize = choosePhotoSize(cameraManager, cameraId)
@@ -199,7 +245,11 @@ class CameraService(private val context: Context) {
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     Log.e(TAG, "Camera error: $error")
-                    finishWithError(Exception("Camera error: $error"))
+                    if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
+                        finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                    } else {
+                        finishWithError(Exception("Camera error: $error"))
+                    }
                 }
             }, backgroundHandler)
 
