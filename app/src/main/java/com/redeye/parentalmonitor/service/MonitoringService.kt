@@ -159,21 +159,33 @@ class MonitoringService : Service() {
         if (hasLocationPermission()) {
             foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
+        val foregroundNotification = try {
+            notificationBuilder.build()
+        } catch (_: Exception) {
+            stopSelf()
+            return
+        }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notificationBuilder.build(), foregroundTypes)
+                startForeground(NOTIFICATION_ID, foregroundNotification, foregroundTypes)
             } else {
-                startForeground(NOTIFICATION_ID, notificationBuilder.build())
+                startForeground(NOTIFICATION_ID, foregroundNotification)
             }
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Foreground start failed, retrying minimal", e)
             try {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notificationBuilder.build(),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        foregroundNotification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    )
+                } else {
+                    startForeground(NOTIFICATION_ID, foregroundNotification)
+                }
             } catch (_: Exception) {
+                stopSelf()
+                return
             }
         }
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")

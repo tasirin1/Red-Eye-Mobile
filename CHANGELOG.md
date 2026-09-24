@@ -236,7 +236,12 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 ### Changed
 - `MessageScheduler` memakai `ExistingWorkPolicy.KEEP`; `parseRetryAfter` tunggal di `NetworkUtils`; `escapeHtml` satu pass.
 
-## [Unreleased]
+## [1.6.8] - 2026-09-24
+
+### Fixed
+- `ic_notification.xml` buang `android:tint="?attr/..."` yang membuat inflate ikon gagal dan `startForeground` force close saat monitoring dinyalakan.
+- `MonitoringService.startMonitoring` batal grasi (`stopSelf`) bila notifikasi gagal dibangun atau `startForeground` dua kali gagal, plus fallback versi-guarded agar API 24-28 tak kena overload 3-arg.
+
 
 ### Fixed
 - Polling Telegram memakai kredensial cache dan interval adaptif 15-30 detik saat idle, tanpa dekripsi ulang tiap poll.
