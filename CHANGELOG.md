@@ -2,7 +2,10 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
-## [Unreleased]
+## [1.6.35] - 2026-09-25
+
+### Fixed
+- `MonitoringService` tangani timeout `dataSync` Android 14/15 via `onTimeout()` (`SM-A055F`, API 35): jadwalkan restart lewat `BootRestartWorker`, batalkan loop, lalu `stopForeground()` + `stopSelf()` seketika agar tidak crash `ForegroundServiceDidNotStopInTimeException` setelah FGS berjalan lama.
 
 ## [1.6.34] - 2026-09-25
 

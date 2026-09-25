@@ -1810,6 +1810,56 @@ class MonitoringService : Service() {
         super.onTaskRemoved(rootIntent)
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        handleFgsTimeout(startId)
+    }
+
+    override fun onTimeout(startId: Int) {
+        handleFgsTimeout(startId)
+    }
+
+    private fun handleFgsTimeout(startId: Int) {
+        try {
+            MessageScheduler.scheduleBootRestart(this)
+        } catch (_: Exception) {
+        }
+        try {
+            MessageScheduler.scheduleWatchdog(this)
+        } catch (_: Exception) {
+        }
+        try {
+            monitoringJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            cameraJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            commandJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            initialSyncJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            speedJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            loopWatchdogJob?.cancel()
+        } catch (_: Exception) {
+        }
+        initialSyncRunning.set(false)
+        isRunning = false
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (_: Exception) {
+        }
+        stopSelf()
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
