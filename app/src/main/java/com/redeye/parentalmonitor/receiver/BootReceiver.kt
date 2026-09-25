@@ -38,9 +38,10 @@ class BootReceiver : BroadcastReceiver() {
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)
         val pendingResult = goAsync()
+        val bootAction = intent.action
         val thread = Thread {
             try {
-                handleBoot(appContext)
+                handleBoot(appContext, bootAction)
             } catch (_: Exception) {
             } finally {
                 try {
@@ -59,7 +60,7 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun handleBoot(context: Context) {
+    private fun handleBoot(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         if (nowBoot - lastHandleAt < 10_000L) return
         lastHandleAt = nowBoot
@@ -82,7 +83,8 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
             return
         }
-        if (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context)) return
+        val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
+        if (!updated && (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context))) return
         if (!tryStartService(context)) {
             MessageScheduler.scheduleBootRestart(context)
         }

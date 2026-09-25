@@ -322,6 +322,10 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun toggleMonitoring() {
+        if (prefs.isMonitoringEnabled) {
+            stopMonitoringConfirmed()
+            return
+        }
         if (!prefs.isConfigured()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
@@ -336,26 +340,25 @@ class SetupActivity : AppCompatActivity() {
             requestLocationPermissions()
             return
         }
-        if (prefs.isMonitoringEnabled) {
-            val intent = Intent(this, MonitoringService::class.java).apply {
-                action = MonitoringService.ACTION_STOP_MONITORING
-            }
-            try {
-                startService(intent)
-                prefs.isMonitoringEnabled = false
-                prefs.userDisabledMonitoring = true
-                Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
-            }
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(getString(R.string.setup_consent_title))
-                .setMessage(getString(R.string.setup_consent_text))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok) { _, _ -> startMonitoringConfirmed() }
-                .show()
-            return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_consent_title))
+            .setMessage(getString(R.string.setup_consent_text))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> startMonitoringConfirmed() }
+            .show()
+    }
+
+    private fun stopMonitoringConfirmed() {
+        val intent = Intent(this, MonitoringService::class.java).apply {
+            action = MonitoringService.ACTION_STOP_MONITORING
+        }
+        try {
+            startService(intent)
+            prefs.isMonitoringEnabled = false
+            prefs.userDisabledMonitoring = true
+            Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
         }
         updateStatus()
     }
@@ -373,6 +376,8 @@ class SetupActivity : AppCompatActivity() {
             prefs.isMonitoringEnabled = true
             prefs.userDisabledMonitoring = false
             prefs.userConsentedMonitoring = true
+            prefs.monitoringPaused = false
+            prefs.photoPausedUntil = 0L
             Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -518,7 +523,7 @@ class SetupActivity : AppCompatActivity() {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
             statusText.text = body
             toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
-            toggleButton.isEnabled = configured && perms
+            toggleButton.isEnabled = configured || running
             permissionButton.text = when {
                 !perms -> getString(R.string.grant_permissions)
                 !bg -> getString(R.string.setup_bg_request)

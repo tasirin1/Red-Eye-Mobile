@@ -69,7 +69,7 @@ object MessageScheduler {
                 .build()
 
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(BOOT_RESTART_WORK, ExistingWorkPolicy.REPLACE, restartRequest)
+                .enqueueUniqueWork(BOOT_RESTART_WORK, ExistingWorkPolicy.KEEP, restartRequest)
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule reboot restart failed", e)

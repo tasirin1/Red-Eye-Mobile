@@ -176,6 +176,23 @@ class SendMessageWorker(
         }
     }
 
+    private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
+        return try {
+            val plain = message.replace(Regex("<[^>]*>"), "")
+            val url = "https://api.telegram.org/bot${botToken}/sendMessage"
+            val response = TelegramClient.api.sendMessage(
+                url,
+                TelegramMessage(chatId = chatId, text = plain, parseMode = null)
+            )
+            if (response.isSuccessful && response.body()?.ok == true) SendOutcome.Sent
+            else SendOutcome.Rejected
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            SendOutcome.Failed
+        }
+    }
+
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
         try {
             val clean = try {
@@ -207,6 +224,8 @@ class SendMessageWorker(
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
+            } else if (response.code() == 400 && message.length <= 4096) {
+                sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
                     NetworkUtils.parseRetryAfter(response.errorBody()?.string())

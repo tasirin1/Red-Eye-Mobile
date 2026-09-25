@@ -9,5 +9,5 @@ object TimeFmt {
         SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date(timestamp))
 
     fun fileStamp(timestamp: Long): String =
-        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestamp))
+        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(timestamp))
 }

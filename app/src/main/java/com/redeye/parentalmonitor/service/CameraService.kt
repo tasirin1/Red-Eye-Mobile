@@ -22,6 +22,8 @@ class CameraService(private val context: Context) {
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
+    private var meteringTexture: android.graphics.SurfaceTexture? = null
+    private var meteringSurface: android.view.Surface? = null
     private var backgroundHandler: Handler? = null
     private var backgroundThread: HandlerThread? = null
 
@@ -197,9 +199,17 @@ class CameraService(private val context: Context) {
             timeoutRunnable = timeout
             (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
 
-            // Setup ImageReader
+            // Setup ImageReader (still capture only) plus a dummy surface for AE metering,
+            // so warmup preview frames can never be mistaken for the still photo.
             val photoSize = choosePhotoSize(cameraManager, cameraId)
             val jpegOrientation = getJpegOrientation(cameraManager, cameraId, lensFacing)
+            val dummyTexture = android.graphics.SurfaceTexture(false)
+            try {
+                dummyTexture.setDefaultBufferSize(photoSize.first, photoSize.second)
+            } catch (_: Exception) {
+            }
+            meteringTexture = dummyTexture
+            meteringSurface = android.view.Surface(dummyTexture)
             imageReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
             imageReader?.setOnImageAvailableListener({ reader ->
                 try {
@@ -222,6 +232,16 @@ class CameraService(private val context: Context) {
                             cameraDevice = null
                             imageReader?.close()
                             imageReader = null
+                            try {
+                                meteringSurface?.release()
+                            } catch (_: Exception) {
+                            }
+                            meteringSurface = null
+                            try {
+                                meteringTexture?.release()
+                            } catch (_: Exception) {
+                            }
+                            meteringTexture = null
                             stopBackgroundThread()
 
                             finishWithPhoto(file)
@@ -305,8 +325,8 @@ class CameraService(private val context: Context) {
             val pending = fallback ?: return
             backgroundHandler?.postDelayed(pending, 3_000L)
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            val meterSurface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
-            meteringBuilder.addTarget(meterSurface)
+            val previewSurface = meteringSurface ?: run { onError(Exception("Camera closed")); return }
+            meteringBuilder.addTarget(previewSurface)
             meteringBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
             session.setRepeatingRequest(
                 meteringBuilder.build(),
@@ -386,6 +406,7 @@ class CameraService(private val context: Context) {
     ) {
         try {
             val surface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
+            val meterSurface = meteringSurface ?: run { onError(Exception("Camera closed")); return }
             val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(surface)
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -393,7 +414,7 @@ class CameraService(private val context: Context) {
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation)
 
             camera.createCaptureSession(
-                listOf(surface),
+                listOf(surface, meterSurface),
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
                         captureSession = session
@@ -466,6 +487,16 @@ class CameraService(private val context: Context) {
             cameraDevice = null
             imageReader?.close()
             imageReader = null
+            try {
+                meteringSurface?.release()
+            } catch (_: Exception) {
+            }
+            meteringSurface = null
+            try {
+                meteringTexture?.release()
+            } catch (_: Exception) {
+            }
+            meteringTexture = null
             stopBackgroundThread()
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup", e)

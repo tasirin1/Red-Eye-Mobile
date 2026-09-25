@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 data class TelegramMessage(
     @SerializedName("chat_id") val chatId: String,
     @SerializedName("text") val text: String,
-    @SerializedName("parse_mode") val parseMode: String = "HTML",
+    @SerializedName("parse_mode") val parseMode: String? = "HTML",
     @SerializedName("reply_markup") val replyMarkup: InlineKeyboardMarkup? = null
 )
 
@@ -46,12 +46,14 @@ data class TelegramIncomingMessage(
     @SerializedName("message_id") val messageId: Long,
     @SerializedName("chat") val chat: TelegramChat,
     @SerializedName("text") val text: String?,
+    @SerializedName("caption") val caption: String? = null,
     @SerializedName("date") val date: Long = 0
 )
 
 data class TelegramUpdate(
     @SerializedName("update_id") val updateId: Long,
     @SerializedName("message") val message: TelegramIncomingMessage?,
+    @SerializedName("edited_message") val editedMessage: TelegramIncomingMessage? = null,
     @SerializedName("callback_query") val callbackQuery: TelegramCallbackQuery? = null
 )
 

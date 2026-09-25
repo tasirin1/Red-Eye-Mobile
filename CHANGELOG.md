@@ -4,6 +4,18 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+### Fixed
+- `/stop` tidak lagi deadlock: command polling tetap berjalan saat paused sehingga `/resume` selalu bisa diterima; mulai ulang dari Setup me-reset `monitoringPaused` dan `photoPausedUntil`; tombol Setup bisa dipakai untuk stop walau izin belum lengkap.
+- `pollTelegramCommands()`, `sendPhotoFile()`, `checkAndSendNewData()`, dan `sendInitialData()` tidak lagi menelan `CancellationException`.
+- `scheduleBootRestart()` memakai `ExistingWorkPolicy.KEEP` agar penjadwalan beruntun tidak me-reset backoff dan menunda restart tanpa batas.
+- `/flush` memberi tahu kredensial diblokir saat `authBlocked()` alih-alih mengklaim "Sending when online".
+- `CameraService` memakai surface dummy untuk metering AE sehingga frame warmup tidak bisa tersimpan sebagai foto; surface dibersihkan di semua jalur selesai.
+- Throttle notifikasi kamera/upload mengabaikan timestamp masa depan (lompatan jam).
+- `BootReceiver` selalu mencoba start setelah `MY_PACKAGE_REPLACED` walau heartbeat masih fresh.
+- `SendMessageWorker` mencoba ulang sekali sebagai plain-text sebelum membuang permanen pesan 400.
+- Command via pesan edit (`edited_message`) dan caption foto kini diproses.
+- `TimeFmt.fileStamp()` memakai `Locale.US` agar nama file selalu ASCII.
+
 ## [1.6.28] - 2026-09-25
 
 ### Added
