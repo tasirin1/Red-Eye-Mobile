@@ -45,27 +45,7 @@ object MessageScheduler {
     }
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
-        return try {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-            val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
-                .setConstraints(constraints)
-                .setBackoffCriteria(
-                    androidx.work.BackoffPolicy.EXPONENTIAL,
-                    10,
-                    TimeUnit.SECONDS
-                )
-            if (initialDelayMs > 0L) {
-                requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
-            }
-            WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, requestBuilder.build())
-            true
-        } catch (e: Exception) {
-            android.util.Log.w("MessageScheduler", "Schedule send failed", e)
-            false
-        }
+        return scheduleMessageSend(context, initialDelayMs)
     }
 
     fun scheduleWatchdog(context: Context): Boolean {

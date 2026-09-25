@@ -45,6 +45,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
     private val pkgHitsLock = Any()
+    private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private var lastRebindAt = 0L
     private var netCheckAt = 0L
     private var netCached = false
@@ -197,6 +198,11 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pkgFull(pkg, now)) {
             val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
             record(cachedLabel, title, text)
+            val lastNotice = dropNoticeAt[pkg] ?: 0L
+            if (now - lastNotice > 120_000L) {
+                dropNoticeAt[pkg] = now
+                forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(cachedLabel) + " in 2 min, extras kept in /lastnotif history.", "")
+            }
             return
         }
         val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {

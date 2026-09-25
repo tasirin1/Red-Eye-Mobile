@@ -81,6 +81,10 @@ class PreferencesManager(context: Context) {
                     ks.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
                 } catch (_: Exception) {
                 }
+                try {
+                    context.applicationContext.deleteSharedPreferences(prefsName)
+                } catch (_: Exception) {
+                }
             }
         }
         const val KEY_BOT_TOKEN = "bot_token"

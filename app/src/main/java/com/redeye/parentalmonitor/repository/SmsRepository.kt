@@ -56,7 +56,11 @@ class SmsRepository(private val context: Context) {
                 try {
                     context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, bundle, null)
                 } catch (_: Exception) {
-                    context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
+                    try {
+                        context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
+                    } catch (_: Exception) {
+                        context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, selection, args, sortOrder)
+                    }
                 }
             } else {
                 val boundedSort = if (limit == Int.MAX_VALUE) sortOrder else "$sortOrder LIMIT $limit"

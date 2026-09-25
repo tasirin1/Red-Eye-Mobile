@@ -209,6 +209,91 @@ class SendMessageWorker(
         }
     }
 
+    private fun splitChunk(text: String, max: Int): Int {
+        if (text.length <= max) return text.length
+        var cut = max
+        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+        val amp = text.lastIndexOf('&', cut - 1)
+        if (amp >= 0 && amp > cut - 12) {
+            val semi = text.indexOf(';', amp)
+            if (semi < 0 || semi >= cut) {
+                val entity = text.substring(amp, cut)
+                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
+            }
+        }
+        val tag = text.lastIndexOf('<', cut - 1)
+        if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
+        if (cut <= 0) cut = max
+        return cut
+    }
+
+    private suspend fun sendSingleChunk(chunk: String, botToken: String, chatId: String): SendOutcome {
+        return try {
+            val url = "https://api.telegram.org/bot${botToken}/sendMessage"
+            val response = TelegramClient.api.sendMessage(
+                url,
+                TelegramMessage(chatId = chatId, text = chunk, parseMode = "HTML")
+            )
+            if (response.isSuccessful && response.body()?.ok == true) {
+                SendOutcome.Sent
+            } else if (response.code() == 400) {
+                sendPlainFallback(chunk, botToken, chatId)
+            } else if (response.code() == 429) {
+                val retryAfterSecs = try {
+                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                } catch (_: Exception) {
+                    5L
+                }
+                SendOutcome.RateLimited(retryAfterSecs)
+            } else if (response.code() == 401 || response.code() == 403) {
+                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 408 || response.code() >= 500) {
+                SendOutcome.Failed
+            } else {
+                SendOutcome.Rejected
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            SendOutcome.Failed
+        }
+    }
+
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String): SendOutcome {
+        val parts = mutableListOf<String>()
+        var rest = message
+        while (rest.length > 4000) {
+            val cut = splitChunk(rest, 4000)
+            parts.add(rest.substring(0, cut))
+            rest = rest.substring(cut)
+        }
+        parts.add(rest)
+        var rateAfter = 0L
+        var authCode = 0
+        var failed = 0
+        var rejected = 0
+        for (part in parts) {
+            when (val outcome = sendSingleChunk(part, botToken, chatId)) {
+                is SendOutcome.Sent -> {
+                    delay(500)
+                }
+                is SendOutcome.RateLimited -> {
+                    if (rateAfter == 0L) rateAfter = outcome.retryAfterSecs
+                }
+                is SendOutcome.AuthFailed -> {
+                    if (authCode == 0) authCode = outcome.code
+                }
+                SendOutcome.Failed -> failed++
+                SendOutcome.Rejected -> rejected++
+            }
+        }
+        if (authCode != 0) return SendOutcome.AuthFailed(authCode)
+        if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
+        if (failed > 0) return SendOutcome.Failed
+        if (rejected > 0) return SendOutcome.Rejected
+        return SendOutcome.Sent
+    }
+
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
         try {
             val clean = try {
@@ -240,7 +325,9 @@ class SendMessageWorker(
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
-            } else if (response.code() == 400 && message.length <= 4096) {
+            } else if (response.code() == 400 && message.length > 4096) {
+                sendChunked(message, botToken, chatId)
+            } else if (response.code() == 400) {
                 sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {

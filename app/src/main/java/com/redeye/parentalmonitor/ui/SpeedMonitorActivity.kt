@@ -36,6 +36,22 @@ class SpeedMonitorActivity : AppCompatActivity() {
         downUnit = findViewById(R.id.downUnit)
         upText = findViewById(R.id.upText)
         totalText = findViewById(R.id.totalText)
+        if (savedInstanceState != null) {
+            sessionRx = savedInstanceState.getLong("sessionRx", 0L)
+            sessionTx = savedInstanceState.getLong("sessionTx", 0L)
+            lastRx = savedInstanceState.getLong("lastRx", -1L)
+            lastTx = savedInstanceState.getLong("lastTx", -1L)
+            lastAt = savedInstanceState.getLong("lastAt", 0L)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putLong("sessionRx", sessionRx)
+        outState.putLong("sessionTx", sessionTx)
+        outState.putLong("lastRx", lastRx)
+        outState.putLong("lastTx", lastTx)
+        outState.putLong("lastAt", lastAt)
     }
 
     override fun onResume() {
@@ -43,8 +59,6 @@ class SpeedMonitorActivity : AppCompatActivity() {
         lastRx = -1L
         lastTx = -1L
         lastAt = 0L
-        sessionRx = 0L
-        sessionTx = 0L
         handler.post(sampler)
     }
 

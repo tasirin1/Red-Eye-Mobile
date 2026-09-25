@@ -4,6 +4,21 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.34] - 2026-09-25
+
+### Fixed
+- `SendMessageWorker` chunk pesan `>4096` karakter yang ditolak `400` menjadi beberapa bagian `<=4000` aman HTML/surrogate, tidak lagi dibuang sebagai `Rejected`.
+- `MonitoringService.recordAndSendAudio()` hapus file audio kosong dan kirim notice gagal, tidak lagi klaim retry palsu.
+- `PreferencesManager.resetCorruptKeystore()` hapus file prefs korup via `deleteSharedPreferences()` agar tidak jatuh ke memori volatil dan token hilang diam-diam.
+- `SmsRepository`/`CallLogRepository` fallback query tanpa `LIMIT` bila sintaks `LIMIT` OEM gagal, histori tetap tersinkron.
+- `MonitoringService` watchdog kamera invalidate `cameraAttempt` agar callback telat tidak kirim ganda.
+- `MonitoringService.startSpeedTracking()` interval `2` detik menjadi `5` detik untuk hemat baterai.
+- `NotificationForwarderService` kirim satu notice spam-filter per `120` detik saat drop, tidak lagi silent.
+- `MonitoringService.handleTelegramCommand()` toleransi skew jam untuk `date` masa depan, perintah baru tidak lagi kedaluwarsa palsu.
+- `MessageScheduler.scheduleMessageSendNext()` delegasi ke `scheduleMessageSend()` hilangkan duplikasi `APPEND`.
+- `SetupActivity.TOKEN_REGEX` longgarkan secret menjadi `{20,}` agar token valid tidak ditolak.
+- `SpeedMonitorActivity` simpan `sessionRx/sessionTx` via `onSaveInstanceState()`, total sesi tidak reset saat rotasi.
+
 ## [1.6.33] - 2026-09-25
 
 ### Added
