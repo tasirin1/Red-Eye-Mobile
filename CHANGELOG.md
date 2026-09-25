@@ -4,6 +4,14 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.32] - 2026-09-25
+
+### Changed
+- Notifikasi foreground disamarkan sebagai speed monitor: `notification_title`/`notification_text` menjadi "Speed Monitor" / "Tracking speed in background", dipakai juga saat release di `MonitoringService` dan `BootRestartWorker.getForegroundInfo()` (sebelumnya kosong).
+- Nama channel notifikasi `ParentalMonitorApp` menjadi "Speed Monitor" ("Speed Alerts" untuk channel resume) beserta deskripsi "Background speed tracking".
+- `resume_title`/`resume_text` menjadi "Speed Monitor paused" / "Tap to resume speed tracking".
+- Ikon notifikasi `ic_notification.xml` diganti dari kalkulator menjadi speedometer.
+
 ## [1.6.31] - 2026-09-25
 
 ### Fixed

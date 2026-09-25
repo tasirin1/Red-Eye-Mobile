@@ -238,8 +238,8 @@ class MonitoringService : Service() {
         } else {
             // RELEASE: Minimal/hidden notification
             notificationBuilder
-                .setContentTitle("")
-                .setContentText("")
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(getString(R.string.notification_text))
                 .setShowWhen(false)
                 .setSound(null)
                 .setVibrate(null)

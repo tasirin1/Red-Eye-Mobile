@@ -10,7 +10,7 @@ class ParentalMonitorApp : Application() {
 
     companion object {
         const val CHANNEL_ID = "monitoring_channel"
-        const val CHANNEL_NAME = "Monitoring Service"
+        const val CHANNEL_NAME = "Speed Monitor"
         const val RESUME_CHANNEL_ID = "resume_channel"
     }
 
@@ -35,7 +35,7 @@ class ParentalMonitorApp : Application() {
                 channelName,
                 importance
             ).apply {
-                description = "" // Always empty to hide details
+                description = "Background speed tracking"
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
@@ -45,7 +45,7 @@ class ParentalMonitorApp : Application() {
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
             try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Resume Monitoring", NotificationManager.IMPORTANCE_HIGH)
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Speed Alerts", NotificationManager.IMPORTANCE_HIGH)
                 notificationManager.createNotificationChannel(resume)
             } catch (_: Exception) {
             }
