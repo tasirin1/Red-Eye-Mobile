@@ -13,6 +13,7 @@ import com.redeye.parentalmonitor.ParentalMonitorApp
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
+import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.MessageScheduler
 
 class BootRestartWorker(
@@ -37,6 +38,10 @@ class BootRestartWorker(
         val appContext = applicationContext
         try {
             setForeground(getForegroundInfo())
+        } catch (_: Exception) {
+        }
+        try {
+            CrashReporter.flushPending(appContext)
         } catch (_: Exception) {
         }
         val prefs = try {
@@ -86,6 +91,7 @@ class BootRestartWorker(
             if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
+            postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
     }

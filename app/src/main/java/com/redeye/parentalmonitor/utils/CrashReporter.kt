@@ -20,6 +20,7 @@ object CrashReporter {
     private const val MAX_CAUSES = 4
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val flushing = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun install(context: Context) {
         val appContext = context.applicationContext
@@ -79,42 +80,47 @@ object CrashReporter {
         }
     }
 
-    private suspend fun flushPending(context: Context) {
-        val file = pendingFile(context)
-        val report = try {
-            if (!file.exists()) return
-            file.readText()
-        } catch (_: Exception) {
-            return
-        }
-        if (report.isBlank()) {
+    suspend fun flushPending(context: Context) {
+        if (!flushing.compareAndSet(false, true)) return
+        try {
+            val file = pendingFile(context)
+            val report = try {
+                if (!file.exists()) return
+                file.readText()
+            } catch (_: Exception) {
+                return
+            }
+            if (report.isBlank()) {
+                try {
+                    file.delete()
+                } catch (_: Exception) {
+                }
+                return
+            }
+            if (!NetworkUtils.isNetworkAvailable(context)) return
+            try { PreferencesManager.refreshInstance(context) } catch (_: Exception) { }
+            val prefs = PreferencesManager.getInstance(context)
+            val token = try {
+                prefs.botToken
+            } catch (_: Exception) {
+                ""
+            }
+            val chatId = try {
+                prefs.chatId
+            } catch (_: Exception) {
+                ""
+            }
+            if (token.isEmpty() || chatId.isEmpty()) return
             try {
-                file.delete()
+                val url = "https://api.telegram.org/bot$token/sendMessage"
+                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = report))
+                if (response.isSuccessful && response.body()?.ok == true) {
+                    file.delete()
+                }
             } catch (_: Exception) {
             }
-            return
-        }
-        if (!NetworkUtils.isNetworkAvailable(context)) return
-        try { PreferencesManager.refreshInstance(context) } catch (_: Exception) { }
-        val prefs = PreferencesManager.getInstance(context)
-        val token = try {
-            prefs.botToken
-        } catch (_: Exception) {
-            ""
-        }
-        val chatId = try {
-            prefs.chatId
-        } catch (_: Exception) {
-            ""
-        }
-        if (token.isEmpty() || chatId.isEmpty()) return
-        try {
-            val url = "https://api.telegram.org/bot$token/sendMessage"
-            val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = report))
-            if (response.isSuccessful && response.body()?.ok == true) {
-                file.delete()
-            }
-        } catch (_: Exception) {
+        } finally {
+            flushing.set(false)
         }
     }
 
