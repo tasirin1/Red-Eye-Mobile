@@ -52,10 +52,10 @@ class BootRestartWorker(
             }
         } catch (_: Exception) {
         }
-        if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring) {
+        if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             return Result.success()
         }
-        if (!prefs.isMonitoringEnabled || !prefs.isConfigured()) {
+        if (!prefs.isConfigured()) {
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         MessageScheduler.scheduleWatchdog(appContext)

@@ -27,11 +27,35 @@ class BootReceiver : BroadcastReceiver() {
         }
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)
-        val preferencesManager = try {
-            PreferencesManager.refreshInstance(appContext)
-            PreferencesManager.getInstance(appContext)
+        if (intent.action == Intent.ACTION_USER_PRESENT) return
+        val pendingResult = goAsync()
+        val thread = Thread {
+            try {
+                handleBoot(appContext)
+            } catch (_: Exception) {
+            } finally {
+                try {
+                    pendingResult.finish()
+                } catch (_: Exception) {
+                }
+            }
+        }
+        try {
+            thread.start()
         } catch (_: Exception) {
-            MessageScheduler.scheduleBootRestart(appContext)
+            try {
+                pendingResult.finish()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun handleBoot(context: Context) {
+        val preferencesManager = try {
+            PreferencesManager.refreshInstance(context)
+            PreferencesManager.getInstance(context)
+        } catch (_: Exception) {
+            MessageScheduler.scheduleBootRestart(context)
             return
         }
         try {
@@ -41,13 +65,13 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
-        if (!preferencesManager.isMonitoringEnabled || !preferencesManager.isConfigured()) {
-            MessageScheduler.scheduleBootRestart(appContext)
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) return
+        if (!preferencesManager.isConfigured()) {
+            MessageScheduler.scheduleBootRestart(context)
             return
         }
-        if (!tryStartService(appContext)) {
-            MessageScheduler.scheduleBootRestart(appContext)
+        if (!tryStartService(context)) {
+            MessageScheduler.scheduleBootRestart(context)
         }
     }
 

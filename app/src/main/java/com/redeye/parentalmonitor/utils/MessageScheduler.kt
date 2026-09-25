@@ -18,23 +18,25 @@ object MessageScheduler {
     private const val BOOT_RESTART_WORK = "boot_restart_monitoring"
     private const val BOOT_WATCHDOG_WORK = "monitoring_watchdog"
 
-    fun scheduleMessageSend(context: Context): Boolean {
+    fun scheduleMessageSend(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
-            val sendRequest = OneTimeWorkRequestBuilder<SendMessageWorker>()
+            val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(constraints)
                 .setBackoffCriteria(
                     androidx.work.BackoffPolicy.EXPONENTIAL,
                     10,
                     TimeUnit.SECONDS
                 )
-                .build()
+            if (initialDelayMs > 0L) {
+                requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+            }
 
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, sendRequest)
+                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, requestBuilder.build())
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)

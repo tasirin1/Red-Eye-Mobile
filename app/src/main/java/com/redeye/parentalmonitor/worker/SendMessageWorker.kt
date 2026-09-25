@@ -15,7 +15,7 @@ class SendMessageWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    private val messageQueue = MessageQueue(context.applicationContext)
+    private val messageQueue = MessageQueue.getInstance(context.applicationContext)
     private val preferencesManager: PreferencesManager by lazy {
         try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
         PreferencesManager.getInstance(context.applicationContext)
@@ -32,6 +32,9 @@ class SendMessageWorker(
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             return Result.success()
         }
+        if (authBlocked()) {
+            return Result.success()
+        }
 
         val queue = messageQueue.getQueue()
         if (queue.isEmpty()) {
@@ -40,7 +43,8 @@ class SendMessageWorker(
 
         val sentIds = mutableListOf<String>()
         val failedIds = mutableListOf<String>()
-        val authFailedIds = mutableListOf<String>()
+        val rejectedIds = mutableListOf<String>()
+        var authCode = 0
         var rateLimitedSecs = 0L
         var processed = 0
         val runToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
@@ -64,7 +68,11 @@ class SendMessageWorker(
                         break
                     }
                     is SendOutcome.AuthFailed -> {
-                        authFailedIds.add(queuedMessage.id)
+                        authCode = outcome.code
+                        break
+                    }
+                    is SendOutcome.Rejected -> {
+                        rejectedIds.add(queuedMessage.id)
                     }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
@@ -79,29 +87,42 @@ class SendMessageWorker(
 
         if (sentIds.isNotEmpty()) {
             messageQueue.removeMessages(sentIds)
+        }
+        if (rejectedIds.isNotEmpty()) {
+            messageQueue.removeMessages(rejectedIds)
+            android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
+        }
+
+        if (authCode != 0) {
+            try {
+                preferencesManager.credentialError = authCode.toString()
+                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+            } catch (_: Exception) {
+            }
+            android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
+            return Result.success()
+        }
+
+        if (sentIds.isNotEmpty()) {
             try {
                 preferencesManager.credentialError = ""
                 preferencesManager.credentialErrorAt = 0L
             } catch (_: Exception) {
             }
         }
-        if (authFailedIds.isNotEmpty()) {
-            messageQueue.removeMessages(authFailedIds)
-            try {
-                preferencesManager.credentialError = "401"
-                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
-            } catch (_: Exception) {
-            }
-            android.util.Log.e("SendMessageWorker", "Auth rejected, dropped ${authFailedIds.size} message(s) without retry")
-        }
         if (failedIds.isNotEmpty()) {
             try {
-                messageQueue.registerFailures(failedIds)
+                val dropped = messageQueue.registerFailures(failedIds)
+                if (dropped.isNotEmpty()) {
+                    android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
+                    sendDropNotice(dropped.size, runToken, runChatId)
+                }
             } catch (_: Exception) {
             }
         }
 
         if (rateLimitedSecs > 0) {
+            delay(rateLimitedSecs * 1000L)
             return Result.retry()
         }
         if (messageQueue.hasMessages() && (sentIds.isNotEmpty() || runAttemptCount < 3)) {
@@ -114,7 +135,35 @@ class SendMessageWorker(
         object Sent : SendOutcome
         object Failed : SendOutcome
         class RateLimited(val retryAfterSecs: Long) : SendOutcome
-        object AuthFailed : SendOutcome
+        class AuthFailed(val code: Int) : SendOutcome
+        object Rejected : SendOutcome
+    }
+
+    private fun authBlocked(): Boolean {
+        return try {
+            val err = preferencesManager.credentialError
+            if (err.isEmpty()) return false
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now < preferencesManager.credentialErrorAt) {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+                return false
+            }
+            now - preferencesManager.credentialErrorAt < 30 * 60_000L
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String) {
+        try {
+            val url = "https://api.telegram.org/bot$botToken/sendMessage"
+            TelegramClient.api.sendMessage(
+                url,
+                TelegramMessage(chatId = chatId, text = "⚠️ $count queued message(s) dropped after max retries.")
+            )
+        } catch (_: Exception) {
+        }
     }
 
     private suspend fun sendMessage(message: String, botToken: String, chatId: String): SendOutcome {
@@ -136,9 +185,11 @@ class SendMessageWorker(
                 android.util.Log.w("SendMessageWorker", "Rate limited, retrying after ${retryAfterSecs}s")
                 SendOutcome.RateLimited(retryAfterSecs)
             } else if (response.code() == 401 || response.code() == 403) {
-                SendOutcome.AuthFailed
-            } else {
+                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
+            } else {
+                SendOutcome.Rejected
             }
         } catch (e: Exception) {
             SendOutcome.Failed

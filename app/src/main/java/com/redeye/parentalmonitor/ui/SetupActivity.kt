@@ -94,13 +94,20 @@ class SetupActivity : AppCompatActivity() {
 
     private fun redactToken(value: String?): String {
         if (value.isNullOrEmpty()) return ""
-        val token = try {
-            prefs.botToken
+        val secrets = mutableSetOf<String>()
+        try {
+            prefs.botToken.takeIf { it.isNotEmpty() }?.let { secrets.add(it) }
         } catch (_: Exception) {
-            ""
         }
-        if (token.isEmpty()) return value
-        return value.replace(token, "***")
+        if (::botTokenInput.isInitialized) {
+            botTokenInput.text?.toString()?.trim().orEmpty()
+                .takeIf { it.isNotEmpty() && it != STORED_MASK }
+                ?.let { secrets.add(it) }
+        }
+        if (secrets.isEmpty()) return value
+        var out = value
+        for (secret in secrets) out = out.replace(secret, "***")
+        return out
     }
 
     private fun hasForegroundLocation(): Boolean {
@@ -240,6 +247,7 @@ class SetupActivity : AppCompatActivity() {
         prefs.cameraInterval = cameraInterval.coerceIn(0, 60)
 
         Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+        reviveMonitoringIfNeeded()
         updateStatus()
         return true
     }

@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             
             // RELEASE mode: Auto-start service after permissions granted
-            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring) {
+            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
                 if (!preferencesManager.isMonitoringEnabled) {
                     try {
@@ -210,10 +210,20 @@ class MainActivity : AppCompatActivity() {
     
     private fun formatResult(result: Double): String {
         if (result.isNaN() || result.isInfinite()) return "Error"
-        if (result == kotlin.math.floor(result) && kotlin.math.abs(result) < 9e15) {
+        val abs = kotlin.math.abs(result)
+        if (result == kotlin.math.floor(result) && abs < 1e12) {
             return result.toLong().toString()
         }
-        return String.format(java.util.Locale.US, "%.8f", result).trimEnd('0').trimEnd('.')
+        val intDigits = abs.toLong().toString().length
+        val maxScale = (12 - intDigits).coerceIn(0, 8)
+        val plain = java.math.BigDecimal(result)
+            .setScale(maxScale, java.math.RoundingMode.HALF_UP)
+            .stripTrailingZeros()
+            .toPlainString()
+        if (plain.count { it.isDigit() } > 12) {
+            return String.format(java.util.Locale.US, "%.8E", result)
+        }
+        return plain
     }
 
     private fun clear() {

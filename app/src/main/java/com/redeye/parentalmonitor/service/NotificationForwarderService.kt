@@ -50,10 +50,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private var cachedFwdToken = ""
     private var cachedFwdChat = ""
     private var fwdCredsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
-    private var cfgCheckAt = 0L
-    private var cfgEnabled = false
-    private var cfgForward = true
-    private var cfgConfigured = false
 
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
@@ -81,7 +77,7 @@ class NotificationForwarderService : NotificationListenerService() {
         scope.launch {
             try {
                 prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
-                queueRef = MessageQueue(this@NotificationForwarderService)
+                queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "bot_token" || key == "chat_id") refreshFwdCreds()
@@ -119,14 +115,10 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             return
         }
-        val nowCfg = android.os.SystemClock.elapsedRealtime()
-        if (nowCfg - cfgCheckAt > 30_000L) {
-            cfgCheckAt = nowCfg
-            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
-            cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
-            cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
-        }
+        val cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
         if (!cfgEnabled) return
+        val cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
+        val cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
         if (!cfgForward || !cfgConfigured) return
         val extras = notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
@@ -162,7 +154,7 @@ class NotificationForwarderService : NotificationListenerService() {
         scope.launch {
             try {
                 val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService).also { prefsRef = it }
-                val queue = queueRef ?: MessageQueue(this@NotificationForwarderService).also { queueRef = it }
+                val queue = queueRef ?: MessageQueue.getInstance(this@NotificationForwarderService).also { queueRef = it }
                 prefs.isConfigured()
                 queue.hasMessages()
             } catch (_: Exception) {
@@ -217,7 +209,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun queue(): MessageQueue {
         queueRef?.let { return it }
-        return MessageQueue(this).also { queueRef = it }
+        return MessageQueue.getInstance(this).also { queueRef = it }
     }
 
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
@@ -252,7 +244,11 @@ class NotificationForwarderService : NotificationListenerService() {
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
-            if (botToken.isEmpty() || chatId.isEmpty()) return
+            if (botToken.isEmpty() || chatId.isEmpty()) {
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+                return
+            }
             val nowNet = android.os.SystemClock.elapsedRealtime()
             if (nowNet - netCheckAt > 20_000L) {
                 netCheckAt = nowNet
@@ -270,16 +266,19 @@ class NotificationForwarderService : NotificationListenerService() {
                 return
             }
             if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("NotifForwarder", "Auth rejected, dropping notification without queue")
+                android.util.Log.e("NotifForwarder", "Auth rejected, queuing notification until credentials are fixed")
                 try {
                     prefs.credentialError = response.code().toString()
                     prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
                 } catch (_: Exception) {
                 }
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
                 return
             }
             if (response.code() == 400) {
-                android.util.Log.w("NotifForwarder", "Bad request (400), queuing notification for retry")
+                android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
+                return
             }
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)

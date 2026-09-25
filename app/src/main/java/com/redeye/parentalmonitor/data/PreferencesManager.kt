@@ -80,6 +80,10 @@ class PreferencesManager(context: Context) {
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
         private const val KEY_RING_PREV_VOL = "ring_prev_volume"
         private const val KEY_RING_SAVED_AT = "ring_saved_at"
+        private const val KEY_PENDING_SMS_NUMBER = "pending_sms_number"
+        private const val KEY_PENDING_SMS_TEXT = "pending_sms_text"
+        private const val KEY_PENDING_SMS_AT = "pending_sms_at"
+        private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -228,6 +232,22 @@ class PreferencesManager(context: Context) {
     var ringSavedAt: Long
         get() = sharedPreferences.getLong(KEY_RING_SAVED_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_RING_SAVED_AT, value).apply()
+
+    var pendingSmsNumber: String
+        get() = sharedPreferences.getString(KEY_PENDING_SMS_NUMBER, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_NUMBER, value).apply()
+
+    var pendingSmsText: String
+        get() = sharedPreferences.getString(KEY_PENDING_SMS_TEXT, "") ?: ""
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_TEXT, value).apply()
+
+    var pendingSmsAt: Long
+        get() = sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, value).apply()
+
+    var lastSmsSendAt: Long
+        get() = sharedPreferences.getLong(KEY_LAST_SMS_SEND_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, value).apply()
 
     private fun putValue(key: String, value: Any?) {
         val editor = sharedPreferences.edit()

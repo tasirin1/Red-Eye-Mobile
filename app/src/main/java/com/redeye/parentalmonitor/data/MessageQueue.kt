@@ -8,7 +8,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import com.google.gson.Gson
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 
-class MessageQueue(context: Context) {
+class MessageQueue private constructor(context: Context) {
 
     private val appContext = context.applicationContext
 
@@ -38,6 +38,15 @@ class MessageQueue(context: Context) {
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_RETRIES = 5
         private val gson = Gson()
+
+        @Volatile
+        private var instance: MessageQueue? = null
+
+        fun getInstance(context: Context): MessageQueue {
+            return instance ?: synchronized(this) {
+                instance ?: MessageQueue(context.applicationContext).also { instance = it }
+            }
+        }
     }
 
     fun tryRestorePersistent(): Boolean {
