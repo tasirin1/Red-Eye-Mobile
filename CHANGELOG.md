@@ -4,6 +4,13 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.33] - 2026-09-25
+
+### Added
+- `SpeedMonitorActivity` (`ui/`, `layout/activity_speed_monitor.xml`, terdaftar di `AndroidManifest.xml`): layar internet speed meter asli (download/upload live per detik + total sesi via `TrafficStats`) yang dibuka dari ketukan notifikasi.
+- `MonitoringService` sampling `TrafficStats` tiap 2 detik dan me-refresh teks notifikasi foreground menjadi kecepatan live semisal `↓ 1.2 MB/s · ↑ 340 KB/s`, plus `setContentIntent()` ke layar speed meter di notifikasi servis dan `BootRestartWorker`.
+- `utils/NetSpeed.kt`: helper `totals()`/`splitRate()`/`formatRate()`/`formatTotal()` (fallback ke statistik UID bila global tak didukung).
+
 ## [1.6.32] - 2026-09-25
 
 ### Changed

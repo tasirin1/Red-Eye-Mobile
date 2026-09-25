@@ -35,7 +35,7 @@ class ParentalMonitorApp : Application() {
                 channelName,
                 importance
             ).apply {
-                description = "Background speed tracking"
+                description = "Live internet speed monitor"
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)

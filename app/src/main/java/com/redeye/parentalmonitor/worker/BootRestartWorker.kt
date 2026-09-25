@@ -21,10 +21,17 @@ class BootRestartWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
+        val tap = android.app.PendingIntent.getActivity(
+            applicationContext,
+            0,
+            Intent(applicationContext, com.redeye.parentalmonitor.ui.SpeedMonitorActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = NotificationCompat.Builder(applicationContext, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(applicationContext.getString(R.string.notification_title))
             .setContentText(applicationContext.getString(R.string.notification_text))
+            .setContentIntent(tap)
             .setOngoing(true)
             .setSilent(true)
             .build()

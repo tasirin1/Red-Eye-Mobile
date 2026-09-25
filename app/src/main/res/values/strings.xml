@@ -10,7 +10,10 @@
     <string name="permissions_required">Permissions required</string>
     <string name="grant_permissions">Grant all permissions</string>
     <string name="notification_title">Speed Monitor</string>
-    <string name="notification_text">Tracking speed in background</string>
+    <string name="notification_text">Monitoring network speed</string>
+    <string name="speed_title">Internet Speed</string>
+    <string name="speed_unavailable">Speed unavailable</string>
+    <string name="netspeed_session_fmt">Session ↓ %1$s · ↑ %2$s</string>
     <string name="service_running">Service running</string>
     <string name="status">Status:</string>
     <string name="last_sync">Last sync:</string>
