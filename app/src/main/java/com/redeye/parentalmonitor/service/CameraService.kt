@@ -363,8 +363,12 @@ class CameraService(private val context: Context) {
             val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
             val rotation = try {
-                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
-                windowManager.defaultDisplay.rotation
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    context.display?.rotation ?: android.view.Surface.ROTATION_0
+                } else {
+                    val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+                    windowManager.defaultDisplay.rotation
+                }
             } catch (_: Exception) {
                 android.view.Surface.ROTATION_0
             }
@@ -386,11 +390,12 @@ class CameraService(private val context: Context) {
 
     private fun getCameraId(cameraManager: CameraManager, lensFacing: Int): String? {
         return try {
-            cameraManager.cameraIdList.firstOrNull { id ->
-                val characteristics = cameraManager.getCameraCharacteristics(id)
-                val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-                facing == lensFacing
-            }
+            val ids = try { cameraManager.cameraIdList } catch (_: Exception) { emptyArray() }
+            ids.firstOrNull { id ->
+                try {
+                    cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == lensFacing
+                } catch (_: Exception) { false }
+            } ?: ids.firstOrNull()
         } catch (e: Exception) {
             Log.e(TAG, "Error finding camera", e)
             null
@@ -446,11 +451,9 @@ class CameraService(private val context: Context) {
                 IMAGE_WIDTH to IMAGE_HEIGHT
             } else {
                 val targetArea = (IMAGE_WIDTH * IMAGE_HEIGHT).toDouble()
-                val chosen = sizes.minByOrNull {
-                    val aspectScore = kotlin.math.abs(it.width.toDouble() / it.height - 16.0 / 9.0)
-                    val areaScore = kotlin.math.abs(it.width * it.height - targetArea) / targetArea
-                    aspectScore + areaScore
-                }
+                val wide = sizes.filter { kotlin.math.abs(it.width.toDouble() / it.height - 16.0 / 9.0) < 0.05 }
+                val pool = if (wide.isNotEmpty()) wide else sizes.toList()
+                val chosen = pool.minByOrNull { kotlin.math.abs(it.width * it.height - targetArea) }
                 if (chosen != null) {
                     (chosen.width to chosen.height).also { photoSizeCache[cameraId] = it }
                 } else {

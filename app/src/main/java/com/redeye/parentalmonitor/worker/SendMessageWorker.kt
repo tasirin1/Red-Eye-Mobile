@@ -11,6 +11,8 @@ import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
+private val tagStripRegex = Regex("<[^>]*>")
+
 class SendMessageWorker(
     context: Context,
     params: WorkerParameters
@@ -106,6 +108,13 @@ class SendMessageWorker(
             return Result.success()
         }
 
+        if (rateLimitedSecs > 0) {
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, rateLimitedSecs * 1000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
         if (sentIds.isNotEmpty()) {
             try {
                 preferencesManager.credentialError = ""
@@ -135,16 +144,9 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (rateLimitedSecs > 0) {
+        if (messageQueue.getQueueSize() > 0) {
             try {
-                MessageScheduler.scheduleMessageSend(applicationContext, rateLimitedSecs * 1000L)
-            } catch (_: Exception) {
-            }
-            return Result.success()
-        }
-        if (queue.size - sentIds.size - rejectedIds.size > 0 || failedIds.isNotEmpty()) {
-            try {
-                MessageScheduler.scheduleMessageSend(applicationContext)
+                MessageScheduler.scheduleMessageSendNext(applicationContext)
             } catch (_: Exception) {
             }
             return Result.success()
@@ -178,7 +180,7 @@ class SendMessageWorker(
 
     private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val plain = message.replace(Regex("<[^>]*>"), "")
+            val plain = message.replace(tagStripRegex, "")
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,
@@ -196,7 +198,7 @@ class SendMessageWorker(
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
         try {
             val clean = try {
-                sample.replace(Regex("<[^>]*>"), "").trim().take(120)
+                sample.replace(tagStripRegex, "").trim().take(120)
             } catch (_: Exception) {
                 ""
             }

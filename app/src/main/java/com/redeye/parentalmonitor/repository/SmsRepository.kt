@@ -46,13 +46,23 @@ class SmsRepository(private val context: Context) {
     private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<SmsData> {
         val result = mutableListOf<SmsData>()
         try {
-            context.contentResolver.query(
-                Telephony.Sms.CONTENT_URI,
-                projection,
-                selection,
-                args,
-                sortOrder
-            )?.use { cursor ->
+            val cursor = if (limit != Int.MAX_VALUE && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                val bundle = android.os.Bundle().apply {
+                    putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                    putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args)
+                    putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+                    putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, limit)
+                }
+                try {
+                    context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, bundle, null)
+                } catch (_: Exception) {
+                    context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
+                }
+            } else {
+                val boundedSort = if (limit == Int.MAX_VALUE) sortOrder else "$sortOrder LIMIT $limit"
+                context.contentResolver.query(Telephony.Sms.CONTENT_URI, projection, selection, args, boundedSort)
+            }
+            cursor?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
                 val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)

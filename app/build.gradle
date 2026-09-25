@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 56
-        versionName "1.6.29"
+        versionCode 57
+        versionName "1.6.30"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -75,9 +75,26 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Keystore hanya ada di CI rilis; tanpanya pakai debug key agar build check tetap jalan.
             signingConfig = file("release.p12").exists() ? signingConfigs.release : signingConfigs.debug
         }
+    }
+
+    tasks.register("assertReleaseKeystore") {
+        doLast {
+            if (file("release.p12").exists()) return
+            def wantRelease = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
+            if (!wantRelease) return
+            if ((System.getenv("ANDROID_KEYSTORE_BASE64") ?: "") != "") {
+                throw new GradleException("ANDROID_KEYSTORE_BASE64 set but app/release.p12 missing")
+            }
+            def ref = System.getenv("GITHUB_REF") ?: ""
+            if (ref.startsWith("refs/tags/v")) {
+                throw new GradleException("Release tag build requires release keystore (ANDROID_KEYSTORE_BASE64)")
+            }
+        }
+    }
+    tasks.matching { it.name.contains("assemble") && it.name.contains("Release") }.configureEach {
+        dependsOn("assertReleaseKeystore")
     }
     
     compileOptions {

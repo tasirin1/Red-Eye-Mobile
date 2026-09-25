@@ -111,6 +111,12 @@ object CrashReporter {
                 ""
             }
             if (token.isEmpty() || chatId.isEmpty()) return
+            val allowed = try {
+                prefs.isMonitoringEnabled && prefs.userConsentedMonitoring && !prefs.userDisabledMonitoring
+            } catch (_: Exception) {
+                false
+            }
+            if (!allowed) return
             try {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = report))

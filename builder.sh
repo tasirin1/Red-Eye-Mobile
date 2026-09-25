@@ -47,6 +47,7 @@ OUTPUT_DIR="output"
 
 # Header
 clear
+echo "LEGACY: builder.sh sudah tidak dipakai. Build hanya via GitHub Actions (.github/workflows/build.yml)." >&2
 echo ""
 echo -e "${CYAN}${BOLD}══════════════════════════════════════════════════════════════${NC}"
 echo -e "${CYAN}${BOLD}                   RED EYE MOBILE BUILDER                     ${NC}"

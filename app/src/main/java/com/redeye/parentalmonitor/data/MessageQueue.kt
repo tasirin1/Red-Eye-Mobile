@@ -81,6 +81,24 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    fun addMessages(messages: Collection<String>) {
+        if (messages.isEmpty()) return
+        synchronized(lock) {
+            if (volatileOnly) {
+                for (message in messages) volatileQueue.add(QueuedMessage(message = message))
+                while (volatileQueue.size > MAX_QUEUE_SIZE) volatileQueue.removeAt(0)
+                return
+            }
+            val queue = readLocked()
+            for (message in messages) queue.add(QueuedMessage(message = message))
+            while (queue.size > MAX_QUEUE_SIZE) {
+                queue.removeAt(0)
+                android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
+            }
+            persistLocked(queue)
+        }
+    }
+
     fun getQueue(): List<QueuedMessage> {
         synchronized(lock) {
             if (volatileOnly) return volatileQueue.toList()

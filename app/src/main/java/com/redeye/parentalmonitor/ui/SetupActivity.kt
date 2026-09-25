@@ -84,8 +84,14 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
-        private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{20,}$")
+        private val TOKEN_REGEX = Regex("^[0-9]{5,15}:[A-Za-z0-9_-]{30,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
+    }
+
+    private fun isChatIdValid(chatId: String): Boolean {
+        if (!chatId.matches(CHAT_ID_REGEX)) return false
+        val v = chatId.toLongOrNull() ?: return false
+        return v != 0L
     }
 
     private fun resolveStored(raw: String, stored: String): String {
@@ -229,31 +235,26 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return false
         }
-        if (!chatId.matches(CHAT_ID_REGEX)) {
+        if (!isChatIdValid(chatId)) {
             Toast.makeText(this, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
             return false
         }
 
         val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
 
-        if (token != prefs.botToken || chatId != prefs.chatId) {
-            prefs.commandsTokenHash = ""
-            prefs.credentialError = ""
-            prefs.credentialErrorAt = 0L
-        }
-        prefs.botToken = token
-        prefs.chatId = chatId
         val clampedInterval = interval.coerceIn(1, 1440)
         val clampedCamera = cameraInterval.coerceIn(0, 60)
-        prefs.syncInterval = clampedInterval
-        prefs.cameraInterval = clampedCamera
+        prefs.saveCoreConfig(token, chatId, clampedInterval, clampedCamera)
+        botTokenInput.setText(STORED_MASK)
+        chatIdInput.setText(STORED_MASK)
 
         if (clampedInterval != interval || clampedCamera != cameraInterval) {
             syncIntervalInput.setText(clampedInterval.toString())
             cameraIntervalInput.setText(clampedCamera.toString())
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         }
-        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         reviveMonitoringIfNeeded()
         updateStatus()
         return true
@@ -266,7 +267,7 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
         }
-        if (!token.matches(TOKEN_REGEX) || !chatId.matches(CHAT_ID_REGEX)) {
+        if (!token.matches(TOKEN_REGEX) || !isChatIdValid(chatId)) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return
         }
@@ -279,7 +280,8 @@ class SetupActivity : AppCompatActivity() {
                 if (resp.isSuccessful && resp.body()?.ok == true) {
                     persistTestSettings(token, chatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                        botTokenInput.setText(STORED_MASK)
+                        chatIdInput.setText(STORED_MASK)
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
                         reviveMonitoringIfNeeded()
                     }
@@ -306,13 +308,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun persistTestSettings(token: String, chatId: String) {
-        if (token != prefs.botToken || chatId != prefs.chatId) {
-            prefs.commandsTokenHash = ""
-        }
-        prefs.botToken = token
-        prefs.chatId = chatId
-        prefs.credentialError = ""
-        prefs.credentialErrorAt = 0L
+        prefs.saveTestCredentials(token, chatId)
     }
 
     private fun hasAllPermissions(): Boolean {
@@ -354,8 +350,7 @@ class SetupActivity : AppCompatActivity() {
         }
         try {
             startService(intent)
-            prefs.isMonitoringEnabled = false
-            prefs.userDisabledMonitoring = true
+            prefs.setMonitoringActive(false)
             Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -373,11 +368,7 @@ class SetupActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
-            prefs.isMonitoringEnabled = true
-            prefs.userDisabledMonitoring = false
-            prefs.userConsentedMonitoring = true
-            prefs.monitoringPaused = false
-            prefs.photoPausedUntil = 0L
+            prefs.setMonitoringActive(true)
             Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -521,6 +512,7 @@ class SetupActivity : AppCompatActivity() {
             if (bg) "OK" else "-"
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
             statusText.text = body
             toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
             toggleButton.isEnabled = configured || running

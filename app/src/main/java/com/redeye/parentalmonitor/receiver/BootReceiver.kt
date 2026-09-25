@@ -63,11 +63,11 @@ class BootReceiver : BroadcastReceiver() {
     private fun handleBoot(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         if (nowBoot - lastHandleAt < 10_000L) return
-        lastHandleAt = nowBoot
         val preferencesManager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
         } catch (_: Exception) {
+            lastHandleAt = 0L
             MessageScheduler.scheduleBootRestart(context)
             return
         }
@@ -78,15 +78,25 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) return
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
+            lastHandleAt = nowBoot
+            return
+        }
         if (!preferencesManager.isConfigured()) {
+            lastHandleAt = 0L
             MessageScheduler.scheduleBootRestart(context)
             return
         }
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        if (!updated && (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context))) return
+        if (!updated && (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context))) {
+            lastHandleAt = nowBoot
+            return
+        }
         if (!tryStartService(context)) {
+            lastHandleAt = 0L
             MessageScheduler.scheduleBootRestart(context)
+        } else {
+            lastHandleAt = nowBoot
         }
     }
 

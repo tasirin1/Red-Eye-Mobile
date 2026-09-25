@@ -49,7 +49,11 @@ class MainActivity : AppCompatActivity() {
         val allGranted = permissions.values.all { it }
         if (allGranted) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "All permissions granted")
-            Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
+            if (!hasBackgroundLocation()) {
+                Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
+            }
             
             // RELEASE mode: Auto-start service after permissions granted
             if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
@@ -280,8 +284,7 @@ class MainActivity : AppCompatActivity() {
         
         // Silently request permissions if needed
         if (!hasAllPermissions()) {
-            android.util.Log.w("MainActivity", "Requesting permissions silently...")
-            requestPermissions()
+            android.util.Log.w("MainActivity", "Permissions missing - waiting for Setup")
             return
         }
         
@@ -307,14 +310,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    // ═══════════════════════════════════════════════════════════
-    // DEVICE ADMIN FUNCTIONS (UNINSTALL PROTECTION)
-    // ═══════════════════════════════════════════════════════════
-    
-    private fun requestPermissions() {
-        permissionLauncher.launch(requiredPermissions)
-    }
-
     private fun hasAllPermissions(): Boolean {
         return requiredPermissions.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED

@@ -112,7 +112,7 @@ class BootRestartWorker(
                 Intent(context, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
-            val notification = NotificationCompat.Builder(context, ParentalMonitorApp.CHANNEL_ID)
+            val notification = NotificationCompat.Builder(context, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(R.string.resume_title))
                 .setContentText(context.getString(R.string.resume_text))

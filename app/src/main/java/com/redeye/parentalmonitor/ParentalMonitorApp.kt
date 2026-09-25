@@ -11,28 +11,13 @@ class ParentalMonitorApp : Application() {
     companion object {
         const val CHANNEL_ID = "monitoring_channel"
         const val CHANNEL_NAME = "Monitoring Service"
+        const val RESUME_CHANNEL_ID = "resume_channel"
     }
 
     override fun onCreate() {
         super.onCreate()
         CrashReporter.install(this)
-        try {
-            Thread { migrateLegacyConsent() }.start()
-        } catch (_: Exception) {
-        }
         createNotificationChannel()
-    }
-
-    private fun migrateLegacyConsent() {
-        try {
-            try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
-            val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this)
-            if (!prefs.isStorageEncrypted) return
-            if (prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring && !prefs.userConsentedMonitoring) {
-                prefs.userConsentedMonitoring = true
-            }
-        } catch (_: Exception) {
-        }
     }
 
     private fun createNotificationChannel() {
@@ -59,6 +44,11 @@ class ParentalMonitorApp : Application() {
 
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
+            try {
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Resume Monitoring", NotificationManager.IMPORTANCE_HIGH)
+                notificationManager.createNotificationChannel(resume)
+            } catch (_: Exception) {
+            }
         }
     }
 }

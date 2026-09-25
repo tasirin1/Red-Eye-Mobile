@@ -81,10 +81,6 @@ class PreferencesManager(context: Context) {
                     ks.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
                 } catch (_: Exception) {
                 }
-                try {
-                    context.applicationContext.deleteSharedPreferences(prefsName)
-                } catch (_: Exception) {
-                }
             }
         }
         const val KEY_BOT_TOKEN = "bot_token"
@@ -129,14 +125,20 @@ class PreferencesManager(context: Context) {
                         return false
                     }
                     if (current != null) {
-                        val carried = current.snapshot()
-                        if (carried.isNotEmpty()) {
-                            for ((k, v) in carried) {
-                                fresh.putValue(k, v)
-                            }
+                        try {
+                            val snap = current.snapshot().filterKeys { it != KEY_CRED_ERROR_AT && it != KEY_CRED_ERROR }
+                            fresh.putAllValues(snap)
+                        } catch (_: Exception) {
                         }
                     }
                     instance = fresh
+                    try {
+                        if (android.os.SystemClock.elapsedRealtime() < fresh.credentialErrorAt) {
+                            fresh.credentialError = ""
+                            fresh.credentialErrorAt = 0L
+                        }
+                    } catch (_: Exception) {
+                    }
                     true
                 } catch (_: Exception) {
                     false
@@ -284,6 +286,76 @@ class PreferencesManager(context: Context) {
     var lastSmsSendAt: Long
         get() = sharedPreferences.getLong(KEY_LAST_SMS_SEND_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, value).apply()
+
+    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+        val changed = try {
+            newToken != botToken || newChatId != chatId
+        } catch (_: Exception) {
+            true
+        }
+        val editor = sharedPreferences.edit()
+        if (changed) {
+            editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
+            editor.putString(KEY_CRED_ERROR, "")
+            editor.putLong(KEY_CRED_ERROR_AT, 0L)
+        }
+        editor.putString(KEY_BOT_TOKEN, newToken)
+        editor.putString(KEY_CHAT_ID, newChatId)
+        editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
+        editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
+        editor.apply()
+    }
+
+    fun saveTestCredentials(newToken: String, newChatId: String) {
+        val changed = try {
+            newToken != botToken || newChatId != chatId
+        } catch (_: Exception) {
+            true
+        }
+        val editor = sharedPreferences.edit()
+        if (changed) {
+            editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
+        }
+        editor.putString(KEY_BOT_TOKEN, newToken)
+        editor.putString(KEY_CHAT_ID, newChatId)
+        editor.putString(KEY_CRED_ERROR, "")
+        editor.putLong(KEY_CRED_ERROR_AT, 0L)
+        editor.apply()
+    }
+
+    fun putAllValues(values: Map<String, Any?>) {
+        if (values.isEmpty()) return
+        val editor = sharedPreferences.edit()
+        for ((key, value) in values) {
+            when (value) {
+                null -> editor.remove(key)
+                is String -> editor.putString(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is Boolean -> editor.putBoolean(key, value)
+                else -> Unit
+            }
+        }
+        try {
+            editor.apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setMonitoringActive(active: Boolean) {
+        val editor = sharedPreferences.edit()
+        editor.putBoolean(KEY_MONITORING_ENABLED, active)
+        if (active) {
+            editor.putBoolean(KEY_USER_DISABLED, false)
+            editor.putBoolean(KEY_USER_CONSENTED, true)
+            editor.putBoolean(KEY_MONITORING_PAUSED, false)
+            editor.putLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
+        } else {
+            editor.putBoolean(KEY_USER_DISABLED, true)
+        }
+        editor.apply()
+    }
 
     private fun putValue(key: String, value: Any?) {
         val editor = sharedPreferences.edit()

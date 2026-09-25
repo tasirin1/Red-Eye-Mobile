@@ -37,6 +37,7 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var queueRef: MessageQueue? = null
     private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+    private val pendingPosts = java.util.concurrent.atomic.AtomicInteger(0)
     private val fwdMutex = Mutex()
     private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
@@ -96,7 +97,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (key == "bot_token" || key == "chat_id") refreshFwdCreds()
                     if (key == "notif_forward_enabled" || key == "monitoring_enabled" || key == "monitoring_paused" || key == "user_disabled_monitoring" || key == "user_consented_monitoring") cfgCacheAt = 0L
                 }
-                try { prefsRef?.registerChangeListener(fwdCredsListener!!) } catch (_: Exception) { }
+                try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 prefsRef?.isConfigured()
                 queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -126,8 +127,14 @@ class NotificationForwarderService : NotificationListenerService() {
             pkg
         }
         val notifId = sbn.id
+        if (pendingPosts.get() > 32) return
+        pendingPosts.incrementAndGet()
         scope.launch {
-            handlePosted(pkg, notifId, notification, groupKey, isSummary)
+            try {
+                handlePosted(pkg, notifId, notification, groupKey, isSummary)
+            } finally {
+                pendingPosts.decrementAndGet()
+            }
         }
     }
 
@@ -164,11 +171,16 @@ class NotificationForwarderService : NotificationListenerService() {
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         if (title.isEmpty() && text.isEmpty()) return
-        val key = pkg + "#" + notifId + "\n" + title + "\n" + text
+        val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()
         synchronized(lastSent) {
             if (now - (lastSent[key] ?: 0L) < 60_000L) return
             lastSent[key] = now
+        }
+        if (pkgFull(pkg, now)) {
+            val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
+            record(cachedLabel, title, text)
+            return
         }
         val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
             val info = packageManager.getApplicationInfo(pkg, 0)
@@ -177,10 +189,6 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         } catch (_: Exception) {
             pkg
-        }
-        if (pkgFull(pkg, now)) {
-            record(appLabel, title, text)
-            return
         }
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
@@ -310,9 +318,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 return
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
+            if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
-                if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                 return
             }
             if (response.code() == 401 || response.code() == 403) {

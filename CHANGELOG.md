@@ -4,6 +4,59 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.30] - 2026-09-25
+
+### Removed
+- `MainActivity.requestPermissions()` yang tidak pernah dipanggil dihapus agar alur izin hanya lewat `SetupActivity`.
+- Auto-consent legacy di `ParentalMonitorApp` dihapus, monitoring hanya aktif setelah persetujuan eksplisit di Setup.
+
+### Deprecated
+- `builder.sh` menampilkan banner LEGACY dan mengarahkan build ke `.github/workflows/build.yml`.
+
+### Security
+- `SetupActivity` memask ulang token/chat ID ke `••••••••` setelah simpan/tes sukses.
+- Validasi token diperketat ke `^[0-9]{5,15}:[A-Za-z0-9_-]{30,}$` dan chat ID menolak `0` serta non-numeric agar token terpotong tidak lolos ke `401`.
+- `PreferencesManager.resetCorruptKeystore()` tidak lagi menghapus file prefs, hanya master key, sehingga token tidak hilang saat keystore terkunci sementara.
+
+### Fixed
+- `MonitoringService.chunkedDelay()` kini dicacah per 5 detik sehingga responsif terhadap pembatalan.
+- Initial-sync yang terpotong proses mati kini diulang, tidak lagi ditandai selesai tanpa kirim.
+- Volume alarm selalu dipulihkan saat service start bila ada sisa state `ring` tertinggal.
+- Latensi perintah Telegram dipangkas: idle backoff dibatasi 60 detik.
+- Histori SMS/panggilan awal dikirim per batch 10 item, bukan satu string raksasa.
+- `SmsRepository` dan `CallLogRepository` memakai `LIMIT` di SQL sehingga cursor tidak memuat baris terbuang.
+- `PreferencesManager.saveCoreConfig()` dan `saveTestCredentials()` menyimpan dalam satu `apply()` atomik; `SetupActivity` memakainya.
+- `MessageQueue.addMessages()` menerima batch dalam satu tulis persisten.
+- `NotificationForwarderService`: registrasi listener tanpa `!!`, batas 32 post antre, cek rate-limit paket sebelum lookup label mahal.
+- `CrashReporter.flushPending()` tidak mengirim laporan saat monitoring mati/belum consent; file lokal tetap tersedia untuk `/log`.
+- Mode stealth `MainActivity` tidak lagi memunculkan dialog izin otomatis; menunggu konfigurasi via Setup.
+- `SendMessageWorker` menjadwalkan lanjutan via `MessageScheduler.scheduleMessageSendNext()` berpolicy `APPEND` sehingga tidak dibuang `KEEP`, dan cek sisa memakai ukuran antrean fresh.
+- `searchContacts()` tahan terhadap baris korup dan indeks kolom hilang.
+- Regex strip-tag di worker dipakai ulang dari satu konstanta.
+- Migrasi `refreshInstance()` menyalin dalam satu `apply()` via `putAllValues()`.
+- Start/stop monitoring dari Setup atomik via `setMonitoringActive()`.
+- `choosePhotoSize()` memilih area terdekat di antara ukuran 16:9, fallback ke area terdekat bila tidak ada.
+- `BootReceiver` kini `exported="true"` sehingga siaran boot sistem benar-benar diterima di targetSdk 35.
+- `/battery` menampilkan `unknown` bila kapasitas tidak didukung perangkat.
+- Dispatch perintah memakai `lowercase(Locale.ROOT)` agar konsisten lintas locale.
+- Jeda foto `/pause` berbasis `elapsedRealtime()` dengan migrasi sekali dari nilai jam-dinding lama; status tampil sisa menit.
+- `PreferencesManager.refreshInstance()` tidak memigrasi `credential_error` basi dan membersihkan `credentialErrorAt` yang lebih baru dari `elapsedRealtime()` saat ini.
+- `SmsRepository` dan `CallLogRepository` memakai `QUERY_ARG_LIMIT` pada API 26+ dengan fallback `LIMIT`, sehingga tidak kosong di OEM yang menolak `LIMIT` di `sortOrder`.
+- `TimeFmt` memakai `Locale.US` dan zona waktu eksplisit agar format Telegram konsisten lintas perangkat.
+- `MainActivity` menampilkan `setup_bg_request` bila foreground lolos tapi background belum, tidak lagi mengklaim granted.
+- `BootReceiver` debounce 10 detik hanya untuk hasil sukses, gagal start mereset sehingga `USER_UNLOCKED` berikutnya bisa retry.
+- `SetupActivity.saveSettings()` satu toast saat clamp, `updateStatus()` aman dari destroy, dan `testConnection()` hanya satu toast sukses.
+- `NotificationForwarderService` dedup tanpa `notifId` agar progres spam teredam, dan hit rate-limit dihitung saat attempt bukan hanya sukses.
+- `CameraService` memakai `context.display` pada API 30+ dan fallback ke kamera pertama bila lensa yang diminta tidak ada.
+- `SendMessageWorker` tidak menaikkan retry saat `RateLimited`, penundaan `APPEND` langsung return.
+- `MonitoringService`: regex `/sms` `^[+]?[0-9]{3,15}$`, restore volume `ring` kedaluwarsa 12 jam, loop sync pakai `chunkedDelay()`, `restartAllLoops()` reset `idlePolls` dan config, `lastUpdateId` per pesan, marker histori setelah kirim, `429` via `scheduleMessageSendNext()`, guard `authBlocked()` untuk foto/audio, backlog penuh tanpa prune, `pendingSms` dibersihkan setelah sukses, file audio korup dihapus saat cancel, `listLaunchableApps()` memakai `ResolveInfoFlags` pada API 33+.
+- `ParentalMonitorApp` menambah `RESUME_CHANNEL_ID` `IMPORTANCE_HIGH`, `BootRestartWorker` memakai channel tersebut agar pengingat terlihat.
+- `app/build.gradle` task `assertReleaseKeystore` digantung ke `assembleRelease`, gagal bila `ANDROID_KEYSTORE_BASE64` ada tapi `release.p12` hilang dan wajib keystore untuk tag `v*`.
+- `SetupActivity.isChatIdValid()` disederhanakan tanpa perbandingan mati terhadap `Long.MAX_VALUE`.
+- `MonitoringService` registrasi listener tanpa `!!`.
+- `BootReceiver` mereset debounce saat `refreshInstance()` gagal agar retry boot berikutnya tidak tersupresi.
+- `builder.sh` banner LEGACY tunggal setelah `clear`.
+
 ## [1.6.29] - 2026-09-25
 
 ### Fixed
