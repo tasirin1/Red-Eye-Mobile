@@ -100,8 +100,6 @@
                 <action android:name="android.intent.action.USER_UNLOCKED" />
                 <action android:name="android.intent.action.USER_PRESENT" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="huawei.intent.action.BOOTCOMPLETED" />
-                <action android:name="com.htc.intent.action.BOOTCOMPLETED" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

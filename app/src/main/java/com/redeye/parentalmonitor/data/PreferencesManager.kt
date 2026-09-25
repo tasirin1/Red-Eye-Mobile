@@ -303,7 +303,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        editor.apply()
+        editor.commit()
     }
 
     fun saveTestCredentials(newToken: String, newChatId: String) {
@@ -320,7 +320,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        editor.apply()
+        editor.commit()
     }
 
     fun putAllValues(values: Map<String, Any?>) {
@@ -354,7 +354,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        editor.apply()
+        editor.commit()
     }
 
     private fun putValue(key: String, value: Any?) {

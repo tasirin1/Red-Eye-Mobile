@@ -12,17 +12,13 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         private const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
-        private const val ACTION_HUAWEI_BOOT_COMPLETED = "huawei.intent.action.BOOTCOMPLETED"
-        private const val ACTION_HTC_BOOT_COMPLETED = "com.htc.intent.action.BOOTCOMPLETED"
 
         private val BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
             Intent.ACTION_USER_PRESENT,
-            ACTION_QUICKBOOT_POWERON,
-            ACTION_HUAWEI_BOOT_COMPLETED,
-            ACTION_HTC_BOOT_COMPLETED
+            ACTION_QUICKBOOT_POWERON
         )
 
         @Volatile

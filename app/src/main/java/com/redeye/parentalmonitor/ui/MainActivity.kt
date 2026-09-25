@@ -43,32 +43,48 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val backgroundPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        if (hasBackgroundLocation()) {
+            Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
+            tryStartAfterPermissions()
+        } else {
+            Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun tryStartAfterPermissions() {
+        if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
+            if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
+                try {
+                    startMonitoringService()
+                    preferencesManager.isMonitoringEnabled = true
+                    Toast.makeText(this, getString(R.string.msg_monitoring_started), Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Failed to start service: ${e.message}")
+                }
+            }
+        }
+    }
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "All permissions granted")
-            if (!hasBackgroundLocation()) {
-                Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+            if (!hasBackgroundLocation() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } catch (_: Exception) {
+                    Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+                }
             } else {
                 Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             }
             
-            // RELEASE mode: Auto-start service after permissions granted
-            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
-                if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
-                    try {
-                        startMonitoringService()
-                        preferencesManager.isMonitoringEnabled = true
-                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Service started successfully!")
-                        Toast.makeText(this, getString(R.string.msg_monitoring_started), Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        android.util.Log.e("MainActivity", "✗ Failed to start service: ${e.message}")
-                    }
-                }
-            }
+            tryStartAfterPermissions()
             
         } else {
             android.util.Log.w("MainActivity", "⚠️ Some permissions denied")

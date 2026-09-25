@@ -349,7 +349,11 @@ class SetupActivity : AppCompatActivity() {
             action = MonitoringService.ACTION_STOP_MONITORING
         }
         try {
-            startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
             prefs.setMonitoringActive(false)
             Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {

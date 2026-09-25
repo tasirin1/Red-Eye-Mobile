@@ -127,7 +127,24 @@ class NotificationForwarderService : NotificationListenerService() {
             pkg
         }
         val notifId = sbn.id
-        if (pendingPosts.get() > 32) return
+        if (pendingPosts.get() > 32) {
+            try {
+                val extras = notification.extras
+                val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+                val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+                if (title.isNotEmpty() || text.isNotEmpty()) {
+                    val label = try {
+                        val info = packageManager.getApplicationInfo(pkg, 0)
+                        packageManager.getApplicationLabel(info).toString()
+                    } catch (_: Exception) {
+                        pkg
+                    }
+                    record(label, title, text)
+                }
+            } catch (_: Exception) {
+            }
+            return
+        }
         pendingPosts.incrementAndGet()
         scope.launch {
             try {
@@ -148,7 +165,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val cfgEnabled: Boolean
         val cfgForward: Boolean
         val cfgConfigured: Boolean
-        if (nowCfg - cfgCacheAt < 30_000L) {
+        if (nowCfg - cfgCacheAt < 10_000L) {
             cfgEnabled = cfgCacheEnabled
             cfgForward = cfgCacheForward
             cfgConfigured = cfgCacheConfigured
@@ -174,7 +191,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()
         synchronized(lastSent) {
-            if (now - (lastSent[key] ?: 0L) < 60_000L) return
+            if (now - (lastSent[key] ?: 0L) < 30_000L) return
             lastSent[key] = now
         }
         if (pkgFull(pkg, now)) {
@@ -240,7 +257,7 @@ class NotificationForwarderService : NotificationListenerService() {
         synchronized(pkgHitsLock) {
             val q = pkgHits[pkg] ?: return false
             while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
-            return q.size >= 5
+            return q.size >= 10
         }
     }
 
@@ -321,6 +338,10 @@ class NotificationForwarderService : NotificationListenerService() {
             if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
+                try {
+                    prefs.lastSyncTime = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
                 return
             }
             if (response.code() == 401 || response.code() == 403) {

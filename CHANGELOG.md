@@ -4,6 +4,24 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.31] - 2026-09-25
+
+### Fixed
+- `MonitoringService.touchHeartbeat()` / `heartbeatFresh()` pakai `elapsedRealtime()` tersimpan di isi file, reboot terdeteksi sebagai stale sehingga `BootReceiver` dan `BootRestartWorker` tidak lagi batal start.
+- `MonitoringService.sendToTelegram()` coba kirim plain tanpa `parseMode` saat `400`, antre versi plain bila `429`/`401`/`403`/`5xx`, hanya drop bila plain juga ditolak.
+- `MonitoringService.sendInitialData()` majukan `lastSmsId` / `lastCallTimestamp` per chunk 10 item agar restart tidak duplikat histori.
+- `SendMessageWorker.sendPlainFallback()` petakan `429` ke `RateLimited`, `401`/`403` ke `AuthFailed`, `408`/`5xx` ke `Failed`, hanya `400` lain yang `Rejected`.
+- `SetupActivity.stopMonitoringConfirmed()` pakai `startForegroundService()` pada API 26+ agar stop tidak `IllegalStateException`.
+- `MonitoringService.captureAndSendPhoto()` prune ke 9 terbaru saat backlog penuh sebelum skip, foto offline terbaru tidak langsung hilang.
+- `MonitoringService.recordAndSendAudio()` panggil `flushPendingAudio()` juga saat kirim gagal agar antrean lama tetap diflush.
+- `MonitoringService.listLaunchableApps()` `distinctBy` paket, label kembar tidak saling hilangkan.
+- `MainActivity` minta `ACCESS_BACKGROUND_LOCATION` berantai setelah izin foreground, lalu auto-start via `tryStartAfterPermissions()`.
+- `NotificationForwarderService` rekam histori walau `pendingPosts` penuh, dedup 30 detik, batas paket 10 per 120 detik, cache config 10 detik, update `lastSyncTime` saat sukses.
+- `MessageScheduler.scheduleMessageSend()` pakai `ExistingWorkPolicy.APPEND` agar pesan baru setelah cek antrean tidak kehilangan wakeup.
+- `PreferencesManager.saveCoreConfig()`, `saveTestCredentials()`, `setMonitoringActive()` pakai `commit()` sinkron untuk kredensial dan flag monitoring.
+- `CameraService` hapus trigger `AE_PRECAPTURE_TRIGGER_IDLE` yang no-op.
+- `BootReceiver` dan `AndroidManifest.xml` hapus aksi vendor `huawei`/`htc` yang tidak terproteksi, tinggal siaran sistem.
+
 ## [1.6.30] - 2026-09-25
 
 ### Removed

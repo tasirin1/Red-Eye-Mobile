@@ -186,8 +186,22 @@ class SendMessageWorker(
                 url,
                 TelegramMessage(chatId = chatId, text = plain, parseMode = null)
             )
-            if (response.isSuccessful && response.body()?.ok == true) SendOutcome.Sent
-            else SendOutcome.Rejected
+            if (response.isSuccessful && response.body()?.ok == true) {
+                SendOutcome.Sent
+            } else if (response.code() == 429) {
+                val retryAfterSecs = try {
+                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                } catch (_: Exception) {
+                    5L
+                }
+                SendOutcome.RateLimited(retryAfterSecs)
+            } else if (response.code() == 401 || response.code() == 403) {
+                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 408 || response.code() >= 500) {
+                SendOutcome.Failed
+            } else {
+                SendOutcome.Rejected
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -305,7 +305,6 @@ class CameraService(private val context: Context) {
                         session.stopRepeating()
                     } catch (_: Exception) {
                     }
-                    captureBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE)
                     session.capture(captureBuilder.build(), null, backgroundHandler)
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture request sent")
                     onTrace("trace: capture request sent")
