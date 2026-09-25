@@ -49,6 +49,10 @@ class CameraService(private val context: Context) {
     fun forceReset() {
         capturing.set(false)
         try {
+            photoSizeCache.clear()
+        } catch (_: Exception) {
+        }
+        try {
             backgroundHandler?.removeCallbacksAndMessages(null)
         } catch (_: Exception) {
         }
@@ -102,7 +106,7 @@ class CameraService(private val context: Context) {
         onPhotoTaken: (File) -> Unit,
         onError: (Exception) -> Unit,
         onTrace: (String) -> Unit = {},
-        timeoutMs: Long = 45_000L,
+        timeoutMs: Long = 30_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
         if (!capturing.compareAndSet(false, true)) {
@@ -299,7 +303,7 @@ class CameraService(private val context: Context) {
                 fireStill()
             }
             val pending = fallback ?: return
-            backgroundHandler?.postDelayed(pending, 5_000L)
+            backgroundHandler?.postDelayed(pending, 3_000L)
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             val meterSurface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
             meteringBuilder.addTarget(meterSurface)

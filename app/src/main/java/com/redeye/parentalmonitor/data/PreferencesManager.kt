@@ -96,8 +96,11 @@ class PreferencesManager(context: Context) {
                         return false
                     }
                     if (current != null) {
-                        for ((k, v) in current.snapshot()) {
-                            fresh.putValue(k, v)
+                        val carried = current.snapshot()
+                        if (carried.isNotEmpty()) {
+                            for ((k, v) in carried) {
+                                fresh.putValue(k, v)
+                            }
                         }
                     }
                     instance = fresh

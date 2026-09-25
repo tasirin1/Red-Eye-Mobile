@@ -4,6 +4,54 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.27] - 2026-09-25
+
+### Fixed
+- `pollTelegramCommands()` menandai offset max batch di muka sehingga pembatalan di tengah batch tidak menggandakan `/sms`, `/ring`, atau `/lock`, sekaligus satu tulis per poll menahan spam.
+- `getNewSms()` dan `getNewCalls()` limit 100 di query sehingga tidak ada 400 baris terbuang tiap sync.
+- `NotificationForwarderService` hanya melewatkan summary yang grupnya terlihat 120 detik terakhir, summary mandiri tetap diteruskan dan dicatat.
+- Heartbeat file `monitor_heartbeat` disentuh tiap loop sehingga `BootRestartWorker` dan `BootReceiver` akurat lintas proses tanpa API deprecated.
+
+- `MainActivity` autosize kalkulator memakai null-guard sehingga tidak gagal kompilasi saat display null.
+- `BootRestartWorker` melewatkan start ulang saat `MonitoringService.isRunning` true sehingga watchdog 15 menit tidak lagi me-restart loop, mereset backoff polling, dan mengganggu capture yang berjalan.
+
+- `MainActivity` auto-start dan callback izin kini memeriksa `MonitoringService.isRunning` sehingga flag basi true dengan service mati langsung sembuh tanpa menunggu watchdog.
+- `pollTelegramCommands()` menulis offset sebelum menangani tiap update sehingga pembatalan di tengah batch tidak mengeksekusi ulang command berefek samping (`/sms`, `/ring`, `/lock`).
+- `stopMonitoring()` dan `startMonitoring()` mereset `idlePolls` sehingga polling pulih ke interval cepat 15 detik.
+- `NotificationForwarderService` melewatkan ringkasan grup (`FLAG_GROUP_SUMMARY`) agar notifikasi grup tidak ganda, dan cache gerbang diinvalidasi instan saat preferensi terkait berubah.
+- `MonitoringService.onTaskRemoved()` menjadwalkan `BootRestartWorker` dan watchdog saat aplikasi di-swipe agar monitoring pulih di ROM agresif.
+- `/smsconfirm` kedaluwarsa kini membersihkan slot pending agar tidak basi.
+- `SendMessageWorker` notifikasi drop menyertakan cuplikan teks polos 120 karakter sehingga pesan `Rejected` bisa diidentifikasi.
+- Kalkulator memakai autosize 24-56sp pada display dan histori memakai tanda minus yang konsisten.
+- `CameraService.forceReset()` membersihkan `photoSizeCache`.
+
+- `chunkedDelay()` kini `delay()` tunggal yang cancellable sehingga interval foto panjang tidak lagi membangunkan CPU tiap 60 detik; loop monitoring yang paused tidur 15 menit dan polling command berhenti total saat paused.
+- `pollTelegramCommands()` menulis `lastUpdateId` sekali per batch (max lokal) sehingga satu poll dengan N update hanya butuh satu tulis terenkripsi.
+- `checkAndSendNewData()` membatasi batch 100 SMS/call agar satu sync tidak merakit string raksasa dan memblokir loop belasan detik.
+- `MessageScheduler` antrean kirim memakai `KEEP` sehingga trigger cepat tidak menumpuk chain `APPEND` di WorkManager; `SendMessageWorker` memakai hitungan lokal tanpa baca ulang antrean.
+- `NotificationForwarderService` cache gerbang konfigurasi 30 detik sehingga tiap notifikasi tidak lagi 4x dekripsi `EncryptedSharedPreferences`.
+- `BootReceiver` dedupe `handleBoot()` 10 detik sehingga `BOOT_COMPLETED` + `USER_UNLOCKED` + `USER_PRESENT` tidak memicu triple `startMonitoring()`.
+- `ParentalMonitorApp` migrasi consent berjalan di background thread sehingga `onCreate()` tidak blokir keystore di main thread.
+- `CameraService` metering fallback 5s ke 3s, timeout capture 45s ke 30s, watchdog 50s ke 35s untuk menekan duty-cycle kamera.
+- `sendFitted()`/`safeCut()` tidak lagi memotong di dalam tag `<...>` sehingga pesan HTML tidak rusak dan berujung 400 lalu drop.
+- `flushPendingPhotos()`/`flushPendingAudio()` lanjut ke file berikut saat file terhapus (terkirim/400), hanya berhenti saat file masih ada (gagal transient), menghilangkan head-of-line blocking.
+- `getSmsForNumber()`/`getCallsForNumber()` escape wildcard `LIKE` (`\\`, `%`, `_`) dengan `ESCAPE '\\'` sehingga `/sms` tidak cocok ke nomor salah.
+- `TimeFmt` memakai locale fresh per panggilan sehingga ganti bahasa sistem langsung tercermin.
+
+- `prunePhotoCache()` dan `pruneAudioCache()` kini menghapus file terlama dan menyimpan terbaru (`dropLast`), sebelumnya terbalik sehingga backlog foto/audio macet pada 10 file tertua.
+- `checkAndSendNewData()` kini melewati polling saat `authBlocked()` aktif sehingga antrean `MessageQueue` tidak membengkak sampai batas 100 lalu membuang pesan tertua diam-diam.
+- `sendInitialData()` memajukan `lastSmsId` / `lastCallTimestamp` / `lastCallId` sebelum `sendFitted()` dan restart yang terinterupsi tidak lagi mengirim ulang 100 histori penuh, menghilangkan spam duplikat tiap crash/reboot.
+- `getNewSms()` dan `getNewCalls()` kini urut menaik (`ASC`, oldest-first) sehingga batch >500 tidak lagi melompati watermark dan menghilangkan data.
+- `onStartCommand()` kini mengembalikan `START_NOT_STICKY` untuk jalur stop/kredensial-hilang sehingga tidak terjadi loop restart-stop `START_STICKY` dengan intent null.
+- `SendMessageWorker` tidak lagi `delay()` rate-limit di dalam worker, memakai `MessageScheduler.scheduleMessageSend()` berjadwal, memberi notifikasi drop untuk pesan `Rejected` (HTTP 400), dan menjadwalkan ulang selama antrean belum kosong.
+- `BootRestartWorker` tidak lagi memakai `getRunningServices()` yang deprecated dan tidak andal di API 26+, selalu mencoba start service yang idempoten.
+- `formatResult()` kalkulator memakai `BigDecimal.valueOf()` dan hitung digit integer via `log10()` sehingga aman dari presisi `Double` dan overflow `toLong()` untuk nilai raksasa.
+- `TelegramClient` menghapus `CertificatePinner` statis dan mengizinkan `MODERN_TLS` + `COMPATIBLE_TLS` sehingga rotasi sertifikat Telegram dan perangkat TLS 1.2 lawas tidak mematikan total jaringan.
+- `PreferencesManager.refreshInstance()` tidak lagi menimpa konfigurasi saat `snapshot()` kosong akibat corrupt.
+- `MainActivity` auto-start kini mensyaratkan `ACCESS_BACKGROUND_LOCATION`, perintah `/location` tidak lagi selalu gagal setelah grant dari kalkulator.
+- `NotificationForwarderService` tetap mencatat ke `history()` saat batas rate per-paket (5/120 detik) tercapai, sebelumnya dibuang diam-diam.
+- `SetupActivity` tombol tes koneksi hanya menyimpan token/chat ID, interval hanya berubah via Save dengan clamp berumpan-balik (`setup_bad_interval`) dan koreksi kolom input.
+
 ## [1.6.26] - 2026-09-25
 
 ### Added

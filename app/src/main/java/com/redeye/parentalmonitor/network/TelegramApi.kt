@@ -2,7 +2,6 @@ package com.redeye.parentalmonitor.network
 
 import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
-import okhttp3.CertificatePinner
 import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 import retrofit2.Response
@@ -127,14 +126,8 @@ interface TelegramApi {
 object TelegramClient {
     private const val BASE_URL = "https://api.telegram.org/"
 
-    private val certificatePinner = CertificatePinner.Builder()
-        .add("api.telegram.org", "sha256/8Rw90Ej3Ttt8RRkrg+WYDS9n7IS03bk5bjP/UXPtaY8=")
-        .add("api.telegram.org", "sha256/Ko8tivDrEjiY90yGasP6ZpBU4jwXvHqVvQI0GS3GNdA=")
-        .build()
-
     private val okHttpClient = OkHttpClient.Builder()
-        .certificatePinner(certificatePinner)
-        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
+        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

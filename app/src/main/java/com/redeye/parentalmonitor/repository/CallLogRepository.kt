@@ -20,8 +20,8 @@ class CallLogRepository(private val context: Context) {
         return queryCalls(
             selection = "${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?)",
             args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString()),
-            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-            limit = 500
+            sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
+            limit = 100
         )
     }
 
@@ -75,9 +75,10 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
+        val escaped = digits.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         return queryCalls(
-            selection = "${CallLog.Calls.NUMBER} LIKE ?",
-            args = arrayOf("%$digits%"),
+            selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
+            args = arrayOf("%$escaped%"),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = limit
         )

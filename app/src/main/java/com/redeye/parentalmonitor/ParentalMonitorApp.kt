@@ -16,7 +16,10 @@ class ParentalMonitorApp : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashReporter.install(this)
-        migrateLegacyConsent()
+        try {
+            Thread { migrateLegacyConsent() }.start()
+        } catch (_: Exception) {
+        }
         createNotificationChannel()
     }
 

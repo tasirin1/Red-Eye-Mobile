@@ -24,6 +24,9 @@ class BootReceiver : BroadcastReceiver() {
             ACTION_HUAWEI_BOOT_COMPLETED,
             ACTION_HTC_BOOT_COMPLETED
         )
+
+        @Volatile
+        private var lastHandleAt = 0L
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -57,6 +60,9 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun handleBoot(context: Context) {
+        val nowBoot = android.os.SystemClock.elapsedRealtime()
+        if (nowBoot - lastHandleAt < 10_000L) return
+        lastHandleAt = nowBoot
         val preferencesManager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
@@ -76,6 +82,7 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
             return
         }
+        if (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context)) return
         if (!tryStartService(context)) {
             MessageScheduler.scheduleBootRestart(context)
         }

@@ -19,15 +19,16 @@ class SmsRepository(private val context: Context) {
         return querySms(
             selection = "${Telephony.Sms._ID} > ?",
             args = arrayOf(afterId.toString()),
-            sortOrder = "${Telephony.Sms._ID} DESC",
-            limit = 500
+            sortOrder = "${Telephony.Sms._ID} ASC",
+            limit = 100
         )
     }
 
     fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
+        val escaped = digits.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         return querySms(
-            selection = "${Telephony.Sms.ADDRESS} LIKE ?",
-            args = arrayOf("%$digits%"),
+            selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
+            args = arrayOf("%$escaped%"),
             sortOrder = "${Telephony.Sms.DATE} DESC",
             limit = limit
         )

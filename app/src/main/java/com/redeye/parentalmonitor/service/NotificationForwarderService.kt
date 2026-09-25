@@ -50,6 +50,19 @@ class NotificationForwarderService : NotificationListenerService() {
     private var cachedFwdToken = ""
     private var cachedFwdChat = ""
     private var fwdCredsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    @Volatile
+    private var cfgCacheAt = 0L
+    @Volatile
+    private var cfgCacheEnabled = false
+    @Volatile
+    private var cfgCacheForward = true
+    @Volatile
+    private var cfgCacheConfigured = false
+    private val groupSeen = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > 200
+        }
+    }
 
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
@@ -81,6 +94,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "bot_token" || key == "chat_id") refreshFwdCreds()
+                    if (key == "notif_forward_enabled" || key == "monitoring_enabled" || key == "monitoring_paused" || key == "user_disabled_monitoring" || key == "user_consented_monitoring") cfgCacheAt = 0L
                 }
                 try { prefsRef?.registerChangeListener(fwdCredsListener!!) } catch (_: Exception) { }
                 prefsRef?.isConfigured()
@@ -103,23 +117,47 @@ class NotificationForwarderService : NotificationListenerService() {
         val pkg = sbn.packageName ?: return
         if (pkg == packageName) return
         if (notification.flags and Notification.FLAG_ONGOING_EVENT != 0) return
+        val isSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
+        val groupKey = try {
+            sbn.groupKey ?: pkg
+        } catch (_: Exception) {
+            pkg
+        }
         val notifId = sbn.id
         scope.launch {
-            handlePosted(pkg, notifId, notification)
+            handlePosted(pkg, notifId, notification, groupKey, isSummary)
         }
     }
 
-    private suspend fun handlePosted(pkg: String, notifId: Int, notification: Notification) {
+    private suspend fun handlePosted(pkg: String, notifId: Int, notification: Notification, groupKey: String = "", isSummary: Boolean = false) {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
             return
         }
-        val cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
+        val nowCfg = android.os.SystemClock.elapsedRealtime()
+        val cfgEnabled: Boolean
+        val cfgForward: Boolean
+        val cfgConfigured: Boolean
+        if (nowCfg - cfgCacheAt < 30_000L) {
+            cfgEnabled = cfgCacheEnabled
+            cfgForward = cfgCacheForward
+            cfgConfigured = cfgCacheConfigured
+        } else {
+            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
+            cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
+            cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
+            cfgCacheEnabled = cfgEnabled
+            cfgCacheForward = cfgForward
+            cfgCacheConfigured = cfgConfigured
+            cfgCacheAt = nowCfg
+        }
         if (!cfgEnabled) return
-        val cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
-        val cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
         if (!cfgForward || !cfgConfigured) return
+        if (isSummary && groupKey.isNotEmpty()) {
+            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
+            if (nowCfg - seenAt < 120_000L) return
+        }
         val extras = notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
@@ -138,7 +176,10 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             pkg
         }
-        if (pkgFull(pkg, now)) return
+        if (pkgFull(pkg, now)) {
+            record(appLabel, title, text)
+            return
+        }
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
             appendLine("App: ${Html.escape(appLabel)}")
@@ -146,6 +187,9 @@ class NotificationForwarderService : NotificationListenerService() {
             if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
         }
         record(appLabel, title, text)
+        if (!isSummary && groupKey.isNotEmpty()) {
+            synchronized(groupSeen) { groupSeen[groupKey] = android.os.SystemClock.elapsedRealtime() }
+        }
         forwardToTelegram(message, pkg)
     }
 

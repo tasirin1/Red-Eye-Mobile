@@ -243,9 +243,16 @@ class SetupActivity : AppCompatActivity() {
         }
         prefs.botToken = token
         prefs.chatId = chatId
-        prefs.syncInterval = interval.coerceIn(1, 1440)
-        prefs.cameraInterval = cameraInterval.coerceIn(0, 60)
+        val clampedInterval = interval.coerceIn(1, 1440)
+        val clampedCamera = cameraInterval.coerceIn(0, 60)
+        prefs.syncInterval = clampedInterval
+        prefs.cameraInterval = clampedCamera
 
+        if (clampedInterval != interval || clampedCamera != cameraInterval) {
+            syncIntervalInput.setText(clampedInterval.toString())
+            cameraIntervalInput.setText(clampedCamera.toString())
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+        }
         Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         reviveMonitoringIfNeeded()
         updateStatus()
@@ -263,8 +270,6 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return
         }
-        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: prefs.syncInterval
-        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -272,7 +277,7 @@ class SetupActivity : AppCompatActivity() {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
-                    persistTestSettings(token, chatId, interval, cameraInterval)
+                    persistTestSettings(token, chatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
@@ -300,14 +305,12 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, interval: Int, cameraInterval: Int) {
+    private fun persistTestSettings(token: String, chatId: String) {
         if (token != prefs.botToken || chatId != prefs.chatId) {
             prefs.commandsTokenHash = ""
         }
         prefs.botToken = token
         prefs.chatId = chatId
-        prefs.syncInterval = interval.coerceIn(1, 1440)
-        prefs.cameraInterval = cameraInterval.coerceIn(0, 60)
         prefs.credentialError = ""
         prefs.credentialErrorAt = 0L
     }

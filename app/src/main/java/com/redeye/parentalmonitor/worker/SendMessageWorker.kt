@@ -7,6 +7,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
@@ -121,12 +122,30 @@ class SendMessageWorker(
             }
         }
 
-        if (rateLimitedSecs > 0) {
-            delay(rateLimitedSecs * 1000L)
-            return Result.retry()
+        if (rejectedIds.isNotEmpty()) {
+            try {
+                val sample = try {
+                    queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
+                } catch (_: Exception) {
+                    ""
+                }
+                sendDropNotice(rejectedIds.size, runToken, runChatId, sample)
+            } catch (_: Exception) {
+            }
         }
-        if (messageQueue.hasMessages() && (sentIds.isNotEmpty() || runAttemptCount < 3)) {
-            return Result.retry()
+        if (rateLimitedSecs > 0) {
+            try {
+                MessageScheduler.scheduleMessageSend(applicationContext, rateLimitedSecs * 1000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        if (queue.size - sentIds.size - rejectedIds.size > 0 || failedIds.isNotEmpty()) {
+            try {
+                MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
+            return Result.success()
         }
         return Result.success()
     }
@@ -155,12 +174,22 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String) {
+    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
         try {
+            val clean = try {
+                sample.replace(Regex("<[^>]*>"), "").trim().take(120)
+            } catch (_: Exception) {
+                ""
+            }
+            val text = if (clean.isEmpty()) {
+                "⚠️ $count queued message(s) dropped after max retries."
+            } else {
+                "⚠️ $count queued message(s) dropped (rejected). Sample: $clean"
+            }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             TelegramClient.api.sendMessage(
                 url,
-                TelegramMessage(chatId = chatId, text = "⚠️ $count queued message(s) dropped after max retries.")
+                TelegramMessage(chatId = chatId, text = text)
             )
         } catch (_: Exception) {
         }

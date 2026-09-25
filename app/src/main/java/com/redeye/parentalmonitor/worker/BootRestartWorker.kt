@@ -1,6 +1,5 @@
 package com.redeye.parentalmonitor.worker
 
-import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -64,7 +63,7 @@ class BootRestartWorker(
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         MessageScheduler.scheduleWatchdog(appContext)
-        if (isServiceRunning(appContext)) {
+        if (MonitoringService.isRunning || MonitoringService.heartbeatFresh(appContext)) {
             MessageScheduler.scheduleMessageSend(appContext)
             return Result.success()
         }
@@ -93,18 +92,6 @@ class BootRestartWorker(
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
             postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun isServiceRunning(context: Context): Boolean {
-        return try {
-            val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            manager.getRunningServices(Int.MAX_VALUE).any {
-                it.service.className == MonitoringService::class.java.name
-            }
-        } catch (_: Exception) {
-            false
         }
     }
 
