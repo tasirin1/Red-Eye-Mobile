@@ -37,10 +37,14 @@ class BootRestartWorker(
         val appContext = applicationContext
         try {
             setForeground(getForegroundInfo())
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
         try {
             CrashReporter.flushPending(appContext)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
         val prefs = try {
@@ -78,6 +82,8 @@ class BootRestartWorker(
             }
             MessageScheduler.scheduleMessageSend(appContext)
             Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: SecurityException) {
             android.util.Log.w("BootRestartWorker", "FGS start denied, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)

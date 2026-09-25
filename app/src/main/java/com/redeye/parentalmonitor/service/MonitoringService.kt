@@ -336,7 +336,7 @@ class MonitoringService : Service() {
                     } else {
                         delay(15 * 60_000L)
                     }
-                } catch (e: java.util.concurrent.CancellationException) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop: ${redactToken(e.message)}")
@@ -371,7 +371,7 @@ class MonitoringService : Service() {
                         val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
                         chunkedDelay(idle)
                     }
-                } catch (e: java.util.concurrent.CancellationException) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop: ${redactToken(e.message)}")
@@ -440,7 +440,7 @@ class MonitoringService : Service() {
                     val active = pollTelegramCommands()
                     idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(20)
                     touchHeartbeat(this@MonitoringService)
-                } catch (e: java.util.concurrent.CancellationException) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands: ${redactToken(e.message)}")
@@ -658,7 +658,7 @@ class MonitoringService : Service() {
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
             handleTelegramCommandInner(command, arg, sentAtSec)
-        } catch (e: java.util.concurrent.CancellationException) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Command failed: $command (${redactToken(e.message)})")
@@ -1854,7 +1854,7 @@ class MonitoringService : Service() {
             while (isActive && loopWatchdogJob === coroutineContext[Job]) {
                 try {
                     delay(300_000L)
-                } catch (e: java.util.concurrent.CancellationException) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
                     continue
@@ -1869,7 +1869,7 @@ class MonitoringService : Service() {
                             sendToTelegram("\u267B\uFE0F Watchdog restarted dead loops.")
                         }
                     }
-                } catch (e: java.util.concurrent.CancellationException) {
+                } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Loop watchdog error: ${redactToken(e.message)}")
@@ -1900,7 +1900,7 @@ class MonitoringService : Service() {
             sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
             kotlinx.coroutines.delay(seconds * 1000L)
             sendToTelegram("\uD83D\uDD14 Ring finished.")
-        } catch (e: java.util.concurrent.CancellationException) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F Ring failed.")
@@ -1946,7 +1946,7 @@ class MonitoringService : Service() {
             } else {
                 sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
             }
-        } catch (e: java.util.concurrent.CancellationException) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: SecurityException) {
             sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")

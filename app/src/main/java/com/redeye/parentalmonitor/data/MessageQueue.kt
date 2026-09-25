@@ -4,7 +4,6 @@ package com.redeye.parentalmonitor.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
 import com.google.gson.Gson
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 
@@ -15,17 +14,9 @@ class MessageQueue private constructor(context: Context) {
     private var volatileOnly = false
     private val volatileQueue = mutableListOf<QueuedMessage>()
     private var sharedPreferences: SharedPreferences? = try {
-        val masterKey = PreferencesManager.getMasterKey(appContext)
-        EncryptedSharedPreferences.create(
-            appContext,
-            "encrypted_queue",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
     } catch (e: Exception) {
         android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
-        try { appContext.deleteSharedPreferences("message_queue") } catch (_: Exception) { }
         volatileOnly = true
         null
     }
@@ -34,6 +25,7 @@ class MessageQueue private constructor(context: Context) {
     private val arrayType = Array<QueuedMessage>::class.java
 
     companion object {
+        private const val QUEUE_PREFS_NAME = "encrypted_queue"
         private const val KEY_QUEUE = "queued_messages"
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_RETRIES = 5
@@ -53,14 +45,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             if (!volatileOnly) return true
             return try {
-                val masterKey = PreferencesManager.getMasterKey(appContext)
-                val restored = EncryptedSharedPreferences.create(
-                    appContext,
-                    "encrypted_queue",
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
+                val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 val pending = volatileQueue.toList()
                 volatileQueue.clear()
                 sharedPreferences = restored

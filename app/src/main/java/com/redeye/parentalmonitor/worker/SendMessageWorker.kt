@@ -79,6 +79,8 @@ class SendMessageWorker(
                         failedIds.add(queuedMessage.id)
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val detail = (e.message ?: "").let { m -> if (runToken.isNotEmpty()) m.replace(runToken, "***") else m }
                 android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
@@ -220,6 +222,8 @@ class SendMessageWorker(
             } else {
                 SendOutcome.Rejected
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             SendOutcome.Failed
         }

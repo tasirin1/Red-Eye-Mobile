@@ -99,6 +99,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 try { prefsRef?.registerChangeListener(fwdCredsListener!!) } catch (_: Exception) { }
                 prefsRef?.isConfigured()
                 queueRef?.hasMessages()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
             }
         }
@@ -201,6 +203,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 val queue = queueRef ?: MessageQueue.getInstance(this@NotificationForwarderService).also { queueRef = it }
                 prefs.isConfigured()
                 queue.hasMessages()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
             }
         }
@@ -262,6 +266,8 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
             }
             return
@@ -326,6 +332,8 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed: ${redactToken(e.message)}")
             try {

@@ -4,6 +4,16 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.28] - 2026-09-25
+
+### Added
+- `PreferencesManager` kini pulih otomatis dari keystore corrupt: saat `secure_prefs` gagal dibuka, master key rusak dihapus dari `AndroidKeyStore` lalu penyimpanan terenkripsi dibuat ulang sekali; fallback memori volatil hanya dipakai bila pemulihan gagal sehingga token tidak hilang diam-diam tiap proses mati.
+
+### Fixed
+- ProGuard kini mempertahankan `SourceFile`/`LineNumberTable` sehingga laporan `Force close` dari APK release memuat nomor baris aslinya.
+- `MessageQueue` memakai ulang pemulihan keystore `PreferencesManager` dan menghapus file yang benar (`encrypted_queue`), sehingga antrean pesan tidak hilang tiap proses mati saat keystore corrupt.
+- Seluruh `catch` generik di konteks coroutine (`SendMessageWorker`, `BootRestartWorker`, `NotificationForwarderService`) kini melempar ulang `kotlinx.coroutines.CancellationException`, dan 8 titik di `MonitoringService` yang keliru menangkap `java.util.concurrent.CancellationException` diperbaiki ke tipe coroutine yang benar, sehingga pembatalan tidak lagi tertelan.
+
 ## [1.6.27] - 2026-09-25
 
 ### Fixed

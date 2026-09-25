@@ -11,24 +11,11 @@ class PreferencesManager(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val masterKey = getMasterKey(appContext)
+    private val securePrefs: Pair<SharedPreferences, Boolean> = openPrefs(appContext)
 
-    private var storageEncrypted = true
+    private var storageEncrypted = securePrefs.second
 
-    private val sharedPreferences: SharedPreferences = try {
-        EncryptedSharedPreferences.create(
-            appContext,
-            "secure_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (e: Exception) {
-        try { appContext.deleteSharedPreferences("secure_prefs_fallback") } catch (_: Exception) { }
-        android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using volatile memory", e)
-        storageEncrypted = false
-        MemoryPrefs()
-    }
+    private val sharedPreferences: SharedPreferences = securePrefs.first
 
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
@@ -52,6 +39,52 @@ class PreferencesManager(context: Context) {
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                     .build()
                     .also { sharedMasterKey = it }
+            }
+        }
+
+        private const val PREFS_NAME = "secure_prefs"
+
+        private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {
+            return try {
+                Pair(openEncryptedPrefs(context, PREFS_NAME), true)
+            } catch (e: Exception) {
+                android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using volatile memory", e)
+                Pair(MemoryPrefs(), false)
+            }
+        }
+
+        fun openEncryptedPrefs(context: Context, prefsName: String): SharedPreferences {
+            try {
+                return createEncryptedPrefs(context, prefsName)
+            } catch (_: Exception) {
+            }
+            resetCorruptKeystore(context, prefsName)
+            return createEncryptedPrefs(context, prefsName)
+        }
+
+        private fun createEncryptedPrefs(context: Context, prefsName: String): SharedPreferences {
+            return EncryptedSharedPreferences.create(
+                context.applicationContext,
+                prefsName,
+                getMasterKey(context),
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }
+
+        private fun resetCorruptKeystore(context: Context, prefsName: String) {
+            synchronized(this) {
+                sharedMasterKey = null
+                try {
+                    val ks = java.security.KeyStore.getInstance("AndroidKeyStore")
+                    ks.load(null)
+                    ks.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                } catch (_: Exception) {
+                }
+                try {
+                    context.applicationContext.deleteSharedPreferences(prefsName)
+                } catch (_: Exception) {
+                }
             }
         }
         const val KEY_BOT_TOKEN = "bot_token"
