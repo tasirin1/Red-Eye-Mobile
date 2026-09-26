@@ -182,6 +182,7 @@ class SetupActivity : AppCompatActivity() {
         cameraIntervalInput.setText(prefs.cameraInterval.toString())
 
         findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
+        findViewById<MaterialButton>(R.id.setupSaveButton).setOnLongClickListener { clearCredentials(); true }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
         findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
             requestLocationPermissions()
@@ -222,10 +223,30 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
+    private fun clearCredentials() {
+        prefs.botToken = ""
+        prefs.chatId = ""
+        prefs.credentialError = ""
+        prefs.credentialErrorAt = 0L
+        prefs.setMonitoringActive(false)
+        try { stopService(Intent(this, MonitoringService::class.java)) } catch (_: Exception) { }
+        try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this).clearQueue() } catch (_: Exception) { }
+        botTokenInput.setText("")
+        chatIdInput.setText("")
+        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+        updateStatus()
+    }
+
     private fun saveSettings(): Boolean {
         val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
         val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
-        val interval = syncIntervalInput.text.toString().toIntOrNull() ?: prefs.syncInterval
+        val intervalRaw = syncIntervalInput.text.toString().trim()
+        val intervalParsed = intervalRaw.toIntOrNull()
+        if (intervalParsed == null) {
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return false
+        }
+        val interval = intervalParsed
 
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
@@ -240,21 +261,22 @@ class SetupActivity : AppCompatActivity() {
             return false
         }
 
-        val cameraInterval = cameraIntervalInput.text.toString().toIntOrNull() ?: prefs.cameraInterval
+        val cameraRaw = cameraIntervalInput.text.toString().trim()
+        val cameraParsed = cameraRaw.toIntOrNull()
+        if (cameraParsed == null) {
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return false
+        }
+        val cameraInterval = cameraParsed
 
-        val clampedInterval = interval.coerceIn(1, 1440)
-        val clampedCamera = cameraInterval.coerceIn(0, 60)
-        prefs.saveCoreConfig(token, chatId, clampedInterval, clampedCamera)
+        if (interval !in 1..1440 || cameraInterval !in 0..60) {
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return false
+        }
+        prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
         botTokenInput.setText(STORED_MASK)
         chatIdInput.setText(STORED_MASK)
-
-        if (clampedInterval != interval || clampedCamera != cameraInterval) {
-            syncIntervalInput.setText(clampedInterval.toString())
-            cameraIntervalInput.setText(clampedCamera.toString())
-            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-        } else {
-            Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
         reviveMonitoringIfNeeded()
         updateStatus()
         return true
@@ -271,6 +293,14 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
             return
         }
+        val probeSyncParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
+        val probeCameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
+        if (probeSyncParsed == null || probeCameraParsed == null || probeSyncParsed !in 1..1440 || probeCameraParsed !in 0..60) {
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return
+        }
+        val probeSync = probeSyncParsed
+        val probeCamera = probeCameraParsed
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -278,7 +308,7 @@ class SetupActivity : AppCompatActivity() {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
-                    persistTestSettings(token, chatId)
+                    persistTestSettings(token, chatId, probeSync, probeCamera)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         botTokenInput.setText(STORED_MASK)
                         chatIdInput.setText(STORED_MASK)
@@ -288,7 +318,7 @@ class SetupActivity : AppCompatActivity() {
                 } else {
                     if (resp.code() == 400 || resp.code() == 401 || resp.code() == 403) {
                         prefs.credentialError = resp.code().toString()
-                        prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                        prefs.credentialErrorAt = System.currentTimeMillis()
                     }
                     val code = resp.code()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -307,8 +337,8 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String) {
-        prefs.saveTestCredentials(token, chatId)
+    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int) {
+        prefs.saveCoreConfig(token, chatId, syncInterval, cameraInterval)
     }
 
     private fun hasAllPermissions(): Boolean {
@@ -333,7 +363,14 @@ class SetupActivity : AppCompatActivity() {
         }
         if (!hasBackgroundLocation()) {
             Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
-            requestLocationPermissions()
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    requestLocationPermissions()
+                }
+            } catch (_: Exception) {
+            }
             return
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
@@ -345,16 +382,9 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun stopMonitoringConfirmed() {
-        val intent = Intent(this, MonitoringService::class.java).apply {
-            action = MonitoringService.ACTION_STOP_MONITORING
-        }
+        prefs.setMonitoringActive(false)
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-            prefs.setMonitoringActive(false)
+            stopService(Intent(this, MonitoringService::class.java))
             Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -363,6 +393,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringConfirmed() {
+        prefs.setMonitoringActive(true)
         val intent = Intent(this, MonitoringService::class.java).apply {
             action = MonitoringService.ACTION_START_MONITORING
         }
@@ -372,7 +403,6 @@ class SetupActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
-            prefs.setMonitoringActive(true)
             Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -417,10 +447,16 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         try {
-            val intent = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
             startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (e: Exception) {
+                Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

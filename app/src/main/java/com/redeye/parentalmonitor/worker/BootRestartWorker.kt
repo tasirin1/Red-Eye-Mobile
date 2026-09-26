@@ -56,6 +56,10 @@ class BootRestartWorker(
             throw e
         } catch (_: Exception) {
         }
+        if (MonitoringService.isRunning) {
+            MessageScheduler.scheduleMessageSend(appContext)
+            return Result.success()
+        }
         val prefs = try {
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
@@ -63,7 +67,7 @@ class BootRestartWorker(
             return if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
         try {
-            if (android.os.SystemClock.elapsedRealtime() < prefs.credentialErrorAt) {
+            if (System.currentTimeMillis() < prefs.credentialErrorAt) {
                 prefs.credentialError = ""
                 prefs.credentialErrorAt = 0L
             }
@@ -76,10 +80,6 @@ class BootRestartWorker(
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         MessageScheduler.scheduleWatchdog(appContext)
-        if (MonitoringService.isRunning || MonitoringService.heartbeatFresh(appContext)) {
-            MessageScheduler.scheduleMessageSend(appContext)
-            return Result.success()
-        }
         return try {
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
@@ -111,6 +111,9 @@ class BootRestartWorker(
     }
 
     private fun postResumeReminder(context: Context) {
+        val nowResume = android.os.SystemClock.elapsedRealtime()
+        if (nowResume - lastResumeReminderAt < 3 * 60 * 60_000L) return
+        lastResumeReminderAt = nowResume
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -137,5 +140,7 @@ class BootRestartWorker(
     companion object {
         private const val NOTIF_ID = 2
         private const val RESUME_NOTIF_ID = 3
+        @Volatile
+        private var lastResumeReminderAt = 0L
     }
 }

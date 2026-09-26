@@ -58,7 +58,12 @@ class BootReceiver : BroadcastReceiver() {
 
     private fun handleBoot(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
-        if (nowBoot - lastHandleAt < 10_000L) return
+        val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
+        if (!updated && nowBoot - lastHandleAt < 10_000L) return
+        if (!updated && MonitoringService.isRunning) {
+            lastHandleAt = nowBoot
+            return
+        }
         val preferencesManager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
@@ -68,11 +73,17 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         try {
-            if (android.os.SystemClock.elapsedRealtime() < preferencesManager.credentialErrorAt) {
+            if (System.currentTimeMillis() < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
                 preferencesManager.credentialErrorAt = 0L
             }
         } catch (_: Exception) {
+        }
+        if (intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || updated) {
+            try {
+                preferencesManager.photoPausedUntil = 0L
+            } catch (_: Exception) {
+            }
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             lastHandleAt = nowBoot
@@ -81,11 +92,6 @@ class BootReceiver : BroadcastReceiver() {
         if (!preferencesManager.isConfigured()) {
             lastHandleAt = 0L
             MessageScheduler.scheduleBootRestart(context)
-            return
-        }
-        val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        if (!updated && (MonitoringService.isRunning || MonitoringService.heartbeatFresh(context))) {
-            lastHandleAt = nowBoot
             return
         }
         if (!tryStartService(context)) {

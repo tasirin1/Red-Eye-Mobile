@@ -56,9 +56,13 @@ class SpeedMonitorActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        lastRx = -1L
-        lastTx = -1L
-        lastAt = 0L
+        handler.removeCallbacks(sampler)
+        if (lastRx < 0L || lastTx < 0L || lastAt <= 0L) {
+            val totals = NetSpeed.totals()
+            lastRx = totals.first
+            lastTx = totals.second
+            lastAt = SystemClock.elapsedRealtime()
+        }
         handler.post(sampler)
     }
 

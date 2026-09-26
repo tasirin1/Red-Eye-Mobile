@@ -118,9 +118,12 @@ object CrashReporter {
             }
             if (!allowed) return
             try {
+                val fitted = if (report.length > 4000) report.take(4000) else report
                 val url = "https://api.telegram.org/bot$token/sendMessage"
-                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = report))
+                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted))
                 if (response.isSuccessful && response.body()?.ok == true) {
+                    file.delete()
+                } else if (response.code() == 400) {
                     file.delete()
                 }
             } catch (_: Exception) {
@@ -156,8 +159,13 @@ object CrashReporter {
         }
         var raw = body.toString()
         if (token.isNotEmpty()) raw = raw.replace(token, "***")
+        raw = raw.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
         if (raw.length > MAX_CHARS) raw = raw.take(MAX_CHARS)
-        return "<b>Force close</b>\n<pre>" + Html.escape(raw) + "</pre>"
+        val escaped = Html.escape(raw)
+        val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
+        if (full.length <= 4000) return full
+        val keep = (4000 - 60).coerceAtLeast(500)
+        return "<b>Force close</b>\n<pre>" + escaped.take(keep) + "</pre>"
     }
 
 }

@@ -48,6 +48,12 @@ class PreferencesManager(context: Context) {
             return try {
                 Pair(openEncryptedPrefs(context, PREFS_NAME), true)
             } catch (e: Exception) {
+                try {
+                    synchronized(this) {
+                        sharedMasterKey = null
+                    }
+                } catch (_: Exception) {
+                }
                 android.util.Log.w("PreferencesManager", "Encrypted prefs unavailable, using volatile memory", e)
                 Pair(MemoryPrefs(), false)
             }
@@ -56,10 +62,15 @@ class PreferencesManager(context: Context) {
         fun openEncryptedPrefs(context: Context, prefsName: String): SharedPreferences {
             try {
                 return createEncryptedPrefs(context, prefsName)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                try {
+                    synchronized(this) {
+                        sharedMasterKey = null
+                    }
+                } catch (_: Exception) {
+                }
+                throw e
             }
-            resetCorruptKeystore(context, prefsName)
-            return createEncryptedPrefs(context, prefsName)
         }
 
         private fun createEncryptedPrefs(context: Context, prefsName: String): SharedPreferences {
@@ -72,41 +83,26 @@ class PreferencesManager(context: Context) {
             )
         }
 
-        private fun resetCorruptKeystore(context: Context, prefsName: String) {
-            synchronized(this) {
-                sharedMasterKey = null
-                try {
-                    val ks = java.security.KeyStore.getInstance("AndroidKeyStore")
-                    ks.load(null)
-                    ks.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-                } catch (_: Exception) {
-                }
-                try {
-                    context.applicationContext.deleteSharedPreferences(prefsName)
-                } catch (_: Exception) {
-                }
-            }
-        }
         const val KEY_BOT_TOKEN = "bot_token"
         const val KEY_CHAT_ID = "chat_id"
         const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_LAST_SYNC = "last_sync"
-        private const val KEY_SYNC_INTERVAL = "sync_interval"
+        const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
         private const val KEY_LAST_CALL_ID = "last_call_id"
-        private const val KEY_USER_DISABLED = "user_disabled_monitoring"
+        const val KEY_USER_DISABLED = "user_disabled_monitoring"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
         private const val KEY_INITIAL_SYNC_STARTED = "initial_sync_started"
-        private const val KEY_CAMERA_INTERVAL = "camera_interval"
+        const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
-        private const val KEY_MONITORING_PAUSED = "monitoring_paused"
-        private const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
+        const val KEY_MONITORING_PAUSED = "monitoring_paused"
+        const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         private const val KEY_CAMERA_FACING = "camera_facing"
-        private const val KEY_USER_CONSENTED = "user_consented_monitoring"
+        const val KEY_USER_CONSENTED = "user_consented_monitoring"
         const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
         const val KEY_CRED_ERROR = "credential_error"
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
@@ -130,14 +126,14 @@ class PreferencesManager(context: Context) {
                     }
                     if (current != null) {
                         try {
-                            val snap = current.snapshot().filterKeys { it != KEY_CRED_ERROR_AT && it != KEY_CRED_ERROR }
+                            val snap = current.snapshot()
                             fresh.putAllValues(snap)
                         } catch (_: Exception) {
                         }
                     }
                     instance = fresh
                     try {
-                        if (android.os.SystemClock.elapsedRealtime() < fresh.credentialErrorAt) {
+                        if (System.currentTimeMillis() < fresh.credentialErrorAt) {
                             fresh.credentialError = ""
                             fresh.credentialErrorAt = 0L
                         }
@@ -345,6 +341,11 @@ class PreferencesManager(context: Context) {
                 is Long -> editor.putLong(key, value)
                 is Float -> editor.putFloat(key, value)
                 is Boolean -> editor.putBoolean(key, value)
+                is Set<*> -> try {
+                    @Suppress("UNCHECKED_CAST")
+                    editor.putStringSet(key, value as Set<String>)
+                } catch (_: Exception) {
+                }
                 else -> Unit
             }
         }

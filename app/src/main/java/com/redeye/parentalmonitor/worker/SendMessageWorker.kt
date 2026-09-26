@@ -36,6 +36,10 @@ class SendMessageWorker(
             return Result.success()
         }
         if (authBlocked()) {
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
 
@@ -86,7 +90,7 @@ class SendMessageWorker(
             } catch (e: Exception) {
                 val detail = (e.message ?: "").let { m -> if (runToken.isNotEmpty()) m.replace(runToken, "***") else m }
                 android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
-                failedIds.add(queuedMessage.id)
+                break
             }
         }
 
@@ -101,7 +105,7 @@ class SendMessageWorker(
         if (authCode != 0) {
             try {
                 preferencesManager.credentialError = authCode.toString()
-                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
             } catch (_: Exception) {
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
@@ -122,14 +126,30 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (failedIds.isNotEmpty()) {
+        if (sentIds.isNotEmpty()) {
             try {
-                val dropped = messageQueue.registerFailures(failedIds)
-                if (dropped.isNotEmpty()) {
-                    android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
-                    sendDropNotice(dropped.size, runToken, runChatId)
+                val overflow = MessageQueue.consumeOverflowDrops()
+                if (overflow > 0L) {
+                    sendDropNotice(overflow.toInt(), runToken, runChatId, "oldest queued (queue full offline)")
                 }
             } catch (_: Exception) {
+            }
+        }
+        if (failedIds.isNotEmpty()) {
+            val online = try {
+                NetworkUtils.isNetworkAvailable(applicationContext)
+            } catch (_: Exception) {
+                true
+            }
+            if (online) {
+                try {
+                    val dropped = messageQueue.registerFailures(failedIds)
+                    if (dropped.isNotEmpty()) {
+                        android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
+                        sendDropNotice(dropped.size, runToken, runChatId)
+                    }
+                } catch (_: Exception) {
+                }
             }
         }
 
@@ -166,7 +186,7 @@ class SendMessageWorker(
         return try {
             val err = preferencesManager.credentialError
             if (err.isEmpty()) return false
-            val now = android.os.SystemClock.elapsedRealtime()
+            val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
                 preferencesManager.credentialErrorAt = 0L
@@ -199,6 +219,9 @@ class SendMessageWorker(
                 SendOutcome.AuthFailed(response.code())
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
+            } else if (response.code() == 400) {
+                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code()) else SendOutcome.Rejected
             } else {
                 SendOutcome.Rejected
             }
@@ -207,6 +230,12 @@ class SendMessageWorker(
         } catch (e: Exception) {
             SendOutcome.Failed
         }
+    }
+
+    private fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
     }
 
     private fun splitChunk(text: String, max: Int): Int {
@@ -237,7 +266,8 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                sendPlainFallback(chunk, botToken, chatId)
+                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
                     NetworkUtils.parseRetryAfter(response.errorBody()?.string())
@@ -326,9 +356,11 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400 && message.length > 4096) {
-                sendChunked(message, botToken, chatId)
+                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendChunked(message, botToken, chatId)
             } else if (response.code() == 400) {
-                sendPlainFallback(message, botToken, chatId)
+                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
                     NetworkUtils.parseRetryAfter(response.errorBody()?.string())

@@ -95,8 +95,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                    if (key == "bot_token" || key == "chat_id") refreshFwdCreds()
-                    if (key == "notif_forward_enabled" || key == "monitoring_enabled" || key == "monitoring_paused" || key == "user_disabled_monitoring" || key == "user_consented_monitoring") cfgCacheAt = 0L
+                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) refreshFwdCreds()
+                    if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
                 }
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 prefsRef?.isConfigured()
@@ -116,6 +116,38 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun forwardingAllowed(): Boolean {
+        val prefs = prefsRef ?: try {
+            PreferencesManager.getInstance(this).also { prefsRef = it }
+        } catch (_: Exception) {
+            return false
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - cfgCacheAt < 10_000L) {
+            return cfgCacheEnabled && cfgCacheForward && cfgCacheConfigured
+        }
+        val enabled = try {
+            prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+        val forward = try {
+            prefs.notifForwardEnabled
+        } catch (_: Exception) {
+            true
+        }
+        val configured = try {
+            prefs.isConfigured()
+        } catch (_: Exception) {
+            false
+        }
+        cfgCacheEnabled = enabled
+        cfgCacheForward = forward
+        cfgCacheConfigured = configured
+        cfgCacheAt = now
+        return enabled && forward && configured
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val notification = sbn?.notification ?: return
         val pkg = sbn.packageName ?: return
@@ -129,11 +161,22 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val notifId = sbn.id
         if (pendingPosts.get() > 32) {
+            if (!forwardingAllowed()) return
             try {
                 val extras = notification.extras
                 val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
                 val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
                 if (title.isNotEmpty() || text.isNotEmpty()) {
+                    val nowFb = android.os.SystemClock.elapsedRealtime()
+                    val keyFb = pkg + "\n" + title + "\n" + text
+                    val dupFb = synchronized(lastSent) {
+                        val prev = lastSent[keyFb] ?: 0L
+                        if (nowFb - prev < 30_000L) true else {
+                            lastSent[keyFb] = nowFb
+                            false
+                        }
+                    }
+                    if (dupFb || pkgFull(pkg, nowFb)) return
                     val label = try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
                         packageManager.getApplicationLabel(info).toString()
@@ -141,6 +184,20 @@ class NotificationForwarderService : NotificationListenerService() {
                         pkg
                     }
                     record(label, title, text)
+                    val message = buildString {
+                        appendLine("\uD83D\uDD14 <b>Notification</b>")
+                        appendLine("App: ${Html.escape(label)}")
+                        if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title.take(200))}")
+                        if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
+                    }
+                    val fallbackPkg = pkg
+                    val fallbackMsg = message
+                    scope.launch {
+                        try {
+                            forwardToTelegram(fallbackMsg, fallbackPkg)
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
             } catch (_: Exception) {
             }
@@ -297,6 +354,12 @@ class NotificationForwarderService : NotificationListenerService() {
         return MessageQueue.getInstance(this).also { queueRef = it }
     }
 
+    private fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
+    }
+
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
         if (inFlight.incrementAndGet() > 4) {
             inFlight.decrementAndGet()
@@ -336,6 +399,20 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
                 return
             }
+            try {
+                if (prefs.credentialError.isNotEmpty()) {
+                    val nowAuth = System.currentTimeMillis()
+                    if (nowAuth < prefs.credentialErrorAt) {
+                        prefs.credentialError = ""
+                        prefs.credentialErrorAt = 0L
+                    } else if (nowAuth - prefs.credentialErrorAt < 30 * 60_000L) {
+                        queue().addMessage(message)
+                        MessageScheduler.scheduleMessageSend(this)
+                        return
+                    }
+                }
+            } catch (_: Exception) {
+            }
             val nowNet = android.os.SystemClock.elapsedRealtime()
             if (nowNet - netCheckAt > 20_000L) {
                 netCheckAt = nowNet
@@ -347,9 +424,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 return
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
-            if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
+                if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                 try {
                     prefs.lastSyncTime = System.currentTimeMillis()
                 } catch (_: Exception) {
@@ -360,14 +437,39 @@ class NotificationForwarderService : NotificationListenerService() {
                 android.util.Log.e("NotifForwarder", "Auth rejected, queuing notification until credentials are fixed")
                 try {
                     prefs.credentialError = response.code().toString()
-                    prefs.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                    prefs.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
                 return
             }
+            if (response.code() == 429) {
+                val retryAfter = try {
+                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                } catch (_: Exception) {
+                    5L
+                }
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                return
+            }
             if (response.code() == 400) {
+                val body = try {
+                    response.errorBody()?.string()
+                } catch (_: Exception) {
+                    null
+                }
+                if (isChatMissing(body)) {
+                    try {
+                        prefs.credentialError = response.code().toString()
+                        prefs.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return
+                }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                 return
             }

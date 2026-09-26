@@ -94,7 +94,12 @@ class CameraService(private val context: Context) {
         backgroundHandler = null
         thread?.quitSafely()
         try {
-            if (thread != null && Thread.currentThread() !== thread) {
+            val onMain = try {
+                Thread.currentThread() === android.os.Looper.getMainLooper().thread
+            } catch (_: Exception) {
+                false
+            }
+            if (thread != null && Thread.currentThread() !== thread && !onMain) {
                 try { thread.join(2_000) } catch (_: InterruptedException) { }
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread stopped")
@@ -203,7 +208,7 @@ class CameraService(private val context: Context) {
             // so warmup preview frames can never be mistaken for the still photo.
             val photoSize = choosePhotoSize(cameraManager, cameraId)
             val jpegOrientation = getJpegOrientation(cameraManager, cameraId, lensFacing)
-            val dummyTexture = android.graphics.SurfaceTexture(false)
+            val dummyTexture = android.graphics.SurfaceTexture(0)
             try {
                 dummyTexture.setDefaultBufferSize(photoSize.first, photoSize.second)
             } catch (_: Exception) {
