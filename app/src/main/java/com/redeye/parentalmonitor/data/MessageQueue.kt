@@ -230,6 +230,11 @@ class MessageQueue private constructor(context: Context) {
                 gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
             }
         } catch (e: Exception) {
+            try {
+                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
+            } catch (_: Exception) {
+            }
+            cached = mutableListOf()
             mutableListOf()
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L

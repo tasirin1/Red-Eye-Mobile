@@ -50,12 +50,6 @@ class BootRestartWorker(
             throw e
         } catch (_: Exception) {
         }
-        try {
-            CrashReporter.flushPending(appContext)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
         if (MonitoringService.isRunning) {
             MessageScheduler.scheduleMessageSend(appContext)
             return Result.success()
@@ -78,6 +72,12 @@ class BootRestartWorker(
         }
         if (!prefs.isConfigured()) {
             return if (runAttemptCount < 5) Result.retry() else Result.success()
+        }
+        try {
+            CrashReporter.flushPending(appContext)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
         MessageScheduler.scheduleWatchdog(appContext)
         return try {

@@ -4,6 +4,16 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+### Fixed
+- `SendMessageWorker` hitung exception per-pesan sebagai gagal dan lanjut agar satu pesan beracun tidak memblokir antrean di belakangnya.
+- `SetupActivity.sendStatusNow()` hormati backoff kredensial 30 menit agar tap berulang tidak memperpanjang blokir tanpa batas.
+- `SetupActivity` tampilkan status jalan dari flag dan `MonitoringService.isRunning` agar service mati tidak terlihat aktif.
+- `BootRestartWorker` kirim laporan crash hanya setelah cek consent agar stop pengguna dihormati.
+- `MessageQueue` hapus entry korup saat parse gagal agar tidak di-parse ulang tiap baca.
+- `SetupActivity` ganti `Toast` pesan exception mentah dengan `msg_action_failed` generik.
+
+## [Unreleased]
+
 ### Added
 - Proteksi branch `main`: wajib status `build` hijau (strict), tanpa force-push/hapus branch, resolusi konversi wajib.
 - Template PR/issues (`.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`), `.github/CODEOWNERS`, dan `.github/dependabot.yml` untuk update Actions mingguan.

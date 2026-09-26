@@ -58,6 +58,7 @@
     <string name="msg_not_configured">Error: no settings found! Set up the bot from the setup page first.</string>
     <string name="msg_service_started">✓ Service started</string>
     <string name="msg_service_failed">Error: could not start the service</string>
+    <string name="msg_action_failed">Action failed, please try again</string>
     <string name="msg_service_running">Service is already running</string>
     <string name="msg_open_setup_failed">Could not open setup: %1$s</string>
     <string name="msg_enabling_protection">🔐 Enabling protection…</string>

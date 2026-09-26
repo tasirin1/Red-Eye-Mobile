@@ -154,7 +154,7 @@ class SetupActivity : AppCompatActivity() {
             }
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -428,7 +428,7 @@ class SetupActivity : AppCompatActivity() {
             try {
                 startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             } catch (e: Exception) {
-                Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
             }
             return
         }
@@ -455,7 +455,7 @@ class SetupActivity : AppCompatActivity() {
             try {
                 startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             } catch (e: Exception) {
-                Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -464,6 +464,14 @@ class SetupActivity : AppCompatActivity() {
         if (!prefs.isConfigured()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
             return
+        }
+        try {
+            val blockedErr = prefs.credentialError
+            if (blockedErr.isNotEmpty() && System.currentTimeMillis() - prefs.credentialErrorAt < 30 * 60_000L) {
+                Toast.makeText(this, getString(R.string.setup_test_fail, blockedErr), Toast.LENGTH_LONG).show()
+                return
+            }
+        } catch (_: Exception) {
         }
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -521,7 +529,7 @@ class SetupActivity : AppCompatActivity() {
             }
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -532,7 +540,7 @@ class SetupActivity : AppCompatActivity() {
             fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
             val configured = s(PreferencesManager.KEY_BOT_TOKEN).isNotEmpty() && s(PreferencesManager.KEY_CHAT_ID).isNotEmpty()
             val perms = hasAllPermissions()
-            val running = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
+            val running = b(PreferencesManager.KEY_MONITORING_ENABLED, false) && MonitoringService.isRunning
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()

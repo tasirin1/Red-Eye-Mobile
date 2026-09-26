@@ -90,7 +90,8 @@ class SendMessageWorker(
             } catch (e: Exception) {
                 val detail = (e.message ?: "").let { m -> if (runToken.isNotEmpty()) m.replace(runToken, "***") else m }
                 android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
-                break
+                failedIds.add(queuedMessage.id)
+                continue
             }
         }
 
