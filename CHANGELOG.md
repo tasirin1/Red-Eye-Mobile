@@ -2,6 +2,12 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.6.37] - 2026-09-26
+
+### Fixed
+- `MonitoringService.sendSmsPending()` perbaiki error kompilasi `sendMultipartTextMessage`: `parts` bertipe `ArrayList<String>` (`divideMessage()` vs `ArrayList(listOf(...))`) agar cocok dengan signature multipart.
+- `MonitoringService.sendSmsPending()` ganti `ContextCompat.unregisterReceiver()` yang tidak ada dengan `unregisterReceiver()` milik `Service` agar build lolos kompilasi.
+
 ## [1.6.36] - 2026-09-26
 
 ### Fixed
