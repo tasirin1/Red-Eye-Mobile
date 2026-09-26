@@ -185,9 +185,15 @@ class NotificationForwarderService : NotificationListenerService() {
             val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
             if (nowCfg - seenAt < 120_000L) return
         }
-        val extras = notification.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        val title: String
+        val text: String
+        try {
+            val extras = notification.extras
+            title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+            text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        } catch (_: Exception) {
+            return
+        }
         if (title.isEmpty() && text.isEmpty()) return
         val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()

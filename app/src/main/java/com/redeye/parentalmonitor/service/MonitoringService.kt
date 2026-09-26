@@ -46,9 +46,11 @@ class MonitoringService : Service() {
     }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
     private val cameraBusy = AtomicBoolean(false)
+    private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var activeAudioFile: File? = null
     private var ringJob: Job? = null
@@ -58,6 +60,12 @@ class MonitoringService : Service() {
     private var loopWatchdogNoticeAt = 0L
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile
+    private var appliedFgsTypes = 0
+
+    private enum class MediaSendOutcome {
+        SENT, KEPT, DROPPED
+    }
     private var monitoringJob: Job? = null
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
@@ -253,16 +261,7 @@ class MonitoringService : Service() {
                 .setSilent(true)
         }
 
-        var foregroundTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        if (hasCameraPermission()) {
-            foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-        }
-        if (hasMicPermission()) {
-            foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        }
-        if (hasLocationPermission() && hasBackgroundLocation()) {
-            foregroundTypes = foregroundTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-        }
+        var foregroundTypes = computeForegroundTypes()
         val foregroundNotification = try {
             notificationBuilder.build()
         } catch (_: Exception) {
@@ -272,6 +271,7 @@ class MonitoringService : Service() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIFICATION_ID, foregroundNotification, foregroundTypes)
+                appliedFgsTypes = foregroundTypes
             } else {
                 startForeground(NOTIFICATION_ID, foregroundNotification)
             }
@@ -284,6 +284,7 @@ class MonitoringService : Service() {
                         foregroundNotification,
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                     )
+                    appliedFgsTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 } else {
                     startForeground(NOTIFICATION_ID, foregroundNotification)
                 }
@@ -557,7 +558,7 @@ class MonitoringService : Service() {
         for (update in updates) {
             try {
                 if (update.updateId > preferencesManager.lastUpdateId) {
-                    preferencesManager.lastUpdateId = update.updateId
+                    preferencesManager.setLastUpdateIdSync(update.updateId)
                 }
             } catch (_: Exception) {
             }
@@ -569,12 +570,11 @@ class MonitoringService : Service() {
             val message = update.message ?: update.editedMessage ?: continue
             if (message.chat.id.toString() != chatId) continue
             val full = (message.text ?: message.caption)?.trim() ?: continue
-            val raw = full.substringBefore("@").lowercase(java.util.Locale.ROOT)
-            if (!raw.startsWith("/")) continue
-            val input = if (raw == "/sms" || raw.startsWith("/sms ")) {
-                val smsArg = full.substringAfter(" ", "").trim()
-                if (smsArg.isEmpty()) "/sms" else "/sms $smsArg"
-            } else raw
+            val head = full.substringBefore(" ")
+            val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+            if (!command.startsWith("/")) continue
+            val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
+            val input = if (arg.isEmpty()) command else "$command $arg"
             handleTelegramCommand(input, message.date)
         }
         return true
@@ -688,7 +688,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
         val nowSec = System.currentTimeMillis() / 1000L
-        if (sentAtSec > 0 && sentAtSec <= nowSec && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
+        if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
             sendToTelegram("\u23F3\uFE0F Command kedaluwarsa (dikirim > ${COMMAND_MAX_AGE_SEC / 60} menit lalu). Kirim ulang.")
             return
         }
@@ -712,7 +712,7 @@ class MonitoringService : Service() {
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L) {
         when (command) {
             "/photo" -> {
-                val lens = arg.substringBefore(" ")
+                val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
                 if (lens.isNotEmpty()) {
                     when (lens) {
                         "belakang", "back" -> preferencesManager.cameraFacing = "back"
@@ -826,7 +826,7 @@ class MonitoringService : Service() {
                 }
             }
             "/camera" -> {
-                when (arg) {
+                when (arg.lowercase(java.util.Locale.ROOT)) {
                     "belakang", "back" -> {
                         preferencesManager.cameraFacing = "back"
                         sendToTelegram("📸 Camera set to back.")
@@ -1028,8 +1028,17 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F Tidak ada SMS tertunda. Kirim /sms \u003cnomor\u003e \u003cpesan\u003e dulu.")
                 } else if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Tunggu sebentar sebelum kirim SMS lagi.")
+                } else if (!smsBusy.compareAndSet(false, true)) {
+                    sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
-                    sendSmsPending(number, smsText)
+                    sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
+                    serviceScope.launch {
+                        try {
+                            sendSmsPending(number, smsText)
+                        } finally {
+                            smsBusy.set(false)
+                        }
+                    }
                 }
             }
             "/lastnotif" -> {
@@ -1257,6 +1266,7 @@ class MonitoringService : Service() {
     @Suppress("DEPRECATION")
     private suspend fun fetchLocation(): android.location.Location? {
         if (!hasLocationPermission()) return null
+        ensureForegroundTypes()
         return withContext(Dispatchers.IO) {
             try {
                 val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
@@ -1541,22 +1551,92 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
-        try {
-            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.currentTimeMillis()
+        val delivered = CompletableDeferred<Boolean>()
+        val smsManager = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 getSystemService(android.telephony.SmsManager::class.java)
             } else {
                 android.telephony.SmsManager.getDefault()
             }
-            if (smsText.length > 160) {
-                smsManager.sendMultipartTextMessage(number, null, smsManager.divideMessage(smsText), null, null)
-            } else {
-                smsManager.sendTextMessage(number, null, smsText, null, null)
+        } catch (e: Exception) {
+            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            return
+        }
+        val parts = try {
+            if (smsText.length > 160) smsManager.divideMessage(smsText) else listOf(smsText)
+        } catch (e: Exception) {
+            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            return
+        }
+        val expected = parts.size.coerceAtLeast(1)
+        val okCount = java.util.concurrent.atomic.AtomicInteger(0)
+        val counting = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                if (intent?.action != sentAction) return
+                try {
+                    if (resultCode == android.app.Activity.RESULT_OK) {
+                        if (okCount.incrementAndGet() >= expected) delivered.complete(true)
+                    } else {
+                        delivered.complete(false)
+                    }
+                } catch (_: Exception) {
+                }
             }
-            preferencesManager.pendingSmsNumber = ""
-            preferencesManager.pendingSmsText = ""
-            preferencesManager.pendingSmsAt = 0L
-            preferencesManager.lastSmsSendAt = System.currentTimeMillis()
-            sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
+        }
+        try {
+            androidx.core.content.ContextCompat.registerReceiver(
+                this,
+                counting,
+                android.content.IntentFilter(sentAction),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        } catch (_: Exception) {
+            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            return
+        }
+        try {
+            try {
+                if (parts.size > 1) {
+                    val sentIntents = java.util.ArrayList<android.app.PendingIntent>(parts.size)
+                    repeat(parts.size) {
+                        sentIntents.add(
+                            android.app.PendingIntent.getBroadcast(
+                                this,
+                                (System.currentTimeMillis() % Int.MAX_VALUE).toInt() + it,
+                                android.content.Intent(sentAction),
+                                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                            )
+                        )
+                    }
+                    smsManager.sendMultipartTextMessage(number, null, parts, sentIntents, null)
+                } else {
+                    val sentIntent = android.app.PendingIntent.getBroadcast(
+                        this,
+                        (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+                        android.content.Intent(sentAction),
+                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
+                }
+                val confirmed = withTimeoutOrNull(60_000L) { delivered.await() } ?: false
+                preferencesManager.lastSmsSendAt = System.currentTimeMillis()
+                if (confirmed) {
+                    preferencesManager.pendingSmsNumber = ""
+                    preferencesManager.pendingSmsText = ""
+                    preferencesManager.pendingSmsAt = 0L
+                    sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
+                } else {
+                    sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
+                }
+            } finally {
+                try {
+                    androidx.core.content.ContextCompat.unregisterReceiver(this, counting)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: SecurityException) {
             sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
         } catch (e: Exception) {
@@ -1784,6 +1864,7 @@ class MonitoringService : Service() {
         ringJob?.cancel()
         recordJob?.cancel()
         initialSyncRunning.set(false)
+        initialSyncStarted.set(false)
         idlePolls = 0
         stopSpeedTracking()
         isRunning = false
@@ -1852,6 +1933,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         initialSyncRunning.set(false)
+        initialSyncStarted.set(false)
         isRunning = false
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -1915,9 +1997,10 @@ class MonitoringService : Service() {
             return
         }
         if (isCameraDisabledByPolicy()) {
+            autoPausePhotosOnPolicyBlock()
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: camera disabled by device policy (CAMERA_DISABLED). " + cameraFailureHint("CAMERA_DISABLED"))
+                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError("CAMERA_DISABLED") + " " + cameraFailureHint("CAMERA_DISABLED"))
                 } else {
                     notifyCameraFailure("camera disabled by device policy (CAMERA_DISABLED)")
                 }
@@ -1950,6 +2033,7 @@ class MonitoringService : Service() {
         }
         watchdogJob = wd
         try {
+            ensureForegroundTypes()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
@@ -1962,13 +2046,19 @@ class MonitoringService : Service() {
                     } catch (_: Exception) {
                     }
                     serviceScope.launch {
-                        val sent = sendPhotoFile(photoFile)
-                        if (sent) {
-                            flushPendingPhotos()
-                        } else {
-                            prunePhotoCache()
-                            if (reportResult) {
-                                sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
+                        when (sendPhotoFile(photoFile)) {
+                            MediaSendOutcome.SENT -> flushPendingPhotos()
+                            MediaSendOutcome.DROPPED -> {
+                                prunePhotoCache()
+                                if (reportResult) {
+                                    sendToTelegram("⚠️ Photo rejected by Telegram (400), file discarded.")
+                                }
+                            }
+                            MediaSendOutcome.KEPT -> {
+                                prunePhotoCache()
+                                if (reportResult) {
+                                    sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
+                                }
                             }
                         }
                     }
@@ -1982,11 +2072,15 @@ class MonitoringService : Service() {
                     } catch (_: Exception) {
                     }
                     android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
+                    val policyBlocked = isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
+                    if (policyBlocked) autoPausePhotosOnPolicyBlock()
                     serviceScope.launch {
                         if (reportResult) {
-                            sendToTelegram("⚠️ Photo capture failed: ${exception.message ?: "unknown error"}. " + cameraFailureHint(exception.message))
+                            var hint = cameraFailureHint(exception.message)
+                            if (policyBlocked) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
+                            sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError(exception.message) + " " + hint)
                         } else {
-                            notifyCameraFailure(exception.message ?: "unknown error")
+                            notifyCameraFailure(sanitizedCameraError(exception.message))
                         }
                     }
                 }
@@ -1996,23 +2090,46 @@ class MonitoringService : Service() {
             cameraBusy.set(false)
             watchdogJob?.cancel()
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto: ${redactToken(e.message)}")
+            val policyBlocked = isCameraPolicyError(e.message)
+            if (policyBlocked) autoPausePhotosOnPolicyBlock()
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: ${e.message ?: "unknown error"}.")
+                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError(e.message) + ".")
                 } else {
-                    notifyCameraFailure(e.message ?: "unknown error")
+                    notifyCameraFailure(sanitizedCameraError(e.message))
                 }
             }
         }
     }
     
+    private fun sanitizedCameraError(reason: String?): String {
+        if (isCameraPolicyError(reason)) return "camera disabled by device policy (CAMERA_DISABLED)"
+        val firstLine = (reason ?: "unknown error").lineSequence().firstOrNull()?.trim().orEmpty()
+        if (firstLine.isEmpty()) return "unknown error"
+        val cleaned = firstLine.replace(Regex("(?i)connectHelper:\\d+:\\s*"), "")
+        return cleaned.take(160)
+    }
+
+    private fun autoPausePhotosOnPolicyBlock() {
+        try {
+            if (isPhotoPaused()) return
+            preferencesManager.photoPausedUntil = android.os.SystemClock.elapsedRealtime() + 120 * 60_000L
+            cachedPhotoPausedUntil = photoPausedElapsed()
+        } catch (_: Exception) {
+        }
+    }
+
     private suspend fun notifyCameraFailure(reason: String) {
         try {
+            val clean = sanitizedCameraError(reason)
+            if (isCameraPolicyError(clean)) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
             if (last > 0 && last <= now && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
-            sendToTelegram("⚠️ Photo capture failed: $reason. " + cameraFailureHint(reason))
+            var hint = cameraFailureHint(clean)
+            if (isCameraPolicyError(clean)) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
+            sendToTelegram("⚠️ Photo capture failed: $clean. $hint")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice: ${redactToken(e.message)}")
         }
@@ -2027,6 +2144,41 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice: ${redactToken(e.message)}")
+        }
+    }
+
+    private fun computeForegroundTypes(): Int {
+        var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        if (hasCameraPermission()) {
+            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        }
+        if (hasMicPermission()) {
+            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        }
+        if (hasLocationPermission() && hasBackgroundLocation()) {
+            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        }
+        return types
+    }
+
+    private fun ensureForegroundTypes() {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+            val types = computeForegroundTypes()
+            if (types == appliedFgsTypes) return
+            val notification = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(if (lastSpeedText.isEmpty()) getString(R.string.notification_text) else lastSpeedText)
+                .setContentIntent(speedTapIntent())
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setOngoing(true)
+                .setSilent(true)
+                .setShowWhen(false)
+                .build()
+            startForeground(NOTIFICATION_ID, notification, types)
+            appliedFgsTypes = types
+        } catch (_: Exception) {
         }
     }
 
@@ -2179,6 +2331,7 @@ class MonitoringService : Service() {
 
     @Suppress("DEPRECATION")
     private suspend fun recordAndSendAudio(seconds: Int) {
+        ensureForegroundTypes()
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
@@ -2208,16 +2361,27 @@ class MonitoringService : Service() {
                 sendToTelegram("Record failed (empty audio). Please try again.")
                 return
             }
-            if (sendAudioFile(audioFile)) {
-                sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
-                flushPendingAudio()
-            } else {
-                keepForRetry = true
-                try {
+            when (sendAudioFile(audioFile)) {
+                MediaSendOutcome.SENT -> {
+                    sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
                     flushPendingAudio()
-                } catch (_: Exception) {
                 }
-                sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
+                MediaSendOutcome.DROPPED -> {
+                    keepForRetry = false
+                    try {
+                        flushPendingAudio()
+                    } catch (_: Exception) {
+                    }
+                    sendToTelegram("\u26A0\uFE0F Audio rejected by Telegram (400), file discarded.")
+                }
+                MediaSendOutcome.KEPT -> {
+                    keepForRetry = true
+                    try {
+                        flushPendingAudio()
+                    } catch (_: Exception) {
+                    }
+                    sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
+                }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
@@ -2241,12 +2405,12 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendAudioFile(audioFile: File): Boolean {
+    private suspend fun sendAudioFile(audioFile: File): MediaSendOutcome {
         try {
-            if (authBlocked()) return false
-            if (!hasNetwork()) return false
+            if (authBlocked()) return MediaSendOutcome.KEPT
+            if (!hasNetwork()) return MediaSendOutcome.KEPT
             val (botToken, chatId) = sendCreds()
-            if (botToken.isEmpty() || chatId.isEmpty()) return false
+            if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
             val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -2256,7 +2420,7 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
                 deleteQuietly(audioFile)
-                return true
+                return MediaSendOutcome.SENT
             }
             if (response.code() == 401 || response.code() == 403) {
                 try {
@@ -2267,10 +2431,11 @@ class MonitoringService : Service() {
             } else if (response.code() == 400) {
                 android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
                 deleteQuietly(audioFile)
+                return MediaSendOutcome.DROPPED
             }
-            return false
+            return MediaSendOutcome.KEPT
         } catch (e: Exception) {
-            return false
+            return MediaSendOutcome.KEPT
         }
     }
 
@@ -2290,8 +2455,7 @@ class MonitoringService : Service() {
             for (file in pending) {
                 if (file == activeAudioFile) continue
                 if (now - file.lastModified() < 10_000L) continue
-                sendAudioFile(file)
-                if (file.exists()) break
+                if (sendAudioFile(file) == MediaSendOutcome.KEPT) break
                 kotlinx.coroutines.delay(500)
             }
         } finally {
@@ -2396,19 +2560,19 @@ class MonitoringService : Service() {
         return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
-    private suspend fun sendPhotoFile(photoFile: File): Boolean {
+    private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome {
         try {
-            if (authBlocked()) return false
+            if (authBlocked()) return MediaSendOutcome.KEPT
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
-                return false
+                return MediaSendOutcome.KEPT
             }
 
             val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.e("MonitoringService", "Bot credentials missing")
-                return false
+                return MediaSendOutcome.KEPT
             }
 
             val requestFile = photoFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
@@ -2427,7 +2591,7 @@ class MonitoringService : Service() {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
                 preferencesManager.lastPhotoTime = System.currentTimeMillis()
                 deleteQuietly(photoFile)
-                return true
+                return MediaSendOutcome.SENT
             }
             val errorBody = try {
                 response.errorBody()?.string()?.take(200) ?: ""
@@ -2446,33 +2610,38 @@ class MonitoringService : Service() {
             } else if (response.code() == 400) {
                 android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")
                 deleteQuietly(photoFile)
+                return MediaSendOutcome.DROPPED
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()} $errorBody")
                 notifyPhotoSendFailure("HTTP ${response.code()} $errorBody".trim())
             }
-            return false
+            return MediaSendOutcome.KEPT
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram: ${redactToken(e.message)}")
-            return false
+            return MediaSendOutcome.KEPT
         }
     }
 
     private suspend fun flushPendingPhotos(max: Int = 10) {
-        val pending = try {
-            cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() }?.take(max) ?: return
-        } catch (e: Exception) {
-            return
+        if (!photoFlushBusy.compareAndSet(false, true)) return
+        try {
+            val pending = try {
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+            } catch (e: Exception) {
+                return
+            }
+            for (file in pending) {
+                if (sendPhotoFile(file) == MediaSendOutcome.KEPT) break
+                kotlinx.coroutines.delay(500)
+            }
+            prunePhotoCache()
+        } finally {
+            photoFlushBusy.set(false)
         }
-        for (file in pending) {
-            sendPhotoFile(file)
-            if (file.exists()) break
-            kotlinx.coroutines.delay(500)
-        }
-        prunePhotoCache()
     }
 
     private fun deleteQuietly(file: File) {

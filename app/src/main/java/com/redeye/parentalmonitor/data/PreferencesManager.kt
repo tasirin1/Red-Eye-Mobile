@@ -203,6 +203,13 @@ class PreferencesManager(context: Context) {
         get() = sharedPreferences.getLong(KEY_LAST_UPDATE_ID, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
+    fun setLastUpdateIdSync(id: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     var lastPhotoTime: Long
         get() = sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_TIME, value).apply()
@@ -307,7 +314,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        editor.commit()
+        editor.apply()
     }
 
     fun saveTestCredentials(newToken: String, newChatId: String) {
@@ -324,7 +331,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        editor.commit()
+        editor.apply()
     }
 
     fun putAllValues(values: Map<String, Any?>) {
@@ -358,7 +365,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        editor.commit()
+        editor.apply()
     }
 
     private fun putValue(key: String, value: Any?) {

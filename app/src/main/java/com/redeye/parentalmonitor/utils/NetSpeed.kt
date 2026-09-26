@@ -1,6 +1,7 @@
 package com.redeye.parentalmonitor.utils
 
 import android.net.TrafficStats
+import java.util.Locale
 
 object NetSpeed {
 
@@ -19,8 +20,8 @@ object NetSpeed {
         val v = bytesPerSec.coerceAtLeast(0).toDouble()
         return when {
             v < 1024 -> v.toInt().toString() to "B/s"
-            v < 1024 * 1024 -> String.format("%.1f", v / 1024) to "KB/s"
-            else -> String.format("%.2f", v / (1024 * 1024)) to "MB/s"
+            v < 1024 * 1024 -> String.format(Locale.US, "%.1f", v / 1024) to "KB/s"
+            else -> String.format(Locale.US, "%.2f", v / (1024 * 1024)) to "MB/s"
         }
     }
 
@@ -33,9 +34,9 @@ object NetSpeed {
         val v = bytes.coerceAtLeast(0).toDouble()
         return when {
             v < 1024 -> v.toInt().toString() + " B"
-            v < 1024 * 1024 -> String.format("%.1f KB", v / 1024)
-            v < 1024 * 1024 * 1024 -> String.format("%.1f MB", v / (1024 * 1024))
-            else -> String.format("%.2f GB", v / (1024 * 1024 * 1024))
+            v < 1024 * 1024 -> String.format(Locale.US, "%.1f KB", v / 1024)
+            v < 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1f MB", v / (1024 * 1024))
+            else -> String.format(Locale.US, "%.2f GB", v / (1024 * 1024 * 1024))
         }
     }
 }

@@ -2,6 +2,26 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [1.6.36] - 2026-09-26
+
+### Fixed
+- `MonitoringService` sanitasi error kamera `CAMERA_DISABLED` (hilangkan detail mentah `connectHelper:...`) dan auto-pause foto otomatis `120` menit saat kamera diblokir device policy, agar loop tidak retry tiap interval dan spam notice; pesan failure mengarahkan ke `/photointerval 0` atau `/resume`.
+- `MonitoringService` reset flag initial sync di `stopMonitoring()`/`onTimeout()` agar histori SMS/panggilan tetap dikirim ulang setelah stop-start dalam satu proses.
+- `MonitoringService.sendPhotoFile()` bedakan foto yang ditolak `400` (dibuang, beri notice jujur) vs gagal kirim biasa (disimpan untuk retry).
+- `MonitoringService` hitung ulang tipe foreground service dari izin terkini (`ensureForegroundTypes()`) sebelum pakai kamera/mikrofon/lokasi, agar izin yang diberikan belakangan langsung berlaku di Android 14+.
+- `MonitoringService` batasi toleransi jam masa depan (maks `300` detik) agar command replay bertanggal palsu tetap kedaluwarsa.
+- `MonitoringService` parsing command pertahankan huruf asli argumen (perintah tetap case-insensitive, mention `@bot` berlaku untuk semua command); lensa `/photo` dan `/camera` tetap toleran huruf besar.
+- `MonitoringService` simpan offset `getUpdates` secara sinkron agar redelivery Telegram tidak mengeksekusi command dua kali.
+- `PreferencesManager.saveCoreConfig()`/`saveTestCredentials()`/`setMonitoringActive()` pakai `apply()` agar tidak blokir UI thread.
+- `NotificationForwarderService` bungkus baca `notification.extras` dengan `try/catch` agar satu notifikasi malformed tidak crash proses.
+- `MonitoringService.sendAudioFile()` bedakan audio yang ditolak `400` (dibuang, beri notice jujur) vs gagal kirim biasa (disimpan untuk retry).
+- `MonitoringService.sendSmsPending()` tunggu konfirmasi `sent PendingIntent` (timeout `60` detik, semua part multipart harus OK); pending hanya dibersihkan bila terkonfirmasi, bila tidak pengguna diminta `/smsconfirm` ulang.
+- `NetSpeed` pakai `Locale.US` di semua `String.format()` agar format kecepatan konsisten di semua locale.
+- `MonitoringService.sendSmsPending()` rethrow `CancellationException` agar pembatalan saat menunggu konfirmasi tidak tertelan.
+- `MonitoringService` kirim `/smsconfirm` di background dengan guard `smsBusy`: cegah SMS ganda dan tidak lagi blokir loop polling command sampai `60` detik.
+- `MonitoringService.flushPendingPhotos()` pakai guard `photoFlushBusy` agar flush bersamaan tidak mengunggah foto yang sama dua kali.
+- `MonitoringService` ganti flag volatile `lastPhotoDropped`/`lastAudioDropped` dengan enum `MediaSendOutcome` (`SENT`/`KEPT`/`DROPPED`) agar hasil kirim foto/audio akurat tanpa race antar coroutine.
+
 ## [1.6.35] - 2026-09-25
 
 ### Fixed
