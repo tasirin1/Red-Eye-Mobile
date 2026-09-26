@@ -2,7 +2,7 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
-## [Unreleased]
+## [1.6.40] - 2026-09-26
 
 ### Fixed
 - `SendMessageWorker` hitung exception per-pesan sebagai gagal dan lanjut agar satu pesan beracun tidak memblokir antrean di belakangnya.
