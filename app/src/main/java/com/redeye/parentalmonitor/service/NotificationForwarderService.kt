@@ -214,10 +214,19 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun handlePosted(pkg: String, notifId: Int, notification: Notification, groupKey: String = "", isSummary: Boolean = false) {
-        val prefs = prefsRef ?: try {
+        var prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
             return
+        }
+        if (!prefs.isStorageEncrypted) {
+            try {
+                if (PreferencesManager.refreshInstance(this)) {
+                    prefs = PreferencesManager.getInstance(this)
+                    prefsRef = prefs
+                }
+            } catch (_: Exception) {
+            }
         }
         val nowCfg = android.os.SystemClock.elapsedRealtime()
         val cfgEnabled: Boolean

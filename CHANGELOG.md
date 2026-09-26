@@ -2,13 +2,22 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
-## [Unreleased]
+## [1.6.39] - 2026-09-26
 
 ### Changed
 - `.github/workflows/build.yml` pakai satu grup `concurrency` global agar hanya satu run `Build APK` berjalan dalam satu waktu; run baru membatalkan run lama lintas `ref`.
 
 ### Fixed
 - `.github/workflows/build.yml` step `Build APKs` coba ulang sampai 3 kali dengan jeda bertingkat agar gagal transient `429 Too Many Requests` dari Maven Central tidak langsung merah.
+- `MonitoringService` lacak `smsJob` dan batalkan di `stopMonitoring()`/`handleFgsTimeout()` agar kirim SMS tidak yatim lalu ganda saat retry.
+- `SendMessageWorker.sendChunked()` berhenti di part pertama yang kena `429`/`401`/`403` agar tidak memperparah rate-limit dan auth-error.
+- `MonitoringService` kirim notice kedaluwarsa saat command basi, dan command destruktif (`/lock`, `/ring`, `/sms`, `/smsconfirm`, `/record`) kedaluwarsa dalam 5 menit.
+- `MonitoringService` polling command tiap 10-30 detik agar `/lock`/`ring` lebih responsif, dan `handleFgsTimeout()` ikut batalkan `ringJob`/`recordJob`/`smsJob`.
+- `MainActivity` hapus `Toast` auto-start monitoring agar mode stealth kalkulator tidak bocor ke anak.
+- `SetupActivity.reviveMonitoringIfNeeded()` hanya start service bila seluruh izin + background location granted.
+- `NotificationForwarderService` pulihkan `prefsRef` ke encrypted saat keystore pulih agar tidak terjebak di `MemoryPrefs` volatile.
+- `SmsRepository`/`CallLogRepository` saring hasil `LIKE` di memori dengan aturan `endsWith` 7+ digit agar `/history` tidak narik nomor orang lain.
+- `SpeedMonitorActivity.onResume()` selalu reset baseline agar trafik selama pause tidak menggembungkan sesi.
 
 ## [1.6.38] - 2026-09-26
 

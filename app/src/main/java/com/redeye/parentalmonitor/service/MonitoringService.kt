@@ -55,6 +55,7 @@ class MonitoringService : Service() {
     private var activeAudioFile: File? = null
     private var ringJob: Job? = null
     private var recordJob: Job? = null
+    private var smsJob: Job? = null
     private var watchdogJob: Job? = null
     private var loopWatchdogJob: Job? = null
     private var loopWatchdogNoticeAt = 0L
@@ -467,7 +468,7 @@ class MonitoringService : Service() {
                 } else if (authBlocked()) {
                     delay(300_000)
                 } else {
-                    delay((15_000L + idlePolls * 10_000L).coerceAtMost(60_000L))
+                    delay((10_000L + idlePolls * 5_000L).coerceAtMost(30_000L))
                 }
             }
         }
@@ -674,6 +675,9 @@ class MonitoringService : Service() {
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
+            serviceScope.launch {
+                sendToTelegram("\u23F3\uFE0F Command kedaluwarsa, kirim ulang.")
+            }
             return
         }
         val parts = raw.split("\\s+".toRegex(), limit = 2)
@@ -694,6 +698,13 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L) {
+        if (sentAtSec > 0 && command in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record")) {
+            val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
+            if (ageSec > 300L) {
+                sendToTelegram("\u23F3\uFE0F Command $command kedaluwarsa, kirim ulang.")
+                return
+            }
+        }
         when (command) {
             "/photo" -> {
                 val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
@@ -1016,7 +1027,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
-                    serviceScope.launch {
+                    smsJob = serviceScope.launch {
                         try {
                             sendSmsPending(number, smsText)
                         } finally {
@@ -1889,6 +1900,7 @@ class MonitoringService : Service() {
         initialSyncJob?.cancel()
         ringJob?.cancel()
         recordJob?.cancel()
+        smsJob?.cancel()
         initialSyncRunning.set(false)
         initialSyncStarted.set(false)
         idlePolls = 0
@@ -1948,6 +1960,18 @@ class MonitoringService : Service() {
         }
         try {
             initialSyncJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            ringJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            recordJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            smsJob?.cancel()
         } catch (_: Exception) {
         }
         try {

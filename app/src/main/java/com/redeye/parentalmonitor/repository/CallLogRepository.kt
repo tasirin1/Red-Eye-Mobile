@@ -95,12 +95,18 @@ class CallLogRepository(private val context: Context) {
 
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
         val escaped = digits.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        return queryCalls(
+        val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = limit
         )
+        val want = digits.filter { it.isDigit() }
+        if (want.length < 7) return rows
+        return rows.filter {
+            val have = it.number.filter { c -> c.isDigit() }
+            have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))
+        }
     }
 
 }

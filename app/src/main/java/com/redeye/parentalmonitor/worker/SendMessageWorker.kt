@@ -308,10 +308,12 @@ class SendMessageWorker(
                     delay(500)
                 }
                 is SendOutcome.RateLimited -> {
-                    if (rateAfter == 0L) rateAfter = outcome.retryAfterSecs
+                    rateAfter = outcome.retryAfterSecs
+                    break
                 }
                 is SendOutcome.AuthFailed -> {
-                    if (authCode == 0) authCode = outcome.code
+                    authCode = outcome.code
+                    break
                 }
                 SendOutcome.Failed -> failed++
                 SendOutcome.Rejected -> rejected++

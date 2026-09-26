@@ -64,7 +64,6 @@ class MainActivity : AppCompatActivity() {
                 try {
                     startMonitoringService()
                     preferencesManager.isMonitoringEnabled = true
-                    Toast.makeText(this, getString(R.string.msg_monitoring_started), Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     android.util.Log.e("MainActivity", "Failed to start service: ${e.message}")
                 }
