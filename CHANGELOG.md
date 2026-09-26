@@ -2,6 +2,15 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [Unreleased]
+
+### Added
+- Proteksi branch `main`: wajib status `build` hijau (strict), tanpa force-push/hapus branch, resolusi konversi wajib.
+- Template PR/issues (`.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`), `.github/CODEOWNERS`, dan `.github/dependabot.yml` untuk update Actions mingguan.
+
+### Changed
+- `.github/workflows/build.yml` abaikan perubahan docs (`**.md`, `LICENSE`) agar edit dokumentasi tidak memicu build.
+
 ## [1.6.39] - 2026-09-26
 
 ### Changed
