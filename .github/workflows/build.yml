@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
@@ -52,7 +52,12 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
       - name: Build APKs
-        run: gradle assembleDebug assembleRelease --stacktrace
+        run: |
+          for i in 1 2 3; do
+            gradle assembleDebug assembleRelease --stacktrace && break || s=$?
+            if [ "$i" -eq 3 ]; then exit "$s"; fi
+            sleep $((i * 60))
+          done
         env:
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

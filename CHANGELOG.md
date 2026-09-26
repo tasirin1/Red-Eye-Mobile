@@ -2,6 +2,14 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+- `.github/workflows/build.yml` pakai satu grup `concurrency` global agar hanya satu run `Build APK` berjalan dalam satu waktu; run baru membatalkan run lama lintas `ref`.
+
+### Fixed
+- `.github/workflows/build.yml` step `Build APKs` coba ulang sampai 3 kali dengan jeda bertingkat agar gagal transient `429 Too Many Requests` dari Maven Central tidak langsung merah.
+
 ## [1.6.38] - 2026-09-26
 
 ### Fixed
