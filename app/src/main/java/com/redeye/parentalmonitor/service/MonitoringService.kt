@@ -1563,8 +1563,8 @@ class MonitoringService : Service() {
             sendToTelegram("\u26A0\uFE0F SMS failed.")
             return
         }
-        val parts = try {
-            if (smsText.length > 160) smsManager.divideMessage(smsText) else listOf(smsText)
+        val parts: java.util.ArrayList<String> = try {
+            if (smsText.length > 160) smsManager.divideMessage(smsText) else java.util.ArrayList(listOf(smsText))
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F SMS failed.")
             return
@@ -1631,7 +1631,7 @@ class MonitoringService : Service() {
                 }
             } finally {
                 try {
-                    androidx.core.content.ContextCompat.unregisterReceiver(this, counting)
+                    unregisterReceiver(counting)
                 } catch (_: Exception) {
                 }
             }
