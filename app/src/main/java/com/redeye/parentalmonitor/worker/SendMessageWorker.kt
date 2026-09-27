@@ -209,7 +209,7 @@ class SendMessageWorker(
     private fun authBlocked(): Boolean {
         return try {
             val err = preferencesManager.credentialError
-            if (err.isEmpty()) return false
+            if (err != "401" && err != "403") return false
             val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""

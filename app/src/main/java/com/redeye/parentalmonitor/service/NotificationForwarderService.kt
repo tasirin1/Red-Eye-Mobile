@@ -185,13 +185,19 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                     }
                     if (dupFb || pkgFull(pkg, nowFb)) return@launch
-                    val label = try {
+                    val label = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
-                        packageManager.getApplicationLabel(info).toString()
+                        packageManager.getApplicationLabel(info).toString().also { resolved ->
+                            synchronized(appLabelCache) { appLabelCache[pkg] = resolved }
+                        }
                     } catch (_: Exception) {
                         pkg
                     }
                     record(label, fbTitle, fbText)
+                    try {
+                        synchronized(groupSeen) { groupSeen[groupKey] = nowFb }
+                    } catch (_: Exception) {
+                    }
                     val message = buildString {
                         appendLine("\uD83D\uDD14 <b>Notification</b>")
                         appendLine("App: ${Html.escape(label)}")

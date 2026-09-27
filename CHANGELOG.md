@@ -1,8 +1,22 @@
-# Changelog
-
-Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
-
 ## [Unreleased]
+
+## [1.6.43] - 2026-09-27
+
+### Fixed
+- `MonitoringService` loop perintah dan watchdog kebal `Throwable` agar tak ada error yang membunuh polling; loop hanya berhenti saat dibatalkan sistem.
+- `MonitoringService` kirim notifikasi lokal throttled 6 jam saat token ditolak `401`/`403` agar pemilik bisa pulihkan via `SetupActivity` meski Telegram mati total.
+- `MonitoringService.pollTelegramCommands` retry sekali dengan kredensial fresh saat `401`/`403` agar cache token basi tidak memblokir perintah 30 menit; error hanya ditandai bila token fresh tetap ditolak.
+- `MonitoringService.pollTelegramCommands` tangani `409` conflict dan `429` rate-limit dengan backoff agar polling pulih sendiri tanpa hammering API.
+- Perintah Telegram no respond di grup/channel: auth polling kini terima `chat.id` selain `from.id`, callback inline terima `chat.id` grup, dan model `TelegramUpdate` tangani `channel_post`/`edited_channel_post` yang sebelumnya diam-diam dibuang.
+- Perintah no respond 30 menit setelah sekali gagal kirim: `authBlocked()` di `MonitoringService` dan `SendMessageWorker` kini hanya blokir untuk `401`/`403`; error `400` chat-missing tidak lagi mematikan polling perintah.
+- `PreferencesManager` upgrade in-place (`upgradeToPersistent`) agar referensi lama di `MainActivity`, `SetupActivity`, dan service tetap valid; `refreshInstance` tidak lagi mengganti singleton dan tidak menghapus `credential_error` prematur, hanya saat kedaluwarsa 30 menit atau clock skew.
+- `MonitoringService.onCreate` pindahkan `refreshInstance` ke background thread agar tidak deadlock di main thread dan kredensial terisi ulang via `refreshCreds`.
+- `MessageQueue` prune pesan kedaluwarsa 7 hari juga pada jalur volatil `addMessage`/`addMessages` agar perilaku konsisten dengan `readLocked`.
+- `CameraService` pastikan `Image` selalu ditutup walau `saveImage` gagal agar kamera tidak bocor.
+- `SetupActivity.updateStatus` dasarkan toggle pada `monitoring_enabled`, bukan flag statis `isRunning`, agar status benar setelah process death.
+- `NotificationForwarderService` samakan jalur banjir (`pendingPosts > 32`) dengan `handlePosted`: cache label dan catat `groupSeen` agar dedup grup konsisten.
+- `SpeedMonitorActivity` clamp akumulasi sesi agar tidak overflow `Long` pada sesi sangat panjang.
+- `.github/workflows/build.yml` sempitkan `concurrency.group` per `github.ref` agar push ke `main` tidak membatalkan run PR.
 
 ## [1.6.42] - 2026-09-27
 

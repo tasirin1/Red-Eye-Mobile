@@ -228,8 +228,14 @@ class CameraService(private val context: Context) {
                             }
                             onTrace("trace: warmup frame dropped")
                         } else {
-                            val file = saveImage(it)
-                            it.close()
+                            val file = try {
+                                saveImage(it)
+                            } finally {
+                                try {
+                                    it.close()
+                                } catch (_: Exception) {
+                                }
+                            }
 
                             captureSession?.close()
                             captureSession = null

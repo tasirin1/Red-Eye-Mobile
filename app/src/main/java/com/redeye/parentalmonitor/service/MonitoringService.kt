@@ -100,6 +100,8 @@ class MonitoringService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
+        private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
+        private const val AUTH_NOTIF_ID = 4
         @Volatile
         var isRunning = false
 
@@ -107,8 +109,19 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         preferencesManager = PreferencesManager.getInstance(this)
+        try {
+            Thread {
+                try {
+                    if (PreferencesManager.refreshInstance(this)) {
+                        refreshCreds()
+                        refreshLoopConfig()
+                    }
+                } catch (_: Exception) {
+                }
+            }.start()
+        } catch (_: Exception) {
+        }
         refreshCreds()
         refreshLoopConfig()
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -440,6 +453,8 @@ class MonitoringService : Service() {
                         throw e
                     } catch (e: Exception) {
                         android.util.Log.e("MonitoringService", "Error polling commands while paused: ${redactToken(e.message)}")
+                    } catch (t: Throwable) {
+                        android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
                     delay(60_000)
                     continue
@@ -451,6 +466,8 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands: ${redactToken(e.message)}")
+                } catch (t: Throwable) {
+                    android.util.Log.e("MonitoringService", "Fatal polling error, loop survives")
                 }
                 if (!preferencesManager.isConfigured()) {
                     try {
@@ -480,7 +497,7 @@ class MonitoringService : Service() {
     private fun authBlocked(): Boolean {
         return try {
             val err = preferencesManager.credentialError
-            if (err.isEmpty()) return false
+            if (err != "401" && err != "403") return false
             val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
@@ -507,7 +524,7 @@ class MonitoringService : Service() {
         val offset = preferencesManager.lastUpdateId + 1
         val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=10"
 
-        val response = try {
+        var response = try {
             TelegramClient.api.getUpdates(url)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -516,8 +533,49 @@ class MonitoringService : Service() {
         }
         if (response.code() == 401 || response.code() == 403) {
             try {
+                refreshCreds()
+            } catch (_: Exception) {
+            }
+            val (freshToken, freshChat) = sendCreds()
+            if (freshToken.isNotEmpty() && freshToken != botToken) {
+                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=10"
+                response = try {
+                    TelegramClient.api.getUpdates(retryUrl)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    return false
+                }
+            }
+        }
+        if (response.code() == 401 || response.code() == 403) {
+            try {
                 preferencesManager.credentialError = response.code().toString()
                 preferencesManager.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            try {
+                postAuthFailureReminder(response.code())
+            } catch (_: Exception) {
+            }
+            return false
+        }
+        if (response.code() == 409) {
+            android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
+            idlePolls = 4
+            return false
+        }
+        if (response.code() == 429) {
+            val retryAfter = try {
+                NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+            } catch (_: Exception) {
+                5L
+            }
+            android.util.Log.w("MonitoringService", "getUpdates rate limited, backing off ${retryAfter}s")
+            try {
+                delay(retryAfter.coerceIn(1L, 300L) * 1000L)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
             }
             return false
@@ -547,10 +605,11 @@ class MonitoringService : Service() {
                 if (callback != null) {
                     handleCallbackQuery(callback)
                 } else {
-                    val message = update.message ?: update.editedMessage
+                    val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
+                    val chatOk = message?.chat?.id?.toString() == chatId
                     val senderOk = message?.from?.id?.toString() == chatId
                     val full = (message?.text ?: message?.caption)?.trim()
-                    if (senderOk && full != null) {
+                    if ((chatOk || senderOk) && full != null) {
                         val head = full.substringBefore(" ")
                         val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                         if (command.startsWith("/")) {
@@ -575,7 +634,8 @@ class MonitoringService : Service() {
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        if (sender != chatId) return
+        val callbackChatOk = try { query.message?.chat?.id?.toString() == chatId } catch (_: Exception) { false }
+        if (sender != chatId && !callbackChatOk) return
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -605,6 +665,33 @@ class MonitoringService : Service() {
             } else {
                 handleTelegramCommand(command)
             }
+        }
+    }
+
+    private fun postAuthFailureReminder(code: Int) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - authReminderAt.get() < 6 * 60 * 60_000L) return
+        authReminderAt.set(now)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return
+            val tap = android.app.PendingIntent.getActivity(
+                this,
+                1,
+                Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Bot token ditolak ($code)")
+                .setContentText("Buka Setup untuk perbaiki token agar perintah aktif lagi.")
+                .setContentIntent(tap)
+                .setAutoCancel(true)
+                .build()
+            val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+            manager.notify(AUTH_NOTIF_ID, notification)
+        } catch (_: Exception) {
         }
     }
 
@@ -2378,6 +2465,8 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Loop watchdog error: ${redactToken(e.message)}")
+                } catch (t: Throwable) {
+                    android.util.Log.e("MonitoringService", "Fatal watchdog error, watchdog survives")
                 }
             }
         }

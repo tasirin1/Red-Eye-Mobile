@@ -13,12 +13,50 @@ class PreferencesManager(context: Context) {
 
     private val securePrefs: Pair<SharedPreferences, Boolean> = openPrefs(appContext)
 
+    @Volatile
     private var storageEncrypted = securePrefs.second
 
-    private val sharedPreferences: SharedPreferences = securePrefs.first
+    @Volatile
+    private var sharedPreferences: SharedPreferences = securePrefs.first
 
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
+
+    fun upgradeToPersistent(): Boolean {
+        if (storageEncrypted) return true
+        return try {
+            val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
+            try {
+                val snap = snapshot()
+                if (snap.isNotEmpty()) {
+                    val editor = fresh.edit()
+                    for ((key, value) in snap) {
+                        when (value) {
+                            null -> editor.remove(key)
+                            is String -> editor.putString(key, value)
+                            is Int -> editor.putInt(key, value)
+                            is Long -> editor.putLong(key, value)
+                            is Float -> editor.putFloat(key, value)
+                            is Boolean -> editor.putBoolean(key, value)
+                            is Set<*> -> try {
+                                @Suppress("UNCHECKED_CAST")
+                                editor.putStringSet(key, value as Set<String>)
+                            } catch (_: Exception) {
+                            }
+                            else -> Unit
+                        }
+                    }
+                    editor.apply()
+                }
+            } catch (_: Exception) {
+            }
+            sharedPreferences = fresh
+            storageEncrypted = true
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     companion object {
         @Volatile
@@ -129,28 +167,40 @@ class PreferencesManager(context: Context) {
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
                 val current = instance
-                if (current != null && current.isStorageEncrypted) return true
+                if (current != null) {
+                    if (current.isStorageEncrypted) return true
+                    return try {
+                        if (current.upgradeToPersistent()) {
+                            try {
+                                val now = System.currentTimeMillis()
+                                val errAt = current.credentialErrorAt
+                                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                                    current.credentialError = ""
+                                    current.credentialErrorAt = 0L
+                                }
+                            } catch (_: Exception) {
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
                 return try {
-                    val fresh = PreferencesManager(context.applicationContext)
-                    if (!fresh.isStorageEncrypted) {
-                        if (current == null) instance = fresh
+                    val created = PreferencesManager(context.applicationContext)
+                    if (!created.isStorageEncrypted) {
+                        if (instance == null) instance = created
                         return false
                     }
-                    if (current != null) {
-                        try {
-                            for (attempt in 0 until 3) {
-                                val snap = current.snapshot()
-                                fresh.putAllValues(snap)
-                                if (current.snapshot() == snap) break
-                            }
-                        } catch (_: Exception) {
-                        }
-                    }
-                    instance = fresh
+                    instance = created
                     try {
-                        if (System.currentTimeMillis() < fresh.credentialErrorAt) {
-                            fresh.credentialError = ""
-                            fresh.credentialErrorAt = 0L
+                        val now = System.currentTimeMillis()
+                        val errAt = created.credentialErrorAt
+                        if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                            created.credentialError = ""
+                            created.credentialErrorAt = 0L
                         }
                     } catch (_: Exception) {
                     }

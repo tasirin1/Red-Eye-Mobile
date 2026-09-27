@@ -94,6 +94,7 @@ class MessageQueue private constructor(context: Context) {
     fun addMessage(message: String) {
         synchronized(lock) {
             if (volatileOnly) {
+                pruneVolatileLocked()
                 volatileQueue.add(QueuedMessage(message = message))
                 while (volatileQueue.size > MAX_QUEUE_SIZE) {
                     volatileQueue.removeAt(0)
@@ -116,6 +117,7 @@ class MessageQueue private constructor(context: Context) {
         if (messages.isEmpty()) return
         synchronized(lock) {
             if (volatileOnly) {
+                pruneVolatileLocked()
                 for (message in messages) volatileQueue.add(QueuedMessage(message = message))
                 while (volatileQueue.size > MAX_QUEUE_SIZE) {
                     volatileQueue.removeAt(0)

@@ -55,6 +55,8 @@ data class TelegramUpdate(
     @SerializedName("update_id") val updateId: Long,
     @SerializedName("message") val message: TelegramIncomingMessage?,
     @SerializedName("edited_message") val editedMessage: TelegramIncomingMessage? = null,
+    @SerializedName("channel_post") val channelPost: TelegramIncomingMessage? = null,
+    @SerializedName("edited_channel_post") val editedChannelPost: TelegramIncomingMessage? = null,
     @SerializedName("callback_query") val callbackQuery: TelegramCallbackQuery? = null
 )
 

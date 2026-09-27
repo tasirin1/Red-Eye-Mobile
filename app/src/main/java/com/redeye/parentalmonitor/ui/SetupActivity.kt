@@ -606,7 +606,8 @@ class SetupActivity : AppCompatActivity() {
             fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
             val configured = s(PreferencesManager.KEY_BOT_TOKEN).isNotEmpty() && s(PreferencesManager.KEY_CHAT_ID).isNotEmpty()
             val perms = hasAllPermissions()
-            val running = b(PreferencesManager.KEY_MONITORING_ENABLED, false) && MonitoringService.isRunning
+            val enabled = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
+            val running = enabled && (MonitoringService.isRunning || configured)
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
@@ -628,8 +629,8 @@ class SetupActivity : AppCompatActivity() {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
             statusText.text = body
-            toggleButton.text = if (running) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
-            toggleButton.isEnabled = configured || running
+            toggleButton.text = if (enabled) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
+            toggleButton.isEnabled = configured || enabled
             permissionButton.text = when {
                 !perms -> getString(R.string.grant_permissions)
                 !bg -> getString(R.string.setup_bg_request)
