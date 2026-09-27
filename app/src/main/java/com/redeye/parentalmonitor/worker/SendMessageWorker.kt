@@ -57,9 +57,19 @@ class SendMessageWorker(
         val runToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
         val runChatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         if (runToken.isEmpty() || runChatId.isEmpty()) return Result.success()
+        var credsChanged = false
 
         for (queuedMessage in queue) {
             if (processed >= 20) {
+                break
+            }
+            val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            val curChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+            if (curToken.isEmpty() || curChat.isEmpty()) {
+                break
+            }
+            if (curToken != runToken || curChat != runChatId) {
+                credsChanged = true
                 break
             }
             processed++
@@ -95,6 +105,19 @@ class SendMessageWorker(
             }
         }
 
+        if (credsChanged) {
+            if (sentIds.isNotEmpty()) {
+                messageQueue.removeMessages(sentIds)
+            }
+            return Result.success()
+        }
+        fun credsSame(): Boolean {
+            return try {
+                preferencesManager.botToken == runToken && preferencesManager.chatId == runChatId
+            } catch (_: Exception) {
+                false
+            }
+        }
         if (sentIds.isNotEmpty()) {
             messageQueue.removeMessages(sentIds)
         }
@@ -127,7 +150,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (sentIds.isNotEmpty()) {
+        if (sentIds.isNotEmpty() && credsSame()) {
             try {
                 val overflow = MessageQueue.consumeOverflowDrops()
                 if (overflow > 0L) {
@@ -145,7 +168,7 @@ class SendMessageWorker(
             if (online) {
                 try {
                     val dropped = messageQueue.registerFailures(failedIds)
-                    if (dropped.isNotEmpty()) {
+                    if (dropped.isNotEmpty() && credsSame()) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
                         sendDropNotice(dropped.size, runToken, runChatId)
                     }
@@ -154,7 +177,7 @@ class SendMessageWorker(
             }
         }
 
-        if (rejectedIds.isNotEmpty()) {
+        if (rejectedIds.isNotEmpty() && credsSame()) {
             try {
                 val sample = try {
                     queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()

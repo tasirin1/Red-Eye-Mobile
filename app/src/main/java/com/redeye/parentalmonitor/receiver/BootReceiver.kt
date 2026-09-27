@@ -73,13 +73,19 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         try {
-            if (System.currentTimeMillis() < preferencesManager.credentialErrorAt) {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
+            val blockedErr = preferencesManager.credentialError
+            if (blockedErr.isNotEmpty()) {
+                val nowAuth = System.currentTimeMillis()
+                val errAt = preferencesManager.credentialErrorAt
+                if (nowAuth < errAt || nowAuth - errAt >= 30 * 60_000L) {
+                    preferencesManager.credentialError = ""
+                    preferencesManager.credentialErrorAt = 0L
+                }
             }
         } catch (_: Exception) {
         }
-        if (intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || updated) {
+        val isRealBoot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
+        if (isRealBoot) {
             try {
                 preferencesManager.photoPausedUntil = 0L
             } catch (_: Exception) {

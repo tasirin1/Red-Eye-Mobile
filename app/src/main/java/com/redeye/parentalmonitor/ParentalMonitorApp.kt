@@ -18,6 +18,23 @@ class ParentalMonitorApp : Application() {
         super.onCreate()
         CrashReporter.install(this)
         createNotificationChannel()
+        try {
+            Thread {
+                try {
+                    com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(this).tryRestorePersistent()
+                } catch (_: Exception) {
+                }
+            }.start()
+        } catch (_: Exception) {
+        }
     }
 
     private fun createNotificationChannel() {

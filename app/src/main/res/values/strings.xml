@@ -19,6 +19,9 @@
     <string name="last_sync">Last sync:</string>
     <string name="never">Never</string>
     <string name="settings_saved">Settings saved</string>
+    <string name="setup_credentials_cleared">Credentials cleared</string>
+    <string name="setup_clear_title">Clear credentials?</string>
+    <string name="setup_clear_text">This removes the bot token, stops monitoring, and drops the queued messages. Continue?</string>
     <string name="enter_bot_token">Enter bot token</string>
     <string name="enter_chat_id">Enter chat ID</string>
     <string name="sync_interval">Sync interval (minutes)</string>
@@ -40,7 +43,7 @@
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
     <string name="setup_bad_chat">Invalid chat ID format, must be numeric</string>
-    <string name="setup_bad_interval">Interval out of range, clamped to 1-1440 min (camera 0-60 min)</string>
+    <string name="setup_bad_interval">Invalid interval, must be 1-1440 min (camera 0-60 min)</string>
     <string name="setup_testing">Sending test message…</string>
     <string name="setup_test_ok">✅ RedEye connected! Setup successful.</string>
     <string name="setup_test_success">✅ Test successful! Check your Telegram.</string>

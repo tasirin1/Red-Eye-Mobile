@@ -11,14 +11,31 @@ class MessageQueue private constructor(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private var volatileOnly = false
+    private var volatileOnly = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
     private val volatileQueue = mutableListOf<QueuedMessage>()
-    private var sharedPreferences: SharedPreferences? = try {
-        PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
-    } catch (e: Exception) {
-        android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
-        volatileOnly = true
-        null
+    private var sharedPreferences: SharedPreferences? = null
+
+    init {
+        if (volatileOnly) {
+            try {
+                Thread {
+                    try {
+                        tryRestorePersistent()
+                    } catch (_: Exception) {
+                    }
+                }.start()
+            } catch (_: Exception) {
+            }
+        } else {
+            try {
+                sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
+                volatileOnly = false
+            } catch (e: Exception) {
+                android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
+                volatileOnly = true
+                sharedPreferences = null
+            }
+        }
     }
     private val lock = Any()
     private var cached: MutableList<QueuedMessage>? = null
@@ -57,8 +74,8 @@ class MessageQueue private constructor(context: Context) {
                 if (pending.isNotEmpty()) {
                     val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
                     val freshPending = pending.filter { it.timestamp >= cutoff }
-                    val expired = (pending.size - freshPending.size).toLong()
-                    if (expired > 0L) overflowDrops.addAndGet(expired)
+                    val expired = pending.size - freshPending.size
+                    if (expired > 0) android.util.Log.w("MessageQueue", "Dropped $expired expired restore message(s)")
                     val queue = readLocked().toMutableList()
                     queue.addAll(freshPending)
                     while (queue.size > MAX_QUEUE_SIZE) {
@@ -123,7 +140,7 @@ class MessageQueue private constructor(context: Context) {
         volatileQueue.removeAll { it.timestamp < cutoff }
         val dropped = before - volatileQueue.size
         if (dropped > 0) {
-            overflowDrops.addAndGet(dropped.toLong())
+            android.util.Log.w("MessageQueue", "Dropped $dropped expired volatile message(s)")
         }
     }
 
@@ -240,10 +257,6 @@ class MessageQueue private constructor(context: Context) {
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()
         if (fresh.size != loaded.size) {
-            val expired = (loaded.size - fresh.size).toLong()
-            if (expired > 0L) {
-                overflowDrops.addAndGet(expired)
-            }
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
             persistLocked(fresh)
             return fresh

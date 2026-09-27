@@ -11,11 +11,7 @@ object NetworkUtils {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ||
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     fun parseRetryAfter(errorBody: String?): Long {

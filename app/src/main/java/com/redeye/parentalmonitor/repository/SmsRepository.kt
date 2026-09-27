@@ -37,7 +37,7 @@ class SmsRepository(private val context: Context) {
 
     private fun filterByNumber(rows: List<SmsData>, digits: String, pick: (SmsData) -> String): List<SmsData> {
         val want = digits.filter { it.isDigit() }
-        if (want.length < 7) return rows
+        if (want.length < 7) return emptyList()
         return rows.filter {
             val have = pick(it).filter { c -> c.isDigit() }
             have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))

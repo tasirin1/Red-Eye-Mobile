@@ -61,9 +61,14 @@ class BootRestartWorker(
             return if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
         try {
-            if (System.currentTimeMillis() < prefs.credentialErrorAt) {
-                prefs.credentialError = ""
-                prefs.credentialErrorAt = 0L
+            val blockedErr = prefs.credentialError
+            if (blockedErr.isNotEmpty()) {
+                val nowAuth = System.currentTimeMillis()
+                val errAt = prefs.credentialErrorAt
+                if (nowAuth < errAt || nowAuth - errAt >= 30 * 60_000L) {
+                    prefs.credentialError = ""
+                    prefs.credentialErrorAt = 0L
+                }
             }
         } catch (_: Exception) {
         }

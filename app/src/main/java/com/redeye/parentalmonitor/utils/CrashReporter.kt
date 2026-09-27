@@ -124,13 +124,26 @@ object CrashReporter {
                 if (response.isSuccessful && response.body()?.ok == true) {
                     file.delete()
                 } else if (response.code() == 400) {
-                    file.delete()
+                    val body = try {
+                        response.errorBody()?.string()
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (!isChatMissing(body)) {
+                        file.delete()
+                    }
                 }
             } catch (_: Exception) {
             }
         } finally {
             flushing.set(false)
         }
+    }
+
+    private fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
     }
 
     private fun buildReport(context: Context, thread: Thread, error: Throwable): String {

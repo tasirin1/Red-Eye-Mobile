@@ -2,6 +2,51 @@
 
 Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
 
+## [Unreleased]
+
+## [1.6.41] - 2026-09-27
+
+### Fixed
+- `MonitoringService` wajibkan `senderOk` untuk seluruh mutasi (`/lock`, `/ring`, `/sms`, `/smsconfirm`, `/record`, `/stop`, `/resume`, `/pause`, `/photointerval`, `/syncinterval`, `/camera`, `/notif`, `/restart`, `/flush`, `/clearqueue`) agar anggota grup tidak bisa ubah state via `chatOk`.
+- `SendMessageWorker` validasi ulang token/chat per pesan dan abort bila berubah agar ganti bot di Setup tidak kirim antrean ke chat lama; drop notice hanya bila kredensial masih sama.
+- `PreferencesManager` buat getter fail-safe ke default agar keystore invalid tidak crash loop di `SetupActivity`/`MainActivity`.
+- `PreferencesManager`, `MessageQueue`, `MainActivity`, `SetupActivity`, dan `ParentalMonitorApp` pindahkan init crypto `EncryptedSharedPreferences` ke background agar `onCreate`/`clearCredentials` tidak ANR.
+- `BootReceiver` reset `photoPausedUntil` hanya untuk boot sungguhan (`BOOT_COMPLETED`, `QUICKBOOT_POWERON`, `MY_PACKAGE_REPLACED`) agar `/pause` tidak gugur saat `USER_PRESENT`/`USER_UNLOCKED`.
+- `NetworkUtils` wajibkan `NET_CAPABILITY_VALIDATED` agar tunnel VPN tanpa internet tidak dianggap online dan membakar retry antrean.
+- `SetupActivity` minta konfirmasi dialog sebelum long-press Save menghapus kredensial agar hapus tak sengaja tidak matikan monitoring dan buang antrean.
+- `/history` samakan batas ke min 7 digit agar konsisten dengan saring repo dan `numberMatches`.
+- `MonitoringService` lewati restore volume `ringPrevVolume` saat dering aktif agar restart service tidak bisukan `/ring` yang berjalan.
+- `restartAllLoops` abaikan pemicu ganda dalam 10 detik agar watchdog dan command manual tidak churn job.
+- `sendInitialData` kirim pesan partial jujur saat sebagian chunk gagal, bukan klaim complete.
+- `MessageQueue` tidak lagi hitung expiry TTL 7 hari sebagai overflow agar notif drop penuh tidak campur.
+- Watchdog kamera service 35 detik jadi 45 detik agar timeout 30 detik `CameraService` yang pegang kegagalan, bukan ganda.
+- `SmsRepository` dan `CallLogRepository` kembalikan daftar kosong untuk query digit < 7 agar `/history` tidak membocorkan nomor orang lain.
+- `SetupActivity.clearCredentials()` tampilkan `setup_credentials_cleared` agar hapus kredensial tidak terlihat seperti simpan berhasil.
+- `MainActivity` hapus kode izin mati (`permissionLauncher`, `backgroundPermissionLauncher`, flag prompt, redirect Settings) agar stealth kalkulator tidak bocor.
+- `MonitoringService` reset `lastUpdateId` saat `getUpdates` `400` berbasis offset agar polling tidak macet selamanya.
+- `SetupActivity.sendStatusNow()` samakan expiry skew jam dengan `authBlocked` agar status blokir konsisten.
+- `strings.xml` perbaiki teks `setup_bad_interval` dari klaim clamped menjadi invalid karena input di luar rentang ditolak.
+- `MainActivity` simpan dan pulihkan state kalkulator saat rotasi agar entri tidak reset ke `0`.
+- `MainActivity` mode stealth tidak lagi meminta izin atau membuka Settings otomatis; kekurangan izin hanya dicatat agar dialog tidak bocor ke anak, pemberian izin lewat `SetupActivity`.
+- `BootReceiver` dan `BootRestartWorker` kedaluwarsakan backoff kredensial 30 menit secara konsisten, tidak hanya saat jam mundur.
+- `BootReceiver` selalu reset `photoPausedUntil` saat boot agar jeda foto berbasis `elapsedRealtime` yang basi tidak bertahan 120 menit setelah reboot.
+- `CrashReporter` pertahankan laporan crash saat `400` berarti chat hilang / bot diblokir agar tidak hilang sebelum terkirim.
+- `NotificationForwarderService` pindahkan cek prefs dan `PackageManager` jalur spam ke coroutine IO agar binder thread tidak ANR.
+- Ekstrak daftar izin ke `utils/AppPermissions.kt` agar `MainActivity` dan `SetupActivity` tidak divergen.
+- `MonitoringService.handleCallbackQuery` teruskan `sentAtSec` dari `message.date` dan tolak tanpa tanggal agar tombol inline lama `/stop`, `/resume`, `/pause` kedaluwarsa; batas 5 menit diperluas ke seluruh mutasi.
+- `SetupActivity.testConnection` tidak lagi tulis `credentialError` untuk probe `400`/`401`/`403` agar token/chat uji beda tidak blokir `SendMessageWorker` 30 menit.
+- `SetupActivity.saveSettings` pindahkan `saveCoreConfig` ke `Dispatchers.IO` agar tap Save tidak ANR.
+- `SetupActivity.testConnection` guard `isFinishing`/`isDestroyed` di blok `Main` agar rotasi/tutup saat `IO` tidak crash.
+- `MonitoringService.ringDevice` pakai `TYPE_ALARM` di `STREAM_ALARM` agar dering nyaring dan restore volume cocok.
+- `MonitoringService.checkAndSendNewData`/`sendInitialData` majukan watermark walau pesan antre agar satu data tidak ganda via worker dan loop periodik.
+
+### Added
+- Proteksi branch `main`: wajib status `build` hijau (strict), tanpa force-push/hapus branch, resolusi konversi wajib.
+- Template PR/issues (`.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`), `.github/CODEOWNERS`, dan `.github/dependabot.yml` untuk update Actions mingguan.
+
+### Changed
+- `.github/workflows/build.yml` abaikan perubahan docs (`**.md`, `LICENSE`) agar edit dokumentasi tidak memicu build.
+
 ## [1.6.40] - 2026-09-26
 
 ### Fixed
@@ -11,15 +56,6 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - `BootRestartWorker` kirim laporan crash hanya setelah cek consent agar stop pengguna dihormati.
 - `MessageQueue` hapus entry korup saat parse gagal agar tidak di-parse ulang tiap baca.
 - `SetupActivity` ganti `Toast` pesan exception mentah dengan `msg_action_failed` generik.
-
-## [Unreleased]
-
-### Added
-- Proteksi branch `main`: wajib status `build` hijau (strict), tanpa force-push/hapus branch, resolusi konversi wajib.
-- Template PR/issues (`.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/`), `.github/CODEOWNERS`, dan `.github/dependabot.yml` untuk update Actions mingguan.
-
-### Changed
-- `.github/workflows/build.yml` abaikan perubahan docs (`**.md`, `LICENSE`) agar edit dokumentasi tidak memicu build.
 
 ## [1.6.39] - 2026-09-26
 
@@ -478,7 +514,6 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - `NotificationForwarderService` cache kredensial + listener; `MainActivity` ikut meminta lokasi foreground.
 - Perbaiki compile error `ensureActive` tanpa receiver di `chunkedDelay` (`v1.6.6` merah karenanya).
 
-
 ### Fixed
 - `MonitoringService.shouldAutoResume`, `BootReceiver`, `BootRestartWorker` mensyaratkan `userConsentedMonitoring` agar reboot tak melewati persetujuan.
 - Loop `monitoring`/`kamera`/`command` melempar ulang `CancellationException` agar `restartCameraLoop` tak tertelan.
@@ -705,7 +740,6 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - `ic_notification.xml` buang `android:tint="?attr/..."` yang membuat inflate ikon gagal dan `startForeground` force close saat monitoring dinyalakan.
 - `MonitoringService.startMonitoring` batal grasi (`stopSelf`) bila notifikasi gagal dibangun atau `startForeground` dua kali gagal, plus fallback versi-guarded agar API 24-28 tak kena overload 3-arg.
 
-
 ### Fixed
 - Polling Telegram memakai kredensial cache dan interval adaptif 15-30 detik saat idle, tanpa dekripsi ulang tiap poll.
 - `CameraService.choosePhotoSize` di-cache per camera ID.
@@ -756,7 +790,6 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 - `BootReceiver`/`BootRestartWorker` tidak lagi diam saat kredensial terlihat kosong sesaat setelah reboot (secure storage terkunci); jadwal retry via `BootRestartWorker` agar auto-start tetap dicoba ulang.
 - `BootRestartWorker` menguras antrean via `MessageScheduler.scheduleMessageSend` saat start foreground service ditolak sistem (Android 12+), sehingga balasan tertunda tetap terkirim setelah reboot.
 - `MonitoringService.startMonitoring` menguras `MessageQueue` setiap kali service start, sehingga backlog langsung terkirim tanpa perlu toggle off/on manual.
-
 
 ### Added
 - Log force-close otomatis terkirim ke Telegram: `CrashReporter` di `utils` menyimpan crash ke file saat proses mati dan mengirimnya saat aplikasi dibuka berikutnya (dipasang di `ParentalMonitorApp`), maksimal 3500 karakter dengan token disamarkan.

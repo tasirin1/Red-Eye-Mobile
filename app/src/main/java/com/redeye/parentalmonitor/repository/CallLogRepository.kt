@@ -102,7 +102,7 @@ class CallLogRepository(private val context: Context) {
             limit = limit
         )
         val want = digits.filter { it.isDigit() }
-        if (want.length < 7) return rows
+        if (want.length < 7) return emptyList()
         return rows.filter {
             val have = it.number.filter { c -> c.isDigit() }
             have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))

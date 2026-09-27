@@ -161,14 +161,22 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val notifId = sbn.id
         if (pendingPosts.get() > 32) {
-            if (!forwardingAllowed()) return
-            try {
-                val extras = notification.extras
-                val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-                val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-                if (title.isNotEmpty() || text.isNotEmpty()) {
+            val fbTitle = try {
+                notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val fbText = try {
+                notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            if (fbTitle.isEmpty() && fbText.isEmpty()) return
+            scope.launch {
+                try {
+                    if (!forwardingAllowed()) return@launch
                     val nowFb = android.os.SystemClock.elapsedRealtime()
-                    val keyFb = pkg + "\n" + title + "\n" + text
+                    val keyFb = pkg + "\n" + fbTitle + "\n" + fbText
                     val dupFb = synchronized(lastSent) {
                         val prev = lastSent[keyFb] ?: 0L
                         if (nowFb - prev < 30_000L) true else {
@@ -176,30 +184,26 @@ class NotificationForwarderService : NotificationListenerService() {
                             false
                         }
                     }
-                    if (dupFb || pkgFull(pkg, nowFb)) return
+                    if (dupFb || pkgFull(pkg, nowFb)) return@launch
                     val label = try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
                         packageManager.getApplicationLabel(info).toString()
                     } catch (_: Exception) {
                         pkg
                     }
-                    record(label, title, text)
+                    record(label, fbTitle, fbText)
                     val message = buildString {
                         appendLine("\uD83D\uDD14 <b>Notification</b>")
                         appendLine("App: ${Html.escape(label)}")
-                        if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title.take(200))}")
-                        if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
+                        if (fbTitle.isNotEmpty()) appendLine("Title: ${Html.escape(fbTitle.take(200))}")
+                        if (fbText.isNotEmpty()) appendLine("Text: ${Html.escape(fbText.take(300))}")
                     }
-                    val fallbackPkg = pkg
-                    val fallbackMsg = message
-                    scope.launch {
-                        try {
-                            forwardToTelegram(fallbackMsg, fallbackPkg)
-                        } catch (_: Exception) {
-                        }
+                    try {
+                        forwardToTelegram(message, pkg)
+                    } catch (_: Exception) {
                     }
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
             }
             return
         }

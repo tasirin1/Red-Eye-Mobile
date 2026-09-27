@@ -37,30 +37,8 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var permissionButton: MaterialButton
     private lateinit var notifButton: MaterialButton
 
-    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(
-            Manifest.permission.READ_SMS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.CAMERA,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
-    } else {
-        arrayOf(
-            Manifest.permission.READ_SMS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CAMERA,
-            Manifest.permission.SEND_SMS,
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        )
-    }
+    private val requiredPermissions: Array<String>
+        get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -162,7 +140,6 @@ class SetupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setup)
 
-        try { PreferencesManager.refreshInstance(this) } catch (_: Exception) { }
         prefs = PreferencesManager.getInstance(this)
         supportActionBar?.title = getString(R.string.setup_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -176,13 +153,65 @@ class SetupActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.setupPermissionButton)
         notifButton = findViewById(R.id.setupNotifButton)
 
-        botTokenInput.setText(if (prefs.botToken.isEmpty()) "" else STORED_MASK)
-        chatIdInput.setText(if (prefs.chatId.isEmpty()) "" else STORED_MASK)
-        syncIntervalInput.setText(prefs.syncInterval.toString())
-        cameraIntervalInput.setText(prefs.cameraInterval.toString())
+        try {
+            botTokenInput.setText(if (prefs.botToken.isEmpty()) "" else STORED_MASK)
+        } catch (_: Exception) {
+            botTokenInput.setText("")
+        }
+        try {
+            chatIdInput.setText(if (prefs.chatId.isEmpty()) "" else STORED_MASK)
+        } catch (_: Exception) {
+            chatIdInput.setText("")
+        }
+        try {
+            syncIntervalInput.setText(prefs.syncInterval.toString())
+        } catch (_: Exception) {
+            syncIntervalInput.setText(com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString())
+        }
+        try {
+            cameraIntervalInput.setText(prefs.cameraInterval.toString())
+        } catch (_: Exception) {
+            cameraIntervalInput.setText("1")
+        }
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                PreferencesManager.refreshInstance(this@SetupActivity)
+            } catch (_: Exception) {
+            }
+            try {
+                prefs = PreferencesManager.getInstance(this@SetupActivity)
+            } catch (_: Exception) {
+            }
+            val tokenMasked = try { prefs.botToken.isNotEmpty() } catch (_: Exception) { false }
+            val chatMasked = try { prefs.chatId.isNotEmpty() } catch (_: Exception) { false }
+            val syncVal = try { prefs.syncInterval.toString() } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString() }
+            val camVal = try { prefs.cameraInterval.toString() } catch (_: Exception) { "1" }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                try {
+                    if (botTokenInput.text.toString().isEmpty() && tokenMasked) botTokenInput.setText(STORED_MASK)
+                    if (chatIdInput.text.toString().isEmpty() && chatMasked) chatIdInput.setText(STORED_MASK)
+                    if (syncIntervalInput.text.toString().isEmpty()) syncIntervalInput.setText(syncVal)
+                    if (cameraIntervalInput.text.toString().isEmpty()) cameraIntervalInput.setText(camVal)
+                } catch (_: Exception) {
+                }
+                try {
+                    updateStatus()
+                } catch (_: Exception) {
+                }
+            }
+        }
 
         findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
-        findViewById<MaterialButton>(R.id.setupSaveButton).setOnLongClickListener { clearCredentials(); true }
+        findViewById<MaterialButton>(R.id.setupSaveButton).setOnLongClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_clear_title))
+                .setMessage(getString(R.string.setup_clear_text))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok) { _, _ -> clearCredentials() }
+                .show()
+            true
+        }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
         findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
             requestLocationPermissions()
@@ -224,62 +253,92 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun clearCredentials() {
-        prefs.botToken = ""
-        prefs.chatId = ""
-        prefs.credentialError = ""
-        prefs.credentialErrorAt = 0L
-        prefs.setMonitoringActive(false)
         try { stopService(Intent(this, MonitoringService::class.java)) } catch (_: Exception) { }
-        try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this).clearQueue() } catch (_: Exception) { }
-        botTokenInput.setText("")
-        chatIdInput.setText("")
-        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-        updateStatus()
+        try {
+            botTokenInput.setText("")
+            chatIdInput.setText("")
+        } catch (_: Exception) {
+        }
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { prefs.botToken = "" } catch (_: Exception) { }
+            try { prefs.chatId = "" } catch (_: Exception) { }
+            try { prefs.credentialError = "" } catch (_: Exception) { }
+            try { prefs.credentialErrorAt = 0L } catch (_: Exception) { }
+            try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                Toast.makeText(this@SetupActivity, getString(R.string.setup_credentials_cleared), Toast.LENGTH_SHORT).show()
+                try {
+                    updateStatus()
+                } catch (_: Exception) {
+                }
+            }
+        }
     }
 
-    private fun saveSettings(): Boolean {
+    private fun saveSettings() {
         val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
         val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
         val intervalRaw = syncIntervalInput.text.toString().trim()
         val intervalParsed = intervalRaw.toIntOrNull()
         if (intervalParsed == null) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return false
+            return
         }
         val interval = intervalParsed
 
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
-            return false
+            return
         }
         if (!token.matches(TOKEN_REGEX)) {
             Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
-            return false
+            return
         }
         if (!isChatIdValid(chatId)) {
             Toast.makeText(this, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
-            return false
+            return
         }
 
         val cameraRaw = cameraIntervalInput.text.toString().trim()
         val cameraParsed = cameraRaw.toIntOrNull()
         if (cameraParsed == null) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return false
+            return
         }
         val cameraInterval = cameraParsed
 
         if (interval !in 1..1440 || cameraInterval !in 0..60) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return false
+            return
         }
-        prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
-        botTokenInput.setText(STORED_MASK)
-        chatIdInput.setText(STORED_MASK)
-        Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-        reviveMonitoringIfNeeded()
-        updateStatus()
-        return true
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
+            } catch (_: Exception) {
+            }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                try {
+                    botTokenInput.setText(STORED_MASK)
+                    chatIdInput.setText(STORED_MASK)
+                } catch (_: Exception) {
+                }
+                try {
+                    Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {
+                }
+                try {
+                    reviveMonitoringIfNeeded()
+                } catch (_: Exception) {
+                }
+                try {
+                    updateStatus()
+                } catch (_: Exception) {
+                }
+            }
+        }
     }
 
     private fun testConnection() {
@@ -310,28 +369,28 @@ class SetupActivity : AppCompatActivity() {
                 if (resp.isSuccessful && resp.body()?.ok == true) {
                     persistTestSettings(token, chatId, probeSync, probeCamera)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)
                         chatIdInput.setText(STORED_MASK)
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
                         reviveMonitoringIfNeeded()
                     }
                 } else {
-                    if (resp.code() == 400 || resp.code() == 401 || resp.code() == 403) {
-                        prefs.credentialError = resp.code().toString()
-                        prefs.credentialErrorAt = System.currentTimeMillis()
-                    }
                     val code = resp.code()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 val detail = redactToken(e.message)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, detail), Toast.LENGTH_LONG).show()
                 }
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
                 updateStatus()
             }
         }
@@ -467,9 +526,16 @@ class SetupActivity : AppCompatActivity() {
         }
         try {
             val blockedErr = prefs.credentialError
-            if (blockedErr.isNotEmpty() && System.currentTimeMillis() - prefs.credentialErrorAt < 30 * 60_000L) {
-                Toast.makeText(this, getString(R.string.setup_test_fail, blockedErr), Toast.LENGTH_LONG).show()
-                return
+            if (blockedErr.isNotEmpty()) {
+                val nowAuth = System.currentTimeMillis()
+                val errAt = prefs.credentialErrorAt
+                if (nowAuth < errAt) {
+                    prefs.credentialError = ""
+                    prefs.credentialErrorAt = 0L
+                } else if (nowAuth - errAt < 30 * 60_000L) {
+                    Toast.makeText(this, getString(R.string.setup_test_fail, blockedErr), Toast.LENGTH_LONG).show()
+                    return
+                }
             }
         } catch (_: Exception) {
         }
