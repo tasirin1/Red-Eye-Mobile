@@ -4,6 +4,20 @@ Semua perubahan penting proyek ini dicatat di sini, format mengikuti [Keep a Cha
 
 ## [Unreleased]
 
+## [1.6.42] - 2026-09-27
+
+### Fixed
+- `MonitoringService` tolak seluruh perintah Telegram yang pengirimnya bukan owner (`senderOk` wajib untuk baca maupun mutasi) agar anggota grup tidak bisa menarik data via `chat.id`.
+- `MonitoringService` lindungi foto yang sedang ditulis: `flushPendingPhotos` lewati file aktif dan file berumur < 10 detik, `prunePhotoCache`/`pruneAudioCache` kecualikan file aktif agar tidak kirim foto parsial atau hapus rekaman berjalan.
+- `PreferencesManager.refreshInstance` salin ulang snapshot hingga stabil (maks 3x) agar tulisan yang berpacu saat migrasi memory ke encrypted tidak hilang.
+- `MainActivity` satukan init kalkulator DEBUG/RELEASE yang duplikat; refresh prefs dan start monitoring kembali ke UI thread dengan guard `isFinishing`/`isDestroyed`.
+- `MainActivity.setOperator` reset `justCalculated` saat chaining agar history tampil `5 +` bukan ekspresi basi.
+- `MonitoringService.startMonitoring` pastikan juga `loopWatchdogJob` dan `speedJob` hidup sebelum early-return agar loop mati tidak lolos dari pemulihan.
+- `/ring` tampilkan usage saat argumen invalid, bukan diam-diam berdering 15 detik.
+- `CrashReporter` kirim ulang laporan crash sebagai plain text saat HTML ditolak 400 agar bukti crash tidak dibuang.
+- `isPremiumSmsNumber` persempit ke short code dan prefix `1900` agar nomor internasional seperti `+976` tidak ikut diblokir.
+- Notifikasi speed pakai `setOnlyAlertOnce(true)` agar update tiap 5 detik tidak flicker.
+
 ## [1.6.41] - 2026-09-27
 
 ### Fixed

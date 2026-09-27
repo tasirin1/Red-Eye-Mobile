@@ -130,7 +130,19 @@ object CrashReporter {
                         null
                     }
                     if (!isChatMissing(body)) {
-                        file.delete()
+                        val delivered = try {
+                            val plain = report.replace(Regex("<[^>]*>"), "")
+                            val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+                            plainResp.isSuccessful && plainResp.body()?.ok == true
+                        } catch (_: Exception) {
+                            false
+                        }
+                        if (delivered) {
+                            try {
+                                file.delete()
+                            } catch (_: Exception) {
+                            }
+                        }
                     }
                 }
             } catch (_: Exception) {

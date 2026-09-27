@@ -138,8 +138,11 @@ class PreferencesManager(context: Context) {
                     }
                     if (current != null) {
                         try {
-                            val snap = current.snapshot()
-                            fresh.putAllValues(snap)
+                            for (attempt in 0 until 3) {
+                                val snap = current.snapshot()
+                                fresh.putAllValues(snap)
+                                if (current.snapshot() == snap) break
+                            }
                         } catch (_: Exception) {
                         }
                     }
