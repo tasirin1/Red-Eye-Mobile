@@ -725,6 +725,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("lock", "Lock device screen"),
             com.redeye.parentalmonitor.network.BotCommand("ring", "Ring device aloud"),
             com.redeye.parentalmonitor.network.BotCommand("ping", "Check bot delay"),
+            com.redeye.parentalmonitor.network.BotCommand("bangun", "Bangunkan semua loop"),
             com.redeye.parentalmonitor.network.BotCommand("record", "Record audio 5-60 s"),
             com.redeye.parentalmonitor.network.BotCommand("sms", "Send SMS: /sms nomor pesan"),
             com.redeye.parentalmonitor.network.BotCommand("smsconfirm", "Confirm pending SMS"),
@@ -1021,6 +1022,18 @@ class MonitoringService : Service() {
                 restartAllLoops()
                 sendToTelegram("\u267B\uFE0F Loops restarted.")
             }
+            "/bangun" -> {
+                restartAllLoops()
+                try {
+                    MessageScheduler.scheduleWatchdog(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+                sendToTelegram("⏰ Bangun! Semua loop dibangunkan.")
+            }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
                 if (authBlocked()) {
@@ -1286,6 +1299,7 @@ class MonitoringService : Service() {
                         appendLine("/lock - lock device screen")
                         appendLine("/ring [5-60] - ring device aloud")
                         appendLine("/ping - check bot delay")
+                        appendLine("/bangun - bangunkan semua loop")
                         appendLine("/record \u003c5-60\u003e - record audio seconds")
                         appendLine("/sms \u003cnomor\u003e \u003cpesan\u003e - send SMS")
                         appendLine("/smsconfirm - kirim SMS yang dikonfirmasi")

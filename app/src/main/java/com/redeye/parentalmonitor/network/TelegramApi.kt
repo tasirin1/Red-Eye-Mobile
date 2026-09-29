@@ -2,7 +2,9 @@ package com.redeye.parentalmonitor.network
 
 import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import okhttp3.ConnectionPool
 import okhttp3.ConnectionSpec
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -133,6 +135,8 @@ object TelegramClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+        .dispatcher(Dispatcher().apply { maxRequests = 4; maxRequestsPerHost = 2 })
+        .connectionPool(ConnectionPool(2, 1, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

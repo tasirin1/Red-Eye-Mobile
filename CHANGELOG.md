@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.45] - 2026-09-29
+
+### Changed
+- `TelegramClient` batasi OkHttp `Dispatcher` (`maxRequests = 4`, `maxRequestsPerHost = 2`) dan `ConnectionPool` (2 koneksi, keep-alive 1 menit) agar thread/buffer/socket idle tidak menumpuk di kedua proses.
+- `NotificationForwarderService` pangkas batas LRU `lastSent`/`pkgHits`/`groupSeen` 200 ke 100 dan evict entri basi `dropNoticeAt` agar cache notifikasi tidak tumbuh tanpa batas.
+
+### Added
+- Perintah `/bangun` dan `/ping` yang hidup di proses `:wake` `NotificationForwarderService`: polling ringan mandiri tiap 25 detik, `/bangun` membangunkan `MonitoringService` + watchdog + antrean walau proses utama dibunuh LMK, `/ping` dijawab langsung dari proses `:wake`; `/camera` dan `/location` sengaja tidak dipertahankan.
+- `NotificationForwarderService` berjalan di `android:process=":wake"` agar tidak ikut mati saat proses utama kehabisan memori; offset wake (`wake_update_id`) terpisah dari `last_update_id` agar tidak mencuri perintah lain.
+- `MonitoringService` tangani `/bangun` saat masih hidup: restart semua loop + jadwalkan watchdog dan pengiriman antrean.
+- Guard lintas-proses via `ActivityManager.getRunningServices` agar polling `/bangun` hanya jalan saat `MonitoringService` benar-benar mati, menghindari `409` conflict ganda dengan polling utama.
+
 ## [1.6.44] - 2026-09-29
 
 ### Fixed

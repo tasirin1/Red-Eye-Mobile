@@ -13,8 +13,11 @@ import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,9 +30,9 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > 100
         }
     }
-    private val lastSent = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+    private val lastSent = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
-            return size > 200
+            return size > 100
         }
     }
     @Volatile
@@ -39,9 +42,9 @@ class NotificationForwarderService : NotificationListenerService() {
     private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
     private val pendingPosts = java.util.concurrent.atomic.AtomicInteger(0)
     private val fwdMutex = Mutex()
-    private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(128, 0.75f, true) {
+    private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
-            return size > 200
+            return size > 100
         }
     }
     private val pkgHitsLock = Any()
@@ -49,6 +52,9 @@ class NotificationForwarderService : NotificationListenerService() {
     private var lastRebindAt = 0L
     @Volatile
     private var lastReviveAt = 0L
+    private var wakeJob: Job? = null
+    @Volatile
+    private var wakeUpdateId = -1L
     private var netCheckAt = 0L
     private var netCached = false
     private var cachedFwdToken = ""
@@ -62,9 +68,9 @@ class NotificationForwarderService : NotificationListenerService() {
     private var cfgCacheForward = true
     @Volatile
     private var cfgCacheConfigured = false
-    private val groupSeen = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+    private val groupSeen = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
-            return size > 200
+            return size > 100
         }
     }
 
@@ -108,6 +114,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
             }
         }
+        startWakeLoop()
     }
 
     private fun refreshFwdCreds() {
@@ -285,6 +292,10 @@ class NotificationForwarderService : NotificationListenerService() {
             record(cachedLabel, title, text)
             val lastNotice = dropNoticeAt[pkg] ?: 0L
             if (now - lastNotice > 120_000L) {
+                if (dropNoticeAt.size > 64) {
+                    val cutoff = now - 3_600_000L
+                    dropNoticeAt.entries.removeIf { it.value < cutoff }
+                }
                 dropNoticeAt[pkg] = now
                 forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(cachedLabel) + " in 2 min, extras kept in /lastnotif history.", "")
             }
@@ -338,9 +349,164 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun startWakeLoop() {
+        try {
+            wakeJob?.cancel()
+        } catch (_: Exception) {
+        }
+        wakeJob = scope.launch {
+            while (isActive) {
+                try {
+                    if (!MonitoringService.isRunning && !isMainRunning()) pollWakeOnce()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+                try {
+                    delay(25_000L)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    private suspend fun pollWakeOnce() {
+        val prefs = prefsRef ?: try {
+            PreferencesManager.getInstance(this).also { prefsRef = it }
+        } catch (_: Exception) {
+            return
+        }
+        if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
+        val token = cachedFwdToken.ifEmpty { try { prefs.botToken } catch (_: Exception) { "" } }
+        val owner = cachedFwdChat.ifEmpty { try { prefs.chatId } catch (_: Exception) { "" } }
+        if (token.isEmpty() || owner.isEmpty()) return
+        if (wakeUpdateId < 0L) {
+            wakeUpdateId = try {
+                maxOf(prefs.wakeUpdateId, prefs.lastUpdateId)
+            } catch (_: Exception) {
+                0L
+            }
+        }
+        if (!NetworkUtils.isNetworkAvailable(this)) return
+        val offset = wakeUpdateId + 1L
+        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=10"
+        val response = try {
+            TelegramClient.api.getUpdates(url)
+        } catch (_: Exception) {
+            return
+        }
+        if (!response.isSuccessful) return
+        val updates = try {
+            response.body()?.result.orEmpty()
+        } catch (_: Exception) {
+            return
+        }
+        if (updates.isEmpty()) return
+        var maxId = wakeUpdateId
+        var woke = false
+        var pinged = false
+        var pingAt = 0L
+        for (u in updates) {
+            if (u.updateId > maxId) maxId = u.updateId
+            val msg = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
+            val cb = u.callbackQuery
+            val text = try {
+                (msg?.text ?: msg?.caption ?: cb?.data).orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val base = text.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
+            if (base != "/bangun" && base != "/ping") continue
+            val fromId = try {
+                msg?.from?.id?.toString() ?: cb?.from?.id?.toString().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val chatIdStr = try {
+                msg?.chat?.id?.toString() ?: cb?.message?.chat?.id?.toString().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            if (fromId != owner && chatIdStr != owner) continue
+            if (base == "/bangun") {
+                woke = true
+                continue
+            }
+            pinged = true
+            try {
+                pingAt = msg?.date ?: cb?.message?.date ?: 0L
+            } catch (_: Exception) {
+            }
+        }
+        wakeUpdateId = maxId
+        try {
+            prefs.wakeUpdateId = maxId
+        } catch (_: Exception) {
+        }
+        if (!woke && !pinged) return
+        if (woke) {
+            try {
+                val restart = android.content.Intent(this, MonitoringService::class.java).apply {
+                    action = MonitoringService.ACTION_START_MONITORING
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(restart)
+                } else {
+                    startService(restart)
+                }
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
+        }
+        if (pinged) {
+            val pong = if (pingAt > 0L) {
+                val lag = System.currentTimeMillis() / 1000L - pingAt
+                "🏓 Pong! Delay ${lag.coerceAtLeast(0L)} s."
+            } else {
+                "🏓 Pong!"
+            }
+            try {
+                TelegramClient.api.sendMessage(
+                    "https://api.telegram.org/bot$token/sendMessage",
+                    TelegramMessage(chatId = owner, text = pong)
+                )
+            } catch (_: Exception) {
+            }
+        }
+        if (woke) {
+            try {
+                TelegramClient.api.sendMessage(
+                    "https://api.telegram.org/bot$token/sendMessage",
+                    TelegramMessage(chatId = owner, text = "⏰ Bangun! Semua loop dibangunkan.")
+                )
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun isMainRunning(): Boolean {
+        try {
+            val am = getSystemService(android.app.ActivityManager::class.java) ?: return false
+            for (running in am.getRunningServices(Int.MAX_VALUE)) {
+                if (running.service.className == MonitoringService::class.java.name) return true
+            }
+        } catch (_: Exception) {
+        }
+        return false
+    }
+
     private fun reviveMonitoringIfNeeded() {
         try {
-            if (MonitoringService.isRunning) return
+            if (MonitoringService.isRunning || isMainRunning()) return
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - lastReviveAt < 60_000L) return
             lastReviveAt = now
@@ -375,6 +541,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        try { wakeJob?.cancel() } catch (_: Exception) { }
         try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
         scope.cancel()
         super.onDestroy()

@@ -146,6 +146,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_INITIAL_SYNC_STARTED = "initial_sync_started"
         const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
+        private const val KEY_WAKE_UPDATE_ID = "wake_update_id"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
@@ -270,6 +271,10 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
         }
     }
+
+    var wakeUpdateId: Long
+        get() = try { sharedPreferences.getLong(KEY_WAKE_UPDATE_ID, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_WAKE_UPDATE_ID, value).apply()
 
     var lastPhotoTime: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L) } catch (_: Exception) { 0L }
