@@ -15,6 +15,7 @@ object NetworkUtils {
     }
 
     fun parseRetryAfter(errorBody: String?): Long {
+        if (errorBody.isNullOrEmpty() || !errorBody.contains("retry_after")) return 5L
         return try {
             com.google.gson.JsonParser.parseString(errorBody)
                 ?.asJsonObject

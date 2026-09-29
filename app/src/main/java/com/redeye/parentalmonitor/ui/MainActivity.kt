@@ -56,16 +56,13 @@ class MainActivity : AppCompatActivity() {
                     PreferencesManager.refreshInstance(this)
                 } catch (_: Exception) {
                 }
-                runOnUiThread {
-                    try {
-                        preferencesManager = PreferencesManager.getInstance(this)
-                    } catch (_: Exception) {
-                    }
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    try {
-                        startMonitoringInBackground()
-                    } catch (_: Exception) {
-                    }
+                try {
+                    preferencesManager = PreferencesManager.getInstance(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    if (!isFinishing && !isDestroyed) startMonitoringInBackground()
+                } catch (_: Exception) {
                 }
             }.start()
         } catch (_: Exception) {

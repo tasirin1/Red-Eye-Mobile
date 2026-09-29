@@ -607,7 +607,7 @@ class SetupActivity : AppCompatActivity() {
             val configured = s(PreferencesManager.KEY_BOT_TOKEN).isNotEmpty() && s(PreferencesManager.KEY_CHAT_ID).isNotEmpty()
             val perms = hasAllPermissions()
             val enabled = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
-            val running = enabled && (MonitoringService.isRunning || configured)
+            val running = enabled && MonitoringService.isRunning
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()

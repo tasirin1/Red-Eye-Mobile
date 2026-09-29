@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.utils.NetSpeed
+import java.util.Locale
 
 class SpeedMonitorActivity : AppCompatActivity() {
 
@@ -21,6 +22,8 @@ class SpeedMonitorActivity : AppCompatActivity() {
     private var lastAt = 0L
     private var sessionRx = 0L
     private var sessionTx = 0L
+    private var sessionFmt = ""
+    private var unavailableText = ""
 
     private val sampler = object : Runnable {
         override fun run() {
@@ -36,6 +39,8 @@ class SpeedMonitorActivity : AppCompatActivity() {
         downUnit = findViewById(R.id.downUnit)
         upText = findViewById(R.id.upText)
         totalText = findViewById(R.id.totalText)
+        sessionFmt = getString(R.string.netspeed_session_fmt)
+        unavailableText = getString(R.string.speed_unavailable)
         if (savedInstanceState != null) {
             sessionRx = savedInstanceState.getLong("sessionRx", 0L)
             sessionTx = savedInstanceState.getLong("sessionTx", 0L)
@@ -74,7 +79,7 @@ class SpeedMonitorActivity : AppCompatActivity() {
         val rx = totals.first
         val tx = totals.second
         if (rx < 0 || tx < 0) {
-            upText.text = getString(R.string.speed_unavailable)
+            upText.text = unavailableText
             return
         }
         val now = SystemClock.elapsedRealtime()
@@ -88,7 +93,7 @@ class SpeedMonitorActivity : AppCompatActivity() {
             downValue.text = parts.first
             downUnit.text = parts.second
             upText.text = "↑ " + NetSpeed.formatRate(up)
-            totalText.text = getString(R.string.netspeed_session_fmt, NetSpeed.formatTotal(sessionRx), NetSpeed.formatTotal(sessionTx))
+            totalText.text = String.format(Locale.US, sessionFmt, NetSpeed.formatTotal(sessionRx), NetSpeed.formatTotal(sessionTx))
         }
         lastRx = rx
         lastTx = tx

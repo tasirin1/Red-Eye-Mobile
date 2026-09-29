@@ -373,9 +373,9 @@ class PreferencesManager(context: Context) {
         val editor = sharedPreferences.edit()
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
-            editor.putString(KEY_CRED_ERROR, "")
-            editor.putLong(KEY_CRED_ERROR_AT, 0L)
         }
+        editor.putString(KEY_CRED_ERROR, "")
+        editor.putLong(KEY_CRED_ERROR_AT, 0L)
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)

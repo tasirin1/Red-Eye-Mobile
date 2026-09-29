@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [1.6.47] - 2026-09-29
+
+### Fixed
+- `SetupActivity.updateStatus` tidak lagi klaim `Monitoring active` saat service mati; status kini murni `isMonitoringEnabled && MonitoringService.isRunning`.
+- `PreferencesManager.saveCoreConfig` selalu reset `credentialError`/`credentialErrorAt` tiap simpan; sebelumnya test koneksi sukses atau simpan ulang kredensial yang sama tidak membuka blokir `authBlocked()` hingga 30 menit.
+- `MainActivity.onCreate` menjalankan `startMonitoringInBackground` di background thread; sebelumnya baca/tulis encrypted prefs (IO keystore) dipanggil via `runOnUiThread` sehingga berisiko ANR.
+
+### Changed
+- `TimeFmt` pakai `ThreadLocal` `SimpleDateFormat` agar tidak alokasi ulang pola tiap format waktu.
+- `NetworkUtils.parseRetryAfter` fast-path `null`/tanpa `retry_after` agar tidak parse Gson sia-sia.
+- `AppPermissions.requiredPermissions` pakai array statis per SDK agar tidak alokasi array tiap cek izin.
+- `SpeedMonitorActivity` cache string format sesi + unavailable agar loop 1 detik tidak lookup resource.
+- `gradle.properties` aktifkan build paralel, caching, configuration-cache, dan Kotlin incremental agar build CI lebih cepat.
+- `MonitoringService` cache `PendingIntent` dan judul notifikasi kecepatan agar loop 5 detik tidak mengulang IPC `getActivity` dan lookup resource.
+- `checkAndSendNewData` baca penanda SMS/call-log sekali per siklus ke variabel lokal, memangkas baca dekripsi berulang ke encrypted prefs.
+- Regex split perintah di-hoist ke companion agar `Pattern` tidak dikompilasi ulang per perintah.
+
 ## [1.6.46] - 2026-09-29
 
 ### Added
