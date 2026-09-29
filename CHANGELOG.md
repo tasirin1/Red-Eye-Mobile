@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.44] - 2026-09-29
+
+### Fixed
+- `MonitoringService` restart sendiri saat `onTaskRemoved` bila monitoring masih aktif, agar swipe-task tidak membunuh polling `/location`, `/camera`, `/ping`.
+- `MonitoringService.onDestroy` jadwalkan ulang `BootRestartWorker` dan watchdog bila monitoring masih aktif, agar kill LMK memulihkan perintah tanpa tunggu 15 menit.
+- `NotificationForwarderService` jadi watchdog: `onListenerConnected` dan `onNotificationPosted` hidupkan ulang `MonitoringService` bila flag masih aktif, memakai jalur listener yang diprioritaskan sistem.
+
 ## [1.6.43] - 2026-09-27
 
 ### Fixed

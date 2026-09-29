@@ -2042,6 +2042,22 @@ class MonitoringService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         try {
+            if (shouldAutoResume()) {
+                try {
+                    val restart = Intent(this, MonitoringService::class.java).apply {
+                        action = ACTION_START_MONITORING
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(restart)
+                    } else {
+                        startService(restart)
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
             MessageScheduler.scheduleBootRestart(this)
             MessageScheduler.scheduleWatchdog(this)
         } catch (_: Exception) {
@@ -2115,6 +2131,19 @@ class MonitoringService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        try {
+            if (shouldAutoResume()) {
+                try {
+                    MessageScheduler.scheduleBootRestart(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleWatchdog(this)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
         try {
             cameraBusy.set(false)

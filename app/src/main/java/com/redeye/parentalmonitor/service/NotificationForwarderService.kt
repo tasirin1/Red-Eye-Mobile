@@ -47,6 +47,8 @@ class NotificationForwarderService : NotificationListenerService() {
     private val pkgHitsLock = Any()
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private var lastRebindAt = 0L
+    @Volatile
+    private var lastReviveAt = 0L
     private var netCheckAt = 0L
     private var netCached = false
     private var cachedFwdToken = ""
@@ -149,6 +151,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        reviveMonitoringIfNeeded()
         val notification = sbn?.notification ?: return
         val pkg = sbn.packageName ?: return
         if (pkg == packageName) return
@@ -309,6 +312,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
+        reviveMonitoringIfNeeded()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("NotifForwarder", "Notification listener connected")
         scope.launch {
             try {
@@ -330,6 +334,42 @@ class NotificationForwarderService : NotificationListenerService() {
         lastRebindAt = now
         try {
             requestRebind(ComponentName(this, NotificationForwarderService::class.java))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun reviveMonitoringIfNeeded() {
+        try {
+            if (MonitoringService.isRunning) return
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastReviveAt < 60_000L) return
+            lastReviveAt = now
+            val prefs = prefsRef ?: try {
+                PreferencesManager.getInstance(this).also { prefsRef = it }
+            } catch (_: Exception) {
+                return
+            }
+            val resume = try {
+                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+            } catch (_: Exception) {
+                false
+            }
+            if (!resume) return
+            try {
+                val restart = android.content.Intent(this, MonitoringService::class.java).apply {
+                    action = MonitoringService.ACTION_START_MONITORING
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(restart)
+                } else {
+                    startService(restart)
+                }
+            } catch (_: Exception) {
+                try {
+                    MessageScheduler.scheduleBootRestart(this)
+                } catch (_: Exception) {
+                }
+            }
         } catch (_: Exception) {
         }
     }
