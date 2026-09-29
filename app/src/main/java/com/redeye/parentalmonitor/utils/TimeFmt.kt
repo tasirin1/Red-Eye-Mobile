@@ -6,11 +6,15 @@ import java.util.Locale
 import java.util.TimeZone
 
 object TimeFmt {
-    private val fullHolder = ThreadLocal.withInitial {
-        SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.US)
+    private val fullHolder = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.US)
+        }
     }
-    private val fileHolder = ThreadLocal.withInitial {
-        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+    private val fileHolder = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+        }
     }
 
     fun full(timestamp: Long): String {

@@ -98,6 +98,7 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("<[^>]*>")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
         const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -618,7 +619,7 @@ class MonitoringService : Service() {
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
-                            handleTelegramCommand(input, message?.date ?: 0)
+                            handleTelegramCommand(input, message?.date ?: 0, senderOk)
                         }
                     }
                 }
@@ -656,17 +657,17 @@ class MonitoringService : Service() {
         }
         val base = command.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
         val msgDate = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
-        if (base in setOf("/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/sms", "/smsconfirm", "/record")) {
+        if (base in MUTATING_COMMANDS) {
             if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate)
+                handleTelegramCommand(command, msgDate, sender == chatId)
             } else {
-                handleTelegramCommand(command, 1L)
+                handleTelegramCommand(command, 1L, sender == chatId)
             }
         } else {
             if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate)
+                handleTelegramCommand(command, msgDate, sender == chatId)
             } else {
-                handleTelegramCommand(command)
+                handleTelegramCommand(command, 0L, sender == chatId)
             }
         }
     }
@@ -783,7 +784,7 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
             serviceScope.launch {
@@ -795,7 +796,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -808,13 +809,17 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L) {
-        if (sentAtSec > 0 && command in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false) {
+        if (sentAtSec > 0 && command in MUTATING_COMMANDS) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
                 sendToTelegram("\u23F3\uFE0F Command $command expired, send again.")
                 return
             }
+        }
+        if (!senderOk && command in MUTATING_COMMANDS) {
+            sendToTelegram("\u26D4 Only the owner can use $command.")
+            return
         }
         when (command) {
             "/photo" -> {

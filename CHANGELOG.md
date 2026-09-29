@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.48] - 2026-09-29
+
+### Fixed
+- `MonitoringService` tegakkan `senderOk` untuk 15 perintah mutasi (`/lock`, `/ring`, `/sms`, `/smsconfirm`, `/record`, `/stop`, `/resume`, `/pause`, `/photointerval`, `/syncinterval`, `/camera`, `/notif`, `/restart`, `/flush`, `/clearqueue`); sebelumnya anggota grup bisa menjalankannya dan tombol inline `Stop`/`Resume`/`Pause 60` lolos tanpa cek pengirim.
+- `TimeFmt` ganti `ThreadLocal.withInitial` (API 26+) ke subclass `ThreadLocal` agar tidak `NoSuchMethodError` di `minSdk` 24-25.
+
 ## [1.6.47] - 2026-09-29
 
 ### Fixed
