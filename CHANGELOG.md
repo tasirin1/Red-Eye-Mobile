@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.49] - 2026-09-29
+
+### Changed
+- Notifikasi foreground kini polos: judul `notification_title` menjadi `RedEye Monitor` dengan teks `Monitoring active`, channel menjadi `Monitoring` / `Monitoring Alerts`, ketukan notifikasi membuka `SetupActivity`, dan loop teks kecepatan live tiap 5 detik dihapus (`speedTitle`, `startSpeedTracking`, `refreshSpeedNotification`, `stopSpeedTracking`).
+
 ## [1.6.48] - 2026-09-29
 
 ### Fixed

