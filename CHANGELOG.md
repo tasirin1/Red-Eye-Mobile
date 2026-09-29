@@ -3,6 +3,7 @@
 ## [1.6.47] - 2026-09-29
 
 ### Fixed
+- `gradle.properties` batalkan `org.gradle.configuration-cache` karena `assertReleaseKeystore` memakai Groovy closure yang tidak didukung configuration cache (build `v1.6.47` pertama gagal di CI).
 - `SetupActivity.updateStatus` tidak lagi klaim `Monitoring active` saat service mati; status kini murni `isMonitoringEnabled && MonitoringService.isRunning`.
 - `PreferencesManager.saveCoreConfig` selalu reset `credentialError`/`credentialErrorAt` tiap simpan; sebelumnya test koneksi sukses atau simpan ulang kredensial yang sama tidak membuka blokir `authBlocked()` hingga 30 menit.
 - `MainActivity.onCreate` menjalankan `startMonitoringInBackground` di background thread; sebelumnya baca/tulis encrypted prefs (IO keystore) dipanggil via `runOnUiThread` sehingga berisiko ANR.
