@@ -405,7 +405,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (updates.isEmpty()) return
         var maxId = wakeUpdateId
-        var woke = false
         var pinged = false
         var pingAt = 0L
         for (u in updates) {
@@ -418,7 +417,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 ""
             }
             val base = text.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
-            if (base != "/bangun" && base != "/ping") continue
+            if (base != "/ping") continue
             val fromId = try {
                 msg?.from?.id?.toString() ?: cb?.from?.id?.toString().orEmpty()
             } catch (_: Exception) {
@@ -430,10 +429,6 @@ class NotificationForwarderService : NotificationListenerService() {
                 ""
             }
             if (fromId != owner && chatIdStr != owner) continue
-            if (base == "/bangun") {
-                woke = true
-                continue
-            }
             pinged = true
             try {
                 pingAt = msg?.date ?: cb?.message?.date ?: 0L
@@ -445,48 +440,37 @@ class NotificationForwarderService : NotificationListenerService() {
             prefs.wakeUpdateId = maxId
         } catch (_: Exception) {
         }
-        if (!woke && !pinged) return
-        if (woke) {
-            try {
-                val restart = android.content.Intent(this, MonitoringService::class.java).apply {
-                    action = MonitoringService.ACTION_START_MONITORING
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    startForegroundService(restart)
-                } else {
-                    startService(restart)
-                }
-            } catch (_: Exception) {
+        if (!pinged) return
+        try {
+            val restart = android.content.Intent(this, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_START_MONITORING
             }
-            try {
-                MessageScheduler.scheduleBootRestart(this)
-            } catch (_: Exception) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(restart)
+            } else {
+                startService(restart)
             }
-            try {
-                MessageScheduler.scheduleMessageSend(this)
-            } catch (_: Exception) {
-            }
+        } catch (_: Exception) {
+        }
+        try {
+            MessageScheduler.scheduleBootRestart(this)
+        } catch (_: Exception) {
+        }
+        try {
+            MessageScheduler.scheduleMessageSend(this)
+        } catch (_: Exception) {
         }
         if (pinged) {
             val pong = if (pingAt > 0L) {
                 val lag = System.currentTimeMillis() / 1000L - pingAt
-                "🏓 Pong! Delay ${lag.coerceAtLeast(0L)} s."
+                "🏓 Pong! Delay ${lag.coerceAtLeast(0L)} s. ⏰ Loops awakened."
             } else {
-                "🏓 Pong!"
+                "🏓 Pong! ⏰ Loops awakened."
             }
             try {
                 TelegramClient.api.sendMessage(
                     "https://api.telegram.org/bot$token/sendMessage",
                     TelegramMessage(chatId = owner, text = pong)
-                )
-            } catch (_: Exception) {
-            }
-        }
-        if (woke) {
-            try {
-                TelegramClient.api.sendMessage(
-                    "https://api.telegram.org/bot$token/sendMessage",
-                    TelegramMessage(chatId = owner, text = "⏰ Bangun! Semua loop dibangunkan.")
                 )
             } catch (_: Exception) {
             }

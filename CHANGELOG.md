@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [1.6.46] - 2026-09-29
+
+### Added
+- `/ping` kombinasi target: `/ping camera` membangunkan loop kamera lalu jepret foto, `/ping location` mengirim lokasi terkini; tanpa argumen tetap pong + wake; argumen lain dibalas usage.
+- Label tombol inline Telegram ke bahasa Inggris (`Photo`, `Location`, `Calls`, `Front`, `Back`, `Pause 60 min`, `Resume`, `Battery`, `Status`).
+
+### Removed
+- Perintah `/wake` (dan alias `/bangun`) dihapus; fungsinya sudah bergabung ke `/ping` yang sekaligus membangunkan loop/service.
+
+### Changed
+- `/ping` gabung dengan wake: di proses utama ikut menghidupkan ulang loop yang mati, di proses `:wake` ikut menyalakan `MonitoringService` + watchdog + antrean bila service utama mati.
+- Seluruh perintah Telegram ke bahasa Inggris: usage `/photo`, `/camera`, `/sms`, `/contacts`, `/history`, teks `/help`, menu `BotCommand`, dan semua balasan error/status; argumen `depan`/`belakang` tetap diterima sebagai alias `front`/`back`.
+
 ## [1.6.45] - 2026-09-29
 
 ### Changed

