@@ -133,7 +133,35 @@ class MonitoringService : Service() {
         cameraService = CameraService(this)
     }
 
+    private fun startForegroundImmediate() {
+        try {
+            val tap = try { setupTapIntent() } catch (_: Exception) { null }
+            val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(getString(R.string.notification_text))
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setOngoing(true)
+                .setSilent(true)
+                .setShowWhen(false)
+            if (tap != null) builder.setContentIntent(tap)
+            val notification = builder.build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                    appliedFgsTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                } catch (_: Exception) {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForegroundImmediate()
         when (intent?.action) {
             ACTION_START_MONITORING -> {
                 startMonitoring()

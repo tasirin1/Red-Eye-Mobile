@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService.onStartCommand` memanggil `startForeground` segera saat masuk sebelum percabangan/IO prefs, memperbaiki `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` di API 27 (mis. OPPO CPH1853) pada jalur `STOP`, restart sticky dengan intent null saat monitoring nonaktif, dan return dini kredensial sebelum foreground sempat dipasang.
+
 ## [1.6.49] - 2026-09-29
 
 ### Changed
