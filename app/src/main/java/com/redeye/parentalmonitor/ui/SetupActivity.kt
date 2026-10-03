@@ -608,6 +608,7 @@ class SetupActivity : AppCompatActivity() {
             val perms = hasAllPermissions()
             val enabled = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
             val running = enabled && MonitoringService.isRunning
+            val paused = b(PreferencesManager.KEY_MONITORING_PAUSED, false)
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
@@ -620,7 +621,7 @@ class SetupActivity : AppCompatActivity() {
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
-                if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
+                if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
             ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",

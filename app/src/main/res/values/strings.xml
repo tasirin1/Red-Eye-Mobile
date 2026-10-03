@@ -2,6 +2,7 @@
     <string name="app_name">Calculator</string>
     <string name="monitoring_active">Monitoring active</string>
     <string name="monitoring_inactive">Monitoring off</string>
+    <string name="monitoring_paused">Monitoring paused</string>
     <string name="enable_monitoring">Enable monitoring</string>
     <string name="disable_monitoring">Disable monitoring</string>
     <string name="telegram_bot_token">Telegram Bot Token</string>

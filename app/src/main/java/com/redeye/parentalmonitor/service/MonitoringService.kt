@@ -92,7 +92,6 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("<[^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        const val ACTION_STOP_MONITORING = "STOP_MONITORING"
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -157,7 +156,8 @@ class MonitoringService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.w("MonitoringService", "Immediate foreground start failed: ${redactToken(e.message)}")
         }
     }
 
@@ -167,10 +167,6 @@ class MonitoringService : Service() {
             ACTION_START_MONITORING -> {
                 startMonitoring()
                 return START_STICKY
-            }
-            ACTION_STOP_MONITORING -> {
-                stopMonitoring()
-                return START_NOT_STICKY
             }
             else -> {
                 if (shouldAutoResume()) {
@@ -658,8 +654,7 @@ class MonitoringService : Service() {
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        val callbackChatOk = try { query.message?.chat?.id?.toString() == chatId } catch (_: Exception) { false }
-        if (sender != chatId && !callbackChatOk) return
+        if (sender != chatId) return
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -837,7 +832,7 @@ class MonitoringService : Service() {
                 return
             }
         }
-        if (!senderOk && command in MUTATING_COMMANDS) {
+        if (!senderOk) {
             sendToTelegram("\u26D4 Only the owner can use $command.")
             return
         }
