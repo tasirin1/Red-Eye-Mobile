@@ -346,6 +346,9 @@ class MonitoringService : Service() {
             }
             preferencesManager.ringPrevVolume = -1
             preferencesManager.ringSavedAt = 0L
+        } else if (!ringingNow && (stuckRing >= 0 || ringSavedAt > 0)) {
+            preferencesManager.ringPrevVolume = -1
+            preferencesManager.ringSavedAt = 0L
         }
         startCommandPolling()
         startLoopWatchdog()

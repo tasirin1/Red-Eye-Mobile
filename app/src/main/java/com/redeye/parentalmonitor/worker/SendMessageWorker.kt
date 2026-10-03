@@ -30,6 +30,12 @@ class SendMessageWorker(
         } catch (_: Exception) {
         }
         if (!preferencesManager.isConfigured()) {
+            if (runAttemptCount < 5) {
+                try {
+                    if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+                } catch (_: Exception) {
+                }
+            }
             return Result.success()
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {

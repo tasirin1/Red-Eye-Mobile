@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService` membersihkan `ringPrevVolume`/`ringSavedAt` basi (>12 jam) saat start; sebelumnya nilai kedaluwarsa menumpuk tanpa pernah dibersihkan.
+- `SendMessageWorker` menjadwalkan retry terbatas (maks 5 percobaan, tiap 30 menit) bila antrean tak kosong tapi kredensial belum dikonfigurasi; sebelumnya worker selesai diam-diam tanpa retry.
+
 ## [1.6.50] - 2026-10-03
 
 ### Fixed
