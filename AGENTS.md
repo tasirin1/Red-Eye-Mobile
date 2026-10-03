@@ -55,3 +55,4 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 - Setiap perbaikan/bugfix yang selesai LANGSUNG `commit` + `push` ke `main` tanpa menunggu perintah eksplisit per langkah.
 - Lalu LANGSUNG rilis: bump `versionCode`/`versionName` di `app/build.gradle`, pindahkan entri `[Unreleased]` ke seksi versi baru di `CHANGELOG.md` (format `## [X.Y.Z] - YYYY-MM-DD`), commit, `push` tag `vX.Y.Z` — workflow otomatis build + terbitkan GitHub Release.
+- Pengecualian docs-only: perubahan yang hanya menyentuh `*.md`/`LICENSE` (CI otomatis skip via `paths-ignore`) cukup commit + push, tanpa bump/tag rilis.
