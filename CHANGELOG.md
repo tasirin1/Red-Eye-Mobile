@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.52] - 2026-10-03
+
 ### Fixed
 - `MonitoringService` meneruskan `senderOk` pada dispatch internal `/ping camera|location` ke `/photo`/`/location`; tanpa ini perintah owner ditolak gerbang owner-only (regresi `v1.6.51`).
 
