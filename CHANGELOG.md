@@ -1,7 +1,8 @@
 ## [Unreleased]
 
 ### Fixed
-- `MonitoringService.onStartCommand` memanggil `startForeground` segera saat masuk sebelum percabangan/IO prefs, memperbaiki `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` di API 27 (mis. OPPO CPH1853) pada jalur `STOP`, restart sticky dengan intent null saat monitoring nonaktif, dan return dini kredensial sebelum foreground sempat dipasang.
+- `MonitoringService.fetchLocation` menambahkan override `LocationListener.onStatusChanged` yang hilang, memperbaiki `AbstractMethodError` di API 24-28 (mis. OPPO CPH1853 API 27): kode dikompilasi dengan `compileSdk` 35 di mana metode itu punya implementasi default, tapi di runtime lama masih abstrak sehingga sistem crash saat dispatch perubahan status provider.
+- `MonitoringService.onCreate`/`onStartCommand` memanggil `startForeground` segera saat masuk sebelum percabangan/IO prefs, memperbaiki `RemoteServiceException: Context.startForegroundService() did not then call Service.startForeground()` di API 27 (mis. OPPO CPH1853) pada jalur `STOP`, restart sticky dengan intent null saat monitoring nonaktif, dan return dini kredensial sebelum foreground sempat dipasang.
 
 ## [1.6.49] - 2026-09-29
 

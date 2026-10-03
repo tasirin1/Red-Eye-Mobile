@@ -106,6 +106,7 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        startForegroundImmediate()
         preferencesManager = PreferencesManager.getInstance(this)
         try {
             Thread {
@@ -1448,6 +1449,7 @@ class MonitoringService : Service() {
                         }
                         override fun onProviderDisabled(providerName: String) {}
                         override fun onProviderEnabled(providerName: String) {}
+                        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
                     }
                     try {
                         @Suppress("DEPRECATION")
