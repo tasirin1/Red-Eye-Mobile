@@ -35,7 +35,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Jangan tambah dependency tanpa kebutuhan nyata. `lifecycle-runtime-ktx` sudah ada untuk `lifecycleScope`.
 - Jangan tambah komentar inline di kode kecuali diminta.
 - Jangan tambah header lisensi/copyright.
-- Jangan `git commit` / buat branch kecuali diminta eksplisit.
+- Jangan `git commit` / buat branch kecuali diminta eksplisit atau diwajibkan alur rilis `§8`.
 - Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding — fitur dimatikan di `app/build.gradle`).
 
 ## 6. Changelog & Dokumentasi
@@ -49,3 +49,8 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - `python3 -c "import xml.dom.minidom; ..."` untuk setiap XML yang diubah (`AndroidManifest.xml`, layout).
 - `grep -rn "BOT_TOKEN\|CHAT_ID"` untuk memastikan tidak ada token asli yang kebawa.
 - Tidak perlu menjalankan Gradle lokal. Sebutkan di jawaban akhir bahwa build diverifikasi via GitHub Actions.
+
+## 8. Rilis Setiap Perbaikan
+
+- Setiap perbaikan/bugfix yang selesai LANGSUNG `commit` + `push` ke `main` tanpa menunggu perintah eksplisit per langkah.
+- Lalu LANGSUNG rilis: bump `versionCode`/`versionName` di `app/build.gradle`, pindahkan entri `[Unreleased]` ke seksi versi baru di `CHANGELOG.md` (format `## [X.Y.Z] - YYYY-MM-DD`), commit, `push` tag `vX.Y.Z` — workflow otomatis build + terbitkan GitHub Release.

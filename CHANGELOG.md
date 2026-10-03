@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.50] - 2026-10-03
+
 ### Fixed
 - Perintah Telegram kini owner-only seluruhnya: gerbang `senderOk` di `MonitoringService.handleTelegramCommandInner` berlaku untuk semua perintah (sebelumnya hanya 15 perintah mutasi), dan `handleCallbackQuery` mengabaikan tombol inline dari non-owner; sebelumnya anggota grup bisa menjalankan `/photo`, `/location`, `/lastcalls`, `/lastsms`, `/status`, dll. bila `chatId` berupa ID grup.
 - `SetupActivity.updateStatus` menampilkan `monitoring_paused` saat jeda `/stop` aktif; sebelumnya status tetap `Monitoring active` karena service masih `isRunning`.
