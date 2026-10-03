@@ -7,7 +7,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - JANGAN install Android SDK / build APK secara lokal. Build SELALU di GitHub Actions (`.github/workflows/build.yml`).
 - Di environment lokal/container: cukup edit kode, cek sintaks ringan, dan validasi XML. Tidak perlu `./gradlew`, tidak perlu `local.properties`.
 - JANGAN pernah commit secret (bot token, chat ID) ke repo. Kredensial bot tidak dibake ke APK dalam bentuk apa pun; satu-satunya sumber adalah input manual `SetupActivity`.
-- Kontinuitas antar-sesi: di awal sesi baca `MEMORY.md` (file lokal, gitignore, tidak di-commit) bila ada, lalu `git status --short` + `git log --oneline -5`; di akhir sesi update `MEMORY.md`.
+- Kontinuitas antar-sesi: di awal sesi jalankan `git -C /root/memori-agents-ai pull --ff-only`, lalu baca `/root/memori-agents-ai/Red-Eye-Mobile.md` + `git status --short` + `git log --oneline -5` di repo ini; di akhir sesi update file memori itu, lalu commit + push ke repo memori (`memory: ...`).
 
 ## 2. Cara Build yang Benar
 
