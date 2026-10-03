@@ -69,3 +69,6 @@ lint-results.html
 lint-results.xml
 *.p12
 release.p12
+
+# memori lokal antar-sesi, jangan commit
+MEMORY.md
