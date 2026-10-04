@@ -243,7 +243,16 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun readLocked(): MutableList<QueuedMessage> {
-        cached?.let { return it }
+        cached?.let {
+            val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
+            val freshCached = it.filter { q -> q.timestamp >= cutoffCached }.toMutableList()
+            if (freshCached.size != it.size) {
+                android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
+                persistLocked(freshCached)
+                return freshCached
+            }
+            return it
+        }
         val json = sharedPreferences?.getString(KEY_QUEUE, null)
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()

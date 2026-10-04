@@ -335,7 +335,7 @@ class SendMessageWorker(
         for (part in parts) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
-                    delay(500)
+                    delay(1000)
                 }
                 is SendOutcome.RateLimited -> {
                     rateAfter = outcome.retryAfterSecs

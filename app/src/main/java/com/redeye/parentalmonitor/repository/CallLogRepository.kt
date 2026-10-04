@@ -95,6 +95,7 @@ class CallLogRepository(private val context: Context) {
 
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
         val norm = digits.filter { it.isDigit() }
+        if (norm.isEmpty()) return emptyList()
         val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",

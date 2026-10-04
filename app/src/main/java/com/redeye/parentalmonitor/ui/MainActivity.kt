@@ -288,7 +288,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun hasAllPermissions(): Boolean {
-        return requiredPermissions.all { permission ->
+        return requiredPermissions.filter { it != Manifest.permission.POST_NOTIFICATIONS }.all { permission ->
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
         }
     }

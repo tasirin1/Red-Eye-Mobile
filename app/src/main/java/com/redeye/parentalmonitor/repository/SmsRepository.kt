@@ -26,6 +26,7 @@ class SmsRepository(private val context: Context) {
 
     fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
         val norm = digits.filter { it.isDigit() }
+        if (norm.isEmpty()) return emptyList()
         val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",

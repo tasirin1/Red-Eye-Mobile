@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.54] - 2026-10-04
+
+### Fixed
+- `NotificationForwarderService.pollWakeOnce` kini owner-aware (terima `ownerUserId`, pelajari dari DM pribadi) dan berhenti polling bila monitoring dimatikan/belum consent; sebelumnya owner grup terkunci dari `/ping` wake dan token dipakai polling tiap 25 detik meski user opt-out.
+- Hapus pong ganda wake-loop: forwarder hanya restart service, balasan pong tunggal dari `MonitoringService`.
+- `MessageQueue.readLocked` prune pesan kedaluwarsa juga di jalur cache; sebelumnya basi >7 hari ikut dicoba kirim sampai restart.
+- `/ping` tanpa argumen hanya restart loop bila pemanggil owner; sebelumnya viewer grup bisa flapping loop.
+- `SmsRepository`/`CallLogRepository` early-return bila query tanpa digit (hindari `LIKE '%%'`).
+- `CameraService.getCameraId` tidak lagi fallback ke kamera sembarang; lensa tak ditemukan kini error eksplisit.
+- `MainActivity` tidak lagi mensyaratkan `POST_NOTIFICATIONS` untuk autostart; tolak notifikasi tak lagi mematikan monitoring diam-diam.
+- `SendMessageWorker` jeda antar-chunk 500 ms jadi 1000 ms agar retry limit lebih jarang picu duplikat.
+
 ## [1.6.53] - 2026-10-04
 
 ### Fixed

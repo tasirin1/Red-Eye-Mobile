@@ -405,7 +405,7 @@ class CameraService(private val context: Context) {
                 try {
                     cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == lensFacing
                 } catch (_: Exception) { false }
-            } ?: ids.firstOrNull()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error finding camera", e)
             null

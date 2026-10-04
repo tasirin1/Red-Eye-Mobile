@@ -383,6 +383,13 @@ class NotificationForwarderService : NotificationListenerService() {
         val token = cachedFwdToken.ifEmpty { try { prefs.botToken } catch (_: Exception) { "" } }
         val owner = cachedFwdChat.ifEmpty { try { prefs.chatId } catch (_: Exception) { "" } }
         if (token.isEmpty() || owner.isEmpty()) return
+        val resumeOk = try {
+            prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+        if (!resumeOk) return
+        var ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }
         if (wakeUpdateId < 0L) {
             wakeUpdateId = try {
                 maxOf(prefs.wakeUpdateId, prefs.lastUpdateId)
@@ -407,7 +414,6 @@ class NotificationForwarderService : NotificationListenerService() {
         if (updates.isEmpty()) return
         var maxId = wakeUpdateId
         var pinged = false
-        var pingAt = 0L
         for (u in updates) {
             if (u.updateId > maxId) maxId = u.updateId
             val msg = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
@@ -429,12 +435,16 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 ""
             }
-            if (fromId != owner && chatIdStr != owner) continue
-            pinged = true
-            try {
-                pingAt = msg?.date ?: cb?.message?.date ?: 0L
-            } catch (_: Exception) {
+            if (ownerId == 0L && fromId.isNotEmpty() && chatIdStr == fromId && fromId != owner) {
+                ownerId = fromId.toLongOrNull() ?: 0L
+                try {
+                    if (ownerId != 0L) prefs.ownerUserId = ownerId
+                } catch (_: Exception) {
+                }
             }
+            val wakeOwner = fromId == owner || chatIdStr == owner || (ownerId != 0L && fromId == ownerId.toString())
+            if (!wakeOwner) continue
+            pinged = true
         }
         wakeUpdateId = maxId
         try {
@@ -460,21 +470,6 @@ class NotificationForwarderService : NotificationListenerService() {
         try {
             MessageScheduler.scheduleMessageSend(this)
         } catch (_: Exception) {
-        }
-        if (pinged) {
-            val pong = if (pingAt > 0L) {
-                val lag = System.currentTimeMillis() / 1000L - pingAt
-                "🏓 Pong! Delay ${lag.coerceAtLeast(0L)} s. ⏰ Loops awakened."
-            } else {
-                "🏓 Pong! ⏰ Loops awakened."
-            }
-            try {
-                TelegramClient.api.sendMessage(
-                    "https://api.telegram.org/bot$token/sendMessage",
-                    TelegramMessage(chatId = owner, text = pong)
-                )
-            } catch (_: Exception) {
-            }
         }
     }
 

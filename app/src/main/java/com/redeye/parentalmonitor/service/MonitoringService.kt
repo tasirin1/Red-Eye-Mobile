@@ -1153,8 +1153,8 @@ class MonitoringService : Service() {
                     }
                     "" -> {
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
-                        if (!loopsOk) restartAllLoops()
-                        val tail = if (loopsOk) "" else " ⏰ Loops restarted."
+                        if (!loopsOk && senderOk) restartAllLoops()
+                        val tail = if (loopsOk || !senderOk) "" else " ⏰ Loops restarted."
                         if (sentAtSec > 0) {
                             val lag = System.currentTimeMillis() / 1000L - sentAtSec
                             sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
