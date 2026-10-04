@@ -330,12 +330,22 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-            if (mySave != saveSeq.get()) return@launch
+            if (mySave != saveSeq.get()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
             try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
             }
-            if (mySave != saveSeq.get()) return@launch
+            if (mySave != saveSeq.get()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -394,9 +404,19 @@ class SetupActivity : AppCompatActivity() {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
-                    if (myTest != testSeq.get()) return@launch
+                    if (myTest != testSeq.get()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
                     persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
-                    if (myTest != testSeq.get()) return@launch
+                    if (myTest != testSeq.get()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)

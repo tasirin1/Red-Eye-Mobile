@@ -50,7 +50,12 @@ class CallLogRepository(private val context: Context) {
                     try {
                         context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
                     } catch (_: Exception) {
-                        context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
+                        try {
+                            val limitedUri = CallLog.Calls.CONTENT_URI.buildUpon().appendQueryParameter("limit", limit.toString()).build()
+                            context.contentResolver.query(limitedUri, projection, selection, args, sortOrder)
+                        } catch (_: Exception) {
+                            context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
+                        }
                     }
                 }
             } else if (limit == Int.MAX_VALUE) {
@@ -59,7 +64,12 @@ class CallLogRepository(private val context: Context) {
                 try {
                     context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, "$sortOrder LIMIT $limit")
                 } catch (_: Exception) {
-                    context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
+                    try {
+                        val limitedUri = CallLog.Calls.CONTENT_URI.buildUpon().appendQueryParameter("limit", limit.toString()).build()
+                        context.contentResolver.query(limitedUri, projection, selection, args, sortOrder)
+                    } catch (_: Exception) {
+                        context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder)
+                    }
                 }
             }
             cursor?.use { cursor ->
@@ -116,11 +126,20 @@ class CallLogRepository(private val context: Context) {
     }
 
     private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
-        if (have == want || have.endsWith(want) || want.endsWith(have)) return true
-        if (wantAlt != null && (have == wantAlt || have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
-        val haveAlt = altVariant(have) ?: return false
-        if (haveAlt == want || haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
-        if (wantAlt != null && (haveAlt == wantAlt || haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
+        if (have == want) return true
+        if (wantAlt != null && have == wantAlt) return true
+        val haveAlt = altVariant(have)
+        if (haveAlt != null) {
+            if (haveAlt == want) return true
+            if (wantAlt != null && haveAlt == wantAlt) return true
+        }
+        if (want.length < 9) return false
+        if (have.endsWith(want) || want.endsWith(have)) return true
+        if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
+        if (haveAlt != null) {
+            if (haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
+            if (wantAlt != null && (haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
+        }
         return false
     }
 

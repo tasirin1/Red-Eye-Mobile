@@ -220,7 +220,15 @@ object CrashReporter {
         val escaped = Html.escape(raw)
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
-        val keep = (4000 - 60).coerceAtLeast(500)
+        var keep = (4000 - 60).coerceAtLeast(500)
+        if (keep < escaped.length) {
+            val amp = escaped.lastIndexOf('&', keep - 1)
+            if (amp >= 0 && amp > keep - 12) {
+                val semi = escaped.indexOf(';', amp)
+                if (semi < 0 || semi >= keep) keep = amp
+            }
+            if (keep <= 0) keep = (4000 - 60).coerceAtLeast(500)
+        }
         return "<b>Force close</b>\n<pre>" + escaped.take(keep) + "</pre>"
     }
 

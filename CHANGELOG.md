@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService` `handleCallbackQuery`: tap tombol inline dianggap kini (`0L`) agar menu tak kedaluwarsa 15 menit; cabang `MUTATING` identik yang mati diruntuhkan; drop diam tetap jawab `answerCallback` agar spinner tak gantung.
+- `MonitoringService` `pollTelegramCommands`: `400` yang menyebut offset selalu reset `lastUpdateId` ke `0`; guard `cur < 0` yang tak pernah tercapai dibuang dan `bad request` umum tak lagi me-reset offset.
+- `/ping` polos keluar dari `SENSITIVE_COMMANDS` agar selaras menu publik; sub-perintah `camera`/`location` tetap digate `/photo` dan `/location` khusus owner.
+- `CallLogRepository`/`SmsRepository` `numbersEqualFast`: cocok sufiks `endsWith` hanya untuk query >= 9 digit; di bawah itu wajib cocok persis (+ varian `628`/`08`) agar `/history` tak menarik nomor asing.
+- `MonitoringService` `sendSmsPending`: timeout proporsional per part (60 dtk + 30 dtk tiap part tambahan); kirim parsial dilaporkan (`x/y` part) agar tak retry buta dan duplikat SMS.
+- `SetupActivity` Save/Test yang tergusur aksi lebih baru tampilkan toast `setup_superseded`, tidak lagi gugur diam.
+- `CallLogRepository`/`SmsRepository`: coba param URI `limit` sebelum fallback full-scan agar OEM tanpa `LIMIT` di `sortOrder` tetap hemat memori.
+- `CrashReporter` `buildReport`: potong laporan aman tanpa membelah entity HTML.
+
 ## [1.6.61] - 2026-10-04
 
 ### Fixed

