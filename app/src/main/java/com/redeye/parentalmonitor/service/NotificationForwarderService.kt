@@ -46,6 +46,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
     private val pkgHitsLock = Any()
+    private val tagStripRegex = Regex("</?[a-zA-Z][^>]*>")
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     @Volatile
     private var lastRebindAt = 0L
@@ -737,6 +738,17 @@ class NotificationForwarderService : NotificationListenerService() {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return
+                }
+                val plain = message.replace(tagStripRegex, "")
+                if (plain != message) {
+                    try {
+                        val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+                        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
+                            if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
+                            return
+                        }
+                    } catch (_: Exception) {
+                    }
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                 return

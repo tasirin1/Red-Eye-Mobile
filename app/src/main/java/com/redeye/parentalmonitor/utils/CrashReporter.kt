@@ -155,7 +155,7 @@ object CrashReporter {
                 return
             }
             try {
-                val fitted = if (report.length > 4000) report.take(4000) else report
+                val fitted = if (report.length > 4000) safeTake(report, 4000) else report
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = null))
                 if (response.isSuccessful && response.body()?.ok == true) {
@@ -189,6 +189,22 @@ object CrashReporter {
         }
     }
 
+    private fun safeTake(text: String, max: Int): String {
+        if (text.length <= max) return text
+        var cut = max
+        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+        val amp = text.lastIndexOf('&', cut - 1)
+        if (amp >= 0 && amp > cut - 12) {
+            val semi = text.indexOf(';', amp)
+            if (semi < 0 || semi >= cut) {
+                val entity = text.substring(amp, cut)
+                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
+            }
+        }
+        if (cut <= 0) cut = max
+        return text.take(cut)
+    }
+
     private fun isChatMissing(errorBody: String?): Boolean {
         if (errorBody.isNullOrEmpty()) return false
         val lower = errorBody.lowercase(java.util.Locale.ROOT)
@@ -216,7 +232,7 @@ object CrashReporter {
         }
         var raw = body.toString()
         raw = raw.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
-        if (raw.length > MAX_CHARS) raw = raw.take(MAX_CHARS)
+        if (raw.length > MAX_CHARS) raw = safeTake(raw, MAX_CHARS)
         val escaped = Html.escape(raw)
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
@@ -229,7 +245,7 @@ object CrashReporter {
             }
             if (keep <= 0) keep = (4000 - 60).coerceAtLeast(500)
         }
-        return "<b>Force close</b>\n<pre>" + escaped.take(keep) + "</pre>"
+        return "<b>Force close</b>\n<pre>" + safeTake(escaped, keep) + "</pre>"
     }
 
 }

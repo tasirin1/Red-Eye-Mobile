@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Fixed
+- `BootReceiver` throttle persisten pindah ke wall-clock + lewati debounce saat guard masih nol agar restart langsung pasca-reboot tak gugur (sebelumnya `elapsedRealtime` yang reset saat reboot + delta negatif lawan nilai boot lama menahan start, pulih hanya via watchdog 15 mnt).
+- `BootRestartWorker.postResumeReminder` akar sama: throttle persisten wall-clock agar notif buka Setup tak bungkam tepat saat FGS ditolak pasca-reboot.
+- `NotificationForwarderService.forwardLocked` coba plain-fallback (strip tag) dulu saat `400` non-chat-hilang seperti `MonitoringService` sebelum drop permanen.
+- `CrashReporter` potong laporan pakai batas aman surrogate + entity di `buildReport` dan `flushPending` agar tak belah entity/surrogate.
+
 ## [1.6.70] - 2026-10-04
 
 ### Fixed

@@ -117,15 +117,17 @@ class BootRestartWorker(
 
     private fun postResumeReminder(context: Context) {
         val nowResume = android.os.SystemClock.elapsedRealtime()
-        if (nowResume - lastResumeReminderAt < 3 * 60 * 60_000L) return
+        if (lastResumeReminderAt != 0L && nowResume - lastResumeReminderAt < 3 * 60 * 60_000L) return
+        val nowWall = System.currentTimeMillis()
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            if (nowResume - meta.getLong("last_resume_elapsed", 0L) < 3 * 60 * 60_000L) return
+            val lastWall = meta.getLong("last_resume_elapsed", 0L)
+            if (lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 3 * 60 * 60_000L) return
         } catch (_: Exception) {
         }
         lastResumeReminderAt = nowResume
         try {
-            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowResume).apply()
+            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowWall).apply()
         } catch (_: Exception) {
         }
         try {
