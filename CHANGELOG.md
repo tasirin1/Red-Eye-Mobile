@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.63] - 2026-10-04
+
 ### Fixed
 - `SetupActivity` status tampilkan baris Owner + petunjuk DM privat pertama agar pengguna grup-only tak terkunci diam.
 - `AdminReceiver` `onDisabled` antre peringatan Telegram agar owner tahu proteksi uninstall mati.
