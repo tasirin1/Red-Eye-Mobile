@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.76] - 2026-10-04
+
 ### Changed
 - `MessageScheduler.scheduleMessageSend` pakai `KEEP` (bukan `APPEND`) agar trigger offline yang menumpuk digabung, bukan antre berantai; worker kuras antrean + jadwal ulang sendiri bila sisa, jadi tak ada pesan tertahan.
 
