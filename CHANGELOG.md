@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.64] - 2026-10-04
+
 ### Fixed
 - `MonitoringService` `numberMatches`/`numbersEqualFast` samakan gate sufiks >= 9 digit dengan `SmsRepository`/`CallLogRepository`; hapus `idVariants` mati agar filter akhir `/history` tak bobol privasi sufiks.
 - `MonitoringService` `rememberOwner` picu `registerBotCommands` saat owner pertama dipelajari agar menu owner langsung aktif tanpa restart.
