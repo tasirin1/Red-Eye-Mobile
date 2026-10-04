@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.67] - 2026-10-04
+
 ### Fixed
 - `MonitoringService.sendAudioFile` rethrow `CancellationException` seperti `sendPhotoFile` agar cancel `/record` abort saat upload.
 - `/log` kirim crash versi plain (strip tag) agar tak round-trip `400`.
