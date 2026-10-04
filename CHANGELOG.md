@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.78] - 2026-10-04
+
 ### Changed
 - Helper Telegram terpusat: `isChatMissing` (5 file), `authBlocked` 401/403/400 (service + worker), dan `tagStripRegex` kini milik `NetworkUtils`/`Html`; `scheduleMessageSendCoalesced` delegasi ke `scheduleMessageSendNext`; tanpa perubahan perilaku.
 - `SendMessageWorker` lewati hapus bulk akhir bila hapus inkremental semua sukses, hemat satu persist antrean tiap run.
