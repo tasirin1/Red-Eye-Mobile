@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.71] - 2026-10-04
+
 ### Fixed
 - `BootReceiver` throttle persisten pindah ke wall-clock + lewati debounce saat guard masih nol agar restart langsung pasca-reboot tak gugur (sebelumnya `elapsedRealtime` yang reset saat reboot + delta negatif lawan nilai boot lama menahan start, pulih hanya via watchdog 15 mnt).
 - `BootRestartWorker.postResumeReminder` akar sama: throttle persisten wall-clock agar notif buka Setup tak bungkam tepat saat FGS ditolak pasca-reboot.
