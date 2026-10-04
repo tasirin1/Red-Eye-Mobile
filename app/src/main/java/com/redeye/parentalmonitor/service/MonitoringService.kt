@@ -3067,6 +3067,12 @@ class MonitoringService : Service() {
     private fun searchContacts(query: String): List<Pair<String, String>> {
         val out = mutableListOf<Pair<String, String>>()
         try {
+            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             val cursor = try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     val bundle = android.os.Bundle().apply {

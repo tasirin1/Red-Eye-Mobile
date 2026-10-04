@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.87] - 2026-10-05
+
+### Fixed
+- `MonitoringService.searchContacts` gagal kompilasi (referensi `uri`/`projection`/`escaped` hilang saat refactor query Bundle di `v1.6.85`); deklarasi dikembalikan agar build hijau.
+
 ## [1.6.86] - 2026-10-04
 
 ### Fixed
