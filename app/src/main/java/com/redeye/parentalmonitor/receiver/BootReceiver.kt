@@ -28,8 +28,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in BOOT_ACTIONS) return
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            val data = intent.dataString ?: return
-            if (!data.contains(context.packageName)) return
+            if (intent.data?.schemeSpecificPart != context.packageName) return
         }
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)

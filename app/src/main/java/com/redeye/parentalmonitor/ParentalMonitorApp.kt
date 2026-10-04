@@ -53,13 +53,6 @@ class ParentalMonitorApp : Application() {
                 enableLights(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
-            try {
-                val existing = notificationManager.getNotificationChannel(CHANNEL_ID)
-                if (existing != null && existing.importance != importance) {
-                    notificationManager.deleteNotificationChannel(CHANNEL_ID)
-                }
-            } catch (_: Exception) {
-            }
             notificationManager.createNotificationChannel(channel)
             try {
                 val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_HIGH).apply {

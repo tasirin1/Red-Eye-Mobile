@@ -115,7 +115,7 @@ class CallLogRepository(private val context: Context) {
         )
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
-        return filterCallsByNumber(getAllCalls(200), norm)
+        return filterCallsByNumber(getAllCalls(100), norm)
     }
 
     private fun altVariant(digits: String): String? {

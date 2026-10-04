@@ -680,6 +680,8 @@ class SetupActivity : AppCompatActivity() {
             val exempt = isBatteryExempt()
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
+            val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
+            val ownerLine = if (ownerKnown) "\nOwner: recognized" else "\nOwner: unknown - DM the bot once privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val listener = isNotificationAccessGranted()
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
@@ -688,7 +690,7 @@ class SetupActivity : AppCompatActivity() {
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

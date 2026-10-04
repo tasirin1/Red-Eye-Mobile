@@ -17,6 +17,11 @@ class AdminReceiver : DeviceAdminReceiver() {
         super.onDisabled(context, intent)
         android.util.Log.w("AdminReceiver", "Device Admin disabled!")
         Toast.makeText(context, context.getString(R.string.admin_disabled), Toast.LENGTH_LONG).show()
+        try {
+            com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Device Admin was disabled on the device. Uninstall protection is OFF.")
+            com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {

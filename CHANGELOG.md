@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- `SetupActivity` status tampilkan baris Owner + petunjuk DM privat pertama agar pengguna grup-only tak terkunci diam.
+- `AdminReceiver` `onDisabled` antre peringatan Telegram agar owner tahu proteksi uninstall mati.
+- `backup_rules.xml`/`data_extraction_rules.xml` buang eksklusi basi (`secure_prefs_fallback`, `message_queue`); nama nyata (`secure_prefs`, `encrypted_queue`) tetap dikecualikan.
+- `admin_description` jujur hanya klaim policy `force-lock` sesuai `device_admin.xml`.
+- `/stop` sebut forward notifikasi ikut pause agar tak dikira hanya data.
+- `recordAndSendAudio`: cancel usai kirim sukses antre notif sukses, bukan menelannya; berkas parsial tetap dihapus.
+- `BootReceiver` cek paket update via equals `schemeSpecificPart`, bukan `contains`.
+- `ParentalMonitorApp` tak lagi hapus channel notifikasi agar setelan pengguna dihormati; fallback `/history` `200` jadi `100` baris agar hemat di DB besar.
+
 ## [1.6.62] - 2026-10-04
 
 ### Fixed
