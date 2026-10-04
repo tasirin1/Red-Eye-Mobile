@@ -1,6 +1,8 @@
 package com.redeye.parentalmonitor.utils
 
 object Html {
+    val tagStripRegex = Regex("</?[a-zA-Z][^>]*>")
+
     fun escape(text: String): String {
         val out = StringBuilder(text.length + 16)
         for (c in text) {

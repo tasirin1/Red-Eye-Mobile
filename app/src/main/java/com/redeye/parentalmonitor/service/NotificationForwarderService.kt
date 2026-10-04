@@ -46,7 +46,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
     private val pkgHitsLock = Any()
-    private val tagStripRegex = Regex("</?[a-zA-Z][^>]*>")
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     @Volatile
     private var lastRebindAt = 0L
@@ -627,11 +626,6 @@ class NotificationForwarderService : NotificationListenerService() {
         return MessageQueue.getInstance(this).also { queueRef = it }
     }
 
-    private fun isChatMissing(errorBody: String?): Boolean {
-        if (errorBody.isNullOrEmpty()) return false
-        val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
-    }
 
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
         if (inFlight.incrementAndGet() > 4) {
@@ -729,7 +723,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                     null
                 }
-                if (isChatMissing(body)) {
+                if (NetworkUtils.isChatMissing(body)) {
                     try {
                         prefs.credentialError = response.code().toString()
                         prefs.credentialErrorAt = System.currentTimeMillis()
@@ -739,7 +733,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                     return
                 }
-                val plain = message.replace(tagStripRegex, "")
+                val plain = message.replace(Html.tagStripRegex, "")
                 if (plain != message) {
                     try {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))

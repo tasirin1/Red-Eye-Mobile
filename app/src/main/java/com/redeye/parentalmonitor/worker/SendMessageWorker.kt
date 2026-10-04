@@ -7,11 +7,10 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
-
-private val tagStripRegex = Regex("</?[a-zA-Z][^>]*>")
 
 class SendMessageWorker(
     context: Context,
@@ -41,7 +40,7 @@ class SendMessageWorker(
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             return Result.success()
         }
-        if (authBlocked()) {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             try {
                 MessageScheduler.scheduleMessageSendCoalesced(applicationContext, 30 * 60_000L)
             } catch (_: Exception) {
@@ -64,6 +63,7 @@ class SendMessageWorker(
         val runChatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         if (runToken.isEmpty() || runChatId.isEmpty()) return Result.success()
         var credsChanged = false
+        var incrementalFailed = false
 
         for (queuedMessage in queue) {
             if (processed >= 20) {
@@ -89,6 +89,7 @@ class SendMessageWorker(
                         try {
                             messageQueue.removeMessage(queuedMessage.id)
                         } catch (_: Exception) {
+                            incrementalFailed = true
                         }
                         delay(100)
                     }
@@ -105,6 +106,7 @@ class SendMessageWorker(
                         try {
                             messageQueue.removeMessage(queuedMessage.id)
                         } catch (_: Exception) {
+                            incrementalFailed = true
                         }
                     }
                     SendOutcome.Failed -> {
@@ -122,7 +124,7 @@ class SendMessageWorker(
         }
 
         if (credsChanged) {
-            if (sentIds.isNotEmpty()) {
+            if (incrementalFailed && sentIds.isNotEmpty()) {
                 messageQueue.removeMessages(sentIds)
             }
             return Result.success()
@@ -134,11 +136,13 @@ class SendMessageWorker(
                 false
             }
         }
-        if (sentIds.isNotEmpty()) {
+        if (incrementalFailed && sentIds.isNotEmpty()) {
             messageQueue.removeMessages(sentIds)
         }
         if (rejectedIds.isNotEmpty()) {
-            messageQueue.removeMessages(rejectedIds)
+            if (incrementalFailed) {
+                messageQueue.removeMessages(rejectedIds)
+            }
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
         }
 
@@ -227,25 +231,10 @@ class SendMessageWorker(
         object Rejected : SendOutcome
     }
 
-    private fun authBlocked(): Boolean {
-        return try {
-            val err = preferencesManager.credentialError
-            if (err != "401" && err != "403" && err != "400") return false
-            val now = System.currentTimeMillis()
-            if (now < preferencesManager.credentialErrorAt) {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
-                return false
-            }
-            now - preferencesManager.credentialErrorAt < 30 * 60_000L
-        } catch (_: Exception) {
-            false
-        }
-    }
 
     private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val plain = message.replace(tagStripRegex, "")
+            val plain = message.replace(Html.tagStripRegex, "")
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,
@@ -265,7 +254,7 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else if (response.code() == 400) {
-                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
                 if (chatGone) SendOutcome.AuthFailed(response.code()) else SendOutcome.Rejected
             } else {
                 SendOutcome.Rejected
@@ -277,11 +266,6 @@ class SendMessageWorker(
         }
     }
 
-    private fun isChatMissing(errorBody: String?): Boolean {
-        if (errorBody.isNullOrEmpty()) return false
-        val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
-    }
 
     private fun splitChunk(text: String, max: Int): Int {
         if (text.length <= max) return text.length
@@ -311,7 +295,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
                 if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
@@ -374,7 +358,7 @@ class SendMessageWorker(
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
         try {
             val clean = try {
-                sample.replace(tagStripRegex, "").trim().take(120)
+                sample.replace(Html.tagStripRegex, "").trim().take(120)
             } catch (_: Exception) {
                 ""
             }
@@ -403,10 +387,10 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400 && message.length > 4096) {
-                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
                 if (chatGone) SendOutcome.AuthFailed(response.code()) else sendChunked(message, botToken, chatId)
             } else if (response.code() == 400) {
-                val chatGone = try { isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
+                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
                 if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {

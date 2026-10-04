@@ -3,6 +3,7 @@ package com.redeye.parentalmonitor.utils
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.redeye.parentalmonitor.data.PreferencesManager
 
 object NetworkUtils {
 
@@ -11,6 +12,28 @@ object NetworkUtils {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
+    }
+
+    fun isAuthBlocked(prefs: PreferencesManager): Boolean {
+        return try {
+            val err = prefs.credentialError
+            if (err != "401" && err != "403" && err != "400") return false
+            val now = System.currentTimeMillis()
+            if (now < prefs.credentialErrorAt) {
+                prefs.credentialError = ""
+                prefs.credentialErrorAt = 0L
+                return false
+            }
+            now - prefs.credentialErrorAt < 30 * 60_000L
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun parseRetryAfter(errorBody: String?): Long {

@@ -6,6 +6,7 @@ import com.redeye.parentalmonitor.BuildConfig
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -166,7 +167,7 @@ object CrashReporter {
                     } catch (_: Exception) {
                         null
                     }
-                    if (!isChatMissing(body)) {
+                    if (!NetworkUtils.isChatMissing(body)) {
                         val delivered = try {
                             val plain = fitted.replace(Regex("<[^>]*>"), "")
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
@@ -205,11 +206,6 @@ object CrashReporter {
         return text.take(cut)
     }
 
-    private fun isChatMissing(errorBody: String?): Boolean {
-        if (errorBody.isNullOrEmpty()) return false
-        val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
-    }
 
     private fun buildReport(context: Context, thread: Thread, error: Throwable): String {
         val body = StringBuilder()

@@ -654,7 +654,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } else if (resp.code() == 400) {
                     val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
-                    if (isChatMissing(goneBody)) {
+                    if (NetworkUtils.isChatMissing(goneBody)) {
                         try {
                             prefs.credentialError = resp.code().toString()
                             prefs.credentialErrorAt = System.currentTimeMillis()
@@ -695,11 +695,6 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun isChatMissing(errorBody: String?): Boolean {
-        if (errorBody.isNullOrEmpty()) return false
-        val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
-    }
 
     private fun formatStatusTime(timestamp: Long): String {
         return try {
