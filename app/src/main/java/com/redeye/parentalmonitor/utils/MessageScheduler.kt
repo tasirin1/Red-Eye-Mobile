@@ -60,7 +60,7 @@ object MessageScheduler {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, requestBuilder.build())
+                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.APPEND, requestBuilder.build())
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)

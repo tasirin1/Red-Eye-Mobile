@@ -464,6 +464,11 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
+        if (changed) {
+            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
+            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
+            editor.remove(KEY_WAKE_PING_IDS)
+        }
         editor.apply()
     }
 
@@ -485,6 +490,11 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
+        if (changed) {
+            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
+            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
+            editor.remove(KEY_WAKE_PING_IDS)
+        }
         editor.apply()
     }
 

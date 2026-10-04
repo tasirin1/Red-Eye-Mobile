@@ -182,7 +182,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 ""
             }
             val fbText = try {
-                notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+                val e = notification.extras
+                var b = e.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+                if (b.isEmpty()) b = e.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+                if (b.isEmpty()) b = e.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
+                b
             } catch (_: Exception) {
                 ""
             }
@@ -239,7 +243,10 @@ class NotificationForwarderService : NotificationListenerService() {
             pendingPosts.decrementAndGet()
             try {
                 val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
-                val x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
+                var x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
+                if (x.isEmpty()) {
+                    x = try { notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
+                }
                 if (t.isNotEmpty() || x.isNotEmpty()) record(pkg, t, x)
             } catch (_: Exception) { }
             return
@@ -296,7 +303,21 @@ class NotificationForwarderService : NotificationListenerService() {
         try {
             val extras = notification.extras
             title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-            text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            if (body.isEmpty()) {
+                body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+            }
+            if (body.isEmpty()) {
+                try {
+                    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }
+                    if (!lines.isNullOrEmpty()) body = lines.joinToString("\n").trim()
+                } catch (_: Exception) {
+                }
+            }
+            if (body.isEmpty()) {
+                body = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
+            }
+            text = body
         } catch (_: Exception) {
             return
         }
@@ -309,7 +330,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (pkgFull(pkg, now)) {
             val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
-            record(cachedLabel, title, text)
             val lastNotice = dropNoticeAt[pkg] ?: 0L
             if (now - lastNotice > 120_000L) {
                 if (dropNoticeAt.size > 64) {
@@ -668,10 +688,6 @@ class NotificationForwarderService : NotificationListenerService() {
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
-                try {
-                    prefs.lastSyncTime = System.currentTimeMillis()
-                } catch (_: Exception) {
-                }
                 return
             }
             if (response.code() == 401 || response.code() == 403) {

@@ -480,7 +480,8 @@ class CameraService(private val context: Context) {
         val buffer: ByteBuffer = image.planes[0].buffer
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
         val file = File(context.cacheDir, "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
-        java.io.BufferedOutputStream(FileOutputStream(file), 8192).use { output ->
+        val tmp = File(context.cacheDir, file.name + ".tmp")
+        java.io.BufferedOutputStream(FileOutputStream(tmp), 8192).use { output ->
             val chunk = ByteArray(8192)
             while (buffer.hasRemaining()) {
                 val n = kotlin.math.min(chunk.size, buffer.remaining())
@@ -488,6 +489,15 @@ class CameraService(private val context: Context) {
                 output.write(chunk, 0, n)
             }
             output.flush()
+        }
+        try {
+            if (!tmp.renameTo(file)) {
+                try { tmp.delete() } catch (_: Exception) { }
+                throw java.io.IOException("rename failed")
+            }
+        } catch (_: Exception) {
+            try { tmp.delete() } catch (_: Exception) { }
+            throw java.io.IOException("save failed")
         }
         return file
     }

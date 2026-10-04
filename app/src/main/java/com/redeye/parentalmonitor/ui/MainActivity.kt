@@ -144,16 +144,6 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setOperator(op: String) {
-        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty() && !justCalculated) {
-            currentNumber = ""
-            previousNumber = ""
-            operator = ""
-            lastExpression = ""
-            justCalculated = false
-            updateCalculatorDisplay()
-            openSetupPage()
-            return
-        }
         justCalculated = false
         if (currentNumber == "Error") {
             clear()
