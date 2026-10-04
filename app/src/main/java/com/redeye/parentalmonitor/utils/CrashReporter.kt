@@ -114,7 +114,7 @@ object CrashReporter {
             if (!NetworkUtils.isNetworkAvailable(context)) return
             try {
                 val err = PreferencesManager.getInstance(context).credentialError
-                if (err == "401" || err == "403") {
+                if (err == "401" || err == "403" || err == "400") {
                     val errAt = PreferencesManager.getInstance(context).credentialErrorAt
                     val nowAuth = System.currentTimeMillis()
                     if (nowAuth >= errAt && nowAuth - errAt < 30 * 60_000L) return

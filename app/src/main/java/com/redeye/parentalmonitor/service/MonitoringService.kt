@@ -560,7 +560,7 @@ class MonitoringService : Service() {
     private fun authBlocked(): Boolean {
         return try {
             val err = preferencesManager.credentialError
-            if (err != "401" && err != "403") return false
+            if (err != "401" && err != "403" && err != "400") return false
             val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
@@ -1486,6 +1486,13 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             return migrated
+        }
+        if (stored - android.os.SystemClock.elapsedRealtime() > 480 * 60_000L) {
+            try {
+                preferencesManager.photoPausedUntil = 0L
+            } catch (_: Exception) {
+            }
+            return 0L
         }
         return stored
     }

@@ -32,7 +32,7 @@ class SendMessageWorker(
         if (!preferencesManager.isConfigured()) {
             if (runAttemptCount < 5) {
                 try {
-                    if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+                    if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendCoalesced(applicationContext, 30 * 60_000L)
                 } catch (_: Exception) {
                 }
             }
@@ -43,7 +43,7 @@ class SendMessageWorker(
         }
         if (authBlocked()) {
             try {
-                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+                MessageScheduler.scheduleMessageSendCoalesced(applicationContext, 30 * 60_000L)
             } catch (_: Exception) {
             }
             return Result.success()
@@ -216,7 +216,7 @@ class SendMessageWorker(
     private fun authBlocked(): Boolean {
         return try {
             val err = preferencesManager.credentialError
-            if (err != "401" && err != "403") return false
+            if (err != "401" && err != "403" && err != "400") return false
             val now = System.currentTimeMillis()
             if (now < preferencesManager.credentialErrorAt) {
                 preferencesManager.credentialError = ""
@@ -346,7 +346,7 @@ class SendMessageWorker(
                     authCode = outcome.code
                     break
                 }
-                SendOutcome.Failed -> failed++
+                SendOutcome.Failed -> { failed++; break }
                 SendOutcome.Rejected -> rejected++
             }
         }

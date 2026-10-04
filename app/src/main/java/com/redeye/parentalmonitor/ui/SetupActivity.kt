@@ -307,6 +307,7 @@ class SetupActivity : AppCompatActivity() {
         val interval = intervalParsed
         val cameraInterval = cameraParsed
         val mySave = saveSeq.incrementAndGet()
+        try { testSeq.incrementAndGet() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
@@ -372,6 +373,7 @@ class SetupActivity : AppCompatActivity() {
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
+        try { saveSeq.incrementAndGet() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
@@ -429,7 +431,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun hasAllPermissions(): Boolean {
-        return requiredPermissions.all {
+        return requiredPermissions.filter { it != Manifest.permission.POST_NOTIFICATIONS }.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
     }

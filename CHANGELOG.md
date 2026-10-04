@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.61] - 2026-10-04
+
+### Fixed
+- `app/build.gradle` `assertReleaseKeystore` jadi peringatan saat tag tanpa keystore; build tetap jalan dan workflow menandai `debugsigned` agar CI tag tak merah.
+- `SetupActivity` `hasAllPermissions` kecualikan `POST_NOTIFICATIONS` seperti `MainActivity`; tolak notifikasi tak lagi blokir aktifkan monitoring.
+- `SetupActivity` Save dan Test saling batalkan via seq silang; aksi terakhir menang, tulis basi tak menimpa pengaturan baru.
+- `MessageScheduler` tambah `scheduleMessageSendCoalesced` (`KEEP`) untuk cooldown auth 30 mnt; `scheduleMessageSendNext` tetap `APPEND` untuk `retryAfter`/backoff.
+- `authBlocked` (`MonitoringService`, `SendMessageWorker`) dan guard flush `CrashReporter` hormati `400` seperti `401`/`403`.
+- `README.md` perbaiki nama artefak tanpa keystore (`redeye-debugsigned-release.apk`, tag `redeye-vX.Y.Z-debugsigned-release.apk`) sesuai workflow.
+- `photoPausedElapsed` buang jeda basi melebihi `480` mnt (elapsed reset saat reboot) agar OEM boot telat tak salah-pause foto.
+- `SendMessageWorker` `sendChunked` berhenti di gagal pertama agar tak boros kuota dan minim duplikat saat retry.
+- `AndroidManifest.xml` `tools:targetApi` `35` selaras `targetSdk`.
+- `SpeedMonitorActivity` reskala sesi per-counter agar rasio down/up tak miring.
+
 ## [1.6.60] - 2026-10-04
 
 ### Fixed
