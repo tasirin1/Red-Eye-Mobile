@@ -110,6 +110,7 @@ class MonitoringService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
+        private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger((System.currentTimeMillis() and 0xfffffff).toInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
         private const val AUTH_NOTIF_ID = 4
         @Volatile
@@ -1514,7 +1515,7 @@ class MonitoringService : Service() {
             }
             return migrated
         }
-        if (stored - android.os.SystemClock.elapsedRealtime() > 480 * 60_000L) {
+        if (stored - android.os.SystemClock.elapsedRealtime() > 1440 * 60_000L) {
             try {
                 preferencesManager.photoPausedUntil = 0L
             } catch (_: Exception) {
@@ -1892,15 +1893,16 @@ class MonitoringService : Service() {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
+        if (local == "1900" || local.startsWith("1900") || local == "900" || local == "976") return true
         if (local.length <= 6) {
-            return local.startsWith("9") || local == "900" || local == "976"
+            return local.startsWith("9")
         }
-        return local.startsWith("1900")
+        return false
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
-        val baseCode = (java.util.UUID.randomUUID().hashCode() and 0x0fffffff)
+        val baseCode = smsReqSeq.addAndGet(10000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
         val delivered = CompletableDeferred<Boolean>()
         val smsManager = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1955,7 +1957,7 @@ class MonitoringService : Service() {
                                 this,
                                 baseCode + it * 7919,
                                 android.content.Intent(sentAction),
-                                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_CANCEL_CURRENT
+                                android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
                             )
                         )
                     }
@@ -1965,7 +1967,7 @@ class MonitoringService : Service() {
                         this,
                         baseCode,
                         android.content.Intent(sentAction),
-                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_CANCEL_CURRENT
+                        android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
                     )
                     smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
                 }

@@ -36,7 +36,7 @@ class SmsRepository(private val context: Context) {
         )
         val matched = filterByNumber(rows, digits) { it.address }
         if (matched.isNotEmpty() || norm.length < 7) return matched
-        return filterByNumber(getRecentSms(100), digits) { it.address }
+        return filterByNumber(getRecentSms(500), digits) { it.address }
     }
 
     private fun altVariant(digits: String): String? {

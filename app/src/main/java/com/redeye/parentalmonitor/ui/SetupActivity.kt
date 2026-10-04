@@ -415,7 +415,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-                    persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
+                    persistTestSettings(token, chatId, myTest)
                     if (myTest != testSeq.get()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
@@ -450,9 +450,9 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int) {
+    private fun persistTestSettings(token: String, chatId: String, myTest: Int) {
         if (myTest != testSeq.get()) return
-        prefs.saveCoreConfig(token, chatId, syncInterval, cameraInterval)
+        prefs.saveTestCredentials(token, chatId)
     }
 
     private fun hasAllPermissions(): Boolean {

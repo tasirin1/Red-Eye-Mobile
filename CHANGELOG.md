@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [1.6.81] - 2026-10-04
+
+### Fixed
+- SMS multipart pakai `FLAG_UPDATE_CURRENT` + requestCode monotonik (`smsReqSeq`) agar part tak saling membatalkan saat dua `/smsconfirm` berurutan.
+- `isPremiumSmsNumber` blokir `1900` eksplisit di semua panjang; short-code sah awalan `9` tak lagi tertolak massal.
+- Fallback `/history` SMS dan panggilan diperlebar 100 ke 500 entri agar nomor format silang (`+62812` vs `0812`) tetap ketemu.
+- Tes koneksi Setup simpan kredensial via `saveTestCredentials` (token/chat saja), interval tak lagi tertimpa.
+- `SendMessageWorker` kosongkan `credentialError` hanya bila kredensial tak berubah mid-batch.
+- `CrashReporter` gabung laporan crash bertumpuk (append + cap), bukan timpa.
+- Cap kewarasan `photoPausedUntil` dilonggarkan 480 ke 1440 mnt agar pause policy 120 mnt + migrasi wall-clock tak ter-reset prematur.
+- `MessageScheduler` pakai `APPEND` saat ada `initialDelayMs` agar jeda rate-limit tak dibuang `KEEP`.
+- `CameraService.startBackgroundThread` `join` thread lama sebelum ganti, cegah thread bocor.
+
 ## [1.6.80] - 2026-10-04
 
 ### Removed

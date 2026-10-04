@@ -163,7 +163,12 @@ class SendMessageWorker(
             }
             return Result.success()
         }
-        if (sentIds.isNotEmpty()) {
+        val credsSameNow = try {
+            preferencesManager.botToken == runToken && preferencesManager.chatId == runChatId
+        } catch (_: Exception) {
+            false
+        }
+        if (sentIds.isNotEmpty() && credsSameNow) {
             try {
                 preferencesManager.credentialError = ""
                 preferencesManager.credentialErrorAt = 0L

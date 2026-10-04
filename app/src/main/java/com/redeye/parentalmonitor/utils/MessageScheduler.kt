@@ -35,8 +35,9 @@ object MessageScheduler {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
 
+            val policy = if (initialDelayMs > 0L) ExistingWorkPolicy.APPEND else ExistingWorkPolicy.KEEP
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, requestBuilder.build())
+                .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)
@@ -59,8 +60,9 @@ object MessageScheduler {
             if (initialDelayMs > 0L) {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
+            val policyNext = if (initialDelayMs > 0L) ExistingWorkPolicy.APPEND else ExistingWorkPolicy.KEEP
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniqueWork(UNIQUE_WORK, ExistingWorkPolicy.KEEP, requestBuilder.build())
+                .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)

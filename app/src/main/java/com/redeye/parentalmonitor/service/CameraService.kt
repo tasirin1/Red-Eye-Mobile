@@ -63,9 +63,14 @@ class CameraService(private val context: Context) {
     }
 
     fun startBackgroundThread() {
-        if (backgroundThread?.isAlive == true && backgroundHandler != null) return
+        val old = backgroundThread
+        if (old?.isAlive == true && backgroundHandler != null) return
         try {
-            backgroundThread?.quitSafely()
+            old?.quitSafely()
+        } catch (_: Exception) {
+        }
+        try {
+            if (old != null && Thread.currentThread() !== old) old.join(500)
         } catch (_: Exception) {
         }
         val thread = HandlerThread("CameraBackground")

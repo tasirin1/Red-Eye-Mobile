@@ -82,7 +82,14 @@ object CrashReporter {
 
     private fun savePending(context: Context, report: String) {
         try {
-            pendingFile(context).writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + report)
+            val file = pendingFile(context)
+            val prev = try {
+                if (file.exists()) stripElapsed(file.readText()) else ""
+            } catch (_: Exception) {
+                ""
+            }
+            val combined = if (prev.isBlank()) report else (prev + "\n---\n" + report).takeLast(MAX_CHARS * 2 + 16)
+            file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + combined)
         } catch (_: Exception) {
         }
     }
