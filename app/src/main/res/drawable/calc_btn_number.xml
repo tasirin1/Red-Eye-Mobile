@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#40FFFFFF">
+    android:color="@color/calc_ripple">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#2A2A30" />
+            <solid android:color="@color/calc_btn_number" />
             <corners android:radius="24dp" />
         </shape>
     </item>
