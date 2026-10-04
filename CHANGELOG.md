@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.69] - 2026-10-04
+
 ### Fixed
 - `SetupActivity.sendStatusNow` bedakan hasil kirim: `429` antre dengan backoff, `401`/`403` dan `400` chat-hilang set error + antre, `400` permanen lain tak diantre agar tak racuni `MessageQueue`.
 - `MonitoringService` loop monitoring ikut `flushPendingAudio`/`flushPendingPhotos` tiap interval; `/flush` ikut flush media agar audio `KEPT` tak tersangkut sampai `/record` berikutnya.
