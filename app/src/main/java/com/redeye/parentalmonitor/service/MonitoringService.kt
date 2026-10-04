@@ -782,7 +782,8 @@ class MonitoringService : Service() {
             else -> return
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
-        handleTelegramCommand(command, 0L, ownerOk, originOk, false, sender)
+        val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
+        handleTelegramCommand(command, pressedAt, ownerOk, originOk, false, sender)
     }
 
     private fun postAuthFailureReminder(code: Int) {
