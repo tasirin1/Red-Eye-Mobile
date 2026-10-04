@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.65] - 2026-10-04
+
 ### Fixed
 - `MonitoringService` wake-offset forwarder disatukan ke `lastUpdateId+1` agar `getUpdates` tak saling hapus antrean server; perintah tak lagi hilang saat service mati.
 - `MonitoringService` owner auto-learn hanya untuk pesan perintah (`/`), DM privat biasa tak lagi klaim ownership.
