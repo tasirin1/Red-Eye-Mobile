@@ -64,6 +64,7 @@ class SendMessageWorker(
         if (runToken.isEmpty() || runChatId.isEmpty()) return Result.success()
         var credsChanged = false
         var incrementalFailed = false
+        var flushedSent = 0
 
         for (queuedMessage in queue) {
             if (processed >= 20) {
@@ -86,10 +87,13 @@ class SendMessageWorker(
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
-                        try {
-                            messageQueue.removeMessage(queuedMessage.id)
-                        } catch (_: Exception) {
-                            incrementalFailed = true
+                        if (sentIds.size - flushedSent >= 5) {
+                            try {
+                                messageQueue.removeMessages(sentIds)
+                                flushedSent = sentIds.size
+                            } catch (_: Exception) {
+                                incrementalFailed = true
+                            }
                         }
                         delay(100)
                     }
@@ -124,8 +128,12 @@ class SendMessageWorker(
         }
 
         if (credsChanged) {
-            if (incrementalFailed && sentIds.isNotEmpty()) {
-                messageQueue.removeMessages(sentIds)
+            if (sentIds.size > flushedSent) {
+                try {
+                    messageQueue.removeMessages(sentIds)
+                } catch (_: Exception) {
+                    incrementalFailed = true
+                }
             }
             return Result.success()
         }
@@ -136,8 +144,12 @@ class SendMessageWorker(
                 false
             }
         }
-        if (incrementalFailed && sentIds.isNotEmpty()) {
-            messageQueue.removeMessages(sentIds)
+        if (sentIds.size > flushedSent) {
+            try {
+                messageQueue.removeMessages(sentIds)
+            } catch (_: Exception) {
+                incrementalFailed = true
+            }
         }
         if (rejectedIds.isNotEmpty()) {
             if (incrementalFailed) {

@@ -38,7 +38,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private var prefsRef: PreferencesManager? = null
     @Volatile
     private var queueRef: MessageQueue? = null
-    private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
     private val pendingPosts = java.util.concurrent.atomic.AtomicInteger(0)
     private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
@@ -82,6 +81,7 @@ class NotificationForwarderService : NotificationListenerService() {
     companion object {
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
+        private const val MAX_BATCH = 32
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
@@ -454,7 +454,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
         val offset = mainLast + 1L
-        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=10"
+        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30"
         val response = try {
             TelegramClient.api.getUpdates(url)
         } catch (_: Exception) {
@@ -481,6 +481,12 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             val base = text.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
             if (base != "/ping") continue
+            val dateSec = try {
+                msg?.date ?: cb?.message?.date ?: 0L
+            } catch (_: Exception) {
+                0L
+            }
+            if (dateSec > 0L && System.currentTimeMillis() / 1000L - dateSec > 900L) continue
             val fromId = try {
                 msg?.from?.id?.toString() ?: cb?.from?.id?.toString().orEmpty()
             } catch (_: Exception) {
@@ -503,6 +509,10 @@ class NotificationForwarderService : NotificationListenerService() {
             pinged = true
         }
         wakeUpdateId = maxId
+        try {
+            prefs.wakeUpdateId = maxId
+        } catch (_: Exception) {
+        }
         if (!pinged) return
         try {
             val pingIds = updates.filter { u ->
@@ -627,9 +637,34 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
+    private val batchLock = Any()
+    private val batchBuf = ArrayDeque<Pair<String, String>>()
+    private var batchJob: Job? = null
+
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
-        if (inFlight.incrementAndGet() > 4) {
-            inFlight.decrementAndGet()
+        var overflowed = false
+        synchronized(batchLock) {
+            if (batchBuf.size >= MAX_BATCH) {
+                overflowed = true
+            } else {
+                batchBuf.addLast(message to pkg)
+                if (batchJob?.isActive != true) {
+                    batchJob = scope.launch(fwdSerial) {
+                        try {
+                            delay(15_000L)
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            flushBatch()
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+        }
+        if (overflowed) {
             try {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
@@ -637,16 +672,34 @@ class NotificationForwarderService : NotificationListenerService() {
                 throw e
             } catch (_: Exception) {
             }
-            return
-        }
-        try {
-            forwardLocked(message, pkg)
-        } finally {
-            inFlight.decrementAndGet()
         }
     }
 
-    private suspend fun forwardLocked(message: String, pkg: String) {
+    private suspend fun flushBatch() {
+        val items: List<Pair<String, String>>
+        synchronized(batchLock) {
+            if (batchBuf.isEmpty()) return
+            items = batchBuf.toList()
+            batchBuf.clear()
+        }
+        val pkgs = items.mapNotNull { it.second.takeIf { v -> v.isNotEmpty() } }.toSet()
+        val now = android.os.SystemClock.elapsedRealtime()
+        var rest = items.joinToString("\n\n") { it.first }
+        while (rest.length > 4000) {
+            var cut = rest.lastIndexOf("\n\n", 4000)
+            if (cut <= 0) cut = 4000
+            if (forwardLocked(rest.substring(0, cut))) {
+                for (v in pkgs) pkgRecord(v, now)
+            }
+            rest = rest.substring(cut).trimStart('\n')
+            if (rest.isEmpty()) return
+        }
+        if (rest.isNotEmpty() && forwardLocked(rest)) {
+            for (v in pkgs) pkgRecord(v, now)
+        }
+    }
+
+    private suspend fun forwardLocked(message: String, pkg: String): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { prefsRef = it }
@@ -656,7 +709,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
-                return
+                return false
             }
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
@@ -664,7 +717,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return false
             }
             try {
                 if (prefs.credentialError.isNotEmpty()) {
@@ -688,13 +741,13 @@ class NotificationForwarderService : NotificationListenerService() {
             if (!netCached) {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return false
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
-                return
+                return true
             }
             if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("NotifForwarder", "Auth rejected, queuing notification until credentials are fixed")
@@ -705,7 +758,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return false
             }
             if (response.code() == 429) {
                 val retryAfter = try {
@@ -715,7 +768,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                return
+                return false
             }
             if (response.code() == 400) {
                 val body = try {
@@ -731,7 +784,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return false
                 }
                 val plain = message.replace(Html.tagStripRegex, "")
                 if (plain != message) {
@@ -739,13 +792,13 @@ class NotificationForwarderService : NotificationListenerService() {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
                             if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
-                            return
+                            return true
                         }
                     } catch (_: Exception) {
                     }
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
-                return
+                return false
             }
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
@@ -758,6 +811,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
+            return false
         }
+        return false
     }
 }

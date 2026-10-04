@@ -411,14 +411,14 @@ class MonitoringService : Service() {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     val minutes = cachedCameraInterval.coerceIn(0, 60)
-                    val paused = android.os.SystemClock.elapsedRealtime() < cachedPhotoPausedUntil
+                    val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !paused && minutes > 0) {
                         captureAndSendPhoto()
                         chunkedDelay(minutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         chunkedDelay(5 * 60_000L)
                     } else {
-                        val remaining = cachedPhotoPausedUntil - android.os.SystemClock.elapsedRealtime()
+                        val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
                         val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
                         chunkedDelay(idle)
                     }
@@ -527,7 +527,7 @@ class MonitoringService : Service() {
                     } catch (t: Throwable) {
                         android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
-                    delay(60_000)
+                    delay(300_000)
                     continue
                 }
                 try {
@@ -573,7 +573,7 @@ class MonitoringService : Service() {
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
-        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=10"
+        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30"
 
         var response = try {
             TelegramClient.api.getUpdates(url)
@@ -589,7 +589,7 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat) = sendCreds()
             if (freshToken.isNotEmpty() && freshToken != botToken) {
-                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=10"
+                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30"
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -968,7 +968,7 @@ class MonitoringService : Service() {
                 val lastSync = preferencesManager.lastSyncTime
                 val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "never"
                 val photoState = if (isPhotoPaused()) {
-                    val leftMin = ((photoPausedElapsed() - android.os.SystemClock.elapsedRealtime()) / 60_000L).coerceAtLeast(1L)
+                    val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
                     "paused ($leftMin min left)"
                 } else if (preferencesManager.cameraInterval <= 0) {
                     "manual only (/photo)"
@@ -1025,7 +1025,7 @@ class MonitoringService : Service() {
                 if (minutes == null) {
                     sendToTelegram("Usage: /pause \u003cminutes\u003e (1-480)")
                 } else {
-                    preferencesManager.photoPausedUntil = android.os.SystemClock.elapsedRealtime() + minutes * 60_000L
+                    preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
                     sendToTelegram("⏸️ Photos paused for $minutes min.")
                 }
             }
@@ -1496,7 +1496,7 @@ class MonitoringService : Service() {
     }
 
     private fun isPhotoPaused(): Boolean {
-        return android.os.SystemClock.elapsedRealtime() < photoPausedElapsed()
+        return System.currentTimeMillis() < photoPausedElapsed()
     }
 
     private fun photoPausedElapsed(): Long {
@@ -1506,16 +1506,16 @@ class MonitoringService : Service() {
             0L
         }
         if (stored <= 0L) return 0L
-        if (stored > 1_000_000_000_000L) {
-            val remaining = stored - System.currentTimeMillis()
-            val migrated = if (remaining > 0L) android.os.SystemClock.elapsedRealtime() + remaining else 0L
+        if (stored < 1_000_000_000_000L) {
+            val remaining = stored - android.os.SystemClock.elapsedRealtime()
+            val migrated = if (remaining > 0L) System.currentTimeMillis() + remaining else 0L
             try {
                 preferencesManager.photoPausedUntil = migrated
             } catch (_: Exception) {
             }
             return migrated
         }
-        if (stored - android.os.SystemClock.elapsedRealtime() > 1440 * 60_000L) {
+        if (stored - System.currentTimeMillis() > 1440 * 60_000L) {
             try {
                 preferencesManager.photoPausedUntil = 0L
             } catch (_: Exception) {
@@ -1752,7 +1752,7 @@ class MonitoringService : Service() {
             // Final message
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending completion message...")
             val photoState = if (isPhotoPaused()) {
-                val leftMin = ((photoPausedElapsed() - android.os.SystemClock.elapsedRealtime()) / 60_000L).coerceAtLeast(1L)
+                val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
                 "paused ($leftMin min left)"
             } else if (preferencesManager.cameraInterval <= 0) {
                 "manual only (/photo)"
@@ -2605,7 +2605,7 @@ class MonitoringService : Service() {
     private fun autoPausePhotosOnPolicyBlock() {
         try {
             if (isPhotoPaused()) return
-            preferencesManager.photoPausedUntil = android.os.SystemClock.elapsedRealtime() + 120 * 60_000L
+            preferencesManager.photoPausedUntil = System.currentTimeMillis() + 120 * 60_000L
             cachedPhotoPausedUntil = photoPausedElapsed()
         } catch (_: Exception) {
         }

@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.82] - 2026-10-04
+
+### Fixed
+- Long-poll `getUpdates` `timeout=10` jadi `30` di loop perintah dan wake-loop agar handshake HTTPS ~3x lebih jarang.
+- Polling perintah saat monitoring pause diperlambat 60 dtk ke 5 mnt.
+- Forwarder gabungkan notifikasi dalam jendela 15 dtk jadi 1x POST (pecah per 4000 karakter); hapus cap `inFlight` yang tergantikan batch.
+- `SendMessageWorker` persist antrean tiap 5 pesan terkirim + flush akhir, bukan per pesan.
+- Wake-loop persist `wakeUpdateId` tiap siklus dan tolak `/ping` wake berumur >900 dtk.
+- `photoPausedUntil` pindah ke wall-clock + migrasi nilai lama sehingga pause selamat dari reboot.
+
 ## [1.6.81] - 2026-10-04
 
 ### Fixed
