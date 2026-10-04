@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.75] - 2026-10-04
+
 ### Fixed
 - `SendMessageWorker` hapus pesan terkirim/ditolak inkremental per pesan agar kill di tengah batch 20 tak kirim ulang duplikat; `removeMessages` akhir dipertahankan sebagai jaring pengaman.
 
