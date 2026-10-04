@@ -114,7 +114,7 @@ class CallLogRepository(private val context: Context) {
         )
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
-        return filterCallsByNumber(getAllCalls(500), norm)
+        return filterCallsByNumber(getAllCalls(200), norm)
     }
 
     private fun altVariant(digits: String): String? {
@@ -132,7 +132,7 @@ class CallLogRepository(private val context: Context) {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        if (want.length < 9) return false
+        if (want.length < 10) return false
         if (have.endsWith(want) || want.endsWith(have)) return true
         if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
         if (haveAlt != null) {

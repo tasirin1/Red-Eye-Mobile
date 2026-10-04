@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.84] - 2026-10-04
+
+### Fixed
+- `sendFitted` kembalikan `false` saat kirim langsung gagal (walau sudah antre) sehingga loop `checkAndSendNewData`/`sendInitialData` berhenti di chunk pertama yang gagal, bukan hantam 10 chunk saat offline; kursor tetap maju karena salinan sudah antre.
+- `sendToTelegram` teruskan `replyMarkup`/`queueOnFail` ke `sendFitted` (tombol dipasang di chunk terakhir), sebelumnya selalu dibuang.
+- Owner auto-learn hanya via `/start` chat privat + notifikasi ke grup config; wake-loop forwarder tak lagi klaim owner dari `/ping` privat (bangun privat sebelum link tetap lewat `/ping` grup).
+- Polling perintah saat pause dipercepat 5 mnt ke 60 dtk agar `/resume` responsif.
+- `fetchLocation` dahulukan NETWORK sebelum GPS agar `/location` cepat di dalam ruangan.
+- Notifikasi terpotong spam-filter tetap dicatat ke `/lastnotif` (klaim notice kini benar); dedup exact-match dipersingkat 30 dtk ke 10 dtk agar OTP kirim-ulang tak tertelan.
+- Fallback `/history` SMS/panggilan 500 ke 200 entri; suffix-match nomor diperketat 9 ke 10 digit.
+- `sendInitialData` deteksi paginasi terpotong (5 page penuh) dan kirim pesan partial jujur, bukan klaim complete.
+- Wake-loop pakai offset `max(mainLast, wakeUpdateId)+1` agar tak fetch ulang backlog yang sama tiap 25 dtk saat service utama mati.
+- `TOKEN_REGEX` Setup wajib `6+` digit id dan `20+` karakter secret agar typo tertolak di UI.
+
 ## [1.6.83] - 2026-10-04
 
 ### Fixed

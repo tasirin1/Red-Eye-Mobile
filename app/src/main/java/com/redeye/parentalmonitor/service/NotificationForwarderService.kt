@@ -216,12 +216,17 @@ class NotificationForwarderService : NotificationListenerService() {
                     val keyFb = pkg + "\n" + fbTitle + "\n" + fbText
                     val dupFb = synchronized(lastSent) {
                         val prev = lastSent[keyFb] ?: 0L
-                        if (nowFb - prev < 30_000L) true else {
+                        if (nowFb - prev < 10_000L) true else {
                             lastSent[keyFb] = nowFb
                             false
                         }
                     }
-                    if (dupFb || pkgFull(pkg, nowFb)) return@launch
+                    if (dupFb) return@launch
+                    if (pkgFull(pkg, nowFb)) {
+                        val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
+                        record(spamLabel, fbTitle, fbText)
+                        return@launch
+                    }
                     val label = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
                         packageManager.getApplicationLabel(info).toString().also { resolved ->
@@ -338,7 +343,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()
         synchronized(lastSent) {
-            if (now - (lastSent[key] ?: 0L) < 30_000L) return
+            if (now - (lastSent[key] ?: 0L) < 10_000L) return
             lastSent[key] = now
         }
         if (pkgFull(pkg, now)) {
@@ -352,6 +357,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 dropNoticeAt[pkg] = now
                 forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(cachedLabel) + " in 2 min, extras kept in /lastnotif history.", "")
             }
+            record(cachedLabel, title, text)
             return
         }
         val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
@@ -441,7 +447,7 @@ class NotificationForwarderService : NotificationListenerService() {
             false
         }
         if (!resumeOk) return
-        var ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }
+        val ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }
         val mainLast = try { prefs.lastUpdateId } catch (_: Exception) { 0L }
         if (wakeUpdateId < 0L) {
             wakeUpdateId = try {
@@ -453,7 +459,7 @@ class NotificationForwarderService : NotificationListenerService() {
             wakeUpdateId = maxOf(wakeUpdateId, mainLast)
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
-        val offset = mainLast + 1L
+        val offset = maxOf(mainLast, wakeUpdateId) + 1L
         val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30"
         val response = try {
             TelegramClient.api.getUpdates(url)
@@ -496,13 +502,6 @@ class NotificationForwarderService : NotificationListenerService() {
                 msg?.chat?.id?.toString() ?: cb?.message?.chat?.id?.toString().orEmpty()
             } catch (_: Exception) {
                 ""
-            }
-            if (ownerId == 0L && fromId.isNotEmpty() && chatIdStr == fromId && fromId != owner) {
-                ownerId = fromId.toLongOrNull() ?: 0L
-                try {
-                    if (ownerId != 0L) prefs.ownerUserId = ownerId
-                } catch (_: Exception) {
-                }
             }
             val wakeOwner = fromId == owner || chatIdStr == owner || (ownerId != 0L && fromId == ownerId.toString())
             if (!wakeOwner) continue

