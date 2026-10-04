@@ -203,6 +203,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
+        private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -408,6 +409,40 @@ class PreferencesManager(context: Context) {
     var ownerUserId: Long
         get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
+
+    fun addWakePingIds(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        try {
+            val cur = sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.toMutableSet() ?: mutableSetOf()
+            for (id in ids) cur.add(id.toString())
+            while (cur.size > 50) cur.remove(cur.first())
+            sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun wakePingSeen(updateId: Long): Boolean {
+        return try {
+            sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.contains(updateId.toString()) == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun clearWakePingIds() {
+        try {
+            sharedPreferences.edit().remove(KEY_WAKE_PING_IDS).apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun removeWakePingId(updateId: Long) {
+        try {
+            val cur = sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.toMutableSet() ?: return
+            if (cur.remove(updateId.toString())) sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
+        } catch (_: Exception) {
+        }
+    }
 
     fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
         val changed = try {

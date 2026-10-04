@@ -279,6 +279,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
             try { prefs.initialSyncStarted = false } catch (_: Exception) { }
+            try { prefs.clearWakePingIds() } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -468,32 +469,42 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun stopMonitoringConfirmed() {
-        prefs.setMonitoringActive(false)
-        try {
-            stopService(Intent(this, MonitoringService::class.java))
-            Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                try {
+                    stopService(Intent(this@SetupActivity, MonitoringService::class.java))
+                    Toast.makeText(this@SetupActivity, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+                }
+                updateStatus()
+            }
         }
-        updateStatus()
     }
 
     private fun startMonitoringConfirmed() {
-        prefs.setMonitoringActive(true)
-        val intent = Intent(this, MonitoringService::class.java).apply {
-            action = MonitoringService.ACTION_START_MONITORING
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
+                    action = MonitoringService.ACTION_START_MONITORING
+                }
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(intent)
+                    } else {
+                        startService(intent)
+                    }
+                    Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+                }
+                updateStatus()
             }
-            Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
         }
-        updateStatus()
     }
 
     private fun isBatteryExempt(): Boolean {
@@ -518,13 +529,19 @@ class SetupActivity : AppCompatActivity() {
             }
             return
         }
-        prefs.notifForwardEnabled = !prefs.notifForwardEnabled
-        Toast.makeText(
-            this,
-            getString(if (prefs.notifForwardEnabled) R.string.setup_notif_on else R.string.setup_notif_off),
-            Toast.LENGTH_SHORT
-        ).show()
-        updateStatus()
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val next = try { !prefs.notifForwardEnabled } catch (_: Exception) { true }
+            try { prefs.notifForwardEnabled = next } catch (_: Exception) { }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                Toast.makeText(
+                    this@SetupActivity,
+                    getString(if (next) R.string.setup_notif_on else R.string.setup_notif_off),
+                    Toast.LENGTH_SHORT
+                ).show()
+                updateStatus()
+            }
+        }
     }
 
     private fun requestBatteryExemption() {

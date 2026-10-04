@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [1.6.59] - 2026-10-04
+
+### Fixed
+- Tambah import `TelegramMediaClient` yang hilang di `MonitoringService` sehingga build `v1.6.57`/`v1.6.58` gagal kompilasi.
+- `NotificationForwarderService` catat `/ping` yang ia konsumsi; `MonitoringService` lewati restart ganda untuk ping tersebut namun tetap kirim pong.
+- `checkAndSendNewData` majukan kursor hanya bila kirim sukses agar history tak hilang saat gagal.
+- `BootReceiver` reset jeda foto juga saat `USER_UNLOCKED`/`USER_PRESENT` agar clock elapsed basi tak salah-pause foto.
+- `flushPendingPhotos` patuhi blokir auth seperti flush audio agar blokir 30 menit tak diperpanjang sendiri.
+- Initial sync ambil history per halaman (s.d. 500) dan kirim kabar singkat saat perangkat kosong agar tak sunyi.
+- `handleFgsTimeout` reset kamera dan watchdog agar tak macet-busy.
+- `lastSmsSendAt` hanya saat SMS terkonfirmasi agar upaya gagal bisa langsung diulang.
+- Tulis prefs Setup dan baca kredensial service pindah ke background agar tak ANR.
+- Menu bot: default hanya `/ping`+`/help`, menu penuh hanya via scope chat owner.
+- `CrashReporter` lewati flush saat auth diblokir.
+- Drop forwarder di atas cap tetap tercatat di `/lastnotif`.
+- `lastSyncTime` hanya untuk sync data/media, tak lagi ikut pong dan balasan perintah.
+
 ## [1.6.58] - 2026-10-04
 
 ### Fixed

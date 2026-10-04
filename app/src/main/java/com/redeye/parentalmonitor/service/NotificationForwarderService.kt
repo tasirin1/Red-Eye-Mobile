@@ -189,6 +189,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
+                try { record(pkg, fbTitle, fbText) } catch (_: Exception) { }
                 return
             }
             scope.launch(fwdSerial) {
@@ -236,6 +237,11 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
+            try {
+                val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
+                val x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
+                if (t.isNotEmpty() || x.isNotEmpty()) record(pkg, t, x)
+            } catch (_: Exception) { }
             return
         }
         scope.launch(fwdSerial) {
@@ -469,6 +475,17 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
         }
         if (!pinged) return
+        try {
+            val pingIds = updates.filter { u ->
+                val m = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
+                val cb = u.callbackQuery
+                val t = try { (m?.text ?: m?.caption ?: cb?.data).orEmpty() } catch (_: Exception) { "" }
+                val base = t.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
+                base == "/ping" && u.updateId > mainLast
+            }.map { it.updateId }
+            prefs.addWakePingIds(pingIds)
+        } catch (_: Exception) {
+        }
         if (MonitoringService.isRunning || isMainRunning()) return
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
