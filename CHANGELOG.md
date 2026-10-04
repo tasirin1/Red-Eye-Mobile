@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.86] - 2026-10-04
+
 ### Fixed
 - `NotificationForwarderService.forwardLocked` gagal kompilasi (bare `return` dalam `(): Boolean` + 2 panggilan kurang arg `pkg`); kini `return false` + batch teruskan `""` agar kompilasi hijau.
 - `MonitoringService.sendFitted` jalur pendek probe-then-queue (`sendToTelegram` tanpa antre lalu antre sekali) agar tak balap ukuran antrean lintas-thread forwarder/service.
