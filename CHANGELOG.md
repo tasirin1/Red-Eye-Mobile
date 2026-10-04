@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.85] - 2026-10-04
+
+### Fixed
+- `SendMessageWorker.sendDropNotice` gagal kompilasi (outer `catch` pakai `text` dalam-scope `try`); struktur ditulis ulang agar fallback antrean tetap jalan. Proyek tak bisa build sejak `v1.6.83` — temuan kritis.
+- `sendFitted` jalur pendek kini samakan semantik split: return `false` bila pesan masuk antrean (cek tumbuhnya antrean), sehingga `else break` offline bekerja untuk semua ukuran pesan.
+- Worker `sendChunked`: sisa part yang belum terkirim diantrekan sebagai pesan baru dan pesan asli dianggap terkirim — tanpa duplikat, tanpa hilang saat retry.
+- Reset `LAST_UPDATE_ID`/`WAKE_UPDATE_ID` hanya bila token bot berubah (bukan tiap simpan config), cegah eksekusi ganda perintah pasca re-save.
+- `sendStatusNow` antrekan teks status untuk semua 400, bukan hanya chat-missing.
+- Scheduler delay>0 pakai `REPLACE` agar rantai retry 429 coalesce jadi satu, bukan APPEND tak terbatas.
+- `/history` buang filter ganda service (repo sudah filter); `searchContacts` pakai `QUERY_ARG_LIMIT` 10; eviksi `wakePingIds` buang ID terkecil dulu.
+
 ## [1.6.84] - 2026-10-04
 
 ### Fixed

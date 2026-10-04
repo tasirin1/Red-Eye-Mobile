@@ -660,11 +660,11 @@ class SetupActivity : AppCompatActivity() {
                             prefs.credentialErrorAt = System.currentTimeMillis()
                         } catch (_: Exception) {
                         }
-                        try {
-                            MessageQueue.getInstance(applicationContext).addMessage(text)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                        } catch (_: Exception) {
-                        }
+                    }
+                    try {
+                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
                     }
                 } else {
                     try {

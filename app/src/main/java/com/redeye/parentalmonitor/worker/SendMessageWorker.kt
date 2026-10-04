@@ -347,8 +347,9 @@ class SendMessageWorker(
         var rateAfter = 0L
         var authCode = 0
         var failed = 0
+        var failedKept = false
         var rejected = 0
-        for (part in parts) {
+        for ((idx, part) in parts.withIndex()) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
                     delay(1000)
@@ -361,46 +362,52 @@ class SendMessageWorker(
                     authCode = outcome.code
                     break
                 }
-                SendOutcome.Failed -> { failed++; break }
+                SendOutcome.Failed -> {
+                    failed++
+                    if (!failedKept) {
+                        try {
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                            failedKept = true
+                        } catch (_: Exception) {
+                        }
+                    }
+                    break
+                }
                 SendOutcome.Rejected -> rejected++
             }
         }
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
         if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
-        if (failed > 0) return SendOutcome.Failed
+        if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
         if (rejected > 0) return SendOutcome.Rejected
         return SendOutcome.Sent
     }
 
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
+        val clean = try {
+            sample.replace(Html.tagStripRegex, "").trim().take(120)
+        } catch (_: Exception) {
+            ""
+        }
+        val text = if (clean.isEmpty()) {
+            "⚠️ $count queued message(s) dropped after max retries."
+        } else {
+            "⚠️ $count queued message(s) dropped (rejected). Sample: $clean"
+        }
         try {
-            val clean = try {
-                sample.replace(Html.tagStripRegex, "").trim().take(120)
-            } catch (_: Exception) {
-                ""
-            }
-            val text = if (clean.isEmpty()) {
-                "⚠️ $count queued message(s) dropped after max retries."
-            } else {
-                "⚠️ $count queued message(s) dropped (rejected). Sample: $clean"
-            }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = text, parseMode = null)
             )
             if (response.isSuccessful && response.body()?.ok == true) return
-            try {
-                messageQueue.addMessage(text)
-                MessageScheduler.scheduleMessageSend(applicationContext)
-            } catch (_: Exception) {
-            }
         } catch (_: Exception) {
-            try {
-                messageQueue.addMessage(text)
-                MessageScheduler.scheduleMessageSend(applicationContext)
-            } catch (_: Exception) {
-            }
+        }
+        try {
+            messageQueue.addMessage(text)
+            MessageScheduler.scheduleMessageSend(applicationContext)
+        } catch (_: Exception) {
         }
     }
 

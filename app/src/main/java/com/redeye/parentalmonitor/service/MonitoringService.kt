@@ -1418,12 +1418,12 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /history \u003cnumber\u003e (min 7 digits)")
                 } else {
                     val calls = try {
-                        callLogRepository.getCallsForNumber(digits, 50).filter { numberMatches(it.number, digits) }.take(5)
+                        callLogRepository.getCallsForNumber(digits, 50).take(5)
                     } catch (_: Exception) {
                         emptyList()
                     }
                     val sms = try {
-                        smsRepository.getSmsForNumber(digits, 50).filter { numberMatches(it.address, digits) }.take(5)
+                        smsRepository.getSmsForNumber(digits, 50).take(5)
                     } catch (_: Exception) {
                         emptyList()
                     }
@@ -2064,7 +2064,10 @@ class MonitoringService : Service() {
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (message.length <= 4000) {
-            return sendToTelegram(message, replyMarkup, queueOnFail)
+            if (!queueOnFail) return sendToTelegram(message, replyMarkup, false)
+            val before = messageQueue.getQueueSize()
+            if (!sendToTelegram(message, replyMarkup, true)) return false
+            return messageQueue.getQueueSize() == before
         }
         var ok = true
         val failed = mutableListOf<String>()
@@ -3060,19 +3063,37 @@ class MonitoringService : Service() {
     private fun searchContacts(query: String): List<Pair<String, String>> {
         val out = mutableListOf<Pair<String, String>>()
         try {
-            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-            val projection = arrayOf(
-                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
-            val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            val cursor = contentResolver.query(
-                uri,
-                projection,
-                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'",
-                arrayOf("%$escaped%"),
-                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
-            )
+            val cursor = try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    val bundle = android.os.Bundle().apply {
+                        putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'")
+                        putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%"))
+                        putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")
+                        putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, 10)
+                    }
+                    contentResolver.query(uri, projection, bundle, null)
+                } else {
+                    contentResolver.query(
+                        uri,
+                        projection,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'",
+                        arrayOf("%$escaped%"),
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+                    )
+                }
+            } catch (_: Exception) {
+                try {
+                    contentResolver.query(
+                        uri,
+                        projection,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'",
+                        arrayOf("%$escaped%"),
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
             cursor?.use { c ->
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)

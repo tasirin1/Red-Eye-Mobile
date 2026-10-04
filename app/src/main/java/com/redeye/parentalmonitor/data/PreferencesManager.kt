@@ -420,7 +420,9 @@ class PreferencesManager(context: Context) {
         try {
             val cur = sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.toMutableSet() ?: mutableSetOf()
             for (id in ids) cur.add(id.toString())
-            while (cur.size > 50) cur.remove(cur.first())
+            while (cur.size > 50) {
+                cur.remove(cur.minByOrNull { it.toLongOrNull() ?: Long.MAX_VALUE } ?: break)
+            }
             sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
         } catch (_: Exception) {
         }
@@ -455,6 +457,7 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
             true
         }
+        val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
         val editor = sharedPreferences.edit()
         if (changed) {
@@ -469,7 +472,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        if (changed) {
+        if (tokenChanged) {
             editor.putLong(KEY_LAST_UPDATE_ID, 0L)
             editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
             editor.remove(KEY_WAKE_PING_IDS)
@@ -483,6 +486,7 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
             true
         }
+        val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
         val editor = sharedPreferences.edit()
         if (changed) {
@@ -495,7 +499,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        if (changed) {
+        if (tokenChanged) {
             editor.putLong(KEY_LAST_UPDATE_ID, 0L)
             editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
             editor.remove(KEY_WAKE_PING_IDS)
