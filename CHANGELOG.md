@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.66] - 2026-10-04
+
 ### Fixed
 - `CrashReporter.flushPending` kirim plain-text dan fallback pakai `fitted` agar laporan >4096 char tak loop `400`.
 - `SetupActivity` clear-credentials ikut reset `pendingSmsOwner`.
