@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+## [1.6.58] - 2026-10-04
+
+### Fixed
+- `CrashReporter` tulis crash tanpa IO `boot_meta` di crash-thread; umur monotonic disematkan di baris pertama berkas.
+- `SetupActivity` wipe kredensial ikut reset kursor SMS/panggilan, sync, foto, dan flag initial sync agar setup baru tak lewatkan history.
+- `SetupActivity` save/test pakai nomor generasi agar job lama yang kalah tak menimpa pengaturan baru.
+- `NotificationForwarderService` batasi antrean serial 64 agar burst notif tak OOM; kursor wake diselaraskan ke `lastUpdateId` utama agar `/ping` tak dieksekusi ganda.
+- `SendMessageWorker` backoff gagal 60 detik dan retry terjadwal coalesce (`KEEP`) agar pesan baru tak tertahan di belakang antrean gagal.
+- `backup_rules.xml`/`data_extraction_rules.xml` kecualikan `boot_meta` agar throttle basi tak ikut restore.
+- `BootReceiver` kembalikan fallback `USER_PRESENT` untuk OEM telat boot dengan throttle 60 detik.
+- `TelegramApi`/`TelegramMediaClient` pakai satu connection pool dan batas dispatcher 4/3 + 2/1 agar flush foto tak pacu 429.
+- `/ping` khusus owner agar pong/delay tak bocorkan liveness ke anggota grup; daftar `/help` viewer disesuaikan.
+- Varian nomor `62`/`0` dibatasi seluler (`628`/`08`) agar `626...` tak false-positive; banding tanpa alokasi list per baris.
+- Initial sync lewati banner `Monitoring started` saat tak ada history baru agar restart tak dobel kirim.
+
 ## [1.6.57] - 2026-10-04
 
 ### Fixed

@@ -45,10 +45,16 @@ object CrashReporter {
         return try {
             val file = pendingFile(context.applicationContext)
             if (!file.exists()) null
-            else file.readText().takeIf { it.isNotBlank() }
+            else stripElapsed(file.readText()).takeIf { it.isNotBlank() }
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun stripElapsed(raw: String): String {
+        val nl = raw.indexOf('\n')
+        if (nl <= 0) return raw
+        return if (raw.substring(0, nl).toLongOrNull() != null) raw.substring(nl + 1) else raw
     }
 
     fun clearPending(context: Context) {
@@ -75,11 +81,7 @@ object CrashReporter {
 
     private fun savePending(context: Context, report: String) {
         try {
-            pendingFile(context).writeText(report)
-            try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("crash_saved_elapsed", android.os.SystemClock.elapsedRealtime()).apply()
-            } catch (_: Exception) {
-            }
+            pendingFile(context).writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + report)
         } catch (_: Exception) {
         }
     }
@@ -88,12 +90,20 @@ object CrashReporter {
         if (!flushing.compareAndSet(false, true)) return
         try {
             val file = pendingFile(context)
-            val report = try {
+            val raw = try {
                 if (!file.exists()) return
                 file.readText()
             } catch (_: Exception) {
                 return
             }
+            if (raw.isBlank()) {
+                try {
+                    file.delete()
+                } catch (_: Exception) {
+                }
+                return
+            }
+            val report = stripElapsed(raw)
             if (report.isBlank()) {
                 try {
                     file.delete()
@@ -117,9 +127,7 @@ object CrashReporter {
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
-                val savedElapsed = try {
-                    context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).getLong("crash_saved_elapsed", 0L)
-                } catch (_: Exception) { 0L }
+                val savedElapsed = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
                 val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
                 val age = if (wallAge < 0L || monoAge < 0L) 0L else maxOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {

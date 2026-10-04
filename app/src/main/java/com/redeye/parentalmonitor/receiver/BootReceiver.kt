@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
+            Intent.ACTION_USER_PRESENT,
             ACTION_QUICKBOOT_POWERON
         )
 
@@ -61,10 +62,10 @@ class BootReceiver : BroadcastReceiver() {
     private fun handleBoot(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        if (!updated && nowBoot - lastHandleAt < 10_000L) return
+        if (!updated && nowBoot - lastHandleAt < 60_000L) return
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            if (!updated && nowBoot - meta.getLong("last_handle_elapsed", 0L) < 10_000L) return
+            if (!updated && nowBoot - meta.getLong("last_handle_elapsed", 0L) < 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {

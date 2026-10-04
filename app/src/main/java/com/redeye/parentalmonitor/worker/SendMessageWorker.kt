@@ -196,7 +196,7 @@ class SendMessageWorker(
         }
         if (messageQueue.getQueueSize() > 0) {
             try {
-                val backoffMs = if (failedIds.isNotEmpty()) 5 * 60_000L else 0L
+                val backoffMs = if (failedIds.isNotEmpty()) 60_000L else 0L
                 MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
             } catch (_: Exception) {
             }

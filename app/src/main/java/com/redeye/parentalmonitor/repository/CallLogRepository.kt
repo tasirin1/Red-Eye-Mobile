@@ -108,28 +108,29 @@ class CallLogRepository(private val context: Context) {
         return filterCallsByNumber(getAllCalls(200), norm)
     }
 
-    private fun idVariants(digits: String): List<String> {
-        if (digits.isEmpty()) return emptyList()
-        val alt = if (digits.startsWith("62") && digits.length > 10) "0" + digits.substring(2) else if (digits.startsWith("0") && digits.length > 1) "62" + digits.substring(1) else digits
-        return if (alt == digits) listOf(digits) else listOf(digits, alt)
+    private fun altVariant(digits: String): String? {
+        if (digits.isEmpty()) return null
+        if (digits.startsWith("628") && digits.length in 10..15) return "0" + digits.substring(2)
+        if (digits.startsWith("08") && digits.length in 10..14) return "62" + digits.substring(1)
+        return null
     }
 
-    private fun numbersEqual(have: String, want: String): Boolean {
+    private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
         if (have == want || have.endsWith(want) || want.endsWith(have)) return true
-        for (a in idVariants(have)) {
-            for (b in idVariants(want)) {
-                if (a.endsWith(b) || b.endsWith(a)) return true
-            }
-        }
+        if (wantAlt != null && (have == wantAlt || have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
+        val haveAlt = altVariant(have) ?: return false
+        if (haveAlt == want || haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
+        if (wantAlt != null && (haveAlt == wantAlt || haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
         return false
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
         if (want.isEmpty()) return emptyList()
         if (want.length < 7) return rows.filter { it.number.filter { c -> c.isDigit() } == want }
+        val wantAlt = altVariant(want)
         return rows.filter {
             val have = it.number.filter { c -> c.isDigit() }
-            have.isNotEmpty() && numbersEqual(have, want)
+            have.isNotEmpty() && numbersEqualFast(have, want, wantAlt)
         }
     }
 

@@ -38,6 +38,8 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var notifButton: MaterialButton
     private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
+    private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
 
     private val requiredPermissions: Array<String>
         get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
@@ -270,6 +272,13 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
             try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }
             try { prefs.wakeUpdateId = 0L } catch (_: Exception) { }
+            try { prefs.lastSmsId = 0L } catch (_: Exception) { }
+            try { prefs.lastCallTimestamp = 0L } catch (_: Exception) { }
+            try { prefs.lastCallId = 0L } catch (_: Exception) { }
+            try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
+            try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
+            try { prefs.initialSyncDone = false } catch (_: Exception) { }
+            try { prefs.initialSyncStarted = false } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -296,6 +305,7 @@ class SetupActivity : AppCompatActivity() {
         }
         val interval = intervalParsed
         val cameraInterval = cameraParsed
+        val mySave = saveSeq.incrementAndGet()
         try { saveJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
@@ -318,10 +328,12 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
+            if (mySave != saveSeq.get()) return@launch
             try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
             }
+            if (mySave != saveSeq.get()) return@launch
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -358,6 +370,7 @@ class SetupActivity : AppCompatActivity() {
         val probeCamera = probeCameraParsed
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
+        val myTest = testSeq.incrementAndGet()
         try { testJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
@@ -378,13 +391,15 @@ class SetupActivity : AppCompatActivity() {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
                 if (resp.isSuccessful && resp.body()?.ok == true) {
-                    persistTestSettings(token, chatId, probeSync, probeCamera)
+                    if (myTest != testSeq.get()) return@launch
+                    persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
+                    if (myTest != testSeq.get()) return@launch
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)
                         chatIdInput.setText(STORED_MASK)
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
-                        reviveMonitoringIfNeeded()
+                        if (myTest == testSeq.get()) reviveMonitoringIfNeeded()
                     }
                 } else {
                     val code = resp.code()
@@ -407,7 +422,8 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int) {
+    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int) {
+        if (myTest != testSeq.get()) return
         prefs.saveCoreConfig(token, chatId, syncInterval, cameraInterval)
     }
 

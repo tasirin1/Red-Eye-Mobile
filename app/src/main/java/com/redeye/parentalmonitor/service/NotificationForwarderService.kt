@@ -81,6 +81,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     companion object {
         private const val MAX_HISTORY = 20
+        private const val MAX_QUEUED = 64
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
@@ -186,6 +187,10 @@ class NotificationForwarderService : NotificationListenerService() {
                 ""
             }
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
+            if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
+                pendingPosts.decrementAndGet()
+                return
+            }
             scope.launch(fwdSerial) {
                 try {
                     if (!forwardingAllowed()) return@launch
@@ -223,11 +228,16 @@ class NotificationForwarderService : NotificationListenerService() {
                     } catch (_: Exception) {
                     }
                 } catch (_: Exception) {
+                } finally {
+                    pendingPosts.decrementAndGet()
                 }
             }
             return
         }
-        pendingPosts.incrementAndGet()
+        if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
+            pendingPosts.decrementAndGet()
+            return
+        }
         scope.launch(fwdSerial) {
             try {
                 handlePosted(pkg, notifId, notification, groupKey, isSummary)
@@ -393,12 +403,15 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!resumeOk) return
         var ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }
+        val mainLast = try { prefs.lastUpdateId } catch (_: Exception) { 0L }
         if (wakeUpdateId < 0L) {
             wakeUpdateId = try {
-                maxOf(prefs.wakeUpdateId, prefs.lastUpdateId)
+                maxOf(prefs.wakeUpdateId, mainLast)
             } catch (_: Exception) {
                 0L
             }
+        } else {
+            wakeUpdateId = maxOf(wakeUpdateId, mainLast)
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
         val offset = wakeUpdateId + 1L
@@ -419,6 +432,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var pinged = false
         for (u in updates) {
             if (u.updateId > maxId) maxId = u.updateId
+            if (u.updateId <= mainLast) continue
             val msg = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
             val cb = u.callbackQuery
             val text = try {
@@ -455,6 +469,7 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
         }
         if (!pinged) return
+        if (MonitoringService.isRunning || isMainRunning()) return
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING

