@@ -1,7 +1,6 @@
 package com.redeye.parentalmonitor.repository
 
 import android.content.Context
-import android.database.Cursor
 import android.provider.CallLog
 import com.redeye.parentalmonitor.data.models.CallData
 

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- Import mati: `android.database.Cursor` (`CallLogRepository.kt`) dan `CoroutineScope`/`Dispatchers`/`launch` (`CameraService.kt`); hanya bersih-bersih warning kompiler.
+
 ## [1.6.79] - 2026-10-04
 
 ### Removed
