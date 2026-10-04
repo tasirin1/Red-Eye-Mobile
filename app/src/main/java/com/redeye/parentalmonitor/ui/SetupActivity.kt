@@ -18,8 +18,10 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.redeye.parentalmonitor.R
+import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.receiver.AdminReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
@@ -606,6 +608,7 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            var pending = ""
             try {
                 val token = prefs.botToken
                 val chatId = prefs.chatId
@@ -619,10 +622,17 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
+                pending = text
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 if (ok) {
                     prefs.credentialError = ""
                     prefs.credentialErrorAt = 0L
+                } else {
+                    try {
+                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
+                    }
                 }
                 val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, resp.code())
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
@@ -631,6 +641,13 @@ class SetupActivity : AppCompatActivity() {
                     if (ok) reviveMonitoringIfNeeded()
                 }
             } catch (e: Exception) {
+                try {
+                    if (pending.isNotEmpty()) {
+                        MessageQueue.getInstance(applicationContext).addMessage(pending)
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    }
+                } catch (_: Exception) {
+                }
                 val failure = getString(R.string.setup_test_fail, redactToken(e.message))
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, failure, Toast.LENGTH_LONG).show()

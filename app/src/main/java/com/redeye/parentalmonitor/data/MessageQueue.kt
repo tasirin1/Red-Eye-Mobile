@@ -144,6 +144,7 @@ class MessageQueue private constructor(context: Context) {
         volatileQueue.removeAll { it.timestamp < cutoff }
         val dropped = before - volatileQueue.size
         if (dropped > 0) {
+            overflowDrops.addAndGet(dropped.toLong())
             android.util.Log.w("MessageQueue", "Dropped $dropped expired volatile message(s)")
         }
     }
@@ -247,6 +248,7 @@ class MessageQueue private constructor(context: Context) {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
             val freshCached = it.filter { q -> q.timestamp >= cutoffCached }.toMutableList()
             if (freshCached.size != it.size) {
+                overflowDrops.addAndGet((it.size - freshCached.size).toLong())
                 android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
                 persistLocked(freshCached)
                 return freshCached
@@ -270,6 +272,7 @@ class MessageQueue private constructor(context: Context) {
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()
         if (fresh.size != loaded.size) {
+            overflowDrops.addAndGet((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
             persistLocked(fresh)
             return fresh

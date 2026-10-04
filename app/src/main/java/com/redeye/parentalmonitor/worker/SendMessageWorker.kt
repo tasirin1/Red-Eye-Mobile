@@ -372,7 +372,7 @@ class SendMessageWorker(
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             TelegramClient.api.sendMessage(
                 url,
-                TelegramMessage(chatId = chatId, text = text)
+                TelegramMessage(chatId = chatId, text = text, parseMode = null)
             )
         } catch (_: Exception) {
         }

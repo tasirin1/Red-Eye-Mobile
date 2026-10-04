@@ -451,13 +451,15 @@ class MonitoringService : Service() {
         return cachedOwnerId != 0L && senderId == cachedOwnerId.toString()
     }
 
-    private fun rememberOwner(id: Long) {
-        if (id == 0L) return
+    private fun rememberOwner(id: Long): Boolean {
+        if (id == 0L) return false
+        if (id == cachedOwnerId) return false
         cachedOwnerId = id
         try {
             preferencesManager.ownerUserId = id
         } catch (_: Exception) {
         }
+        return true
     }
 
     private fun isFreshLocation(last: android.location.Location): Boolean {
@@ -682,6 +684,12 @@ class MonitoringService : Service() {
             }
             if (seen) continue
             try {
+                if (update.updateId > preferencesManager.lastUpdateId) {
+                    preferencesManager.setLastUpdateIdSync(update.updateId)
+                }
+            } catch (_: Exception) {
+            }
+            try {
                 val callback = update.callbackQuery
                 if (callback != null) {
                     handleCallbackQuery(callback)
@@ -691,7 +699,12 @@ class MonitoringService : Service() {
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
                     if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId) {
-                        rememberOwner(senderId.toLongOrNull() ?: 0L)
+                        val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
+                        if (learned) {
+                            serviceScope.launch {
+                                registerBotCommands()
+                            }
+                        }
                     }
                     val ownerOk = isOwner(senderId)
                     val full = (message?.text ?: message?.caption)?.trim()
@@ -1820,7 +1833,6 @@ class MonitoringService : Service() {
         if (normalized.isEmpty() || want.isEmpty()) return false
         if (normalized == want) return true
         if (normalized.length < 7 || want.length < 7) return false
-        if (normalized.endsWith(want) || want.endsWith(normalized)) return true
         return numbersEqualFast(normalized, want, altVariant(want))
     }
 
@@ -1832,16 +1844,21 @@ class MonitoringService : Service() {
     }
 
     private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
-        if (wantAlt != null && (have == wantAlt || have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
-        val haveAlt = altVariant(have) ?: return false
-        if (haveAlt == want || haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
-        if (wantAlt != null && (haveAlt == wantAlt || haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
+        if (have == want) return true
+        if (wantAlt != null && have == wantAlt) return true
+        val haveAlt = altVariant(have)
+        if (haveAlt != null) {
+            if (haveAlt == want) return true
+            if (wantAlt != null && haveAlt == wantAlt) return true
+        }
+        if (want.length < 9) return false
+        if (have.endsWith(want) || want.endsWith(have)) return true
+        if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
+        if (haveAlt != null) {
+            if (haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
+            if (wantAlt != null && (haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
+        }
         return false
-    }
-
-    private fun idVariants(digits: String): List<String> {
-        val alt = altVariant(digits) ?: return if (digits.isEmpty()) emptyList() else listOf(digits)
-        return listOf(digits, alt)
     }
 
 
@@ -2015,18 +2032,18 @@ class MonitoringService : Service() {
             var rest = line
             while (rest.length > 4000) {
                 if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString())) ok = false
+                    if (!sendToTelegram(current.toString(), null, false)) ok = false
                     delay(500)
                     current = StringBuilder()
                 }
                 val cut = safeCut(rest, 4000)
-                if (!sendToTelegram(rest.substring(0, cut))) ok = false
+                if (!sendToTelegram(rest.substring(0, cut), null, false)) ok = false
                 delay(500)
                 rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
                 if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString())) ok = false
+                    if (!sendToTelegram(current.toString(), null, false)) ok = false
                     delay(500)
                 }
                 current = StringBuilder()
@@ -2035,14 +2052,19 @@ class MonitoringService : Service() {
             current.append(rest)
         }
         if (current.isNotEmpty()) {
-            if (!sendToTelegram(current.toString())) ok = false
+            if (!sendToTelegram(current.toString(), null, false)) ok = false
+        }
+        if (!ok) {
+            messageQueue.addMessage(message)
+            MessageScheduler.scheduleMessageSend(this)
         }
         return ok
     }
 
     private suspend fun sendToTelegram(
         message: String,
-        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
+        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
+        queueOnFail: Boolean = true
     ): Boolean {
         try {
             if (message.length > 4096) {
@@ -2054,8 +2076,10 @@ class MonitoringService : Service() {
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.w("MonitoringService", "Bot credentials unavailable, queuing message for later")
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                }
                 return false
             }
 
@@ -2064,8 +2088,10 @@ class MonitoringService : Service() {
             
             if (!hasNetwork) {
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                }
                 return false
             }
 
@@ -2090,8 +2116,10 @@ class MonitoringService : Service() {
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                }
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
@@ -2100,8 +2128,10 @@ class MonitoringService : Service() {
                     preferencesManager.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                }
                 return false
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
@@ -2115,8 +2145,10 @@ class MonitoringService : Service() {
                         postAuthFailureReminder(400)
                     } catch (_: Exception) {
                     }
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
+                    if (queueOnFail) {
+                        messageQueue.addMessage(message)
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
                     return false
                 }
                 val plain = message.replace(TAG_STRIP_REGEX, "")
@@ -2133,8 +2165,10 @@ class MonitoringService : Service() {
                             return true
                         } else if (fallbackResp.code() == 429) {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
-                            messageQueue.addMessage(plain)
-                            MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                            if (queueOnFail) {
+                                messageQueue.addMessage(plain)
+                                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                            }
                             return false
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
                             try {
@@ -2142,20 +2176,26 @@ class MonitoringService : Service() {
                                 preferencesManager.credentialErrorAt = System.currentTimeMillis()
                             } catch (_: Exception) {
                             }
-                            messageQueue.addMessage(plain)
-                            MessageScheduler.scheduleMessageSend(this)
+                            if (queueOnFail) {
+                                messageQueue.addMessage(plain)
+                                MessageScheduler.scheduleMessageSend(this)
+                            }
                             return false
                         } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
-                            messageQueue.addMessage(plain)
-                            MessageScheduler.scheduleMessageSend(this)
+                            if (queueOnFail) {
+                                messageQueue.addMessage(plain)
+                                MessageScheduler.scheduleMessageSend(this)
+                            }
                             return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             return true
                         }
                     } catch (_: Exception) {
-                        messageQueue.addMessage(plain)
-                        MessageScheduler.scheduleMessageSend(this)
+                        if (queueOnFail) {
+                            messageQueue.addMessage(plain)
+                            MessageScheduler.scheduleMessageSend(this)
+                        }
                         return false
                     }
                 } else {
@@ -2164,16 +2204,20 @@ class MonitoringService : Service() {
                 }
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                }
                 return false
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Exception sending message: ${redactToken(e.message)}")
-            messageQueue.addMessage(message)
-            MessageScheduler.scheduleMessageSend(this)
+            if (queueOnFail) {
+                messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+            }
             return false
         }
     }

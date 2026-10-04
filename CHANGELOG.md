@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService` `numberMatches`/`numbersEqualFast` samakan gate sufiks >= 9 digit dengan `SmsRepository`/`CallLogRepository`; hapus `idVariants` mati agar filter akhir `/history` tak bobol privasi sufiks.
+- `MonitoringService` `rememberOwner` picu `registerBotCommands` saat owner pertama dipelajari agar menu owner langsung aktif tanpa restart.
+- `SendMessageWorker` `sendDropNotice` kirim `parseMode` null agar sampel tak sebabkan `400` hilang diam.
+- `MonitoringService` `sendFitted`/`sendToTelegram` antre sekali via `queueOnFail` agar part gagal-auth tak gandakan antrean.
+- `MessageQueue` hitung drop kedaluwarsa ke `overflowDrops` agar `prune`/`sendDropNotice` terpantau.
+- `MonitoringService` `pollTelegramCommands` persist offset sebelum handle (`finally` tetap) agar crash tak replay perintah non-idempoten.
+- `BootReceiver` lewati thread + IO untuk `USER_PRESENT`/`USER_UNLOCKED` saat throttle 60 dtk atau service jalan.
+- `SetupActivity` `sendStatusNow` antre via `MessageQueue` saat kirim direct gagal agar status tak hilang.
+
 ## [1.6.63] - 2026-10-04
 
 ### Fixed

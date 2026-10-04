@@ -30,6 +30,14 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             if (intent.data?.schemeSpecificPart != context.packageName) return
         }
+        if (intent.action == Intent.ACTION_USER_PRESENT || intent.action == Intent.ACTION_USER_UNLOCKED) {
+            val nowUnlock = android.os.SystemClock.elapsedRealtime()
+            if (nowUnlock - lastHandleAt < 60_000L) return
+            if (MonitoringService.isRunning) {
+                lastHandleAt = nowUnlock
+                return
+            }
+        }
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)
         val pendingResult = goAsync()
