@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.62] - 2026-10-04
+
 ### Fixed
 - `MonitoringService` `handleCallbackQuery`: tap tombol inline dianggap kini (`0L`) agar menu tak kedaluwarsa 15 menit; cabang `MUTATING` identik yang mati diruntuhkan; drop diam tetap jawab `answerCallback` agar spinner tak gantung.
 - `MonitoringService` `pollTelegramCommands`: `400` yang menyebut offset selalu reset `lastUpdateId` ke `0`; guard `cur < 0` yang tak pernah tercapai dibuang dan `bad request` umum tak lagi me-reset offset.
