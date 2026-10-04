@@ -270,6 +270,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
             try { prefs.pendingSmsText = "" } catch (_: Exception) { }
             try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
+            try { prefs.pendingSmsOwner = "" } catch (_: Exception) { }
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
             try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }

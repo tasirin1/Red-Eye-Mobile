@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Fixed
+- `CrashReporter.flushPending` kirim plain-text dan fallback pakai `fitted` agar laporan >4096 char tak loop `400`.
+- `SetupActivity` clear-credentials ikut reset `pendingSmsOwner`.
+- `MessageScheduler.scheduleMessageSendNext` pakai `KEEP` agar retry tak menumpuk chain `APPEND`.
+- `NotificationForwarderService` stop dead-write `wakeUpdateId` persisten tiap poll (offset sudah ikut `lastUpdateId`).
+
 ## [1.6.65] - 2026-10-04
 
 ### Fixed

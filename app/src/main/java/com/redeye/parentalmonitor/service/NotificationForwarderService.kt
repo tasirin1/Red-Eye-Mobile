@@ -490,10 +490,6 @@ class NotificationForwarderService : NotificationListenerService() {
             pinged = true
         }
         wakeUpdateId = maxId
-        try {
-            prefs.wakeUpdateId = maxId
-        } catch (_: Exception) {
-        }
         if (!pinged) return
         try {
             val pingIds = updates.filter { u ->

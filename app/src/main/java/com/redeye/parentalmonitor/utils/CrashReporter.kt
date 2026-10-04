@@ -157,7 +157,7 @@ object CrashReporter {
             try {
                 val fitted = if (report.length > 4000) report.take(4000) else report
                 val url = "https://api.telegram.org/bot$token/sendMessage"
-                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted))
+                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = null))
                 if (response.isSuccessful && response.body()?.ok == true) {
                     file.delete()
                 } else if (response.code() == 400) {
@@ -168,7 +168,7 @@ object CrashReporter {
                     }
                     if (!isChatMissing(body)) {
                         val delivered = try {
-                            val plain = report.replace(Regex("<[^>]*>"), "")
+                            val plain = fitted.replace(Regex("<[^>]*>"), "")
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                             plainResp.isSuccessful && plainResp.body()?.ok == true
                         } catch (_: Exception) {
