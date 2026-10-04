@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Fixed
+- `NotificationForwarderService.forwardLocked` gagal kompilasi (bare `return` dalam `(): Boolean` + 2 panggilan kurang arg `pkg`); kini `return false` + batch teruskan `""` agar kompilasi hijau.
+- `MonitoringService.sendFitted` jalur pendek probe-then-queue (`sendToTelegram` tanpa antre lalu antre sekali) agar tak balap ukuran antrean lintas-thread forwarder/service.
+- `NotificationForwarderService.flushBatch` potong batch pakai `batchCut` aman-surrogate/entity/tag, bukan hard-cut 4000.
+- `NotificationForwarderService.forwardLocked` 400 non-chat antrekan notice drop terlihat, bukan hilang diam seperti `MonitoringService`.
+- `flushBatch` catat spam sekali per batch sukses via outer `pkgRecord` (batch teruskan `pkg` kosong), cegah hitung ganda inner+outer.
+- `isMainRunning` delegasi ke `MonitoringService.isRunning`, buang `getRunningServices` deprecated yang tak andal.
+- `MonitoringService.sendToTelegram` notice drop 400 selalu diantre walau `queueOnFail` false agar probe pendek tak menelan bukti drop.
+
 ## [1.6.85] - 2026-10-04
 
 ### Fixed

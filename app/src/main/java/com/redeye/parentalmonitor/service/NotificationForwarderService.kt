@@ -548,14 +548,11 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun isMainRunning(): Boolean {
-        try {
-            val am = getSystemService(android.app.ActivityManager::class.java) ?: return false
-            for (running in am.getRunningServices(Int.MAX_VALUE)) {
-                if (running.service.className == MonitoringService::class.java.name) return true
-            }
+        return try {
+            MonitoringService.isRunning
         } catch (_: Exception) {
+            false
         }
-        return false
     }
 
     private fun reviveMonitoringIfNeeded() {
@@ -636,6 +633,25 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
+    private fun batchCut(text: String, max: Int): Int {
+        if (text.length <= max) return text.length
+        var cut = max.coerceAtMost(text.length)
+        if (cut <= 0) return max.coerceAtMost(text.length)
+        if (cut < text.length && Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+        val amp = text.lastIndexOf('&', cut - 1)
+        if (amp >= 0 && amp > cut - 12) {
+            val semi = text.indexOf(';', amp)
+            if (semi < 0 || semi >= cut) {
+                val entity = text.substring(amp, cut)
+                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
+            }
+        }
+        val tag = text.lastIndexOf('<', cut - 1)
+        if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
+        if (cut <= 0) cut = max.coerceAtMost(text.length)
+        return cut
+    }
+
     private val batchLock = Any()
     private val batchBuf = ArrayDeque<Pair<String, String>>()
     private var batchJob: Job? = null
@@ -687,13 +703,14 @@ class NotificationForwarderService : NotificationListenerService() {
         while (rest.length > 4000) {
             var cut = rest.lastIndexOf("\n\n", 4000)
             if (cut <= 0) cut = 4000
-            if (forwardLocked(rest.substring(0, cut))) {
+            cut = batchCut(rest, cut)
+            if (forwardLocked(rest.substring(0, cut), "")) {
                 for (v in pkgs) pkgRecord(v, now)
             }
             rest = rest.substring(cut).trimStart('\n')
             if (rest.isEmpty()) return
         }
-        if (rest.isNotEmpty() && forwardLocked(rest)) {
+        if (rest.isNotEmpty() && forwardLocked(rest, "")) {
             for (v in pkgs) pkgRecord(v, now)
         }
     }
@@ -727,7 +744,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     } else if (nowAuth - prefs.credentialErrorAt < 30 * 60_000L) {
                         queue().addMessage(message)
                         MessageScheduler.scheduleMessageSend(this)
-                        return
+                        return false
                     }
                 }
             } catch (_: Exception) {
@@ -797,6 +814,11 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
+                try {
+                    queue().addMessage("Dropped 1 notification rejected by Telegram (400).")
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
                 return false
             }
             queue().addMessage(message)

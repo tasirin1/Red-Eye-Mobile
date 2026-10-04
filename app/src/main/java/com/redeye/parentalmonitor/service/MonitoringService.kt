@@ -2064,10 +2064,12 @@ class MonitoringService : Service() {
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (message.length <= 4000) {
-            if (!queueOnFail) return sendToTelegram(message, replyMarkup, false)
-            val before = messageQueue.getQueueSize()
-            if (!sendToTelegram(message, replyMarkup, true)) return false
-            return messageQueue.getQueueSize() == before
+            if (sendToTelegram(message, replyMarkup, false)) return true
+            if (queueOnFail) {
+                messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+            }
+            return false
         }
         var ok = true
         val failed = mutableListOf<String>()
@@ -2249,9 +2251,10 @@ class MonitoringService : Service() {
                             return queueOnFail
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
-                            if (queueOnFail) {
+                            try {
                                 messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).")
                                 MessageScheduler.scheduleMessageSend(this)
+                            } catch (_: Exception) {
                             }
                             return true
                         }
@@ -2264,9 +2267,10 @@ class MonitoringService : Service() {
                     }
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
-                    if (queueOnFail) {
+                    try {
                         messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).")
                         MessageScheduler.scheduleMessageSend(this)
+                    } catch (_: Exception) {
                     }
                     return true
                 }
