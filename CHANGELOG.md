@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Fixed
+- `SetupActivity.sendStatusNow` bedakan hasil kirim: `429` antre dengan backoff, `401`/`403` dan `400` chat-hilang set error + antre, `400` permanen lain tak diantre agar tak racuni `MessageQueue`.
+- `MonitoringService` loop monitoring ikut `flushPendingAudio`/`flushPendingPhotos` tiap interval; `/flush` ikut flush media agar audio `KEPT` tak tersangkut sampai `/record` berikutnya.
+- `BootReceiver` reset `photoPausedUntil` hanya saat reboot beneran; update paket (`MY_PACKAGE_REPLACED`) tak lagi hapus jeda `/pause`.
+- `/ring` tolak saat `recordBusy`, `/record` tolak saat `ringBusy` agar mic tak merekam nada alarm.
+- `NotificationForwarderService` jalur overflow pakai label app (`overflowLabel`), bukan package mentah, agar `/lastnotif` konsisten.
+
 ## [1.6.68] - 2026-10-04
 
 ### Fixed

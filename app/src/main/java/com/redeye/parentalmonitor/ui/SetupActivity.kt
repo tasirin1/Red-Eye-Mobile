@@ -22,6 +22,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.receiver.AdminReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
@@ -628,6 +629,42 @@ class SetupActivity : AppCompatActivity() {
                 if (ok) {
                     prefs.credentialError = ""
                     prefs.credentialErrorAt = 0L
+                } else if (resp.code() == 429) {
+                    val retryAfter = try {
+                        NetworkUtils.parseRetryAfter(resp.errorBody()?.string())
+                    } catch (_: Exception) {
+                        5L
+                    }
+                    try {
+                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageScheduler.scheduleMessageSendNext(applicationContext, retryAfter * 1000L)
+                    } catch (_: Exception) {
+                    }
+                } else if (resp.code() == 401 || resp.code() == 403) {
+                    try {
+                        prefs.credentialError = resp.code().toString()
+                        prefs.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
+                    }
+                } else if (resp.code() == 400) {
+                    val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
+                    if (isChatMissing(goneBody)) {
+                        try {
+                            prefs.credentialError = resp.code().toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            MessageQueue.getInstance(applicationContext).addMessage(text)
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                        } catch (_: Exception) {
+                        }
+                    }
                 } else {
                     try {
                         MessageQueue.getInstance(applicationContext).addMessage(text)
@@ -655,6 +692,12 @@ class SetupActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun isChatMissing(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
     }
 
     private fun formatStatusTime(timestamp: Long): String {

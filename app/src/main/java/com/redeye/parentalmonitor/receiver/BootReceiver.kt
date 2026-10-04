@@ -103,8 +103,8 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        val isRealBoot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        if (isRealBoot) {
+        val isReboot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON
+        if (isReboot) {
             try {
                 preferencesManager.photoPausedUntil = 0L
             } catch (_: Exception) {
