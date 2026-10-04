@@ -19,8 +19,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 class NotificationForwarderService : NotificationListenerService() {
 
@@ -41,7 +39,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private var queueRef: MessageQueue? = null
     private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
     private val pendingPosts = java.util.concurrent.atomic.AtomicInteger(0)
-    private val fwdMutex = Mutex()
     private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
             return size > 100
@@ -584,7 +581,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         try {
-            fwdMutex.withLock { forwardLocked(message, pkg) }
+            forwardLocked(message, pkg)
         } finally {
             inFlight.decrementAndGet()
         }

@@ -45,6 +45,9 @@ class BootReceiver : BroadcastReceiver() {
                 } catch (_: Exception) {
                 }
             }
+        }.apply {
+            name = "BootReceiver"
+            isDaemon = true
         }
         try {
             thread.start()
@@ -60,8 +63,17 @@ class BootReceiver : BroadcastReceiver() {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         if (!updated && nowBoot - lastHandleAt < 10_000L) return
+        try {
+            val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+            if (!updated && nowBoot - meta.getLong("last_handle_elapsed", 0L) < 10_000L) return
+        } catch (_: Exception) {
+        }
         if (!updated && MonitoringService.isRunning) {
             lastHandleAt = nowBoot
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
+            } catch (_: Exception) {
+            }
             return
         }
         val preferencesManager = try {
@@ -93,6 +105,10 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             lastHandleAt = nowBoot
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
+            } catch (_: Exception) {
+            }
             return
         }
         if (!preferencesManager.isConfigured()) {
@@ -105,6 +121,10 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
         } else {
             lastHandleAt = nowBoot
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
+            } catch (_: Exception) {
+            }
         }
     }
 

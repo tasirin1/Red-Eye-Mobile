@@ -39,14 +39,8 @@ class ParentalMonitorApp : Application() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = if (BuildConfig.DEBUG) {
-                NotificationManager.IMPORTANCE_LOW
-            } else {
-                NotificationManager.IMPORTANCE_MIN
-            }
-
+            val importance = NotificationManager.IMPORTANCE_MIN
             val channelName = CHANNEL_NAME
-            
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 channelName,
@@ -58,11 +52,19 @@ class ParentalMonitorApp : Application() {
                 enableVibration(false)
                 enableLights(false)
             }
-
             val notificationManager = getSystemService(NotificationManager::class.java)
+            try {
+                val existing = notificationManager.getNotificationChannel(CHANNEL_ID)
+                if (existing != null && existing.importance != importance) {
+                    notificationManager.deleteNotificationChannel(CHANNEL_ID)
+                }
+            } catch (_: Exception) {
+            }
             notificationManager.createNotificationChannel(channel)
             try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_HIGH)
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_HIGH).apply {
+                    setShowBadge(false)
+                }
                 notificationManager.createNotificationChannel(resume)
             } catch (_: Exception) {
             }

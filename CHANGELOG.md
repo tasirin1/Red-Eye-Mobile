@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.56] - 2026-10-04
+
+### Fixed
+- `TelegramApi` naikkan limit dispatcher ke 6/4 agar dua long-poll `getUpdates` tak memblokir `sendMessage`/`sendPhoto`.
+- `MonitoringService` cegah replay perintah mutasi: reset offset 400 hanya bila `lastUpdateId` negatif plus dedup 300 `updateId` terakhir.
+- `ParentalMonitorApp` samakan importance channel ke `IMPORTANCE_MIN` dan recreate bila existing beda; channel resume matikan badge.
+- `backup_rules.xml`/`data_extraction_rules.xml` kecualikan `file` `crash_pending.txt` dari backup.
+- `SetupActivity` pindah baca token/chat terenkripsi ke `Dispatchers.IO`; input awal dikosongkan lalu diisi background.
+- `CrashReporter` hapus file saat monitoring opt-out dan prune laporan >7 hari.
+- `/apps`, `/log`, `/version` masuk `SENSITIVE_COMMANDS` wajib owner.
+- Kalkulator: desimal kecil tak lagi jadi `0` (fallback eksponen) dan secret `1234` tetap terbuka via tombol operator.
+- `NotificationForwarderService` lepas `fwdMutex` dari jalur HTTP agar burst notif tak head-of-line blocking.
+- `BootReceiver`/`BootRestartWorker` throttle persisten via `boot_meta` dan thread bernama daemon.
+
 ## [1.6.55] - 2026-10-04
 
 ### Fixed

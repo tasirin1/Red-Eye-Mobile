@@ -118,7 +118,16 @@ class BootRestartWorker(
     private fun postResumeReminder(context: Context) {
         val nowResume = android.os.SystemClock.elapsedRealtime()
         if (nowResume - lastResumeReminderAt < 3 * 60 * 60_000L) return
+        try {
+            val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+            if (nowResume - meta.getLong("last_resume_elapsed", 0L) < 3 * 60 * 60_000L) return
+        } catch (_: Exception) {
+        }
         lastResumeReminderAt = nowResume
+        try {
+            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowResume).apply()
+        } catch (_: Exception) {
+        }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED

@@ -111,12 +111,23 @@ object CrashReporter {
                 ""
             }
             if (token.isEmpty() || chatId.isEmpty()) return
+            try {
+                val age = System.currentTimeMillis() - file.lastModified()
+                if (age > 7 * 24 * 60 * 60_000L) {
+                    try { file.delete() } catch (_: Exception) { }
+                    return
+                }
+            } catch (_: Exception) {
+            }
             val allowed = try {
                 prefs.isMonitoringEnabled && prefs.userConsentedMonitoring && !prefs.userDisabledMonitoring
             } catch (_: Exception) {
                 false
             }
-            if (!allowed) return
+            if (!allowed) {
+                try { file.delete() } catch (_: Exception) { }
+                return
+            }
             try {
                 val fitted = if (report.length > 4000) report.take(4000) else report
                 val url = "https://api.telegram.org/bot$token/sendMessage"

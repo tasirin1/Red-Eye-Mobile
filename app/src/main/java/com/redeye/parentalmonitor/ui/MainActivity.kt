@@ -144,6 +144,16 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setOperator(op: String) {
+        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty() && !justCalculated) {
+            currentNumber = ""
+            previousNumber = ""
+            operator = ""
+            lastExpression = ""
+            justCalculated = false
+            updateCalculatorDisplay()
+            openSetupPage()
+            return
+        }
         justCalculated = false
         if (currentNumber == "Error") {
             clear()
@@ -213,6 +223,9 @@ class MainActivity : AppCompatActivity() {
             .setScale(maxScale, java.math.RoundingMode.HALF_UP)
             .stripTrailingZeros()
             .toPlainString()
+        if (result != 0.0 && plain.trimStart('-') == "0") {
+            return String.format(java.util.Locale.US, "%.8E", result)
+        }
         if (plain.count { it.isDigit() } > 12) {
             return String.format(java.util.Locale.US, "%.8E", result)
         }

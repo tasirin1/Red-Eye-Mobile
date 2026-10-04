@@ -154,24 +154,20 @@ class SetupActivity : AppCompatActivity() {
         notifButton = findViewById(R.id.setupNotifButton)
 
         try {
-            botTokenInput.setText(if (prefs.botToken.isEmpty()) "" else STORED_MASK)
-        } catch (_: Exception) {
             botTokenInput.setText("")
+        } catch (_: Exception) {
         }
         try {
-            chatIdInput.setText(if (prefs.chatId.isEmpty()) "" else STORED_MASK)
-        } catch (_: Exception) {
             chatIdInput.setText("")
+        } catch (_: Exception) {
         }
         try {
-            syncIntervalInput.setText(prefs.syncInterval.toString())
+            syncIntervalInput.setText("")
         } catch (_: Exception) {
-            syncIntervalInput.setText(com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString())
         }
         try {
-            cameraIntervalInput.setText(prefs.cameraInterval.toString())
+            cameraIntervalInput.setText("")
         } catch (_: Exception) {
-            cameraIntervalInput.setText("1")
         }
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -279,42 +275,39 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun saveSettings() {
-        val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
-        val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
+        val rawToken = botTokenInput.text.toString().trim()
+        val rawChat = chatIdInput.text.toString().trim()
         val intervalRaw = syncIntervalInput.text.toString().trim()
+        val cameraRaw = cameraIntervalInput.text.toString().trim()
         val intervalParsed = intervalRaw.toIntOrNull()
-        if (intervalParsed == null) {
+        val cameraParsed = cameraRaw.toIntOrNull()
+        if (intervalParsed == null || cameraParsed == null || intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
             return
         }
         val interval = intervalParsed
-
-        if (token.isEmpty() || chatId.isEmpty()) {
-            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (!token.matches(TOKEN_REGEX)) {
-            Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (!isChatIdValid(chatId)) {
-            Toast.makeText(this, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val cameraRaw = cameraIntervalInput.text.toString().trim()
-        val cameraParsed = cameraRaw.toIntOrNull()
-        if (cameraParsed == null) {
-            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return
-        }
         val cameraInterval = cameraParsed
-
-        if (interval !in 1..1440 || cameraInterval !in 0..60) {
-            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return
-        }
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
+            val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            if (token.isEmpty() || chatId.isEmpty()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+            if (!token.matches(TOKEN_REGEX)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+            if (!isChatIdValid(chatId)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
             try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
@@ -343,16 +336,8 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
-        val token = resolveStored(botTokenInput.text.toString().trim(), prefs.botToken)
-        val chatId = resolveStored(chatIdInput.text.toString().trim(), prefs.chatId)
-        if (token.isEmpty() || chatId.isEmpty()) {
-            Toast.makeText(this, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (!token.matches(TOKEN_REGEX) || !isChatIdValid(chatId)) {
-            Toast.makeText(this, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
-            return
-        }
+        val rawToken = botTokenInput.text.toString().trim()
+        val rawChat = chatIdInput.text.toString().trim()
         val probeSyncParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
         val probeCameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
         if (probeSyncParsed == null || probeCameraParsed == null || probeSyncParsed !in 1..1440 || probeCameraParsed !in 0..60) {
@@ -364,6 +349,20 @@ class SetupActivity : AppCompatActivity() {
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
+            val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            if (token.isEmpty() || chatId.isEmpty()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+            if (!token.matches(TOKEN_REGEX) || !isChatIdValid(chatId)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
             try {
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
