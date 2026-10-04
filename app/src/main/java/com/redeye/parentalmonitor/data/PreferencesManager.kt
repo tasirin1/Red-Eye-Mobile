@@ -542,23 +542,6 @@ class PreferencesManager(context: Context) {
         editor.apply()
     }
 
-    private fun putValue(key: String, value: Any?) {
-        val editor = sharedPreferences.edit()
-        when (value) {
-            null -> editor.remove(key)
-            is String -> editor.putString(key, value)
-            is Int -> editor.putInt(key, value)
-            is Long -> editor.putLong(key, value)
-            is Float -> editor.putFloat(key, value)
-            is Boolean -> editor.putBoolean(key, value)
-            else -> return
-        }
-        try {
-            editor.apply()
-        } catch (_: Exception) {
-        }
-    }
-
 private class MemoryPrefs : SharedPreferences {
     private val data = java.util.concurrent.ConcurrentHashMap<String, Any?>()
     private val listeners = mutableSetOf<SharedPreferences.OnSharedPreferenceChangeListener>()

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- Fungsi mati: `PreferencesManager.putValue` (setter generik tanpa pemanggil) dan `SmsRepository.numbersEqual` (wrapper tanpa pemanggil); tanpa perubahan perilaku.
+
 ## [1.6.78] - 2026-10-04
 
 ### Changed

@@ -46,10 +46,6 @@ class SmsRepository(private val context: Context) {
         return null
     }
 
-    private fun numbersEqual(have: String, want: String): Boolean {
-        return numbersEqualFast(have, want, altVariant(want))
-    }
-
     private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
         if (have == want) return true
         if (wantAlt != null && have == wantAlt) return true
