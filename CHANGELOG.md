@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.74] - 2026-10-04
+
 ### Added
 - Tema terang/gelap otomatis ikut sistem: warna kalkulator dan layar speed pindah ke resource `calc_*` dengan varian `values-night`, tombol/display/ripple menyesuaikan.
 
