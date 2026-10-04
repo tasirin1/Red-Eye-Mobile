@@ -39,13 +39,29 @@ class SmsRepository(private val context: Context) {
         return filterByNumber(getRecentSms(200), digits) { it.address }
     }
 
+    private fun idVariants(digits: String): List<String> {
+        if (digits.isEmpty()) return emptyList()
+        val alt = if (digits.startsWith("62") && digits.length > 10) "0" + digits.substring(2) else if (digits.startsWith("0") && digits.length > 1) "62" + digits.substring(1) else digits
+        return if (alt == digits) listOf(digits) else listOf(digits, alt)
+    }
+
+    private fun numbersEqual(have: String, want: String): Boolean {
+        if (have == want || have.endsWith(want) || want.endsWith(have)) return true
+        for (a in idVariants(have)) {
+            for (b in idVariants(want)) {
+                if (a.endsWith(b) || b.endsWith(a)) return true
+            }
+        }
+        return false
+    }
+
     private fun filterByNumber(rows: List<SmsData>, digits: String, pick: (SmsData) -> String): List<SmsData> {
         val want = digits.filter { it.isDigit() }
         if (want.isEmpty()) return emptyList()
         if (want.length < 7) return rows.filter { pick(it).filter { c -> c.isDigit() } == want }
         return rows.filter {
             val have = pick(it).filter { c -> c.isDigit() }
-            have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))
+            have.isNotEmpty() && numbersEqual(have, want)
         }
     }
 

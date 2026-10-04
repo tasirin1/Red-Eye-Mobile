@@ -108,12 +108,28 @@ class CallLogRepository(private val context: Context) {
         return filterCallsByNumber(getAllCalls(200), norm)
     }
 
+    private fun idVariants(digits: String): List<String> {
+        if (digits.isEmpty()) return emptyList()
+        val alt = if (digits.startsWith("62") && digits.length > 10) "0" + digits.substring(2) else if (digits.startsWith("0") && digits.length > 1) "62" + digits.substring(1) else digits
+        return if (alt == digits) listOf(digits) else listOf(digits, alt)
+    }
+
+    private fun numbersEqual(have: String, want: String): Boolean {
+        if (have == want || have.endsWith(want) || want.endsWith(have)) return true
+        for (a in idVariants(have)) {
+            for (b in idVariants(want)) {
+                if (a.endsWith(b) || b.endsWith(a)) return true
+            }
+        }
+        return false
+    }
+
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
         if (want.isEmpty()) return emptyList()
         if (want.length < 7) return rows.filter { it.number.filter { c -> c.isDigit() } == want }
         return rows.filter {
             val have = it.number.filter { c -> c.isDigit() }
-            have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))
+            have.isNotEmpty() && numbersEqual(have, want)
         }
     }
 

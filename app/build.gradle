@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 83
-        versionName "1.6.56"
+        versionCode 84
+        versionName "1.6.57"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 

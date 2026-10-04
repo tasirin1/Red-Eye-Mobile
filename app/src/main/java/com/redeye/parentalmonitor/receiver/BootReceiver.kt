@@ -17,7 +17,6 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
-            Intent.ACTION_USER_PRESENT,
             ACTION_QUICKBOOT_POWERON
         )
 

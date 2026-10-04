@@ -36,6 +36,8 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var toggleButton: MaterialButton
     private lateinit var permissionButton: MaterialButton
     private lateinit var notifButton: MaterialButton
+    private var saveJob: kotlinx.coroutines.Job? = null
+    private var testJob: kotlinx.coroutines.Job? = null
 
     private val requiredPermissions: Array<String>
         get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
@@ -261,6 +263,13 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.ownerUserId = 0L } catch (_: Exception) { }
             try { prefs.credentialError = "" } catch (_: Exception) { }
             try { prefs.credentialErrorAt = 0L } catch (_: Exception) { }
+            try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
+            try { prefs.pendingSmsText = "" } catch (_: Exception) { }
+            try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
+            try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
+            try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
+            try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }
+            try { prefs.wakeUpdateId = 0L } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -287,7 +296,8 @@ class SetupActivity : AppCompatActivity() {
         }
         val interval = intervalParsed
         val cameraInterval = cameraParsed
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        try { saveJob?.cancel() } catch (_: Exception) { }
+        saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
@@ -348,7 +358,8 @@ class SetupActivity : AppCompatActivity() {
         val probeCamera = probeCameraParsed
         val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        try { testJob?.cancel() } catch (_: Exception) { }
+        testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {

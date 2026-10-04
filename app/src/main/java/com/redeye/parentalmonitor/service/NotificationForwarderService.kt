@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 class NotificationForwarderService : NotificationListenerService() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val fwdSerial = Dispatchers.IO.limitedParallelism(1)
     private val appLabelCache = object : LinkedHashMap<String, String>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean {
             return size > 100
@@ -185,7 +186,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 ""
             }
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
-            scope.launch {
+            scope.launch(fwdSerial) {
                 try {
                     if (!forwardingAllowed()) return@launch
                     val nowFb = android.os.SystemClock.elapsedRealtime()
@@ -227,7 +228,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         pendingPosts.incrementAndGet()
-        scope.launch {
+        scope.launch(fwdSerial) {
             try {
                 handlePosted(pkg, notifId, notification, groupKey, isSummary)
             } finally {

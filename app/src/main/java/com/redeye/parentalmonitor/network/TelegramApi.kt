@@ -151,3 +151,25 @@ object TelegramClient {
 
     val api: TelegramApi = retrofit.create(TelegramApi::class.java)
 }
+
+object TelegramMediaClient {
+    private const val BASE_URL = "https://api.telegram.org/"
+
+    private val mediaOkHttp = OkHttpClient.Builder()
+        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+        .dispatcher(Dispatcher().apply { maxRequests = 4; maxRequestsPerHost = 2 })
+        .connectionPool(ConnectionPool(2, 1, TimeUnit.MINUTES))
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
+        .build()
+
+    private val mediaRetrofit = Retrofit.Builder()
+        .baseUrl(BASE_URL)
+        .client(mediaOkHttp)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val api: TelegramApi = mediaRetrofit.create(TelegramApi::class.java)
+}

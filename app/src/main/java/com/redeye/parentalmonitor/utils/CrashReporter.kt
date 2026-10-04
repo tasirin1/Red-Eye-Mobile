@@ -76,6 +76,10 @@ object CrashReporter {
     private fun savePending(context: Context, report: String) {
         try {
             pendingFile(context).writeText(report)
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("crash_saved_elapsed", android.os.SystemClock.elapsedRealtime()).apply()
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
         }
     }
@@ -112,7 +116,12 @@ object CrashReporter {
             }
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
-                val age = System.currentTimeMillis() - file.lastModified()
+                val wallAge = System.currentTimeMillis() - file.lastModified()
+                val savedElapsed = try {
+                    context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).getLong("crash_saved_elapsed", 0L)
+                } catch (_: Exception) { 0L }
+                val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
+                val age = if (wallAge < 0L || monoAge < 0L) 0L else maxOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {
                     try { file.delete() } catch (_: Exception) { }
                     return

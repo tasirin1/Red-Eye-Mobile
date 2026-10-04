@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [1.6.57] - 2026-10-04
+
+### Fixed
+- `MonitoringService` sinkronkan dedup `updateId` dan eviksi seluruh kelebihan 300.
+- `SetupActivity` hapus kredensial ikut reset SMS pending, hash perintah, dan offset update.
+- Pencocokan nomor lintas format ID (`0812` vs `62812`) di `MonitoringService`, `SmsRepository`, `CallLogRepository`.
+- `/ring` gagal cepat bila suara alarm null tanpa menahan busy.
+- `NotificationForwarderService` serialkan antrean via dispatcher tunggal agar urutanFIFO terjaga.
+- `SendMessageWorker` tunda 5 menit saat gagal agar tak hot-loop.
+- Initial sync majukan kursor hanya saat chunk terkirim.
+- `BootReceiver` hapus `USER_PRESENT` agar tak bisa di-spoof.
+- Media Telegram pisah klien agar upload tak blokir polling.
+- `/status`, `/battery`, `/uptime`, `/storage` owner-only dan `/help` difilter per peran.
+- `SetupActivity` batalkan job save/test sebelumnya agar tak balapan.
+- `CrashReporter` umur laporan pakai monotonic elapsed kebal skew jam.
+
 ## [1.6.56] - 2026-10-04
 
 ### Fixed

