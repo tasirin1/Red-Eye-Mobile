@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.68] - 2026-10-04
+
 ### Fixed
 - `MonitoringService` hapus flag memori `initialSyncStarted` yang write-only; gerbang nyata hanya prefs.
 - `MonitoringService.restartAllLoops` ikut pulihkan initial-sync bila idle dan belum done.
