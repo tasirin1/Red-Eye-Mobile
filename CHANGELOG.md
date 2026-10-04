@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.70] - 2026-10-04
+
 ### Fixed
 - `MonitoringService.sendToTelegram` kontrak "handled": gagal yang sudah diantre (`queueOnFail`) lapor `true` agar kursor SMS/call maju dan worker yang antar; tak lagi kirim ganda loop + worker. `sendFitted` antre pecahan gagal lalu lapor handled.
 - `/ping` ikut deteksi initial-sync macet (`initialStuck`) seperti watchdog agar klaim sehat jujur dan restart ikut pulihkan sync.
