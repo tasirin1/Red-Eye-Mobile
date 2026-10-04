@@ -2732,9 +2732,9 @@ class MonitoringService : Service() {
     @Volatile
     private var lastLoopRestartAt = 0L
 
-    private fun restartAllLoops() {
+    private fun restartAllLoops(fromWatchdog: Boolean = false) {
         val nowRestart = android.os.SystemClock.elapsedRealtime()
-        if (nowRestart - lastLoopRestartAt < 10_000L) return
+        if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return
         lastLoopRestartAt = nowRestart
         try {
             monitoringJob?.cancel()
@@ -2793,7 +2793,7 @@ class MonitoringService : Service() {
                     if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || initialStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
                         if (initialStuck) initialSyncRunning.set(false)
-                        restartAllLoops()
+                        restartAllLoops(fromWatchdog = true)
                         val now = android.os.SystemClock.elapsedRealtime()
                         if (now - loopWatchdogNoticeAt > 3_600_000L) {
                             loopWatchdogNoticeAt = now
@@ -2839,7 +2839,15 @@ class MonitoringService : Service() {
             }
             ringtone?.play()
             sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
-            kotlinx.coroutines.delay(seconds * 1000L)
+            val ringEndAt = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
+            while (android.os.SystemClock.elapsedRealtime() < ringEndAt) {
+                currentCoroutineContext().ensureActive()
+                try {
+                    if (ringtone?.isPlaying == false) ringtone?.play()
+                } catch (_: Exception) {
+                }
+                kotlinx.coroutines.delay(1000L)
+            }
             sendToTelegram("\uD83D\uDD14 Ring finished.")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

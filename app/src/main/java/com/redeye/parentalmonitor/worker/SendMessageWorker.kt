@@ -385,11 +385,22 @@ class SendMessageWorker(
                 "⚠️ $count queued message(s) dropped (rejected). Sample: $clean"
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
-            TelegramClient.api.sendMessage(
+            val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = text, parseMode = null)
             )
+            if (response.isSuccessful && response.body()?.ok == true) return
+            try {
+                messageQueue.addMessage(text)
+                MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
+            try {
+                messageQueue.addMessage(text)
+                MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
         }
     }
 

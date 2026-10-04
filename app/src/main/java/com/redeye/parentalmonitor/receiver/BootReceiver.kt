@@ -94,6 +94,23 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         try {
+            val stuckVolume = preferencesManager.ringPrevVolume
+            val stuckAt = preferencesManager.ringSavedAt
+            if (stuckVolume >= 0 && stuckAt > 0L && System.currentTimeMillis() - stuckAt > 60_000L) {
+                try {
+                    val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckVolume, 0)
+                } catch (_: Exception) {
+                }
+                try {
+                    preferencesManager.ringPrevVolume = -1
+                    preferencesManager.ringSavedAt = 0L
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
             val blockedErr = preferencesManager.credentialError
             if (blockedErr.isNotEmpty()) {
                 val nowAuth = System.currentTimeMillis()
@@ -104,13 +121,6 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
         } catch (_: Exception) {
-        }
-        val isReboot = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON
-        if (isReboot) {
-            try {
-                preferencesManager.photoPausedUntil = 0L
-            } catch (_: Exception) {
-            }
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             lastHandleAt = nowBoot

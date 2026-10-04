@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.83] - 2026-10-04
+
+### Fixed
+- `/ring` putar ulang nada sampai durasi habis (sebelumnya hanya bunyi sekali).
+- Pause foto wall-clock dipertahankan saat reboot (hapus reset paksa di `BootReceiver`); volume alarm stuck dipulihkan ke nilai awal saat boot.
+- Throttle `restartAllLoops` dilewati untuk jalur watchdog agar loop mati segera restart.
+- `sendDropNotice` gagal kirim fallback ke antrean + jadwal worker.
+- Capture kamera pasang `CaptureCallback` agar gagal langsung `onError`, bukan gantung sampai watchdog.
+
 ## [1.6.82] - 2026-10-04
 
 ### Fixed

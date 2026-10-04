@@ -318,7 +318,12 @@ class CameraService(private val context: Context) {
                         session.stopRepeating()
                     } catch (_: Exception) {
                     }
-                    session.capture(captureBuilder.build(), null, backgroundHandler)
+                    session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
+                        override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
+                            Log.e(TAG, "Still capture failed: ${failure.reason}")
+                            onError(Exception("Still capture failed (${failure.reason})"))
+                        }
+                    }, backgroundHandler)
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture request sent")
                     onTrace("trace: capture request sent")
                 } catch (e: Exception) {
