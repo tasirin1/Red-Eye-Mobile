@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.72] - 2026-10-04
+
 ### Fixed
 - `handleCallbackQuery` teruskan tanggal pesan tombol (`query.message?.date`) ke gate freshness agar tap inline basi expired seperti perintah teks (900 dtk umum, 300 dtk mutasi) dan tak replayable selamanya.
 
