@@ -526,6 +526,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 startService(restart)
             }
         } catch (_: Exception) {
+            android.util.Log.w("NotifForwarder", "Wake restart failed, retry via worker")
         }
         try {
             MessageScheduler.scheduleBootRestart(this)
@@ -575,6 +576,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     startService(restart)
                 }
             } catch (_: Exception) {
+                android.util.Log.w("NotifForwarder", "Monitoring restart failed, retry via worker")
                 try {
                     MessageScheduler.scheduleBootRestart(this)
                 } catch (_: Exception) {

@@ -1245,7 +1245,8 @@ class MonitoringService : Service() {
                         handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, wakeSeen, senderId)
                     }
                     "" -> {
-                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
+                        val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
+                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && !initialStuck
                         if (!loopsOk && senderOk && !wakeSeen) restartAllLoops()
                         val tail = if (loopsOk || !senderOk || wakeSeen) "" else " ⏰ Loops restarted."
                         if (sentAtSec > 0) {
@@ -2115,6 +2116,7 @@ class MonitoringService : Service() {
         if (!ok) {
             messageQueue.addMessages(failed)
             MessageScheduler.scheduleMessageSend(this)
+            return true
         }
         return ok
     }
@@ -2138,7 +2140,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return false
+                return queueOnFail
             }
 
             val hasNetwork = hasNetwork()
@@ -2150,7 +2152,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return false
+                return queueOnFail
             }
 
             val telegramMessage = TelegramMessage(
@@ -2178,7 +2180,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                 }
-                return false
+                return queueOnFail
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
                 try {
@@ -2190,7 +2192,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return false
+                return queueOnFail
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 if (isChatMissing(goneBody)) {
@@ -2207,7 +2209,7 @@ class MonitoringService : Service() {
                         messageQueue.addMessage(message)
                         MessageScheduler.scheduleMessageSend(this)
                     }
-                    return false
+                    return queueOnFail
                 }
                 val plain = message.replace(TAG_STRIP_REGEX, "")
                 if (plain != message) {
@@ -2227,7 +2229,7 @@ class MonitoringService : Service() {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                             }
-                            return false
+                            return queueOnFail
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
                             try {
                                 preferencesManager.credentialError = fallbackResp.code().toString()
@@ -2238,13 +2240,13 @@ class MonitoringService : Service() {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSend(this)
                             }
-                            return false
+                            return queueOnFail
                         } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
                             if (queueOnFail) {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSend(this)
                             }
-                            return false
+                            return queueOnFail
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             if (queueOnFail) {
@@ -2258,7 +2260,7 @@ class MonitoringService : Service() {
                             messageQueue.addMessage(plain)
                             MessageScheduler.scheduleMessageSend(this)
                         }
-                        return false
+                        return queueOnFail
                     }
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
@@ -2274,7 +2276,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return false
+                return queueOnFail
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -2284,7 +2286,7 @@ class MonitoringService : Service() {
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             }
-            return false
+            return queueOnFail
         }
     }
 

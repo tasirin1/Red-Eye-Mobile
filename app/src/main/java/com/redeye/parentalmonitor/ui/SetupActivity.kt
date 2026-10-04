@@ -252,6 +252,7 @@ class SetupActivity : AppCompatActivity() {
                 }
             }
         } catch (_: Exception) {
+            android.util.Log.w("SetupActivity", "Revive monitoring failed")
         }
     }
 
