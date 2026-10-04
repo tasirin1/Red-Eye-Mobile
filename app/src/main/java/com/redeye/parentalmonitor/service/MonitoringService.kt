@@ -1638,7 +1638,7 @@ class MonitoringService : Service() {
 
     private fun setupTapIntent(): android.app.PendingIntent {
         cachedSetupTap?.let { return it }
-        val intent = android.content.Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val intent = android.content.Intent(this, com.redeye.parentalmonitor.ui.MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE).also { cachedSetupTap = it }
     }
 

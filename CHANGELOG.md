@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Samarkan permukaan terlihat: notif persisten jadi `Calculator` / `Service running` dengan tap ke kalkulator (bukan halaman setup); ikon status bar jadi glif kalkulator netral; teks jeda jadi `Service paused` / `Tap to open settings`. Alert auth dan reminder tetap tap ke setup agar owner bisa bertindak.
+
 ## [1.6.72] - 2026-10-04
 
 ### Fixed

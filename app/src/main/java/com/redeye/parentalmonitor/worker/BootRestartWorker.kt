@@ -24,7 +24,7 @@ class BootRestartWorker(
         val tap = android.app.PendingIntent.getActivity(
             applicationContext,
             0,
-            Intent(applicationContext, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            Intent(applicationContext, com.redeye.parentalmonitor.ui.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(applicationContext, ParentalMonitorApp.CHANNEL_ID)
