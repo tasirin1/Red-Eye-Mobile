@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Fixed
+- `SendMessageWorker` hapus pesan terkirim/ditolak inkremental per pesan agar kill di tengah batch 20 tak kirim ulang duplikat; `removeMessages` akhir dipertahankan sebagai jaring pengaman.
+
+### Removed
+- Hapus `SpeedMonitorActivity` unreachable beserta `NetSpeed`, `activity_speed_monitor.xml`, entri manifest, dan 3 string terkait yang mati sejak tap notif pindah ke kalkulator.
+
 ## [1.6.74] - 2026-10-04
 
 ### Added

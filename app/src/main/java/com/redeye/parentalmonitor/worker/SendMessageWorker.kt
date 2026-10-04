@@ -84,6 +84,10 @@ class SendMessageWorker(
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
+                        try {
+                            messageQueue.removeMessage(queuedMessage.id)
+                        } catch (_: Exception) {
+                        }
                         delay(100)
                     }
                     is SendOutcome.RateLimited -> {
@@ -96,6 +100,10 @@ class SendMessageWorker(
                     }
                     is SendOutcome.Rejected -> {
                         rejectedIds.add(queuedMessage.id)
+                        try {
+                            messageQueue.removeMessage(queuedMessage.id)
+                        } catch (_: Exception) {
+                        }
                     }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
