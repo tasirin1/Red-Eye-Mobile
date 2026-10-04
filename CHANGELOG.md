@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.55] - 2026-10-04
+
+### Fixed
+- Gerbang perintah tiga lapis di `MonitoringService`: mutasi dan baca sensitif (`/photo`, `/location`, `/lastcalls`, `/lastsms`, `/lastnotif`, `/contacts`, `/history`) wajib owner; baca jinak tetap boleh dari chat terkonfigurasi.
+- Perintah berstempel masa depan kini dibalas petunjuk cek jam perangkat, bukan sekadar expired.
+- Field cache kredensial/config di `MonitoringService`/`NotificationForwarderService` dijadikan `@Volatile` agar rotasi token dan owner terlihat lintas thread.
+
+### Changed
+- Artefak workflow: varian release tanpa keystore bernama `redeye-release-debugsigned.apk` agar tidak dikira rilis resmi bertanda (build tag tidak berubah karena keystore wajib).
+
 ## [1.6.54] - 2026-10-04
 
 ### Fixed

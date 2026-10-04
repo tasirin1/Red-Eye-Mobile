@@ -49,15 +49,20 @@ class NotificationForwarderService : NotificationListenerService() {
     }
     private val pkgHitsLock = Any()
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile
     private var lastRebindAt = 0L
     @Volatile
     private var lastReviveAt = 0L
     private var wakeJob: Job? = null
     @Volatile
     private var wakeUpdateId = -1L
+    @Volatile
     private var netCheckAt = 0L
+    @Volatile
     private var netCached = false
+    @Volatile
     private var cachedFwdToken = ""
+    @Volatile
     private var cachedFwdChat = ""
     private var fwdCredsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
