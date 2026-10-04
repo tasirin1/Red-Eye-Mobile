@@ -98,6 +98,7 @@ class MonitoringService : Service() {
     private var cachedSyncInterval = -1
     private var cachedSetupTap: android.app.PendingIntent? = null
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
+    private val handledCallbackIds = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
@@ -698,7 +699,7 @@ class MonitoringService : Service() {
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId) {
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && (message?.text ?: message?.caption)?.trim().orEmpty().startsWith("/") == true) {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             serviceScope.launch {
@@ -715,7 +716,7 @@ class MonitoringService : Service() {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
                             val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
-                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen)
+                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId)
                             if (wakeSeen) {
                                 try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
                             }
@@ -736,6 +737,23 @@ class MonitoringService : Service() {
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
+        val dupCallback = synchronized(handledCallbackIds) {
+            val seen = !handledCallbackIds.add(query.id)
+            while (handledCallbackIds.size > 200) {
+                try {
+                    val it = handledCallbackIds.iterator()
+                    if (it.hasNext()) {
+                        it.next()
+                        it.remove()
+                    } else {
+                        break
+                    }
+                } catch (_: Exception) {
+                    break
+                }
+            }
+            seen
+        }
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         if (sender != chatId && originChat != chatId) {
@@ -744,6 +762,7 @@ class MonitoringService : Service() {
         }
         val ownerOk = isOwner(sender)
         answerCallback(query.id)
+        if (dupCallback) return
         val command = when (query.data) {
             "photo" -> "/photo"
             "location" -> "/location"
@@ -759,7 +778,7 @@ class MonitoringService : Service() {
             else -> return
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
-        handleTelegramCommand(command, 0L, ownerOk, originOk)
+        handleTelegramCommand(command, 0L, ownerOk, originOk, false, sender)
     }
 
     private fun postAuthFailureReminder(code: Int) {
@@ -892,7 +911,7 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "") {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
@@ -909,7 +928,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, wakeSeen)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, wakeSeen, senderId)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -922,7 +941,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "") {
         if (sentAtSec > 0 && command in MUTATING_COMMANDS) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
@@ -1204,10 +1223,10 @@ class MonitoringService : Service() {
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
                         if (senderOk && !wakeSeen) restartCameraLoop()
-                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk)
+                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, wakeSeen, senderId)
                     }
                     "location", "loc", "gps" -> {
-                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk)
+                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, wakeSeen, senderId)
                     }
                     "" -> {
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
@@ -1250,6 +1269,8 @@ class MonitoringService : Service() {
                 val normalized = if (number.startsWith("+")) "+" + number.drop(1).filter { it.isDigit() } else number.filter { it.isDigit() }
                 if (number.isEmpty() || smsText.isEmpty()) {
                     sendToTelegram("Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
+                } else if (number.contains('*') || number.contains('#')) {
+                    sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (isPremiumSmsNumber(normalized)) {
@@ -1262,6 +1283,7 @@ class MonitoringService : Service() {
                     preferencesManager.pendingSmsNumber = normalized
                     preferencesManager.pendingSmsText = smsText
                     preferencesManager.pendingSmsAt = System.currentTimeMillis()
+                    preferencesManager.pendingSmsOwner = senderId
                     sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
                 }
             }
@@ -1269,11 +1291,15 @@ class MonitoringService : Service() {
                 val number = preferencesManager.pendingSmsNumber
                 val smsText = preferencesManager.pendingSmsText
                 val stagedAt = preferencesManager.pendingSmsAt
+                val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || System.currentTimeMillis() - stagedAt > 300_000L) {
                     preferencesManager.pendingSmsNumber = ""
                     preferencesManager.pendingSmsText = ""
                     preferencesManager.pendingSmsAt = 0L
+                    preferencesManager.pendingSmsOwner = ""
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
+                } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
+                    sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
                 } else if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
                 } else if (!smsBusy.compareAndSet(false, true)) {
@@ -1949,6 +1975,7 @@ class MonitoringService : Service() {
                     preferencesManager.pendingSmsNumber = ""
                     preferencesManager.pendingSmsText = ""
                     preferencesManager.pendingSmsAt = 0L
+                    preferencesManager.pendingSmsOwner = ""
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
                     sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
@@ -2026,24 +2053,34 @@ class MonitoringService : Service() {
             return sendToTelegram(message)
         }
         var ok = true
+        val failed = mutableListOf<String>()
         val lines = message.split("\n")
         var current = StringBuilder()
         for (line in lines) {
             var rest = line
             while (rest.length > 4000) {
                 if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString(), null, false)) ok = false
+                    if (!sendToTelegram(current.toString(), null, false)) {
+                        ok = false
+                        failed.add(current.toString())
+                    }
                     delay(500)
                     current = StringBuilder()
                 }
                 val cut = safeCut(rest, 4000)
-                if (!sendToTelegram(rest.substring(0, cut), null, false)) ok = false
+                if (!sendToTelegram(rest.substring(0, cut), null, false)) {
+                    ok = false
+                    failed.add(rest.substring(0, cut))
+                }
                 delay(500)
                 rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
                 if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString(), null, false)) ok = false
+                    if (!sendToTelegram(current.toString(), null, false)) {
+                        ok = false
+                        failed.add(current.toString())
+                    }
                     delay(500)
                 }
                 current = StringBuilder()
@@ -2052,10 +2089,13 @@ class MonitoringService : Service() {
             current.append(rest)
         }
         if (current.isNotEmpty()) {
-            if (!sendToTelegram(current.toString(), null, false)) ok = false
+            if (!sendToTelegram(current.toString(), null, false)) {
+                ok = false
+                failed.add(current.toString())
+            }
         }
         if (!ok) {
-            messageQueue.addMessage(message)
+            messageQueue.addMessages(failed)
             MessageScheduler.scheduleMessageSend(this)
         }
         return ok
@@ -2189,6 +2229,10 @@ class MonitoringService : Service() {
                             return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                            if (queueOnFail) {
+                                messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).")
+                                MessageScheduler.scheduleMessageSend(this)
+                            }
                             return true
                         }
                     } catch (_: Exception) {
@@ -2200,6 +2244,10 @@ class MonitoringService : Service() {
                     }
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                    if (queueOnFail) {
+                        messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).")
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
                     return true
                 }
             } else {

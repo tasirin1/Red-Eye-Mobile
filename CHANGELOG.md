@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Fixed
+- `MonitoringService` wake-offset forwarder disatukan ke `lastUpdateId+1` agar `getUpdates` tak saling hapus antrean server; perintah tak lagi hilang saat service mati.
+- `MonitoringService` owner auto-learn hanya untuk pesan perintah (`/`), DM privat biasa tak lagi klaim ownership.
+- `MonitoringService` `handleCallbackQuery` dedup `callback_query.id` (cap 200) agar tap inline tak bisa di-replay.
+- `MonitoringService` `sendFitted` antre ulang hanya pecahan gagal, bukan seluruh pesan, agar retry tak duplikat.
+- `MonitoringService` `400` ganda-kegagalan kirim notif drop terlihat, bukan hilang diam.
+- `/sms` tolak `*`/`#`; `/smsconfirm` hanya bisa dikonfirmasi peminta (`pendingSmsOwner`).
+- `MessageQueue` counter expiry dipisah (`expiredDrops`) dari overflow; `SendMessageWorker` laporkan keduanya terpisah.
+- `SetupActivity` `TOKEN_REGEX` dilonggarkan ke bentuk dasar agar token valid format baru tak ditolak; validasi akhir tetap via tes koneksi.
+- `CameraService` `stopBackgroundThread` `join` 2000 ms jadi 500 ms agar thread IO tak tertahan.
+
 ## [1.6.64] - 2026-10-04
 
 ### Fixed

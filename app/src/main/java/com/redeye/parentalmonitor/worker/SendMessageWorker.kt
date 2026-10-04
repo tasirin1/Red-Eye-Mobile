@@ -158,6 +158,10 @@ class SendMessageWorker(
         }
         if (sentIds.isNotEmpty() && credsSame()) {
             try {
+                val expired = MessageQueue.consumeExpiredDrops()
+                if (expired > 0L) {
+                    sendDropNotice(expired.toInt(), runToken, runChatId, "expired (older than 7 days)")
+                }
                 val overflow = MessageQueue.consumeOverflowDrops()
                 if (overflow > 0L) {
                     sendDropNotice(overflow.toInt(), runToken, runChatId, "oldest queued (queue full offline)")

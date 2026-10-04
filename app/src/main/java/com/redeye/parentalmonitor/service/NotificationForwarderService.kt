@@ -440,7 +440,7 @@ class NotificationForwarderService : NotificationListenerService() {
             wakeUpdateId = maxOf(wakeUpdateId, mainLast)
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
-        val offset = wakeUpdateId + 1L
+        val offset = mainLast + 1L
         val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=10"
         val response = try {
             TelegramClient.api.getUpdates(url)
@@ -458,7 +458,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var pinged = false
         for (u in updates) {
             if (u.updateId > maxId) maxId = u.updateId
-            if (u.updateId <= mainLast) continue
+            if (u.updateId <= mainLast || u.updateId <= wakeUpdateId) continue
             val msg = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
             val cb = u.callbackQuery
             val text = try {

@@ -100,7 +100,7 @@ class CameraService(private val context: Context) {
                 false
             }
             if (thread != null && Thread.currentThread() !== thread && !onMain) {
-                try { thread.join(2_000) } catch (_: InterruptedException) { }
+                try { thread.join(500) } catch (_: InterruptedException) { }
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread stopped")
         } catch (e: InterruptedException) {

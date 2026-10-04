@@ -201,6 +201,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_NUMBER = "pending_sms_number"
         private const val KEY_PENDING_SMS_TEXT = "pending_sms_text"
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
+        private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
         private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
@@ -405,6 +406,10 @@ class PreferencesManager(context: Context) {
     var lastSmsSendAt: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SMS_SEND_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, value).apply()
+
+    var pendingSmsOwner: String
+        get() = try { sharedPreferences.getString(KEY_PENDING_SMS_OWNER, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_OWNER, value).apply()
 
     var ownerUserId: Long
         get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
