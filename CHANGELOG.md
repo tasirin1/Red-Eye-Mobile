@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- `SendMessageWorker` cek kredensial ulang tiap 5 pesan (bukan tiap pesan) sehingga batch 20 hanya ~10 baca prefs terenkripsi, bukan ~40; deteksi ganti kredensial mid-batch tetap jalan via cek berkala + `AuthFailed`.
+
 ## [1.6.76] - 2026-10-04
 
 ### Changed
