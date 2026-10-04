@@ -25,19 +25,23 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
-        val escaped = digits.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        val norm = digits.filter { it.isDigit() }
+        val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
             sortOrder = "${Telephony.Sms.DATE} DESC",
             limit = limit
         )
-        return filterByNumber(rows, digits) { it.address }
+        val matched = filterByNumber(rows, digits) { it.address }
+        if (matched.isNotEmpty() || norm.length < 7) return matched
+        return filterByNumber(getRecentSms(200), digits) { it.address }
     }
 
     private fun filterByNumber(rows: List<SmsData>, digits: String, pick: (SmsData) -> String): List<SmsData> {
         val want = digits.filter { it.isDigit() }
-        if (want.length < 7) return emptyList()
+        if (want.isEmpty()) return emptyList()
+        if (want.length < 7) return rows.filter { pick(it).filter { c -> c.isDigit() } == want }
         return rows.filter {
             val have = pick(it).filter { c -> c.isDigit() }
             have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))

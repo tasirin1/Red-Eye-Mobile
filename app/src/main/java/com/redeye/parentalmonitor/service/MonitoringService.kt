@@ -76,6 +76,7 @@ class MonitoringService : Service() {
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private var cachedBotToken = ""
     private var cachedChatId = ""
+    private var cachedOwnerId = 0L
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var credsCheckAt = 0L
     private var netCheckAt = 0L
@@ -90,7 +91,7 @@ class MonitoringService : Service() {
         const val ACTION_START_MONITORING = "START_MONITORING"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
-        private val TAG_STRIP_REGEX = Regex("<[^>]*>")
+        private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -428,7 +429,35 @@ class MonitoringService : Service() {
         try {
             cachedBotToken = preferencesManager.botToken
             cachedChatId = preferencesManager.chatId
+            cachedOwnerId = preferencesManager.ownerUserId
         } catch (_: Exception) {
+        }
+    }
+
+    private fun isOwner(senderId: String): Boolean {
+        if (senderId.isEmpty()) return false
+        if (senderId == cachedChatId) return true
+        return cachedOwnerId != 0L && senderId == cachedOwnerId.toString()
+    }
+
+    private fun rememberOwner(id: Long) {
+        if (id == 0L) return
+        cachedOwnerId = id
+        try {
+            preferencesManager.ownerUserId = id
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun isFreshLocation(last: android.location.Location): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos < 120_000_000_000L
+            } else {
+                System.currentTimeMillis() - last.time < 120_000L
+            }
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -629,16 +658,21 @@ class MonitoringService : Service() {
                     handleCallbackQuery(callback)
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
-                    val chatOk = message?.chat?.id?.toString() == chatId
-                    val senderOk = message?.from?.id?.toString() == chatId
+                    val msgChatId = message?.chat?.id?.toString().orEmpty()
+                    val senderId = message?.from?.id?.toString().orEmpty()
+                    val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId) {
+                        rememberOwner(senderId.toLongOrNull() ?: 0L)
+                    }
+                    val ownerOk = isOwner(senderId)
                     val full = (message?.text ?: message?.caption)?.trim()
-                    if ((chatOk || senderOk) && full != null) {
+                    if ((chatOk || ownerOk) && full != null) {
                         val head = full.substringBefore(" ")
                         val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
-                            handleTelegramCommand(input, message?.date ?: 0, senderOk)
+                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk)
                         }
                     }
                 }
@@ -657,7 +691,9 @@ class MonitoringService : Service() {
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        if (sender != chatId) return
+        val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
+        if (sender != chatId && originChat != chatId) return
+        val ownerOk = isOwner(sender)
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -675,17 +711,18 @@ class MonitoringService : Service() {
         }
         val base = command.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
         val msgDate = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
+        val originOk = originChat.isNotEmpty() && originChat == chatId
         if (base in MUTATING_COMMANDS) {
             if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate, sender == chatId)
+                handleTelegramCommand(command, msgDate, ownerOk, originOk)
             } else {
-                handleTelegramCommand(command, 1L, sender == chatId)
+                handleTelegramCommand(command, 1L, ownerOk, originOk)
             }
         } else {
             if (msgDate > 0L) {
-                handleTelegramCommand(command, msgDate, sender == chatId)
+                handleTelegramCommand(command, msgDate, ownerOk, originOk)
             } else {
-                handleTelegramCommand(command, 0L, sender == chatId)
+                handleTelegramCommand(command, 0L, ownerOk, originOk)
             }
         }
     }
@@ -802,7 +839,7 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && (nowSec - sentAtSec > COMMAND_MAX_AGE_SEC || sentAtSec - nowSec > 300L)) {
             serviceScope.launch {
@@ -814,7 +851,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -827,7 +864,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false) {
         if (sentAtSec > 0 && command in MUTATING_COMMANDS) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
@@ -835,7 +872,12 @@ class MonitoringService : Service() {
                 return
             }
         }
-        if (!senderOk) {
+        if (command in MUTATING_COMMANDS) {
+            if (!senderOk) {
+                sendToTelegram("\u26D4 Only the owner can use $command.")
+                return
+            }
+        } else if (!senderOk && !chatOk) {
             sendToTelegram("\u26D4 Only the owner can use $command.")
             return
         }
@@ -1103,11 +1145,11 @@ class MonitoringService : Service() {
             "/ping" -> {
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
-                        restartCameraLoop()
-                        handleTelegramCommand("/photo", sentAtSec, senderOk)
+                        if (senderOk) restartCameraLoop()
+                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk)
                     }
                     "location", "loc", "gps" -> {
-                        handleTelegramCommand("/location", sentAtSec, senderOk)
+                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk)
                     }
                     "" -> {
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true
@@ -1431,7 +1473,7 @@ class MonitoringService : Service() {
                 for (provider in providers) {
                     try {
                         val last = locationManager.getLastKnownLocation(provider)
-                        if (last != null && System.currentTimeMillis() - last.time < 120_000L) {
+                        if (last != null && isFreshLocation(last)) {
                             return@withContext last
                         }
                     } catch (_: SecurityException) {

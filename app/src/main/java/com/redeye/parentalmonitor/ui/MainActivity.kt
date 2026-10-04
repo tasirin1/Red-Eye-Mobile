@@ -50,14 +50,15 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
             return
         }
+        val appCtx = applicationContext
         try {
             Thread {
                 try {
-                    PreferencesManager.refreshInstance(this)
+                    PreferencesManager.refreshInstance(appCtx)
                 } catch (_: Exception) {
                 }
                 try {
-                    preferencesManager = PreferencesManager.getInstance(this)
+                    preferencesManager = PreferencesManager.getInstance(appCtx)
                 } catch (_: Exception) {
                 }
                 try {

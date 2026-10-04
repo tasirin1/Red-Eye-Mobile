@@ -22,10 +22,14 @@ class PreferencesManager(context: Context) {
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
 
+    private val listenerLock = Any()
+    private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()
+
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
         return try {
             val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
+            val old = sharedPreferences
             try {
                 val snap = snapshot()
                 if (snap.isNotEmpty()) {
@@ -51,6 +55,40 @@ class PreferencesManager(context: Context) {
             } catch (_: Exception) {
             }
             sharedPreferences = fresh
+            try {
+                val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                val late = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+                if (late.isNotEmpty()) {
+                    val delta = fresh.edit()
+                    var touched = false
+                    for ((key, value) in late) {
+                        if (!snap.containsKey(key) || snap[key] != value) {
+                            touched = true
+                            when (value) {
+                                null -> delta.remove(key)
+                                is String -> delta.putString(key, value)
+                                is Int -> delta.putInt(key, value)
+                                is Long -> delta.putLong(key, value)
+                                is Float -> delta.putFloat(key, value)
+                                is Boolean -> delta.putBoolean(key, value)
+                                is Set<*> -> try {
+                                    @Suppress("UNCHECKED_CAST")
+                                    delta.putStringSet(key, value as Set<String>)
+                                } catch (_: Exception) {
+                                }
+                                else -> Unit
+                            }
+                        }
+                    }
+                    if (touched) delta.apply()
+                }
+            } catch (_: Exception) {
+            }
+            synchronized(listenerLock) {
+                for (l in listenerSet) {
+                    try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
+                }
+            }
             storageEncrypted = true
             true
         } catch (_: Exception) {
@@ -164,6 +202,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_TEXT = "pending_sms_text"
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
+        private const val KEY_OWNER_ID = "owner_user_id"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -305,10 +344,12 @@ class PreferencesManager(context: Context) {
     }
 
     fun registerChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        synchronized(listenerLock) { listenerSet.add(listener) }
         try { sharedPreferences.registerOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
     }
 
     fun unregisterChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        synchronized(listenerLock) { listenerSet.remove(listener) }
         try { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
     }
 
@@ -364,15 +405,23 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LAST_SMS_SEND_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, value).apply()
 
+    var ownerUserId: Long
+        get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
+
     fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
         val changed = try {
             newToken != botToken || newChatId != chatId
         } catch (_: Exception) {
             true
         }
+        val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
         val editor = sharedPreferences.edit()
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
+        }
+        if (chatChanged) {
+            editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
@@ -389,9 +438,13 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
             true
         }
+        val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
         val editor = sharedPreferences.edit()
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
+        }
+        if (chatChanged) {
+            editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)

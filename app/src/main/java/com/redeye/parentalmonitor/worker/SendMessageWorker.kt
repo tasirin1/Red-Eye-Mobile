@@ -11,7 +11,7 @@ import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import kotlinx.coroutines.delay
 
-private val tagStripRegex = Regex("<[^>]*>")
+private val tagStripRegex = Regex("</?[a-zA-Z][^>]*>")
 
 class SendMessageWorker(
     context: Context,

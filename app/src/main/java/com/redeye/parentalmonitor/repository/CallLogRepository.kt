@@ -94,15 +94,22 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
-        val escaped = digits.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        val norm = digits.filter { it.isDigit() }
+        val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = limit
         )
-        val want = digits.filter { it.isDigit() }
-        if (want.length < 7) return emptyList()
+        val matched = filterCallsByNumber(rows, norm)
+        if (matched.isNotEmpty() || norm.length < 7) return matched
+        return filterCallsByNumber(getAllCalls(200), norm)
+    }
+
+    private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
+        if (want.isEmpty()) return emptyList()
+        if (want.length < 7) return rows.filter { it.number.filter { c -> c.isDigit() } == want }
         return rows.filter {
             val have = it.number.filter { c -> c.isDigit() }
             have.isNotEmpty() && (have == want || have.endsWith(want) || want.endsWith(have))

@@ -107,6 +107,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
                 }
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
+                try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
                 prefsRef?.isConfigured()
                 queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {

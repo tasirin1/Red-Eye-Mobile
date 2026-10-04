@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [1.6.53] - 2026-10-04
+
+### Fixed
+- Perintah Telegram di `chatId` grup diperbaiki total: sebelumnya owner terkunci (ID user tak pernah sama dengan ID grup) dan tombol inline mati diam-diam. Kini ada `ownerUserId` yang dipelajari dari DM pribadi pertama, perintah mutasi wajib owner, perintah baca boleh dari chat terkonfigurasi, dan tombol dari non-owner dibalas penolakan eksplisit.
+- `PreferencesManager.upgradeToPersistent` tidak lagi menghilangkan tulis yang datang saat migrasi memori-ke-enkripsi (delta-copy pasca-swap); listener kredensial kini disimpan di registry dan didaftarkan ulang ke store baru sehingga tetap hidup setelah upgrade.
+- `MessageScheduler.scheduleMessageSend` pakai `ExistingWorkPolicy.APPEND` agar pemicu saat worker berjalan tidak terbuang (sebelumnya `KEEP` + jendela cek-akhir worker bisa macetkan antrean).
+- `NotificationForwarderService` memanggil `tryRestorePersistent` saat start agar antrean pulih dari store terenkripsi, bukan terjebak volatile.
+- `SmsRepository`/`CallLogRepository` normalisasi digit sebelum `LIKE`, fallback ke 200 riwayat bila prefilter kosong, dan short-code <7 digit dicocokkan eksak (sebelumnya selalu kosong).
+- `NetworkUtils.isNetworkAvailable` hanya mensyaratkan `NET_CAPABILITY_INTERNET`; sebelumnya `VALIDATED` menahan kirim selamanya di captive portal/VPN setengah-valid.
+- `MonitoringService.fetchLocation` menilai umur lokasi via `elapsedRealtimeNanos` (kebal skew jam dinding) dengan fallback wall-clock di API lama.
+- `MonitoringService`/`SendMessageWorker` pengupas tag fallback hanya untuk tag sungguhan (`</?[a-zA-Z][^>]*>`); sebelumnya teks seperti `<3` ikut terbuang.
+- `CrashReporter.buildReport` tidak lagi membaca token dari encrypted prefs di thread crash (risiko ANR/crash sekunder); redaksi mengandalkan regex pola token.
+- `MainActivity` memakai `applicationContext` di thread background agar tidak menahan referensi Activity yang sudah destroy.
+- `SpeedMonitorActivity` mereskala sesi (bagi-dua) saat mendekati batas `Long` alih-alih macet permanen di plafon.
+- `SetupActivity` hapus kredensial ikut mereset `ownerUserId`; ganti `chatId` di `saveCoreConfig`/`saveTestCredentials` mengulang pembelajaran owner.
+- `/ping camera` hanya me-restart loop kamera bila pemanggil owner; sebelumnya anggota grup bisa memicunya sebelum penolakan `/photo`.
+
 ## [1.6.52] - 2026-10-03
 
 ### Fixed

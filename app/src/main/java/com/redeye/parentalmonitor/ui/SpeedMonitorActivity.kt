@@ -87,8 +87,14 @@ class SpeedMonitorActivity : AppCompatActivity() {
             val dt = (now - lastAt).coerceAtLeast(1) / 1000.0
             val down = ((rx - lastRx).coerceAtLeast(0) / dt).toLong()
             val up = ((tx - lastTx).coerceAtLeast(0) / dt).toLong()
-            sessionRx = (sessionRx + (rx - lastRx).coerceAtLeast(0)).coerceAtMost(Long.MAX_VALUE / 2)
-            sessionTx = (sessionTx + (tx - lastTx).coerceAtLeast(0)).coerceAtMost(Long.MAX_VALUE / 2)
+            val addRx = (rx - lastRx).coerceAtLeast(0)
+            val addTx = (tx - lastTx).coerceAtLeast(0)
+            if (sessionRx > Long.MAX_VALUE / 2 - addRx || sessionTx > Long.MAX_VALUE / 2 - addTx) {
+                sessionRx /= 2
+                sessionTx /= 2
+            }
+            sessionRx += addRx
+            sessionTx += addTx
             val parts = NetSpeed.splitRate(down)
             downValue.text = parts.first
             downUnit.text = parts.second

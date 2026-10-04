@@ -262,6 +262,7 @@ class SetupActivity : AppCompatActivity() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.botToken = "" } catch (_: Exception) { }
             try { prefs.chatId = "" } catch (_: Exception) { }
+            try { prefs.ownerUserId = 0L } catch (_: Exception) { }
             try { prefs.credentialError = "" } catch (_: Exception) { }
             try { prefs.credentialErrorAt = 0L } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }

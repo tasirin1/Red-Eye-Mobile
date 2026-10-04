@@ -159,11 +159,6 @@ object CrashReporter {
     }
 
     private fun buildReport(context: Context, thread: Thread, error: Throwable): String {
-        val token = try {
-            PreferencesManager.getInstance(context).botToken
-        } catch (_: Exception) {
-            ""
-        }
         val body = StringBuilder()
         body.append("v").append(BuildConfig.VERSION_NAME)
             .append(" api").append(Build.VERSION.SDK_INT)
@@ -183,7 +178,6 @@ object CrashReporter {
             depth++
         }
         var raw = body.toString()
-        if (token.isNotEmpty()) raw = raw.replace(token, "***")
         raw = raw.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
         if (raw.length > MAX_CHARS) raw = raw.take(MAX_CHARS)
         val escaped = Html.escape(raw)

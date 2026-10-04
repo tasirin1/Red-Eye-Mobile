@@ -11,8 +11,10 @@ class MessageQueue private constructor(context: Context) {
 
     private val appContext = context.applicationContext
 
+    @Volatile
     private var volatileOnly = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
     private val volatileQueue = mutableListOf<QueuedMessage>()
+    @Volatile
     private var sharedPreferences: SharedPreferences? = null
 
     init {
