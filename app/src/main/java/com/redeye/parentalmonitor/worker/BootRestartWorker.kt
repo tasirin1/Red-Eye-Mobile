@@ -117,13 +117,14 @@ class BootRestartWorker(
         val nowWall = System.currentTimeMillis()
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            val lastWall = meta.getLong("last_resume_elapsed", 0L)
+            var lastWall = meta.getLong("last_resume_wall", 0L)
+            if (lastWall == 0L) lastWall = meta.getLong("last_resume_elapsed", 0L)
             if (lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 3 * 60 * 60_000L) return
         } catch (_: Exception) {
         }
         lastResumeReminderAt = nowResume
         try {
-            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowWall).apply()
+            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_wall", nowWall).apply()
         } catch (_: Exception) {
         }
         try {

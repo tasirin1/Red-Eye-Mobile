@@ -157,11 +157,21 @@ object CrashReporter {
                 return
             }
             try {
-                val fitted = if (report.length > 4000) report.take(TextChunk.safeCut(report, 4000)) else report
+                val cut = if (report.length > 4000) TextChunk.safeCut(report, 4000) else report.length
+                val fitted = report.take(cut)
+                val rest = if (cut < report.length) report.substring(cut) else ""
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = "HTML"))
                 if (response.isSuccessful && response.body()?.ok == true) {
-                    file.delete()
+                    if (rest.isBlank()) {
+                        file.delete()
+                    } else {
+                        try {
+                            file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + rest)
+                        } catch (_: Exception) {
+                            try { file.delete() } catch (_: Exception) { }
+                        }
+                    }
                 } else if (response.code() == 400) {
                     val body = try {
                         response.errorBody()?.string()
@@ -177,9 +187,17 @@ object CrashReporter {
                             false
                         }
                         if (delivered) {
-                            try {
-                                file.delete()
-                            } catch (_: Exception) {
+                            if (rest.isBlank()) {
+                                try {
+                                    file.delete()
+                                } catch (_: Exception) {
+                                }
+                            } else {
+                                try {
+                                    file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + rest)
+                                } catch (_: Exception) {
+                                    try { file.delete() } catch (_: Exception) { }
+                                }
                             }
                         }
                     }

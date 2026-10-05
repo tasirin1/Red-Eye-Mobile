@@ -84,7 +84,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun resolveStored(raw: String, stored: String): String {
-        return if (raw.isEmpty() || raw == STORED_MASK) stored else raw
+        return if (raw == STORED_MASK) stored else raw
     }
 
     private suspend fun resolveChatId(token: String, chatId: String): String {

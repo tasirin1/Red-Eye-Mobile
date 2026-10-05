@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+- `NO_REPLAY_COMMANDS` disempitkan ke `/smsconfirm` saja agar `/ring`/`/record`/`/lock` bisa retry via offset `finally` bila kill di tengah, bukan hilang diam-diam; duplikat SMS tetap dicegah via pre-commit.
+- Perintah sensitif (`/photo`, `/location`, `/lastsms`, `/history`, `/contacts` dkk) kedaluwarsa 300 dtk seperti mutating (sebelumnya 900 dtk) di `handleTelegramCommandInner` dan umur tombol menu, agar redelivery pasca-restart tak eksekusi ulang exfil.
+- `CrashReporter.flushPending` menyimpan sisa laporan bila gabungan melebihi 4000 karakter, bukan menghapus seluruh file setelah kirim potongan pertama.
+- `resolveStored` hanya memetakan mask `STORED_MASK`, field kosong tetap kosong sehingga Save dengan token/chat kosong ditolak validasi, bukan diam-diam memakai kredensial lama.
+- `sendPairHint` throttle 1 jam dipersist wall-clock (`last_pair_hint_wall` di `boot_meta`) agar tahan restart, bukan hanya memori.
+- Kunci throttle `postResumeReminder` diganti ke `last_resume_wall` (baca fallback `last_resume_elapsed` lama) agar nama sesuai isi wall-clock.
+
 ## [1.6.104] - 2026-10-05
 
 ### Fixed
