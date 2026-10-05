@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.111] - 2026-10-05
+
+### Fixed
+- Fast-path forwarder (`pendingPosts>32`) tak lagi menggugurkan riwayat saat forwarding mati: gate `historyAllowed()` + record sebelum gate forward, selaras jalur normal + overflow `v1.6.110`; pause tetap senyap.
+- `/clearqueue` menghentikan in-flight worker: counter generasi di `MessageQueue` (`clearQueue()` menaikkan, worker abort bila berubah) agar sisa snapshot ≤20 pesan tak terkirim sesudah clear; akuntansi drop gagal/reject kedaluwarsa dilewati pasca-clear.
+- Wake-loop forwarder tak lagi mangkir pasca-ganti token/chat: listener kredensial mereset `wakeUpdateId=-1` (+ invalide cache config) agar offset tak raksasa selamanya.
+- `REPLACE` 429 jalur langsung tak lagi membunuh worker mid-loop (duplikat ≤5): flag `workerRunning` di `MessageScheduler`, fungsi `scheduleRateLimited()` pakai `APPEND` bila worker jalan dan `REPLACE` bila idle; pemanggil worker-internal tetap `REPLACE`.
+
+### Changed
+- `saveCoreConfig`/`saveTestCredentials` di `PreferencesManager` digabung ke satu fungsi privat `saveCredentials` (sebelumnya identik baris-per-baris).
+
 ## [1.6.110] - 2026-10-05
 
 ### Fixed
