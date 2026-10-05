@@ -670,25 +670,6 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private fun batchCut(text: String, max: Int): Int {
-        if (text.length <= max) return text.length
-        var cut = max.coerceAtMost(text.length)
-        if (cut <= 0) return max.coerceAtMost(text.length)
-        if (cut < text.length && Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
-        val amp = text.lastIndexOf('&', cut - 1)
-        if (amp >= 0 && amp > cut - 12) {
-            val semi = text.indexOf(';', amp)
-            if (semi < 0 || semi >= cut) {
-                val entity = text.substring(amp, cut)
-                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
-            }
-        }
-        val tag = text.lastIndexOf('<', cut - 1)
-        if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
-        if (cut <= 0) cut = max.coerceAtMost(text.length)
-        return cut
-    }
-
     private val batchLock = Any()
     private val batchBuf = ArrayDeque<Pair<String, String>>()
     private var batchJob: Job? = null
@@ -739,7 +720,7 @@ class NotificationForwarderService : NotificationListenerService() {
         while (rest.length > 4000) {
             var cut = rest.lastIndexOf("\n\n", 4000)
             if (cut <= 0) cut = 4000
-            cut = batchCut(rest, cut)
+            cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
             forwardLocked(rest.substring(0, cut), "")
             rest = rest.substring(cut).trimStart('\n')
             if (rest.isEmpty()) return
@@ -770,16 +751,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 return false
             }
             try {
+                NetworkUtils.sweepAuthBlock(prefs)
                 if (prefs.credentialError.isNotEmpty()) {
-                    val nowAuth = System.currentTimeMillis()
-                    if (nowAuth < prefs.credentialErrorAt) {
-                        prefs.credentialError = ""
-                        prefs.credentialErrorAt = 0L
-                    } else if (nowAuth - prefs.credentialErrorAt < 30 * 60_000L) {
-                        queue().addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                        return false
-                    }
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return false
                 }
             } catch (_: Exception) {
             }

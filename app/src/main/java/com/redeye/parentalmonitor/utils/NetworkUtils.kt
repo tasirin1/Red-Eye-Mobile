@@ -17,7 +17,7 @@ object NetworkUtils {
     fun isChatMissing(errorBody: String?): Boolean {
         if (errorBody.isNullOrEmpty()) return false
         val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty")
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty") || lower.contains("bot was kicked") || lower.contains("not a member") || lower.contains("not enough rights") || lower.contains("have no rights") || lower.contains("need administrator rights")
     }
 
     fun isAuthBlocked(prefs: PreferencesManager): Boolean {
@@ -33,6 +33,18 @@ object NetworkUtils {
             now - prefs.credentialErrorAt < 30 * 60_000L
         } catch (_: Exception) {
             false
+        }
+    }
+
+    fun sweepAuthBlock(prefs: PreferencesManager) {
+        try {
+            if (prefs.credentialError.isEmpty()) return
+            val now = System.currentTimeMillis()
+            if (now < prefs.credentialErrorAt || now - prefs.credentialErrorAt >= 30 * 60_000L) {
+                prefs.credentialError = ""
+                prefs.credentialErrorAt = 0L
+            }
+        } catch (_: Exception) {
         }
     }
 

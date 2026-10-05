@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [1.6.94] - 2026-10-05
+
+### Fixed
+- Build `v1.6.93` yang gagal (`Redact.kt` smart-cast nullable) diperbaiki; impor `selects` dipertegas.
+- Laporan crash dikirim sebagai `HTML` (bukan tag mentah) dengan potongan sadar-tag.
+- `isChatMissing` mengenal tendangan/blokir grup ("bot was kicked", "not a member", "rights") agar tak dibuang sebagai reject.
+- Test koneksi yang gagal `401/403` kini merekam blokir kredensial seperti jalur monitoring.
+- `sendStatusNow` mencoba fallback plain saat `400` non-chat-missing sebelum mengantre.
+- Fallback `/history` dibatasi 90 hari terakhir agar tak full-scan provider.
+
+### Changed
+- `safeTake`/`batchCut`/potongan inline disatukan ke `utils/TextChunk.kt`; token masking memakai `utils/Redact.kt`.
+- Pencocokan nomor disatukan ke `utils/PhoneNumbers.kt`; query paginasi disatukan ke `utils/ContentQuery.kt`.
+- Sweep blokir auth disatukan ke `NetworkUtils.sweepAuthBlock()` (5 lokasi).
+- `formatStatusTime` dihapus; pemanggil memakai `TimeFmt.full` langsung.
+
+### Removed
+- Duplikat `altVariant`/`numbersEqualFast`/`filter*` di kedua repo; `batchCut`; blok reset-expiry yang tersebar.
+
 ## [1.6.93] - 2026-10-05
 
 ### Fixed

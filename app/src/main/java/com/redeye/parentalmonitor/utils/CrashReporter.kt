@@ -121,12 +121,7 @@ object CrashReporter {
             }
             if (!NetworkUtils.isNetworkAvailable(context)) return
             try {
-                val err = PreferencesManager.getInstance(context).credentialError
-                if (err == "401" || err == "403" || err == "400") {
-                    val errAt = PreferencesManager.getInstance(context).credentialErrorAt
-                    val nowAuth = System.currentTimeMillis()
-                    if (nowAuth >= errAt && nowAuth - errAt < 30 * 60_000L) return
-                }
+                if (NetworkUtils.isAuthBlocked(PreferencesManager.getInstance(context))) return
             } catch (_: Exception) {
             }
             try { PreferencesManager.refreshInstance(context) } catch (_: Exception) { }
@@ -163,9 +158,9 @@ object CrashReporter {
                 return
             }
             try {
-                val fitted = if (report.length > 4000) safeTake(report, 4000) else report
+                val fitted = if (report.length > 4000) report.take(TextChunk.safeCut(report, 4000)) else report
                 val url = "https://api.telegram.org/bot$token/sendMessage"
-                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = null))
+                val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = "HTML"))
                 if (response.isSuccessful && response.body()?.ok == true) {
                     file.delete()
                 } else if (response.code() == 400) {
@@ -198,21 +193,8 @@ object CrashReporter {
     }
 
     private fun safeTake(text: String, max: Int): String {
-        if (text.length <= max) return text
-        var cut = max
-        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
-        val amp = text.lastIndexOf('&', cut - 1)
-        if (amp >= 0 && amp > cut - 12) {
-            val semi = text.indexOf(';', amp)
-            if (semi < 0 || semi >= cut) {
-                val entity = text.substring(amp, cut)
-                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
-            }
-        }
-        if (cut <= 0) cut = max
-        return text.take(cut)
+        return text.take(TextChunk.safeCut(text, max))
     }
-
 
     private fun buildReport(context: Context, thread: Thread, error: Throwable): String {
         val body = StringBuilder()
@@ -234,21 +216,14 @@ object CrashReporter {
             depth++
         }
         var raw = body.toString()
-        raw = raw.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
+        raw = Redact.token(raw)
         if (raw.length > MAX_CHARS) raw = safeTake(raw, MAX_CHARS)
         val escaped = Html.escape(raw)
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
-        var keep = (4000 - 60).coerceAtLeast(500)
-        if (keep < escaped.length) {
-            val amp = escaped.lastIndexOf('&', keep - 1)
-            if (amp >= 0 && amp > keep - 12) {
-                val semi = escaped.indexOf(';', amp)
-                if (semi < 0 || semi >= keep) keep = amp
-            }
-            if (keep <= 0) keep = (4000 - 60).coerceAtLeast(500)
-        }
-        return "<b>Force close</b>\n<pre>" + safeTake(escaped, keep) + "</pre>"
+        val keep = TextChunk.safeCut(escaped, (4000 - 60).coerceAtLeast(500))
+        return "<b>Force close</b>
+<pre>" + escaped.take(keep) + "</pre>"
     }
 
 }

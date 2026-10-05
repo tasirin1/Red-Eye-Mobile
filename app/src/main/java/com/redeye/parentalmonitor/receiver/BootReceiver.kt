@@ -112,15 +112,7 @@ class BootReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
         }
         try {
-            val blockedErr = preferencesManager.credentialError
-            if (blockedErr.isNotEmpty()) {
-                val nowAuth = System.currentTimeMillis()
-                val errAt = preferencesManager.credentialErrorAt
-                if (nowAuth < errAt || nowAuth - errAt >= 30 * 60_000L) {
-                    preferencesManager.credentialError = ""
-                    preferencesManager.credentialErrorAt = 0L
-                }
-            }
+            com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(preferencesManager)
         } catch (_: Exception) {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {

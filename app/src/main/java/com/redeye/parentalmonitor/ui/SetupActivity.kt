@@ -22,6 +22,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.receiver.AdminReceiver
@@ -417,6 +418,13 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } else {
                     val code = resp.code()
+                    if (code == 401 || code == 403) {
+                        try {
+                            prefs.credentialError = code.toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                    }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
@@ -582,17 +590,10 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         try {
-            val blockedErr = prefs.credentialError
-            if (blockedErr.isNotEmpty()) {
-                val nowAuth = System.currentTimeMillis()
-                val errAt = prefs.credentialErrorAt
-                if (nowAuth < errAt) {
-                    prefs.credentialError = ""
-                    prefs.credentialErrorAt = 0L
-                } else if (nowAuth - errAt < 30 * 60_000L) {
-                    Toast.makeText(this, getString(R.string.setup_test_fail, blockedErr), Toast.LENGTH_LONG).show()
-                    return
-                }
+            NetworkUtils.sweepAuthBlock(prefs)
+            if (prefs.credentialError.isNotEmpty()) {
+                Toast.makeText(this, getString(R.string.setup_test_fail, prefs.credentialError), Toast.LENGTH_LONG).show()
+                return
             }
         } catch (_: Exception) {
         }
@@ -605,8 +606,8 @@ class SetupActivity : AppCompatActivity() {
                 val text = buildString {
                     appendLine("📊 <b>Status</b> (direct)")
                     appendLine("Monitoring flag: ${if (prefs.isMonitoringEnabled) "ON" else "OFF"}")
-                    appendLine("Last sync: ${if (lastSync > 0) formatStatusTime(lastSync) else getString(R.string.never)}")
-                    appendLine("Last photo: ${if (prefs.lastPhotoTime > 0) formatStatusTime(prefs.lastPhotoTime) else getString(R.string.never)}")
+                    appendLine("Last sync: ${if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)}")
+                    appendLine("Last photo: ${if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)}")
                     appendLine("Battery restriction: ${if (isBatteryExempt()) "off" else "ON — tap Disable Battery Restriction"}")
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
@@ -646,6 +647,22 @@ class SetupActivity : AppCompatActivity() {
                             prefs.credentialErrorAt = System.currentTimeMillis()
                         } catch (_: Exception) {
                         }
+                    } else {
+                        val plain = text.replace(Html.tagStripRegex, "")
+                        if (plain != text) {
+                            try {
+                                val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+                                if (plainResp.isSuccessful && plainResp.body()?.ok == true) {
+                                    val toastOk = getString(R.string.setup_status_sent)
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
+                                        reviveMonitoringIfNeeded()
+                                    }
+                                    return@launch
+                                }
+                            } catch (_: Exception) {
+                            }
+                        }
                     }
                     try {
                         MessageQueue.getInstance(applicationContext).addMessage(text)
@@ -681,14 +698,6 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-
-    private fun formatStatusTime(timestamp: Long): String {
-        return try {
-            com.redeye.parentalmonitor.utils.TimeFmt.full(timestamp)
-        } catch (e: Exception) {
-            timestamp.toString()
-        }
-    }
 
     private fun activateDeviceAdmin() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
