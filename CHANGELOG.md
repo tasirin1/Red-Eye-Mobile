@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.115] - 2026-10-05
+
+### Fixed
+- Drop-notice forwarder tak lagi ganda pasca-restart: `onDestroy` ikut persist nol ke `pendingNotifDrops` (seperti `flushMsgDropNotice`), `onCreate` berikut tak lagi mengantre notice kedua yang identik.
+- Wake-loop forwarder (`pollWakeOnce`) hormati auth-block seperti loop utama — token/chat ditolak tak lagi memicu polling `getUpdates` tiap 25 detik selamanya.
+
 ## [1.6.114] - 2026-10-05
 
 ### Fixed
