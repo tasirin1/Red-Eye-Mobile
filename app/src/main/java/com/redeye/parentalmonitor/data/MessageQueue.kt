@@ -99,12 +99,13 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun addMessage(message: String) {
+    fun addMessage(message: String, priority: Boolean = false) {
+        val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             if (volatileOnly) {
                 pruneVolatileLocked()
                 volatileQueue.add(QueuedMessage(message = message))
-                while (volatileQueue.size > MAX_QUEUE_SIZE) {
+                while (volatileQueue.size > cap) {
                     volatileQueue.removeAt(0)
                     overflowDrops.incrementAndGet()
                 }
@@ -112,7 +113,7 @@ class MessageQueue private constructor(context: Context) {
             }
             val queue = readLocked().toMutableList()
             queue.add(QueuedMessage(message = message))
-            while (queue.size > MAX_QUEUE_SIZE) {
+            while (queue.size > cap) {
                 queue.removeAt(0)
                 overflowDrops.incrementAndGet()
                 android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
@@ -268,12 +269,14 @@ class MessageQueue private constructor(context: Context) {
                 gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
             }
         } catch (e: Exception) {
+            android.util.Log.w("MessageQueue", "Queue storage corrupt, keeping a drop notice")
+            val notice = mutableListOf(QueuedMessage(message = "\u26A0\uFE0F Queued messages were discarded (corrupt storage)."))
             try {
-                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.commit()
+                sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(notice))?.commit()
             } catch (_: Exception) {
             }
-            cached = mutableListOf()
-            mutableListOf()
+            cached = notice
+            notice
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()

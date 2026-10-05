@@ -601,6 +601,26 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        try {
+            val leftover = synchronized(batchLock) {
+                val items = batchBuf.toList()
+                batchBuf.clear()
+                items
+            }
+            if (leftover.isNotEmpty()) {
+                try {
+                    Thread {
+                        try {
+                            queue().addMessages(leftover.map { it.first })
+                            MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+                        } catch (_: Exception) {
+                        }
+                    }.apply { isDaemon = true; start() }
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
         try { wakeJob?.cancel() } catch (_: Exception) { }
         try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
         scope.cancel()
@@ -824,7 +844,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                 try {
-                    queue().addMessage("Dropped 1 notification rejected by Telegram (400).")
+                    queue().addMessage("Dropped 1 notification rejected by Telegram (400).", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }

@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Fixed
+- Pending SMS dikonsumsi sebelum transmit dan dibuka lagi hanya saat gagal, cegah SMS dobel saat reboot di jendela kirim.
+- Batch notifikasi diamankan ke antrean saat service dimatikan agar tak hilang.
+- Foto/audio yang kena rate-limit menunggu jeda server lalu coba sekali lagi, bukan pasrah ke siklus berikutnya.
+- Flush background melapor saat berkas ditolak Telegram, sama seperti jalur manual.
+- Tombol inline basi menerbitkan menu segar, bukan sekadar pesan expired.
+- Loop macet-tapi-hidup terdeteksi via heartbeat dan direstart watchdog.
+- `AdminReceiver` pindah kerja antrean ke background thread.
+- `mapping.txt` tak lagi diunggah ke artifacts.
+- Antrean korup meninggalkan kabar drop, bukan hilang diam.
+- Kabar drop/alert dapat slot cadangan 5 di antrean penuh agar tak gusur data.
+
 ## [1.6.88] - 2026-10-05
 
 ### Fixed

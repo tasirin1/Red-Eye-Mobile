@@ -405,7 +405,7 @@ class SendMessageWorker(
         } catch (_: Exception) {
         }
         try {
-            messageQueue.addMessage(text)
+            messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(applicationContext)
         } catch (_: Exception) {
         }
