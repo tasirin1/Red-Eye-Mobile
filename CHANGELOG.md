@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.100] - 2026-10-05
+
 ### Fixed
 - Kalkulator stealth `1234` + `=` langsung membuka Setup (satu tekanan), bukan dua tekanan.
 - Owner via `/start` wajib pairing `/start <chat ID>` di chat privat sehingga orang asing yang DM duluan tak bisa mengambil alih owner.
