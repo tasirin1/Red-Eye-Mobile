@@ -505,6 +505,10 @@ class NotificationForwarderService : NotificationListenerService() {
             false
         }
         if (!resumeOk) return
+        try {
+            if (NetworkUtils.isAuthBlocked(prefs)) return
+        } catch (_: Exception) {
+        }
         val ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }
         val mainLast = try { prefs.lastUpdateId } catch (_: Exception) { 0L }
         if (wakeUpdateId < 0L) {
@@ -659,6 +663,10 @@ class NotificationForwarderService : NotificationListenerService() {
     override fun onDestroy() {
         try {
             val drops = dropNoticeCount.getAndSet(0)
+            try {
+                prefsRef?.setPendingNotifDropsSync(0)
+            } catch (_: Exception) {
+            }
             if (drops > 0) {
                 try {
                     val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
