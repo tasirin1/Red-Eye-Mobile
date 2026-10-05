@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Batal saat unggah audio gagal-transien (`/restart` di tengah retry) tak lagi menghapus rekaman: file `KEPT` dipertahankan untuk retry + antre notifikasi jujur, selaras jalur foto/video.
+
 ## [1.6.117] - 2026-10-05
 
 ### Fixed

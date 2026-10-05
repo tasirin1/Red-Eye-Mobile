@@ -3544,6 +3544,13 @@ class MonitoringService : Service() {
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
+            } else if (audioOutcome == MediaSendOutcome.KEPT) {
+                keepForRetry = true
+                try {
+                    messageQueue.addMessage("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
             } else {
                 try { deleteQuietly(audioFile) } catch (_: Exception) { }
             }
