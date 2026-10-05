@@ -673,6 +673,7 @@ class SetupActivity : AppCompatActivity() {
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
                 pending = text
                 val ok = resp.isSuccessful && resp.body()?.ok == true
+                var failCode = resp.code()
                 if (ok) {
                     prefs.credentialError = ""
                     prefs.credentialErrorAt = 0L
@@ -719,6 +720,7 @@ class SetupActivity : AppCompatActivity() {
                                     }
                                     return@launch
                                 }
+                                failCode = plainResp.code()
                                 if (plainResp.code() == 401 || plainResp.code() == 403) {
                                     try {
                                         prefs.credentialError = plainResp.code().toString()
@@ -755,7 +757,7 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 }
-                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, resp.code())
+                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, failCode)
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, toastRes, toastLen).show()

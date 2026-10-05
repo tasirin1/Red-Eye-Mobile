@@ -62,7 +62,12 @@ class MainActivity : AppCompatActivity() {
                 } catch (_: Exception) {
                 }
                 try {
-                    if (!isFinishing && !isDestroyed) startMonitoringInBackground()
+                    runOnUiThread {
+                        try {
+                            if (!isFinishing && !isDestroyed) startMonitoringInBackground()
+                        } catch (_: Exception) {
+                        }
+                    }
                 } catch (_: Exception) {
                 }
             }.start()

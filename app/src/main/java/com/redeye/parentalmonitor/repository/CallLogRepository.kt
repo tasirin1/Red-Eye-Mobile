@@ -90,7 +90,23 @@ class CallLogRepository(private val context: Context) {
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        return filterCallsByNumber(getCallsSince(cutoff, 500), norm)
+        var upper = Long.MAX_VALUE
+        repeat(5) {
+            val page = queryCalls(
+                selection = "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} < ?",
+                args = arrayOf(cutoff.toString(), upper.toString()),
+                sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+                limit = 500
+            )
+            if (page.isEmpty()) return emptyList()
+            val pageMatched = filterCallsByNumber(page, norm)
+            if (pageMatched.isNotEmpty()) return pageMatched
+            if (page.size < 500) return emptyList()
+            val oldest = page.minOf { it.date }
+            if (oldest <= cutoff || oldest >= upper) return emptyList()
+            upper = oldest
+        }
+        return emptyList()
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {

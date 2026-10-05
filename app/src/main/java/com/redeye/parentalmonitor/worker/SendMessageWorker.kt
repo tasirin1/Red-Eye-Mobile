@@ -461,7 +461,7 @@ class SendMessageWorker(
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
-            } else if (response.code() == 400 && message.length > 4096) {
+            } else if (response.code() == 400 && message.length > 4000) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
                 if (chatGone) SendOutcome.AuthFailed(response.code())

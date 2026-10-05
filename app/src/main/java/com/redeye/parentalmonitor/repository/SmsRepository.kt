@@ -37,7 +37,23 @@ class SmsRepository(private val context: Context) {
         val matched = filterByNumber(rows, digits) { it.address }
         if (matched.isNotEmpty() || norm.length < 7) return matched
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        return filterByNumber(getRecentSmsSince(cutoff, 500), digits) { it.address }
+        var upper = Long.MAX_VALUE
+        repeat(5) {
+            val page = querySms(
+                selection = "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} < ?",
+                args = arrayOf(cutoff.toString(), upper.toString()),
+                sortOrder = "${Telephony.Sms.DATE} DESC",
+                limit = 500
+            )
+            if (page.isEmpty()) return emptyList()
+            val pageMatched = filterByNumber(page, digits) { it.address }
+            if (pageMatched.isNotEmpty()) return pageMatched
+            if (page.size < 500) return emptyList()
+            val oldest = page.minOf { it.date }
+            if (oldest <= cutoff || oldest >= upper) return emptyList()
+            upper = oldest
+        }
+        return emptyList()
     }
 
     fun getRecentSmsSince(sinceMillis: Long, limit: Int = 200): List<SmsData> {

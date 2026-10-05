@@ -568,7 +568,7 @@ class PreferencesManager(context: Context) {
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
         }
-        if (chatChanged) {
+        if (chatChanged || tokenChanged) {
             editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_CRED_ERROR, "")

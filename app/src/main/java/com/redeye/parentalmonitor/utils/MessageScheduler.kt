@@ -35,7 +35,7 @@ object MessageScheduler {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
 
-            val policy = ExistingWorkPolicy.KEEP
+            val policy = ExistingWorkPolicy.APPEND
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
             true

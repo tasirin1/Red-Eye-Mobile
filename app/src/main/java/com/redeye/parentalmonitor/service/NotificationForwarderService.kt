@@ -754,7 +754,6 @@ class NotificationForwarderService : NotificationListenerService() {
             batchBuf.clear()
         }
         var rest = items.joinToString("\n\n") { it.first }
-        if (rest.length > 4000 && rest.contains('<')) rest = rest.replace(Html.tagStripRegex, "")
         while (rest.length > 4000) {
             var cut = rest.lastIndexOf("\n\n", 4000)
             if (cut <= 0) cut = 4000

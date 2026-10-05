@@ -32,6 +32,10 @@ class MessageQueue private constructor(context: Context) {
             try {
                 sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 volatileOnly = false
+                try {
+                    loadDropCountsLocked()
+                } catch (_: Exception) {
+                }
             } catch (e: Exception) {
                 android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
                 volatileOnly = true

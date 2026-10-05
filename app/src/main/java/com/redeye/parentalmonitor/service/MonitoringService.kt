@@ -748,7 +748,8 @@ class MonitoringService : Service() {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset")) {
-                    try { preferencesManager.setLastUpdateIdSync(0L) } catch (_: Exception) { }
+                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, keeping offset ${preferencesManager.lastUpdateId}")
+                    commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
                 }
             } catch (_: Exception) {
             }
@@ -818,7 +819,7 @@ class MonitoringService : Service() {
                     val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
                     if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg != chatId) {
                         sendPairHint(senderId)
-                    } else if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
+                    } else if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             registerBotCommands()
@@ -2318,7 +2319,7 @@ class MonitoringService : Service() {
                 }
                 return false
             }
-            if (message.length > 4096) {
+            if (message.length > 4000) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
                 return sendFitted(message, replyMarkup, queueOnFail)
             }
