@@ -260,14 +260,12 @@ class MonitoringService : Service() {
     }
 
     private fun redactToken(value: String?): String {
-        if (value.isNullOrEmpty()) return value ?: ""
         val token = try {
             cachedBotToken.ifEmpty { preferencesManager.botToken }
         } catch (_: Exception) {
             ""
         }
-        if (token.isEmpty()) return value.replace(Regex("[0-9]{5,15}:[A-Za-z0-9_-]{20,}"), "***")
-        return value.replace(token, "***")
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token)
     }
 
     private fun startMonitoring() {
@@ -1301,8 +1299,6 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /record \u003c5-60\u003e (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
-                } else if (ringBusy.get()) {
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
@@ -1629,7 +1625,7 @@ class MonitoringService : Service() {
                             return@withContext last
                         }
                     } catch (_: SecurityException) {
-                        return@withContext null
+                        continue
                     }
                 }
                 if (providers.isEmpty()) return@withContext null
@@ -1664,21 +1660,24 @@ class MonitoringService : Service() {
                         }
                         var won: android.location.Location? = null
                         val endAt = android.os.SystemClock.elapsedRealtime() + 25_000L
-                        while (won == null && android.os.SystemClock.elapsedRealtime() < endAt) {
+                        val remaining = pending.toMutableList()
+                        while (won == null && remaining.isNotEmpty() && android.os.SystemClock.elapsedRealtime() < endAt) {
                             currentCoroutineContext().ensureActive()
-                            for (task in pending) {
-                                try {
-                                    if (task.isCompleted) {
-                                        val got = task.getCompleted()
-                                        if (got != null) {
-                                            won = got
-                                            break
-                                        }
+                            val got = try {
+                                kotlinx.coroutines.withTimeoutOrNull(endAt - android.os.SystemClock.elapsedRealtime()) {
+                                    kotlinx.coroutines.selects.select<android.location.Location?> {
+                                        remaining.forEach { task -> task.onAwait { it } }
                                     }
-                                } catch (_: Exception) {
                                 }
+                            } catch (_: Exception) {
+                                null
                             }
-                            if (won == null) delay(500L)
+                            if (got != null) {
+                                won = got
+                            } else {
+                                remaining.removeAll { it.isCompleted }
+                                if (remaining.isNotEmpty()) delay(500L)
+                            }
                         }
                         for (task in pending) {
                             try {
@@ -1941,41 +1940,6 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun numberMatches(raw: String, digits: String): Boolean {
-        val normalized = raw.filter { it.isDigit() }
-        val want = digits.filter { it.isDigit() }
-        if (normalized.isEmpty() || want.isEmpty()) return false
-        if (normalized == want) return true
-        if (normalized.length < 7 || want.length < 7) return false
-        return numbersEqualFast(normalized, want, altVariant(want))
-    }
-
-    private fun altVariant(digits: String): String? {
-        if (digits.isEmpty()) return null
-        if (digits.startsWith("628") && digits.length in 10..15) return "0" + digits.substring(2)
-        if (digits.startsWith("08") && digits.length in 10..14) return "62" + digits.substring(1)
-        return null
-    }
-
-    private fun numbersEqualFast(have: String, want: String, wantAlt: String?): Boolean {
-        if (have == want) return true
-        if (wantAlt != null && have == wantAlt) return true
-        val haveAlt = altVariant(have)
-        if (haveAlt != null) {
-            if (haveAlt == want) return true
-            if (wantAlt != null && haveAlt == wantAlt) return true
-        }
-        if (want.length < 10) return false
-        if (have.endsWith(want) || want.endsWith(have)) return true
-        if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
-        if (haveAlt != null) {
-            if (haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
-            if (wantAlt != null && (haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
-        }
-        return false
-    }
-
-
     private fun isPremiumSmsNumber(raw: String): Boolean {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
@@ -2144,21 +2108,7 @@ class MonitoringService : Service() {
     }
 
     private fun safeCut(text: String, max: Int): Int {
-        if (text.length <= max) return text.length
-        var cut = max
-        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
-        val amp = text.lastIndexOf('&', cut - 1)
-        if (amp >= 0 && amp > cut - 12) {
-            val semi = text.indexOf(';', amp)
-            if (semi < 0 || semi >= cut) {
-                val entity = text.substring(amp, cut)
-                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
-            }
-        }
-        val tag = text.lastIndexOf('<', cut - 1)
-        if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
-        if (cut <= 0) cut = max
-        return cut
+        return com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, max)
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
@@ -2190,7 +2140,7 @@ class MonitoringService : Service() {
                         ok = false
                         failed.add(current.toString())
                     }
-                    delay(500)
+                    delay(300)
                     current = StringBuilder()
                 }
                 val cut = safeCut(rest, 4000)
@@ -2198,7 +2148,7 @@ class MonitoringService : Service() {
                     ok = false
                     failed.add(rest.substring(0, cut))
                 }
-                delay(500)
+                delay(300)
                 rest = rest.substring(cut)
             }
             if (current.length + rest.length + 1 > 4000) {
@@ -2207,7 +2157,7 @@ class MonitoringService : Service() {
                         ok = false
                         failed.add(current.toString())
                     }
-                    delay(500)
+                    delay(300)
                 }
                 current = StringBuilder()
             }
@@ -2424,7 +2374,7 @@ class MonitoringService : Service() {
         return TimeFmt.full(timestamp)
     }
 
-    private fun stopMonitoring() {
+    private fun teardownJobs() {
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
@@ -2434,8 +2384,7 @@ class MonitoringService : Service() {
         smsJob?.cancel()
         initialSyncRunning.set(false)
         idlePolls = 0
-        cachedSetupTap = null
-        isRunning = false
+        commandBackoffUntil = 0L
         try {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
@@ -2451,6 +2400,12 @@ class MonitoringService : Service() {
             cameraService.forceReset()
         } catch (_: Exception) {
         }
+    }
+
+    private fun stopMonitoring() {
+        teardownJobs()
+        cachedSetupTap = null
+        isRunning = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -2570,8 +2525,7 @@ class MonitoringService : Service() {
         }
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
         try {
-            cameraBusy.set(false)
-            cameraService.forceReset()
+            teardownJobs()
         } catch (_: Exception) {
         }
         cachedSetupTap = null
@@ -3260,7 +3214,23 @@ class MonitoringService : Service() {
         return out
     }
 
+    @Volatile
+    private var appsCacheAt = 0L
+    private var appsCache: List<String> = emptyList()
+
     private fun listLaunchableApps(limit: Int): List<String> {
+        val cached = appsCache
+        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - appsCacheAt < 10 * 60_000L) return cached.take(limit)
+        val fresh = listLaunchableAppsFresh()
+        if (fresh.isNotEmpty()) {
+            appsCache = fresh
+            appsCacheAt = android.os.SystemClock.elapsedRealtime()
+            return fresh.take(limit)
+        }
+        return emptyList()
+    }
+
+    private fun listLaunchableAppsFresh(): List<String> {
         return try {
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -3280,7 +3250,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     null
                 }
-            }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }.take(limit).map { it.first }
+            }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }.map { it.first }
         } catch (_: Exception) {
             emptyList()
         }

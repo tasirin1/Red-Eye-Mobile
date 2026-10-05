@@ -96,10 +96,7 @@ class SetupActivity : AppCompatActivity() {
             val typed = botTokenInput.text?.toString()?.trim().orEmpty()
             if (typed.isNotEmpty() && typed != STORED_MASK) secrets.add(typed)
         }
-        if (secrets.isEmpty()) return raw
-        var out = raw
-        for (secret in secrets) out = out.replace(secret, "***")
-        return out
+        return com.redeye.parentalmonitor.utils.Redact.token(raw, *secrets.toTypedArray())
     }
 
     private fun hasForegroundLocation(): Boolean {

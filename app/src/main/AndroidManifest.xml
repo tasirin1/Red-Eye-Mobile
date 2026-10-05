@@ -90,7 +90,7 @@
             </intent-filter>
         </service>
 
-        <!-- Boot receiver - qurilma yoqilganda avtomatik ishga tushadi -->
+        <!-- Boot receiver - auto-start on device boot -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:enabled="true"
@@ -107,7 +107,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Device Admin - o'chirishni himoya qiladi -->
+        <!-- Device Admin - protects against uninstall -->
         <receiver
             android:name=".receiver.AdminReceiver"
             android:description="@string/admin_description"

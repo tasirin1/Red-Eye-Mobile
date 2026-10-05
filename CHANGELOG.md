@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+## [1.6.93] - 2026-10-05
+
+### Fixed
+- Backoff `429` ikut direset saat teardown: `/restart` tak lagi bikin polling diam sampai 5 menit.
+- Retry transien (`408`/`5xx`/timeout) dapat budget sendiri 20x (`registerTransientFailures`) + backoff eksponensial 60 dtk–15 mnt; outage singkat tak lagi membuang antrean.
+- Hitungan drop (`overflow`/`expired`) dipersist di store antrean + dibaca ulang saat restore; reboot tak lagi menghilangkan kabar drop.
+- `sendChunked` berhenti di part pertama yang direject Telegram agar status drop konsisten dengan yang terkirim.
+- `/record` boleh jalan saat dering berbunyi; kopling `ringBusy` yang artifisial dihapus.
+- `getLastKnownLocation` lanjut ke provider berikut saat satu provider melempar `SecurityException`.
+- `fetchLocation` menunggu fix tercepat via `select` + timeout, bukan busy-poll tiap 500 ms.
+- Jeda antar-part dirasionalkan (`sendFitted` 500→300 ms, worker 1000→500 ms).
+
+### Changed
+- `safeCut`/`splitChunk` dan `redactToken` disatukan ke `utils/TextChunk.kt` + `utils/Redact.kt`.
+- Label aplikasi `/apps` dicache 10 menit agar tak `queryIntentActivities` + sort tiap panggilan.
+- `scheduleMessageSendCoalesced` yang identik dihapus; pemanggil memakai `scheduleMessageSendNext`.
+- Komentar manifest diselaraskan ke Inggris.
+
+### Removed
+- Kode mati: `numberMatches`/`altVariant`/`numbersEqualFast` di `MonitoringService`, `putAllValues` di `PreferencesManager`, consume drop statis duplikatif di `MessageQueue`.
+
 ## [1.6.92] - 2026-10-05
 
 ### Fixed

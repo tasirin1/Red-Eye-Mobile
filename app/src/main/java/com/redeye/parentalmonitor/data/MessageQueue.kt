@@ -46,15 +46,15 @@ class MessageQueue private constructor(context: Context) {
     companion object {
         private const val QUEUE_PREFS_NAME = "encrypted_queue"
         private const val KEY_QUEUE = "queued_messages"
+        private const val KEY_OVERFLOW_DROPS = "overflow_drops"
+        private const val KEY_EXPIRED_DROPS = "expired_drops"
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_RETRIES = 5
+        const val MAX_TRANSIENT_RETRIES = 20
         private val gson = Gson()
         private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
         private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
 
-        fun consumeOverflowDrops(): Long = overflowDrops.getAndSet(0L)
-
-        fun consumeExpiredDrops(): Long = expiredDrops.getAndSet(0L)
 
         @Volatile
         private var instance: MessageQueue? = null
@@ -76,19 +76,20 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = restored
                 volatileOnly = false
                 cached = null
+                loadDropCountsLocked()
                 if (pending.isNotEmpty()) {
                     val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
                     val freshPending = pending.filter { it.timestamp >= cutoff }
                     val expired = pending.size - freshPending.size
                     if (expired > 0) {
-                        expiredDrops.addAndGet(expired.toLong())
+                        noteExpiredLocked(expired.toLong())
                         android.util.Log.w("MessageQueue", "Dropped $expired expired restore message(s)")
                     }
                     val queue = readLocked().toMutableList()
                     queue.addAll(freshPending)
                     while (queue.size > MAX_QUEUE_SIZE) {
                         queue.removeAt(0)
-                        overflowDrops.incrementAndGet()
+                        noteOverflowLocked()
                     }
                     persistLocked(queue)
                 }
@@ -107,7 +108,7 @@ class MessageQueue private constructor(context: Context) {
                 volatileQueue.add(QueuedMessage(message = message))
                 while (volatileQueue.size > cap) {
                     volatileQueue.removeAt(0)
-                    overflowDrops.incrementAndGet()
+                    noteOverflowLocked()
                 }
                 return
             }
@@ -115,7 +116,7 @@ class MessageQueue private constructor(context: Context) {
             queue.add(QueuedMessage(message = message))
             while (queue.size > cap) {
                 queue.removeAt(0)
-                overflowDrops.incrementAndGet()
+                noteOverflowLocked()
                 android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
             }
             persistLocked(queue)
@@ -130,7 +131,7 @@ class MessageQueue private constructor(context: Context) {
                 for (message in messages) volatileQueue.add(QueuedMessage(message = message))
                 while (volatileQueue.size > MAX_QUEUE_SIZE) {
                     volatileQueue.removeAt(0)
-                    overflowDrops.incrementAndGet()
+                    noteOverflowLocked()
                 }
                 return
             }
@@ -138,11 +139,36 @@ class MessageQueue private constructor(context: Context) {
             for (message in messages) queue.add(QueuedMessage(message = message))
             while (queue.size > MAX_QUEUE_SIZE) {
                 queue.removeAt(0)
-                overflowDrops.incrementAndGet()
+                noteOverflowLocked()
                 android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
             }
             persistLocked(queue)
         }
+    }
+
+    private fun loadDropCountsLocked() {
+        try {
+            overflowDrops.set(sharedPreferences?.getLong(KEY_OVERFLOW_DROPS, 0L) ?: 0L)
+            expiredDrops.set(sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun persistDropCountsLocked() {
+        try {
+            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun noteOverflowLocked(by: Long = 1L) {
+        noteOverflowLocked(by)
+        if (!volatileOnly) persistDropCountsLocked()
+    }
+
+    private fun noteExpiredLocked(by: Long = 1L) {
+        noteExpiredLocked(by)
+        if (!volatileOnly) persistDropCountsLocked()
     }
 
     private fun pruneVolatileLocked() {
@@ -151,7 +177,7 @@ class MessageQueue private constructor(context: Context) {
         volatileQueue.removeAll { it.timestamp < cutoff }
         val dropped = before - volatileQueue.size
         if (dropped > 0) {
-            expiredDrops.addAndGet(dropped.toLong())
+            noteExpiredLocked(dropped.toLong())
             android.util.Log.w("MessageQueue", "Dropped $dropped expired volatile message(s)")
         }
     }
@@ -192,8 +218,17 @@ class MessageQueue private constructor(context: Context) {
     }
 
     fun registerFailures(messageIds: Collection<String>): List<String> {
-        if (messageIds.isEmpty()) return emptyList()
+        return registerWithBudget(messageIds, MAX_RETRIES).first
+    }
+
+    fun registerTransientFailures(messageIds: Collection<String>): Pair<List<String>, Int> {
+        return registerWithBudget(messageIds, MAX_TRANSIENT_RETRIES)
+    }
+
+    private fun registerWithBudget(messageIds: Collection<String>, budget: Int): Pair<List<String>, Int> {
+        if (messageIds.isEmpty()) return Pair(emptyList(), 0)
         synchronized(lock) {
+            var maxRetry = 0
             if (volatileOnly) {
                 val drop = mutableListOf<String>()
                 for (i in volatileQueue.indices) {
@@ -201,11 +236,12 @@ class MessageQueue private constructor(context: Context) {
                     if (queued.id in messageIds) {
                         val updated = queued.copy(retryCount = queued.retryCount + 1)
                         volatileQueue[i] = updated
-                        if (updated.retryCount >= MAX_RETRIES) drop.add(updated.id)
+                        if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
+                        if (updated.retryCount >= budget) drop.add(updated.id)
                     }
                 }
                 volatileQueue.removeAll { it.id in drop }
-                return drop
+                return Pair(drop, maxRetry)
             }
             val queue = readLocked().toMutableList()
             val drop = mutableListOf<String>()
@@ -214,12 +250,13 @@ class MessageQueue private constructor(context: Context) {
                 if (queued.id in messageIds) {
                     val updated = queued.copy(retryCount = queued.retryCount + 1)
                     queue[i] = updated
-                    if (updated.retryCount >= MAX_RETRIES) drop.add(updated.id)
+                    if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
+                    if (updated.retryCount >= budget) drop.add(updated.id)
                 }
             }
             queue.removeAll { it.id in drop }
             persistLocked(queue)
-            return drop
+            return Pair(drop, maxRetry)
         }
     }
 
@@ -255,7 +292,7 @@ class MessageQueue private constructor(context: Context) {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
             val freshCached = it.filter { q -> q.timestamp >= cutoffCached }.toMutableList()
             if (freshCached.size != it.size) {
-                expiredDrops.addAndGet((it.size - freshCached.size).toLong())
+                noteExpiredLocked((it.size - freshCached.size).toLong())
                 android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
                 persistLocked(freshCached)
                 return freshCached
@@ -281,7 +318,7 @@ class MessageQueue private constructor(context: Context) {
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()
         if (fresh.size != loaded.size) {
-            expiredDrops.addAndGet((loaded.size - fresh.size).toLong())
+            noteExpiredLocked((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
             persistLocked(fresh)
             return fresh
@@ -304,6 +341,22 @@ class MessageQueue private constructor(context: Context) {
             return readLocked().isNotEmpty()
         }
     }
+    fun takeOverflowDrops(): Long {
+        synchronized(lock) {
+            val n = overflowDrops.getAndSet(0L)
+            if (!volatileOnly) persistDropCountsLocked()
+            return n
+        }
+    }
+
+    fun takeExpiredDrops(): Long {
+        synchronized(lock) {
+            val n = expiredDrops.getAndSet(0L)
+            if (!volatileOnly) persistDropCountsLocked()
+            return n
+        }
+    }
+
     fun getQueueSize(): Int {
         synchronized(lock) {
             if (volatileOnly) {

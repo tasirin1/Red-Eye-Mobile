@@ -31,7 +31,7 @@ class SendMessageWorker(
         if (!preferencesManager.isConfigured()) {
             if (runAttemptCount < 5) {
                 try {
-                    if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendCoalesced(applicationContext, 30 * 60_000L)
+                    if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
                 } catch (_: Exception) {
                 }
             }
@@ -42,7 +42,7 @@ class SendMessageWorker(
         }
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             try {
-                MessageScheduler.scheduleMessageSendCoalesced(applicationContext, 30 * 60_000L)
+                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
             } catch (_: Exception) {
             }
             return Result.success()
@@ -54,6 +54,7 @@ class SendMessageWorker(
         }
 
         val sentIds = mutableListOf<String>()
+        var transientMaxRetry = 0
         val failedIds = mutableListOf<String>()
         val rejectedIds = mutableListOf<String>()
         var authCode = 0
@@ -193,11 +194,11 @@ class SendMessageWorker(
         }
         if (sentIds.isNotEmpty() && credsSame()) {
             try {
-                val expired = MessageQueue.consumeExpiredDrops()
+                val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
                     sendDropNotice(expired.toInt(), runToken, runChatId, "expired (older than 7 days)")
                 }
-                val overflow = MessageQueue.consumeOverflowDrops()
+                val overflow = messageQueue.takeOverflowDrops()
                 if (overflow > 0L) {
                     sendDropNotice(overflow.toInt(), runToken, runChatId, "oldest queued (queue full offline)")
                 }
@@ -212,7 +213,9 @@ class SendMessageWorker(
             }
             if (online) {
                 try {
-                    val dropped = messageQueue.registerFailures(failedIds)
+                    val droppedT = messageQueue.registerTransientFailures(failedIds)
+                    val dropped = droppedT.first
+                    transientMaxRetry = maxOf(transientMaxRetry, droppedT.second)
                     if (dropped.isNotEmpty() && credsSame()) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
                         sendDropNotice(dropped.size, runToken, runChatId)
@@ -235,7 +238,7 @@ class SendMessageWorker(
         }
         if (messageQueue.getQueueSize() > 0) {
             try {
-                val backoffMs = if (failedIds.isNotEmpty()) 60_000L else 0L
+                val backoffMs = if (failedIds.isNotEmpty()) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
                 MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
             } catch (_: Exception) {
             }
@@ -289,21 +292,7 @@ class SendMessageWorker(
 
 
     private fun splitChunk(text: String, max: Int): Int {
-        if (text.length <= max) return text.length
-        var cut = max
-        if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
-        val amp = text.lastIndexOf('&', cut - 1)
-        if (amp >= 0 && amp > cut - 12) {
-            val semi = text.indexOf(';', amp)
-            if (semi < 0 || semi >= cut) {
-                val entity = text.substring(amp, cut)
-                if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) cut = amp
-            }
-        }
-        val tag = text.lastIndexOf('<', cut - 1)
-        if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
-        if (cut <= 0) cut = max
-        return cut
+        return com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, max)
     }
 
     private suspend fun sendSingleChunk(chunk: String, botToken: String, chatId: String): SendOutcome {
@@ -357,7 +346,7 @@ class SendMessageWorker(
         for ((idx, part) in parts.withIndex()) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
-                    delay(1000)
+                    delay(500)
                 }
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
@@ -399,7 +388,10 @@ class SendMessageWorker(
                     }
                     break
                 }
-                SendOutcome.Rejected -> rejected++
+                SendOutcome.Rejected -> {
+                    rejected++
+                    break
+                }
             }
         }
         if (remainderQueued) return SendOutcome.Sent

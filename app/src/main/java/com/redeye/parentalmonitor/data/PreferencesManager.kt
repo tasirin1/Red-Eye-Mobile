@@ -543,31 +543,6 @@ class PreferencesManager(context: Context) {
         try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
     }
 
-    fun putAllValues(values: Map<String, Any?>) {
-        if (values.isEmpty()) return
-        val editor = sharedPreferences.edit()
-        for ((key, value) in values) {
-            when (value) {
-                null -> editor.remove(key)
-                is String -> editor.putString(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Float -> editor.putFloat(key, value)
-                is Boolean -> editor.putBoolean(key, value)
-                is Set<*> -> try {
-                    @Suppress("UNCHECKED_CAST")
-                    editor.putStringSet(key, value as Set<String>)
-                } catch (_: Exception) {
-                }
-                else -> Unit
-            }
-        }
-        try {
-            editor.apply()
-        } catch (_: Exception) {
-        }
-    }
-
     fun setMonitoringActive(active: Boolean) {
         val editor = sharedPreferences.edit()
         editor.putBoolean(KEY_MONITORING_ENABLED, active)

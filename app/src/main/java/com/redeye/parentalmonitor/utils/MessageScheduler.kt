@@ -70,10 +70,6 @@ object MessageScheduler {
         }
     }
 
-    fun scheduleMessageSendCoalesced(context: Context, initialDelayMs: Long = 0L): Boolean {
-        return scheduleMessageSendNext(context, initialDelayMs)
-    }
-
     fun scheduleWatchdog(context: Context): Boolean {
         return try {
             val request = PeriodicWorkRequestBuilder<BootRestartWorker>(15, TimeUnit.MINUTES)

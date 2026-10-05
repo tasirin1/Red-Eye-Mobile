@@ -656,14 +656,12 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun redactToken(value: String?): String {
-        if (value.isNullOrEmpty()) return ""
         val token = try {
             prefsRef?.botToken ?: PreferencesManager.getInstance(this).botToken
         } catch (_: Exception) {
             ""
         }
-        if (token.isEmpty()) return value
-        return value.replace(token, "***")
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token)
     }
 
     private fun queue(): MessageQueue {
