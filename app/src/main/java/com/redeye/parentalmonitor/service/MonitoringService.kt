@@ -962,6 +962,7 @@ class MonitoringService : Service() {
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         val ownerOk = isOwner(sender)
         if (sender != chatId && originChat != chatId && !ownerOk) {
+            answerCallback(query.id)
             return
         }
         answerCallback(query.id)

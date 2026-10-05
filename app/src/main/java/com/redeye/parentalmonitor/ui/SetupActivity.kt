@@ -93,7 +93,7 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
-        private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{20,}$")
+        private val TOKEN_REGEX = Regex("^[0-9]{5,}:[A-Za-z0-9_-]{20,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
     }
