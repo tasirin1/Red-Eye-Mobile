@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.89] - 2026-10-05
+
 ### Fixed
 - Pending SMS dikonsumsi sebelum transmit dan dibuka lagi hanya saat gagal, cegah SMS dobel saat reboot di jendela kirim.
 - Batch notifikasi diamankan ke antrean saat service dimatikan agar tak hilang.
