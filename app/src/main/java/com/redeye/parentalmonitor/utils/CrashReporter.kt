@@ -149,7 +149,7 @@ object CrashReporter {
             } catch (_: Exception) {
             }
             val allowed = try {
-                prefs.isMonitoringEnabled && prefs.userConsentedMonitoring && !prefs.userDisabledMonitoring
+                prefs.isMonitoringEnabled && prefs.userConsentedMonitoring && !prefs.userDisabledMonitoring && !prefs.monitoringPaused
             } catch (_: Exception) {
                 false
             }

@@ -90,11 +90,12 @@ class CallLogRepository(private val context: Context) {
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        var upper = Long.MAX_VALUE
+        var upperDate = Long.MAX_VALUE
+        var upperId = Long.MAX_VALUE
         repeat(5) {
             val page = queryCalls(
-                selection = "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} < ?",
-                args = arrayOf(cutoff.toString(), upper.toString()),
+                selection = "${CallLog.Calls.DATE} >= ? AND (${CallLog.Calls.DATE} < ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} < ?))",
+                args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),
                 sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
                 limit = 500
             )
@@ -102,9 +103,11 @@ class CallLogRepository(private val context: Context) {
             val pageMatched = filterCallsByNumber(page, norm)
             if (pageMatched.isNotEmpty()) return pageMatched
             if (page.size < 500) return emptyList()
-            val oldest = page.minOf { it.date }
-            if (oldest <= cutoff || oldest >= upper) return emptyList()
-            upper = oldest
+            val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
+            if (oldest.date <= cutoff) return emptyList()
+            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return emptyList()
+            upperDate = oldest.date
+            upperId = oldest.id
         }
         return emptyList()
     }

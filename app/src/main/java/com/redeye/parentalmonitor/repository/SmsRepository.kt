@@ -37,21 +37,24 @@ class SmsRepository(private val context: Context) {
         val matched = filterByNumber(rows, digits) { it.address }
         if (matched.isNotEmpty() || norm.length < 7) return matched
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        var upper = Long.MAX_VALUE
+        var upperDate = Long.MAX_VALUE
+        var upperId = Long.MAX_VALUE
         repeat(5) {
             val page = querySms(
-                selection = "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} < ?",
-                args = arrayOf(cutoff.toString(), upper.toString()),
-                sortOrder = "${Telephony.Sms.DATE} DESC",
+                selection = "${Telephony.Sms.DATE} >= ? AND (${Telephony.Sms.DATE} < ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} < ?))",
+                args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),
+                sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
                 limit = 500
             )
             if (page.isEmpty()) return emptyList()
             val pageMatched = filterByNumber(page, digits) { it.address }
             if (pageMatched.isNotEmpty()) return pageMatched
             if (page.size < 500) return emptyList()
-            val oldest = page.minOf { it.date }
-            if (oldest <= cutoff || oldest >= upper) return emptyList()
-            upper = oldest
+            val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
+            if (oldest.date <= cutoff) return emptyList()
+            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return emptyList()
+            upperDate = oldest.date
+            upperId = oldest.id
         }
         return emptyList()
     }

@@ -760,22 +760,41 @@ class NotificationForwarderService : NotificationListenerService() {
             items = batchBuf.toList()
             batchBuf.clear()
         }
-        var rest = items.joinToString("\n\n") { it.first }
-        while (rest.length > 4000) {
-            var cut = rest.lastIndexOf("\n\n", 4000)
-            if (cut <= 0) cut = 4000
-            cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-            forwardLocked(rest.substring(0, cut), "")
-            rest = rest.substring(cut).trimStart('\n')
-            if (rest.isEmpty()) return
+        var cur = StringBuilder()
+        var curCount = 0
+        suspend fun flushCur() {
+            if (curCount <= 0) return
+            forwardLocked(cur.toString(), "", curCount)
+            cur = StringBuilder()
+            curCount = 0
         }
-        if (rest.isNotEmpty()) {
-            forwardLocked(rest, "")
+        for ((msg) in items) {
+            if (msg.length > 4000) {
+                flushCur()
+                var rest = msg
+                var first = true
+                while (rest.length > 4000) {
+                    var cut = rest.lastIndexOf("\n\n", 4000)
+                    if (cut <= 0) cut = 4000
+                    cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
+                    forwardLocked(rest.substring(0, cut), "", if (first) 1 else 0)
+                    first = false
+                    rest = rest.substring(cut).trimStart('\n')
+                    if (rest.isEmpty()) break
+                }
+                if (rest.isNotEmpty()) forwardLocked(rest, "", if (first) 1 else 0)
+                continue
+            }
+            if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
+            if (curCount > 0) cur.append("\n\n")
+            cur.append(msg)
+            curCount++
         }
+        flushCur()
     }
 
-    private fun noteDroppedNotification() {
-        dropNoticeCount.incrementAndGet()
+    private fun noteDroppedNotification(count: Int = 1) {
+        dropNoticeCount.addAndGet(count.coerceAtLeast(0))
         try {
             prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
         } catch (_: Exception) {
@@ -847,7 +866,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardLocked(message: String, pkg: String): Boolean {
+    private suspend fun forwardLocked(message: String, pkg: String, msgCount: Int = 1): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { prefsRef = it }
@@ -982,7 +1001,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                 try {
-                    noteDroppedNotification()
+                    noteDroppedNotification(msgCount)
                 } catch (_: Exception) {
                 }
                 return false
