@@ -104,8 +104,7 @@ class BootReceiver : BroadcastReceiver() {
                 } catch (_: Exception) {
                 }
                 try {
-                    preferencesManager.ringPrevVolume = -1
-                    preferencesManager.ringSavedAt = 0L
+                    preferencesManager.clearRingStateSync()
                 } catch (_: Exception) {
                 }
             }

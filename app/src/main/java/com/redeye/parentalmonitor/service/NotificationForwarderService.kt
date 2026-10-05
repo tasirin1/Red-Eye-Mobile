@@ -697,7 +697,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } else {
                 batchBuf.addLast(message to pkg)
                 if (batchJob?.isActive != true) {
-                    batchJob = scope.launch(fwdSerial) {
+                    batchJob = scope.launch {
                         try {
                             delay(15_000L)
                         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -705,7 +705,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         } catch (_: Exception) {
                         }
                         try {
-                            flushBatch()
+                            kotlinx.coroutines.withContext(fwdSerial) { flushBatch() }
                         } catch (_: Exception) {
                         }
                     }

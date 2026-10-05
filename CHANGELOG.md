@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [1.6.97] - 2026-10-05
+
+### Fixed
+- Konfirmasi `/restart` dan `/syncinterval` dikirim sebelum `restartAllLoops()` agar tak hilang karena cancel `commandJob` diri sendiri.
+- `scheduleMessageSendNext()` memakai `APPEND` (bukan `KEEP`) sehingga retry-after `429` tak gugur saat worker sudah antre.
+- Pending SMS gagal tak lagi memperbarui timestamp (`reopenSmsPending` dihapus; jendela 5 menit berjalan sejak staging) sehingga `/sms` tak terkunci permanen.
+- Drop-notice `400` di `sendToTelegram()` digabung per 30 detik + flush saat destroy (`noteDroppedMessage`).
+- `/clearqueue` mengirim konfirmasi tanpa `queueOnFail` sehingga antrean benar-benar kosong saat offline.
+- `restartAllLoops()` me-reset `initialSyncRunning` lalu memulai ulang sync awal hanya bila yang lama benar-benar terinterupsi.
+- `BootReceiver` dan `clearCredentials()` memakai `clearRingStateSync()`; kredensial-clear juga membersihkan state ring.
+- `/record` menolak saat `ringBusy` (simetri dengan `/ring` vs `recordBusy`).
+
+### Changed
+- Timer batch forwarder 15 detik berjalan di luar lajur serial (`withContext(fwdSerial)` hanya untuk flush) sehingga burst notifikasi tak tertahan.
+- Batas tunggu konfirmasi SMS 30 dtk + 15 dtk/part (dulu 60 + 30) agar `smsBusy` tak dipegang sampai 150 dtk.
+- `sendChunked()` worker mempertahankan HTML per potongan (fallback plain per chunk sudah ada).
+- Drop-notice worker digabung satu pesan (`expired; overflow; retries; rejected`).
+- `CrashReporter.flushPending()` dipanggil tiap siklus monitoring (murah bila tak ada file crash).
+- Klaim audit gugur: `429` worker tak membakar budget retry (`RateLimited` tak menyentuh `failedIds`).
+
 ## [1.6.96] - 2026-10-05
 
 ### Fixed

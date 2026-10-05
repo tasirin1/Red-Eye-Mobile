@@ -409,6 +409,10 @@ class MonitoringService : Service() {
                     if (!cachedMonitoringPaused) {
                         checkAndSendNewData()
                         try {
+                            CrashReporter.flushPending(this)
+                        } catch (_: Exception) {
+                        }
+                        try {
                             flushPendingAudio()
                         } catch (_: Exception) {
                         }
@@ -554,6 +558,9 @@ class MonitoringService : Service() {
     private var commandBackoffUntil = 0L
     @Volatile
     private var mediaBackoffUntil = 0L
+    private val msgDropCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private var msgDropJob: Job? = null
+    private val msgDropLock = Any()
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
@@ -1189,16 +1196,16 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /syncinterval \u003c1-1440\u003e (minutes)")
                 } else {
                     preferencesManager.syncInterval = minutes
+                    sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
                     try {
                         restartAllLoops()
                     } catch (_: Exception) {
                     }
-                    sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
                 }
             }
             "/restart" -> {
-                restartAllLoops()
                 sendToTelegram("\u267B\uFE0F Loops restarted.")
+                restartAllLoops()
             }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
@@ -1229,7 +1236,7 @@ class MonitoringService : Service() {
                     messageQueue.clearQueue()
                 } catch (_: Exception) {
                 }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped).")
+                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped).", null, false)
             }
             "/lock" -> {
                 try {
@@ -1297,6 +1304,8 @@ class MonitoringService : Service() {
                     sendToTelegram("Usage: /record \u003c5-60\u003e (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                } else if (ringBusy.get()) {
+                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
@@ -1353,7 +1362,6 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
-                    preferencesManager.touchSmsPendingSync(0L)
                     smsJob = serviceScope.launch {
                         try {
                             sendSmsPending(number, smsText)
@@ -1974,15 +1982,6 @@ class MonitoringService : Service() {
         return false
     }
 
-    private fun reopenSmsPending() {
-        try {
-            if (preferencesManager.pendingSmsNumber.isNotEmpty() && preferencesManager.pendingSmsText.isNotEmpty()) {
-                preferencesManager.touchSmsPendingSync(System.currentTimeMillis())
-            }
-        } catch (_: Exception) {
-        }
-    }
-
     private suspend fun sendSmsPending(number: String, smsText: String) {
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
         val baseCode = smsReqSeq.addAndGet(10000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
@@ -1994,14 +1993,12 @@ class MonitoringService : Service() {
                 android.telephony.SmsManager.getDefault()
             }
         } catch (e: Exception) {
-            reopenSmsPending()
             sendToTelegram("\u26A0\uFE0F SMS failed.")
             return
         }
         val parts: java.util.ArrayList<String> = try {
             if (smsText.length > 160) smsManager.divideMessage(smsText) else java.util.ArrayList(listOf(smsText))
         } catch (e: Exception) {
-            reopenSmsPending()
             sendToTelegram("\u26A0\uFE0F SMS failed.")
             return
         }
@@ -2056,17 +2053,15 @@ class MonitoringService : Service() {
                     )
                     smsManager.sendTextMessage(number, null, smsText, sentIntent, null)
                 }
-                val confirmed = withTimeoutOrNull(60_000L + (expected - 1) * 30_000L) { delivered.await() } ?: false
+                val confirmed = withTimeoutOrNull(30_000L + (expected - 1) * 15_000L) { delivered.await() } ?: false
                 if (confirmed) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
-                    reopenSmsPending()
-                    sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
+                            sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
                 } else {
-                    reopenSmsPending()
-                    sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
+                            sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
             } finally {
                 try {
@@ -2077,10 +2072,8 @@ class MonitoringService : Service() {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: SecurityException) {
-            reopenSmsPending()
             sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
         } catch (e: Exception) {
-            reopenSmsPending()
             sendToTelegram("\u26A0\uFE0F SMS failed.")
         }
     }
@@ -2191,6 +2184,38 @@ class MonitoringService : Service() {
             return false
         }
         return ok
+    }
+
+    private fun noteDroppedMessage() {
+        msgDropCount.incrementAndGet()
+        synchronized(msgDropLock) {
+            if (msgDropJob?.isActive == true) return
+            msgDropJob = serviceScope.launch {
+                try {
+                    delay(30_000L)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+                try {
+                    flushMsgDropNotice()
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    private fun flushMsgDropNotice() {
+        val count = msgDropCount.getAndSet(0)
+        if (count <= 0) return
+        try {
+            val text = if (count == 1) "Dropped 1 message rejected by Telegram (400)."
+                else "Dropped $count messages rejected by Telegram (400)."
+            messageQueue.addMessage(text, true)
+            MessageScheduler.scheduleMessageSend(this@MonitoringService)
+        } catch (_: Exception) {
+            msgDropCount.addAndGet(count)
+        }
     }
 
     private suspend fun sendToTelegram(
@@ -2329,8 +2354,7 @@ class MonitoringService : Service() {
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             try {
-                                messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).", true)
-                                MessageScheduler.scheduleMessageSend(this)
+                                noteDroppedMessage()
                             } catch (_: Exception) {
                             }
                             return true
@@ -2345,8 +2369,7 @@ class MonitoringService : Service() {
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                     try {
-                        messageQueue.addMessage("Dropped 1 message rejected by Telegram (400).", true)
-                        MessageScheduler.scheduleMessageSend(this)
+                        noteDroppedMessage()
                     } catch (_: Exception) {
                     }
                     return true
@@ -2537,6 +2560,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
+        try {
+            flushMsgDropNotice()
+        } catch (_: Exception) {
+        }
         try {
             messageQueue.flushSync()
         } catch (_: Exception) {
@@ -2861,13 +2888,13 @@ class MonitoringService : Service() {
         startPeriodicLoops()
         startCommandPolling()
         try {
-            val syncActive = initialSyncJob?.isActive == true
+            val syncWasActive = initialSyncJob?.isActive == true
             try {
                 initialSyncJob?.cancel()
             } catch (_: Exception) {
             }
-            if (!syncActive) initialSyncRunning.set(false)
-            if (!preferencesManager.initialSyncDone && !initialSyncRunning.get()) {
+            initialSyncRunning.set(false)
+            if (!preferencesManager.initialSyncDone && syncWasActive) {
                 initialSyncRunning.set(true)
                 initialSyncJob = serviceScope.launch {
                     try {

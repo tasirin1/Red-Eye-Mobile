@@ -196,15 +196,20 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
+        val dropParts = mutableListOf<String>()
+        var dropTotal = 0
+        var dropSample = ""
         if (sentIds.isNotEmpty() && credsSame()) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
-                    sendDropNotice(expired.toInt(), runToken, runChatId, "expired (older than 7 days)")
+                    dropTotal += expired.toInt()
+                    dropParts.add("$expired expired (older than 7 days)")
                 }
                 val overflow = messageQueue.takeOverflowDrops()
                 if (overflow > 0L) {
-                    sendDropNotice(overflow.toInt(), runToken, runChatId, "oldest queued (queue full offline)")
+                    dropTotal += overflow.toInt()
+                    dropParts.add("$overflow oldest queued (queue full offline)")
                 }
             } catch (_: Exception) {
             }
@@ -222,7 +227,8 @@ class SendMessageWorker(
                     transientMaxRetry = maxOf(transientMaxRetry, droppedT.second)
                     if (dropped.isNotEmpty() && credsSame()) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
-                        sendDropNotice(dropped.size, runToken, runChatId)
+                        dropTotal += dropped.size
+                        dropParts.add("${dropped.size} after max retries")
                     }
                 } catch (_: Exception) {
                 }
@@ -231,12 +237,19 @@ class SendMessageWorker(
 
         if (rejectedIds.isNotEmpty() && credsSame()) {
             try {
-                val sample = try {
+                dropSample = try {
                     queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
                 } catch (_: Exception) {
                     ""
                 }
-                sendDropNotice(rejectedIds.size, runToken, runChatId, sample)
+                dropTotal += rejectedIds.size
+                dropParts.add("${rejectedIds.size} rejected (HTTP 4xx)")
+            } catch (_: Exception) {
+            }
+        }
+        if (dropTotal > 0 && credsSame()) {
+            try {
+                sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
             } catch (_: Exception) {
             }
         }
@@ -334,7 +347,7 @@ class SendMessageWorker(
 
     private suspend fun sendChunked(message: String, botToken: String, chatId: String): SendOutcome {
         val parts = mutableListOf<String>()
-        var rest = if (message.length > 4000 && message.contains('<')) message.replace(Html.tagStripRegex, "") else message
+        var rest = message
         while (rest.length > 4000) {
             val cut = splitChunk(rest, 4000)
             parts.add(rest.substring(0, cut))
@@ -406,16 +419,17 @@ class SendMessageWorker(
         return SendOutcome.Sent
     }
 
-    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "") {
+    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = "") {
         val clean = try {
             sample.replace(Html.tagStripRegex, "").trim().take(120)
         } catch (_: Exception) {
             ""
         }
+        val reason = detail.ifEmpty { "after max retries" }
         val text = if (clean.isEmpty()) {
-            "⚠️ $count queued message(s) dropped after max retries."
+            "⚠️ $count queued message(s) dropped ($reason)."
         } else {
-            "⚠️ $count queued message(s) dropped (rejected). Sample: $clean"
+            "⚠️ $count queued message(s) dropped ($reason). Sample: $clean"
         }
         try {
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
