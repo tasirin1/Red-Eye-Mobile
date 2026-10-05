@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+- `sendStatusNow` di `SetupActivity` menegakkan blokir auth bila retry pasca-migrasi tetap 400 + chat hilang (tanpa id migrasi lanjutan), agar backoff 30 menit tak tertunda satu siklus.
+- Cek `isChatMissing`/`isRightsLimited`/`parseRetryAfter` foto/video memakai body penuh (`errorFull`) — `retry_after` di ujung JSON tak lagi terpotong `take(200)`.
+- `MessageScheduler.scheduleMessageSendNext()` pakai `REPLACE` (sebelumnya identik `APPEND` dengan kirim biasa) agar retry tertunda tak menumpuk rantai worker.
+- Konfirmasi `/clearqueue` ikut antre (`queueOnFail=true`) agar tetap sampai saat auth-blocked/offline.
+- Forwarder: dedup/spam/record/build/forward disatukan ke `emitPost()` (fast-path + jalur normal), duplikat logika hilang; duplikat fast-path kini ikut tercatat di riwayat.
+- Riwayat `/lastnotif` tetap dicatat saat forwarding dimatikan/belum konfigurasi (`historyAllowed()` + record sebelum gate forward); pause tetap senyap.
+
 ## [1.6.109] - 2026-10-05
 
 ### Fixed

@@ -770,6 +770,15 @@ class SetupActivity : AppCompatActivity() {
                                     prefs.credentialErrorAt = System.currentTimeMillis()
                                 } catch (_: Exception) {
                                 }
+                            } else if (retryResp.code() == 400) {
+                                val retryBody = try { retryResp.errorBody()?.string() } catch (_: Exception) { null }
+                                if (NetworkUtils.isChatMissing(retryBody) && NetworkUtils.extractMigratedChatId(retryBody) == null) {
+                                    try {
+                                        prefs.credentialError = retryResp.code().toString()
+                                        prefs.credentialErrorAt = System.currentTimeMillis()
+                                    } catch (_: Exception) {
+                                    }
+                                }
                             }
                         } catch (_: Exception) {
                         }
@@ -846,6 +855,16 @@ class SetupActivity : AppCompatActivity() {
                                                 return@launch
                                             }
                                             failCode = retryPlain.code()
+                                            if (retryPlain.code() == 400) {
+                                                val retryPlainBody = try { retryPlain.errorBody()?.string() } catch (_: Exception) { null }
+                                                if (NetworkUtils.isChatMissing(retryPlainBody) && NetworkUtils.extractMigratedChatId(retryPlainBody) == null) {
+                                                    try {
+                                                        prefs.credentialError = retryPlain.code().toString()
+                                                        prefs.credentialErrorAt = System.currentTimeMillis()
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            }
                                         } catch (_: Exception) {
                                         }
                                     } else if (NetworkUtils.isChatMissing(plainBody)) {

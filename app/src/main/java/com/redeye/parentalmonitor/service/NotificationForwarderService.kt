@@ -169,6 +169,19 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun historyAllowed(): Boolean {
+        val prefs = prefsRef ?: try {
+            PreferencesManager.getInstance(this).also { prefsRef = it }
+        } catch (_: Exception) {
+            return false
+        }
+        return try {
+            prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun forwardingAllowed(): Boolean {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
@@ -233,7 +246,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
                 try {
-                    if (forwardingAllowed()) record(overflowLabel(pkg), fbTitle, fbText)
+                    if (historyAllowed()) record(overflowLabel(pkg), fbTitle, fbText)
                 } catch (_: Exception) { }
                 return
             }
@@ -241,20 +254,6 @@ class NotificationForwarderService : NotificationListenerService() {
                 try {
                     if (!forwardingAllowed()) return@launch
                     val nowFb = android.os.SystemClock.elapsedRealtime()
-                    val keyFb = pkg + "\n" + fbTitle + "\n" + fbText
-                    val dupFb = synchronized(lastSent) {
-                        val prev = lastSent[keyFb] ?: 0L
-                        if (nowFb - prev < 10_000L) true else {
-                            lastSent[keyFb] = nowFb
-                            false
-                        }
-                    }
-                    if (dupFb) return@launch
-                    if (pkgTryAcquire(pkg, nowFb)) {
-                        val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
-                        record(spamLabel, fbTitle, fbText)
-                        return@launch
-                    }
                     val label = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
                         packageManager.getApplicationLabel(info).toString().also { resolved ->
@@ -263,21 +262,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     } catch (_: Exception) {
                         pkg
                     }
-                    record(label, fbTitle, fbText)
-                    try {
-                        synchronized(groupSeen) { groupSeen[groupKey] = nowFb }
-                    } catch (_: Exception) {
-                    }
-                    val message = buildString {
-                        appendLine("\uD83D\uDD14 <b>Notification</b>")
-                        appendLine("App: ${Html.escape(label)}")
-                        if (fbTitle.isNotEmpty()) appendLine("Title: ${Html.escape(fbTitle.take(200))}")
-                        if (fbText.isNotEmpty()) appendLine("Text: ${Html.escape(fbText.take(300))}")
-                    }
-                    try {
-                        forwardToTelegram(message, pkg)
-                    } catch (_: Exception) {
-                    }
+                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = true, notifySpam = false)
                 } catch (_: Exception) {
                 } finally {
                     pendingPosts.decrementAndGet()
@@ -288,7 +273,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
             try {
-                if (!forwardingAllowed()) return
+                if (!historyAllowed()) return
                 val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 var x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 if (x.isEmpty()) {
@@ -340,7 +325,6 @@ class NotificationForwarderService : NotificationListenerService() {
             cfgCacheAt = nowCfg
         }
         if (!cfgEnabled) return
-        if (!cfgForward || !cfgConfigured) return
         val title: String
         val text: String
         try {
@@ -373,6 +357,10 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             pkg
         }
+        if (!cfgForward || !cfgConfigured) {
+            record(appLabel, title, text)
+            return
+        }
         if (isSummary && groupKey.isNotEmpty()) {
             val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
             if (nowCfg - seenAt < 120_000L) {
@@ -380,42 +368,56 @@ class NotificationForwarderService : NotificationListenerService() {
                 return
             }
         }
-        val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()
-        val dupNotif = synchronized(lastSent) {
-            val dup = now - (lastSent[key] ?: 0L) < 10_000L
-            if (!dup) lastSent[key] = now
-            dup
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true)
+    }
+
+    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean) {
+        val key = pkg + "\n" + title + "\n" + text
+        val dup = synchronized(lastSent) {
+            val prev = lastSent[key] ?: 0L
+            if (now - prev < 10_000L) true else {
+                lastSent[key] = now
+                false
+            }
         }
-        if (dupNotif) {
-            record(appLabel, title, text)
+        if (dup) {
+            record(label, title, text)
             return
         }
         if (pkgTryAcquire(pkg, now)) {
-            val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
-            val lastNotice = dropNoticeAt[pkg] ?: 0L
-            if (now - lastNotice > 120_000L) {
-                if (dropNoticeAt.size > 64) {
-                    val cutoff = now - 3_600_000L
-                    dropNoticeAt.entries.removeIf { it.value < cutoff }
+            val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
+            if (notifySpam) {
+                val lastNotice = dropNoticeAt[pkg] ?: 0L
+                if (now - lastNotice > 120_000L) {
+                    if (dropNoticeAt.size > 64) {
+                        val cutoff = now - 3_600_000L
+                        dropNoticeAt.entries.removeIf { it.value < cutoff }
+                    }
+                    dropNoticeAt[pkg] = now
+                    forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(spamLabel) + " in 2 min, extras kept in /lastnotif history.", "")
                 }
-                dropNoticeAt[pkg] = now
-                forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(cachedLabel) + " in 2 min, extras kept in /lastnotif history.", "")
             }
-            record(cachedLabel, title, text)
+            record(spamLabel, title, text)
             return
         }
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
-            appendLine("App: ${Html.escape(appLabel)}")
+            appendLine("App: ${Html.escape(label)}")
             if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title.take(200))}")
             if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
         }
-        record(appLabel, title, text)
-        if (!isSummary && groupKey.isNotEmpty()) {
-            synchronized(groupSeen) { groupSeen[groupKey] = android.os.SystemClock.elapsedRealtime() }
+        record(label, title, text)
+        if (trackGroup && groupKey.isNotEmpty()) {
+            try {
+                synchronized(groupSeen) { groupSeen[groupKey] = now }
+            } catch (_: Exception) {
+            }
         }
-        forwardToTelegram(message, pkg)
+        try {
+            forwardToTelegram(message, pkg)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onListenerConnected() {
