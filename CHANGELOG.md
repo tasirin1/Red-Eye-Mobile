@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- Perintah `/screenshot` menangkap layar perangkat via MediaProjection lalu mengirim sebagai foto: izin diberikan sekali lewat tombol Capture Screen di Setup (`MediaProjectionManager.createScreenCaptureIntent`), token izin disimpan terenkripsi di `PreferencesManager`, tipe FGS `mediaProjection` ditambahkan ke manifest + `ensureForegroundTypes`, tombol menu Screenshot + entri bot menu + baris `/help`, file `screenshot_*.jpg` ikut antre offline/flush/prune seperti foto kamera.
+
 ## [1.6.105] - 2026-10-05
 
 ### Fixed

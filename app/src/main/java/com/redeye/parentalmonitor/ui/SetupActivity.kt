@@ -40,6 +40,7 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var toggleButton: MaterialButton
     private lateinit var permissionButton: MaterialButton
     private lateinit var notifButton: MaterialButton
+    private lateinit var shotButton: MaterialButton
     private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
     private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
@@ -67,6 +68,28 @@ class SetupActivity : AppCompatActivity() {
     private val backgroundPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { updateStatus() }
+
+    private val screenCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { res ->
+        if (res.resultCode == RESULT_OK && res.data != null) {
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val uri = res.data?.toUri(Intent.URI_INTENT_SCHEME).orEmpty()
+                    prefs.saveScreenshotConsentSync(res.resultCode, uri)
+                } catch (_: Exception) {
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_shot_ok), Toast.LENGTH_SHORT).show()
+                        updateStatus()
+                    }
+                }
+            }
+        } else {
+            Toast.makeText(this, getString(R.string.setup_shot_denied), Toast.LENGTH_SHORT).show()
+        }
+    }
 
     companion object {
         private const val STORED_MASK = "••••••••"
@@ -172,6 +195,7 @@ class SetupActivity : AppCompatActivity() {
         toggleButton = findViewById(R.id.setupToggleButton)
         permissionButton = findViewById(R.id.setupPermissionButton)
         notifButton = findViewById(R.id.setupNotifButton)
+        shotButton = findViewById(R.id.setupShotButton)
 
         try {
             botTokenInput.setText("")
@@ -237,6 +261,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
+        findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
 
         updateStatus()
     }
@@ -299,6 +324,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
             try { prefs.initialSyncStarted = false } catch (_: Exception) { }
             try { prefs.clearWakePingIds() } catch (_: Exception) { }
+            try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
             try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
             try { prefs.pendingNotifDrops = 0 } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
@@ -780,6 +806,15 @@ class SetupActivity : AppCompatActivity() {
     }
 
 
+    private fun requestScreenCapture() {
+        try {
+            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+            screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.setup_shot_unsupported), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun activateDeviceAdmin() {
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, AdminReceiver::class.java)
@@ -816,6 +851,7 @@ class SetupActivity : AppCompatActivity() {
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
             val ownerLine = if (ownerKnown) "\nOwner: recognized" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
+            val shotOn = try { prefs.hasScreenshotConsent() } catch (_: Exception) { false }
             val listener = isNotificationAccessGranted()
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(
@@ -823,7 +859,7 @@ class SetupActivity : AppCompatActivity() {
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

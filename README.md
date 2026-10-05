@@ -12,6 +12,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Log panggilan masuk/keluar
 - SMS masuk/keluar
 - Foto otomatis tiap interval, atau manual via `/photo`
+- Screenshot layar HP anak via `/screenshot` (izin capture diberikan sekali di Setup)
 - Teruskan notifikasi HP anak ke Telegram
 - Antrean offline, kirim lagi pas online
 - Auto-jalan lagi habis reboot
@@ -50,8 +51,9 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 7. Tap Test Connection, pastikan pesan masuk ke Telegram.
 8. Tap Grant permissions sampai semua hijau, lalu grant background location Allow all the time.
 9. Nyalakan akses notifikasi kalau mau forward notifikasi.
-10. Matikan batasan baterai biar nggak dimatikan Doze, nyalakan Device Admin kalau perlu.
-11. Tap Enable monitoring, selesai. Cek via Send Status.
+10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`.
+11. Matikan batasan baterai biar nggak dimatikan Doze, nyalakan Device Admin kalau perlu.
+12. Tap Enable monitoring, selesai. Cek via Send Status.
 
 Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit.
 
@@ -69,6 +71,7 @@ Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
 |----------|--------|
 | `/photo` | Foto sekarang |
 | `/camera depan\|belakang` | Ganti kamera |
+| `/screenshot` | Screenshot layar |
 | `/location` | Kirim lokasi terakhir |
 | `/lastcalls` | 5 panggilan terakhir |
 | `/lastsms` | 5 SMS terakhir |

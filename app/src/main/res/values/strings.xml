@@ -37,6 +37,10 @@
     <string name="setup_notif">Read Notifications</string>
     <string name="setup_notif_on">Notification forwarding ON</string>
     <string name="setup_notif_off">Notification forwarding OFF</string>
+    <string name="setup_shot">Capture Screen</string>
+    <string name="setup_shot_ok">Screen capture granted</string>
+    <string name="setup_shot_denied">Screen capture denied</string>
+    <string name="setup_shot_unsupported">Screen capture not supported on this device</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
