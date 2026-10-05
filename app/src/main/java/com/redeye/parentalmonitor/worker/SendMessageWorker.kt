@@ -291,7 +291,7 @@ class SendMessageWorker(
 
     private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val plain = message.replace(Html.tagStripRegex, "")
+            val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,
@@ -447,7 +447,7 @@ class SendMessageWorker(
 
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = "") {
         val clean = try {
-            sample.replace(Html.tagStripRegex, "").trim().take(120)
+            sample.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").trim().take(120)
         } catch (_: Exception) {
             ""
         }

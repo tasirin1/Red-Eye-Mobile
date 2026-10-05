@@ -16,7 +16,7 @@ object PhoneNumbers {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        if (want.length < 10) return false
+        if (want.length < 7) return false
         if (have.endsWith(want) || want.endsWith(have)) return true
         if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
         if (haveAlt != null) {

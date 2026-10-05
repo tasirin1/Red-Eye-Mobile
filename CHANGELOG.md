@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- Wake-loop forwarder (`pollWakeOnce`) tangani `400`-offset seperti loop utama (resync ke `lastUpdateId` + backoff 30 detik) dan `401`/`403` (set `credentialError`) agar polling tak wedged selamanya.
+- Kalkulator: kode rahasia `1234=` mensyaratkan `!justCalculated` agar hasil hitung `1234` lalu tekan `=` lagi tak membuka `SetupActivity`.
+- Ganti token membersihkan dedup `updateId`/`callbackId` in-memory agar perintah awal bot baru tak ter-skip karena tabrakan numerik.
+- Plain-fallback decode entities (`&lt;`/`&gt;`/`&amp;`) di `MonitoringService`/`SendMessageWorker`/`CrashReporter` agar teks polos tak tampil `&amp;` literal.
+- Capture foto/screenshot/video/audio cek `mediaBackoffUntil` dulu agar tak membakar kamera/mic saat `429` rate-limited.
+- `/history` 7-9 digit boleh suffix-match (threshold `10` jadi `7`) agar pencarian pendek tetap menemukan nomor.
+- `/clearqueue` jujur drop-counter: ambil `overflow`/`expired` sebelum clear dan sebut di konfirmasi.
+- `parseRetryAfter` fallback regex dari deskripsi `retry after N` agar `429` tanpa objek `parameters` tetap backoff benar.
+
 ## [1.6.115] - 2026-10-05
 
 ### Fixed

@@ -81,16 +81,21 @@ object NetworkUtils {
     }
 
     fun parseRetryAfter(errorBody: String?): Long {
-        if (errorBody.isNullOrEmpty() || !errorBody.contains("retry_after")) return 5L
-        return try {
-            com.google.gson.JsonParser.parseString(errorBody)
+        if (errorBody.isNullOrEmpty()) return 5L
+        try {
+            val parsed = com.google.gson.JsonParser.parseString(errorBody)
                 ?.asJsonObject
                 ?.getAsJsonObject("parameters")
                 ?.get("retry_after")
                 ?.asLong
-                ?.coerceIn(1, 300) ?: 5L
-        } catch (e: Exception) {
-            5L
+            if (parsed != null) return parsed.coerceIn(1, 300)
+        } catch (_: Exception) {
         }
+        try {
+            val fallback = Regex("(?i)retry[_ ]after\\D*(\\d+)").find(errorBody)?.groupValues?.getOrNull(1)?.toLongOrNull()
+            if (fallback != null) return fallback.coerceIn(1, 300)
+        } catch (_: Exception) {
+        }
+        return 5L
     }
 }

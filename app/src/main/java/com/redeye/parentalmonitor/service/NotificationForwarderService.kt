@@ -542,6 +542,29 @@ class NotificationForwarderService : NotificationListenerService() {
             wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
             return
         }
+        if (response.code() == 401 || response.code() == 403) {
+            try {
+                prefs.credentialError = response.code().toString()
+                prefs.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            return
+        }
+        if (response.code() == 400) {
+            try {
+                val body400 = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
+                if (body400.contains("offset")) {
+                    wakeUpdateId = mainLast
+                    try {
+                        prefs.setWakeUpdateIdSync(mainLast)
+                    } catch (_: Exception) {
+                    }
+                    wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
+                }
+            } catch (_: Exception) {
+            }
+            return
+        }
         if (!response.isSuccessful) return
         val updates = try {
             response.body()?.result.orEmpty()
