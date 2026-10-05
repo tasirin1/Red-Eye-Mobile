@@ -296,6 +296,227 @@ class CameraService(private val context: Context) {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun captureVideo(
+        durationMs: Long,
+        onVideoTaken: (File) -> Unit,
+        onError: (Exception) -> Unit,
+        onTrace: (String) -> Unit = {},
+        timeoutMs: Long = durationMs + 60_000L,
+        lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
+    ) {
+        if (!capturing.compareAndSet(false, true)) {
+            onError(Exception("Camera is busy"))
+            return
+        }
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        var timeoutRunnable: Runnable? = null
+        var stopRunnable: Runnable? = null
+        var recorder: android.media.MediaRecorder? = null
+        var videoSurface: android.view.Surface? = null
+        var recording = false
+
+        fun releaseRecorder() {
+            try { recorder?.release() } catch (_: Exception) { }
+            recorder = null
+        }
+
+        fun releaseSurface() {
+            try { videoSurface?.release() } catch (_: Exception) { }
+            videoSurface = null
+        }
+
+        fun finishWithError(e: Exception) {
+            if (done.compareAndSet(false, true)) {
+                capturing.set(false)
+                try {
+                    timeoutRunnable?.let { r ->
+                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                    }
+                    stopRunnable?.let { r ->
+                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                    }
+                } catch (_: Exception) {
+                }
+                try {
+                    if (recording) {
+                        try { recorder?.stop() } catch (_: Exception) { }
+                    }
+                } catch (_: Exception) {
+                }
+                recording = false
+                releaseRecorder()
+                releaseSurface()
+                cleanup()
+                onError(e)
+            }
+        }
+
+        fun finishWithVideo(file: File) {
+            if (done.compareAndSet(false, true)) {
+                capturing.set(false)
+                try {
+                    timeoutRunnable?.let { r ->
+                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                    }
+                } catch (_: Exception) {
+                }
+                releaseRecorder()
+                releaseSurface()
+                onVideoTaken(file)
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
+            } else {
+                try {
+                    file.delete()
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        try {
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Starting video capture")
+            onTrace("trace: starting video capture")
+            startBackgroundThread()
+            if (backgroundHandler == null) {
+                finishWithError(Exception("Camera unavailable (background handler not ready)"))
+                return
+            }
+            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = getCameraId(cameraManager, lensFacing)
+            if (cameraId == null) {
+                stopBackgroundThread()
+                finishWithError(Exception("Selected camera not found"))
+                return
+            }
+            val timeout = Runnable {
+                Log.e(TAG, "Video capture timed out after ${timeoutMs}ms")
+                onTrace("trace: TIMEOUT waiting for video")
+                finishWithError(Exception("Video capture timed out"))
+            }
+            timeoutRunnable = timeout
+            (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
+            val videoSize = chooseVideoSize(cameraManager, cameraId)
+            val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + ".mp4")
+            val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                android.media.MediaRecorder(context)
+            } else {
+                android.media.MediaRecorder()
+            }
+            recorder = rec
+            rec.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+            rec.setVideoSource(android.media.MediaRecorder.VideoSource.SURFACE)
+            rec.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
+            rec.setVideoEncoder(android.media.MediaRecorder.VideoEncoder.H264)
+            rec.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+            rec.setVideoSize(videoSize.first, videoSize.second)
+            rec.setVideoFrameRate(24)
+            rec.setVideoEncodingBitRate(if (videoSize.first * videoSize.second >= 1280 * 720) 2_000_000 else 1_000_000)
+            rec.setOutputFile(outFile.absolutePath)
+            rec.prepare()
+            videoSurface = rec.surface
+            val recordSurface = videoSurface ?: run { finishWithError(Exception("Record surface unavailable")); return }
+            cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    cameraDevice = camera
+                    try {
+                        val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+                        builder.addTarget(recordSurface)
+                        builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+                        camera.createCaptureSession(
+                            listOf(recordSurface),
+                            object : CameraCaptureSession.StateCallback() {
+                                override fun onConfigured(session: CameraCaptureSession) {
+                                    captureSession = session
+                                    try {
+                                        session.setRepeatingRequest(builder.build(), null, backgroundHandler)
+                                    } catch (e: Exception) {
+                                        finishWithError(Exception("Record session failed"))
+                                        return
+                                    }
+                                    try {
+                                        rec.start()
+                                    } catch (e: Exception) {
+                                        finishWithError(Exception("Record start failed"))
+                                        return
+                                    }
+                                    recording = true
+                                    onTrace("trace: recording started")
+                                    val stop = Runnable {
+                                        try {
+                                            try { rec.stop() } catch (_: Exception) { }
+                                            recording = false
+                                            captureSession?.close()
+                                            captureSession = null
+                                            cameraDevice?.close()
+                                            cameraDevice = null
+                                            releaseSurface()
+                                            stopBackgroundThread()
+                                            if (!outFile.exists() || outFile.length() == 0L) {
+                                                try { outFile.delete() } catch (_: Exception) { }
+                                                finishWithError(Exception("Empty video"))
+                                            } else {
+                                                finishWithVideo(outFile)
+                                            }
+                                        } catch (e: Exception) {
+                                            finishWithError(e)
+                                        }
+                                    }
+                                    stopRunnable = stop
+                                    try {
+                                        backgroundHandler?.postDelayed(stop, durationMs)
+                                    } catch (e: Exception) {
+                                        finishWithError(e)
+                                    }
+                                }
+                                override fun onConfigureFailed(session: CameraCaptureSession) {
+                                    finishWithError(Exception("Record session configuration failed"))
+                                }
+                            },
+                            backgroundHandler
+                        )
+                    } catch (e: Exception) {
+                        finishWithError(e)
+                    }
+                }
+                override fun onDisconnected(camera: CameraDevice) {
+                    finishWithError(Exception("Camera disconnected"))
+                }
+                override fun onError(camera: CameraDevice, error: Int) {
+                    if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
+                        finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                    } else {
+                        finishWithError(Exception("Camera error: $error"))
+                    }
+                }
+            }, backgroundHandler)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing video", e)
+            finishWithError(e)
+        }
+    }
+
+    private fun chooseVideoSize(cameraManager: CameraManager, cameraId: String): Pair<Int, Int> {
+        return try {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val sizes = map?.getOutputSizes(android.media.MediaRecorder::class.java)
+            if (sizes.isNullOrEmpty()) {
+                640 to 480
+            } else {
+                val capArea = 1280L * 720L
+                val within = sizes.filter { it.width.toLong() * it.height <= capArea }
+                val pool = if (within.isNotEmpty()) within else sizes.toList()
+                val chosen = pool.maxByOrNull { it.width.toLong() * it.height }
+                if (chosen != null) chosen.width to chosen.height else 640 to 480
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error choosing video size", e)
+            640 to 480
+        }
+    }
+
     private fun runMeteredCapture(
         camera: CameraDevice,
         session: CameraCaptureSession,

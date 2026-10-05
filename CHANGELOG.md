@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Added
+- Perintah `/recordvideo <5-180>` (detik) merekam video kamera + audio via Camera2 + `MediaRecorder` (maks 720p, ~1-2 Mbps) lalu mengirim sebagai video Telegram: file `video_*.mp4` ikut antre offline/flush/prune (maks 3), guard 48 MB, watchdog + `videoAttempt` anti-callback basi, tombol + entri bot menu + baris `/help`.
+
+### Changed
+- Batas `/record` dibuka dari 5-60 detik menjadi 5-600 detik (10 menit); argumen di luar rentang kini ditolak dengan pesan usage, bukan diam-diam dijepit.
+
 ## [1.6.106] - 2026-10-05
 
 ### Added

@@ -144,6 +144,15 @@ interface TelegramApi {
         @Part("caption") caption: RequestBody?,
         @Part photo: MultipartBody.Part
     ): Response<TelegramResponse>
+
+    @Multipart
+    @POST
+    suspend fun sendVideo(
+        @Url url: String,
+        @Part("chat_id") chatId: RequestBody,
+        @Part("caption") caption: RequestBody?,
+        @Part video: MultipartBody.Part
+    ): Response<TelegramResponse>
 }
 
 private object SharedNet {

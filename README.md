@@ -13,6 +13,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - SMS masuk/keluar
 - Foto otomatis tiap interval, atau manual via `/photo`
 - Screenshot layar HP anak via `/screenshot` (izin capture diberikan sekali di Setup)
+- Rekam video kamera via `/recordvideo`
 - Teruskan notifikasi HP anak ke Telegram
 - Antrean offline, kirim lagi pas online
 - Auto-jalan lagi habis reboot
@@ -90,7 +91,8 @@ Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
 | `/flush` | Kirim antrean sekarang |
 | `/clearqueue` | Buang antrean |
 | `/sms nomor pesan` + `/smsconfirm` | Kirim SMS via HP anak |
-| `/record 5-60` | Rekam audio detik |
+| `/record 5-600` | Rekam audio detik |
+| `/recordvideo 5-180` | Rekam video detik |
 | `/lock` | Kunci layar |
 | `/ring` | Bunyikan HP |
 | `/contacts nama` | Cari kontak |
