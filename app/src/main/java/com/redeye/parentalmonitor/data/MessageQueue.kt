@@ -44,6 +44,7 @@ class MessageQueue private constructor(context: Context) {
         }
     }
     private val lock = Any()
+    private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
     private var cached: MutableList<QueuedMessage>? = null
     private val arrayType = Array<QueuedMessage>::class.java
 
@@ -266,8 +267,13 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    fun queueGeneration(): Long {
+        return generationCounter.get()
+    }
+
     fun clearQueue() {
         synchronized(lock) {
+            generationCounter.incrementAndGet()
             cached = mutableListOf()
             volatileQueue.clear()
             overflowDrops.set(0L)

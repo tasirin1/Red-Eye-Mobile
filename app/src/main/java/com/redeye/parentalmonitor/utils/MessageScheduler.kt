@@ -45,6 +45,13 @@ object MessageScheduler {
         }
     }
 
+    @Volatile
+    var workerRunning = false
+
+    fun scheduleRateLimited(context: Context, initialDelayMs: Long = 0L): Boolean {
+        return if (workerRunning) scheduleMessageSend(context, initialDelayMs) else scheduleMessageSendNext(context, initialDelayMs)
+    }
+
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
             val constraints = Constraints.Builder()

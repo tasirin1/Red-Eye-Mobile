@@ -112,7 +112,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) refreshFwdCreds()
+                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); wakeUpdateId = -1L; cfgCacheAt = 0L }
                     if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
                 }
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
@@ -252,7 +252,6 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             scope.launch(fwdSerial) {
                 try {
-                    if (!forwardingAllowed()) return@launch
                     val nowFb = android.os.SystemClock.elapsedRealtime()
                     val label = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
                         val info = packageManager.getApplicationInfo(pkg, 0)
@@ -261,6 +260,12 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                     } catch (_: Exception) {
                         pkg
+                    }
+                    if (!forwardingAllowed()) {
+                        try {
+                            if (historyAllowed()) record(label, fbTitle, fbText)
+                        } catch (_: Exception) { }
+                        return@launch
                     }
                     emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = true, notifySpam = false)
                 } catch (_: Exception) {
@@ -904,7 +909,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     5L
                 }
                 queue().addMessage(message)
-                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
                 return false
             }
             if (response.code() == 400) {

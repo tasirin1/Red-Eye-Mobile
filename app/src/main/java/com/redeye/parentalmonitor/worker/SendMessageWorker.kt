@@ -24,6 +24,15 @@ class SendMessageWorker(
     }
 
     override suspend fun doWork(): Result {
+        MessageScheduler.workerRunning = true
+        try {
+            return doWorkInternal()
+        } finally {
+            MessageScheduler.workerRunning = false
+        }
+    }
+
+    private suspend fun doWorkInternal(): Result {
         try {
             messageQueue.tryRestorePersistent()
         } catch (_: Exception) {
@@ -46,6 +55,7 @@ class SendMessageWorker(
             return Result.success()
         }
 
+        val runGen = messageQueue.queueGeneration()
         val queue = messageQueue.getQueue()
         if (queue.isEmpty()) {
             return Result.success()
@@ -65,7 +75,15 @@ class SendMessageWorker(
         var incrementalFailed = false
         var flushedSent = 0
 
+        var queueCleared = false
         for (queuedMessage in queue) {
+            try {
+                if (messageQueue.queueGeneration() != runGen) {
+                    queueCleared = true
+                    break
+                }
+            } catch (_: Exception) {
+            }
             if (processed >= 20) {
                 break
             }
@@ -197,7 +215,7 @@ class SendMessageWorker(
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
         var dropSample = ""
-        if (credsSame()) {
+        if (!queueCleared && credsSame()) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
@@ -212,7 +230,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (failedIds.isNotEmpty() && !credsChanged && credsSame()) {
+        if (!queueCleared && failedIds.isNotEmpty() && !credsChanged && credsSame()) {
             val online = try {
                 NetworkUtils.isNetworkAvailable(applicationContext)
             } catch (_: Exception) {
@@ -233,7 +251,7 @@ class SendMessageWorker(
             }
         }
 
-        if (rejectedIds.isNotEmpty() && credsSame()) {
+        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
             try {
                 dropSample = try {
                     queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
@@ -245,7 +263,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (dropTotal > 0 && credsSame()) {
+        if (!queueCleared && dropTotal > 0 && credsSame()) {
             try {
                 sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
             } catch (_: Exception) {
@@ -253,7 +271,7 @@ class SendMessageWorker(
         }
         if (messageQueue.getQueueSize() > 0) {
             try {
-                val backoffMs = if (failedIds.isNotEmpty()) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
+                val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
                 MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
             } catch (_: Exception) {
             }

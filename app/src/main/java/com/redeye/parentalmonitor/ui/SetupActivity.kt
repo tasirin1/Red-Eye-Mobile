@@ -713,7 +713,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                     try {
                         MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                        MessageScheduler.scheduleMessageSendNext(applicationContext, retryAfter * 1000L)
+                        MessageScheduler.scheduleRateLimited(applicationContext, retryAfter * 1000L)
                     } catch (_: Exception) {
                     }
                 } else if (resp.code() == 401 || resp.code() == 403) {

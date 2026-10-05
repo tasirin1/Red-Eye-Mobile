@@ -2473,7 +2473,7 @@ class MonitoringService : Service() {
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 if (queueOnFail) {
                     messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                    MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
                 }
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
@@ -2537,7 +2537,7 @@ class MonitoringService : Service() {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
                             if (queueOnFail) {
                                 messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                                MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
                             }
                             return false
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
@@ -3536,7 +3536,7 @@ class MonitoringService : Service() {
                 val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 try {
-                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
+                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
                 } catch (_: Exception) {
                 }
                 return MediaSendOutcome.KEPT
@@ -3715,7 +3715,7 @@ class MonitoringService : Service() {
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
                 try {
-                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
+                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
                 } catch (_: Exception) {
                 }
                 return MediaSendOutcome.KEPT
@@ -4037,7 +4037,7 @@ class MonitoringService : Service() {
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")
                 try {
-                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
+                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
                 } catch (_: Exception) {
                 }
                 return MediaSendOutcome.KEPT
