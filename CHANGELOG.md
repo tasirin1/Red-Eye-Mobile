@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.113] - 2026-10-05
+
+### Fixed
+- Fast-path forwarder (`pendingPosts>32`) ikut meredam summary grup berulang 120 detik seperti jalur normal (`groupSeen`), plus paritas `trackGroup`; riwayat tetap tercatat, pause tetap senyap.
+- `activeShotFile` diberi `@Volatile` seperti pelacak in-flight lain (tulis thread `serviceScope`, baca thread loop).
+- Drop-notice forwarder saat `onDestroy` ikut `scheduleMessageSend` agar tak stranded menunggu pemicu lain.
+
 ## [1.6.112] - 2026-10-05
 
 ### Fixed
