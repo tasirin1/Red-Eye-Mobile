@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.104] - 2026-10-05
+
+### Fixed
+- `pollTelegramCommands` tak lagi mereset offset ke 0 saat 400 offset; offset dipertahankan + backoff 30 dtk agar tak replay update lama.
+- Pairing `/start <chat ID>` bisa rotasi owner tanpa Clear; owner lama digantikan bila arg cocok.
+- `MessageQueue` memuat counter drop saat init jalur persistent langsung, bukan hanya saat restore.
+- `scheduleMessageSend` memakai `APPEND` agar jadwal immediate tak dibuang saat chain `APPEND` tertunda.
+- `flushBatch` tak lagi strip HTML seluruh batch; fallback plain diserahkan per-pesan ke `forwardLocked` seperti `sendFitted`.
+- Ambang split diseragamkan 4000 di `sendToTelegram` dan `SendMessageWorker` agar konsisten dengan `sendFitted`/`sendChunked`.
+- `MainActivity` memanggil `isFinishing`/`isDestroyed` via `runOnUiThread` agar cek lifecycle di main thread.
+- `sendStatusNow` memakai kode fallback efektif untuk Toast sehingga 401/403 tak dilaporkan sebagai 400.
+- Fallback `/history` memindai mundur per-halaman 500 baris (maks 5 halaman/365 hari) agar nomor lama tak terlewat.
+- Rotasi token mereset `ownerUserId` sehingga owner wajib pairing ulang sebagai konfirmasi.
+
 ## [1.6.103] - 2026-10-05
 
 ### Fixed
