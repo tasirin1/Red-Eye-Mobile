@@ -232,7 +232,9 @@ class NotificationForwarderService : NotificationListenerService() {
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
-                try { record(overflowLabel(pkg), fbTitle, fbText) } catch (_: Exception) { }
+                try {
+                    if (forwardingAllowed()) record(overflowLabel(pkg), fbTitle, fbText)
+                } catch (_: Exception) { }
                 return
             }
             scope.launch(fwdSerial) {
@@ -286,6 +288,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
             try {
+                if (!forwardingAllowed()) return
                 val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 var x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 if (x.isEmpty()) {

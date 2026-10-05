@@ -352,8 +352,14 @@ class SetupActivity : AppCompatActivity() {
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
+                    val online = try {
+                        NetworkUtils.isNetworkAvailable(this@SetupActivity)
+                    } catch (_: Exception) {
+                        true
+                    }
+                    val msg = if (online) getString(R.string.setup_bad_chat) else getString(R.string.setup_no_network)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }

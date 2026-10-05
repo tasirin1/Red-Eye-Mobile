@@ -68,7 +68,11 @@ class BootRestartWorker(
             return Result.success()
         }
         if (!prefs.isConfigured()) {
-            return if (runAttemptCount < 5) Result.retry() else Result.success()
+            try {
+                MessageScheduler.scheduleMessageSendNext(appContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
         }
         try {
             CrashReporter.flushPending(appContext)

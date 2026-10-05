@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         outState.putString("currentNumber", currentNumber)
         outState.putString("previousNumber", previousNumber)
         outState.putString("operator", operator)
-        outState.putString("lastExpression", if (secretStage == 1) "" else lastExpression)
+        outState.putString("lastExpression", lastExpression)
         outState.putBoolean("justCalculated", justCalculated)
     }
 
@@ -81,7 +81,6 @@ class MainActivity : AppCompatActivity() {
     private var previousNumber = ""
     private var lastExpression = ""
     private var justCalculated = false
-    private var secretStage = 0
     
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
@@ -122,7 +121,6 @@ class MainActivity : AppCompatActivity() {
             lastExpression = ""
             justCalculated = false
         }
-        secretStage = 0
         if (currentNumber == "Error") {
             currentNumber = ""
             previousNumber = ""
@@ -147,7 +145,6 @@ class MainActivity : AppCompatActivity() {
     
     private fun setOperator(op: String) {
         justCalculated = false
-        secretStage = 0
         if (currentNumber == "Error") {
             clear()
             return
@@ -172,12 +169,10 @@ class MainActivity : AppCompatActivity() {
             operator = ""
             lastExpression = ""
             justCalculated = false
-            secretStage = 0
             updateCalculatorDisplay()
             openSetupPage()
             return
         }
-        secretStage = 0
         
         if (previousNumber.isEmpty() || currentNumber.isEmpty()) return
         
@@ -233,7 +228,6 @@ class MainActivity : AppCompatActivity() {
         operator = ""
         lastExpression = ""
         justCalculated = false
-        secretStage = 0
         updateCalculatorDisplay()
     }
 
@@ -283,7 +277,7 @@ class MainActivity : AppCompatActivity() {
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {
                 startMonitoringService()
-                preferencesManager.isMonitoringEnabled = true
+                preferencesManager.setMonitoringActive(true)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")

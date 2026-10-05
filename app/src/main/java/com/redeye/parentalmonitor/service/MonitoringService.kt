@@ -145,7 +145,15 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) refreshCreds()
+            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) {
+                refreshCreds()
+                if (key == PreferencesManager.KEY_BOT_TOKEN) {
+                    try {
+                        serviceScope.launch { registerBotCommands() }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
         }
@@ -936,7 +944,12 @@ class MonitoringService : Service() {
     private suspend fun answerCallback(callbackId: String) {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return
-            val token = sendCreds().first.ifEmpty { preferencesManager.botToken }
+            val token = try {
+                preferencesManager.botToken
+            } catch (_: Exception) {
+                ""
+            }
+            if (token.isEmpty()) return
             val url = "https://api.telegram.org/bot${token}/answerCallbackQuery"
             TelegramClient.api.answerCallbackQuery(url, mapOf("callback_query_id" to callbackId))
         } catch (_: Exception) {
@@ -1622,6 +1635,7 @@ class MonitoringService : Service() {
                 )
             }
             else -> {
+                if (!senderOk) return
                 sendToTelegram("\u2753 Unknown command: $command. Send /help for the list.")
             }
         }

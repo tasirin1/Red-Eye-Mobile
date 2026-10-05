@@ -49,7 +49,6 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_OVERFLOW_DROPS = "overflow_drops"
         private const val KEY_EXPIRED_DROPS = "expired_drops"
         private const val MAX_QUEUE_SIZE = 100
-        const val MAX_RETRIES = 5
         const val MAX_TRANSIENT_RETRIES = 20
         private val gson = Gson()
         private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
@@ -224,10 +223,6 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun registerFailures(messageIds: Collection<String>): List<String> {
-        return registerWithBudget(messageIds, MAX_RETRIES).first
-    }
-
     fun registerTransientFailures(messageIds: Collection<String>): Pair<List<String>, Int> {
         return registerWithBudget(messageIds, MAX_TRANSIENT_RETRIES)
     }
@@ -264,25 +259,6 @@ class MessageQueue private constructor(context: Context) {
             queue.removeAll { it.id in drop }
             persistLocked(queue)
             return Pair(drop, maxRetry)
-        }
-    }
-
-    fun incrementRetry(messageId: String): Int {
-        synchronized(lock) {
-            if (volatileOnly) {
-                val index = volatileQueue.indexOfFirst { it.id == messageId }
-                if (index < 0) return -1
-                val updated = volatileQueue[index].copy(retryCount = volatileQueue[index].retryCount + 1)
-                volatileQueue[index] = updated
-                return updated.retryCount
-            }
-            val queue = readLocked().toMutableList()
-            val index = queue.indexOfFirst { it.id == messageId }
-            if (index < 0) return -1
-            val updated = queue[index].copy(retryCount = queue[index].retryCount + 1)
-            queue[index] = updated
-            persistLocked(queue)
-            return updated.retryCount
         }
     }
 

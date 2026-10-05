@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Fixed
+- Menu perintah bot didaftarkan ulang saat token diganti sehingga rotasi token tak meninggalkan menu basi.
+- `MainActivity` memakai `setMonitoringActive(true)` agar flag, consent, dan pause konsisten; hapus `secretStage` mati dan sederhanakan `onSaveInstanceState`.
+- Hapus budget retry mati (`MAX_RETRIES`/`registerFailures`/`incrementRetry`); satu-satunya jalur aktif `registerTransientFailures` (budget 20).
+- Balasan `Unknown command` hanya untuk owner; perintah tak dikenal dari anggota grup didiamkan agar tak bisa dipakai spam grup.
+- Jalur overflow forwarder memeriksa `forwardingAllowed()` sebelum mencatat riwayat, sama seperti jalur normal.
+- `saveSettings` menampilkan `setup_no_network` saat resolve `@username` gagal karena offline, bukan `setup_bad_chat`.
+- `answerCallback` membaca token segar dari `PreferencesManager`, bukan cache `sendCreds()` 5 menit.
+- `BootRestartWorker` memakai jeda eksplisit 30 menit + `success` saat belum konfigurasi, bukan `retry` tanpa backoff.
+
 ## [1.6.101] - 2026-10-05
 
 ### Fixed
