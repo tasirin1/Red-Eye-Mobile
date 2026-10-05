@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.109] - 2026-10-05
+
 ### Fixed
 - Notif "Group upgraded" tak lagi spam: `adoptMigratedChat()` di `MonitoringService`/`SendMessageWorker`/`NotificationForwarderService` hanya mengantre notif bila nilai `chatId` tersimpan benar berubah; panggilan berikutnya dalam satu batch (termasuk worker dengan `chatId` lokal basi) tetap ditangani tanpa notif ganda.
 - Migrasi gaya lama tertangani: `NetworkUtils.extractMigratedChatId()` punya fallback regex (`"migrate_to_chat_id": ...` mentah + `New chat id: ...` di deskripsi) agar error 400 tanpa objek `parameters` tetap diadopsi, bukan freeze 30 menit.
