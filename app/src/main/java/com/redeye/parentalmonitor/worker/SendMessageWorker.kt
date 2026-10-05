@@ -214,7 +214,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (failedIds.isNotEmpty()) {
+        if (failedIds.isNotEmpty() && !credsChanged && credsSame()) {
             val online = try {
                 NetworkUtils.isNetworkAvailable(applicationContext)
             } catch (_: Exception) {
@@ -295,8 +295,11 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else if (response.code() == 400) {
-                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code()) else SendOutcome.Rejected
+                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code())
+                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
+                else SendOutcome.Rejected
             } else {
                 SendOutcome.Rejected
             }
@@ -322,8 +325,11 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(chunk, botToken, chatId)
+                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code())
+                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
+                else sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
                     NetworkUtils.parseRetryAfter(response.errorBody()?.string())
@@ -458,11 +464,17 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400 && message.length > 4096) {
-                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendChunked(message, botToken, chatId)
+                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code())
+                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
+                else sendChunked(message, botToken, chatId)
             } else if (response.code() == 400) {
-                val chatGone = try { NetworkUtils.isChatMissing(response.errorBody()?.string()) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code()) else sendPlainFallback(message, botToken, chatId)
+                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
+                if (chatGone) SendOutcome.AuthFailed(response.code())
+                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
+                else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val retryAfterSecs = try {
                     NetworkUtils.parseRetryAfter(response.errorBody()?.string())

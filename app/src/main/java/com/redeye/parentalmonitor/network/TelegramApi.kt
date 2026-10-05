@@ -99,6 +99,16 @@ interface TelegramApi {
         @Url url: String
     ): Response<TelegramUpdatesResponse>
 
+    @GET
+    suspend fun getMe(
+        @Url url: String
+    ): Response<TelegramResponse>
+
+    @GET
+    suspend fun getChat(
+        @Url url: String
+    ): Response<TelegramResponse>
+
     @POST
     suspend fun sendMessage(
         @Url url: String,

@@ -117,6 +117,27 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
+                try {
+                    val pending = prefsRef?.pendingNotifDrops ?: 0
+                    if (pending > 0) {
+                        dropNoticeCount.addAndGet(pending)
+                        synchronized(dropNoticeLock) {
+                            if (dropNoticeJob?.isActive != true) {
+                                dropNoticeJob = scope.launch {
+                                    try {
+                                        delay(30_000L)
+                                    } catch (_: Exception) {
+                                    }
+                                    try {
+                                        flushDropNotice()
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                }
                 prefsRef?.isConfigured()
                 queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -474,7 +495,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!NetworkUtils.isNetworkAvailable(this)) return
         if (android.os.SystemClock.elapsedRealtime() < wakeBackoffUntil) return
         val offset = maxOf(mainLast, wakeUpdateId) + 1L
-        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30"
+        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=20&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
         val response = try {
             TelegramClient.api.getUpdates(url)
         } catch (_: Exception) {
@@ -664,8 +685,12 @@ class NotificationForwarderService : NotificationListenerService() {
         synchronized(pkgHitsLock) {
             val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
             while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
-            if (q.size >= 10) return true
+            if (q.size >= 10) {
+                while (q.size > 30) q.removeFirst()
+                return true
+            }
             q.addLast(now)
+            while (q.size > 30) q.removeFirst()
             return false
         }
     }
@@ -747,6 +772,10 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun noteDroppedNotification() {
         dropNoticeCount.incrementAndGet()
+        try {
+            prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+        } catch (_: Exception) {
+        }
         synchronized(dropNoticeLock) {
             if (dropNoticeJob?.isActive == true) return
             dropNoticeJob = scope.launch {
@@ -766,6 +795,10 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun flushDropNotice() {
         val count = dropNoticeCount.getAndSet(0)
+        try {
+            prefsRef?.setPendingNotifDropsSync(0)
+        } catch (_: Exception) {
+        }
         if (count <= 0) return
         try {
             val text = if (count == 1) "Dropped 1 notification rejected by Telegram (400)."
@@ -774,6 +807,10 @@ class NotificationForwarderService : NotificationListenerService() {
             MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
         } catch (_: Exception) {
             dropNoticeCount.addAndGet(count)
+            try {
+                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -854,6 +891,11 @@ class NotificationForwarderService : NotificationListenerService() {
                         prefs.credentialErrorAt = System.currentTimeMillis()
                     } catch (_: Exception) {
                     }
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return false
+                }
+                if (NetworkUtils.isRightsLimited(body)) {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return false

@@ -17,7 +17,13 @@ object NetworkUtils {
     fun isChatMissing(errorBody: String?): Boolean {
         if (errorBody.isNullOrEmpty()) return false
         val lower = errorBody.lowercase(java.util.Locale.ROOT)
-        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty") || lower.contains("bot was kicked") || lower.contains("not a member") || lower.contains("not enough rights") || lower.contains("have no rights") || lower.contains("need administrator rights")
+        return lower.contains("chat not found") || lower.contains("bot was blocked") || lower.contains("user not found") || lower.contains("group chat was deleted") || lower.contains("group chat was upgraded") || lower.contains("chat_id is empty") || lower.contains("bot was kicked") || lower.contains("not a member")
+    }
+
+    fun isRightsLimited(errorBody: String?): Boolean {
+        if (errorBody.isNullOrEmpty()) return false
+        val lower = errorBody.lowercase(java.util.Locale.ROOT)
+        return lower.contains("not enough rights") || lower.contains("have no rights") || lower.contains("need administrator rights") || lower.contains("not enough rights to send") || lower.contains("need administrator rights in the channel")
     }
 
     fun isAuthBlocked(prefs: PreferencesManager): Boolean {

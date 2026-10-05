@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [1.6.98] - 2026-10-05
+
+### Fixed
+- `startMonitoring()` memakai guard `compareAndSet` + `initialSyncLock` + cek identitas job sehingga dua start beradu (boot + worker + revive) tak meluncurkan dua `sendInitialData()` konkuren.
+- `handleCallbackQuery()` mengizinkan `ownerOk` lewat gate dan menjawab callback dulu sebelum cek duplikat/kedaluarsa agar tombol inline tak muter selamanya di DM owner.
+- Offset `lastUpdateId` dipersist sebelum eksekusi perintah mutatif (pesan dan tombol) sehingga mati di tengah tak me-replay perintah mutatif.
+- `upgradeToPersistent()` memakai `commit()` (bukan dua `apply()`) agar copy terenkripsi tak parsial bila mati di tengah.
+- `SendMessageWorker` melewati `registerTransientFailures()` bila kredensial berubah (`credsChanged`/`credsSame()`) agar gagal lawan token basi tak membakar budget retry.
+- `sendFitted()` mempertahankan HTML per potongan via `TextChunk.safeCut()` (sama seperti worker) alih-alih membuang tag untuk pesan >4000.
+- Validasi `chat_id` Setup menerima username `@channel` (`@` + 5-32 alfanumerik/`_`) karena API Telegram mendukungnya.
+- `handleFgsTimeout()` memanggil `teardownJobs()` sehingga `commandBackoffUntil`/`mediaBackoffUntil`/`idlePolls` ikut direset dan kirim media tak tertahan pasca-restart.
+- `isChatMissing()` tak lagi menyamakan `rights` (`not enough rights`/`have no rights`/`need administrator rights`) dengan chat hilang; kategori baru `isRightsLimited()` antre/keep tanpa freeze 30 menit dan tanpa label Auth FAILED.
+- Counter drop-notice (`msgDropCount`/`dropNoticeCount`) dipersist ringan (`pendingMsgDrops`/`pendingNotifDrops`) + flush terjadwal saat restart; catatan batas: kill paksa di jeda milidetik antara increment dan `commit` masih bisa menghilangkan satu hitungan.
+
+### Changed
+- `getUpdates` memakai `allowed_updates=[message, edited_message, callback_query]` + `limit` (50 service / 20 forwarder) agar tak terima semua tipe update.
+- `cacheStats()` hanya membaca top-level `cacheDir.listFiles()` untuk `/storage`, bukan `walkTopDown` seluruh cache.
+- Deque spam per-paket (`pkgHits`) dicap 30 entri dalam jendela 2 menit agar burst tak membesar tanpa batas.
+- Tombol Test Setup memakai probe `getMe` + `getChat` tanpa kirim pesan spam ke chat.
+
 ## [1.6.97] - 2026-10-05
 
 ### Fixed

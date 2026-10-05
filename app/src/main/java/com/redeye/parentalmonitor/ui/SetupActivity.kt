@@ -72,9 +72,11 @@ class SetupActivity : AppCompatActivity() {
         private const val STORED_MASK = "••••••••"
         private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{30,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
+        private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
+        if (chatId.matches(USERNAME_REGEX)) return true
         if (!chatId.matches(CHAT_ID_REGEX)) return false
         val v = chatId.toLongOrNull() ?: return false
         if (v == 0L) return false
@@ -379,7 +381,6 @@ class SetupActivity : AppCompatActivity() {
         }
         val probeSync = probeSyncParsed
         val probeCamera = probeCameraParsed
-        val probeText = getString(R.string.setup_test_ok)
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
@@ -400,15 +401,37 @@ class SetupActivity : AppCompatActivity() {
                 return@launch
             }
             try {
-                val url = "https://api.telegram.org/bot$token/sendMessage"
-                val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = probeText))
-                if (resp.isSuccessful && resp.body()?.ok == true) {
-                    if (myTest != testSeq.get()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
+                if (myTest != testSeq.get()) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
                 }
-                return@launch
-            }
+                if (!meResp.isSuccessful || meResp.body()?.ok != true) {
+                    val code = meResp.code()
+                    if (code == 401 || code == 403) {
+                        try {
+                            prefs.credentialError = code.toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                    }
+                    return@launch
+                }
+                val encChat = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
+                val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$encChat")
+                if (myTest != testSeq.get()) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                if (chatResp.isSuccessful && chatResp.body()?.ok == true) {
                     persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
@@ -418,7 +441,7 @@ class SetupActivity : AppCompatActivity() {
                         if (myTest == testSeq.get()) reviveMonitoringIfNeeded()
                     }
                 } else {
-                    val code = resp.code()
+                    val code = chatResp.code()
                     if (code == 401 || code == 403) {
                         try {
                             prefs.credentialError = code.toString()

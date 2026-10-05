@@ -50,7 +50,7 @@ class PreferencesManager(context: Context) {
                             else -> Unit
                         }
                     }
-                    editor.apply()
+                    editor.commit()
                 }
             } catch (_: Exception) {
             }
@@ -80,7 +80,7 @@ class PreferencesManager(context: Context) {
                             }
                         }
                     }
-                    if (touched) delta.apply()
+                    if (touched) delta.commit()
                 }
             } catch (_: Exception) {
             }
@@ -205,6 +205,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
         private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
+        private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
+        private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -449,6 +451,28 @@ class PreferencesManager(context: Context) {
     var ownerUserId: Long
         get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
+
+    var pendingMsgDrops: Int
+        get() = try { sharedPreferences.getInt(KEY_PENDING_MSG_DROPS, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()
+
+    fun setPendingMsgDropsSync(value: Int) {
+        try {
+            sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    var pendingNotifDrops: Int
+        get() = try { sharedPreferences.getInt(KEY_PENDING_NOTIF_DROPS, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).apply()
+
+    fun setPendingNotifDropsSync(value: Int) {
+        try {
+            sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).commit()
+        } catch (_: Exception) {
+        }
+    }
 
     fun addWakePingIds(ids: Collection<Long>) {
         if (ids.isEmpty()) return
