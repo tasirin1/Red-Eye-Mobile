@@ -97,12 +97,18 @@ class BootReceiver : BroadcastReceiver() {
         try {
             val stuckVolume = preferencesManager.ringPrevVolume
             val stuckAt = preferencesManager.ringSavedAt
-            if (stuckVolume >= 0 && stuckAt > 0L && System.currentTimeMillis() - stuckAt > 60_000L) {
+            val ringAge = System.currentTimeMillis() - stuckAt
+            if (stuckVolume >= 0 && stuckAt > 0L && ringAge > 60_000L && ringAge < 12 * 60 * 60_000L) {
                 try {
                     val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
                     audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckVolume, 0)
                 } catch (_: Exception) {
                 }
+                try {
+                    preferencesManager.clearRingStateSync()
+                } catch (_: Exception) {
+                }
+            } else if (stuckVolume >= 0 || stuckAt > 0L) {
                 try {
                     preferencesManager.clearRingStateSync()
                 } catch (_: Exception) {

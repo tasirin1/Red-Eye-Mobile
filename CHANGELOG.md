@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+### Fixed
+- Kalkulator stealth `1234` + `=` langsung membuka Setup (satu tekanan), bukan dua tekanan.
+- Owner via `/start` wajib pairing `/start <chat ID>` di chat privat sehingga orang asing yang DM duluan tak bisa mengambil alih owner.
+- `chatId` `@username` di-resolve ke ID numerik via `getChat` saat Save/Test sehingga gate perintah runtime tetap cocok.
+- `/sms` menolak `,;`, huruf (`p/w`), dan `+` salah posisi agar nomor tak terpotong diam-diam ke penerima salah.
+- Offset `lastUpdateId` hanya persist-duluan untuk `/smsconfirm`, `/ring`, `/record`, `/lock`; perintah staging tetap persist-sesudah agar crash tak menghilangkan perintah.
+- `getUpdates` meminta `channel_post`/`edited_channel_post` sesuai handler yang sudah ada.
+- Sisa batch notifikasi di `onDestroy` dipersist sinkron ke antrean, bukan via daemon `Thread`.
+- `BootReceiver` memakai cap 12 jam yang sama untuk restore volume dering + clear state basi.
+- `SendMessageWorker` tetap menjadwalkan ulang antrean saat belum dikonfigurasi, bukan yatim setelah 5 percobaan.
+- Laporan crash dipertahankan saat monitoring mati (dihapus hanya setelah terkirim/kedaluwarsa 7 hari).
+- Validasi Setup dilonggarkan realistis (`TOKEN_REGEX` 20+ char, chat ID minimal 4 digit).
+- `addMessages()` mendukung cap prioritas yang sama dengan `addMessage()`.
+
 ## [1.6.99] - 2026-10-05
 
 ### Fixed

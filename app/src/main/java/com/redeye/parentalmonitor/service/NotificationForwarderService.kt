@@ -495,7 +495,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!NetworkUtils.isNetworkAvailable(this)) return
         if (android.os.SystemClock.elapsedRealtime() < wakeBackoffUntil) return
         val offset = maxOf(mainLast, wakeUpdateId) + 1L
-        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=20&allowed_updates=%5B%22message%22,%22edited_message%22,%22callback_query%22%5D"
+        val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=20&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
         val response = try {
             TelegramClient.api.getUpdates(url)
         } catch (_: Exception) {
@@ -661,13 +661,11 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (leftover.isNotEmpty()) {
                 try {
-                    Thread {
-                        try {
-                            queue().addMessages(leftover.map { it.first })
-                            MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
-                        } catch (_: Exception) {
-                        }
-                    }.apply { isDaemon = true; start() }
+                    queue().addMessages(leftover.map { it.first })
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
                 } catch (_: Exception) {
                 }
             }

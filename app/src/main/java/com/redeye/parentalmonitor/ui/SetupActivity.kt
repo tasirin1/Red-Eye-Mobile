@@ -70,7 +70,7 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
-        private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{30,}$")
+        private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{20,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
     }
@@ -80,11 +80,23 @@ class SetupActivity : AppCompatActivity() {
         if (!chatId.matches(CHAT_ID_REGEX)) return false
         val v = chatId.toLongOrNull() ?: return false
         if (v == 0L) return false
-        return chatId.trimStart('-').length >= 5
+        return chatId.trimStart('-').length >= 4
     }
 
     private fun resolveStored(raw: String, stored: String): String {
         return if (raw.isEmpty() || raw == STORED_MASK) stored else raw
+    }
+
+    private suspend fun resolveChatId(token: String, chatId: String): String {
+        if (!chatId.startsWith("@")) return chatId
+        return try {
+            val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
+            val resp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$enc")
+            val id = try { resp.body()?.result?.asJsonObject?.get("id")?.asLong } catch (_: Exception) { null }
+            if (resp.isSuccessful && resp.body()?.ok == true && id != null && id != 0L) id.toString() else ""
+        } catch (_: Exception) {
+            ""
+        }
     }
 
     private fun redactToken(value: String?): String {
@@ -318,7 +330,7 @@ class SetupActivity : AppCompatActivity() {
         try { saveJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
-            val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
@@ -336,6 +348,16 @@ class SetupActivity : AppCompatActivity() {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
+            }
+            if (chatId.startsWith("@")) {
+                val resolved = resolveChatId(token, chatId)
+                if (resolved.isEmpty()) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                chatId = resolved
             }
             if (mySave != saveSeq.get()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -387,7 +409,7 @@ class SetupActivity : AppCompatActivity() {
         try { testJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
-            val chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
@@ -432,7 +454,12 @@ class SetupActivity : AppCompatActivity() {
                     return@launch
                 }
                 if (chatResp.isSuccessful && chatResp.body()?.ok == true) {
-                    persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
+                    var effectiveChat = chatId
+                    if (effectiveChat.startsWith("@")) {
+                        val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
+                        if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
+                    }
+                    persistTestSettings(token, effectiveChat, probeSync, probeCamera, myTest)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)
@@ -757,7 +784,7 @@ class SetupActivity : AppCompatActivity() {
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
-            val ownerLine = if (ownerKnown) "\nOwner: recognized" else "\nOwner: unknown - DM the bot once privately to unlock owner commands"
+            val ownerLine = if (ownerKnown) "\nOwner: recognized" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val listener = isNotificationAccessGranted()
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""

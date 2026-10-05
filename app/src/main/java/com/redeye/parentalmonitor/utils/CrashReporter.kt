@@ -154,7 +154,6 @@ object CrashReporter {
                 false
             }
             if (!allowed) {
-                try { file.delete() } catch (_: Exception) { }
                 return
             }
             try {
