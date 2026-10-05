@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.116] - 2026-10-05
+
 ### Fixed
 - Wake-loop forwarder (`pollWakeOnce`) tangani `400`-offset seperti loop utama (resync ke `lastUpdateId` + backoff 30 detik) dan `401`/`403` (set `credentialError`) agar polling tak wedged selamanya.
 - Kalkulator: kode rahasia `1234=` mensyaratkan `!justCalculated` agar hasil hitung `1234` lalu tekan `=` lagi tak membuka `SetupActivity`.
