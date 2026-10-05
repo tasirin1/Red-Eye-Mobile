@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.117] - 2026-10-05
+
 ### Fixed
 - Callback tak berizin ikut `answerCallbackQuery` sebelum return agar spinner Telegram pemencet tak gantung 30 detik; tanpa bocor info apa pun.
 - `TOKEN_REGEX` `SetupActivity` longgarkan ke 5+ digit (selaras fallback `Redact`) agar bot ID lama yang valid tak ditolak saat tes/simpan; validasi server via `getMe` tetap jadi penentu.
