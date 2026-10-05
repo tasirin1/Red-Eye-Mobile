@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+- Notif "Group upgraded" tak lagi spam: `adoptMigratedChat()` di `MonitoringService`/`SendMessageWorker`/`NotificationForwarderService` hanya mengantre notif bila nilai `chatId` tersimpan benar berubah; panggilan berikutnya dalam satu batch (termasuk worker dengan `chatId` lokal basi) tetap ditangani tanpa notif ganda.
+- Migrasi gaya lama tertangani: `NetworkUtils.extractMigratedChatId()` punya fallback regex (`"migrate_to_chat_id": ...` mentah + `New chat id: ...` di deskripsi) agar error 400 tanpa objek `parameters` tetap diadopsi, bukan freeze 30 menit.
+- `sendStatusNow` di `SetupActivity` ikut adopsi migrasi: 400 berisi id baru langsung update `chatId` + bersihkan error + retry sekali dengan id baru (field input ikut diperbarui), bukan set `credentialError=400` yang membekukan semua.
+- SMS parsial tak hilangkan konteks: notif kini sertakan nomor tujuan + pratinjau 120 karakter teks asal (escape HTML) agar sisa yang belum terkirim bisa direkonstruksi manual.
+- `teardownJobs()` tak lagi berlubang: ikut batalkan `shotWatchdog`, reset `shotBusy`/`videoFlushBusy`, invalide `cameraAttempt`/`videoAttempt` agar `/screenshot` tak tolak "still running" hingga 45 detik pasca-restart.
+- Cap video adil: `pendingVideoCount()`/`pendingPhotoCount()` tak hitung file in-flight (`activeVideoFile`/`activePhotoFile`) agar 2 antre + 1 rekam tak menolak rekaman baru.
+
 ## [1.6.108] - 2026-10-05
 
 ### Fixed

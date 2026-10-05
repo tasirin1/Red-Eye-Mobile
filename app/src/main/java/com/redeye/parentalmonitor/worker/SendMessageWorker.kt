@@ -457,6 +457,15 @@ class SendMessageWorker(
 
     private fun adoptMigratedChat(body: String?, currentChatId: String): Boolean {
         val migrated = NetworkUtils.extractMigratedChatId(body) ?: return false
+        val stored = try { preferencesManager.chatId } catch (_: Exception) { currentChatId }
+        if (migrated == stored) {
+            try {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+            } catch (_: Exception) {
+            }
+            return true
+        }
         if (migrated == currentChatId) return false
         return try {
             preferencesManager.chatId = migrated

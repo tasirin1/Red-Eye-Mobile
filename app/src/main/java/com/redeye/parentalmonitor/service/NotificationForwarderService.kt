@@ -813,6 +813,16 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun adoptMigratedChat(prefs: PreferencesManager, errorBody: String?, currentChatId: String): Boolean {
         val migrated = NetworkUtils.extractMigratedChatId(errorBody) ?: return false
+        val stored = try { prefs.chatId } catch (_: Exception) { currentChatId }
+        if (migrated == stored) {
+            try {
+                prefs.credentialError = ""
+                prefs.credentialErrorAt = 0L
+                refreshFwdCreds()
+            } catch (_: Exception) {
+            }
+            return true
+        }
         if (migrated == currentChatId) return false
         return try {
             prefs.chatId = migrated

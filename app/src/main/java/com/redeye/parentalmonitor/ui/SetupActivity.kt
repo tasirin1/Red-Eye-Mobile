@@ -729,6 +729,61 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } else if (resp.code() == 400) {
                     val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
+                    val migratedDirect = NetworkUtils.extractMigratedChatId(goneBody)
+                    if (migratedDirect != null && migratedDirect != chatId) {
+                        try {
+                            prefs.chatId = migratedDirect
+                            prefs.credentialError = ""
+                            prefs.credentialErrorAt = 0L
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                chatIdInput.setText(migratedDirect)
+                            }
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            val retryResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedDirect, text = text))
+                            if (retryResp.isSuccessful && retryResp.body()?.ok == true) {
+                                try {
+                                    prefs.credentialError = ""
+                                    prefs.credentialErrorAt = 0L
+                                } catch (_: Exception) {
+                                }
+                                val toastOk = getString(R.string.setup_status_sent)
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
+                                    reviveMonitoringIfNeeded()
+                                }
+                                return@launch
+                            }
+                            failCode = retryResp.code()
+                            if (retryResp.code() == 401 || retryResp.code() == 403) {
+                                try {
+                                    prefs.credentialError = retryResp.code().toString()
+                                    prefs.credentialErrorAt = System.currentTimeMillis()
+                                } catch (_: Exception) {
+                                }
+                            }
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            MessageQueue.getInstance(applicationContext).addMessage(text, true)
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                        } catch (_: Exception) {
+                        }
+                        val toastRetry = getString(R.string.setup_test_fail, failCode)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast.makeText(this@SetupActivity, toastRetry, Toast.LENGTH_LONG).show()
+                        }
+                        return@launch
+                    }
                     if (NetworkUtils.isChatMissing(goneBody)) {
                         try {
                             prefs.credentialError = resp.code().toString()
@@ -761,7 +816,39 @@ class SetupActivity : AppCompatActivity() {
                                     } catch (_: Exception) {
                                         null
                                     }
-                                    if (NetworkUtils.isChatMissing(plainBody)) {
+                                    val migratedPlain = NetworkUtils.extractMigratedChatId(plainBody)
+                                    if (migratedPlain != null && migratedPlain != chatId) {
+                                        try {
+                                            prefs.chatId = migratedPlain
+                                            prefs.credentialError = ""
+                                            prefs.credentialErrorAt = 0L
+                                        } catch (_: Exception) {
+                                        }
+                                        try {
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                chatIdInput.setText(migratedPlain)
+                                            }
+                                        } catch (_: Exception) {
+                                        }
+                                        try {
+                                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                                            MessageScheduler.scheduleMessageSend(applicationContext)
+                                        } catch (_: Exception) {
+                                        }
+                                        try {
+                                            val retryPlain = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedPlain, text = plain, parseMode = null))
+                                            if (retryPlain.isSuccessful && retryPlain.body()?.ok == true) {
+                                                val toastOk = getString(R.string.setup_status_sent)
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                    Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
+                                                    reviveMonitoringIfNeeded()
+                                                }
+                                                return@launch
+                                            }
+                                            failCode = retryPlain.code()
+                                        } catch (_: Exception) {
+                                        }
+                                    } else if (NetworkUtils.isChatMissing(plainBody)) {
                                         try {
                                             prefs.credentialError = plainResp.code().toString()
                                             prefs.credentialErrorAt = System.currentTimeMillis()

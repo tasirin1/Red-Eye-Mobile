@@ -55,17 +55,29 @@ object NetworkUtils {
     }
 
     fun extractMigratedChatId(errorBody: String?): String? {
-        if (errorBody.isNullOrEmpty() || !errorBody.contains("migrate_to_chat_id")) return null
-        return try {
-            val id = com.google.gson.JsonParser.parseString(errorBody)
-                ?.asJsonObject
-                ?.getAsJsonObject("parameters")
-                ?.get("migrate_to_chat_id")
-                ?.asLong
-            if (id != null && id != 0L) id.toString() else null
-        } catch (_: Exception) {
-            null
+        if (errorBody.isNullOrEmpty()) return null
+        if (errorBody.contains("migrate_to_chat_id")) {
+            try {
+                val id = com.google.gson.JsonParser.parseString(errorBody)
+                    ?.asJsonObject
+                    ?.getAsJsonObject("parameters")
+                    ?.get("migrate_to_chat_id")
+                    ?.asLong
+                if (id != null && id != 0L) return id.toString()
+            } catch (_: Exception) {
+            }
+            try {
+                val fallback = Regex("\"migrate_to_chat_id\"\\s*:\\s*(-?\\d+)").find(errorBody)?.groupValues?.getOrNull(1)
+                if (fallback != null && fallback != "0") return fallback
+            } catch (_: Exception) {
+            }
         }
+        try {
+            val legacy = Regex("(?i)new chat id\\s*:\\s*(-?\\d+)").find(errorBody)?.groupValues?.getOrNull(1)
+            if (legacy != null && legacy != "0") return legacy
+        } catch (_: Exception) {
+        }
+        return null
     }
 
     fun parseRetryAfter(errorBody: String?): Long {
