@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.114] - 2026-10-05
+
+### Fixed
+- Screenshot pakai guard generasi (`shotAttempt`, pola `cameraAttempt`/`videoAttempt`): `teardownJobs` menginvalide generasi + hasil basi pasca-`/restart` dibuang (file dihapus, tak dikirim ganda), watchdog basi tak lagi mereset flag capture baru.
+- Drop-notice forwarder jujur untuk notif panjang: tiap potongan >4000 char berbobot 0, dihitung 1 bila ada potongan yang ditolak permanen — kegagalan parsial tak lagi senyap, retry transien tak ikut dihitung drop.
+- `emitPost` menandai `groupSeen` di awal (sebelum dedup/spam-return) agar summary grup 120 detik ikut teredam oleh konten yang diredam, bukan cuma yang diteruskan.
+- `getUpdates` offset-400 resync dari nol (gate kedaluwarsa perintah mencegah replay tereksekusi) agar polling perintah tak wedged selamanya.
+- Staging `/sms` sadar owner: owner sama boleh menimpa pending-nya sendiri, pending owner lain tetap dikunci requester; staging ikut throttle 60 detik seperti `/smsconfirm`.
+
 ## [1.6.113] - 2026-10-05
 
 ### Fixed
