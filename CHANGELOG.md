@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.103] - 2026-10-05
+
 ### Fixed
 - `SendMessageWorker` melaporkan drop kedaluwarsa/overflow walau tak ada pesan terkirim dalam satu run.
 - `sendPairHint` memakai token segar `PreferencesManager`, bukan cache `sendCreds()` 5 menit.
