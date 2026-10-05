@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.101] - 2026-10-05
+
 ### Fixed
 - Watchdog loop mencakup siklus panjang (`syncInterval` s.d. 1440 mnt, kamera s.d. 60 mnt) agar stuck tetap terdeteksi.
 - Wake-loop forwarder melambat ke 5 mnt saat monitoring di-pause; restart pemulihan `/resume` tetap jalan.
