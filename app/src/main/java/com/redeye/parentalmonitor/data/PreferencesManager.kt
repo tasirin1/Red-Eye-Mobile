@@ -294,9 +294,23 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getBoolean(KEY_INITIAL_SYNC_DONE, false) } catch (_: Exception) { false }
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
 
+    fun setInitialSyncDoneSync(done: Boolean) {
+        try {
+            sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, done).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     var initialSyncStarted: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_INITIAL_SYNC_STARTED, false) } catch (_: Exception) { false }
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, value).apply()
+
+    fun setInitialSyncStartedSync(started: Boolean) {
+        try {
+            sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, started).commit()
+        } catch (_: Exception) {
+        }
+    }
 
     var cameraInterval: Int
         get() = try { sharedPreferences.getInt(KEY_CAMERA_INTERVAL, 1) } catch (_: Exception) { 1 }
@@ -397,6 +411,20 @@ class PreferencesManager(context: Context) {
     var ringSavedAt: Long
         get() = try { sharedPreferences.getLong(KEY_RING_SAVED_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_RING_SAVED_AT, value).apply()
+
+    fun setRingStateSync(prev: Int, at: Long) {
+        try {
+            sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, prev).putLong(KEY_RING_SAVED_AT, at).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearRingStateSync() {
+        try {
+            sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, -1).putLong(KEY_RING_SAVED_AT, 0L).commit()
+        } catch (_: Exception) {
+        }
+    }
 
     var pendingSmsNumber: String
         get() = try { sharedPreferences.getString(KEY_PENDING_SMS_NUMBER, "") ?: "" } catch (_: Exception) { "" }

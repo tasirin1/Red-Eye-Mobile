@@ -46,6 +46,9 @@ class NotificationForwarderService : NotificationListenerService() {
     }
     private val pkgHitsLock = Any()
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private var dropNoticeJob: Job? = null
+    private val dropNoticeLock = Any()
     @Volatile
     private var lastRebindAt = 0L
     @Volatile
@@ -618,6 +621,18 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onDestroy() {
         try {
+            val drops = dropNoticeCount.getAndSet(0)
+            if (drops > 0) {
+                try {
+                    val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
+                        else "Dropped $drops notifications rejected by Telegram (400)."
+                    queue().addMessage(text, true)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
             val leftover = synchronized(batchLock) {
                 val items = batchBuf.toList()
                 batchBuf.clear()
@@ -730,6 +745,38 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun noteDroppedNotification() {
+        dropNoticeCount.incrementAndGet()
+        synchronized(dropNoticeLock) {
+            if (dropNoticeJob?.isActive == true) return
+            dropNoticeJob = scope.launch {
+                try {
+                    delay(30_000L)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+                try {
+                    flushDropNotice()
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    private fun flushDropNotice() {
+        val count = dropNoticeCount.getAndSet(0)
+        if (count <= 0) return
+        try {
+            val text = if (count == 1) "Dropped 1 notification rejected by Telegram (400)."
+                else "Dropped $count notifications rejected by Telegram (400)."
+            queue().addMessage(text, true)
+            MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+        } catch (_: Exception) {
+            dropNoticeCount.addAndGet(count)
+        }
+    }
+
     private suspend fun forwardLocked(message: String, pkg: String): Boolean {
         try {
             val prefs = prefsRef ?: try {
@@ -823,8 +870,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                 try {
-                    queue().addMessage("Dropped 1 notification rejected by Telegram (400).", true)
-                    MessageScheduler.scheduleMessageSend(this)
+                    noteDroppedNotification()
                 } catch (_: Exception) {
                 }
                 return false

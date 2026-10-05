@@ -624,7 +624,7 @@ class SetupActivity : AppCompatActivity() {
                         5L
                     }
                     try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
                         MessageScheduler.scheduleMessageSendNext(applicationContext, retryAfter * 1000L)
                     } catch (_: Exception) {
                     }
@@ -635,7 +635,7 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                     try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
                         MessageScheduler.scheduleMessageSend(applicationContext)
                     } catch (_: Exception) {
                     }
@@ -665,13 +665,13 @@ class SetupActivity : AppCompatActivity() {
                         }
                     }
                     try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
                         MessageScheduler.scheduleMessageSend(applicationContext)
                     } catch (_: Exception) {
                     }
                 } else {
                     try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text)
+                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
                         MessageScheduler.scheduleMessageSend(applicationContext)
                     } catch (_: Exception) {
                     }
@@ -685,7 +685,7 @@ class SetupActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 try {
                     if (pending.isNotEmpty()) {
-                        MessageQueue.getInstance(applicationContext).addMessage(pending)
+                        MessageQueue.getInstance(applicationContext).addMessage(pending, true)
                         MessageScheduler.scheduleMessageSend(applicationContext)
                     }
                 } catch (_: Exception) {

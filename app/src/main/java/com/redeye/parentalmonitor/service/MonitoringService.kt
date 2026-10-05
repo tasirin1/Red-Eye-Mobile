@@ -163,8 +163,7 @@ class MonitoringService : Service() {
             if (previous < 0 || savedAt <= 0L) return
             if (System.currentTimeMillis() - savedAt >= 12 * 60 * 60_000L) {
                 try {
-                    preferencesManager.ringPrevVolume = -1
-                    preferencesManager.ringSavedAt = 0L
+                    preferencesManager.clearRingStateSync()
                 } catch (_: Exception) {
                 }
                 return
@@ -175,8 +174,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             try {
-                preferencesManager.ringPrevVolume = -1
-                preferencesManager.ringSavedAt = 0L
+                preferencesManager.clearRingStateSync()
             } catch (_: Exception) {
             }
         } catch (_: Exception) {
@@ -356,7 +354,7 @@ class MonitoringService : Service() {
         }
 
         if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
-            preferencesManager.initialSyncStarted = true
+            preferencesManager.setInitialSyncStartedSync(true)
             initialSyncRunning.set(true)
         } else if (!preferencesManager.initialSyncDone && preferencesManager.initialSyncStarted) {
             initialSyncRunning.set(true)
@@ -389,11 +387,9 @@ class MonitoringService : Service() {
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
             } catch (_: Exception) {
             }
-            preferencesManager.ringPrevVolume = -1
-            preferencesManager.ringSavedAt = 0L
+            preferencesManager.clearRingStateSync()
         } else if (!ringingNow && (stuckRing >= 0 || ringSavedAt > 0)) {
-            preferencesManager.ringPrevVolume = -1
-            preferencesManager.ringSavedAt = 0L
+            preferencesManager.clearRingStateSync()
         }
         startCommandPolling()
         startLoopWatchdog()
@@ -556,6 +552,8 @@ class MonitoringService : Service() {
     private var idlePolls = 0
     @Volatile
     private var commandBackoffUntil = 0L
+    @Volatile
+    private var mediaBackoffUntil = 0L
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
@@ -1329,8 +1327,14 @@ class MonitoringService : Service() {
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
                 } else {
-                    preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
-                    sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
+                    val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
+                    val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
+                    if (stagedNumber.isNotEmpty() && stagedAt > 0L && System.currentTimeMillis() - stagedAt <= 300_000L) {
+                        sendToTelegram("\u26A0\uFE0F SMS pending exists to <code>$stagedNumber</code>. Reply /smsconfirm to confirm it first, or wait for it to expire.")
+                    } else {
+                        preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
+                        sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
+                    }
                 }
             }
             "/smsconfirm" -> {
@@ -1755,7 +1759,7 @@ class MonitoringService : Service() {
             pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
-                preferencesManager.initialSyncDone = true
+                preferencesManager.setInitialSyncDoneSync(true)
                 if (!wasDone) sendToTelegram("Monitoring started. No SMS or call history on this device yet.")
                 return
             }
@@ -1870,7 +1874,7 @@ class MonitoringService : Service() {
             } else {
                 sendToTelegram("History sync partially sent. Remainder follows automatically via periodic updates.")
             }
-            preferencesManager.initialSyncDone = true
+            preferencesManager.setInitialSyncDoneSync(true)
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1889,7 +1893,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 0L
             }
-            val smsPage = smsRepository.getNewSms(lastSms).take(100)
+            val smsPage = smsRepository.getNewSms(lastSms)
             if (smsPage.isNotEmpty()) {
                 var smsCursor = lastSms
                 var smsSentAny = false
@@ -1917,7 +1921,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 0L
             }
-            val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId).take(100)
+            val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
                 for (part in callPage.chunked(10)) {
@@ -2393,6 +2397,7 @@ class MonitoringService : Service() {
         initialSyncRunning.set(false)
         idlePolls = 0
         commandBackoffUntil = 0L
+        mediaBackoffUntil = 0L
         try {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
@@ -2532,6 +2537,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
+        try {
+            messageQueue.flushSync()
+        } catch (_: Exception) {
+        }
         try {
             teardownJobs()
         } catch (_: Exception) {
@@ -2920,8 +2929,11 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             -1
         }
-        preferencesManager.ringPrevVolume = previous
-        preferencesManager.ringSavedAt = System.currentTimeMillis()
+        try {
+            preferencesManager.setRingStateSync(previous, System.currentTimeMillis())
+        } catch (_: Exception) {
+        }
+        var player: android.media.MediaPlayer? = null
         var ringtone: android.media.Ringtone? = null
         try {
             try {
@@ -2929,32 +2941,69 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
-            ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
-            if (ringtone == null) {
-                sendToTelegram("⚠️ Ring failed (no alarm sound).")
-                return
-            }
-            try {
-                ringtone?.streamType = stream
-            } catch (_: Exception) {
-            }
-            ringtone?.play()
-            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
             val ringEndAt = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
-            while (android.os.SystemClock.elapsedRealtime() < ringEndAt) {
-                currentCoroutineContext().ensureActive()
+            var usePlayer = false
+            try {
+                player = android.media.MediaPlayer().apply {
+                    setAudioAttributes(
+                        android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    setDataSource(applicationContext, uri)
+                    isLooping = false
+                    setOnCompletionListener { mp ->
+                        try {
+                            if (android.os.SystemClock.elapsedRealtime() < ringEndAt) mp.start()
+                        } catch (_: Exception) {
+                        }
+                    }
+                    prepare()
+                    start()
+                }
+                usePlayer = true
+            } catch (_: Exception) {
                 try {
-                    if (ringtone?.isPlaying == false) ringtone?.play()
+                    player?.release()
                 } catch (_: Exception) {
                 }
-                kotlinx.coroutines.delay(1000L)
+                player = null
+                usePlayer = false
             }
+            if (!usePlayer) {
+                ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
+                if (ringtone == null) {
+                    sendToTelegram("⚠️ Ring failed (no alarm sound).")
+                    return
+                }
+                try {
+                    ringtone?.streamType = stream
+                } catch (_: Exception) {
+                }
+                ringtone?.play()
+            }
+            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
+            kotlinx.coroutines.delay(seconds * 1000L)
+            currentCoroutineContext().ensureActive()
             sendToTelegram("\uD83D\uDD14 Ring finished.")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F Ring failed.")
         } finally {
+            try {
+                player?.setOnCompletionListener(null)
+            } catch (_: Exception) {
+            }
+            try {
+                player?.stop()
+            } catch (_: Exception) {
+            }
+            try {
+                player?.release()
+            } catch (_: Exception) {
+            }
             try {
                 ringtone?.stop()
             } catch (_: Exception) {
@@ -2963,8 +3012,10 @@ class MonitoringService : Service() {
                 if (previous >= 0) audioManager.setStreamVolume(stream, previous, 0)
             } catch (_: Exception) {
             }
-            preferencesManager.ringPrevVolume = -1
-            preferencesManager.ringSavedAt = 0L
+            try {
+                preferencesManager.clearRingStateSync()
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -3057,6 +3108,7 @@ class MonitoringService : Service() {
     private suspend fun sendAudioFile(audioFile: File, alreadyRetried: Boolean = false): MediaSendOutcome {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
+            if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (!hasNetwork()) return MediaSendOutcome.KEPT
             val (botToken, chatId) = sendCreds()
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
@@ -3070,16 +3122,14 @@ class MonitoringService : Service() {
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.SENT
             }
-            if (response.code() == 429 && !alreadyRetried) {
+            if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 300L)
+                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 try {
-                    delay(waitSecs * 1000L)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
+                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
                 } catch (_: Exception) {
-                    return MediaSendOutcome.KEPT
                 }
-                return sendAudioFile(audioFile, true)
+                return MediaSendOutcome.KEPT
             }
             if (response.code() == 401 || response.code() == 403) {
                 try {
@@ -3115,6 +3165,7 @@ class MonitoringService : Service() {
 
     private suspend fun flushPendingAudio(max: Int = 5) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (!audioFlushBusy.compareAndSet(false, true)) return
         try {
             if (!hasNetwork()) return
@@ -3296,6 +3347,7 @@ class MonitoringService : Service() {
     private suspend fun sendPhotoFile(photoFile: File, alreadyRetried: Boolean = false): MediaSendOutcome {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
+            if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
                 return MediaSendOutcome.KEPT
@@ -3330,18 +3382,15 @@ class MonitoringService : Service() {
             } catch (e: Exception) {
                 ""
             }
-            if (response.code() == 429 && !alreadyRetried) {
+            if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
+                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+                android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")
                 try {
-                    delay(waitSecs * 1000L)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
+                    MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
                 } catch (_: Exception) {
-                    return MediaSendOutcome.KEPT
                 }
-                return sendPhotoFile(photoFile, true)
-            } else if (response.code() == 429) {
-                android.util.Log.w("MonitoringService", "Photo rate limited, keeping file for retry")
+                return MediaSendOutcome.KEPT
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Photo auth rejected (${response.code()}), keeping file for retry")
                 try {
@@ -3376,6 +3425,7 @@ class MonitoringService : Service() {
 
     private suspend fun flushPendingPhotos(max: Int = 10) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
         try {
             val pending = try {

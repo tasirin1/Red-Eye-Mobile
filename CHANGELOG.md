@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [1.6.96] - 2026-10-05
+
+### Fixed
+- Volume dering tak lagi macet maksimal: `ringPrevVolume`/`ringSavedAt` ditulis sinkron via `setRingStateSync`/`clearRingStateSync` (`PreferencesManager`), jadi mati proses di tengah dering tetap bisa dipulihkan jaring pengaman 12 jam.
+- `429` audio/foto tak lagi menahan `/record`: `sendAudioFile`/`sendPhotoFile` memakai backoff non-blokir ala polling perintah (`mediaBackoffUntil` + `scheduleMessageSendNext`), file dipertahankan untuk retry terjadwal.
+- `initialSyncDone`/`initialSyncStarted` ditulis sinkron (`setInitialSyncDoneSync`/`setInitialSyncStartedSync`), jadi mati tepat setelah "sync complete" tak mengulang histori penuh.
+- `/sms` menolak staging baru bila pending aktif belum kedaluwarsa (5 menit), alih-alih menimpa diam-diam.
+- Drop-notice notifikasi digabung: reject `400` dihitung (`dropNoticeCount`) lalu satu notice agregat per 30 detik + saat destroy, alih-alih satu notice per notifikasi.
+- `sendStatusNow` mengantre status diagnostik sebagai prioritas agar tak tergusur antrean penuh.
+- Rekursi tak berujung `noteOverflowLocked`/`noteExpiredLocked` diperbaiki (`addAndGet`).
+
+### Changed
+- `MessageQueue.persistLocked` memakai `apply()` + `flushSync()` eksplisit di titik kritis (`clearQueue`, `SendMessageWorker`, `MonitoringService.onDestroy`).
+- `ringDevice()` memakai jeda durasi penuh sekali + replay-on-completion via `MediaPlayer.setOnCompletionListener` (fallback `Ringtone`), alih-alih bangun tiap 1 detik.
+- Fallback pencarian nomor SMS/panggilan memakai filter waktu di provider (`getRecentSmsSince`/`getCallsSince` dengan `DATE >= ?` + `LIMIT`).
+- `checkAndSendNewData` mengandalkan `LIMIT 100` provider tanpa `take(100)` di memori.
+
 ## [1.6.95] - 2026-10-05
 
 ### Fixed

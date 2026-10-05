@@ -156,6 +156,10 @@ class SendMessageWorker(
                 incrementalFailed = true
             }
         }
+        try {
+            messageQueue.flushSync()
+        } catch (_: Exception) {
+        }
         if (rejectedIds.isNotEmpty()) {
             if (incrementalFailed) {
                 messageQueue.removeMessages(rejectedIds)

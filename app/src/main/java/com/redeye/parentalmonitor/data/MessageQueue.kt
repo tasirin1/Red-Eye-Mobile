@@ -156,18 +156,24 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistDropCountsLocked() {
         try {
-            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
+            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.apply()
         } catch (_: Exception) {
         }
     }
 
     private fun noteOverflowLocked(by: Long = 1L) {
-        noteOverflowLocked(by)
+        try {
+            overflowDrops.addAndGet(by)
+        } catch (_: Exception) {
+        }
         if (!volatileOnly) persistDropCountsLocked()
     }
 
     private fun noteExpiredLocked(by: Long = 1L) {
-        noteExpiredLocked(by)
+        try {
+            expiredDrops.addAndGet(by)
+        } catch (_: Exception) {
+        }
         if (!volatileOnly) persistDropCountsLocked()
     }
 
@@ -283,7 +289,26 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             cached = mutableListOf()
             volatileQueue.clear()
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.commit()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
+        }
+        flushSync()
+    }
+
+    fun flushSync() {
+        try {
+            val snapshot: List<QueuedMessage>? = synchronized(lock) { cached?.toList() }
+            val prefs = sharedPreferences ?: return
+            if (snapshot != null) {
+                try {
+                    prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))?.commit()
+                } catch (_: Exception) {
+                }
+            }
+            try {
+                prefs.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
         }
     }
 
@@ -309,7 +334,7 @@ class MessageQueue private constructor(context: Context) {
             android.util.Log.w("MessageQueue", "Queue storage corrupt, keeping a drop notice")
             val notice = mutableListOf(QueuedMessage(message = "\u26A0\uFE0F Queued messages were discarded (corrupt storage)."))
             try {
-                sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(notice))?.commit()
+                sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(notice))?.apply()
             } catch (_: Exception) {
             }
             cached = notice
@@ -329,7 +354,7 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistLocked(queue: MutableList<QueuedMessage>) {
         cached = queue
-        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.commit()
+        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
     }
 
     fun hasMessages(): Boolean {

@@ -33,6 +33,15 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
+    fun getCallsSince(sinceMillis: Long, limit: Int = 200): List<CallData> {
+        return queryCalls(
+            selection = "${CallLog.Calls.DATE} >= ?",
+            args = arrayOf(sinceMillis.toString()),
+            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            limit = limit
+        )
+    }
+
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
@@ -81,7 +90,7 @@ class CallLogRepository(private val context: Context) {
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
         val cutoff = System.currentTimeMillis() - 90L * 24 * 60 * 60_000L
-        return filterCallsByNumber(getAllCalls(200).filter { it.date >= cutoff }, norm)
+        return filterCallsByNumber(getCallsSince(cutoff, 200), norm)
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
