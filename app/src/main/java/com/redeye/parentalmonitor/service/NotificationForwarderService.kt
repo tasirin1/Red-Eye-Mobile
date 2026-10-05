@@ -387,6 +387,12 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean) {
+        if (trackGroup && groupKey.isNotEmpty()) {
+            try {
+                synchronized(groupSeen) { groupSeen[groupKey] = now }
+            } catch (_: Exception) {
+            }
+        }
         val key = pkg + "\n" + title + "\n" + text
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
@@ -422,12 +428,6 @@ class NotificationForwarderService : NotificationListenerService() {
             if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(300))}")
         }
         record(label, title, text)
-        if (trackGroup && groupKey.isNotEmpty()) {
-            try {
-                synchronized(groupSeen) { groupSeen[groupKey] = now }
-            } catch (_: Exception) {
-            }
-        }
         try {
             forwardToTelegram(message, pkg)
         } catch (_: Exception) {
@@ -785,17 +785,17 @@ class NotificationForwarderService : NotificationListenerService() {
             if (msg.length > 4000) {
                 flushCur()
                 var rest = msg
-                var first = true
+                val dropsBefore = dropNoticeCount.get()
                 while (rest.length > 4000) {
                     var cut = rest.lastIndexOf("\n\n", 4000)
                     if (cut <= 0) cut = 4000
                     cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                    forwardLocked(rest.substring(0, cut), "", if (first) 1 else 0)
-                    first = false
+                    forwardLocked(rest.substring(0, cut), "", 0)
                     rest = rest.substring(cut).trimStart('\n')
                     if (rest.isEmpty()) break
                 }
-                if (rest.isNotEmpty()) forwardLocked(rest, "", if (first) 1 else 0)
+                if (rest.isNotEmpty()) forwardLocked(rest, "", 0)
+                if (dropNoticeCount.get() > dropsBefore) noteDroppedNotification(1)
                 continue
             }
             if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
