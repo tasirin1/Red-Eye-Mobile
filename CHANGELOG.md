@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- Riwayat `/lastnotif` jalur spam-filter kini mencatat label aplikasi ter-resolve, bukan fallback nama paket cache.
+- Laporan `/log` kini di-escape HTML utuh alih-alih strip-tag agar stack trace berisi generics tak termutilasi; tetap aman di `parseMode` HTML + pemotongan via `sendFitted`.
+
 ## [1.6.118] - 2026-10-05
 
 ### Fixed

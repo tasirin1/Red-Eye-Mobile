@@ -418,7 +418,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(spamLabel) + " in 2 min, extras kept in /lastnotif history.", "")
                 }
             }
-            record(spamLabel, title, text)
+            record(label, title, text)
             return
         }
         val message = buildString {
