@@ -54,6 +54,20 @@ object NetworkUtils {
         }
     }
 
+    fun extractMigratedChatId(errorBody: String?): String? {
+        if (errorBody.isNullOrEmpty() || !errorBody.contains("migrate_to_chat_id")) return null
+        return try {
+            val id = com.google.gson.JsonParser.parseString(errorBody)
+                ?.asJsonObject
+                ?.getAsJsonObject("parameters")
+                ?.get("migrate_to_chat_id")
+                ?.asLong
+            if (id != null && id != 0L) id.toString() else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun parseRetryAfter(errorBody: String?): Long {
         if (errorBody.isNullOrEmpty() || !errorBody.contains("retry_after")) return 5L
         return try {

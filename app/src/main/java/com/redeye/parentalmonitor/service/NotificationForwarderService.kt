@@ -811,6 +811,25 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun adoptMigratedChat(prefs: PreferencesManager, errorBody: String?, currentChatId: String): Boolean {
+        val migrated = NetworkUtils.extractMigratedChatId(errorBody) ?: return false
+        if (migrated == currentChatId) return false
+        return try {
+            prefs.chatId = migrated
+            prefs.credentialError = ""
+            prefs.credentialErrorAt = 0L
+            refreshFwdCreds()
+            try {
+                queue().addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private suspend fun forwardLocked(message: String, pkg: String): Boolean {
         try {
             val prefs = prefsRef ?: try {
@@ -882,6 +901,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                     null
                 }
+                if (adoptMigratedChat(prefs, body, chatId)) {
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return false
+                }
                 if (NetworkUtils.isChatMissing(body)) {
                     try {
                         prefs.credentialError = response.code().toString()
@@ -919,6 +943,11 @@ class NotificationForwarderService : NotificationListenerService() {
                                 fallbackResp.errorBody()?.string()
                             } catch (_: Exception) {
                                 null
+                            }
+                            if (adoptMigratedChat(prefs, fallbackBody, chatId)) {
+                                queue().addMessage(message)
+                                MessageScheduler.scheduleMessageSend(this)
+                                return false
                             }
                             if (NetworkUtils.isChatMissing(fallbackBody)) {
                                 try {

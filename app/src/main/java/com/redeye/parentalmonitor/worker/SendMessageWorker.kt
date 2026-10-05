@@ -295,7 +295,9 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code())
+                if (chatGone) {
+                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
+                }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else SendOutcome.Rejected
             } else {
@@ -325,7 +327,9 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code())
+                if (chatGone) {
+                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
+                }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
@@ -451,6 +455,24 @@ class SendMessageWorker(
         }
     }
 
+    private fun adoptMigratedChat(body: String?, currentChatId: String): Boolean {
+        val migrated = NetworkUtils.extractMigratedChatId(body) ?: return false
+        if (migrated == currentChatId) return false
+        return try {
+            preferencesManager.chatId = migrated
+            preferencesManager.credentialError = ""
+            preferencesManager.credentialErrorAt = 0L
+            try {
+                messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private suspend fun sendMessage(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
@@ -464,13 +486,17 @@ class SendMessageWorker(
             } else if (response.code() == 400 && message.length > 4000) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code())
+                if (chatGone) {
+                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
+                }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else sendChunked(message, botToken, chatId)
             } else if (response.code() == 400) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) SendOutcome.AuthFailed(response.code())
+                if (chatGone) {
+                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
+                }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
