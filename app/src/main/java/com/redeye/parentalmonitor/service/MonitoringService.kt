@@ -21,8 +21,6 @@ import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
-import kotlinx.coroutines.selects.onAwait
-import kotlinx.coroutines.selects.select
 import android.os.BatteryManager
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -1660,26 +1658,34 @@ class MonitoringService : Service() {
                                 }
                             }
                         }
-                        var won: android.location.Location? = null
-                        val endAt = android.os.SystemClock.elapsedRealtime() + 25_000L
-                        val remaining = pending.toMutableList()
-                        while (won == null && remaining.isNotEmpty() && android.os.SystemClock.elapsedRealtime() < endAt) {
-                            currentCoroutineContext().ensureActive()
-                            val got = try {
-                                kotlinx.coroutines.withTimeoutOrNull(endAt - android.os.SystemClock.elapsedRealtime()) {
-                                    kotlinx.coroutines.selects.select<android.location.Location?> {
-                                        remaining.forEach { task -> task.onAwait { it } }
+                        val won = try {
+                            kotlinx.coroutines.withTimeoutOrNull(25_000L) {
+                                val winner = CompletableDeferred<android.location.Location?>()
+                                val left = java.util.concurrent.atomic.AtomicInteger(pending.size)
+                                for (task in pending) {
+                                    task.invokeOnCompletion {
+                                        val got = try {
+                                            task.getCompleted()
+                                        } catch (_: Exception) {
+                                            null
+                                        }
+                                        if (got != null) {
+                                            try {
+                                                if (!winner.isCompleted) winner.complete(got)
+                                            } catch (_: Exception) {
+                                            }
+                                        } else if (left.decrementAndGet() == 0) {
+                                            try {
+                                                if (!winner.isCompleted) winner.complete(null)
+                                            } catch (_: Exception) {
+                                            }
+                                        }
                                     }
                                 }
-                            } catch (_: Exception) {
-                                null
+                                winner.await()
                             }
-                            if (got != null) {
-                                won = got
-                            } else {
-                                remaining.removeAll { it.isCompleted }
-                                if (remaining.isNotEmpty()) delay(500L)
-                            }
+                        } catch (_: Exception) {
+                            null
                         }
                         for (task in pending) {
                             try {

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.95] - 2026-10-05
+
+### Fixed
+- Build `v1.6.94` yang gagal diperbaiki: string `</pre>` rusak di `CrashReporter.kt` dan `selects.onAwait` yang tak dikenal diganti pemenang lomba via `invokeOnCompletion` + timeout (tanpa impor baru, listener kalah tetap dibersihkan).
+
 ## [1.6.94] - 2026-10-05
 
 ### Fixed

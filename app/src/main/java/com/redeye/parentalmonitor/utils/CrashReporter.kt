@@ -222,8 +222,7 @@ object CrashReporter {
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
         val keep = TextChunk.safeCut(escaped, (4000 - 60).coerceAtLeast(500))
-        return "<b>Force close</b>
-<pre>" + escaped.take(keep) + "</pre>"
+        return "<b>Force close</b>\n<pre>" + escaped.take(keep) + "</pre>"
     }
 
 }
