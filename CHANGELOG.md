@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.112] - 2026-10-05
+
+### Fixed
+- Foto vs screenshot tak lagi berbagi pelacakan in-flight: jalur screenshot pakai `activeShotFile` sendiri (flush/prune/hitung antre-UA mengecualikan keduanya) agar `/photo` + `/screenshot` berbarengan tak double-upload atau terprune saat unggah.
+- Notif drop batch dihitung jujur: `flushBatch` kelompokkan per pesan (≤4000) dan teruskan jumlahnya ke `forwardLocked`/`noteDroppedNotification`, satu batch 400-an pesan lapor sesuai isi bukan +1.
+- Laporan crash menghormati pause: `CrashReporter.flushPending` tak mengirim saat `monitoringPaused` (tetap pending hingga resume/kedaluwarsa 7 hari).
+- `isNetworkAvailable` mensyaratkan `NET_CAPABILITY_VALIDATED` agar captive portal tak membakar budget 20 retry worker ke arah drop.
+- Paging `/history` anti-lewat: `getSmsForNumber`/`getCallsForNumber` memakai kursor komposit `(DATE, _ID)` + sort deterministik agar baris se-timestamp di batas page tak terlewati.
+
 ## [1.6.111] - 2026-10-05
 
 ### Fixed
