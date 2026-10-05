@@ -441,7 +441,7 @@ class MonitoringService : Service() {
                     if (!cachedMonitoringPaused) {
                         checkAndSendNewData()
                         try {
-                            CrashReporter.flushPending(this)
+                            CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
                         }
                         try {

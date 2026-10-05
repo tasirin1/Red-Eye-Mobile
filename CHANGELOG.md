@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.99] - 2026-10-05
+
+### Fixed
+- Build `v1.6.97`/`v1.6.98` yang gagal (`compileDebugKotlin`/`compileReleaseKotlin`: `Type mismatch: CoroutineScope but Context was expected` di `MonitoringService.kt:444`) diperbaiki: `CrashReporter.flushPending(this)` di dalam `serviceScope.launch` diganti `this@MonitoringService`.
+
 ## [1.6.98] - 2026-10-05
 
 ### Fixed
