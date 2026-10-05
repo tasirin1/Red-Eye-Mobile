@@ -557,7 +557,11 @@ class MonitoringService : Service() {
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - pairHintAt.get() < 3_600_000L) return
             pairHintAt.set(now)
-            val token = sendCreds().first.ifEmpty { return }
+            val token = try {
+                preferencesManager.botToken
+            } catch (_: Exception) {
+                ""
+            }.ifEmpty { return }
             val url = "https://api.telegram.org/bot${token}/sendMessage"
             TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> shown in Setup status.", parseMode = null))
         } catch (_: Exception) {

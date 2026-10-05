@@ -266,6 +266,8 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             cached = mutableListOf()
             volatileQueue.clear()
+            overflowDrops.set(0L)
+            expiredDrops.set(0L)
             sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
         }
         flushSync()

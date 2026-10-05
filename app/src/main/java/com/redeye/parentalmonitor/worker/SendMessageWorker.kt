@@ -197,7 +197,7 @@ class SendMessageWorker(
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
         var dropSample = ""
-        if (sentIds.isNotEmpty() && credsSame()) {
+        if (credsSame()) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {

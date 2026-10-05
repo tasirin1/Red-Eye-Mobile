@@ -299,6 +299,8 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
             try { prefs.initialSyncStarted = false } catch (_: Exception) { }
             try { prefs.clearWakePingIds() } catch (_: Exception) { }
+            try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
+            try { prefs.pendingNotifDrops = 0 } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -716,6 +718,26 @@ class SetupActivity : AppCompatActivity() {
                                         reviveMonitoringIfNeeded()
                                     }
                                     return@launch
+                                }
+                                if (plainResp.code() == 401 || plainResp.code() == 403) {
+                                    try {
+                                        prefs.credentialError = plainResp.code().toString()
+                                        prefs.credentialErrorAt = System.currentTimeMillis()
+                                    } catch (_: Exception) {
+                                    }
+                                } else if (plainResp.code() == 400) {
+                                    val plainBody = try {
+                                        plainResp.errorBody()?.string()
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                    if (NetworkUtils.isChatMissing(plainBody)) {
+                                        try {
+                                            prefs.credentialError = plainResp.code().toString()
+                                            prefs.credentialErrorAt = System.currentTimeMillis()
+                                        } catch (_: Exception) {
+                                        }
+                                    }
                                 }
                             } catch (_: Exception) {
                             }

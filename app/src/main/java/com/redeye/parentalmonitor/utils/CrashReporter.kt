@@ -170,7 +170,7 @@ object CrashReporter {
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
                         val delivered = try {
-                            val plain = fitted.replace(Regex("<[^>]*>"), "")
+                            val plain = fitted.replace(Html.tagStripRegex, "")
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                             plainResp.isSuccessful && plainResp.body()?.ok == true
                         } catch (_: Exception) {

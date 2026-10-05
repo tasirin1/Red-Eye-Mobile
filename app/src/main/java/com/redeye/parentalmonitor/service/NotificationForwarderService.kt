@@ -453,7 +453,7 @@ class NotificationForwarderService : NotificationListenerService() {
         wakeJob = scope.launch {
             while (isActive) {
                 try {
-                    if (!MonitoringService.isRunning && !isMainRunning()) pollWakeOnce()
+                    if (!MonitoringService.isRunning) pollWakeOnce()
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
@@ -580,7 +580,7 @@ class NotificationForwarderService : NotificationListenerService() {
             prefs.addWakePingIds(pingIds)
         } catch (_: Exception) {
         }
-        if (MonitoringService.isRunning || isMainRunning()) return
+        if (MonitoringService.isRunning) return
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
@@ -603,17 +603,9 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun isMainRunning(): Boolean {
-        return try {
-            MonitoringService.isRunning
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     private fun reviveMonitoringIfNeeded() {
         try {
-            if (MonitoringService.isRunning || isMainRunning()) return
+            if (MonitoringService.isRunning) return
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - lastReviveAt < 60_000L) return
             lastReviveAt = now
@@ -912,6 +904,33 @@ class NotificationForwarderService : NotificationListenerService() {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
                             return true
+                        }
+                        if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
+                            try {
+                                prefs.credentialError = fallbackResp.code().toString()
+                                prefs.credentialErrorAt = System.currentTimeMillis()
+                            } catch (_: Exception) {
+                            }
+                            queue().addMessage(message)
+                            MessageScheduler.scheduleMessageSend(this)
+                            return false
+                        }
+                        if (fallbackResp.code() == 400) {
+                            val fallbackBody = try {
+                                fallbackResp.errorBody()?.string()
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (NetworkUtils.isChatMissing(fallbackBody)) {
+                                try {
+                                    prefs.credentialError = fallbackResp.code().toString()
+                                    prefs.credentialErrorAt = System.currentTimeMillis()
+                                } catch (_: Exception) {
+                                }
+                                queue().addMessage(message)
+                                MessageScheduler.scheduleMessageSend(this)
+                                return false
+                            }
                         }
                     } catch (_: Exception) {
                     }

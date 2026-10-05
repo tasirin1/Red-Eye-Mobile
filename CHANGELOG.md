@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Fixed
+- `SendMessageWorker` melaporkan drop kedaluwarsa/overflow walau tak ada pesan terkirim dalam satu run.
+- `sendPairHint` memakai token segar `PreferencesManager`, bukan cache `sendCreds()` 5 menit.
+- Hapus `isMainRunning()` duplikat di forwarder; cukup satu cek `MonitoringService.isRunning`.
+- `sendStatusNow` mencatat `credentialError` bila fallback plain 400 juga 401/403 atau chat hilang.
+- `forwardLocked` mencatat `credentialError` dan antre ulang bila fallback plain 400 juga auth/chat hilang, bukan drop diam-diam.
+- `CrashReporter` memakai `Html.tagStripRegex` yang sama untuk fallback plain.
+- `clearCredentials`/`clearQueue` mereset counter drop agar notifikasi basi tak muncul pasca-clear.
+
 ## [1.6.102] - 2026-10-05
 
 ### Fixed
