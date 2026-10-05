@@ -317,6 +317,13 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_WAKE_UPDATE_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_WAKE_UPDATE_ID, value).apply()
 
+    fun setWakeUpdateIdSync(id: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_WAKE_UPDATE_ID, id).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     var lastPhotoTime: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_TIME, value).apply()
@@ -515,23 +522,25 @@ class PreferencesManager(context: Context) {
     }
 
     fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+        try { upgradeToPersistent() } catch (_: Exception) { }
         val editor = sharedPreferences.edit()
         putCredentialState(editor, newToken, newChatId)
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        editor.apply()
+        try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
     }
 
     fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+        try { upgradeToPersistent() } catch (_: Exception) { }
         val editor = sharedPreferences.edit()
         putCredentialState(editor, newToken, newChatId)
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        editor.apply()
+        try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
     }
 
     fun putAllValues(values: Map<String, Any?>) {

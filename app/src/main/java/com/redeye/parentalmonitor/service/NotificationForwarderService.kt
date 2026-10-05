@@ -533,7 +533,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         wakeUpdateId = maxId
         try {
-            prefs.wakeUpdateId = maxId
+            prefs.setWakeUpdateIdSync(maxId)
         } catch (_: Exception) {
         }
         if (!pinged) return

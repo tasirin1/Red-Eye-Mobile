@@ -135,6 +135,10 @@ class SendMessageWorker(
                     incrementalFailed = true
                 }
             }
+            try {
+                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
         fun credsSame(): Boolean {

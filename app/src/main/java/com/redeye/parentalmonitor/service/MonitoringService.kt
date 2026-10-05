@@ -556,6 +556,8 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
 
     private var idlePolls = 0
+    @Volatile
+    private var commandBackoffUntil = 0L
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
@@ -571,6 +573,16 @@ class MonitoringService : Service() {
                         android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
                     delay(60_000)
+                    continue
+                }
+                if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) {
+                    try {
+                        val remaining = commandBackoffUntil - android.os.SystemClock.elapsedRealtime()
+                        kotlinx.coroutines.delay(remaining.coerceIn(1L, 60_000L))
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
                     continue
                 }
                 try {
@@ -611,6 +623,7 @@ class MonitoringService : Service() {
 
 
     private suspend fun pollTelegramCommands(): Boolean {
+        if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
         val (botToken, chatId) = sendCreds()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
@@ -666,12 +679,7 @@ class MonitoringService : Service() {
                 5L
             }
             android.util.Log.w("MonitoringService", "getUpdates rate limited, backing off ${retryAfter}s")
-            try {
-                delay(retryAfter.coerceIn(1L, 300L) * 1000L)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
-            }
+            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
             return false
         }
         if (response.code() == 400) {
@@ -722,7 +730,7 @@ class MonitoringService : Service() {
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && rawText.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT) == "/start") {
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && rawText.substringBefore(" ").trim().lowercase(java.util.Locale.ROOT) == "/start") {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             registerBotCommands()
@@ -779,12 +787,11 @@ class MonitoringService : Service() {
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         if (sender != chatId && originChat != chatId) {
-            if (dupCallback) return
-            try { answerCallback(query.id) } catch (_: Exception) { }
             return
         }
         val ownerOk = isOwner(sender)
         if (dupCallback) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
@@ -844,6 +851,7 @@ class MonitoringService : Service() {
 
     private suspend fun answerCallback(callbackId: String) {
         try {
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return
             val token = sendCreds().first.ifEmpty { preferencesManager.botToken }
             val url = "https://api.telegram.org/bot${token}/answerCallbackQuery"
             TelegramClient.api.answerCallbackQuery(url, mapOf("callback_query_id" to callbackId))
@@ -1972,7 +1980,8 @@ class MonitoringService : Service() {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
         var intl = digits
-        if (intl.startsWith("00")) intl = intl.substring(2)
+        if (intl.startsWith("011")) intl = intl.substring(3)
+        else if (intl.startsWith("00")) intl = intl.substring(2)
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
         if (local == "1900" || local.startsWith("1900") || local == "900" || local == "976") return true
         if (intl.startsWith("44")) {
@@ -2163,6 +2172,7 @@ class MonitoringService : Service() {
             if (sendToTelegram(message, replyMarkup, false)) return true
             if (queueOnFail) {
                 messageQueue.addMessage(message)
+                if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 MessageScheduler.scheduleMessageSend(this)
             }
             return false
@@ -2213,6 +2223,7 @@ class MonitoringService : Service() {
         if (!ok) {
             if (queueOnFail) {
                 messageQueue.addMessages(failed)
+                if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 MessageScheduler.scheduleMessageSend(this)
             }
             return false
@@ -2772,7 +2783,7 @@ class MonitoringService : Service() {
         if (hasMicPermission()) {
             types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         }
-        if (hasLocationPermission() && hasBackgroundLocation()) {
+        if (hasLocationPermission()) {
             types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
         }
         return types

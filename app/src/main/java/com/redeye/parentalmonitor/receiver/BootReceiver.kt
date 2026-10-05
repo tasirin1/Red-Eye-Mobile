@@ -73,14 +73,15 @@ class BootReceiver : BroadcastReceiver() {
         if (!updated && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            val lastWall = meta.getLong("last_handle_elapsed", 0L)
+            var lastWall = meta.getLong("last_handle_wall", 0L)
+            if (lastWall == 0L) lastWall = meta.getLong("last_handle_elapsed", 0L)
             if (!updated && lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
             } catch (_: Exception) {
             }
             return
@@ -125,7 +126,7 @@ class BootReceiver : BroadcastReceiver() {
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
             } catch (_: Exception) {
             }
             return
@@ -141,7 +142,7 @@ class BootReceiver : BroadcastReceiver() {
         } else {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
             } catch (_: Exception) {
             }
         }

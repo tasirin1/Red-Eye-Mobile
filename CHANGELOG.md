@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.92] - 2026-10-05
+
+### Fixed
+- Polling perintah tak lagi beku sampai 5 menit saat `429` Telegram: backoff non-blokir (`commandBackoffUntil`) seperti wake-loop forwarder.
+- Menu inline tak lagi hilang saat retry: potongan gagal yang diantrekan menyertakan petunjuk `Tap /help untuk menampilkan tombol menu`.
+- Callback dari pengirim asing dibuang tanpa `answerCallbackQuery`: cegah amplifikasi API via `callback_query` unik; callback owner dihormati saat blokir auth.
+- Owner auto-learn hanya untuk `/start` persis (dengan/tanpa argumen), varian `/start@botlain` ditolak.
+- `wakeUpdateId` ditulis sinkron (`setWakeUpdateIdSync`): matinya proses tak picu wake `/ping` ganda.
+- Worker menjadwalkan ulang kirim antrean saat kredensial berganti di tengah flush.
+- Kunci dedup boot diganti `last_handle_wall` (migrasi dari `last_handle_elapsed`) agar basis jam dinding eksplisit.
+- `saveCoreConfig`/`saveTestCredentials` naik ke persistent store dulu lalu `commit` sinkron: Save/Test dari UI tak hilang bila proses mati.
+- `/sms` menolak premium format IDD Amerika `011...` (`0111900`) seperti format `00`.
+- Tipe foreground `LOCATION` ditambah untuk izin lokasi foreground-only, bukan hanya bila background granted.
+
 ## [1.6.91] - 2026-10-05
 
 ### Fixed
