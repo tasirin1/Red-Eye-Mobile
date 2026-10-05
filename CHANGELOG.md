@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.88] - 2026-10-05
+
 ### Fixed
 - Offset perintah Telegram disimpan sesudah perintah dijalankan (sebelumnya sebelum), cegah perintah hilang saat proses mati.
 - `sendFitted`/`sendToTelegram` berhenti di awal saat kredensial diblokir lalu antre sekali, cegah hantaman 401 berulang.
