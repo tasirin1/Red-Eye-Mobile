@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.105] - 2026-10-05
+
 ### Fixed
 - `NO_REPLAY_COMMANDS` disempitkan ke `/smsconfirm` saja agar `/ring`/`/record`/`/lock` bisa retry via offset `finally` bila kill di tengah, bukan hilang diam-diam; duplikat SMS tetap dicegah via pre-commit.
 - Perintah sensitif (`/photo`, `/location`, `/lastsms`, `/history`, `/contacts` dkk) kedaluwarsa 300 dtk seperti mutating (sebelumnya 900 dtk) di `handleTelegramCommandInner` dan umur tombol menu, agar redelivery pasca-restart tak eksekusi ulang exfil.
