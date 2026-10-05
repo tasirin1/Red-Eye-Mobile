@@ -267,7 +267,16 @@ class NotificationForwarderService : NotificationListenerService() {
                         } catch (_: Exception) { }
                         return@launch
                     }
-                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = true, notifySpam = false)
+                    if (isSummary && groupKey.isNotEmpty()) {
+                        val seenAt = try { synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L } catch (_: Exception) { 0L }
+                        if (nowFb - seenAt < 120_000L) {
+                            try {
+                                if (historyAllowed()) record(label, fbTitle, fbText)
+                            } catch (_: Exception) { }
+                            return@launch
+                        }
+                    }
+                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = false)
                 } catch (_: Exception) {
                 } finally {
                     pendingPosts.decrementAndGet()
@@ -655,6 +664,10 @@ class NotificationForwarderService : NotificationListenerService() {
                     val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
                         else "Dropped $drops notifications rejected by Telegram (400)."
                     queue().addMessage(text, true)
+                    try {
+                        MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+                    } catch (_: Exception) {
+                    }
                 } catch (_: Exception) {
                 }
             }
