@@ -69,7 +69,7 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
-        private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{20,}$")
+        private val TOKEN_REGEX = Regex("^[0-9]{6,}:[A-Za-z0-9_-]{30,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
     }
 
@@ -345,12 +345,6 @@ class SetupActivity : AppCompatActivity() {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
             }
-            if (mySave != saveSeq.get()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -416,12 +410,6 @@ class SetupActivity : AppCompatActivity() {
                 return@launch
             }
                     persistTestSettings(token, chatId, myTest)
-                    if (myTest != testSeq.get()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)

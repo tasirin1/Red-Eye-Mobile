@@ -312,10 +312,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!cfgEnabled) return
         if (!cfgForward || !cfgConfigured) return
-        if (isSummary && groupKey.isNotEmpty()) {
-            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
-            if (nowCfg - seenAt < 120_000L) return
-        }
         val title: String
         val text: String
         try {
@@ -340,11 +336,31 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         if (title.isEmpty() && text.isEmpty()) return
+        val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            "${packageManager.getApplicationLabel(info)}".also { label ->
+                synchronized(appLabelCache) { appLabelCache[pkg] = label }
+            }
+        } catch (_: Exception) {
+            pkg
+        }
+        if (isSummary && groupKey.isNotEmpty()) {
+            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
+            if (nowCfg - seenAt < 120_000L) {
+                record(appLabel, title, text)
+                return
+            }
+        }
         val key = pkg + "\n" + title + "\n" + text
         val now = android.os.SystemClock.elapsedRealtime()
-        synchronized(lastSent) {
-            if (now - (lastSent[key] ?: 0L) < 10_000L) return
-            lastSent[key] = now
+        val dupNotif = synchronized(lastSent) {
+            val dup = now - (lastSent[key] ?: 0L) < 10_000L
+            if (!dup) lastSent[key] = now
+            dup
+        }
+        if (dupNotif) {
+            record(appLabel, title, text)
+            return
         }
         if (pkgFull(pkg, now)) {
             val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
@@ -359,14 +375,6 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             record(cachedLabel, title, text)
             return
-        }
-        val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
-            val info = packageManager.getApplicationInfo(pkg, 0)
-            "${packageManager.getApplicationLabel(info)}".also { label ->
-                synchronized(appLabelCache) { appLabelCache[pkg] = label }
-            }
-        } catch (_: Exception) {
-            pkg
         }
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
@@ -700,6 +708,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val pkgs = items.mapNotNull { it.second.takeIf { v -> v.isNotEmpty() } }.toSet()
         val now = android.os.SystemClock.elapsedRealtime()
         var rest = items.joinToString("\n\n") { it.first }
+        if (rest.length > 4000 && rest.contains('<')) rest = rest.replace(Html.tagStripRegex, "")
         while (rest.length > 4000) {
             var cut = rest.lastIndexOf("\n\n", 4000)
             if (cut <= 0) cut = 4000

@@ -162,15 +162,20 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun calculate() {
-        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty() && !justCalculated) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
-            currentNumber = ""
-            previousNumber = ""
-            operator = ""
-            lastExpression = ""
-            justCalculated = false
+        if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
+            if (lastExpression == "1234 =") {
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
+                currentNumber = ""
+                previousNumber = ""
+                operator = ""
+                lastExpression = ""
+                justCalculated = false
+                updateCalculatorDisplay()
+                openSetupPage()
+                return
+            }
+            lastExpression = "1234 ="
             updateCalculatorDisplay()
-            openSetupPage()
             return
         }
         

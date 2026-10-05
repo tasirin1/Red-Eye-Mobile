@@ -245,7 +245,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             cached = mutableListOf()
             volatileQueue.clear()
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.commit()
         }
     }
 
@@ -269,7 +269,7 @@ class MessageQueue private constructor(context: Context) {
             }
         } catch (e: Exception) {
             try {
-                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
+                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.commit()
             } catch (_: Exception) {
             }
             cached = mutableListOf()
@@ -289,7 +289,7 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistLocked(queue: MutableList<QueuedMessage>) {
         cached = queue
-        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
+        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.commit()
     }
 
     fun hasMessages(): Boolean {

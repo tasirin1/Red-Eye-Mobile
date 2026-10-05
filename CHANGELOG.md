@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Fixed
+- Offset perintah Telegram disimpan sesudah perintah dijalankan (sebelumnya sebelum), cegah perintah hilang saat proses mati.
+- `sendFitted`/`sendToTelegram` berhenti di awal saat kredensial diblokir lalu antre sekali, cegah hantaman 401 berulang.
+- Pesan HTML panjang dipecah sebagai teks polos (`sendFitted`, `flushBatch`, `sendChunked`), cegah tag tak berpasangan dan putaran fallback 400.
+- Riwayat `/lastnotif` tetap dicatat untuk notifikasi duplikat dan ringkasan grup yang disaring.
+- Lokasi NETWORK dan GPS diminta paralel dengan batas total 25 detik (sebelumnya seri 40 detik).
+- `/sms` wajib 7-15 digit dan semua short code <= 6 digit ditolak sebagai premium.
+- Validasi token Setup wajib secret 30+ karakter agar typo tertolak di UI.
+- Kode rahasia kalkulator menjadi `1234` + `=` dua kali; `1234` + `=` pertama berperilaku normal.
+- Antrean persisten ditulis sinkron (`commit`) agar tak hilang/duplikat saat proses mati.
+- Toast superseded palsu sesudah simpan/tes dihapus; cek versi hanya sebelum persist.
+
 ## [1.6.87] - 2026-10-05
 
 ### Fixed

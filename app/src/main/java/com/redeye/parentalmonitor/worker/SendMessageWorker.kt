@@ -337,7 +337,7 @@ class SendMessageWorker(
 
     private suspend fun sendChunked(message: String, botToken: String, chatId: String): SendOutcome {
         val parts = mutableListOf<String>()
-        var rest = message
+        var rest = if (message.length > 4000 && message.contains('<')) message.replace(Html.tagStripRegex, "") else message
         while (rest.length > 4000) {
             val cut = splitChunk(rest, 4000)
             parts.add(rest.substring(0, cut))

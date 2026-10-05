@@ -101,7 +101,7 @@ class MonitoringService : Service() {
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
-        private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{3,15}$")
+        private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
@@ -669,12 +669,6 @@ class MonitoringService : Service() {
                 s
             }
             if (seen) continue
-            try {
-                if (update.updateId > preferencesManager.lastUpdateId) {
-                    preferencesManager.setLastUpdateIdSync(update.updateId)
-                }
-            } catch (_: Exception) {
-            }
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
@@ -1586,35 +1580,65 @@ class MonitoringService : Service() {
                     }
                 }
                 if (providers.isEmpty()) return@withContext null
-                for (provider in providers) {
-                    val result = CompletableDeferred<android.location.Location?>()
-                    val listener = object : android.location.LocationListener {
-                        override fun onLocationChanged(location: android.location.Location) {
-                            result.complete(location)
+                val fix = try {
+                    coroutineScope {
+                        val pending = providers.map { provider ->
+                            async {
+                                val result = CompletableDeferred<android.location.Location?>()
+                                val listener = object : android.location.LocationListener {
+                                    override fun onLocationChanged(location: android.location.Location) {
+                                        result.complete(location)
+                                    }
+                                    override fun onProviderDisabled(providerName: String) {}
+                                    override fun onProviderEnabled(providerName: String) {}
+                                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+                                }
+                                try {
+                                    @Suppress("DEPRECATION")
+                                    locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
+                                } catch (_: Exception) {
+                                    result.complete(null)
+                                }
+                                try {
+                                    result.await()
+                                } finally {
+                                    try {
+                                        locationManager.removeUpdates(listener)
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                            }
                         }
-                        override fun onProviderDisabled(providerName: String) {}
-                        override fun onProviderEnabled(providerName: String) {}
-                        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
-                    }
-                    try {
-                        @Suppress("DEPRECATION")
-                        locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
-                    } catch (_: SecurityException) {
-                        return@withContext null
-                    } catch (_: Exception) {
-                        continue
-                    }
-                    try {
-                        val fix = withTimeoutOrNull(20_000) { result.await() }
-                        if (fix != null) return@withContext fix
-                    } finally {
-                        try {
-                            locationManager.removeUpdates(listener)
-                        } catch (_: Exception) {
+                        var won: android.location.Location? = null
+                        val endAt = android.os.SystemClock.elapsedRealtime() + 25_000L
+                        while (won == null && android.os.SystemClock.elapsedRealtime() < endAt) {
+                            currentCoroutineContext().ensureActive()
+                            for (task in pending) {
+                                try {
+                                    if (task.isCompleted) {
+                                        val got = task.getCompleted()
+                                        if (got != null) {
+                                            won = got
+                                            break
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                }
+                            }
+                            if (won == null) delay(500L)
                         }
+                        for (task in pending) {
+                            try {
+                                task.cancel()
+                            } catch (_: Exception) {
+                            }
+                        }
+                        won
                     }
+                } catch (_: Exception) {
+                    null
                 }
-                null
+                fix
             } catch (_: Exception) {
                 null
             }
@@ -1907,7 +1931,7 @@ class MonitoringService : Service() {
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
         if (local == "1900" || local.startsWith("1900") || local == "900" || local == "976") return true
         if (local.length <= 6) {
-            return local.startsWith("9")
+            return true
         }
         return false
     }
@@ -2063,6 +2087,13 @@ class MonitoringService : Service() {
         return cut
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            if (queueOnFail) {
+                messageQueue.addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+            }
+            return false
+        }
         if (message.length <= 4000) {
             if (sendToTelegram(message, replyMarkup, false)) return true
             if (queueOnFail) {
@@ -2073,7 +2104,8 @@ class MonitoringService : Service() {
         }
         var ok = true
         val failed = mutableListOf<String>()
-        val lines = message.split("\n")
+        val plain = if (message.contains('<')) message.replace(TAG_STRIP_REGEX, "") else message
+        val lines = plain.split("\n")
         var current = StringBuilder()
         for (line in lines) {
             var rest = line
@@ -2129,6 +2161,13 @@ class MonitoringService : Service() {
         queueOnFail: Boolean = true
     ): Boolean {
         try {
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                }
+                return queueOnFail
+            }
             if (message.length > 4096) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
                 return sendFitted(message, replyMarkup, queueOnFail)
