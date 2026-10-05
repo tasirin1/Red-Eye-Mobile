@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.102] - 2026-10-05
+
 ### Fixed
 - Menu perintah bot didaftarkan ulang saat token diganti sehingga rotasi token tak meninggalkan menu basi.
 - `MainActivity` memakai `setMonitoringActive(true)` agar flag, consent, dan pause konsisten; hapus `secretStage` mati dan sederhanakan `onSaveInstanceState`.
