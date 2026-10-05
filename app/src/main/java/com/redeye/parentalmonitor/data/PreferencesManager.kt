@@ -428,6 +428,46 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_PENDING_SMS_NUMBER, number)
+                .putString(KEY_PENDING_SMS_TEXT, text)
+                .putLong(KEY_PENDING_SMS_AT, at)
+                .putString(KEY_PENDING_SMS_OWNER, owner)
+                .commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun touchSmsPendingSync(at: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setSmsCursorSync(id: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setCallCursorSync(timestamp: Long, id: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setLastSmsSendAtSync(now: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     fun wakePingSeen(updateId: Long): Boolean {
         return try {
             sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.contains(updateId.toString()) == true
@@ -451,7 +491,7 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+    private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
         val changed = try {
             newToken != botToken || newChatId != chatId
         } catch (_: Exception) {
@@ -459,7 +499,6 @@ class PreferencesManager(context: Context) {
         }
         val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
-        val editor = sharedPreferences.edit()
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
         }
@@ -468,42 +507,30 @@ class PreferencesManager(context: Context) {
         }
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
+        if (tokenChanged) {
+            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
+            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
+            editor.remove(KEY_WAKE_PING_IDS)
+        }
+    }
+
+    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+        val editor = sharedPreferences.edit()
+        putCredentialState(editor, newToken, newChatId)
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        if (tokenChanged) {
-            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
-            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
-            editor.remove(KEY_WAKE_PING_IDS)
-        }
         editor.apply()
     }
 
-    fun saveTestCredentials(newToken: String, newChatId: String) {
-        val changed = try {
-            newToken != botToken || newChatId != chatId
-        } catch (_: Exception) {
-            true
-        }
-        val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
-        val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
+    fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
         val editor = sharedPreferences.edit()
-        if (changed) {
-            editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
-        }
-        if (chatChanged) {
-            editor.putLong(KEY_OWNER_ID, 0L)
-        }
+        putCredentialState(editor, newToken, newChatId)
         editor.putString(KEY_BOT_TOKEN, newToken)
         editor.putString(KEY_CHAT_ID, newChatId)
-        editor.putString(KEY_CRED_ERROR, "")
-        editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        if (tokenChanged) {
-            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
-            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
-            editor.remove(KEY_WAKE_PING_IDS)
-        }
+        editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
+        editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
         editor.apply()
     }
 

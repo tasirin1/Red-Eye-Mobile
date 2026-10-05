@@ -410,7 +410,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-                    persistTestSettings(token, chatId, myTest)
+                    persistTestSettings(token, chatId, probeSync, probeCamera, myTest)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         botTokenInput.setText(STORED_MASK)
@@ -439,9 +439,9 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, myTest: Int) {
+    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int) {
         if (myTest != testSeq.get()) return
-        prefs.saveTestCredentials(token, chatId)
+        prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval)
     }
 
     private fun hasAllPermissions(): Boolean {

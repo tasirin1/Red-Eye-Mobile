@@ -285,8 +285,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (!hasBackgroundLocation()) {
-            android.util.Log.w("MainActivity", "Background location missing - staying silent, grant via Setup")
-            return
+            android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {

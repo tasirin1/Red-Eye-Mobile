@@ -348,6 +348,7 @@ class SendMessageWorker(
         var authCode = 0
         var failed = 0
         var failedKept = false
+        var remainderQueued = false
         var rejected = 0
         for ((idx, part) in parts.withIndex()) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
@@ -355,10 +356,30 @@ class SendMessageWorker(
                     delay(1000)
                 }
                 is SendOutcome.RateLimited -> {
+                    if (idx > 0 && !remainderQueued) {
+                        try {
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
+                            remainderQueued = true
+                        } catch (_: Exception) {
+                        }
+                    }
+                    if (remainderQueued) break
                     rateAfter = outcome.retryAfterSecs
                     break
                 }
                 is SendOutcome.AuthFailed -> {
+                    if (idx > 0 && !remainderQueued) {
+                        try {
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                            preferencesManager.credentialError = outcome.code.toString()
+                            preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                            remainderQueued = true
+                        } catch (_: Exception) {
+                        }
+                    }
+                    if (remainderQueued) break
                     authCode = outcome.code
                     break
                 }
@@ -377,6 +398,7 @@ class SendMessageWorker(
                 SendOutcome.Rejected -> rejected++
             }
         }
+        if (remainderQueued) return SendOutcome.Sent
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
         if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
         if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
