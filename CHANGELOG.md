@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.108] - 2026-10-05
+
+### Fixed
+- Gagal build `v1.6.106`/`v1.6.107` (`Unresolved reference: windowManager` di `takeScreenshotFrame`): `Service` tak punya properti `windowManager`, kini via `getSystemService(WINDOW_SERVICE)`.
+- Video offline tak lagi stranded: loop periodik dan `/flush` ikut memanggil `flushPendingVideos()`; guard backlog video (maks 3, tertua dipangkas seperti foto) agar cache tak tumbuh tanpa batas saat offline.
+- `/storage` (`cacheStats`) ikut menghitung `video_*.mp4` yang selama ini tak terlihat padahal terbesar.
+- Migrasi grup ke supergrup ditangani otomatis: `migrate_to_chat_id` dari body 400 diparse (`NetworkUtils.extractMigratedChatId`), `chatId` diadopsi + error auth dibersihkan + notifikasi antre di jalur teks `MonitoringService`/`SendMessageWorker`/`NotificationForwarderService`, file media `KEPT` untuk retry (owner dipertahankan, menu bot tak perlu daftar ulang).
+- SMS parsial tak lagi duplikat: pending langsung dibersihkan setelah sebagian part terkirim, `/smsconfirm` ulang tak mengirim ulang part yang sudah sampai.
+- `/clearqueue` jujur: pesan menyebut update SMS/panggilan yang sudah ditandai terlihat tak akan dikirim ulang.
+- `restartAllLoops()` mengembalikan status + ikut menghidupkan ulang `loopWatchdogJob`; `/restart` hanya klaim sukses bila benar restart (throttle 10 dtk lapor eksplisit).
+- Balap Save-vs-Test di Setup dikeraskan via cross-cancel (`saveJob`/`testJob` saling batalkan, sekuens invalidasi sudah simetris).
+
 ## [1.6.107] - 2026-10-05
 
 ### Added
