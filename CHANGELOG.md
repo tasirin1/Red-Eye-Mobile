@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.110] - 2026-10-05
+
 ### Fixed
 - `sendStatusNow` di `SetupActivity` menegakkan blokir auth bila retry pasca-migrasi tetap 400 + chat hilang (tanpa id migrasi lanjutan), agar backoff 30 menit tak tertunda satu siklus.
 - Cek `isChatMissing`/`isRightsLimited`/`parseRetryAfter` foto/video memakai body penuh (`errorFull`) — `retry_after` di ujung JSON tak lagi terpotong `take(200)`.
