@@ -452,6 +452,13 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
 
+    fun setOwnerIdSync(id: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_OWNER_ID, id).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     var pendingMsgDrops: Int
         get() = try { sharedPreferences.getInt(KEY_PENDING_MSG_DROPS, 0) } catch (_: Exception) { 0 }
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()

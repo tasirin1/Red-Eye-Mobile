@@ -456,7 +456,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                 }
                 try {
-                    delay(25_000L)
+                    val pausedLoop = try {
+                        (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).monitoringPaused
+                    } catch (_: Exception) {
+                        false
+                    }
+                    delay(if (pausedLoop) 300_000L else 25_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {

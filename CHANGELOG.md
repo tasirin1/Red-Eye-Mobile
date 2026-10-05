@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Fixed
+- Watchdog loop mencakup siklus panjang (`syncInterval` s.d. 1440 mnt, kamera s.d. 60 mnt) agar stuck tetap terdeteksi.
+- Wake-loop forwarder melambat ke 5 mnt saat monitoring di-pause; restart pemulihan `/resume` tetap jalan.
+- SMS terkirim parsial ikut mengunci jeda 60 dtk agar retry tak membanjiri duplikat.
+- Hapus parameter mati `alreadyRetried` di pengirim audio/foto.
+- Cache daftar aplikasi ditandai `@Volatile` agar konsisten antar-thread.
+- `/start` pairing yang salah format dibalas petunjuk langsung ke pengirim (throttle 1 jam).
+- `onTaskRemoved` hanya menjadwalkan worker bila monitoring memang aktif.
+- Fallback `/history` diperluas ke 365 hari/500 baris.
+- Owner disimpan sinkron (`commit`) agar crash tak menghilangkan pairing yang offset-nya sudah maju.
+
 ## [1.6.100] - 2026-10-05
 
 ### Fixed

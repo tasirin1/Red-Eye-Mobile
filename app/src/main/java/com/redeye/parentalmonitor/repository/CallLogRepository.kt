@@ -89,8 +89,8 @@ class CallLogRepository(private val context: Context) {
         )
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched
-        val cutoff = System.currentTimeMillis() - 90L * 24 * 60 * 60_000L
-        return filterCallsByNumber(getCallsSince(cutoff, 200), norm)
+        val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
+        return filterCallsByNumber(getCallsSince(cutoff, 500), norm)
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {

