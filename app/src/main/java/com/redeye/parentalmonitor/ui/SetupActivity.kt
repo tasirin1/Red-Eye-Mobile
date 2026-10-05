@@ -76,7 +76,8 @@ class SetupActivity : AppCompatActivity() {
     private fun isChatIdValid(chatId: String): Boolean {
         if (!chatId.matches(CHAT_ID_REGEX)) return false
         val v = chatId.toLongOrNull() ?: return false
-        return v != 0L
+        if (v == 0L) return false
+        return chatId.trimStart('-').length >= 5
     }
 
     private fun resolveStored(raw: String, stored: String): String {

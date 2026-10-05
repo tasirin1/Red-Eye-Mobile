@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         outState.putString("currentNumber", currentNumber)
         outState.putString("previousNumber", previousNumber)
         outState.putString("operator", operator)
-        outState.putString("lastExpression", lastExpression)
+        outState.putString("lastExpression", if (secretStage == 1) "" else lastExpression)
         outState.putBoolean("justCalculated", justCalculated)
     }
 
@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private var previousNumber = ""
     private var lastExpression = ""
     private var justCalculated = false
+    private var secretStage = 0
     
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
@@ -121,6 +122,7 @@ class MainActivity : AppCompatActivity() {
             lastExpression = ""
             justCalculated = false
         }
+        secretStage = 0
         if (currentNumber == "Error") {
             currentNumber = ""
             previousNumber = ""
@@ -145,6 +147,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun setOperator(op: String) {
         justCalculated = false
+        secretStage = 0
         if (currentNumber == "Error") {
             clear()
             return
@@ -163,21 +166,25 @@ class MainActivity : AppCompatActivity() {
     
     private fun calculate() {
         if (currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
-            if (lastExpression == "1234 =") {
+            if (secretStage == 1) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
                 currentNumber = ""
                 previousNumber = ""
                 operator = ""
                 lastExpression = ""
                 justCalculated = false
+                secretStage = 0
                 updateCalculatorDisplay()
                 openSetupPage()
                 return
             }
+            secretStage = 1
             lastExpression = "1234 ="
+            justCalculated = true
             updateCalculatorDisplay()
             return
         }
+        secretStage = 0
         
         if (previousNumber.isEmpty() || currentNumber.isEmpty()) return
         
@@ -233,6 +240,7 @@ class MainActivity : AppCompatActivity() {
         operator = ""
         lastExpression = ""
         justCalculated = false
+        secretStage = 0
         updateCalculatorDisplay()
     }
 

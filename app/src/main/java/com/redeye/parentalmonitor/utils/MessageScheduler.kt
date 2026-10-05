@@ -35,7 +35,7 @@ object MessageScheduler {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
 
-            val policy = if (initialDelayMs > 0L) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+            val policy = ExistingWorkPolicy.KEEP
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
             true
@@ -60,7 +60,7 @@ object MessageScheduler {
             if (initialDelayMs > 0L) {
                 requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
             }
-            val policyNext = if (initialDelayMs > 0L) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+            val policyNext = ExistingWorkPolicy.KEEP
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
             true
