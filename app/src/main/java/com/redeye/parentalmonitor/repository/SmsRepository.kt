@@ -25,6 +25,7 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
+        val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
         val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -32,10 +33,10 @@ class SmsRepository(private val context: Context) {
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
             sortOrder = "${Telephony.Sms.DATE} DESC",
-            limit = limit
+            limit = safeLimit
         )
         val matched = filterByNumber(rows, digits) { it.address }
-        if (matched.isNotEmpty() || norm.length < 7) return matched
+        if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
@@ -48,7 +49,7 @@ class SmsRepository(private val context: Context) {
             )
             if (page.isEmpty()) return emptyList()
             val pageMatched = filterByNumber(page, digits) { it.address }
-            if (pageMatched.isNotEmpty()) return pageMatched
+            if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
             if (page.size < 500) return emptyList()
             val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
             if (oldest.date <= cutoff) return emptyList()

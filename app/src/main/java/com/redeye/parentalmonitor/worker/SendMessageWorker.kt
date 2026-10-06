@@ -421,7 +421,7 @@ class SendMessageWorker(
                 }
                 SendOutcome.Failed -> {
                     failed++
-                    if (!failedKept) {
+                    if (idx > 0 && !failedKept) {
                         try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
                             MessageScheduler.scheduleMessageSend(applicationContext)

@@ -204,15 +204,19 @@ class CameraService(private val context: Context) {
                 finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
             }
             timeoutRunnable = timeout
-            (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
+            try {
+                backgroundHandler?.postDelayed(timeout, timeoutMs)
+                    ?: mainHandler()?.postDelayed(timeout, timeoutMs)
+            } catch (_: Exception) { }
 
             // Setup ImageReader (still capture only) plus a dummy surface for AE metering,
             // so warmup preview frames can never be mistaken for the still photo.
             val photoSize = choosePhotoSize(cameraManager, cameraId)
+            val meterSize = choosePreviewSize(cameraManager, cameraId, photoSize)
             val jpegOrientation = getJpegOrientation(cameraManager, cameraId, lensFacing)
-            val dummyTexture = android.graphics.SurfaceTexture(0)
+            val dummyTexture = android.graphics.SurfaceTexture(1)
             try {
-                dummyTexture.setDefaultBufferSize(photoSize.first, photoSize.second)
+                dummyTexture.setDefaultBufferSize(meterSize.first, meterSize.second)
             } catch (_: Exception) {
             }
             meteringTexture = dummyTexture
@@ -676,6 +680,23 @@ class CameraService(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error creating capture session", e)
             onError(e)
+        }
+    }
+
+    private fun choosePreviewSize(cameraManager: CameraManager, cameraId: String, fallback: Pair<Int, Int>): Pair<Int, Int> {
+        return try {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val sizes = map?.getOutputSizes(android.graphics.SurfaceTexture::class.java)
+            if (sizes.isNullOrEmpty()) fallback
+            else {
+                val fitting = sizes.filter { it.width <= 1280 && it.height <= 720 }
+                val pool = if (fitting.isNotEmpty()) fitting else sizes.toList()
+                val chosen = pool.minByOrNull { kotlin.math.abs(it.width - fallback.first) + kotlin.math.abs(it.height - fallback.second) }
+                if (chosen != null) chosen.width to chosen.height else fallback
+            }
+        } catch (_: Exception) {
+            fallback
         }
     }
 

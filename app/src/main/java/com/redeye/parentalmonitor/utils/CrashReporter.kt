@@ -136,7 +136,6 @@ object CrashReporter {
             } catch (_: Exception) {
                 ""
             }
-            if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
                 val savedElapsed = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
@@ -156,6 +155,7 @@ object CrashReporter {
             if (!allowed) {
                 return
             }
+            if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 val cut = if (report.length > 4000) TextChunk.safeCut(report, 4000) else report.length
                 val fitted = report.take(cut)

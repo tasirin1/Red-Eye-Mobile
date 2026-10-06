@@ -394,12 +394,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 chatId = resolved
             }
-            if (mySave != saveSeq.get()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
+            if (mySave != saveSeq.get()) return@launch
             try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
@@ -460,12 +455,7 @@ class SetupActivity : AppCompatActivity() {
             }
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
-                if (myTest != testSeq.get()) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                }
+                if (myTest != testSeq.get()) return@launch
                 if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                     val code = meResp.code()
                     if (code == 401 || code == 403) {
@@ -483,12 +473,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val encChat = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
                 val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$encChat")
-                if (myTest != testSeq.get()) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_superseded), Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                }
+                if (myTest != testSeq.get()) return@launch
                 if (chatResp.isSuccessful && chatResp.body()?.ok == true) {
                     var effectiveChat = chatId
                     if (effectiveChat.startsWith("@")) {

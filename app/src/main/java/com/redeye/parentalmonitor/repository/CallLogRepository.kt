@@ -29,7 +29,7 @@ class CallLogRepository(private val context: Context) {
             selection = null,
             args = null,
             sortOrder = "${CallLog.Calls.DATE} DESC",
-            limit = limit
+            limit = safeLimit
         )
     }
 
@@ -78,6 +78,7 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
+        val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
         val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -88,7 +89,7 @@ class CallLogRepository(private val context: Context) {
             limit = limit
         )
         val matched = filterCallsByNumber(rows, norm)
-        if (matched.isNotEmpty() || norm.length < 7) return matched
+        if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
@@ -101,7 +102,7 @@ class CallLogRepository(private val context: Context) {
             )
             if (page.isEmpty()) return emptyList()
             val pageMatched = filterCallsByNumber(page, norm)
-            if (pageMatched.isNotEmpty()) return pageMatched
+            if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
             if (page.size < 500) return emptyList()
             val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
             if (oldest.date <= cutoff) return emptyList()

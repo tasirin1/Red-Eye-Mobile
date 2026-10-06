@@ -21,6 +21,7 @@ class BootReceiver : BroadcastReceiver() {
             ACTION_QUICKBOOT_POWERON
         )
 
+        private val handleLock = Any()
         @Volatile
         private var lastHandleAt = 0L
     }
@@ -32,7 +33,7 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (intent.action == Intent.ACTION_USER_PRESENT || intent.action == Intent.ACTION_USER_UNLOCKED) {
             val nowUnlock = android.os.SystemClock.elapsedRealtime()
-            if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return
+            synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
                 lastHandleAt = nowUnlock
                 return
@@ -70,7 +71,7 @@ class BootReceiver : BroadcastReceiver() {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val nowWall = System.currentTimeMillis()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        if (!updated && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return
+        synchronized(handleLock) { if (!updated && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
             var lastWall = meta.getLong("last_handle_wall", 0L)

@@ -32,10 +32,10 @@ object MessageScheduler {
                     TimeUnit.SECONDS
                 )
             if (initialDelayMs > 0L) {
-                requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+                requestBuilder.setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
             }
 
-            val policy = ExistingWorkPolicy.APPEND
+            val policy = ExistingWorkPolicy.APPEND_OR_REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
             true
@@ -65,7 +65,7 @@ object MessageScheduler {
                     TimeUnit.SECONDS
                 )
             if (initialDelayMs > 0L) {
-                requestBuilder.setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
+                requestBuilder.setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
             }
             val policyNext = ExistingWorkPolicy.REPLACE
             WorkManager.getInstance(context.applicationContext)

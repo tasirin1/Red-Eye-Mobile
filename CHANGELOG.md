@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [1.6.130] - 2026-10-06
+
+### Fixed
+- `upgradeToPersistent()` drain susulan hanya isi kunci yang hilang agar tulisan baru ke penyimpanan terenkripsi tak tertimpa nilai basi.
+- `sendChunked()` tak lagi antre ulang saat chunk pertama gagal agar penghitung retry `registerTransientFailures` tetap jalan dan batas retry dihormati.
+- `flushPending()` hapus laporan crash kedaluwarsa (>7 hari) sebelum cek token/izin agar berkas basi tak menumpuk saat belum konfigurasi atau monitoring mati.
+- `scheduleMessageSend()` pakai `APPEND_OR_REPLACE` dan koersi delay agar antrean WorkManager tak menumpuk tak terbatas.
+- `ContentQuery` dan `getSmsForNumber()`/`getCallsForNumber()` koersi limit dan batasi hasil agar `LIMIT` negatif dan scan tak terkendali tertutup.
+- `SetupActivity` abaikan aksi save/test basi secara diam-diam tanpa toast `superseded` ganda.
+- `BootReceiver` sinkronkan debounce `lastHandleAt` agar broadcast ganda tak memicu start ganda.
+- `CameraService` pakai ukuran preview yang didukung untuk permukaan metering dan timeout di background handler agar tak gagal sesi di sebagian device dan tak bocor thread.
+
+
 ## [1.6.129] - 2026-10-06
 
 ### Fixed

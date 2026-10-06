@@ -62,7 +62,7 @@ class PreferencesManager(context: Context) {
                     val delta = fresh.edit()
                     var touched = false
                     for ((key, value) in late) {
-                        if (!snap.containsKey(key) || snap[key] != value) {
+                        if (!snap.containsKey(key)) {
                             touched = true
                             when (value) {
                                 null -> delta.remove(key)
@@ -91,7 +91,7 @@ class PreferencesManager(context: Context) {
                     val tailEdit = fresh.edit()
                     var tailTouched = false
                     for ((key, value) in tail) {
-                        if (!cur.containsKey(key) || cur[key] != value) {
+                        if (!cur.containsKey(key)) {
                             tailTouched = true
                             putEntryInto(tailEdit, key, value)
                         }
