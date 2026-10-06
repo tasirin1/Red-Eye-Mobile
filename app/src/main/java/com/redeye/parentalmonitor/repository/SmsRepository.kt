@@ -32,7 +32,7 @@ class SmsRepository(private val context: Context) {
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
-            sortOrder = "${Telephony.Sms.DATE} DESC",
+            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )
         val matched = filterByNumber(rows, digits) { it.address }
@@ -64,7 +64,7 @@ class SmsRepository(private val context: Context) {
         return querySms(
             selection = "${Telephony.Sms.DATE} >= ?",
             args = arrayOf(sinceMillis.toString()),
-            sortOrder = "${Telephony.Sms.DATE} DESC",
+            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = limit
         )
     }
@@ -77,7 +77,7 @@ class SmsRepository(private val context: Context) {
         return querySms(
             selection = null,
             args = null,
-            sortOrder = "${Telephony.Sms.DATE} DESC",
+            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = limit
         )
     }

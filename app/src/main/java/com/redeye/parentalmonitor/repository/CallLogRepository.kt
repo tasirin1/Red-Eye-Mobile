@@ -28,7 +28,7 @@ class CallLogRepository(private val context: Context) {
         return queryCalls(
             selection = null,
             args = null,
-            sortOrder = "${CallLog.Calls.DATE} DESC",
+            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = limit.coerceIn(1, 200)
         )
     }

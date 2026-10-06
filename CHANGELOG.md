@@ -1,3 +1,7 @@
+## [1.6.155] - 2026-10-06
+### Fixed
+- `SmsRepository`/`CallLogRepository` semua query `DATE DESC` tambah tiebreak `_ID DESC` agar urutan SMS/panggilan deterministik saat timestamp sama.
+
 ## [1.6.154] - 2026-10-06
 ### Fixed
 - `PhoneNumbers.numbersEqualFast` wajibkan nomor pendek utuh jadi suffix, bukan cuma ekor 10 digit, agar riwayat `/lastsms`/`/lastcalls` tak tertukar antar nomor beda area.
