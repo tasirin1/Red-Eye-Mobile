@@ -16,12 +16,19 @@ object PhoneNumbers {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        if (want.length < 7) return false
-        if (have.endsWith(want) || want.endsWith(have)) return true
-        if (wantAlt != null && (have.endsWith(wantAlt) || wantAlt.endsWith(have))) return true
-        if (haveAlt != null) {
-            if (haveAlt.endsWith(want) || want.endsWith(haveAlt)) return true
-            if (wantAlt != null && (haveAlt.endsWith(wantAlt) || wantAlt.endsWith(haveAlt))) return true
+        val tailLen = 9
+        if (have.length < tailLen || want.length < tailLen) return false
+        val haveTail = have.takeLast(tailLen)
+        val wantTail = want.takeLast(tailLen)
+        if (haveTail == wantTail) return true
+        if (wantAlt != null && wantAlt.length >= tailLen) {
+            val wantAltTail = wantAlt.takeLast(tailLen)
+            if (haveTail == wantAltTail) return true
+        }
+        if (haveAlt != null && haveAlt.length >= tailLen) {
+            val haveAltTail = haveAlt.takeLast(tailLen)
+            if (haveAltTail == wantTail) return true
+            if (wantAlt != null && wantAlt.length >= tailLen && haveAltTail == wantAlt.takeLast(tailLen)) return true
         }
         return false
     }

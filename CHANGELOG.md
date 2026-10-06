@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+- `ContentQuery` fallback/provider lama kini menambahkan `LIMIT` pada `sortOrder` agar batas query SMS/call-log tetap berlaku di bawah API 26 dan tak memuat seluruh inbox.
+- `PhoneNumbers.numbersEqualFast()` hanya samakan 9 digit terakhir agar nomor berbeda dengan sufiks sama tak salah atribusi.
+- `takeScreenshotFrame()` jadi `suspend` dan memakai `delay()` agar polling frame tak blokir thread IO.
+- `BootReceiver` lewati debounce wall-clock saat boot segar (`elapsedRealtime` < 120 detik) agar start monitoring setelah reboot tak ter-skip.
+- Redaksi log kini sertakan `chatId` di `MonitoringService`, `CrashReporter`, dan `SendMessageWorker` selain token bot.
+- `startForegroundImmediate()` hitung tipe foreground di depan dan `onCreate()` inisialisasi prefs dulu agar tak ada upgrade tipe tertunda di Android 14.
+
 ## [1.6.132] - 2026-10-06
 
 ### Fixed

@@ -71,12 +71,13 @@ class BootReceiver : BroadcastReceiver() {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val nowWall = System.currentTimeMillis()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
-        synchronized(handleLock) { if (!updated && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
+        val freshBoot = nowBoot <= 120_000L
+        synchronized(handleLock) { if (!updated && !freshBoot && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
             var lastWall = meta.getLong("last_handle_wall", 0L)
             if (lastWall == 0L) lastWall = meta.getLong("last_handle_elapsed", 0L)
-            if (!updated && lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 60_000L) return
+            if (!updated && !freshBoot && lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {

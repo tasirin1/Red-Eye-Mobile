@@ -22,12 +22,12 @@ object ContentQuery {
                 try {
                     resolver.query(uri, projection, bundle, null)
                 } catch (_: Exception) {
-                    resolver.query(uri, projection, selection, args, sortOrder)
+                    resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
                 }
             } else if (safeLimit == Int.MAX_VALUE) {
                 resolver.query(uri, projection, selection, args, sortOrder)
             } else {
-                resolver.query(uri, projection, selection, args, sortOrder)
+                resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
             }
         } catch (_: Exception) {
             null

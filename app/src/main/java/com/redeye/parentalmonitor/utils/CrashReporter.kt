@@ -233,7 +233,13 @@ object CrashReporter {
             depth++
         }
         var raw = body.toString()
-        raw = Redact.token(raw)
+        val secrets = try {
+            val prefs = PreferencesManager.getInstance(context)
+            arrayOf(prefs.botToken, prefs.chatId)
+        } catch (_: Exception) {
+            emptyArray()
+        }
+        raw = Redact.token(raw, *secrets)
         if (raw.length > MAX_CHARS) raw = safeTake(raw, MAX_CHARS)
         val escaped = Html.escape(raw)
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"

