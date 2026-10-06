@@ -319,16 +319,25 @@ class MessageQueue private constructor(context: Context) {
 
     fun flushSync() {
         try {
+            val onMain = android.os.Looper.myLooper() == android.os.Looper.getMainLooper()
+            if (volatileOnly && !onMain) {
+                try {
+                    tryRestorePersistent()
+                } catch (_: Exception) {
+                }
+            }
             val snapshot: List<QueuedMessage>? = synchronized(lock) { cached?.toList() }
             val prefs = sharedPreferences ?: return
             if (snapshot != null) {
                 try {
-                    prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))?.commit()
+                    val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))
+                    if (onMain) editor?.apply() else editor?.commit()
                 } catch (_: Exception) {
                 }
             }
             try {
-                prefs.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
+                val editor = prefs.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())
+                if (onMain) editor?.apply() else editor?.commit()
             } catch (_: Exception) {
             }
         } catch (_: Exception) {

@@ -352,6 +352,16 @@ class SetupActivity : AppCompatActivity() {
         }
         val interval = intervalParsed
         val cameraInterval = cameraParsed
+        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        if ((rawToken.isEmpty() || rawChat.isEmpty()) && hasStored) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_clear_title))
+                .setMessage(getString(R.string.setup_clear_text))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok) { _, _ -> clearCredentials() }
+                .show()
+            return
+        }
         val mySave = saveSeq.incrementAndGet()
         try { testSeq.incrementAndGet() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }

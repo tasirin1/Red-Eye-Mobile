@@ -157,6 +157,10 @@ object CrashReporter {
             }
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
+                if (NetworkUtils.rateLimitedRemainMs() > 0L) return
+            } catch (_: Exception) {
+            }
+            try {
                 val cut = if (report.length > 4000) TextChunk.safeCut(report, 4000) else report.length
                 val fitted = report.take(cut)
                 val rest = if (cut < report.length) report.substring(cut) else ""
@@ -171,6 +175,17 @@ object CrashReporter {
                         } catch (_: Exception) {
                             try { file.delete() } catch (_: Exception) { }
                         }
+                    }
+                } else if (response.code() == 429) {
+                    try {
+                        NetworkUtils.noteRateLimited(NetworkUtils.parseRetryAfter(response.errorBody()?.string()))
+                    } catch (_: Exception) {
+                    }
+                } else if (response.code() == 401 || response.code() == 403) {
+                    try {
+                        prefs.credentialError = response.code().toString()
+                        prefs.credentialErrorAt = System.currentTimeMillis()
+                    } catch (_: Exception) {
                     }
                 } else if (response.code() == 400) {
                     val body = try {
@@ -245,7 +260,7 @@ object CrashReporter {
         val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
         val keep = TextChunk.safeCut(escaped, (4000 - 60).coerceAtLeast(500))
-        return "<b>Force close</b>\n<pre>" + escaped.take(keep) + "</pre>"
+        return "<b>Force close</b>\n<pre>" + safeTake(escaped, keep) + "</pre>"
     }
 
 }

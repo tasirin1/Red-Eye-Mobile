@@ -1,3 +1,11 @@
+## [Unreleased]
+### Fixed
+- `CrashReporter` hormati koordinator 429 bersama dan tandai `credentialError` saat 401/403.
+- `MessageQueue.flushSync` pakai `apply` di main thread dan pulihkan persisten bila volatile di background.
+- Notice drop antrean sebut potensi gap riwayat SMS/call beserta perintah cek ulang.
+- `SetupActivity` tawarkan dialog clear saat field dikosongkan padahal kredensial tersimpan.
+- `buildReport` potong entity HTML dengan aman via `safeTake`.
+
 ## [1.6.147] - 2026-10-06
 ### Fixed
 - Wake-ping dedup pakai String koma tunggal, bukan StringSet yang tak didukung EncryptedSharedPreferences.

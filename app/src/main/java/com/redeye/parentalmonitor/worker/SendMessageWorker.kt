@@ -476,7 +476,7 @@ class SendMessageWorker(
         }
         val reason = detail.ifEmpty { "after max retries" }
         val text = if (clean.isEmpty()) {
-            "⚠️ $count queued message(s) dropped ($reason)."
+            "⚠️ $count queued message(s) dropped ($reason). Gaps may include SMS/call history; re-check with /lastsms, /lastcalls or /history."
         } else {
             "⚠️ $count queued message(s) dropped ($reason). Sample: $clean"
         }
