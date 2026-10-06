@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.121] - 2026-10-06
+
+### Fixed
+- Menu perintah owner Telegram kini memakai scope wire `"chat"` (bukan nama kelas) agar registrasi tak selalu `400`.
+- Drop notifikasi oversize (`>4000` char) kini terhitung per chunk, bukan diam-diam hilang.
+- Plain-fallback forwarder decode entities (`&lt;`/`&gt;`/`&amp;`) selaras jalur utama.
+- `registerWithBudget` cabang volatil prune kedaluwarsa dulu seperti jalur persisten.
+- `saveImage` sertakan cause asli saat gagal simpan.
+- `reviveMonitoringIfNeeded` jalan degraded tanpa background location, selaras `MainActivity`.
+
 ## [1.6.120] - 2026-10-06
 
 ### Fixed

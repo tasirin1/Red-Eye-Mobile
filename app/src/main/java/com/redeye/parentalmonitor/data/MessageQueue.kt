@@ -251,6 +251,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             var maxRetry = 0
             if (volatileOnly) {
+                pruneVolatileLocked()
                 val drop = mutableListOf<String>()
                 for (i in volatileQueue.indices) {
                     val queued = volatileQueue[i]

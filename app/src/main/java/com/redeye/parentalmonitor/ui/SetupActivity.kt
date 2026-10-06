@@ -279,7 +279,7 @@ class SetupActivity : AppCompatActivity() {
 
     private fun reviveMonitoringIfNeeded() {
         try {
-            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()) {
+            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions()) {
                 val intent = Intent(this, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }

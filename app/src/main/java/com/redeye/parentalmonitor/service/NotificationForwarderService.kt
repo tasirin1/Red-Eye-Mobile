@@ -816,17 +816,15 @@ class NotificationForwarderService : NotificationListenerService() {
             if (msg.length > 4000) {
                 flushCur()
                 var rest = msg
-                val dropsBefore = dropNoticeCount.get()
                 while (rest.length > 4000) {
                     var cut = rest.lastIndexOf("\n\n", 4000)
                     if (cut <= 0) cut = 4000
                     cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                    forwardLocked(rest.substring(0, cut), "", 0)
+                    forwardLocked(rest.substring(0, cut), "", 1)
                     rest = rest.substring(cut).trimStart('\n')
                     if (rest.isEmpty()) break
                 }
-                if (rest.isNotEmpty()) forwardLocked(rest, "", 0)
-                if (dropNoticeCount.get() > dropsBefore) noteDroppedNotification(1)
+                if (rest.isNotEmpty()) forwardLocked(rest, "", 1)
                 continue
             }
             if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
@@ -1001,7 +999,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                     return false
                 }
-                val plain = message.replace(Html.tagStripRegex, "")
+                val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
                 if (plain != message) {
                     try {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))

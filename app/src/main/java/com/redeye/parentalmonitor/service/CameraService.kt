@@ -723,9 +723,9 @@ class CameraService(private val context: Context) {
                 try { tmp.delete() } catch (_: Exception) { }
                 throw java.io.IOException("rename failed")
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             try { tmp.delete() } catch (_: Exception) { }
-            throw java.io.IOException("save failed")
+            throw java.io.IOException("save failed", e)
         }
         return file
     }

@@ -1102,7 +1102,7 @@ class MonitoringService : Service() {
             if (ownerId != 0L) {
                 val ownerBody = com.redeye.parentalmonitor.network.SetMyCommandsRequest(
                     botCommandList(),
-                    com.redeye.parentalmonitor.network.BotCommandScope("bot_command_scope_chat", ownerId)
+                    com.redeye.parentalmonitor.network.BotCommandScope("chat", ownerId)
                 )
                 val ownerResp = TelegramClient.api.setMyCommands(url, ownerBody)
                 ownerOk = ownerResp.isSuccessful && ownerResp.body()?.ok == true
