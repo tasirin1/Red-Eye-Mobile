@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.148] - 2026-10-06
 ### Fixed
 - `CrashReporter` hormati koordinator 429 bersama dan tandai `credentialError` saat 401/403.
 - `MessageQueue.flushSync` pakai `apply` di main thread dan pulihkan persisten bila volatile di background.
