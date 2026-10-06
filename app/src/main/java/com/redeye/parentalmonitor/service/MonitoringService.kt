@@ -352,6 +352,7 @@ class MonitoringService : Service() {
         }
         if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true && patrolJob?.isActive == true) {
             refreshCreds()
+            refreshLoopConfig()
             return
         }
         serviceStartAt = System.currentTimeMillis()
@@ -2893,9 +2894,9 @@ class MonitoringService : Service() {
         watchdogJob?.cancel()
         videoWatchdog?.cancel()
         shotWatchdog?.cancel()
-        cameraAttempt.incrementAndGet()
-        videoAttempt.incrementAndGet()
-        shotAttempt.incrementAndGet()
+        cameraAttempt.set(0)
+        videoAttempt.set(0)
+        shotAttempt.set(0)
         shotBusy.set(false)
         cameraBusy.set(false)
         smsBusy.set(false)

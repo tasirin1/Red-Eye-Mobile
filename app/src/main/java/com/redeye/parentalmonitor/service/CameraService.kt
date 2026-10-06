@@ -389,6 +389,12 @@ class CameraService(private val context: Context) {
                     timeoutRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
                         try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                    }
+                    stopRunnable?.let { r ->
+                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
                     }
                 } catch (_: Exception) {
                 }
@@ -607,7 +613,10 @@ class CameraService(private val context: Context) {
                 fireStill()
             }
             val pending = fallback ?: return
-            backgroundHandler?.postDelayed(pending, 3_000L)
+            val meterScheduled = try {
+                backgroundHandler?.postDelayed(pending, 3_000L) == true || mainHandler()?.postDelayed(pending, 3_000L) == true
+            } catch (_: Exception) { false }
+            if (!meterScheduled) { fireStill(); return }
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
             val previewSurface = meteringSurface ?: run { onError(Exception("Camera closed")); return }
             meteringBuilder.addTarget(previewSurface)

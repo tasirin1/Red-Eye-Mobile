@@ -711,19 +711,29 @@ class NotificationForwarderService : NotificationListenerService() {
     override fun onDestroy() {
         try {
             val drops = dropNoticeCount.getAndSet(0)
-            try {
-                prefsRef?.setPendingNotifDropsSync(0)
-            } catch (_: Exception) {
-            }
             if (drops > 0) {
                 try {
                     val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
                         else "Dropped $drops notifications rejected by Telegram (400)."
                     queue().addMessage(text, true)
                     try {
+                        prefsRef?.setPendingNotifDropsSync(0)
+                    } catch (_: Exception) {
+                    }
+                    try {
                         MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
                     } catch (_: Exception) {
                     }
+                } catch (_: Exception) {
+                    dropNoticeCount.addAndGet(drops)
+                    try {
+                        prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+                    } catch (_: Exception) {
+                    }
+                }
+            } else {
+                try {
+                    prefsRef?.setPendingNotifDropsSync(0)
                 } catch (_: Exception) {
                 }
             }

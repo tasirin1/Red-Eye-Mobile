@@ -1,3 +1,14 @@
+## [Unreleased]
+### Fixed
+- `MonitoringService.teardownJobs` mereset counter percobaan kamera/video/foto ke 0 agar sesi berikutnya tidak langsung menyerah akibat backoff basi.
+- `MonitoringService.startMonitoring` memanggil `refreshLoopConfig` juga pada jalur early-return agar perubahan interval patroli/sinkron langsung berlaku.
+- `CameraService.finishWithVideo` membatalkan callback timeout/stop yang tertunda agar tidak ada error semu setelah video sukses.
+- `CameraService.runMeteredCapture` memakai fallback handler utama bila background handler nol agar foto tidak menggantung.
+- `MessageQueue.ensureRestored` memicu restore asinkron dari main thread agar antrean volatile akhirnya pulih persisten.
+- `NotificationForwarderService.onDestroy` hanya mengenolkan counter persisten setelah antrean sukses, dan mengembalikannya bila gagal.
+- `BootRestartWorker` memakai jam elapsed tunggal untuk throttle pengingat resume agar tidak tercampur wall-clock.
+- `SendMessageWorker.sendChunked` mengantrekan ulang sisa part yang belum dicoba saat satu part ditolak Telegram agar tidak hilang.
+
 ## [1.6.144] - 2026-10-06
 
 ### Fixed

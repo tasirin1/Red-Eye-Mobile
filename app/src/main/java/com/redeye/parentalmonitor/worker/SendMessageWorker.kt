@@ -444,6 +444,13 @@ class SendMessageWorker(
                 }
                 SendOutcome.Rejected -> {
                     rejected++
+                    if (idx + 1 < parts.size) {
+                        try {
+                            messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""))
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                        } catch (_: Exception) {
+                        }
+                    }
                     break
                 }
             }

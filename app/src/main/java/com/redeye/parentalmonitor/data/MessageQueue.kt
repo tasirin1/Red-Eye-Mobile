@@ -106,7 +106,14 @@ class MessageQueue private constructor(context: Context) {
 
     private fun ensureRestored() {
         if (!volatileOnly) return
-        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) return
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            try {
+                Thread {
+                    try { tryRestorePersistent() } catch (_: Exception) { }
+                }.start()
+            } catch (_: Exception) { }
+            return
+        }
         try {
             tryRestorePersistent()
         } catch (_: Exception) {
