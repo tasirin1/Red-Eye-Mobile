@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.140] - 2026-10-06
+
 ### Fixed
 - `SetupActivity` samarkan chat ID hasil migrasi supergroup di jalur plain-retry (`STORED_MASK`) agar ID mentah tak terlihat di layar.
 - Potong cuplikan SMS/notifikasi kini lewat `TextChunk.safeCut()` agar emoji tak terbelah jadi surrogate yatim yang bisa bikin Telegram 400.
