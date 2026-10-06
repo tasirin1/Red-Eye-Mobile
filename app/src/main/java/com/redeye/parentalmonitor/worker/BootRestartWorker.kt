@@ -68,10 +68,6 @@ class BootRestartWorker(
             return Result.success()
         }
         if (!prefs.isConfigured()) {
-            try {
-                MessageScheduler.scheduleMessageSendNext(appContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
             return Result.success()
         }
         try {

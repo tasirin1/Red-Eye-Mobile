@@ -672,7 +672,6 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            var pending = ""
             try {
                 val token = prefs.botToken
                 val chatId = prefs.chatId
@@ -686,7 +685,6 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
-                pending = text
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 var failCode = resp.code()
                 if (ok) {
@@ -726,7 +724,7 @@ class SetupActivity : AppCompatActivity() {
                         }
                         try {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                chatIdInput.setText(migratedDirect)
+                                chatIdInput.setText(STORED_MASK)
                             }
                         } catch (_: Exception) {
                         }

@@ -2,6 +2,7 @@ package com.redeye.parentalmonitor.utils
 
 object TextChunk {
     fun safeCut(text: String, max: Int): Int {
+        if (max <= 0) return 0
         if (text.length <= max) return text.length
         var cut = max
         if (Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1

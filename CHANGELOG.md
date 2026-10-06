@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Fixed
+- `SetupActivity` tampilkan `STORED_MASK` setelah migrasi chat ID grup ke supergroup agar ID mentah tak terlihat di layar.
+- Hapus variabel `pending` mati di `sendStatusNow()`.
+- `TextChunk.safeCut()` kembalikan 0 untuk `max` non-positif agar tak ada `IndexOutOfBounds`.
+- `BootRestartWorker` tak lagi jadwalkan kirim antrean saat belum konfigurasi karena worker langsung success tanpa kredensial.
+
 ## [1.6.133] - 2026-10-06
 
 ### Fixed
