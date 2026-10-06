@@ -92,9 +92,11 @@ class CameraService(private val context: Context) {
 
     fun stopBackgroundThread() {
         val thread = backgroundThread
+        val handler = backgroundHandler
+        try { handler?.removeCallbacksAndMessages(null) } catch (_: Exception) { }
+        try { thread?.quitSafely() } catch (_: Exception) { }
         backgroundThread = null
         backgroundHandler = null
-        thread?.quitSafely()
         try {
             val onMain = try {
                 Thread.currentThread() === android.os.Looper.getMainLooper().thread

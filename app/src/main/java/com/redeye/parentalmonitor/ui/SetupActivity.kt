@@ -284,7 +284,12 @@ class SetupActivity : AppCompatActivity() {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
+                    try {
+                        startForegroundService(intent)
+                    } catch (e: Exception) {
+                        try { com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(this) } catch (_: Exception) { }
+                        throw e
+                    }
                 } else {
                     startService(intent)
                 }

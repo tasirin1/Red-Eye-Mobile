@@ -1,3 +1,12 @@
+## [Unreleased]
+### Fixed
+- `AndroidManifest.xml` set `NotificationForwarderService` ke `exported="true"` agar sistem bisa bind listener dan forward notifikasi jalan lagi.
+- `MainActivity.formatResult` hitung digit integer via string desimal, bukan `log10`, agar pangkat 10 tak off-by-one.
+- `BootReceiver` hanya reset izin screenshot saat boot nyata, bukan tiap `USER_UNLOCKED`, agar consent tak hangus setiap buka kunci.
+- `SetupActivity.reviveMonitoringIfNeeded` fallback ke `MessageScheduler.scheduleBootRestart` saat `startForegroundService` ditolak dari background (Android 12+).
+- `CrashReporter.savePending` sinkron plus tulis atomik via file `.tmp` + rename agar dua crash bersamaan tak saling timpa.
+- `CameraService.stopBackgroundThread` `quitSafely` dulu sebelum nol-kan handler agar callback basi tak jalan setelah cleanup.
+
 ## [1.6.149] - 2026-10-06
 ### Fixed
 - `PhoneNumbers` ganti guard prefix eksak dengan aturan suffix/selisih panjang agar beda kode negara tetap cocok tanpa false-positive sesama panjang.

@@ -80,17 +80,26 @@ object CrashReporter {
         return File(context.filesDir, PENDING_FILE)
     }
 
+    private val saveLock = Any()
+
     private fun savePending(context: Context, report: String) {
-        try {
-            val file = pendingFile(context)
-            val prev = try {
-                if (file.exists()) stripElapsed(file.readText()) else ""
+        synchronized(saveLock) {
+            try {
+                val file = pendingFile(context)
+                val prev = try {
+                    if (file.exists()) stripElapsed(file.readText()) else ""
+                } catch (_: Exception) {
+                    ""
+                }
+                val combined = if (prev.isBlank()) report else (prev + "\n---\n" + report).takeLast(MAX_CHARS * 2 + 16)
+                val tmp = File(file.parent, file.name + ".tmp")
+                tmp.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + combined)
+                if (!tmp.renameTo(file)) {
+                    try { file.delete() } catch (_: Exception) { }
+                    tmp.renameTo(file)
+                }
             } catch (_: Exception) {
-                ""
             }
-            val combined = if (prev.isBlank()) report else (prev + "\n---\n" + report).takeLast(MAX_CHARS * 2 + 16)
-            file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + combined)
-        } catch (_: Exception) {
         }
     }
 

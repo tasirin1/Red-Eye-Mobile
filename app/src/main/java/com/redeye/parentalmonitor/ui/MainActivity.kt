@@ -210,7 +210,7 @@ class MainActivity : AppCompatActivity() {
             return result.toLong().toString()
         }
         val floored = kotlin.math.floor(abs)
-        val intDigits = if (floored < 1.0) 1 else kotlin.math.log10(floored).toInt() + 1
+        val intDigits = if (floored < 1.0) 1 else java.math.BigDecimal.valueOf(floored).toPlainString().substringBefore('.').trimStart('-').trimStart('0').length.coerceAtLeast(1)
         if (intDigits > 12) {
             return String.format(java.util.Locale.US, "%.5E", result)
         }
