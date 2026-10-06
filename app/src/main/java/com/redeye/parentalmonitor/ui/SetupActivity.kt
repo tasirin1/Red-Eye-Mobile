@@ -952,7 +952,7 @@ class SetupActivity : AppCompatActivity() {
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

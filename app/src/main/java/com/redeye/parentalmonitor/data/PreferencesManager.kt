@@ -230,6 +230,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
         const val KEY_MONITORING_PAUSED = "monitoring_paused"
         const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
+        const val KEY_PATROL_ENABLED = "patrol_enabled"
+        const val KEY_PATROL_INTERVAL = "patrol_interval"
         private const val KEY_CAMERA_FACING = "camera_facing"
         const val KEY_USER_CONSENTED = "user_consented_monitoring"
         const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
@@ -401,6 +403,14 @@ class PreferencesManager(context: Context) {
     var photoPausedUntil: Long
         get() = try { sharedPreferences.getLong(KEY_PHOTO_PAUSED_UNTIL, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_UNTIL, value).apply()
+
+    var patrolEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_PATROL_ENABLED, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_PATROL_ENABLED, value).apply()
+
+    var patrolInterval: Int
+        get() = try { sharedPreferences.getInt(KEY_PATROL_INTERVAL, 30) } catch (_: Exception) { 30 }
+        set(value) = sharedPreferences.edit().putInt(KEY_PATROL_INTERVAL, value).apply()
 
     var cameraFacing: String
         get() = try { sharedPreferences.getString(KEY_CAMERA_FACING, "front") ?: "front" } catch (_: Exception) { "front" }
