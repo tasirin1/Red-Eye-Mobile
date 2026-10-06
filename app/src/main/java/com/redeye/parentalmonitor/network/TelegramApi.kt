@@ -157,6 +157,7 @@ interface TelegramApi {
 
 private object SharedNet {
     val pool = ConnectionPool(6, 1, TimeUnit.MINUTES)
+    val mediaPool = ConnectionPool(4, 1, TimeUnit.MINUTES)
 }
 
 object TelegramClient {
@@ -187,7 +188,7 @@ object TelegramMediaClient {
     private val mediaOkHttp = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
         .dispatcher(Dispatcher().apply { maxRequests = 4; maxRequestsPerHost = 2 })
-        .connectionPool(SharedNet.pool)
+        .connectionPool(SharedNet.mediaPool)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

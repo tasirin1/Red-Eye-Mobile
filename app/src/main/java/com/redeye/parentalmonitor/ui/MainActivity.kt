@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.BuildConfig
 
 class MainActivity : AppCompatActivity() {
@@ -263,11 +264,19 @@ class MainActivity : AppCompatActivity() {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
             if (!preferencesManager.isConfigured()) {
             android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
             return
         }
         
         if (!hasAllPermissions()) {
             android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
             return
         }
         

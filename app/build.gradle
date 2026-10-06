@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 146
-        versionName "1.6.119"
+        versionCode 147
+        versionName "1.6.120"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -89,7 +89,7 @@ android {
             }
             def ref = System.getenv("GITHUB_REF") ?: ""
             if (ref.startsWith("refs/tags/v")) {
-                logger.warn("Release tag build without release keystore; APK will be debug-signed (see workflow rename step).")
+                throw new GradleException("Release tag build requires release keystore (ANDROID_KEYSTORE_BASE64 + KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)")
             }
         }
     }

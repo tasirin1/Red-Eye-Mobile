@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.120] - 2026-10-06
+
+### Fixed
+- `MessageQueue` auto-restore penyimpanan terenkripsi di luar main thread agar antrean tak terjebak volatil dan pesan tak hilang saat proses mati.
+- `PreferencesManager.upgradeToPersistent` snapshot tulisan susulan sebelum ganti backend agar tak ada kredensial hilang dalam window migrasi.
+- Replay perintah mutating Telegram (`/sms`, `/ring`, `/lock`, dsb) dipre-claim via `NO_REPLAY_COMMANDS` seluas `MUTATING_COMMANDS` agar redelivery tak eksekusi ganda.
+- Batas umur perintah mutating dinamai `MUTATING_MAX_AGE_SEC` dan dipakai di semua jalur (`handleTelegramCommand`, inner, callback) tanpa ubah perilaku.
+- `MainActivity` menjadwalkan `BootRestartWorker` saat belum konfigurasi/izin kurang agar retry tetap jalan senyap.
+- `SendMessageWorker` tak lagi menghapus ID generasi lama setelah `clearQueue` (`queueCleared`).
+- `TelegramMediaClient` memakai pool koneksi sendiri agar long-poll perintah tak starvation oleh unggah media.
+- Build tag `v*` tanpa keystore rilis kini gagal tegas, bukan rilis debug-signed diam-diam.
+
 ## [1.6.119] - 2026-10-05
 
 ### Fixed

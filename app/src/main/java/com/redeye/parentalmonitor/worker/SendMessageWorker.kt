@@ -145,7 +145,7 @@ class SendMessageWorker(
         }
 
         if (credsChanged) {
-            if (sentIds.size > flushedSent) {
+            if (!queueCleared && sentIds.size > flushedSent) {
                 try {
                     messageQueue.removeMessages(sentIds)
                 } catch (_: Exception) {
@@ -165,7 +165,7 @@ class SendMessageWorker(
                 false
             }
         }
-        if (sentIds.size > flushedSent) {
+        if (!queueCleared && sentIds.size > flushedSent) {
             try {
                 messageQueue.removeMessages(sentIds)
             } catch (_: Exception) {

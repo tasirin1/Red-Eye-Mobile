@@ -54,10 +54,10 @@ class PreferencesManager(context: Context) {
                 }
             } catch (_: Exception) {
             }
+            val late = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
             sharedPreferences = fresh
             try {
                 val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                val late = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
                 if (late.isNotEmpty()) {
                     val delta = fresh.edit()
                     var touched = false

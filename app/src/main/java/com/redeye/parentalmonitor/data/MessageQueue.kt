@@ -104,9 +104,19 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    private fun ensureRestored() {
+        if (!volatileOnly) return
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) return
+        try {
+            tryRestorePersistent()
+        } catch (_: Exception) {
+        }
+    }
+
     fun addMessage(message: String, priority: Boolean = false) {
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 volatileQueue.add(QueuedMessage(message = message))
@@ -131,6 +141,7 @@ class MessageQueue private constructor(context: Context) {
         if (messages.isEmpty()) return
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 for (message in messages) volatileQueue.add(QueuedMessage(message = message))
@@ -195,6 +206,7 @@ class MessageQueue private constructor(context: Context) {
 
     fun getQueue(): List<QueuedMessage> {
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 return volatileQueue.toList()
@@ -205,6 +217,7 @@ class MessageQueue private constructor(context: Context) {
 
     fun removeMessage(messageId: String) {
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 volatileQueue.removeAll { it.id == messageId }
                 return
@@ -218,6 +231,7 @@ class MessageQueue private constructor(context: Context) {
     fun removeMessages(messageIds: Collection<String>) {
         if (messageIds.isEmpty()) return
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 volatileQueue.removeAll { it.id in messageIds }
                 return
@@ -348,6 +362,7 @@ class MessageQueue private constructor(context: Context) {
 
     fun hasMessages(): Boolean {
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 return volatileQueue.isNotEmpty()
@@ -373,6 +388,7 @@ class MessageQueue private constructor(context: Context) {
 
     fun getQueueSize(): Int {
         synchronized(lock) {
+            ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 return volatileQueue.size
