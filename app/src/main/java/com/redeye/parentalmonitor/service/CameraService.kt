@@ -426,7 +426,17 @@ class CameraService(private val context: Context) {
                 finishWithError(Exception("Video capture timed out"))
             }
             timeoutRunnable = timeout
-            (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
+            val watchdogScheduled = try {
+                val mh = mainHandler()
+                if (mh != null) mh.postDelayed(timeout, timeoutMs)
+                else backgroundHandler?.postDelayed(timeout, timeoutMs) ?: false
+            } catch (_: Exception) {
+                false
+            }
+            if (!watchdogScheduled) {
+                finishWithError(Exception("Camera unavailable (timeout watchdog not ready)"))
+                return
+            }
             val videoSize = chooseVideoSize(cameraManager, cameraId)
             val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
             pendingOut = outFile
@@ -495,11 +505,15 @@ class CameraService(private val context: Context) {
                                         }
                                     }
                                     stopRunnable = stop
-                                    try {
-                                        backgroundHandler?.postDelayed(stop, durationMs)
-                                            ?: mainHandler()?.postDelayed(stop, durationMs)
-                                    } catch (e: Exception) {
-                                        finishWithError(e)
+                                    val stopScheduled = try {
+                                        if (backgroundHandler?.postDelayed(stop, durationMs) == true) true
+                                        else mainHandler()?.postDelayed(stop, durationMs) == true
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    if (!stopScheduled) {
+                                        finishWithError(Exception("Camera unavailable (stop schedule failed)"))
+                                        return
                                     }
                                 }
                                 override fun onConfigureFailed(session: CameraCaptureSession) {

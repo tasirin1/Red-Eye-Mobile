@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- `CameraService.captureVideo` gagal cepat saat watchdog timeout tak bisa dijadwalkan agar `MediaRecorder` yatim tak merekam tanpa batas.
+- Jadwal penghenti rekaman video kini cek hasil `postDelayed` dengan fallback eksplisit agar stop tak hilang diam-diam di thread mati.
+
 ## [1.6.138] - 2026-10-06
 
 ### Fixed
