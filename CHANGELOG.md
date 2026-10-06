@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.143] - 2026-10-06
 
 ### Fixed
 - `BootReceiver` terima `MY_PACKAGE_REPLACED` tanpa data URI dan hapus `USER_PRESENT` mati agar restart sehabis update jalan lagi.
