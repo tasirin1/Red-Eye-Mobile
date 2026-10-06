@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 180
-        versionName "1.6.153"
+        versionCode 181
+        versionName "1.6.154"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -25,6 +25,12 @@ android {
         // input manual halaman Setup di aplikasi (SetupActivity).
         def syncIntervalProp = project.findProperty("SYNC_INTERVAL") ?: System.getenv("SYNC_INTERVAL") ?: "5"
         if (!"$syncIntervalProp".isInteger()) syncIntervalProp = "5"
+        try {
+            def syncInt = "${syncIntervalProp}".toInteger()
+            if (syncInt < 1 || syncInt > 1440) syncIntervalProp = "5" else syncIntervalProp = "$syncInt"
+        } catch (Exception ignored) {
+            syncIntervalProp = "5"
+        }
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
     }
 

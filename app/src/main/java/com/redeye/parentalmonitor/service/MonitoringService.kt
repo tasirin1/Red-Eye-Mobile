@@ -766,6 +766,7 @@ class MonitoringService : Service() {
     }
 
     private val pairHintAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -1080,16 +1081,26 @@ class MonitoringService : Service() {
                     val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
                         if (cachedOwnerId == 0L) {
-                            val startTokens = startArg.split(Regex("\\s+")).filter { it.isNotEmpty() }
-                            val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
-                            if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty() && startTokens[1] == pairCode) {
-                                val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
-                                if (learned) {
-                                    registerBotCommands()
-                                    sendToTelegram("Owner linked via /start.")
+                            val nowPair = android.os.SystemClock.elapsedRealtime()
+                            val lastPair = try { pairAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
+                            if (nowPair - lastPair >= 30_000L) {
+                                try {
+                                    if (pairAttemptAt.size > 200) pairAttemptAt.clear()
+                                    pairAttemptAt[senderId] = nowPair
+                                } catch (_: Exception) {
                                 }
-                            } else {
-                                sendPairHint(senderId)
+                                val startTokens = startArg.split(Regex("\\s+")).filter { it.isNotEmpty() }
+                                val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
+                                if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty() && startTokens[1] == pairCode) {
+                                    val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
+                                    if (learned) {
+                                        try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
+                                        registerBotCommands()
+                                        sendToTelegram("Owner linked via /start.")
+                                    }
+                                } else {
+                                    sendPairHint(senderId)
+                                }
                             }
                         } else if (senderId != cachedOwnerId.toString()) {
                             sendToTelegram("\u26A0\uFE0F Pairing attempt ignored: owner already linked.")
@@ -2440,7 +2451,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
-        val baseCode = smsReqSeq.addAndGet(1000000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
+        val baseCode = Math.floorMod(smsReqSeq.addAndGet(1000000), 1000000000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
         val delivered = CompletableDeferred<Boolean>()
         val smsManager = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

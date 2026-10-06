@@ -1,3 +1,13 @@
+## [1.6.154] - 2026-10-06
+### Fixed
+- `PhoneNumbers.numbersEqualFast` wajibkan nomor pendek utuh jadi suffix, bukan cuma ekor 10 digit, agar riwayat `/lastsms`/`/lastcalls` tak tertukar antar nomor beda area.
+- `NetworkUtils.parseRetryAfter`/`noteRateLimited` hormati `retry_after` sampai 3600 dtk agar flood-wait panjang tak di-retry kepagian.
+- `MonitoringService` `baseCode` SMS pakai `floorMod` agar `requestCode` tak negatif setelah `smsReqSeq` overflow.
+- Percobaan pairing `/start` dibatasi satu per 30 dtk per pengirim agar kode 6 digit tak bisa di-brute force cepat.
+- `AndroidManifest.xml` tambah `MODIFY_AUDIO_SETTINGS` agar restore volume alarm `BootReceiver` tak gagal diam-diam.
+- `app/build.gradle` clamp `SYNC_INTERVAL` ke `1..1440` agar secret CI yang salah ketik tak bikin loop 0 menit.
+- `.github/workflows/build.yml` `cancel-in-progress` dinonaktifkan untuk tag agar build rilis tak dibatalkan push susulan.
+
 ## [1.6.153] - 2026-10-06
 ### Fixed
 - `BootRestartWorker.getForegroundInfo` dibungkus guard dengan notifikasi fallback agar panggilan langsung `WorkManager` tak gagal tak tertangani.

@@ -20,7 +20,7 @@ object NetworkUtils {
 
     fun noteRateLimited(retryAfterSecs: Long) {
         try {
-            val waitMs = retryAfterSecs.coerceIn(1L, 300L) * 1000L
+            val waitMs = retryAfterSecs.coerceIn(1L, 3600L) * 1000L
             rateLimitedUntil = maxOf(rateLimitedUntil, android.os.SystemClock.elapsedRealtime() + waitMs)
         } catch (_: Exception) {
         }
@@ -111,12 +111,12 @@ object NetworkUtils {
                 ?.getAsJsonObject("parameters")
                 ?.get("retry_after")
                 ?.asLong
-            if (parsed != null) return parsed.coerceIn(1, 300)
+            if (parsed != null) return parsed.coerceIn(1, 3600)
         } catch (_: Exception) {
         }
         try {
             val fallback = Regex("(?i)retry[_ ]after\\D*(\\d+)").find(errorBody)?.groupValues?.getOrNull(1)?.toLongOrNull()
-            if (fallback != null) return fallback.coerceIn(1, 300)
+            if (fallback != null) return fallback.coerceIn(1, 3600)
         } catch (_: Exception) {
         }
         return 5L
