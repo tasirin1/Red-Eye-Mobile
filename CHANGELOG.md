@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.137] - 2026-10-06
+
 ### Fixed
 - Kembalikan variabel `pending` di `sendStatusNow()` yang dipakai blok `catch` untuk antrekan fallback; penghapusannya merusak build `1.6.134`-`1.6.136`.
 
