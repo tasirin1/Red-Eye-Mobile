@@ -1,3 +1,14 @@
+## [1.6.160] - 2026-10-06
+### Fixed
+- Luruskan teks backlog penuh foto/video (`oldest unsent discarded`) agar sesuai perilaku prune yang mempertahankan file terbaru.
+- Redam konflik polling 409 saat serah-terima wake-loop: deteksi konflik internal via timestamp poll, backoff 60 dtk, dan tanpa notif user.
+- `NotificationForwarderService` catat waktu wake-poll terakhir agar loop utama bisa bedakan konflik internal vs klien luar.
+- `CameraService.getCameraId` fallback ke lensa lain bila lensa yang diminta tak ada di perangkat.
+- `captureVideo` set 24fps hanya bila rentang fps perangkat mendukung agar `prepare()` tak gagal.
+- `SetupActivity.updateStatus` baca kode pairing tanpa tulis bila sudah valid agar jalur baca bebas efek-samping.
+- `sendInitialData` prob satu halaman ekstra di batas 500 item agar status `partially sent` hanya muncul bila benar ada sisa.
+- Kalkulator hitung tanda minus dalam anggaran 12 digit agar hasil negatif tak meluber dari display.
+
 ## [1.6.159] - 2026-10-06
 ### Fixed
 - `MonitoringService.takeScreenshotFrame` parse consent URI dengan flag `URI_INTENT_SCHEME` (fallback parse biasa) agar `/screenshot` tak selalu gagal.

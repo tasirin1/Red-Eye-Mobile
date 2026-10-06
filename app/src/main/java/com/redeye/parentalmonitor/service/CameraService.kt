@@ -492,7 +492,11 @@ class CameraService(private val context: Context) {
             rec.setVideoEncoder(android.media.MediaRecorder.VideoEncoder.H264)
             rec.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
             rec.setVideoSize(videoSize.first, videoSize.second)
-            rec.setVideoFrameRate(24)
+            try {
+                val ranges = cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
+                if (ranges?.any { it.lower <= 24 && 24 <= it.upper } == true) rec.setVideoFrameRate(24)
+            } catch (_: Exception) {
+            }
             rec.setVideoEncodingBitRate(if (videoSize.first * videoSize.second >= 1280 * 720) 2_000_000 else 1_000_000)
             rec.setOutputFile(outFile.absolutePath)
             rec.prepare()
@@ -745,13 +749,15 @@ class CameraService(private val context: Context) {
     }
 
     private fun getCameraId(cameraManager: CameraManager, lensFacing: Int): String? {
+        fun facingOf(id: String): Int? {
+            return try {
+                cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)
+            } catch (_: Exception) { null }
+        }
         return try {
             val ids = try { cameraManager.cameraIdList } catch (_: Exception) { emptyArray() }
-            ids.firstOrNull { id ->
-                try {
-                    cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) == lensFacing
-                } catch (_: Exception) { false }
-            }
+            ids.firstOrNull { facingOf(it) == lensFacing }
+                ?: ids.firstOrNull { val f = facingOf(it); f != null && f != lensFacing }
         } catch (e: Exception) {
             Log.e(TAG, "Error finding camera", e)
             null

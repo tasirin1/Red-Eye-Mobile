@@ -90,6 +90,8 @@ class NotificationForwarderService : NotificationListenerService() {
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
     companion object {
+        @Volatile
+        var lastWakePollAt = 0L
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
@@ -530,6 +532,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!NetworkUtils.isNetworkAvailable(this)) return
         if (android.os.SystemClock.elapsedRealtime() < wakeBackoffUntil) return
+        lastWakePollAt = android.os.SystemClock.elapsedRealtime()
         val offset = maxOf(mainLast, wakeUpdateId) + 1L
         val url = "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=20&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
         val response = try {
