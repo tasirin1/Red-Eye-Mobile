@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.138] - 2026-10-06
+
 ### Fixed
 - `CameraService` gagal cepat saat watchdog timeout tak bisa dijadwalkan agar kunci `capturing` tak terkunci permanen.
 - Expiry antrean `MessageQueue` pakai dual-clock (`elapsedAt` monotonik + wall-clock) agar tahan skew jam.
