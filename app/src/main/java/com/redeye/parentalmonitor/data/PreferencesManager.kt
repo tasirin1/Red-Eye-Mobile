@@ -63,22 +63,20 @@ class PreferencesManager(context: Context) {
                     val delta = fresh.edit()
                     var touched = false
                     for ((key, value) in late) {
-                        if (!snap.containsKey(key)) {
-                            touched = true
-                            when (value) {
-                                null -> delta.remove(key)
-                                is String -> delta.putString(key, value)
-                                is Int -> delta.putInt(key, value)
-                                is Long -> delta.putLong(key, value)
-                                is Float -> delta.putFloat(key, value)
-                                is Boolean -> delta.putBoolean(key, value)
-                                is Set<*> -> try {
-                                    @Suppress("UNCHECKED_CAST")
-                                    delta.putStringSet(key, value as Set<String>)
-                                } catch (_: Exception) {
-                                }
-                                else -> Unit
+                        touched = true
+                        when (value) {
+                            null -> delta.remove(key)
+                            is String -> delta.putString(key, value)
+                            is Int -> delta.putInt(key, value)
+                            is Long -> delta.putLong(key, value)
+                            is Float -> delta.putFloat(key, value)
+                            is Boolean -> delta.putBoolean(key, value)
+                            is Set<*> -> try {
+                                @Suppress("UNCHECKED_CAST")
+                                delta.putStringSet(key, value as Set<String>)
+                            } catch (_: Exception) {
                             }
+                            else -> Unit
                         }
                     }
                     if (touched) delta.commit()

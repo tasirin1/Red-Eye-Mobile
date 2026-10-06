@@ -140,7 +140,7 @@ object CrashReporter {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
                 val savedElapsed = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
                 val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
-                val age = if (wallAge < 0L && monoAge < 0L) 0L else if (wallAge < 0L) monoAge else if (monoAge < 0L) wallAge else maxOf(wallAge, monoAge)
+                val age = if (wallAge < 0L && monoAge < 0L) 0L else if (wallAge < 0L) monoAge else if (monoAge < 0L) wallAge else minOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {
                     try { file.delete() } catch (_: Exception) { }
                     return

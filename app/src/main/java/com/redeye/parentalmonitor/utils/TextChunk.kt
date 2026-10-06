@@ -16,7 +16,10 @@ object TextChunk {
         }
         val tag = text.lastIndexOf('<', cut - 1)
         if (tag >= 0 && text.indexOf('>', tag) >= cut) cut = tag
-        if (cut <= 0) cut = max
+        if (cut <= 0) {
+            cut = max
+            if (cut > 0 && cut < text.length && Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+        }
         return cut
     }
 }

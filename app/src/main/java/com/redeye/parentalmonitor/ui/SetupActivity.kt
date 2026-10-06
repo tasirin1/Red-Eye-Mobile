@@ -974,6 +974,7 @@ class SetupActivity : AppCompatActivity() {
                 notifOn -> getString(R.string.setup_notif_on)
                 else -> getString(R.string.setup_notif_off)
             }
+            shotButton.text = if (shotOn) getString(R.string.setup_shot_ok) else getString(R.string.setup_shot)
             }
         }
     }

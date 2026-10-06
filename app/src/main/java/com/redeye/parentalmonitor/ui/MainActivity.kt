@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         val floored = kotlin.math.floor(abs)
         val intDigits = if (floored < 1.0) 1 else kotlin.math.log10(floored).toInt() + 1
         if (intDigits > 12) {
-            return String.format(java.util.Locale.US, "%.8E", result)
+            return String.format(java.util.Locale.US, "%.5E", result)
         }
         val maxScale = (12 - intDigits).coerceIn(0, 8)
         val plain = java.math.BigDecimal.valueOf(result)
@@ -220,10 +220,10 @@ class MainActivity : AppCompatActivity() {
             .stripTrailingZeros()
             .toPlainString()
         if (result != 0.0 && plain.trimStart('-') == "0") {
-            return String.format(java.util.Locale.US, "%.8E", result)
+            return String.format(java.util.Locale.US, "%.5E", result)
         }
         if (plain.count { it.isDigit() } > 12) {
-            return String.format(java.util.Locale.US, "%.8E", result)
+            return String.format(java.util.Locale.US, "%.5E", result)
         }
         return plain
     }

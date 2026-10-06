@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Fixed
+- `PreferencesManager.upgradeToPersistent()` kini menangkan tulis memori saat migrasi ke encrypted prefs agar token/flag tak hilang pada race upgrade.
+- `SendMessageWorker` baca `errorBody()` sekali per respons lalu pakai ulang untuk `isChatMissing`/`isRightsLimited`/`parseRetryAfter` agar `retry_after` dan `migrate_to_chat_id` tak hilang.
+- `MessageScheduler.scheduleMessageSend()` pakai `APPEND` agar pekerjaan rate-limit (`REPLACE`) tak tertimpa antrean biasa.
+- `TextChunk.safeCut()` fallback tetap aman-surrogate saat window penuh tag/entity.
+- `PhoneNumbers` cocokkan ekor 10 digit agar nomor beda dengan sufiks sama tak salah cocok.
+- `NetworkUtils.isNetworkAvailable()` cukup butuh `NET_CAPABILITY_INTERNET` agar antrean tak macet di captive-portal.
+- `CrashReporter` pakai umur minimum wall/monotonik agar jam maju tak hapus laporan baru.
+- `AndroidManifest.xml`: hapus `USER_PRESENT` dari `BootReceiver` dan hapus `<data scheme="package">` pada `MY_PACKAGE_REPLACED` agar restart sehabis update benar-benar jalan.
+- `MainActivity.formatResult()` pakai `"%.5E"` agar notasi eksponen tetap dalam 12 digit.
+- `BootRestartWorker.postResumeReminder()` cek izin notifikasi sebelum throttle 3 jam agar reminder tak hilang sia-sia.
+- `SetupActivity.updateStatus()` tampilkan status tombol screenshot (`granted/off`) agar grant ulang pasca-reboot jelas.
+
 ## [1.6.141] - 2026-10-06
 
 ### Fixed

@@ -300,8 +300,9 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 429) {
+                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                    NetworkUtils.parseRetryAfter(errBody)
                 } catch (_: Exception) {
                     5L
                 }
@@ -351,8 +352,9 @@ class SendMessageWorker(
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
+                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                    NetworkUtils.parseRetryAfter(errBody)
                 } catch (_: Exception) {
                     5L
                 }
@@ -528,8 +530,9 @@ class SendMessageWorker(
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
                 else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
+                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                    NetworkUtils.parseRetryAfter(errBody)
                 } catch (_: Exception) {
                     5L
                 }

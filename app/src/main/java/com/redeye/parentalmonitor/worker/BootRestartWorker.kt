@@ -118,15 +118,18 @@ class BootRestartWorker(
             if (lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 3 * 60 * 60_000L) return
         } catch (_: Exception) {
         }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return
+        } catch (_: Exception) {
+        }
         lastResumeReminderAt = nowResume
         try {
             context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_wall", nowWall).apply()
         } catch (_: Exception) {
         }
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-            ) return
             val tap = android.app.PendingIntent.getActivity(
                 context,
                 0,
