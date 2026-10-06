@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.133] - 2026-10-06
+
 ### Fixed
 - `ContentQuery` fallback/provider lama kini menambahkan `LIMIT` pada `sortOrder` agar batas query SMS/call-log tetap berlaku di bawah API 26 dan tak memuat seluruh inbox.
 - `PhoneNumbers.numbersEqualFast()` hanya samakan 9 digit terakhir agar nomor berbeda dengan sufiks sama tak salah atribusi.
