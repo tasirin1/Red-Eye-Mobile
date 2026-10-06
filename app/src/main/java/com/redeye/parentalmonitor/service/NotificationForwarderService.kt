@@ -548,7 +548,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 5L
             }
             NetworkUtils.noteRateLimited(retryAfter)
-            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
+            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 3600L) * 1000L
             return
         }
         if (response.code() == 401 || response.code() == 403) {

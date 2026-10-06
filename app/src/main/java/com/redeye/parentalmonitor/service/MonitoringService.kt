@@ -997,7 +997,7 @@ class MonitoringService : Service() {
                 5L
             }
             android.util.Log.w("MonitoringService", "getUpdates rate limited, backing off ${retryAfter}s")
-            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
+            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 3600L) * 1000L
             NetworkUtils.noteRateLimited(retryAfter)
             return false
         }
@@ -3856,7 +3856,7 @@ class MonitoringService : Service() {
                 return MediaSendOutcome.SENT
             }
             if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 300L)
+                val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 3600L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 NetworkUtils.noteRateLimited(waitSecs)
                 try {
@@ -4043,7 +4043,7 @@ class MonitoringService : Service() {
             }
             val errorBody = errorFull.take(200)
             if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
+                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 NetworkUtils.noteRateLimited(waitSecs)
                 android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
@@ -4367,7 +4367,7 @@ class MonitoringService : Service() {
             }
             val errorBody = errorFull.take(200)
             if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
+                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
                 NetworkUtils.noteRateLimited(waitSecs)
                 android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")

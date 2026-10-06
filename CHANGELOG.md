@@ -1,3 +1,7 @@
+## [1.6.156] - 2026-10-06
+### Fixed
+- Samakan batas flood-wait jadi 3600 dtk di semua backoff (`pollTelegramCommands`, pengirim audio/video/foto/screenshot, wake-poll forwarder) agar `retry_after` panjang tak di-retry kepagian.
+
 ## [1.6.155] - 2026-10-06
 ### Fixed
 - `SmsRepository`/`CallLogRepository` semua query `DATE DESC` tambah tiebreak `_ID DESC` agar urutan SMS/panggilan deterministik saat timestamp sama.
