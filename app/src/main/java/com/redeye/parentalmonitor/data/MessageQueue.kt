@@ -293,7 +293,7 @@ class MessageQueue private constructor(context: Context) {
             volatileQueue.clear()
             overflowDrops.set(0L)
             expiredDrops.set(0L)
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.apply()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.apply()
         }
         flushSync()
     }

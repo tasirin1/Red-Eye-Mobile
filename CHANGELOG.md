@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.126] - 2026-10-06
+
+### Fixed
+- `MessageQueue.clearQueue()` kini juga menghapus penghitung drop persisten (`KEY_OVERFLOW_DROPS`/`KEY_EXPIRED_DROPS`) agar notifikasi drop basi tak muncul hantu setelah restart proses.
+
 ## [1.6.125] - 2026-10-06
 
 ### Fixed
