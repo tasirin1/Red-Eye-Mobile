@@ -552,15 +552,31 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    private fun readWakePingIds(): MutableSet<Long> {
+        return try {
+            sharedPreferences.getString(KEY_WAKE_PING_IDS, "")
+                ?.split(",")
+                ?.mapNotNull { it.toLongOrNull() }
+                ?.toMutableSet() ?: mutableSetOf()
+        } catch (_: Exception) {
+            mutableSetOf()
+        }
+    }
+
+    private fun writeWakePingIds(ids: Collection<Long>) {
+        try {
+            val capped = ids.sorted().takeLast(50)
+            sharedPreferences.edit().putString(KEY_WAKE_PING_IDS, capped.joinToString(",")).apply()
+        } catch (_: Exception) {
+        }
+    }
+
     fun addWakePingIds(ids: Collection<Long>) {
         if (ids.isEmpty()) return
         try {
-            val cur = sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.toMutableSet() ?: mutableSetOf()
-            for (id in ids) cur.add(id.toString())
-            while (cur.size > 50) {
-                cur.remove(cur.minByOrNull { it.toLongOrNull() ?: Long.MAX_VALUE } ?: break)
-            }
-            sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
+            val cur = readWakePingIds()
+            cur.addAll(ids)
+            writeWakePingIds(cur)
         } catch (_: Exception) {
         }
     }
@@ -607,7 +623,7 @@ class PreferencesManager(context: Context) {
 
     fun wakePingSeen(updateId: Long): Boolean {
         return try {
-            sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.contains(updateId.toString()) == true
+            readWakePingIds().contains(updateId)
         } catch (_: Exception) {
             false
         }
@@ -622,8 +638,8 @@ class PreferencesManager(context: Context) {
 
     fun removeWakePingId(updateId: Long) {
         try {
-            val cur = sharedPreferences.getStringSet(KEY_WAKE_PING_IDS, emptySet())?.toMutableSet() ?: return
-            if (cur.remove(updateId.toString())) sharedPreferences.edit().putStringSet(KEY_WAKE_PING_IDS, cur).apply()
+            val cur = readWakePingIds()
+            if (cur.remove(updateId)) writeWakePingIds(cur)
         } catch (_: Exception) {
         }
     }

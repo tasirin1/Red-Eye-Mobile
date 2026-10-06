@@ -2569,7 +2569,7 @@ class MonitoringService : Service() {
         if (!ok) {
             if (queueOnFail) {
                 messageQueue.addMessages(failed)
-                if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
+                if (replyMarkup != null && failed.isNotEmpty() && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 MessageScheduler.scheduleMessageSend(this)
             }
             return false

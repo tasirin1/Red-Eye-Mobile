@@ -1,3 +1,12 @@
+## [Unreleased]
+### Fixed
+- Wake-ping dedup pakai String koma tunggal, bukan StringSet yang tak didukung EncryptedSharedPreferences.
+- `PhoneNumbers` wajibkan prefix sama bila kedua nomor >10 digit agar beda negara tak dicocokkan.
+- Note menu `/help` hanya antre bila chunk ber-markup yang gagal.
+- `ContentQuery` anggap limit negatif sebagai tanpa batas, bukan `LIMIT 0`.
+- `TextChunk.safeCut` tak pernah kembalikan 0 untuk `max` positif agar pemotong tak loop selamanya.
+- `AdminReceiver.onDisabled` pakai `goAsync` agar notice anti-uninstall tak hilang.
+
 ## [1.6.146] - 2026-10-06
 ### Fixed
 - `BootReceiver` memakai jam elapsed tunggal untuk throttle penanganan boot agar tidak tercampur wall-clock.

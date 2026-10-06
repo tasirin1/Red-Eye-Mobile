@@ -10,7 +10,7 @@ object ContentQuery {
         sortOrder: String,
         limit: Int = Int.MAX_VALUE
     ): android.database.Cursor? {
-        val safeLimit = if (limit < 0) 0 else limit
+        val safeLimit = if (limit < 0) Int.MAX_VALUE else limit
         return try {
             if (safeLimit != Int.MAX_VALUE && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 val bundle = android.os.Bundle().apply {
