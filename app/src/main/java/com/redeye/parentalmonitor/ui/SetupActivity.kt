@@ -822,7 +822,7 @@ class SetupActivity : AppCompatActivity() {
                                         }
                                         try {
                                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                chatIdInput.setText(migratedPlain)
+                                                chatIdInput.setText(STORED_MASK)
                                             }
                                         } catch (_: Exception) {
                                         }

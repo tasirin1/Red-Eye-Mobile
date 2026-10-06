@@ -2173,7 +2173,7 @@ class MonitoringService : Service() {
                         appendLine()
                         part.forEach { sms ->
                             appendLine("📞 Number: ${Html.escape(sms.address)}")
-                            val body = Html.escape(sms.body.take(200))
+                            val body = Html.escape(sms.body.take(safeCut(sms.body, 200)))
                             appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                             appendLine("🔄 Type: ${sms.getTypeString()}")
                             appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -2466,7 +2466,7 @@ class MonitoringService : Service() {
             
             smsList.forEach { sms ->
                 appendLine("📞 Number: ${Html.escape(sms.address)}")
-                val body = Html.escape(sms.body.take(200)) // Limit to 200 chars
+                val body = Html.escape(sms.body.take(safeCut(sms.body, 200))) // Limit to 200 chars
                 appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                 appendLine("🔄 Type: ${sms.getTypeString()}")
                 appendLine("⏰ Time: ${formatDate(sms.date)}")
