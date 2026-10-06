@@ -29,7 +29,7 @@ class CallLogRepository(private val context: Context) {
             selection = null,
             args = null,
             sortOrder = "${CallLog.Calls.DATE} DESC",
-            limit = safeLimit
+            limit = limit.coerceIn(1, 200)
         )
     }
 
@@ -86,7 +86,7 @@ class CallLogRepository(private val context: Context) {
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
             args = arrayOf("%$escaped%"),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-            limit = limit
+            limit = safeLimit
         )
         val matched = filterCallsByNumber(rows, norm)
         if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)

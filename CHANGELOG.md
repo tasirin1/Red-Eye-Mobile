@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.132] - 2026-10-06
+
+### Fixed
+- Gagal build `CallLogRepository.kt:32`: `getAllCalls()` memakai `safeLimit` tak terdefinisi, kini `limit.coerceIn(1, 200)`; query LIKE `getCallsForNumber()` memakai `safeLimit` agar tak over-read.
+- `BootReceiver` hanya menghapus consent screenshot saat boot/unlock, bukan tiap `USER_PRESENT`, agar `/screenshot` tak selalu minta consent ulang.
+- Dedup callback inline revert ke `query.id` agar double-tap sah pada tombol sama tak terbuang.
+- Hapus pre-commit offset `NO_REPLAY_COMMANDS` yang redundan karena blok `finally` sudah commit setelah eksekusi.
+- `answerCallback` tetap mencoba menjawab walau auth-blocked agar spinner Telegram tak menggantung sia-sia.
+- `CameraService` video: penjadwalan stop fallback ke main handler, stop runnable juga dihapus dari watchdog, dan berkas video basi dihapus saat capture gagal.
+- `NotificationForwarderService`: restore hitungan drop idempoten via flag dan filter `/ping` memakai `lastUpdateId` terbaru agar ping valid tak terbuang.
+
 ## [1.6.131] - 2026-10-06
 
 ### Fixed

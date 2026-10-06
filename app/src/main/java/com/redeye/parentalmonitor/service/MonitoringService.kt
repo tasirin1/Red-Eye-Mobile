@@ -947,14 +947,6 @@ class MonitoringService : Service() {
                         if (command.startsWith("/")) {
                             val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
-                            if (command in NO_REPLAY_COMMANDS) {
-                                try {
-                                    if (update.updateId > preferencesManager.lastUpdateId) {
-                                        preferencesManager.setLastUpdateIdSync(update.updateId)
-                                    }
-                                } catch (_: Exception) {
-                                }
-                            }
                             val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId)
                             if (wakeSeen) {
@@ -977,9 +969,8 @@ class MonitoringService : Service() {
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
-        val replayKey = sender + "|" + (query.data.orEmpty()) + "|" + (query.message?.messageId?.toString().orEmpty()) + "|" + (query.message?.date?.toString().orEmpty())
         val dupCallback = synchronized(handledCallbackIds) {
-            val seen = !handledCallbackIds.add(replayKey)
+            val seen = !handledCallbackIds.add(query.id)
             while (handledCallbackIds.size > 200) {
                 try {
                     val it = handledCallbackIds.iterator()
@@ -1064,7 +1055,6 @@ class MonitoringService : Service() {
 
     private suspend fun answerCallback(callbackId: String) {
         try {
-            if (NetworkUtils.isAuthBlocked(preferencesManager)) return
             val token = try {
                 preferencesManager.botToken
             } catch (_: Exception) {

@@ -319,6 +319,7 @@ class CameraService(private val context: Context) {
         var recorder: android.media.MediaRecorder? = null
         var videoSurface: android.view.Surface? = null
         var recording = false
+        var pendingOut: java.io.File? = null
 
         fun releaseRecorder() {
             try { recorder?.release() } catch (_: Exception) { }
@@ -340,6 +341,7 @@ class CameraService(private val context: Context) {
                     }
                     stopRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
                     }
                 } catch (_: Exception) {
                 }
@@ -352,6 +354,12 @@ class CameraService(private val context: Context) {
                 recording = false
                 releaseRecorder()
                 releaseSurface()
+                try {
+                    val stale = pendingOut
+                    pendingOut = null
+                    if (stale != null && stale.exists()) stale.delete()
+                } catch (_: Exception) {
+                }
                 cleanup()
                 onError(e)
             }
@@ -369,6 +377,7 @@ class CameraService(private val context: Context) {
                 }
                 releaseRecorder()
                 releaseSurface()
+                pendingOut = null
                 onVideoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
             } else {
@@ -403,6 +412,7 @@ class CameraService(private val context: Context) {
             (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
             val videoSize = chooseVideoSize(cameraManager, cameraId)
             val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
+            pendingOut = outFile
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
             } else {
@@ -470,6 +480,7 @@ class CameraService(private val context: Context) {
                                     stopRunnable = stop
                                     try {
                                         backgroundHandler?.postDelayed(stop, durationMs)
+                                            ?: mainHandler()?.postDelayed(stop, durationMs)
                                     } catch (e: Exception) {
                                         finishWithError(e)
                                     }

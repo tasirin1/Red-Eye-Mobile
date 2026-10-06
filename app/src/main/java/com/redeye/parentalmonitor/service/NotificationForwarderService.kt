@@ -48,6 +48,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var dropNoticeJob: Job? = null
+    private var dropRestored = false
     private val dropNoticeLock = Any()
     @Volatile
     private var lastRebindAt = 0L
@@ -124,7 +125,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
                 try {
-                    val pending = prefsRef?.pendingNotifDrops ?: 0
+                    val pending = if (dropRestored) 0 else prefsRef?.pendingNotifDrops ?: 0
+                    dropRestored = true
                     if (pending > 0) {
                         dropNoticeCount.addAndGet(pending)
                         synchronized(dropNoticeLock) {
@@ -622,12 +624,13 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!pinged) return
         try {
+            val freshLast = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
             val pingIds = updates.filter { u ->
                 val m = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
                 val cb = u.callbackQuery
                 val t = try { (m?.text ?: m?.caption ?: cb?.data).orEmpty() } catch (_: Exception) { "" }
                 val base = t.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
-                base == "/ping" && u.updateId > mainLast
+                base == "/ping" && u.updateId > freshLast
             }.map { it.updateId }
             prefs.addWakePingIds(pingIds)
         } catch (_: Exception) {

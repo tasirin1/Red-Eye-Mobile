@@ -117,7 +117,8 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        if (!updated) {
+        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == Intent.ACTION_USER_UNLOCKED
+        if (!updated && bootClear) {
             try {
                 preferencesManager.clearScreenshotConsentSync()
             } catch (_: Exception) {
