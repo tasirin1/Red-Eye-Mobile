@@ -6,13 +6,17 @@ data class CallData(
     val name: String?,
     val date: Long,
     val duration: Int, // seconds
-    val type: Int // 1 = incoming, 2 = outgoing, 3 = missed
+    val type: Int // 1 = incoming, 2 = outgoing, 3 = missed, 4 = voicemail, 5 = rejected, 6 = refused, 7 = answered elsewhere
 ) {
     fun getTypeString(): String {
         return when (type) {
             1 -> "Incoming"
             2 -> "Outgoing"
             3 -> "Missed"
+            4 -> "Voicemail"
+            5 -> "Rejected"
+            6 -> "Refused"
+            7 -> "Answered elsewhere"
             else -> "Unknown"
         }
     }

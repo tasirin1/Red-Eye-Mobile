@@ -1,3 +1,13 @@
+## [Unreleased]
+### Fixed
+- `SetupActivity.isBatteryExempt` dan `activateDeviceAdmin` dibungkus guard agar `PowerManager`/`DevicePolicyManager` kustom tak sebabkan crash dari halaman Setup.
+- `NetworkUtils.isNetworkAvailable` pakai safe-cast `as?` plus `try/catch` agar `ConnectivityManager` null/kustom kembalikan `false` bukan crash.
+- `isPremiumSmsNumber` kecualikan nomor darurat (`112`, `911`, `999`, `110`, `000`, `111`, `118`, `119`) dan hapus prefix `809` dari daftar premium agar SMS darurat tak diblokir dan nomor Dominika tak ditandai premium.
+- `Redact.token` pakai word-boundary untuk secret digit pendek agar chat ID tak menyensor substring dalam angka lain.
+- `SmsData`/`CallData` petakan tipe provider 3-6/4-7 (`Draft`/`Outbox`/`Failed`/`Queued`, `Voicemail`/`Rejected`/`Refused`/`Answered elsewhere`) agar label riwayat akurat.
+- `NO_REPLAY_COMMANDS` hapus duplikat `/smsconfirm` yang sudah ada di `MUTATING_COMMANDS`.
+- Truncate teks notifikasi/SMS escape-dulu-potong-kemudian agar entitas HTML tak terbelah dan pesan Telegram tetap valid.
+
 ## [1.6.151] - 2026-10-06
 ### Fixed
 - `ParentalMonitorApp` bungkus `onCreate` + `createNotificationChannel` dengan guard dan null-check `NotificationManager` agar startup tak NPE.

@@ -8,7 +8,12 @@ object Redact {
         if (src.isEmpty()) return ""
         var out = src
         for (secret in secrets) {
-            if (secret.isNotEmpty()) out = out.replace(secret, "***")
+            if (secret.isEmpty()) continue
+            if (secret.length < 10 && secret.all { it.isDigit() }) {
+                out = out.replace(Regex("(?<!\\d)" + Regex.escape(secret) + "(?!\\d)"), "***")
+            } else {
+                out = out.replace(secret, "***")
+            }
         }
         return out.replace(TOKEN_FALLBACK, "***")
     }

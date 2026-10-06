@@ -432,8 +432,8 @@ class NotificationForwarderService : NotificationListenerService() {
         val message = buildString {
             appendLine("🔔 <b>Notification</b>")
             appendLine("App: ${Html.escape(label)}")
-            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(title, 200)))}")
-            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, 300)))}")
+            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
+            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
         }
         record(label, title, text)
         try {

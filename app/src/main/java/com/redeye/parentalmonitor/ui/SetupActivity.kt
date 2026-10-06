@@ -614,8 +614,12 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun isBatteryExempt(): Boolean {
-        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-        return pm.isIgnoringBatteryOptimizations(packageName)
+        return try {
+            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun isNotificationAccessGranted(): Boolean {
@@ -922,10 +926,13 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun activateDeviceAdmin() {
-        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, AdminReceiver::class.java)
-        if (dpm.isAdminActive(admin)) {
-            Toast.makeText(this, getString(R.string.setup_admin_on), Toast.LENGTH_SHORT).show()
+        try {
+            if ((getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(admin)) {
+                Toast.makeText(this, getString(R.string.setup_admin_on), Toast.LENGTH_SHORT).show()
+                return
+            }
+        } catch (_: Exception) {
             return
         }
         try {
