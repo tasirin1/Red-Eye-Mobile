@@ -41,7 +41,11 @@ class BootReceiver : BroadcastReceiver() {
         }
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)
-        val pendingResult = goAsync()
+        val pendingResult = try {
+            goAsync()
+        } catch (_: Exception) {
+            return
+        }
         val bootAction = intent.action
         val thread = Thread {
             try {

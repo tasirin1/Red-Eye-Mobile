@@ -1,3 +1,13 @@
+## [Unreleased]
+### Fixed
+- `BootRestartWorker.getForegroundInfo` dibungkus guard dengan notifikasi fallback agar panggilan langsung `WorkManager` tak gagal tak tertangani.
+- `SendMessageWorker.messageQueue` jadi `lazy` agar alokasi antrean terjadi di dalam `doWork` yang guarded, bukan saat konstruksi worker.
+- `BootReceiver.onReceive` bungkus `goAsync` agar `IllegalStateException` tak men-crash receiver sebelum `handleBoot` jalan.
+- `AdminReceiver.onDisableRequested` bungkus `getString` dengan fallback hardcoded agar callback sistem tak crash.
+- `patrolRound` pakai safe-cast `as? BatteryManager` agar ronde patrol tak mati sia-sia di ROM kustom.
+- Cabang `/battery` bungkus `getIntProperty` seperti situs kembarnya agar konsisten anti-crash.
+- `MainActivity.openSetupPage` bungkus `Toast` di blok `catch` agar kegagalan toast saat teardown tak men-crash aplikasi.
+
 ## [1.6.152] - 2026-10-06
 ### Fixed
 - `SetupActivity.isBatteryExempt` dan `activateDeviceAdmin` dibungkus guard agar `PowerManager`/`DevicePolicyManager` kustom tak sebabkan crash dari halaman Setup.

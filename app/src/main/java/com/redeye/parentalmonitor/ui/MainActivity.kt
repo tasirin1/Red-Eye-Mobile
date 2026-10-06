@@ -255,7 +255,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SetupActivity::class.java))
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Failed to open setup", e)
-            Toast.makeText(this, getString(R.string.msg_open_setup_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
+            try {
+                Toast.makeText(this, getString(R.string.msg_open_setup_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) {
+            }
         }
     }
 

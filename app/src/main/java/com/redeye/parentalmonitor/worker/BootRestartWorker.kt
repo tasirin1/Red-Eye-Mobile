@@ -21,6 +21,24 @@ class BootRestartWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
+        return try {
+            buildForegroundInfo()
+        } catch (_: Exception) {
+            val fallback = NotificationCompat.Builder(applicationContext, ParentalMonitorApp.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Monitoring")
+                .setOngoing(true)
+                .setSilent(true)
+                .build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ForegroundInfo(NOTIF_ID, fallback, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                ForegroundInfo(NOTIF_ID, fallback)
+            }
+        }
+    }
+
+    private fun buildForegroundInfo(): ForegroundInfo {
         val tap = android.app.PendingIntent.getActivity(
             applicationContext,
             0,

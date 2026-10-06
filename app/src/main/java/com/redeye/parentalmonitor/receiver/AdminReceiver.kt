@@ -38,7 +38,11 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
         android.util.Log.w("AdminReceiver", "Attempting to disable Device Admin!")
-        return context.getString(R.string.admin_disable_warning)
+        return try {
+            context.getString(R.string.admin_disable_warning)
+        } catch (_: Exception) {
+            "Disabling admin will turn off uninstall protection."
+        }
     }
 }
 

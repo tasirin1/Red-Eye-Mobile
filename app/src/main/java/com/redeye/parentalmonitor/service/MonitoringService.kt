@@ -656,9 +656,13 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             null
         }
-        val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
+        val batteryManager = try {
+            getSystemService(BATTERY_SERVICE) as? BatteryManager
+        } catch (_: Exception) {
+            null
+        }
         val level = try {
-            batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
         } catch (_: Exception) {
             -1
         }
@@ -1482,8 +1486,11 @@ class MonitoringService : Service() {
                 }
             }
             "/battery" -> {
-                val batteryManager = getSystemService(BATTERY_SERVICE) as BatteryManager
-                val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                val level = try {
+                    (getSystemService(BATTERY_SERVICE) as BatteryManager).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                } catch (_: Exception) {
+                    -1
+                }
                 val levelText = if (level in 0..100) "$level%" else "unknown"
                 sendToTelegram("🔋 <b>Battery</b>\nLevel: $levelText")
             }

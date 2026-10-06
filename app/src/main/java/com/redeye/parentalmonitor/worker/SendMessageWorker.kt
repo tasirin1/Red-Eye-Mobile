@@ -17,7 +17,7 @@ class SendMessageWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    private val messageQueue = MessageQueue.getInstance(context.applicationContext)
+    private val messageQueue: MessageQueue by lazy { MessageQueue.getInstance(applicationContext) }
     private val preferencesManager: PreferencesManager by lazy {
         try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
         PreferencesManager.getInstance(context.applicationContext)
