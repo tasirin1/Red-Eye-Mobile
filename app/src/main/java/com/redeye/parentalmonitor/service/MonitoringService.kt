@@ -764,7 +764,7 @@ class MonitoringService : Service() {
                 ""
             }.ifEmpty { return }
             val url = "https://api.telegram.org/bot${token}/sendMessage"
-            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> shown in Setup status.", parseMode = null))
+            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> <pairing code> shown in Setup status.", parseMode = null))
         } catch (_: Exception) {
         }
     }
@@ -818,6 +818,8 @@ class MonitoringService : Service() {
     private var idlePolls = 0
     @Volatile
     private var commandBackoffUntil = 0L
+    @Volatile
+    private var updateConflictNoticeAt = 0L
     @Volatile
     private var mediaBackoffUntil = 0L
     private val msgDropCount = java.util.concurrent.atomic.AtomicInteger(0)
@@ -934,7 +936,18 @@ class MonitoringService : Service() {
         }
         if (response.code() == 409) {
             android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
+            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
             idlePolls = 4
+            try {
+                val nowConflict = System.currentTimeMillis()
+                if (nowConflict - updateConflictNoticeAt > 3_600_000L) {
+                    updateConflictNoticeAt = nowConflict
+                    serviceScope.launch {
+                        sendToTelegram("Bot polling conflict (409): another client is reading updates, commands delayed. Stop other polling clients.")
+                    }
+                }
+            } catch (_: Exception) {
+            }
             return false
         }
         if (response.code() == 429) {
@@ -945,6 +958,7 @@ class MonitoringService : Service() {
             }
             android.util.Log.w("MonitoringService", "getUpdates rate limited, backing off ${retryAfter}s")
             commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
+            NetworkUtils.noteRateLimited(retryAfter)
             return false
         }
         if (response.code() == 400) {
@@ -1025,14 +1039,18 @@ class MonitoringService : Service() {
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
                     val startHead = rawText.substringBefore(" ").trim().substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
-                    if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg != chatId) {
-                        sendPairHint(senderId)
-                    } else if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
+                    if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
                         if (cachedOwnerId == 0L) {
-                            val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
-                            if (learned) {
-                                registerBotCommands()
-                                sendToTelegram("Owner linked via /start.")
+                            val startTokens = startArg.split(Regex("\\s+")).filter { it.isNotEmpty() }
+                            val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
+                            if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty() && startTokens[1] == pairCode) {
+                                val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
+                                if (learned) {
+                                    registerBotCommands()
+                                    sendToTelegram("Owner linked via /start.")
+                                }
+                            } else {
+                                sendPairHint(senderId)
                             }
                         } else if (senderId != cachedOwnerId.toString()) {
                             sendToTelegram("\u26A0\uFE0F Pairing attempt ignored: owner already linked.")
@@ -1871,7 +1889,7 @@ class MonitoringService : Service() {
                         emptyList()
                     }
                     if (calls.isEmpty() && sms.isEmpty()) {
-                        sendToTelegram("\uD83D\uDD0E No history for $digits.")
+                        sendToTelegram("\uD83D\uDD0E No history for $digits (search covers roughly the last 12 months).")
                     } else {
                         if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls))
                         if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms))
@@ -3767,6 +3785,7 @@ class MonitoringService : Service() {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
             if (!hasNetwork()) return MediaSendOutcome.KEPT
             val (botToken, chatId) = sendCreds()
             if (botToken.isEmpty() || chatId.isEmpty()) return MediaSendOutcome.KEPT
@@ -3783,6 +3802,7 @@ class MonitoringService : Service() {
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+                NetworkUtils.noteRateLimited(waitSecs)
                 try {
                     MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
                 } catch (_: Exception) {
@@ -3939,6 +3959,7 @@ class MonitoringService : Service() {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - video saved for later")
                 return MediaSendOutcome.KEPT
@@ -3968,6 +3989,7 @@ class MonitoringService : Service() {
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+                NetworkUtils.noteRateLimited(waitSecs)
                 android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
                 try {
                     MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
@@ -4252,6 +4274,7 @@ class MonitoringService : Service() {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
             if (!hasNetwork()) {
                 android.util.Log.w("MonitoringService", "No network - photo saved for later")
                 return MediaSendOutcome.KEPT
@@ -4290,6 +4313,7 @@ class MonitoringService : Service() {
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 300L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+                NetworkUtils.noteRateLimited(waitSecs)
                 android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")
                 try {
                     MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)

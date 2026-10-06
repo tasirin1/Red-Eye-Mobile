@@ -3,12 +3,14 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="secure_prefs" />
         <exclude domain="sharedpref" path="encrypted_queue" />
+        <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs_key_keyset__" />
         <exclude domain="sharedpref" path="boot_meta" />
         <exclude domain="file" path="crash_pending.txt" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="secure_prefs" />
         <exclude domain="sharedpref" path="encrypted_queue" />
+        <exclude domain="sharedpref" path="__androidx_security_crypto_encrypted_prefs_key_keyset__" />
         <exclude domain="sharedpref" path="boot_meta" />
         <exclude domain="file" path="crash_pending.txt" />
     </device-transfer>

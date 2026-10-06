@@ -1,3 +1,14 @@
+## [Unreleased]
+
+### Fixed
+- Pairing owner kini butuh `/start <chat ID> <kode pairing>` dengan kode acak per perangkat tampil di status Setup; kredensial baru merotasi kode.
+- `getUpdates` 409 kini backoff 5 menit dengan notice sejam sekali agar tak polling sia-sia.
+- Unggah foto/audio/video dan poll `getUpdates` ikut koordinator 429 bersama.
+- `clearCredentials` tak lagi reset `lastUpdateId`/`wakeUpdateId` agar tak replay update basi; ganti token tak reset kursor update.
+- `/history` kosong kini sebut pencarian mencakup roughly 12 bulan terakhir.
+- Aturan backup kecualikan keyset `EncryptedSharedPreferences` agar konsisten dengan ciphertext.
+- Status Setup tampilkan izin notifikasi sistem dan kode pairing owner.
+
 ## [1.6.143] - 2026-10-06
 
 ### Fixed

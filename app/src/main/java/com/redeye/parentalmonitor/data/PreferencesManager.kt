@@ -244,6 +244,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
+        private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
         private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
         private const val KEY_SCREENSHOT_RESULT_CODE = "screenshot_result_code"
         private const val KEY_SCREENSHOT_DATA = "screenshot_data"
@@ -509,6 +510,26 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    var ownerPairCode: String
+        get() = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+
+    fun ensureOwnerPairCode(): String {
+        try {
+            val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
+            if (cur.matches(Regex("^[0-9]{6}$"))) return cur
+            val code = (100000 + java.security.SecureRandom().nextInt(900000)).toString()
+            try {
+                sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).commit()
+            } catch (_: Exception) {
+                return code
+            }
+            return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: code } catch (_: Exception) { code }
+        } catch (_: Exception) {
+            return ""
+        }
+    }
+
     var pendingMsgDrops: Int
         get() = try { sharedPreferences.getInt(KEY_PENDING_MSG_DROPS, 0) } catch (_: Exception) { 0 }
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()
@@ -643,6 +664,7 @@ class PreferencesManager(context: Context) {
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
         if (changed) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
+            editor.putString(KEY_OWNER_PAIR_CODE, "")
         }
         if (chatChanged || tokenChanged) {
             editor.putLong(KEY_OWNER_ID, 0L)
@@ -650,8 +672,6 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
         if (tokenChanged) {
-            editor.putLong(KEY_LAST_UPDATE_ID, 0L)
-            editor.putLong(KEY_WAKE_UPDATE_ID, 0L)
             editor.remove(KEY_WAKE_PING_IDS)
         }
     }

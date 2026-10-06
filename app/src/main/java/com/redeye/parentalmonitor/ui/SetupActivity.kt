@@ -314,8 +314,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.clearRingStateSync() } catch (_: Exception) { }
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
-            try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }
-            try { prefs.wakeUpdateId = 0L } catch (_: Exception) { }
+            try { prefs.ownerPairCode = "" } catch (_: Exception) { }
             try { prefs.lastSmsId = 0L } catch (_: Exception) { }
             try { prefs.lastCallTimestamp = 0L } catch (_: Exception) { }
             try { prefs.lastCallId = 0L } catch (_: Exception) { }
@@ -947,9 +946,11 @@ class SetupActivity : AppCompatActivity() {
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
-            val ownerLine = if (ownerKnown) "\nOwner: recognized" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
+            val pairCode = try { prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
+            val ownerLine = if (ownerKnown) "\nOwner: recognized" else if (pairCode.isNotEmpty()) "\nOwner: unknown - DM the bot /start <chat ID> $pairCode privately to unlock owner commands" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val shotOn = try { prefs.hasScreenshotConsent() } catch (_: Exception) { false }
+            val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
             val listener = isNotificationAccessGranted()
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(
@@ -957,7 +958,7 @@ class SetupActivity : AppCompatActivity() {
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"
