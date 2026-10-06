@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.146] - 2026-10-06
 ### Fixed
 - `BootReceiver` memakai jam elapsed tunggal untuk throttle penanganan boot agar tidak tercampur wall-clock.
 - Koordinator 429 `NetworkUtils` memakai `elapsedRealtime` agar perubahan jam tidak merusak backoff.
