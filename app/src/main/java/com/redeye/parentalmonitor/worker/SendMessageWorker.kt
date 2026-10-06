@@ -31,6 +31,10 @@ class SendMessageWorker(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Throwable) {
+                try {
+                    MessageScheduler.scheduleMessageSendNext(applicationContext, 60_000L)
+                } catch (_: Exception) {
+                }
                 Result.success()
             }
         } finally {

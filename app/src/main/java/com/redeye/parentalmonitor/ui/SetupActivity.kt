@@ -264,6 +264,18 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
         findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
 
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                val meta = getSharedPreferences("setup_meta", MODE_PRIVATE)
+                if (!meta.getBoolean("notif_asked", false)) {
+                    try { meta.edit().putBoolean("notif_asked", true).apply() } catch (_: Exception) { }
+                    try { permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) } catch (_: Exception) { }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
         updateStatus()
     }
 

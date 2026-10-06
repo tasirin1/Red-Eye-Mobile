@@ -28,10 +28,10 @@ class SmsRepository(private val context: Context) {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
-        val escaped = norm.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        val fuzzy = "%" + norm.toCharArray().joinToString("%") + "%"
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
-            args = arrayOf("%$escaped%"),
+            args = arrayOf(fuzzy),
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )

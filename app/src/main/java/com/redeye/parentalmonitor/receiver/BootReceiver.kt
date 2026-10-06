@@ -102,7 +102,7 @@ class BootReceiver : BroadcastReceiver() {
             val stuckVolume = preferencesManager.ringPrevVolume
             val stuckAt = preferencesManager.ringSavedAt
             val ringAge = System.currentTimeMillis() - stuckAt
-            if (stuckVolume >= 0 && stuckAt > 0L && ringAge > 60_000L && ringAge < 12 * 60 * 60_000L) {
+            if (stuckVolume >= 0 && stuckAt > 0L && (ringAge < 0L || (ringAge > 60_000L && ringAge < 12 * 60 * 60_000L))) {
                 try {
                     val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
                     audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckVolume, 0)

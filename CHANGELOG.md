@@ -1,3 +1,20 @@
+## [1.6.158] - 2026-10-06
+### Fixed
+- `MonitoringService` kursor SMS/panggilan (`checkAndSendNewData`, `sendInitialData`) hanya maju saat kirim sukses agar pesan gagal tak ditandai sudah-dilihat.
+- `MessageQueue.clearQueue` juga hapus simpanan disk saat mode volatil agar antrean lama tak muncul lagi setelah restore.
+- `MainActivity` jalur stealth tak lagi panggil `setMonitoringActive(true)` agar jeda pengguna tak terbuka diam-diam.
+- `SmsRepository.getSmsForNumber` prefilter `LIKE` tak sensitif separator (`%d%i%g%i%t%`) agar `/history` konsisten.
+- Toleransi timestamp perintah di masa depan dilonggarkan ke 900 dtk agar jam HP sedikit lambat tak menolak perintah valid.
+- Fallback plain 400 lengkapi unescape `&quot;`, `&#39;`, `&#x27;` agar teks tak tampil mentah.
+- `PreferencesManager.upgradeToPersistent` migrasi satu snapshot terkunci agar tulis konkuren tak hilang atau bangkit lagi.
+- `MemoryPrefs` salin `StringSet` saat simpan dan baca agar mutasi luar tak merusak map.
+- `SendMessageWorker` jadwalkan ulang 60 dtk saat throwable tak terduga agar antrean tak macet diam-diam.
+- `MonitoringService.onStartCommand` refresh prefs persisten sebelum menyerah agar restart sistem dengan prefs memori tak matikan monitoring.
+- `CameraService.stopBackgroundThread` selalu `join` dari thread lain agar tak ada thread yatim.
+- `BootReceiver` anggap `ringAge` negatif (jam mundur) sebagai macet agar volume alarm tetap dipulihkan.
+- `AndroidManifest.xml` tambah aksi `QUICKBOOT_POWERON` HTC agar auto-start jalan di ROM tersebut.
+- `SetupActivity` minta `POST_NOTIFICATIONS` sekali non-blokir agar pengingat resume tampil tanpa menghalangi monitoring.
+
 ## [1.6.157] - 2026-10-06
 ### Fixed
 - `/recordvideo` jalan di background job seperti `/record` agar polling command tak macet sampai 3 menit selama perekaman video.

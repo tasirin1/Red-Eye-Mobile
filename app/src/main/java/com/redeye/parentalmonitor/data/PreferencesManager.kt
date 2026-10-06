@@ -25,95 +25,33 @@ class PreferencesManager(context: Context) {
     private val listenerLock = Any()
     private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()
 
+    private val upgradeLock = Any()
+
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
-        return try {
-            val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
-            val old = sharedPreferences
-            try {
-                val snap = snapshot()
+        synchronized(upgradeLock) {
+            if (storageEncrypted) return true
+            return try {
+                val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
+                val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
                 if (snap.isNotEmpty()) {
                     val editor = fresh.edit()
                     for ((key, value) in snap) {
-                        when (value) {
-                            null -> editor.remove(key)
-                            is String -> editor.putString(key, value)
-                            is Int -> editor.putInt(key, value)
-                            is Long -> editor.putLong(key, value)
-                            is Float -> editor.putFloat(key, value)
-                            is Boolean -> editor.putBoolean(key, value)
-                            is Set<*> -> try {
-                                @Suppress("UNCHECKED_CAST")
-                                editor.putStringSet(key, value as Set<String>)
-                            } catch (_: Exception) {
-                            }
-                            else -> Unit
-                        }
+                        putEntryInto(editor, key, value)
                     }
                     editor.commit()
                 }
-            } catch (_: Exception) {
-            }
-            val late = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
-            val initialKeys = try { HashSet(snapshot().keys) } catch (_: Exception) { emptySet<String>() }
-            sharedPreferences = fresh
-            try {
-                val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                if (late.isNotEmpty()) {
-                    val delta = fresh.edit()
-                    var touched = false
-                    for ((key, value) in late) {
-                        touched = true
-                        when (value) {
-                            null -> delta.remove(key)
-                            is String -> delta.putString(key, value)
-                            is Int -> delta.putInt(key, value)
-                            is Long -> delta.putLong(key, value)
-                            is Float -> delta.putFloat(key, value)
-                            is Boolean -> delta.putBoolean(key, value)
-                            is Set<*> -> try {
-                                @Suppress("UNCHECKED_CAST")
-                                delta.putStringSet(key, value as Set<String>)
-                            } catch (_: Exception) {
-                            }
-                            else -> Unit
-                        }
+                sharedPreferences = fresh
+                synchronized(listenerLock) {
+                    for (l in listenerSet) {
+                        try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
                     }
-                    if (touched) delta.commit()
                 }
+                storageEncrypted = true
+                true
             } catch (_: Exception) {
+                false
             }
-            try {
-                val tail = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
-                if (tail.isNotEmpty()) {
-                    val cur = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    val tailEdit = fresh.edit()
-                    var tailTouched = false
-                    for ((key, value) in tail) {
-                        if (!cur.containsKey(key)) {
-                            tailTouched = true
-                            putEntryInto(tailEdit, key, value)
-                        }
-                    }
-                    for (key in initialKeys) {
-                        if (!tail.containsKey(key) && cur.containsKey(key)) {
-                            tailTouched = true
-                            tailEdit.remove(key)
-                        }
-                    }
-                    if (tailTouched) tailEdit.commit()
-                }
-            } catch (_: Exception) {
-            }
-            synchronized(listenerLock) {
-                for (l in listenerSet) {
-                    try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
-                }
-            }
-            storageEncrypted = true
-            true
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -732,7 +670,8 @@ private class MemoryPrefs : SharedPreferences {
     override fun getString(key: String, defValue: String?): String? = data[key] as? String ?: defValue
     override fun getStringSet(key: String, defValues: Set<String>?): Set<String>? {
         @Suppress("UNCHECKED_CAST")
-        return data[key] as? Set<String> ?: defValues
+        val stored = data[key] as? Set<String>
+        return if (stored != null) HashSet(stored) else defValues
     }
     override fun getInt(key: String, defValue: Int): Int = data[key] as? Int ?: defValue
     override fun getLong(key: String, defValue: Long): Long = data[key] as? Long ?: defValue
@@ -750,7 +689,7 @@ private class MemoryPrefs : SharedPreferences {
         private val pending = HashMap<String, Any?>()
         private var clearAll = false
         override fun putString(key: String, value: String?): SharedPreferences.Editor = apply { pending[key] = value }
-        override fun putStringSet(key: String, values: Set<String>?): SharedPreferences.Editor = apply { pending[key] = values }
+        override fun putStringSet(key: String, values: Set<String>?): SharedPreferences.Editor = apply { pending[key] = if (values != null) HashSet(values) else null }
         override fun putInt(key: String, value: Int): SharedPreferences.Editor = apply { pending[key] = value }
         override fun putLong(key: String, value: Long): SharedPreferences.Editor = apply { pending[key] = value }
         override fun putFloat(key: String, value: Float): SharedPreferences.Editor = apply { pending[key] = value }

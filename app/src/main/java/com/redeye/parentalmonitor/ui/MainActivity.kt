@@ -298,7 +298,6 @@ class MainActivity : AppCompatActivity() {
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {
                 startMonitoringService()
-                preferencesManager.setMonitoringActive(true)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")

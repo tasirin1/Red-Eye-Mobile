@@ -310,6 +310,12 @@ class MessageQueue private constructor(context: Context) {
             generationCounter.incrementAndGet()
             cached = mutableListOf()
             volatileQueue.clear()
+            if (volatileOnly) {
+                try {
+                    PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME).edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.commit()
+                } catch (_: Exception) {
+                }
+            }
             overflowDrops.set(0L)
             expiredDrops.set(0L)
             sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.apply()
