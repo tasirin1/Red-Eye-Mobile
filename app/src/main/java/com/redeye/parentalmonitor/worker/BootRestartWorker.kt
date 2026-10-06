@@ -43,6 +43,16 @@ class BootRestartWorker(
     }
 
     override suspend fun doWork(): Result {
+        return try {
+            doWorkInternal()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            Result.success()
+        }
+    }
+
+    private suspend fun doWorkInternal(): Result {
         val appContext = applicationContext
         try {
             setForeground(getForegroundInfo())

@@ -45,6 +45,7 @@ class SetupActivity : AppCompatActivity() {
     private var testJob: kotlinx.coroutines.Job? = null
     private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
 
     private val requiredPermissions: Array<String>
         get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
@@ -73,7 +74,7 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
         if (res.resultCode == RESULT_OK && res.data != null) {
-            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val uri = res.data?.toUri(Intent.URI_INTENT_SCHEME).orEmpty()
                     prefs.saveScreenshotConsentSync(res.resultCode, uri)
@@ -213,7 +214,7 @@ class SetupActivity : AppCompatActivity() {
             cameraIntervalInput.setText("")
         } catch (_: Exception) {
         }
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
                 PreferencesManager.refreshInstance(this@SetupActivity)
             } catch (_: Exception) {
@@ -306,7 +307,7 @@ class SetupActivity : AppCompatActivity() {
             chatIdInput.setText("")
         } catch (_: Exception) {
         }
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.botToken = "" } catch (_: Exception) { }
             try { prefs.chatId = "" } catch (_: Exception) { }
             try { prefs.ownerUserId = 0L } catch (_: Exception) { }
@@ -371,7 +372,7 @@ class SetupActivity : AppCompatActivity() {
         try { testSeq.incrementAndGet() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
-        saveJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        saveJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
@@ -447,7 +448,7 @@ class SetupActivity : AppCompatActivity() {
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
-        testJob = lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
@@ -571,7 +572,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun stopMonitoringConfirmed() {
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
@@ -589,7 +590,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringConfirmed() {
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
             try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -634,7 +635,7 @@ class SetupActivity : AppCompatActivity() {
             }
             return
         }
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val next = try { !prefs.notifForwardEnabled } catch (_: Exception) { true }
             try { prefs.notifForwardEnabled = next } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -681,7 +682,7 @@ class SetupActivity : AppCompatActivity() {
             }
         } catch (_: Exception) {
         }
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             var pending = ""
             try {
                 val token = prefs.botToken
@@ -939,7 +940,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
             fun s(key: String): String = snap[key] as? String ?: ""
             fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def

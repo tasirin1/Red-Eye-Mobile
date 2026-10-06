@@ -15,9 +15,18 @@ class ParentalMonitorApp : Application() {
     }
 
     override fun onCreate() {
-        super.onCreate()
-        CrashReporter.install(this)
-        createNotificationChannel()
+        try {
+            super.onCreate()
+        } catch (_: Exception) {
+        }
+        try {
+            CrashReporter.install(this)
+        } catch (_: Exception) {
+        }
+        try {
+            createNotificationChannel()
+        } catch (_: Exception) {
+        }
         try {
             Thread {
                 try {
@@ -52,8 +61,15 @@ class ParentalMonitorApp : Application() {
                 enableVibration(false)
                 enableLights(false)
             }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+            val notificationManager = try {
+                getSystemService(NotificationManager::class.java)
+            } catch (_: Exception) {
+                null
+            } ?: return
+            try {
+                notificationManager.createNotificationChannel(channel)
+            } catch (_: Exception) {
+            }
             try {
                 val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_HIGH).apply {
                     setShowBadge(false)

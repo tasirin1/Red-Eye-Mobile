@@ -1,3 +1,14 @@
+## [Unreleased]
+### Fixed
+- `ParentalMonitorApp` bungkus `onCreate` + `createNotificationChannel` dengan guard dan null-check `NotificationManager` agar startup tak NPE.
+- `MonitoringService.onStartCommand` tak pernah lempar: dispatch dibungkus `try` dan selalu kembalikan `START_STICKY`/`START_NOT_STICKY`.
+- `MonitoringService.onCreate` inisialisasi repo/antrean/kamera dibuat graceful: gagal init jadwalkan restart via `MessageScheduler.scheduleBootRestart` lalu `stopSelf`, bukan crash.
+- `MonitoringService` listener pref dan `setupTapIntent` di `startMonitoring` dibungkus guard agar callback sistem tak fatal.
+- `SendMessageWorker`/`BootRestartWorker` tangkap `Throwable` di batas `doWork` dan kembalikan `Result.success()` agar antrean tetap utuh tanpa crash proses.
+- `SetupActivity` pasang `CoroutineExceptionHandler` di semua `lifecycleScope.launch` IO agar pengecualian tak terduga tak merobohkan aplikasi.
+- `CameraService` semua callback `StateCallback` kamera dijamin memanggil `finishWithError` agar flag busy tak macet selamanya.
+- `AdminReceiver.onDisabled` bungkus `Toast` dengan guard.
+
 ## [1.6.150] - 2026-10-06
 ### Fixed
 - `AndroidManifest.xml` set `NotificationForwarderService` ke `exported="true"` agar sistem bisa bind listener dan forward notifikasi jalan lagi.

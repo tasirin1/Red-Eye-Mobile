@@ -16,7 +16,10 @@ class AdminReceiver : DeviceAdminReceiver() {
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
         android.util.Log.w("AdminReceiver", "Device Admin disabled!")
-        Toast.makeText(context, context.getString(R.string.admin_disabled), Toast.LENGTH_LONG).show()
+        try {
+            Toast.makeText(context, context.getString(R.string.admin_disabled), Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {
+        }
         val pending = try { goAsync() } catch (_: Exception) { null }
         try {
             Thread {

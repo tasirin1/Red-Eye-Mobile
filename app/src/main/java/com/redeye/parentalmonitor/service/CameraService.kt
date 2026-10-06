@@ -296,23 +296,56 @@ class CameraService(private val context: Context) {
             // Open camera
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
-                    cameraDevice = camera
-                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
-                    onTrace("trace: camera opened")
-                    createCaptureSession(camera, jpegOrientation, ::finishWithError, { onTrace(it) })
+                    try {
+                        cameraDevice = camera
+                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
+                        onTrace("trace: camera opened")
+                        createCaptureSession(camera, jpegOrientation, ::finishWithError, { onTrace(it) })
+                    } catch (e: Exception) {
+                        finishWithError(e)
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
-                    Log.w(TAG, "Camera disconnected")
-                    finishWithError(Exception("Camera disconnected"))
+                    try {
+                        Log.w(TAG, "Camera disconnected")
+                        finishWithError(Exception("Camera disconnected"))
+                    } catch (e: Exception) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
-                    Log.e(TAG, "Camera error: $error")
-                    if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
-                        finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
-                    } else {
-                        finishWithError(Exception("Camera error: $error"))
+                    try {
+                        Log.e(TAG, "Camera error: $error")
+                        if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
+                            finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                        } else {
+                            finishWithError(Exception("Camera error: $error"))
+                        }
+                    } catch (e: Exception) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
                     }
                 }
             }, backgroundHandler)
@@ -472,8 +505,8 @@ class CameraService(private val context: Context) {
             val recordSurface = videoSurface ?: run { finishWithError(Exception("Record surface unavailable")); return }
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
-                    cameraDevice = camera
                     try {
+                        cameraDevice = camera
                         val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
                         builder.addTarget(recordSurface)
                         builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -536,16 +569,45 @@ class CameraService(private val context: Context) {
                         )
                     } catch (e: Exception) {
                         finishWithError(e)
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
                     }
                 }
                 override fun onDisconnected(camera: CameraDevice) {
-                    finishWithError(Exception("Camera disconnected"))
+                    try {
+                        finishWithError(Exception("Camera disconnected"))
+                    } catch (e: Exception) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
                 override fun onError(camera: CameraDevice, error: Int) {
-                    if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
-                        finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
-                    } else {
-                        finishWithError(Exception("Camera error: $error"))
+                    try {
+                        if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
+                            finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                        } else {
+                            finishWithError(Exception("Camera error: $error"))
+                        }
+                    } catch (e: Exception) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
+                    } catch (t: Throwable) {
+                        try {
+                            finishWithError(Exception("Camera callback failure"))
+                        } catch (_: Exception) {
+                        }
                     }
                 }
             }, backgroundHandler)
