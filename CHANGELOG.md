@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.123] - 2026-10-06
+
+### Fixed
+- `README.md` selaras kebijakan keystore: build tag tanpa keystore gagal tegas, varian `debugsigned` hanya untuk build branch/PR.
+- `data_extraction_rules.xml` tambah cermin `device-transfer` agar token/antrean tak ikut migrasi perangkat.
+- Plain-fallback `sendStatusNow` decode entities selaras semua jalur kirim.
+
 ## [1.6.122] - 2026-10-06
 
 ### Fixed
