@@ -12,7 +12,7 @@ object NetworkUtils {
 
     fun rateLimitedRemainMs(): Long {
         return try {
-            (rateLimitedUntil - System.currentTimeMillis()).coerceAtLeast(0L)
+            (rateLimitedUntil - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L)
         } catch (_: Exception) {
             0L
         }
@@ -21,7 +21,7 @@ object NetworkUtils {
     fun noteRateLimited(retryAfterSecs: Long) {
         try {
             val waitMs = retryAfterSecs.coerceIn(1L, 300L) * 1000L
-            rateLimitedUntil = maxOf(rateLimitedUntil, System.currentTimeMillis() + waitMs)
+            rateLimitedUntil = maxOf(rateLimitedUntil, android.os.SystemClock.elapsedRealtime() + waitMs)
         } catch (_: Exception) {
         }
     }

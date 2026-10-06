@@ -159,6 +159,10 @@ class CameraService(private val context: Context) {
                             watchdogHandler?.removeCallbacks(r)
                         } catch (_: Exception) {
                         }
+                        try {
+                            mainHandler()?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
                     }
                 } catch (_: Exception) {
                 }

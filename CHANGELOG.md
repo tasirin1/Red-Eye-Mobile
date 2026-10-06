@@ -1,3 +1,13 @@
+## [Unreleased]
+### Fixed
+- `BootReceiver` memakai jam elapsed tunggal untuk throttle penanganan boot agar tidak tercampur wall-clock.
+- Koordinator 429 `NetworkUtils` memakai `elapsedRealtime` agar perubahan jam tidak merusak backoff.
+- `CameraService.finishWithPhoto` membatalkan callback timeout di handler utama seperti varian video.
+- Throttle notice gagal kamera/upload fail-closed saat jam mundur agar tidak spam Telegram.
+- `SendMessageWorker` menunda hapus pesan 400-rejected sampai kredensial terverifikasi sama agar tidak hilang saat token berganti.
+- `SetupActivity` menolak simpan `chat_id` `@username` yang tak teresolvensi walau offline.
+- Jendela batch notifikasi 15 dtk jadi 5 dtk agar lebih sedikit yang hilang saat proses mati.
+
 ## [1.6.145] - 2026-10-06
 ### Fixed
 - `MonitoringService.teardownJobs` mereset counter percobaan kamera/video/foto ke 0 agar sesi berikutnya tidak langsung menyerah akibat backoff basi.

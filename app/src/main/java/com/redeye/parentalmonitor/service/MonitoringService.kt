@@ -3368,7 +3368,7 @@ class MonitoringService : Service() {
             if (isCameraPolicyError(clean)) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
-            if (last > 0 && last <= now && now - last < 30 * 60_000L) return
+            if (last > 0 && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             var hint = cameraFailureHint(clean)
             if (isCameraPolicyError(clean)) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
@@ -3382,7 +3382,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastUploadErrorNotice
-            if (last > 0 && last <= now && now - last < 30 * 60_000L) return
+            if (last > 0 && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {

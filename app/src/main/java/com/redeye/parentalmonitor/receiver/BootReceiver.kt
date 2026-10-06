@@ -69,21 +69,19 @@ class BootReceiver : BroadcastReceiver() {
 
     private fun handleBoot(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
-        val nowWall = System.currentTimeMillis()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         val freshBoot = nowBoot <= 120_000L
         synchronized(handleLock) { if (!updated && !freshBoot && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            var lastWall = meta.getLong("last_handle_wall", 0L)
-            if (lastWall == 0L) lastWall = meta.getLong("last_handle_elapsed", 0L)
-            if (!updated && !freshBoot && lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 60_000L) return
+            val lastElapsed = meta.getLong("last_handle_elapsed", 0L)
+            if (!updated && !freshBoot && lastElapsed != 0L && nowBoot >= lastElapsed && nowBoot - lastElapsed < 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {
             }
             return
@@ -132,7 +130,7 @@ class BootReceiver : BroadcastReceiver() {
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {
             }
             return
@@ -148,7 +146,7 @@ class BootReceiver : BroadcastReceiver() {
         } else {
             lastHandleAt = nowBoot
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_wall", nowWall).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {
             }
         }

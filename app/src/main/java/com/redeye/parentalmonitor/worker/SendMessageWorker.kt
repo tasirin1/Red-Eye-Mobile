@@ -132,11 +132,6 @@ class SendMessageWorker(
                     }
                     is SendOutcome.Rejected -> {
                         rejectedIds.add(queuedMessage.id)
-                        try {
-                            messageQueue.removeMessage(queuedMessage.id)
-                        } catch (_: Exception) {
-                            incrementalFailed = true
-                        }
                     }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
@@ -184,11 +179,21 @@ class SendMessageWorker(
             messageQueue.flushSync()
         } catch (_: Exception) {
         }
-        if (rejectedIds.isNotEmpty()) {
-            if (incrementalFailed) {
+        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
+            try {
                 messageQueue.removeMessages(rejectedIds)
+            } catch (_: Exception) {
+                incrementalFailed = true
+            }
+            if (incrementalFailed) {
+                try {
+                    messageQueue.removeMessages(rejectedIds)
+                } catch (_: Exception) {
+                }
             }
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
+        } else if (rejectedIds.isNotEmpty()) {
+            android.util.Log.w("SendMessageWorker", "Keeping ${rejectedIds.size} rejected message(s) for retry under fresh credentials")
         }
 
         if (authCode != 0) {

@@ -808,7 +808,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (batchJob?.isActive != true) {
                     batchJob = scope.launch {
                         try {
-                            delay(15_000L)
+                            delay(5_000L)
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             throw e
                         } catch (_: Exception) {
