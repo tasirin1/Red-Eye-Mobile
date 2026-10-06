@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.124] - 2026-10-06
+
+### Fixed
+- `/ping` hanya dijawab untuk owner (non-owner diam, selaras wake forwarder), rate-limit 30 detik per pengirim tanpa amplifikasi balasan.
+- `/ping` masuk `NO_REPLAY_COMMANDS` agar redelivery pasca-crash tak memicu ulang aksi `camera`/`location`.
+
 ## [1.6.123] - 2026-10-06
 
 ### Fixed

