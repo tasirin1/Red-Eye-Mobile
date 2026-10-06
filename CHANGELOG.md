@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.151] - 2026-10-06
 ### Fixed
 - `ParentalMonitorApp` bungkus `onCreate` + `createNotificationChannel` dengan guard dan null-check `NotificationManager` agar startup tak NPE.
 - `MonitoringService.onStartCommand` tak pernah lempar: dispatch dibungkus `try` dan selalu kembalikan `START_STICKY`/`START_NOT_STICKY`.
