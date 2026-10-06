@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Cuplikan riwayat notifikasi (`/lastnotif`) dan pratinjau SMS terkirim sebagian kini lewat `safeCut()` agar emoji tak terbelah jadi surrogate yatim.
+
 ## [1.6.140] - 2026-10-06
 
 ### Fixed

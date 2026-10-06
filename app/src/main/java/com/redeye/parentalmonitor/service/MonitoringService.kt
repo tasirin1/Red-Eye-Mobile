@@ -1756,7 +1756,7 @@ class MonitoringService : Service() {
                         buildString {
                             appendLine("\uD83D\uDD14 <b>Last notifications</b>")
                             for (item in items.takeLast(10)) {
-                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title.take(80)) + " \u2014 " + Html.escape(item.text.take(120)))
+                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title.take(safeCut(item.title, 80))) + " \u2014 " + Html.escape(item.text.take(safeCut(item.text, 120))))
                             }
                         }
                     )
@@ -2438,7 +2438,7 @@ class MonitoringService : Service() {
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
-                    val smsPreview = try { Html.escape(smsText.take(120)) } catch (_: Exception) { "" }
+                    val smsPreview = try { Html.escape(smsText.take(safeCut(smsText, 120))) } catch (_: Exception) { "" }
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
