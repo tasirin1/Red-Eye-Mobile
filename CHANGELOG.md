@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.144] - 2026-10-06
 
 ### Fixed
 - Pairing owner kini butuh `/start <chat ID> <kode pairing>` dengan kode acak per perangkat tampil di status Setup; kredensial baru merotasi kode.
