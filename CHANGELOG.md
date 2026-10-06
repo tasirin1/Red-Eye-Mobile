@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.135] - 2026-10-06
+
 ### Added
 - Mode patroli otomatis: putaran foto + lokasi + baterai berkala via `/patrol <on|off>` dan `/patrolinterval <5-180>`, status tampil di `/status`, menu bot, dan halaman Setup.
 
