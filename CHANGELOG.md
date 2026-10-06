@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.149] - 2026-10-06
 ### Fixed
 - `PhoneNumbers` ganti guard prefix eksak dengan aturan suffix/selisih panjang agar beda kode negara tetap cocok tanpa false-positive sesama panjang.
 - `SmsRepository`/`CallLogRepository` perdalam fallback scan `5x500` jadi `10x500` agar `/history` menemukan nomor terformat lama.
