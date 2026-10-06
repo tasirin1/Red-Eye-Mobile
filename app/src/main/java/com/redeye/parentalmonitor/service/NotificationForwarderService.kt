@@ -80,6 +80,11 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > 100
         }
     }
+    private val wakePingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > 64
+        }
+    }
 
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
@@ -87,6 +92,7 @@ class NotificationForwarderService : NotificationListenerService() {
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
+        private const val WAKE_PING_COOLDOWN_MS = 120_000L
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
@@ -574,6 +580,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (updates.isEmpty()) return
         var maxId = wakeUpdateId
         var pinged = false
+        val pingSenders = mutableSetOf<String>()
         for (u in updates) {
             if (u.updateId > maxId) maxId = u.updateId
             if (u.updateId <= mainLast || u.updateId <= wakeUpdateId) continue
@@ -602,9 +609,11 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 ""
             }
-            val wakeOwner = fromId == owner || chatIdStr == owner || (ownerId != 0L && fromId == ownerId.toString())
-            if (!wakeOwner) continue
+            val senderIsOwner = fromId == owner || (ownerId != 0L && fromId == ownerId.toString())
+            val groupWake = ownerId == 0L && chatIdStr == owner
+            if (!senderIsOwner && !groupWake) continue
             pinged = true
+            pingSenders.add(fromId.ifEmpty { "unknown" })
         }
         wakeUpdateId = maxId
         try {
@@ -624,6 +633,13 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
         }
         if (MonitoringService.isRunning) return
+        val nowWake = android.os.SystemClock.elapsedRealtime()
+        val wakeFresh = synchronized(wakePingRate) {
+            val fresh = pingSenders.any { sender -> nowWake - (wakePingRate[sender] ?: 0L) >= WAKE_PING_COOLDOWN_MS }
+            if (fresh) for (sender in pingSenders) wakePingRate[sender] = nowWake
+            fresh
+        }
+        if (!wakeFresh) return
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING

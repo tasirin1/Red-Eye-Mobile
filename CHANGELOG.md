@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.128] - 2026-10-06
+
+### Fixed
+- Wake `/ping` forwarder kini selaras scope jawab: anggota grup hanya bisa membangunkan saat owner belum pairing; setelah pairing wajib pengirim owner.
+- Efek samping wake (start service + jadwal antrean) di-throttle 2 menit per pengirim agar spam ping tak memicu restart berulang.
+
 ## [1.6.127] - 2026-10-06
 
 ### Fixed
