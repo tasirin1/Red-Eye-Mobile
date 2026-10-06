@@ -78,12 +78,8 @@ jobs:
             SUFFIX=""
           fi
           mkdir -p apks
-          RELEASE_TAG=""
-          if [ ! -f app/release.p12 ]; then
-            RELEASE_TAG="-debugsigned"
-          fi
           cp app/build/outputs/apk/debug/app-debug.apk "apks/redeye${SUFFIX}-debug.apk"
-          cp app/build/outputs/apk/release/app-release.apk "apks/redeye${SUFFIX}${RELEASE_TAG}-release.apk"
+          cp app/build/outputs/apk/release/app-release.apk "apks/redeye${SUFFIX}-release.apk"
           ls -la apks/
 
       - name: Upload APKs

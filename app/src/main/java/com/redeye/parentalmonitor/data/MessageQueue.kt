@@ -83,7 +83,7 @@ class MessageQueue private constructor(context: Context) {
                 loadDropCountsLocked()
                 if (pending.isNotEmpty()) {
                     val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-                    val freshPending = pending.filter { it.timestamp >= cutoff }
+                    val freshPending = pending.filter { isFresh(it, cutoff) }
                     val expired = pending.size - freshPending.size
                     if (expired > 0) {
                         noteExpiredLocked(expired.toLong())
@@ -119,7 +119,7 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                volatileQueue.add(QueuedMessage(message = message))
+                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
                 while (volatileQueue.size > cap) {
                     volatileQueue.removeAt(0)
                     noteOverflowLocked()
@@ -127,7 +127,7 @@ class MessageQueue private constructor(context: Context) {
                 return
             }
             val queue = readLocked().toMutableList()
-            queue.add(QueuedMessage(message = message))
+            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
             while (queue.size > cap) {
                 queue.removeAt(0)
                 noteOverflowLocked()
@@ -144,7 +144,7 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                for (message in messages) volatileQueue.add(QueuedMessage(message = message))
+                for (message in messages) volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
                 while (volatileQueue.size > cap) {
                     volatileQueue.removeAt(0)
                     noteOverflowLocked()
@@ -152,7 +152,7 @@ class MessageQueue private constructor(context: Context) {
                 return
             }
             val queue = readLocked().toMutableList()
-            for (message in messages) queue.add(QueuedMessage(message = message))
+            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
             while (queue.size > cap) {
                 queue.removeAt(0)
                 noteOverflowLocked()
@@ -193,10 +193,22 @@ class MessageQueue private constructor(context: Context) {
         if (!volatileOnly) persistDropCountsLocked()
     }
 
+    private fun isFresh(q: QueuedMessage, wallCutoff: Long): Boolean {
+        if (q.timestamp >= wallCutoff) return true
+        val mark = q.elapsedAt
+        if (mark <= 0L) return false
+        return try {
+            val now = android.os.SystemClock.elapsedRealtime()
+            now >= mark && now - mark <= 7 * 24 * 60 * 60_000L
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun pruneVolatileLocked() {
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val before = volatileQueue.size
-        volatileQueue.removeAll { it.timestamp < cutoff }
+        volatileQueue.removeAll { !isFresh(it, cutoff) }
         val dropped = before - volatileQueue.size
         if (dropped > 0) {
             noteExpiredLocked(dropped.toLong())
@@ -319,7 +331,7 @@ class MessageQueue private constructor(context: Context) {
     private fun readLocked(): MutableList<QueuedMessage> {
         cached?.let {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-            val freshCached = it.filter { q -> q.timestamp >= cutoffCached }.toMutableList()
+            val freshCached = it.filter { q -> isFresh(q, cutoffCached) }.toMutableList()
             if (freshCached.size != it.size) {
                 noteExpiredLocked((it.size - freshCached.size).toLong())
                 android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
@@ -336,7 +348,7 @@ class MessageQueue private constructor(context: Context) {
             }
         } catch (e: Exception) {
             android.util.Log.w("MessageQueue", "Queue storage corrupt, keeping a drop notice")
-            val notice = mutableListOf(QueuedMessage(message = "\u26A0\uFE0F Queued messages were discarded (corrupt storage)."))
+            val notice = mutableListOf(QueuedMessage(message = "\u26A0\uFE0F Queued messages were discarded (corrupt storage).", elapsedAt = android.os.SystemClock.elapsedRealtime()))
             try {
                 sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(notice))?.apply()
             } catch (_: Exception) {
@@ -345,7 +357,7 @@ class MessageQueue private constructor(context: Context) {
             notice
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-        val fresh = loaded.filter { it.timestamp >= cutoff }.toMutableList()
+        val fresh = loaded.filter { isFresh(it, cutoff) }.toMutableList()
         if (fresh.size != loaded.size) {
             noteExpiredLocked((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")

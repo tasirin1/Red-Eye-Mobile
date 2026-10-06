@@ -204,10 +204,27 @@ class CameraService(private val context: Context) {
                 finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
             }
             timeoutRunnable = timeout
-            try {
-                backgroundHandler?.postDelayed(timeout, timeoutMs)
-                    ?: mainHandler()?.postDelayed(timeout, timeoutMs)
-            } catch (_: Exception) { }
+            val watchdogScheduled = try {
+                val bg = backgroundHandler
+                if (bg != null) {
+                    bg.postDelayed(timeout, timeoutMs)
+                    true
+                } else {
+                    val mh = mainHandler()
+                    if (mh != null) {
+                        mh.postDelayed(timeout, timeoutMs)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } catch (_: Exception) {
+                false
+            }
+            if (!watchdogScheduled) {
+                finishWithError(Exception("Camera unavailable (timeout watchdog not ready)"))
+                return
+            }
 
             // Setup ImageReader (still capture only) plus a dummy surface for AE metering,
             // so warmup preview frames can never be mistaken for the still photo.

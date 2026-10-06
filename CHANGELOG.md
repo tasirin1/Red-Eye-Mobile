@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+- `CameraService` gagal cepat saat watchdog timeout tak bisa dijadwalkan agar kunci `capturing` tak terkunci permanen.
+- Expiry antrean `MessageQueue` pakai dual-clock (`elapsedAt` monotonik + wall-clock) agar tahan skew jam.
+- Nama artefak rilis tanpa keystore tetap `redeye-release.apk` sesuai `AGENTS.md` §2.
+
 ## [1.6.137] - 2026-10-06
 
 ### Fixed

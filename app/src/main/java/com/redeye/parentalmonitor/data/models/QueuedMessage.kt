@@ -6,5 +6,6 @@ data class QueuedMessage(
     val id: String = UUID.randomUUID().toString(),
     val message: String,
     val timestamp: Long = System.currentTimeMillis(),
+    val elapsedAt: Long = 0L,
     val retryCount: Int = 0
 )
