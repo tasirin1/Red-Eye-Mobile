@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+## [1.6.131] - 2026-10-06
+
+### Fixed
+- Pairing owner `/start` tak lagi menimpa owner yang sudah tertaut; upaya susulan diabaikan dan dilaporkan ke chat owner.
+- Dedup callback inline pakai kunci komposit pengirim+data+pesan+tanggal agar replay tombol tak eksekusi ulang perintah mutating.
+- Potong SMS selalu via `divideMessage()` agar teks unicode/emoji terbelah benar; langkah `requestCode` SMS naik ke 1 juta agar pengiriman konkuren tak tabrakan.
+- `sendDropNotice()` batal antre ulang saat antrean >= 90 agar gagal kirim notifikasi tak memicu storm drop.
+- Throttle balasan `/ping` diselaraskan ke 120 detik mengikuti cooldown wake forwarder.
+- Izin screenshot dihapus saat boot karena grant `MediaProjection` mati saat reboot; status tak lagi klaim granted basi.
+- Poll frame screenshot dipangkas ke ~1,2 detik agar tak menahan thread IO.
+- Hitungan drop antrean dipersist sinkron agar selamat dari kill proses.
+- Migrasi prefs merambatkan penghapusan kunci yang terjadi di celah migrasi.
+- Fallback `ContentQuery` tanpa rangkai `LIMIT` SQL; batas ditegakkan di kode.
+- Validasi token dilonggarkan dan simpan `@username` offline dipertahankan mentah untuk di-resolve saat online.
+- `MainActivity` baca ulang prefs sebelum cek konfigurasi agar rotasi tak pakai instance basi.
+- Nama file audio disufiks UUID agar dua rekaman tak saling timpa.
+
+
 ## [1.6.130] - 2026-10-06
 
 ### Fixed

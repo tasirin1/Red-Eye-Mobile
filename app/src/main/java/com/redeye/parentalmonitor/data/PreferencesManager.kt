@@ -55,6 +55,7 @@ class PreferencesManager(context: Context) {
             } catch (_: Exception) {
             }
             val late = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+            val initialKeys = try { HashSet(snapshot().keys) } catch (_: Exception) { emptySet<String>() }
             sharedPreferences = fresh
             try {
                 val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
@@ -94,6 +95,12 @@ class PreferencesManager(context: Context) {
                         if (!cur.containsKey(key)) {
                             tailTouched = true
                             putEntryInto(tailEdit, key, value)
+                        }
+                    }
+                    for (key in initialKeys) {
+                        if (!tail.containsKey(key) && cur.containsKey(key)) {
+                            tailTouched = true
+                            tailEdit.remove(key)
                         }
                     }
                     if (tailTouched) tailEdit.commit()

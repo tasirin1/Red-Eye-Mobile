@@ -22,30 +22,12 @@ object ContentQuery {
                 try {
                     resolver.query(uri, projection, bundle, null)
                 } catch (_: Exception) {
-                    try {
-                        resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
-                    } catch (_: Exception) {
-                        try {
-                            val limitedUri = uri.buildUpon().appendQueryParameter("limit", safeLimit.toString()).build()
-                            resolver.query(limitedUri, projection, selection, args, sortOrder)
-                        } catch (_: Exception) {
-                            resolver.query(uri, projection, selection, args, sortOrder)
-                        }
-                    }
+                    resolver.query(uri, projection, selection, args, sortOrder)
                 }
             } else if (safeLimit == Int.MAX_VALUE) {
                 resolver.query(uri, projection, selection, args, sortOrder)
             } else {
-                try {
-                    resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
-                } catch (_: Exception) {
-                    try {
-                        val limitedUri = uri.buildUpon().appendQueryParameter("limit", safeLimit.toString()).build()
-                        resolver.query(limitedUri, projection, selection, args, sortOrder)
-                    } catch (_: Exception) {
-                        resolver.query(uri, projection, selection, args, sortOrder)
-                    }
-                }
+                resolver.query(uri, projection, selection, args, sortOrder)
             }
         } catch (_: Exception) {
             null

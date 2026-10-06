@@ -172,7 +172,7 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistDropCountsLocked() {
         try {
-            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.apply()
+            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
         } catch (_: Exception) {
         }
     }

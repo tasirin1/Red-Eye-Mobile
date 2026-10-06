@@ -117,6 +117,12 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
+        if (!updated) {
+            try {
+                preferencesManager.clearScreenshotConsentSync()
+            } catch (_: Exception) {
+            }
+        }
         try {
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(preferencesManager)
         } catch (_: Exception) {

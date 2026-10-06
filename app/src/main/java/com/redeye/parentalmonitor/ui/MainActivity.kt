@@ -261,6 +261,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun startMonitoringInBackground() {
         try {
+            try {
+                preferencesManager = PreferencesManager.getInstance(applicationContext)
+            } catch (_: Exception) {
+            }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
             if (!preferencesManager.isConfigured()) {
             android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
