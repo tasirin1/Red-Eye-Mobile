@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.125] - 2026-10-06
+
+### Fixed
+- `/ping` kini punya cooldown restart 5 menit (`PING_RESTART_COOLDOWN_MS`): ping beruntun tak bisa memicu restart loop berulang, klaim "Loops restarted" hanya muncul saat restart benar-benar jalan.
+- `/ping camera` hanya me-restart loop kamera saat loop-nya memang mati; saat sehat langsung ambil foto tanpa mereset jadwal interval.
+
 ## [1.6.124] - 2026-10-06
 
 ### Fixed

