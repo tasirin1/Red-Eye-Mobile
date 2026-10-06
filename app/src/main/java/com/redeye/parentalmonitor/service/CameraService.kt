@@ -398,7 +398,7 @@ class CameraService(private val context: Context) {
             timeoutRunnable = timeout
             (mainHandler() ?: backgroundHandler)?.postDelayed(timeout, timeoutMs)
             val videoSize = chooseVideoSize(cameraManager, cameraId)
-            val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + ".mp4")
+            val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
             } else {

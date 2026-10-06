@@ -93,6 +93,10 @@ data class SetMyCommandsRequest(
     @SerializedName("scope") val scope: BotCommandScope? = null
 )
 
+data class DeleteCommandsRequest(
+    @SerializedName("scope") val scope: BotCommandScope? = null
+)
+
 interface TelegramApi {
     @GET
     suspend fun getUpdates(
@@ -125,6 +129,12 @@ interface TelegramApi {
     suspend fun setMyCommands(
         @Url url: String,
         @Body body: SetMyCommandsRequest
+    ): Response<TelegramResponse>
+
+    @POST
+    suspend fun deleteMyCommands(
+        @Url url: String,
+        @Body body: DeleteCommandsRequest
     ): Response<TelegramResponse>
     
     @Multipart

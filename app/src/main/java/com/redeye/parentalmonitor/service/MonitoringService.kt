@@ -606,12 +606,26 @@ class MonitoringService : Service() {
     private fun rememberOwner(id: Long): Boolean {
         if (id == 0L) return false
         if (id == cachedOwnerId) return false
+        val previousOwner = cachedOwnerId
         cachedOwnerId = id
         try {
             preferencesManager.setOwnerIdSync(id)
         } catch (_: Exception) {
         }
+        if (previousOwner != 0L) clearOwnerMenuScope(previousOwner)
         return true
+    }
+
+    private fun clearOwnerMenuScope(previousOwner: Long) {
+        serviceScope.launch {
+            try {
+                val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+                if (token.isEmpty()) return@launch
+                val url = "https://api.telegram.org/bot$token/deleteMyCommands"
+                TelegramClient.api.deleteMyCommands(url, com.redeye.parentalmonitor.network.DeleteCommandsRequest(com.redeye.parentalmonitor.network.BotCommandScope("chat", previousOwner)))
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private val pairHintAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -3152,9 +3166,12 @@ class MonitoringService : Service() {
                 val bmp = Bitmap.createBitmap(rowWidth, height, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 val cropped = if (rowWidth != width) Bitmap.createBitmap(bmp, 0, 0, width, height) else bmp
-                val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + ".jpg")
+                val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
                 try {
                     java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+                } catch (_: Exception) {
+                    deleteQuietly(out)
+                    return null
                 } finally {
                     if (cropped !== bmp) { try { bmp.recycle() } catch (_: Exception) { } }
                     try { cropped.recycle() } catch (_: Exception) { }

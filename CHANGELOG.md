@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.127] - 2026-10-06
+
+### Fixed
+- Nama file video/screenshot kini bersufiks UUID agar rekaman baru tak menimpa file pending yang belum terkirim dalam detik yang sama.
+- `takeScreenshotFrame` menghapus file parsial saat kompresi gagal agar JPEG korup tak ikut terkirim.
+- Scope menu perintah ex-owner dihapus via `deleteMyCommands` saat owner berganti.
+
 ## [1.6.126] - 2026-10-06
 
 ### Fixed
