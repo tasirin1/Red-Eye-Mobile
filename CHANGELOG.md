@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.147] - 2026-10-06
 ### Fixed
 - Wake-ping dedup pakai String koma tunggal, bukan StringSet yang tak didukung EncryptedSharedPreferences.
 - `PhoneNumbers` wajibkan prefix sama bila kedua nomor >10 digit agar beda negara tak dicocokkan.
