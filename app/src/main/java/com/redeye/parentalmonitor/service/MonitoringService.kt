@@ -187,7 +187,7 @@ class MonitoringService : Service() {
                     }
                 }
             }
-            if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL) refreshLoopConfig()
+            if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
             if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) restartPatrolLoop()
         }
@@ -350,7 +350,7 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
-        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true) {
+        if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true && patrolJob?.isActive == true) {
             refreshCreds()
             return
         }
@@ -576,7 +576,8 @@ class MonitoringService : Service() {
             while (isActive && patrolJob === coroutineContext[Job]) {
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
-                    if (!cachedMonitoringPaused && cachedPatrolEnabled) {
+                    val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
+                    if (!cachedMonitoringPaused && !photoPaused && cachedPatrolEnabled) {
                         patrolRound()
                         chunkedDelay(minutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
@@ -3463,6 +3464,10 @@ class MonitoringService : Service() {
             commandJob?.cancel()
         } catch (_: Exception) {
         }
+        try {
+            patrolJob?.cancel()
+        } catch (_: Exception) {
+        }
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
@@ -3513,7 +3518,7 @@ class MonitoringService : Service() {
                     val nowBeat = android.os.SystemClock.elapsedRealtime()
                     val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..1440 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
                     val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..60 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
-                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || initialStuck || monitorStuck || cameraStuck) {
+                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || patrolJob?.isActive != true || initialStuck || monitorStuck || cameraStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
                         if (initialStuck) initialSyncRunning.set(false)
                         restartAllLoops(fromWatchdog = true)

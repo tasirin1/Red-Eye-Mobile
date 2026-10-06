@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Fixed
+- Kunci patroli kini ikut refresh cache loop agar `/patrol on` langsung jalan tanpa restart service.
+- `restartAllLoops()` batalkan `patrolJob` agar `/restart` tak gandakan putaran patroli.
+- Putaran patroli hormati jeda foto (`/pause` dan blokir kebijakan kamera).
+- Watchdog dan cek start kini awasi `patrolJob` agar kematian diam-diam terdeteksi.
+- Counter drop antrean jadi field instance agar tak saling timpa antar instance.
+
 ## [1.6.135] - 2026-10-06
 
 ### Added

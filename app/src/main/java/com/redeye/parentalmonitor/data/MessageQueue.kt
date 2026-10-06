@@ -43,6 +43,8 @@ class MessageQueue private constructor(context: Context) {
             }
         }
     }
+    private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val lock = Any()
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
     private var cached: MutableList<QueuedMessage>? = null
@@ -56,8 +58,6 @@ class MessageQueue private constructor(context: Context) {
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_TRANSIENT_RETRIES = 20
         private val gson = Gson()
-        private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
-        private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
 
 
         @Volatile
