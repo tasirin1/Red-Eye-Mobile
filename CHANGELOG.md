@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.152] - 2026-10-06
 ### Fixed
 - `SetupActivity.isBatteryExempt` dan `activateDeviceAdmin` dibungkus guard agar `PowerManager`/`DevicePolicyManager` kustom tak sebabkan crash dari halaman Setup.
 - `NetworkUtils.isNetworkAvailable` pakai safe-cast `as?` plus `try/catch` agar `ConnectivityManager` null/kustom kembalikan `false` bukan crash.
