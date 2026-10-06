@@ -24,8 +24,11 @@ class AdminReceiver : DeviceAdminReceiver() {
         try {
             Thread {
                 try {
-                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Device Admin was disabled on the device. Uninstall protection is OFF.", true)
-                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
+                    val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
+                    if (prefs.isConfigured()) {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Device Admin was disabled on the device. Uninstall protection is OFF.", true)
+                        com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
+                    }
                 } catch (_: Exception) {
                 } finally {
                     try { pending?.finish() } catch (_: Exception) { }

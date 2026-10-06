@@ -1,3 +1,16 @@
+## [1.6.159] - 2026-10-06
+### Fixed
+- `MonitoringService.takeScreenshotFrame` parse consent URI dengan flag `URI_INTENT_SCHEME` (fallback parse biasa) agar `/screenshot` tak selalu gagal.
+- `SendMessageWorker.sendChunked` hentikan loop saat part kena 400 agar tak antre sisa tumpang-tindih dan kirim duplikat.
+- `CallLogRepository.getCallsForNumber` prefilter `LIKE` tak sensitif separator, menyusul perbaikan yang sama di SMS.
+- `/log` hapus laporan crash tersimpan hanya jika `sendFitted` sukses agar laporan tak hilang saat offline.
+- `NotificationForwarderService` kunci dedup sertakan ID notifikasi agar notifikasi beda berteks identik tak saling menelan.
+- Lengkapi unescape `&quot;`, `&#39;`, `&#x27;` di fallback plain `CrashReporter`, `SetupActivity.sendStatusNow`, `NotificationForwarderService`, `SendMessageWorker`.
+- `BootRestartWorker.doWork` jadwalkan ulang saat throwable tak terduga agar antrean tak macet diam-diam.
+- `MonitoringService.rememberOwner` buang kode mati agar niat single-owner latch jelas.
+- `/battery` pakai safe-cast agar ROM aneh kembalikan `unknown` bukan `Command failed`.
+- `AdminReceiver.onDisabled` antre alarm hanya jika bot terkonfigurasi agar worker tak reschedule tiap 30 menit selamanya.
+
 ## [1.6.158] - 2026-10-06
 ### Fixed
 - `MonitoringService` kursor SMS/panggilan (`checkAndSendNewData`, `sendInitialData`) hanya maju saat kirim sukses agar pesan gagal tak ditandai sudah-dilihat.

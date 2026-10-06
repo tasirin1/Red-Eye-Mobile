@@ -284,7 +284,7 @@ class NotificationForwarderService : NotificationListenerService() {
                             return@launch
                         }
                     }
-                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = false)
+                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = false, streamKey = notifId.toString())
                 } catch (_: Exception) {
                 } finally {
                     pendingPosts.decrementAndGet()
@@ -391,17 +391,17 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         }
         val now = android.os.SystemClock.elapsedRealtime()
-        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true)
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true, streamKey = notifId.toString())
     }
 
-    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean) {
+    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean, streamKey: String = "") {
         if (trackGroup && groupKey.isNotEmpty()) {
             try {
                 synchronized(groupSeen) { groupSeen[groupKey] = now }
             } catch (_: Exception) {
             }
         }
-        val key = pkg + "\n" + title + "\n" + text
+        val key = pkg + "\n" + streamKey + "\n" + title + "\n" + text
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
             if (now - prev < 10_000L) true else {
@@ -1042,7 +1042,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                     return false
                 }
-                val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
                 if (plain != message) {
                     try {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))

@@ -814,7 +814,7 @@ class SetupActivity : AppCompatActivity() {
                         } catch (_: Exception) {
                         }
                     } else {
-                        val plain = text.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+                        val plain = text.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
                         if (plain != text) {
                             try {
                                 val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
