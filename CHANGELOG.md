@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.150] - 2026-10-06
 ### Fixed
 - `AndroidManifest.xml` set `NotificationForwarderService` ke `exported="true"` agar sistem bisa bind listener dan forward notifikasi jalan lagi.
 - `MainActivity.formatResult` hitung digit integer via string desimal, bukan `log10`, agar pangkat 10 tak off-by-one.
