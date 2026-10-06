@@ -566,6 +566,8 @@ class SetupActivity : AppCompatActivity() {
     private fun stopMonitoringConfirmed() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+            try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
+            try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -582,6 +584,7 @@ class SetupActivity : AppCompatActivity() {
     private fun startMonitoringConfirmed() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
+            try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {

@@ -54,6 +54,14 @@ class SendMessageWorker(
             }
             return Result.success()
         }
+        val rateRemain = NetworkUtils.rateLimitedRemainMs()
+        if (rateRemain > 0L) {
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, rateRemain)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
 
         val runGen = messageQueue.queueGeneration()
         val queue = messageQueue.getQueue()
@@ -194,6 +202,7 @@ class SendMessageWorker(
         }
 
         if (rateLimitedSecs > 0) {
+            NetworkUtils.noteRateLimited(rateLimitedSecs)
             try {
                 MessageScheduler.scheduleMessageSendNext(applicationContext, rateLimitedSecs * 1000L)
             } catch (_: Exception) {

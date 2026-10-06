@@ -547,6 +547,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 5L
             }
+            NetworkUtils.noteRateLimited(retryAfter)
             wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + retryAfter.coerceIn(1L, 300L) * 1000L
             return
         }
@@ -671,30 +672,35 @@ class NotificationForwarderService : NotificationListenerService() {
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - lastReviveAt < 60_000L) return
             lastReviveAt = now
-            val prefs = prefsRef ?: try {
-                PreferencesManager.getInstance(this).also { prefsRef = it }
-            } catch (_: Exception) {
-                return
-            }
-            val resume = try {
-                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
-            } catch (_: Exception) {
-                false
-            }
-            if (!resume) return
-            try {
-                val restart = android.content.Intent(this, MonitoringService::class.java).apply {
-                    action = MonitoringService.ACTION_START_MONITORING
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    startForegroundService(restart)
-                } else {
-                    startService(restart)
-                }
-            } catch (_: Exception) {
-                android.util.Log.w("NotifForwarder", "Monitoring restart failed, retry via worker")
+            scope.launch {
                 try {
-                    MessageScheduler.scheduleBootRestart(this)
+                    val prefs = prefsRef ?: try {
+                        PreferencesManager.getInstance(this@NotificationForwarderService).also { prefsRef = it }
+                    } catch (_: Exception) {
+                        return@launch
+                    }
+                    val resume = try {
+                        prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (!resume) return@launch
+                    try {
+                        val restart = android.content.Intent(this@NotificationForwarderService, MonitoringService::class.java).apply {
+                            action = MonitoringService.ACTION_START_MONITORING
+                        }
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            startForegroundService(restart)
+                        } else {
+                            startService(restart)
+                        }
+                    } catch (_: Exception) {
+                        android.util.Log.w("NotifForwarder", "Monitoring restart failed, retry via worker")
+                        try {
+                            MessageScheduler.scheduleBootRestart(this@NotificationForwarderService)
+                        } catch (_: Exception) {
+                        }
+                    }
                 } catch (_: Exception) {
                 }
             }
@@ -956,6 +962,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             } catch (_: Exception) {
             }
+            val rateRemain = NetworkUtils.rateLimitedRemainMs()
+            if (rateRemain > 0L) {
+                queue().addMessage(message)
+                MessageScheduler.scheduleRateLimited(this, rateRemain)
+                return false
+            }
             val nowNet = android.os.SystemClock.elapsedRealtime()
             if (nowNet - netCheckAt > 20_000L) {
                 netCheckAt = nowNet
@@ -988,6 +1000,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                     5L
                 }
+                NetworkUtils.noteRateLimited(retryAfter)
                 queue().addMessage(message)
                 MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
                 return false

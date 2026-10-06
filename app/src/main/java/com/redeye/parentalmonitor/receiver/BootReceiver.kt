@@ -17,7 +17,6 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
-            Intent.ACTION_USER_PRESENT,
             ACTION_QUICKBOOT_POWERON
         )
 
@@ -29,9 +28,10 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in BOOT_ACTIONS) return
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            if (intent.data?.schemeSpecificPart != context.packageName) return
+            val updatedPart = intent.data?.schemeSpecificPart
+            if (updatedPart != null && updatedPart != context.packageName) return
         }
-        if (intent.action == Intent.ACTION_USER_PRESENT || intent.action == Intent.ACTION_USER_UNLOCKED) {
+        if (intent.action == Intent.ACTION_USER_UNLOCKED) {
             val nowUnlock = android.os.SystemClock.elapsedRealtime()
             synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {

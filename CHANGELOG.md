@@ -1,3 +1,16 @@
+## [Unreleased]
+
+### Fixed
+- `BootReceiver` terima `MY_PACKAGE_REPLACED` tanpa data URI dan hapus `USER_PRESENT` mati agar restart sehabis update jalan lagi.
+- Loop monitoring/kamera/patrol jeda 10 dtk tiap error agar tak hot-spin saat gagal persisten.
+- `ContentQuery` fallback tanpa `LIMIT` mentah agar sinkron SMS/CallLog tetap jalan di API 24-25.
+- `NotificationForwarderService.reviveMonitoringIfNeeded()` pindah ke coroutine agar tak ada IO kripto di thread callback notifikasi.
+- `MonitoringService.teardownJobs()` kini batalkan `msgDropJob` agar notice drop tak bangkit setelah stop.
+- `MessageScheduler` tambah `cancelMessageSend()`/`cancelWatchdog()`; stop dari Setup batalkan kerja latar, enable jadwalkan watchdog lagi.
+- Preview SMS parsial potong setelah `Html.escape` dan teksnya jujur bahwa retry bisa duplikat.
+- Timeout fix lokasi 25 dtk jadi 15 dtk agar `/location` dan patrol lebih responsif.
+- Koordinator 429 bersama di `NetworkUtils` (`noteRateLimited`/`rateLimitedRemainMs`) dipakai `MonitoringService`, `SendMessageWorker`, dan `NotificationForwarderService` agar backoff Telegram dihormati lintas pengirim.
+
 ## [1.6.142] - 2026-10-06
 
 ### Fixed

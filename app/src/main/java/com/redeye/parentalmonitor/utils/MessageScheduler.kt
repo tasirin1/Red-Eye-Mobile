@@ -77,6 +77,20 @@ object MessageScheduler {
         }
     }
 
+    fun cancelMessageSend(context: Context) {
+        try {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun cancelWatchdog(context: Context) {
+        try {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(BOOT_WATCHDOG_WORK)
+        } catch (_: Exception) {
+        }
+    }
+
     fun scheduleWatchdog(context: Context): Boolean {
         return try {
             val request = PeriodicWorkRequestBuilder<BootRestartWorker>(15, TimeUnit.MINUTES)

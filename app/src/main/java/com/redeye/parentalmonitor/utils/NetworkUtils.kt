@@ -7,6 +7,25 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 
 object NetworkUtils {
 
+    @Volatile
+    var rateLimitedUntil = 0L
+
+    fun rateLimitedRemainMs(): Long {
+        return try {
+            (rateLimitedUntil - System.currentTimeMillis()).coerceAtLeast(0L)
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    fun noteRateLimited(retryAfterSecs: Long) {
+        try {
+            val waitMs = retryAfterSecs.coerceIn(1L, 300L) * 1000L
+            rateLimitedUntil = maxOf(rateLimitedUntil, System.currentTimeMillis() + waitMs)
+        } catch (_: Exception) {
+        }
+    }
+
     fun isNetworkAvailable(context: Context): Boolean {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false

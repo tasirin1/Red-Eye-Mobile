@@ -518,6 +518,10 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop: ${redactToken(e.message)}")
+                    try {
+                        delay(10_000L)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -558,6 +562,10 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in camera loop: ${redactToken(e.message)}")
+                    try {
+                        delay(10_000L)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -589,8 +597,16 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error in patrol loop: ${redactToken(e.message)}")
+                    try {
+                        delay(10_000L)
+                    } catch (_: Exception) {
+                    }
                 } catch (t: Throwable) {
                     android.util.Log.e("MonitoringService", "Fatal patrol error, loop survives")
+                    try {
+                        delay(10_000L)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -2048,7 +2064,7 @@ class MonitoringService : Service() {
                             }
                         }
                         val won = try {
-                            kotlinx.coroutines.withTimeoutOrNull(25_000L) {
+                            kotlinx.coroutines.withTimeoutOrNull(15_000L) {
                                 val winner = CompletableDeferred<android.location.Location?>()
                                 val left = java.util.concurrent.atomic.AtomicInteger(pending.size)
                                 for (task in pending) {
@@ -2438,8 +2454,8 @@ class MonitoringService : Service() {
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
-                    val smsPreview = try { Html.escape(smsText.take(safeCut(smsText, 120))) } catch (_: Exception) { "" }
-                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared so a retry cannot duplicate the delivered parts; verify with the recipient before sending again. Text preview: $smsPreview"
+                    val smsPreview = try { Html.escape(smsText).let { it.take(safeCut(it, 120)) } } catch (_: Exception) { "" }
+                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
@@ -2599,6 +2615,14 @@ class MonitoringService : Service() {
                 }
                 return false
             }
+            val rateRemain = NetworkUtils.rateLimitedRemainMs()
+            if (rateRemain > 0L) {
+                if (queueOnFail) {
+                    messageQueue.addMessage(message)
+                    MessageScheduler.scheduleRateLimited(this, rateRemain)
+                }
+                return false
+            }
             if (message.length > 4000) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
                 return sendFitted(message, replyMarkup, queueOnFail)
@@ -2647,6 +2671,7 @@ class MonitoringService : Service() {
                 return true
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
+                NetworkUtils.noteRateLimited(retryAfter)
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 if (queueOnFail) {
                     messageQueue.addMessage(message)
@@ -2835,6 +2860,10 @@ class MonitoringService : Service() {
         ringJob?.cancel()
         recordJob?.cancel()
         smsJob?.cancel()
+        try {
+            msgDropJob?.cancel()
+        } catch (_: Exception) {
+        }
         initialSyncRunning.set(false)
         idlePolls = 0
         commandBackoffUntil = 0L

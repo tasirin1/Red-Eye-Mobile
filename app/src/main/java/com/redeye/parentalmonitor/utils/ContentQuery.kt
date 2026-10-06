@@ -27,7 +27,11 @@ object ContentQuery {
             } else if (safeLimit == Int.MAX_VALUE) {
                 resolver.query(uri, projection, selection, args, sortOrder)
             } else {
-                resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
+                try {
+                    resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
+                } catch (_: Exception) {
+                    resolver.query(uri, projection, selection, args, sortOrder)
+                }
             }
         } catch (_: Exception) {
             null
