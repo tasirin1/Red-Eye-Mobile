@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.129] - 2026-10-06
+
+### Fixed
+- `upgradeToPersistent()` kini drain kedua setelah swap agar tulisan di celah migrasi tak hilang.
+
 ## [1.6.128] - 2026-10-06
 
 ### Fixed

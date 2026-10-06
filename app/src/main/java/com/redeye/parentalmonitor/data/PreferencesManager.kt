@@ -84,6 +84,22 @@ class PreferencesManager(context: Context) {
                 }
             } catch (_: Exception) {
             }
+            try {
+                val tail = try { HashMap(old.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+                if (tail.isNotEmpty()) {
+                    val cur = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    val tailEdit = fresh.edit()
+                    var tailTouched = false
+                    for ((key, value) in tail) {
+                        if (!cur.containsKey(key) || cur[key] != value) {
+                            tailTouched = true
+                            putEntryInto(tailEdit, key, value)
+                        }
+                    }
+                    if (tailTouched) tailEdit.commit()
+                }
+            } catch (_: Exception) {
+            }
             synchronized(listenerLock) {
                 for (l in listenerSet) {
                     try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
@@ -93,6 +109,23 @@ class PreferencesManager(context: Context) {
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private fun putEntryInto(editor: android.content.SharedPreferences.Editor, key: String, value: Any?) {
+        when (value) {
+            null -> editor.remove(key)
+            is String -> editor.putString(key, value)
+            is Int -> editor.putInt(key, value)
+            is Long -> editor.putLong(key, value)
+            is Float -> editor.putFloat(key, value)
+            is Boolean -> editor.putBoolean(key, value)
+            is Set<*> -> try {
+                @Suppress("UNCHECKED_CAST")
+                editor.putStringSet(key, value as Set<String>)
+            } catch (_: Exception) {
+            }
+            else -> Unit
         }
     }
 
