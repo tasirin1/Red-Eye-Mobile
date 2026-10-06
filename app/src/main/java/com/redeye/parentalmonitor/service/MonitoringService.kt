@@ -1349,7 +1349,7 @@ class MonitoringService : Service() {
                     null
                 }
                 if (crash != null) {
-                    sendToTelegram(Html.escape(crash))
+                    sendFitted(crash)
                     CrashReporter.clearPending(this)
                 } else {
                     sendToTelegram("\uD83E\uDDFE No crash recorded.")

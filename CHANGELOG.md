@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.122] - 2026-10-06
+
+### Fixed
+- `/log` kirim laporan crash apa adanya via `sendFitted` (sudah HTML valid + chunk aman), bukan `Html.escape` ganda yang menampilkan tag literal.
+
 ## [1.6.121] - 2026-10-06
 
 ### Fixed
