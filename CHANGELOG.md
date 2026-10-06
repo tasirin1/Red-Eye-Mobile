@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.134] - 2026-10-06
+
 ### Fixed
 - `SetupActivity` tampilkan `STORED_MASK` setelah migrasi chat ID grup ke supergroup agar ID mentah tak terlihat di layar.
 - Hapus variabel `pending` mati di `sendStatusNow()`.
