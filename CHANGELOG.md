@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.136] - 2026-10-06
+
 ### Fixed
 - Kunci patroli kini ikut refresh cache loop agar `/patrol on` langsung jalan tanpa restart service.
 - `restartAllLoops()` batalkan `patrolJob` agar `/restart` tak gandakan putaran patroli.
