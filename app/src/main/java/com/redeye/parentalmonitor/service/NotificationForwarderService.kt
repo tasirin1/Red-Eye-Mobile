@@ -770,6 +770,7 @@ class NotificationForwarderService : NotificationListenerService() {
             val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
             while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
             if (q.size >= 10) {
+                q.addLast(now)
                 while (q.size > 30) q.removeFirst()
                 return true
             }

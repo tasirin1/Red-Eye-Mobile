@@ -40,7 +40,7 @@ class SmsRepository(private val context: Context) {
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
-        repeat(5) {
+        repeat(10) {
             val page = querySms(
                 selection = "${Telephony.Sms.DATE} >= ? AND (${Telephony.Sms.DATE} < ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} < ?))",
                 args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),

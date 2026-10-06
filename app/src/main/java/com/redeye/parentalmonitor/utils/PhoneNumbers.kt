@@ -18,7 +18,8 @@ object PhoneNumbers {
         }
         val tailLen = 10
         if (have.length < tailLen || want.length < tailLen) return false
-        if (have.length > tailLen && want.length > tailLen && have.dropLast(tailLen) != want.dropLast(tailLen)) return false
+        if (have.endsWith(want) || want.endsWith(have)) return true
+        if (have.length == want.length) return false
         val haveTail = have.takeLast(tailLen)
         val wantTail = want.takeLast(tailLen)
         if (haveTail == wantTail) return true

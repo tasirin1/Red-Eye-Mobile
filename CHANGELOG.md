@@ -1,3 +1,10 @@
+## [Unreleased]
+### Fixed
+- `PhoneNumbers` ganti guard prefix eksak dengan aturan suffix/selisih panjang agar beda kode negara tetap cocok tanpa false-positive sesama panjang.
+- `SmsRepository`/`CallLogRepository` perdalam fallback scan `5x500` jadi `10x500` agar `/history` menemukan nomor terformat lama.
+- `NotificationForwarderService` catat hit spam walau sedang throttled agar sliding window 120 detik tetap geser.
+- `SendMessageWorker` longgarkan guard notice drop `>=90` jadi `>=100` agar info drop tak hilang saat antrean penuh.
+
 ## [1.6.148] - 2026-10-06
 ### Fixed
 - `CrashReporter` hormati koordinator 429 bersama dan tandai `credentialError` saat 401/403.

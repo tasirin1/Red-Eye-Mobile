@@ -93,7 +93,7 @@ class CallLogRepository(private val context: Context) {
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
-        repeat(5) {
+        repeat(10) {
             val page = queryCalls(
                 selection = "${CallLog.Calls.DATE} >= ? AND (${CallLog.Calls.DATE} < ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} < ?))",
                 args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),

@@ -489,7 +489,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) return
         } catch (_: Exception) {
         }
-        if (messageQueue.getQueueSize() >= 90) return
+        if (messageQueue.getQueueSize() >= 100) return
         try {
             messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(applicationContext)
