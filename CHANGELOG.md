@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.153] - 2026-10-06
 ### Fixed
 - `BootRestartWorker.getForegroundInfo` dibungkus guard dengan notifikasi fallback agar panggilan langsung `WorkManager` tak gagal tak tertangani.
 - `SendMessageWorker.messageQueue` jadi `lazy` agar alokasi antrean terjadi di dalam `doWork` yang guarded, bukan saat konstruksi worker.
