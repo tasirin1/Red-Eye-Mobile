@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.142] - 2026-10-06
 
 ### Fixed
 - `PreferencesManager.upgradeToPersistent()` kini menangkan tulis memori saat migrasi ke encrypted prefs agar token/flag tak hilang pada race upgrade.
