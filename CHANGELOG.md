@@ -1,3 +1,7 @@
+## [1.6.157] - 2026-10-06
+### Fixed
+- `/recordvideo` jalan di background job seperti `/record` agar polling command tak macet sampai 3 menit selama perekaman video.
+
 ## [1.6.156] - 2026-10-06
 ### Fixed
 - Samakan batas flood-wait jadi 3600 dtk di semua backoff (`pollTelegramCommands`, pengirim audio/video/foto/screenshot, wake-poll forwarder) agar `retry_after` panjang tak di-retry kepagian.

