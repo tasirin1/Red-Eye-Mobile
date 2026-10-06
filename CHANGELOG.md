@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.145] - 2026-10-06
 ### Fixed
 - `MonitoringService.teardownJobs` mereset counter percobaan kamera/video/foto ke 0 agar sesi berikutnya tidak langsung menyerah akibat backoff basi.
 - `MonitoringService.startMonitoring` memanggil `refreshLoopConfig` juga pada jalur early-return agar perubahan interval patroli/sinkron langsung berlaku.
