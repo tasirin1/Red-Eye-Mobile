@@ -1,3 +1,10 @@
+## [1.6.164] - 2026-10-09
+### Fixed
+- `MonitoringService.sendSmsPending` hapus staging SMS bersyarat (`clearSmsPendingIf`) agar SMS baru yang di-stage saat pengiriman lama berjalan tak ikut terhapus.
+- `SetupActivity.testConnection` lempar ulang `CancellationException` agar probe basi yang dibatalkan tak memunculkan toast gagal palsu.
+- `SetupActivity.updateStatus` hanya buat kode pairing saat sudah konfigurasi dan owner belum dikenal.
+- `NotificationForwarderService.flushBatch` teruskan `pkg` asal batch agar atribusi paket tak hilang.
+
 ## [1.6.163] - 2026-10-10
 ### Fixed
 - Gagal build `v1.6.162`: kembalikan `}` penutup `if (!usePlayer)` dan ekor jalur `MediaPlayer` (`Ringing` + delay + `finished`) yang ikut terpotong patch ringtone.

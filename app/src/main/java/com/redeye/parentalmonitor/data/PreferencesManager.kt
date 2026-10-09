@@ -536,6 +536,20 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearSmsPendingIf(at: Long) {
+        try {
+            if (sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L) == at) {
+                sharedPreferences.edit()
+                    .putString(KEY_PENDING_SMS_NUMBER, "")
+                    .putString(KEY_PENDING_SMS_TEXT, "")
+                    .putLong(KEY_PENDING_SMS_AT, 0L)
+                    .putString(KEY_PENDING_SMS_OWNER, "")
+                    .commit()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     fun touchSmsPendingSync(at: Long) {
         try {
             sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).commit()

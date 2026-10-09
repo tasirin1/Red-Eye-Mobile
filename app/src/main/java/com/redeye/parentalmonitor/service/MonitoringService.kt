@@ -1844,7 +1844,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
                     smsJob = serviceScope.launch {
                         try {
-                            sendSmsPending(number, smsText)
+                            sendSmsPending(number, smsText, stagedAt)
                         } finally {
                             smsBusy.set(false)
                         }
@@ -2477,7 +2477,7 @@ class MonitoringService : Service() {
         return false
     }
 
-    private suspend fun sendSmsPending(number: String, smsText: String) {
+    private suspend fun sendSmsPending(number: String, smsText: String, stagedAt: Long = 0L) {
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
         val baseCode = Math.floorMod(smsReqSeq.addAndGet(1000000), 1000000000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
         val delivered = CompletableDeferred<Boolean>()
@@ -2551,11 +2551,11 @@ class MonitoringService : Service() {
                 val confirmed = withTimeoutOrNull(30_000L + (expected - 1) * 15_000L) { delivered.await() } ?: false
                 if (confirmed) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
-                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    preferencesManager.clearSmsPendingIf(stagedAt)
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
-                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    preferencesManager.clearSmsPendingIf(stagedAt)
                     val smsPreview = try { Html.escape(smsText).let { it.take(safeCut(it, 120)) } } catch (_: Exception) { "" }
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)

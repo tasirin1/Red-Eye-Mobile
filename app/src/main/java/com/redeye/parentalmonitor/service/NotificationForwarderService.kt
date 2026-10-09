@@ -854,13 +854,15 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         var cur = StringBuilder()
         var curCount = 0
+        var curPkg = ""
         suspend fun flushCur() {
             if (curCount <= 0) return
-            forwardLocked(cur.toString(), "", curCount)
+            forwardLocked(cur.toString(), curPkg, curCount)
             cur = StringBuilder()
             curCount = 0
+            curPkg = ""
         }
-        for ((msg) in items) {
+        for ((msg, pkg) in items) {
             if (msg.length > 4000) {
                 flushCur()
                 var rest = msg
@@ -868,15 +870,20 @@ class NotificationForwarderService : NotificationListenerService() {
                     var cut = rest.lastIndexOf("\n\n", 4000)
                     if (cut <= 0) cut = 4000
                     cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                    forwardLocked(rest.substring(0, cut), "", 1)
+                    forwardLocked(rest.substring(0, cut), pkg, 1)
                     rest = rest.substring(cut).trimStart('\n')
                     if (rest.isEmpty()) break
                 }
-                if (rest.isNotEmpty()) forwardLocked(rest, "", 1)
+                if (rest.isNotEmpty()) forwardLocked(rest, pkg, 1)
                 continue
             }
             if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
-            if (curCount > 0) cur.append("\n\n")
+            if (curCount > 0) {
+                cur.append("\n\n")
+                if (curPkg != pkg) curPkg = ""
+            } else {
+                curPkg = pkg
+            }
             cur.append(msg)
             curCount++
         }
