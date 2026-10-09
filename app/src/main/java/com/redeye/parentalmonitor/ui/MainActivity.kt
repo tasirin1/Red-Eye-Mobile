@@ -302,6 +302,10 @@ class MainActivity : AppCompatActivity() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
+                try {
+                    MessageScheduler.scheduleBootRestart(this)
+                } catch (_: Exception) {
+                }
             }
         } else {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")

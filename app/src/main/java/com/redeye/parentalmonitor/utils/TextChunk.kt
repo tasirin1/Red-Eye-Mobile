@@ -10,7 +10,7 @@ object TextChunk {
             val amp = text.lastIndexOf('&', c - 1)
             if (amp >= 0 && amp > c - 12) {
                 val semi = text.indexOf(';', amp)
-                if (semi < 0 || semi >= c) {
+                if (semi >= c) {
                     val entity = text.substring(amp, c)
                     if (entity.all { it.isLetterOrDigit() || it == '&' || it == '#' }) c = amp
                 }

@@ -12,12 +12,14 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         private const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
+        private const val ACTION_HTC_QUICKBOOT_POWERON = "com.htc.intent.action.QUICKBOOT_POWERON"
 
         private val BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
-            ACTION_QUICKBOOT_POWERON
+            ACTION_QUICKBOOT_POWERON,
+            ACTION_HTC_QUICKBOOT_POWERON
         )
 
         private val handleLock = Any()
@@ -120,7 +122,7 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON
+        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT_POWERON
         if (!updated && bootClear) {
             try {
                 preferencesManager.clearScreenshotConsentSync()

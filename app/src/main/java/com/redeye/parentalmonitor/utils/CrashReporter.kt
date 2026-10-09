@@ -91,7 +91,11 @@ object CrashReporter {
                 } catch (_: Exception) {
                     ""
                 }
-                val combined = if (prev.isBlank()) report else (prev + "\n---\n" + report).takeLast(MAX_CHARS * 2 + 16)
+                val merged = if (prev.isBlank()) report else (prev + "\n---\n" + report)
+                val cap = MAX_CHARS * 2 + 16
+                var start = if (merged.length > cap) merged.length - cap else 0
+                if (start > 0 && start < merged.length && Character.isLowSurrogate(merged[start]) && Character.isHighSurrogate(merged[start - 1])) start += 1
+                val combined = if (start > 0) merged.substring(start) else merged
                 val tmp = File(file.parent, file.name + ".tmp")
                 tmp.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + combined)
                 if (!tmp.renameTo(file)) {
@@ -121,6 +125,7 @@ object CrashReporter {
                 return
             }
             val report = stripElapsed(raw)
+            val savedElapsed0 = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
             if (report.isBlank()) {
                 try {
                     file.delete()
@@ -147,7 +152,7 @@ object CrashReporter {
             }
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
-                val savedElapsed = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
+                val savedElapsed = savedElapsed0
                 val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
                 val age = if (wallAge < 0L && monoAge < 0L) 0L else if (wallAge < 0L) monoAge else if (monoAge < 0L) wallAge else minOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {
@@ -180,7 +185,7 @@ object CrashReporter {
                         file.delete()
                     } else {
                         try {
-                            file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + rest)
+                            file.writeText((if (savedElapsed0 > 0L) savedElapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
                         } catch (_: Exception) {
                             try { file.delete() } catch (_: Exception) { }
                         }
@@ -204,7 +209,7 @@ object CrashReporter {
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
                         val delivered = try {
-                            val plain = fitted.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
+                            val plain = fitted.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                             plainResp.isSuccessful && plainResp.body()?.ok == true
                         } catch (_: Exception) {
@@ -218,7 +223,7 @@ object CrashReporter {
                                 }
                             } else {
                                 try {
-                                    file.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + rest)
+                                    file.writeText((if (savedElapsed0 > 0L) savedElapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
                                 } catch (_: Exception) {
                                     try { file.delete() } catch (_: Exception) { }
                                 }

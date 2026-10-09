@@ -1,3 +1,18 @@
+## [1.6.161] - 2026-10-09
+### Fixed
+- `MonitoringService.takeScreenshotFrame` skala `densityDpi` proporsional dan guard `planes`/`pixelStride`/`rowWidth` agar tak crash saat rasio stride tak cocok.
+- `MonitoringService.pollTelegramCommands` retry juga saat `chatId` berubah, bukan hanya saat token berubah.
+- `BootReceiver` tangani aksi HTC `com.htc.intent.action.QUICKBOOT_POWERON` agar auto-start jalan di ROM tersebut.
+- `ContentQuery` pakai argumen limit `Bundle` hanya di API 30+ agar tak kembalikan kursor full-table di API 26-29.
+- `MessageScheduler.scheduleMessageSend` pakai `APPEND_OR_REPLACE` agar rantai WorkManager tak tumbuh tanpa batas.
+- `CrashReporter` pertahankan timestamp elapsed asli saat tulis sisa laporan dan potong gabungan aman-surrogate agar sisa tak hidup selamanya.
+- `MainActivity` jadwalkan `scheduleBootRestart` saat start stealth gagal agar monitoring tetap coba pulih.
+- `SendMessageWorker.sendDropNotice` selalu antre notice prioritas walau antrean penuh agar info drop tak hilang diam-diam.
+- Fallback plain (`MonitoringService`, `SetupActivity`, `NotificationForwarderService`, `SendMessageWorker`, `CrashReporter`) unescape `&apos;` agar teks tak tampil mentah.
+- `TextChunk.safeCut` hanya mundur untuk entity ber-`;` agar teks ber-`&` biasa tak terpotong sia-sia.
+- `Redact` batasi fallback token ke sufiks 35+ karakter agar teks normal tak ikut disensor.
+- `PreferencesManager.snapshot` salin defensif `Set` agar set hidup tak bocor antar snapshot dan migrasi.
+
 ## [1.6.160] - 2026-10-06
 ### Fixed
 - Luruskan teks backlog penuh foto/video (`oldest unsent discarded`) agar sesuai perilaku prune yang mempertahankan file terbaru.

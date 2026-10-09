@@ -369,7 +369,12 @@ class PreferencesManager(context: Context) {
 
     fun snapshot(): Map<String, Any?> {
         return try {
-            HashMap(sharedPreferences.all)
+            val raw = sharedPreferences.all
+            val copy = HashMap<String, Any?>(raw.size)
+            for ((k, v) in raw) {
+                copy[k] = if (v is Set<*>) HashSet(v) else v
+            }
+            copy
         } catch (_: Exception) {
             emptyMap()
         }

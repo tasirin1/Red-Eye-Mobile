@@ -12,7 +12,7 @@ object ContentQuery {
     ): android.database.Cursor? {
         val safeLimit = if (limit < 0) Int.MAX_VALUE else limit
         return try {
-            if (safeLimit != Int.MAX_VALUE && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (safeLimit != Int.MAX_VALUE && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val bundle = android.os.Bundle().apply {
                     putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
                     putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args)

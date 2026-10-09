@@ -315,7 +315,7 @@ class SendMessageWorker(
 
     private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&")
+            val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
                 url,
@@ -473,7 +473,7 @@ class SendMessageWorker(
 
     private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = "") {
         val clean = try {
-            sample.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&amp;", "&").trim().take(120)
+            sample.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&").trim().take(120)
         } catch (_: Exception) {
             ""
         }
@@ -492,7 +492,6 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) return
         } catch (_: Exception) {
         }
-        if (messageQueue.getQueueSize() >= 100) return
         try {
             messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(applicationContext)
