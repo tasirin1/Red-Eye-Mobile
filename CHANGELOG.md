@@ -1,3 +1,11 @@
+## [1.6.166] - 2026-10-09
+### Fixed
+- `NotificationForwarderService` catat overflow via cache/scope background agar thread listener tak kena query `PackageManager`.
+- `NotificationForwarderService.reviveMonitoringIfNeeded` gate izin seperti entry lain; tanpa izin hanya jadwalkan boot restart.
+- Wake `/ping` throttle global di samping per-sender agar rotasi pengirim tak bangunkan service beruntun.
+- `NotificationForwarderService.pollWakeOnce` backoff 60 dtk untuk respons gagal tak terduga.
+- Drop-restore forwarder teruskan `CancellationException` agar cancel scope tepat waktu.
+
 ## [1.6.165] - 2026-10-09
 ### Fixed
 - `SetupActivity.clearCredentials` cabut scope menu owner lama via `deleteMyCommands` dan reset `lastUpdateId` agar setup ulang bersih.

@@ -54,6 +54,8 @@ class NotificationForwarderService : NotificationListenerService() {
     private var lastRebindAt = 0L
     @Volatile
     private var lastReviveAt = 0L
+    @Volatile
+    private var lastWakeStartAt = 0L
     private var wakeJob: Job? = null
     @Volatile
     private var wakeUpdateId = -1L
@@ -136,6 +138,8 @@ class NotificationForwarderService : NotificationListenerService() {
                                 dropNoticeJob = scope.launch {
                                     try {
                                         delay(30_000L)
+                                    } catch (e: kotlinx.coroutines.CancellationException) {
+                                        throw e
                                     } catch (_: Exception) {
                                     }
                                     try {
@@ -163,6 +167,21 @@ class NotificationForwarderService : NotificationListenerService() {
             cachedFwdToken = prefsRef?.botToken.orEmpty()
             cachedFwdChat = prefsRef?.chatId.orEmpty()
         } catch (_: Exception) {
+        }
+    }
+
+    private fun recordOverflow(pkg: String, title: String, text: String) {
+        val cached = try { synchronized(appLabelCache) { appLabelCache[pkg] } } catch (_: Exception) { null }
+        if (cached != null) {
+            try { record(cached, title, text) } catch (_: Exception) { }
+            return
+        }
+        try {
+            scope.launch {
+                try { record(overflowLabel(pkg), title, text) } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+            try { record(pkg, title, text) } catch (_: Exception) { }
         }
     }
 
@@ -255,9 +274,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
-                try {
-                    record(overflowLabel(pkg), fbTitle, fbText)
-                } catch (_: Exception) { }
+                recordOverflow(pkg, fbTitle, fbText)
                 return
             }
             scope.launch(fwdSerial) {
@@ -302,7 +319,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (x.isEmpty()) {
                     x = try { notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 }
-                if (t.isNotEmpty() || x.isNotEmpty()) record(overflowLabel(pkg), t, x)
+                if (t.isNotEmpty() || x.isNotEmpty()) recordOverflow(pkg, t, x)
             } catch (_: Exception) { }
             return
         }
@@ -586,7 +603,10 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             return
         }
-        if (!response.isSuccessful) return
+        if (!response.isSuccessful) {
+            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
+            return
+        }
         val updates = try {
             response.body()?.result.orEmpty()
         } catch (_: Exception) {
@@ -656,6 +676,8 @@ class NotificationForwarderService : NotificationListenerService() {
             fresh
         }
         if (!wakeFresh) return
+        if (nowWake - lastWakeStartAt < WAKE_PING_COOLDOWN_MS) return
+        lastWakeStartAt = nowWake
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
@@ -697,6 +719,20 @@ class NotificationForwarderService : NotificationListenerService() {
                         false
                     }
                     if (!resume) return@launch
+                    val granted = try {
+                        com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions.filter { it != android.Manifest.permission.POST_NOTIFICATIONS }.all {
+                            androidx.core.content.ContextCompat.checkSelfPermission(this@NotificationForwarderService, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        }
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (!granted) {
+                        try {
+                            MessageScheduler.scheduleBootRestart(this@NotificationForwarderService)
+                        } catch (_: Exception) {
+                        }
+                        return@launch
+                    }
                     try {
                         val restart = android.content.Intent(this@NotificationForwarderService, MonitoringService::class.java).apply {
                             action = MonitoringService.ACTION_START_MONITORING
