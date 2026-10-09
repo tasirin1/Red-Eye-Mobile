@@ -320,9 +320,23 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val oldOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
+            val oldToken = try { prefs.botToken } catch (_: Exception) { "" }
             try { prefs.botToken = "" } catch (_: Exception) { }
             try { prefs.chatId = "" } catch (_: Exception) { }
             try { prefs.ownerUserId = 0L } catch (_: Exception) { }
+            try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }
+            if (oldOwner != 0L && oldToken.isNotEmpty()) {
+                try {
+                    com.redeye.parentalmonitor.network.TelegramClient.api.deleteMyCommands(
+                        "https://api.telegram.org/bot$oldToken/deleteMyCommands",
+                        com.redeye.parentalmonitor.network.DeleteCommandsRequest(
+                            com.redeye.parentalmonitor.network.BotCommandScope("chat", oldOwner)
+                        )
+                    )
+                } catch (_: Exception) {
+                }
+            }
             try { prefs.credentialError = "" } catch (_: Exception) { }
             try { prefs.credentialErrorAt = 0L } catch (_: Exception) { }
             try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }

