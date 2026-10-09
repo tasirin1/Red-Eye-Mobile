@@ -256,7 +256,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
                 try {
-                    if (historyAllowed()) record(overflowLabel(pkg), fbTitle, fbText)
+                    record(overflowLabel(pkg), fbTitle, fbText)
                 } catch (_: Exception) { }
                 return
             }
@@ -297,7 +297,6 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
             try {
-                if (!historyAllowed()) return
                 val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 var x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 if (x.isEmpty()) {

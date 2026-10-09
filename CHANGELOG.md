@@ -1,3 +1,15 @@
+## [1.6.163] - 2026-10-10
+### Fixed
+- Gagal build `v1.6.162`: kembalikan `}` penutup `if (!usePlayer)` dan ekor jalur `MediaPlayer` (`Ringing` + delay + `finished`) yang ikut terpotong patch ringtone.
+- `MonitoringService.searchContacts` gate limit `Bundle` ke API 30+ dan cari juga kolom nomor.
+- `MonitoringService.captureAndSendPhoto` hapus file callback basi agar tak ada JPEG yatim.
+- `MonitoringService.sendFitted` antre sisa chunk saat cancel agar ekor balasan tak hilang.
+- Pairing `/start` hanya balas petunjuk bila ID chat cocok agar pemindai acak tak dapat oracle.
+- `MonitoringService.startMonitoring` samakan restore volume macet untuk umur negatif seperti `BootReceiver`.
+- `MonitoringService` cache kredensial `@Volatile` + `rememberOwner` terkunci agar atomik.
+- `NotificationForwarderService` selalu catat riwayat saat overflow walau pause/nonaktif.
+- `BootReceiver` persistensi `boot_meta` di jalur dini `USER_UNLOCKED`.
+
 ## [1.6.162] - 2026-10-10
 ### Fixed
 - `SendMessageWorker.sendChunked` antre sisa part saat cancel antar-part agar retry tak kirim ganda.

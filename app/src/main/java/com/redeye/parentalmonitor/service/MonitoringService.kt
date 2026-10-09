@@ -510,7 +510,8 @@ class MonitoringService : Service() {
         val stuckRing = preferencesManager.ringPrevVolume
         val ringSavedAt = preferencesManager.ringSavedAt
         val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
-        if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && System.currentTimeMillis() - ringSavedAt < 12 * 60 * 60_000L) {
+        val ringAgeStart = System.currentTimeMillis() - ringSavedAt
+        if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && (ringAgeStart < 0L || ringAgeStart < 12 * 60 * 60_000L)) {
             try {
                 val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
@@ -747,10 +748,13 @@ class MonitoringService : Service() {
         return cachedOwnerId != 0L && senderId == cachedOwnerId.toString()
     }
 
+    private val ownerLock = Any()
     private fun rememberOwner(id: Long): Boolean {
         if (id == 0L) return false
-        if (cachedOwnerId != 0L) return false
-        cachedOwnerId = id
+        synchronized(ownerLock) {
+            if (cachedOwnerId != 0L) return false
+            cachedOwnerId = id
+        }
         try {
             preferencesManager.setOwnerIdSync(id)
         } catch (_: Exception) {
@@ -1108,7 +1112,7 @@ class MonitoringService : Service() {
                                         registerBotCommands()
                                         sendToTelegram("Owner linked via /start.")
                                     }
-                                } else {
+                                } else if (startTokens.isNotEmpty() && startTokens[0] == chatId) {
                                     sendPairHint(senderId)
                                 }
                             }
@@ -2637,13 +2641,27 @@ class MonitoringService : Service() {
             rest = rest.substring(cut)
         }
         chunks.add(rest)
-        for ((idx, chunk) in chunks.withIndex()) {
-            val markup = if (idx == chunks.lastIndex) replyMarkup else null
-            if (!sendToTelegram(chunk, markup, false)) {
-                ok = false
-                failed.add(chunk)
+        var lastSentIdx = -1
+        try {
+            for ((idx, chunk) in chunks.withIndex()) {
+                val markup = if (idx == chunks.lastIndex) replyMarkup else null
+                if (!sendToTelegram(chunk, markup, false)) {
+                    ok = false
+                    failed.add(chunk)
+                } else {
+                    lastSentIdx = idx
+                }
+                if (idx != chunks.lastIndex) delay(300)
             }
-            if (idx != chunks.lastIndex) delay(300)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            if (queueOnFail && lastSentIdx + 1 < chunks.size) {
+                try {
+                    messageQueue.addMessages(chunks.subList(lastSentIdx + 1, chunks.size))
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+            }
+            throw e
         }
         if (!ok) {
             if (queueOnFail) {
@@ -3178,7 +3196,13 @@ class MonitoringService : Service() {
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
-                    if (cameraAttempt.get() != attempt) return@capturePhoto
+                    if (cameraAttempt.get() != attempt) {
+                        try {
+                            photoFile.delete()
+                        } catch (_: Exception) {
+                        }
+                        return@capturePhoto
+                    }
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
                     try {
@@ -3760,6 +3784,11 @@ private suspend fun ringDevice(seconds: Int) {
                 } catch (_: Exception) {
                 }
                 return
+            }
+            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
+            kotlinx.coroutines.delay(seconds * 1000L)
+            currentCoroutineContext().ensureActive()
+            sendToTelegram(finishedRingText())
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -4258,10 +4287,10 @@ private suspend fun ringDevice(seconds: Int) {
             )
             val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             val cursor = try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                     val bundle = android.os.Bundle().apply {
-                        putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'")
-                        putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%"))
+                        putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\' OR " + android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ? ESCAPE '\\'")
+                        putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%", "%$escaped%"))
                         putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")
                         putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, 10)
                     }
@@ -4270,8 +4299,8 @@ private suspend fun ringDevice(seconds: Int) {
                     contentResolver.query(
                         uri,
                         projection,
-                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\'",
-                        arrayOf("%$escaped%"),
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\' OR " + android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ? ESCAPE '\\'",
+                        arrayOf("%$escaped%", "%$escaped%"),
                         android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                     )
                 }

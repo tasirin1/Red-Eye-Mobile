@@ -38,6 +38,10 @@ class BootReceiver : BroadcastReceiver() {
             synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
                 lastHandleAt = nowUnlock
+                try {
+                    context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowUnlock).apply()
+                } catch (_: Exception) {
+                }
                 return
             }
         }
