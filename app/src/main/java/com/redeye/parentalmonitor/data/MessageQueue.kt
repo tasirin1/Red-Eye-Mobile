@@ -201,15 +201,16 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun isFresh(q: QueuedMessage, wallCutoff: Long): Boolean {
-        if (q.timestamp >= wallCutoff) return true
         val mark = q.elapsedAt
-        if (mark <= 0L) return false
-        return try {
-            val now = android.os.SystemClock.elapsedRealtime()
-            now >= mark && now - mark <= 7 * 24 * 60 * 60_000L
-        } catch (_: Exception) {
-            false
+        if (mark > 0L) {
+            return try {
+                val now = android.os.SystemClock.elapsedRealtime()
+                now >= mark && now - mark <= 7 * 24 * 60 * 60_000L
+            } catch (_: Exception) {
+                q.timestamp >= wallCutoff
+            }
         }
+        return q.timestamp >= wallCutoff
     }
 
     private fun pruneVolatileLocked() {

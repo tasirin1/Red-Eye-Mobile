@@ -94,7 +94,7 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private const val STORED_MASK = "••••••••"
-        private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{10,}$")
+        private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
     }
@@ -415,6 +415,45 @@ class SetupActivity : AppCompatActivity() {
                 } else {
                     chatId = resolved
                 }
+            }
+            if (mySave != saveSeq.get()) return@launch
+            try {
+                val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot" + token + "/getMe")
+                if (mySave != saveSeq.get()) return@launch
+                if (!meResp.isSuccessful || meResp.body()?.ok != true) {
+                    val code = meResp.code()
+                    if (code == 401 || code == 403) {
+                        try {
+                            prefs.credentialError = code.toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                    }
+                    return@launch
+                }
+                val encVerify = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
+                val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot" + token + "/getChat?chat_id=" + encVerify)
+                if (mySave != saveSeq.get()) return@launch
+                if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
+                    val code = chatResp.code()
+                    if (code == 401 || code == 403) {
+                        try {
+                            prefs.credentialError = code.toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                    }
+                    return@launch
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
             }
             if (mySave != saveSeq.get()) return@launch
             try {

@@ -135,6 +135,10 @@ class CameraService(private val context: Context) {
                             watchdogHandler?.removeCallbacks(r)
                         } catch (_: Exception) {
                         }
+                        try {
+                            mainHandler()?.removeCallbacks(r)
+                        } catch (_: Exception) {
+                        }
                     }
                 } catch (_: Exception) {
                 }
@@ -389,10 +393,12 @@ class CameraService(private val context: Context) {
                     timeoutRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
                         try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
                     }
                     stopRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
                         try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
                     }
                 } catch (_: Exception) {
                 }

@@ -415,7 +415,19 @@ class SendMessageWorker(
         for ((idx, part) in parts.withIndex()) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
-                    delay(500)
+                    try {
+                        delay(500)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        if (idx + 1 < parts.size) {
+                            try {
+                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""))
+                                MessageScheduler.scheduleMessageSend(applicationContext)
+                            } catch (_: Exception) {
+                            }
+                            return SendOutcome.Sent
+                        }
+                        throw e
+                    }
                 }
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {

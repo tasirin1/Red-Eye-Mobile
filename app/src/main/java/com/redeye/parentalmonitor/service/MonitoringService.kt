@@ -3676,7 +3676,11 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun ringDevice(seconds: Int) {
+    private fun finishedRingText(): String {
+        return "\uD83D\uDD14 Ring finished."
+    }
+
+private suspend fun ringDevice(seconds: Int) {
         val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         val stream = android.media.AudioManager.STREAM_ALARM
         val previous = try {
@@ -3737,11 +3741,25 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 ringtone?.play()
-            }
-            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
-            kotlinx.coroutines.delay(seconds * 1000L)
-            currentCoroutineContext().ensureActive()
-            sendToTelegram("\uD83D\uDD14 Ring finished.")
+                val ringEndFallback = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
+                while (android.os.SystemClock.elapsedRealtime() < ringEndFallback) {
+                    try {
+                        if (ringtone?.isPlaying != true) ringtone?.play()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        kotlinx.coroutines.delay(1_000L)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                    currentCoroutineContext().ensureActive()
+                }
+                try {
+                    sendToTelegram(finishedRingText())
+                } catch (_: Exception) {
+                }
+                return
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -3835,6 +3853,10 @@ class MonitoringService : Service() {
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
+            try {
+                recorder?.stop()
+            } catch (_: Exception) {
+            }
             if (audioOutcome == MediaSendOutcome.SENT) {
                 try {
                     messageQueue.addMessage("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")

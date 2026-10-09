@@ -1,3 +1,15 @@
+## [1.6.162] - 2026-10-10
+### Fixed
+- `SendMessageWorker.sendChunked` antre sisa part saat cancel antar-part agar retry tak kirim ganda.
+- `MonitoringService.recordAndSendAudio` panggil `recorder.stop()` di jalur cancel sebelum `release()`.
+- Timeout upload media diperlonggar (`writeTimeout` 180 dtk, `callTimeout` 300 dtk) agar video panjang lolos di uplink lambat.
+- `MonitoringService.ringDevice` fallback `Ringtone` di-loop selama durasi, bukan bunyi sekali.
+- `MessageQueue.isFresh` utamakan elapsed monotonik agar lompatan jam tak membekukan atau menghanguskan antrean.
+- `SetupActivity.saveSettings` verifikasi `getMe`/`getChat` sebelum simpan; offline tetap bisa simpan.
+- `SetupActivity.TOKEN_REGEX` wajibkan secret 35+ karakter agar token terpotong ditolak di awal.
+- `NotificationForwarderService.handlePosted` catat riwayat walau monitoring pause/nonaktif.
+- `CameraService` hapus watchdog/timeout juga dari `mainHandler` di semua jalur selesai.
+
 ## [1.6.161] - 2026-10-09
 ### Fixed
 - `MonitoringService.takeScreenshotFrame` skala `densityDpi` proporsional dan guard `planes`/`pixelStride`/`rowWidth` agar tak crash saat rasio stride tak cocok.

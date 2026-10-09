@@ -201,8 +201,8 @@ object TelegramMediaClient {
         .connectionPool(SharedNet.mediaPool)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(180, TimeUnit.SECONDS)
+        .callTimeout(300, TimeUnit.SECONDS)
         .build()
 
     private val mediaRetrofit = Retrofit.Builder()
