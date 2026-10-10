@@ -1,3 +1,7 @@
+## [1.6.169] - 2026-10-10
+### Fixed
+- `tools/pasang-hook.sh` cadangan ke direktori exec-capable via `core.hooksPath` saat `.git/hooks` di penyimpanan noexec (mis. `/storage/emulated`), agar kait pre-push benar-benar jalan; badan kait `cd` ke root repo dulu.
+
 ## [1.6.168] - 2026-10-10
 ### Fixed
 - `Redact.token` tanpa alokasi `Regex` per secret: batas digit dicek manual via `indexOf`, fallback token dilewati bila tanpa `:`.
