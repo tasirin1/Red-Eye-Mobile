@@ -49,6 +49,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 - `python3 -c "import xml.dom.minidom; ..."` untuk setiap XML yang diubah (`AndroidManifest.xml`, layout).
 - `grep -rn "BOT_TOKEN\|CHAT_ID"` untuk memastikan tidak ada token asli yang kebawa.
+- `python3 tools/verifikasi-path.py` + `bash scripts/cek-cepat.sh` wajib LOLOS sebelum push; pasang kait pre-push sekali per clone via `sh tools/pasang-hook.sh`.
 - Tidak perlu menjalankan Gradle lokal. Sebutkan di jawaban akhir bahwa build diverifikasi via GitHub Actions.
 
 ## 8. Rilis Setiap Perbaikan

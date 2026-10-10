@@ -1,3 +1,8 @@
+## [Unreleased]
+### Added
+- Sistem verifikasi pengelolaan repo port dari `tasirin-vaultwarden-host`: workflow `verifikasi-path.yml` (gagal cepat sebelum build APK), `tools/verifikasi-path.py` (acuan yatim, XML, manifest, paritas resource, aturan repo, hapusan salah, pindai secret), `scripts/cek-cepat.sh` (vektor `0.x`, binary/secret staged), dan kait pre-push `tools/pasang-hook.sh`.
+- `values-night/colors.xml` dilengkapi 7 warna tema/ikon yang sebelumnya hanya di `values/` agar paritas siang-malam verifier terpenuhi (nilai identik, tanpa perubahan tampilan).
+
 ## [1.6.166] - 2026-10-09
 ### Fixed
 - `NotificationForwarderService` catat overflow via cache/scope background agar thread listener tak kena query `PackageManager`.
