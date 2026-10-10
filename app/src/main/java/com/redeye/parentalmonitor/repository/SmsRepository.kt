@@ -28,14 +28,14 @@ class SmsRepository(private val context: Context) {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
-        val fuzzy = "%" + norm.toCharArray().joinToString("%") + "%"
+        val fuzzy = buildFuzzy(norm)
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
             args = arrayOf(fuzzy),
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )
-        val matched = filterByNumber(rows, digits) { it.address }
+        val matched = filterByNumber(rows, norm) { it.address }
         if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
@@ -48,7 +48,7 @@ class SmsRepository(private val context: Context) {
                 limit = 500
             )
             if (page.isEmpty()) return emptyList()
-            val pageMatched = filterByNumber(page, digits) { it.address }
+            val pageMatched = filterByNumber(page, norm) { it.address }
             if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
             if (page.size < 500) return emptyList()
             val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
@@ -69,8 +69,7 @@ class SmsRepository(private val context: Context) {
         )
     }
 
-    private fun filterByNumber(rows: List<SmsData>, digits: String, pick: (SmsData) -> String): List<SmsData> {
-        val want = digits.filter { it.isDigit() }
+    private fun filterByNumber(rows: List<SmsData>, want: String, pick: (SmsData) -> String): List<SmsData> {
         return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(pick(it), want) }
     }
 
@@ -81,6 +80,15 @@ class SmsRepository(private val context: Context) {
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = limit
         )
+    }
+
+    private fun buildFuzzy(norm: String): String {
+        val out = StringBuilder(norm.length * 2 + 2)
+        out.append('%')
+        for (c in norm) {
+            out.append(c).append('%')
+        }
+        return out.toString()
     }
 
     private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<SmsData> {

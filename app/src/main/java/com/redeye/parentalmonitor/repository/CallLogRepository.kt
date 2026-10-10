@@ -42,6 +42,15 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
+    private fun buildFuzzy(norm: String): String {
+        val out = StringBuilder(norm.length * 2 + 2)
+        out.append('%')
+        for (c in norm) {
+            out.append(c).append('%')
+        }
+        return out.toString()
+    }
+
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
@@ -81,7 +90,7 @@ class CallLogRepository(private val context: Context) {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
-        val fuzzy = "%" + norm.toCharArray().joinToString("%") + "%"
+        val fuzzy = buildFuzzy(norm)
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
             args = arrayOf(fuzzy),
@@ -114,8 +123,7 @@ class CallLogRepository(private val context: Context) {
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
-        val digits = want.filter { it.isDigit() }
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(it.number, digits) }
+        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(it.number, want) }
     }
 
 }

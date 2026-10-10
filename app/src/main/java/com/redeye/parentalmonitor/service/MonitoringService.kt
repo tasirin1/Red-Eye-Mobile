@@ -1777,10 +1777,22 @@ class MonitoringService : Service() {
             "/sms" -> {
                 val number = arg.substringBefore(" ").trim()
                 val smsText = arg.substringAfter(" ", "").trim()
-                val normalized = if (number.startsWith("+")) "+" + number.drop(1).filter { it.isDigit() } else number.filter { it.isDigit() }
+                var badChar = false
+                var plusCount = 0
+                val digits = StringBuilder(number.length + 1)
+                if (number.startsWith("+")) digits.append('+')
+                for (c in number) {
+                    when {
+                        c.isDigit() -> digits.append(c)
+                        c == '+' -> { plusCount++; if (!number.startsWith("+") || plusCount > 1) badChar = true }
+                        c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
+                        else -> badChar = true
+                    }
+                }
+                val normalized = digits.toString()
                 if (number.isEmpty() || smsText.isEmpty()) {
                     sendToTelegram("Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
-                } else if (number.contains('*') || number.contains('#') || number.contains(',') || number.contains(';') || number.any { it.isLetter() } || number.count { it == '+' } > 1 || (number.contains('+') && !number.startsWith("+"))) {
+                } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Usage: /sms \u003cnumber\u003e \u003cmessage\u003e")

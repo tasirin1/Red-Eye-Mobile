@@ -16,19 +16,19 @@ object PhoneNumbers {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        val cands = mutableListOf(want)
-        if (wantAlt != null) cands.add(wantAlt)
-        val haveCands = mutableListOf(have)
-        if (haveAlt != null) haveCands.add(haveAlt)
-        for (a in haveCands) {
-            for (b in cands) {
-                if (a.length < 7 || b.length < 7) continue
-                val short = if (a.length <= b.length) a else b
-                val long = if (a.length <= b.length) b else a
-                if (long.endsWith(short)) return true
-            }
+        if (want.length >= 7 && suffixMatch(have, want)) return true
+        if (wantAlt != null && wantAlt.length >= 7 && suffixMatch(have, wantAlt)) return true
+        if (haveAlt != null) {
+            if (want.length >= 7 && suffixMatch(haveAlt, want)) return true
+            if (wantAlt != null && wantAlt.length >= 7 && suffixMatch(haveAlt, wantAlt)) return true
         }
         return false
+    }
+
+    private fun suffixMatch(a: String, b: String): Boolean {
+        val short = if (a.length <= b.length) a else b
+        val long = if (a.length <= b.length) b else a
+        return long.endsWith(short)
     }
 
     fun matches(raw: String, digits: String, pick: (String) -> String = { it }): Boolean {

@@ -1,3 +1,15 @@
+## [1.6.168] - 2026-10-10
+### Fixed
+- `Redact.token` tanpa alokasi `Regex` per secret: batas digit dicek manual via `indexOf`, fallback token dilewati bila tanpa `:`.
+- `Html.unescape` satu pass (`StringBuilder` + cocokkan 7 entitas) gantikan 8× pindai string; `tagStripRegex` jadi privat.
+- `PhoneNumbers.numbersEqualFast` tanpa alokasi 2 `MutableList`: banding sufiks langsung 4 kombinasi.
+- `Background` pool ber-timeout (inti 0, maks 2, `keep-alive` 60 dtk, antrean 64, thread daemon) agar tak tahan 2 thread selamanya di Android 7+.
+- `NetworkUtils.isChatMissing`/`isRightsLimited` tanpa `lowercase()` + 8× `contains`: pakai `contains(ignoreCase=true)` hubung singkat; 2 pola redundan dibuang.
+- `MonitoringService` validasi `/sms` satu loop (digit/`+`/pemisah benign) gantikan 7× pindai `contains`/`any`/`count`.
+- `NotificationForwarderService` wake `/ping` kumpulkan `pingIds` dalam loop utama; pindai `filter`+`lowercase` kedua dihapus (filter numerik `freshLast` dipertahankan).
+- `SmsRepository`/`CallLogRepository` pola fuzzy via `StringBuilder` (tanpa `toCharArray().joinToString`) dan normalisasi digit sekali per query.
+- `TelegramApi` satu `ConnectionPool(4)` bersama untuk chat + media gantikan 2 pool (6+4 koneksi idle).
+
 ## [1.6.167] - 2026-10-10
 ### Fixed
 - `MessageQueue.persistLocked` koalesensi tulis antrean (maks 1× per 2 dtk, flush paksa di `flushSync`) agar burst pesan tak memicu serialisasi + enkripsi O(n²).

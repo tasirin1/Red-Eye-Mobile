@@ -616,6 +616,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var maxId = wakeUpdateId
         var pinged = false
         val pingSenders = mutableSetOf<String>()
+        val pingIds = ArrayList<Long>()
         for (u in updates) {
             if (u.updateId > maxId) maxId = u.updateId
             if (u.updateId <= mainLast || u.updateId <= wakeUpdateId) continue
@@ -649,6 +650,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (!senderIsOwner && !groupWake) continue
             pinged = true
             pingSenders.add(fromId.ifEmpty { "unknown" })
+            if (u.updateId > mainLast) pingIds.add(u.updateId)
         }
         wakeUpdateId = maxId
         try {
@@ -657,15 +659,14 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!pinged) return
         try {
-            val freshLast = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
-            val pingIds = updates.filter { u ->
-                val m = u.message ?: u.editedMessage ?: u.channelPost ?: u.editedChannelPost
-                val cb = u.callbackQuery
-                val t = try { (m?.text ?: m?.caption ?: cb?.data).orEmpty() } catch (_: Exception) { "" }
-                val base = t.substringBefore(" ").substringBefore("@").lowercase(java.util.Locale.ROOT)
-                base == "/ping" && u.updateId > freshLast
-            }.map { it.updateId }
-            prefs.addWakePingIds(pingIds)
+            if (pingIds.isNotEmpty()) {
+                val freshLast = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
+                var i = 0
+                while (i < pingIds.size) {
+                    if (pingIds[i] <= freshLast) pingIds.removeAt(i) else i++
+                }
+                if (pingIds.isNotEmpty()) prefs.addWakePingIds(pingIds)
+            }
         } catch (_: Exception) {
         }
         if (MonitoringService.isRunning) return
