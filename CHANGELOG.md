@@ -1,4 +1,17 @@
-## [Unreleased]
+## [1.6.167] - 2026-10-10
+### Fixed
+- `MessageQueue.persistLocked` koalesensi tulis antrean (maks 1× per 2 dtk, flush paksa di `flushSync`) agar burst pesan tak memicu serialisasi + enkripsi O(n²).
+- `TimeFmt` cache `TimeZone.getDefault()` per 60 dtk agar tiap caption/pesan tak menanggung clone + synchronized.
+- `PreferencesManager.ensureOwnerPairCode` pakai satu `SecureRandom` bersama; `sendSmsPending` pakai satu UUID per SMS.
+- Regex dikompilasi sekali di konstanta: `CMD_SPLIT_REGEX` untuk `/start`, `PAIR_CODE_REGEX`, `CONNECT_HELPER_REGEX`, tiga pola `NetworkUtils`.
+- `Html.unescape` gantikan 7× rantai `replace` di 6 call site; `TAG_STRIP_REGEX` duplikat dibuang.
+- `SmsRepository`/`CallLogRepository` normalisasi digit nomor sekali per query, bukan per baris; baris inbox notifikasi via sequence.
+- `MessageScheduler` pakai satu `Constraints` bersama; thread mentah diganti pool bersama `Background`.
+- Cabang mati `isFreshLocation` pra-API 24 dibuang.
+
+### Removed
+- `MonitoringService.clearOwnerMenuScope` mati tanpa pemanggil; 19 string warisan UI lama; `@file:Suppress("DEPRECATION")` tanpa API deprecated di `PreferencesManager`/`MessageQueue`.
+
 ### Added
 - Sistem verifikasi pengelolaan repo port dari `tasirin-vaultwarden-host`: workflow `verifikasi-path.yml` (gagal cepat sebelum build APK), `tools/verifikasi-path.py` (acuan yatim, XML, manifest, paritas resource, aturan repo, hapusan salah, pindai secret), `scripts/cek-cepat.sh` (vektor `0.x`, binary/secret staged), dan kait pre-push `tools/pasang-hook.sh`.
 - `values-night/colors.xml` dilengkapi 7 warna tema/ikon yang sebelumnya hanya di `values/` agar paritas siang-malam verifier terpenuhi (nilai identik, tanpa perubahan tampilan).

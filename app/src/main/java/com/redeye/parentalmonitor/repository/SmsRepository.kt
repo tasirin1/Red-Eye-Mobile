@@ -70,7 +70,8 @@ class SmsRepository(private val context: Context) {
     }
 
     private fun filterByNumber(rows: List<SmsData>, digits: String, pick: (SmsData) -> String): List<SmsData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matches(pick(it), digits) }
+        val want = digits.filter { it.isDigit() }
+        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(pick(it), want) }
     }
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {

@@ -32,10 +32,13 @@ object PhoneNumbers {
     }
 
     fun matches(raw: String, digits: String, pick: (String) -> String = { it }): Boolean {
-        val have = pick(raw).filter { it.isDigit() }
-        val want = digits.filter { it.isDigit() }
-        if (have.isEmpty() || want.isEmpty()) return false
-        if (want.length < 7) return have == want
-        return numbersEqualFast(have, want, altVariant(want))
+        return matchesNormalized(pick(raw), digits.filter { it.isDigit() })
+    }
+
+    fun matchesNormalized(haveRaw: String, wantDigits: String): Boolean {
+        val have = haveRaw.filter { it.isDigit() }
+        if (have.isEmpty() || wantDigits.isEmpty()) return false
+        if (wantDigits.length < 7) return have == wantDigits
+        return numbersEqualFast(have, wantDigits, altVariant(wantDigits))
     }
 }

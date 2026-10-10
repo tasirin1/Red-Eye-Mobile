@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.redeye.parentalmonitor.data
 
 import android.content.Context
@@ -96,16 +94,16 @@ class PreferencesManager(context: Context) {
 
         private const val PREFS_NAME = "secure_prefs"
 
+        private val secureRandom = java.security.SecureRandom()
+        private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
+
         private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {
             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-                try {
-                    Thread {
-                        try {
-                            refreshInstance(context.applicationContext)
-                        } catch (_: Exception) {
-                        }
-                    }.start()
-                } catch (_: Exception) {
+                com.redeye.parentalmonitor.utils.Background.run {
+                    try {
+                        refreshInstance(context.applicationContext)
+                    } catch (_: Exception) {
+                    }
                 }
                 return Pair(MemoryPrefs(), false)
             }
@@ -460,8 +458,8 @@ class PreferencesManager(context: Context) {
     fun ensureOwnerPairCode(): String {
         try {
             val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
-            if (cur.matches(Regex("^[0-9]{6}$"))) return cur
-            val code = (100000 + java.security.SecureRandom().nextInt(900000)).toString()
+            if (cur.matches(PAIR_CODE_REGEX)) return cur
+            val code = (100000 + secureRandom.nextInt(900000)).toString()
             try {
                 sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).commit()
             } catch (_: Exception) {

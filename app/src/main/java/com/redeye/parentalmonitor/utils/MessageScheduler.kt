@@ -18,14 +18,14 @@ object MessageScheduler {
     private const val BOOT_RESTART_WORK = "boot_restart_monitoring"
     private const val BOOT_WATCHDOG_WORK = "monitoring_watchdog"
 
+    private val netConstraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
+
     fun scheduleMessageSend(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
-                .setConstraints(constraints)
+                .setConstraints(netConstraints)
                 .setBackoffCriteria(
                     androidx.work.BackoffPolicy.EXPONENTIAL,
                     10,
@@ -58,7 +58,7 @@ object MessageScheduler {
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
-                .setConstraints(constraints)
+                .setConstraints(netConstraints)
                 .setBackoffCriteria(
                     androidx.work.BackoffPolicy.EXPONENTIAL,
                     10,

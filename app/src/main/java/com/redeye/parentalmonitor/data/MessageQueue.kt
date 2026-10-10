@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package com.redeye.parentalmonitor.data
 
 import android.content.Context
@@ -19,14 +17,11 @@ class MessageQueue private constructor(context: Context) {
 
     init {
         if (volatileOnly) {
-            try {
-                Thread {
-                    try {
-                        tryRestorePersistent()
-                    } catch (_: Exception) {
-                    }
-                }.start()
-            } catch (_: Exception) {
+            com.redeye.parentalmonitor.utils.Background.run {
+                try {
+                    tryRestorePersistent()
+                } catch (_: Exception) {
+                }
             }
         } else {
             try {
@@ -43,6 +38,8 @@ class MessageQueue private constructor(context: Context) {
             }
         }
     }
+    private var lastPersistAt = 0L
+    private var persistDirty = false
     private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val lock = Any()
@@ -107,11 +104,9 @@ class MessageQueue private constructor(context: Context) {
     private fun ensureRestored() {
         if (!volatileOnly) return
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-            try {
-                Thread {
-                    try { tryRestorePersistent() } catch (_: Exception) { }
-                }.start()
-            } catch (_: Exception) { }
+            com.redeye.parentalmonitor.utils.Background.run {
+                try { tryRestorePersistent() } catch (_: Exception) { }
+            }
             return
         }
         try {
@@ -310,6 +305,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             generationCounter.incrementAndGet()
             cached = mutableListOf()
+            persistDirty = false
             volatileQueue.clear()
             if (volatileOnly) {
                 try {
@@ -333,7 +329,20 @@ class MessageQueue private constructor(context: Context) {
                 } catch (_: Exception) {
                 }
             }
-            val snapshot: List<QueuedMessage>? = synchronized(lock) { cached?.toList() }
+            val snapshot: List<QueuedMessage>? = synchronized(lock) {
+                if (persistDirty) {
+                    val pending = cached
+                    if (pending != null) {
+                        try {
+                            sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(pending))?.apply()
+                        } catch (_: Exception) {
+                        }
+                        lastPersistAt = android.os.SystemClock.elapsedRealtime()
+                    }
+                    persistDirty = false
+                    null
+                } else cached?.toList()
+            }
             val prefs = sharedPreferences ?: return
             if (snapshot != null) {
                 try {
@@ -391,9 +400,20 @@ class MessageQueue private constructor(context: Context) {
         return loaded
     }
 
-    private fun persistLocked(queue: MutableList<QueuedMessage>) {
+    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false) {
         cached = queue
-        sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
+        val prefs = sharedPreferences ?: return
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!force && now - lastPersistAt < 2000L) {
+            persistDirty = true
+            return
+        }
+        lastPersistAt = now
+        persistDirty = false
+        try {
+            prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
+        } catch (_: Exception) {
+        }
     }
 
     fun hasMessages(): Boolean {

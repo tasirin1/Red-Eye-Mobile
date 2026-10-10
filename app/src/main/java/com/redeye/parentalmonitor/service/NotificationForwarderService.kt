@@ -386,7 +386,7 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (body.isEmpty()) {
                 try {
-                    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }
+                    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
                     if (!lines.isNullOrEmpty()) body = lines.joinToString("\n").trim()
                 } catch (_: Exception) {
                 }
@@ -1097,7 +1097,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                     return false
                 }
-                val plain = message.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
+                val plain = Html.unescape(message)
                 if (plain != message) {
                     try {
                         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))

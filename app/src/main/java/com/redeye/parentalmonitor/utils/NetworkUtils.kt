@@ -7,6 +7,10 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 
 object NetworkUtils {
 
+    private val MIGRATE_ID_REGEX = Regex("\"migrate_to_chat_id\"\\s*:\\s*(-?\\d+)")
+    private val LEGACY_CHAT_ID_REGEX = Regex("(?i)new chat id\\s*:\\s*(-?\\d+)")
+    private val RETRY_AFTER_REGEX = Regex("(?i)retry[_ ]after\\D*(\\d+)")
+
     @Volatile
     var rateLimitedUntil = 0L
 
@@ -90,13 +94,13 @@ object NetworkUtils {
             } catch (_: Exception) {
             }
             try {
-                val fallback = Regex("\"migrate_to_chat_id\"\\s*:\\s*(-?\\d+)").find(errorBody)?.groupValues?.getOrNull(1)
+                val fallback = MIGRATE_ID_REGEX.find(errorBody)?.groupValues?.getOrNull(1)
                 if (fallback != null && fallback != "0") return fallback
             } catch (_: Exception) {
             }
         }
         try {
-            val legacy = Regex("(?i)new chat id\\s*:\\s*(-?\\d+)").find(errorBody)?.groupValues?.getOrNull(1)
+            val legacy = LEGACY_CHAT_ID_REGEX.find(errorBody)?.groupValues?.getOrNull(1)
             if (legacy != null && legacy != "0") return legacy
         } catch (_: Exception) {
         }
@@ -115,7 +119,7 @@ object NetworkUtils {
         } catch (_: Exception) {
         }
         try {
-            val fallback = Regex("(?i)retry[_ ]after\\D*(\\d+)").find(errorBody)?.groupValues?.getOrNull(1)?.toLongOrNull()
+            val fallback = RETRY_AFTER_REGEX.find(errorBody)?.groupValues?.getOrNull(1)?.toLongOrNull()
             if (fallback != null) return fallback.coerceIn(1, 3600)
         } catch (_: Exception) {
         }

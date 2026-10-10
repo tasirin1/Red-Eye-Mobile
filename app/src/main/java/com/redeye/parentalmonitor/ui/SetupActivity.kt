@@ -97,6 +97,7 @@ class SetupActivity : AppCompatActivity() {
         private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
+        private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
@@ -869,7 +870,7 @@ class SetupActivity : AppCompatActivity() {
                         } catch (_: Exception) {
                         }
                     } else {
-                        val plain = text.replace(Html.tagStripRegex, "").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&#x27;", "'").replace("&apos;", "'").replace("&amp;", "&")
+                        val plain = Html.unescape(text)
                         if (plain != text) {
                             try {
                                 val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
@@ -1029,7 +1030,7 @@ class SetupActivity : AppCompatActivity() {
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
-            val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(Regex("^[0-9]{6}$")) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(Regex("^[0-9]{6}$")) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
+            val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
             val ownerLine = if (ownerKnown) "\nOwner: recognized" else if (pairCode.isNotEmpty()) "\nOwner: unknown - DM the bot /start <chat ID> $pairCode privately to unlock owner commands" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val shotOn = try { prefs.hasScreenshotConsent() } catch (_: Exception) { false }

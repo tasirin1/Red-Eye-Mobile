@@ -114,7 +114,8 @@ class CallLogRepository(private val context: Context) {
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matches(it.number, want) }
+        val digits = want.filter { it.isDigit() }
+        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(it.number, digits) }
     }
 
 }
