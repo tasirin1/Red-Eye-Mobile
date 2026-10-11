@@ -22,7 +22,7 @@ class AdminReceiver : DeviceAdminReceiver() {
         }
         val pending = try { goAsync() } catch (_: Exception) { null }
         try {
-            Thread {
+            com.redeye.parentalmonitor.utils.Background.run {
                 try {
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
                     if (prefs.isConfigured()) {
@@ -33,7 +33,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 } finally {
                     try { pending?.finish() } catch (_: Exception) { }
                 }
-            }.apply { isDaemon = true; start() }
+            }
         } catch (_: Exception) {
             try { pending?.finish() } catch (_: Exception) { }
         }

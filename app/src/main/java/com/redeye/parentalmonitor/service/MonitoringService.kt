@@ -167,7 +167,7 @@ class MonitoringService : Service() {
         }
         startForegroundImmediate()
         try {
-            Thread {
+            com.redeye.parentalmonitor.utils.Background.run {
                 try {
                     if (PreferencesManager.refreshInstance(this)) {
                         refreshCreds()
@@ -175,7 +175,7 @@ class MonitoringService : Service() {
                     }
                 } catch (_: Exception) {
                 }
-            }.start()
+            }
         } catch (_: Exception) {
         }
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -1349,9 +1349,10 @@ class MonitoringService : Service() {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            android.util.Log.e("MonitoringService", "Command failed: $command (${redactToken(e.message)})")
+            val redacted = redactToken(e.message)
+            android.util.Log.e("MonitoringService", "Command failed: $command ($redacted)")
             try {
-                val detail = redactToken(e.message).ifEmpty { "unknown error" }
+                val detail = redacted.ifEmpty { "unknown error" }
                 sendToTelegram("\u26A0\uFE0F Command $command failed ($detail). Please try again or send /help.")
             } catch (_: Exception) {
             }

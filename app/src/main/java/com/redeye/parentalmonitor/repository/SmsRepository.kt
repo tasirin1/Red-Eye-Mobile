@@ -35,7 +35,8 @@ class SmsRepository(private val context: Context) {
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )
-        val matched = filterByNumber(rows, norm) { it.address }
+        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
+        val matched = filterByNumber(rows, norm, wantAlt) { it.address }
         if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
@@ -48,10 +49,10 @@ class SmsRepository(private val context: Context) {
                 limit = 500
             )
             if (page.isEmpty()) return emptyList()
-            val pageMatched = filterByNumber(page, norm) { it.address }
+            val pageMatched = filterByNumber(page, norm, wantAlt) { it.address }
             if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
             if (page.size < 500) return emptyList()
-            val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
+            val oldest = page.last()
             if (oldest.date <= cutoff) return emptyList()
             if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return emptyList()
             upperDate = oldest.date
@@ -69,8 +70,8 @@ class SmsRepository(private val context: Context) {
         )
     }
 
-    private fun filterByNumber(rows: List<SmsData>, want: String, pick: (SmsData) -> String): List<SmsData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(pick(it), want) }
+    private fun filterByNumber(rows: List<SmsData>, want: String, wantAlt: String?, pick: (SmsData) -> String): List<SmsData> {
+        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesPrecomputed(pick(it), want, wantAlt) }
     }
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {

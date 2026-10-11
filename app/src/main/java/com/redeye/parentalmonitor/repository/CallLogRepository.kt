@@ -97,7 +97,8 @@ class CallLogRepository(private val context: Context) {
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = safeLimit
         )
-        val matched = filterCallsByNumber(rows, norm)
+        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
+        val matched = filterCallsByNumber(rows, norm, wantAlt)
         if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
@@ -110,10 +111,10 @@ class CallLogRepository(private val context: Context) {
                 limit = 500
             )
             if (page.isEmpty()) return emptyList()
-            val pageMatched = filterCallsByNumber(page, norm)
+            val pageMatched = filterCallsByNumber(page, norm, wantAlt)
             if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
             if (page.size < 500) return emptyList()
-            val oldest = page.minWithOrNull(compareBy({ it.date }, { it.id })) ?: return emptyList()
+            val oldest = page.last()
             if (oldest.date <= cutoff) return emptyList()
             if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return emptyList()
             upperDate = oldest.date
@@ -122,8 +123,8 @@ class CallLogRepository(private val context: Context) {
         return emptyList()
     }
 
-    private fun filterCallsByNumber(rows: List<CallData>, want: String): List<CallData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesNormalized(it.number, want) }
+    private fun filterCallsByNumber(rows: List<CallData>, want: String, wantAlt: String?): List<CallData> {
+        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesPrecomputed(it.number, want, wantAlt) }
     }
 
 }

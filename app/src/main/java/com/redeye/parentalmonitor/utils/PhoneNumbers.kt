@@ -41,4 +41,11 @@ object PhoneNumbers {
         if (wantDigits.length < 7) return have == wantDigits
         return numbersEqualFast(have, wantDigits, altVariant(wantDigits))
     }
+
+    fun matchesPrecomputed(haveRaw: String, wantDigits: String, wantAlt: String?): Boolean {
+        val have = haveRaw.filter { it.isDigit() }
+        if (have.isEmpty() || wantDigits.isEmpty()) return false
+        if (wantDigits.length < 7) return have == wantDigits
+        return numbersEqualFast(have, wantDigits, wantAlt)
+    }
 }

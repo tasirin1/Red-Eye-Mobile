@@ -1,3 +1,11 @@
+## [Unreleased]
+### Fixed
+- `MonitoringService.onCreate` warm-up prefs via pool bersama `Background` gantikan `Thread` mentah per start.
+- `AdminReceiver.onDisabled` via pool bersama `Background` gantikan `Thread` daemon mentah per broadcast.
+- `MonitoringService.handleTelegramCommand` hitung `redactToken` sekali per command gagal (sebelumnya 2×: log + balasan).
+- `PhoneNumbers.matchesPrecomputed` + `SmsRepository`/`CallLogRepository`: `altVariant(want)` dihitung sekali per query, bukan per baris (500 baris × 10 halaman).
+- `SmsRepository`/`CallLogRepository` ambil oldest via `page.last()` (query sudah `DATE DESC, _ID DESC`) gantikan pindai `minWithOrNull` O(n) per halaman.
+
 ## [1.6.171] - 2026-10-11
 ### Fixed
 - `CameraService.stopBackgroundThread` lewati `join(500)` saat di main thread: watchdog timeout kamera jalan di `MainLooper`, join + `close()` binder di sana bisa bekukan UI hingga 500 ms.
