@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
         }
         val appCtx = applicationContext
         try {
-            Thread {
+            com.redeye.parentalmonitor.utils.Background.run {
                 try {
                     PreferencesManager.refreshInstance(appCtx)
                 } catch (_: Exception) {
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 } catch (_: Exception) {
                 }
-            }.start()
+            }
         } catch (_: Exception) {
         }
     }

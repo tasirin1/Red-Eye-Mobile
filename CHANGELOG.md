@@ -1,3 +1,9 @@
+## [1.6.171] - 2026-10-11
+### Fixed
+- `CameraService.stopBackgroundThread` lewati `join(500)` saat di main thread: watchdog timeout kamera jalan di `MainLooper`, join + `close()` binder di sana bisa bekukan UI hingga 500 ms.
+- `ParentalMonitorApp`/`MainActivity` warm-up prefs via pool bersama `Background` gantikan `Thread` mentah per start.
+- `MessageScheduler.scheduleMessageSendNext` buang `Constraints` lokal mati (yang dipakai `netConstraints` bersama).
+
 ## [1.6.170] - 2026-10-11
 ### Fixed
 - `MonitoringService.sha256Hex` tanpa `String.format` per byte: tabel hex + `CharArray`, gantikan 32× alokasi `Formatter`.

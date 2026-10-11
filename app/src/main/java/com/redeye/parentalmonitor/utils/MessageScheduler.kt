@@ -54,9 +54,6 @@ object MessageScheduler {
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
                 .setBackoffCriteria(

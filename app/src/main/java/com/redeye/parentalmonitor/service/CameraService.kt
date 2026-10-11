@@ -97,8 +97,9 @@ class CameraService(private val context: Context) {
         try { thread?.quitSafely() } catch (_: Exception) { }
         backgroundThread = null
         backgroundHandler = null
+        val onMain = try { android.os.Looper.myLooper() == android.os.Looper.getMainLooper() } catch (_: Exception) { false }
         try {
-            if (thread != null && Thread.currentThread() !== thread) {
+            if (!onMain && thread != null && Thread.currentThread() !== thread) {
                 try { thread.join(500) } catch (_: InterruptedException) { }
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Background thread stopped")
