@@ -244,8 +244,9 @@ class SetupActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<MaterialButton>(R.id.setupSaveButton).setOnClickListener { saveSettings() }
-        findViewById<MaterialButton>(R.id.setupSaveButton).setOnLongClickListener {
+        val saveButton = findViewById<MaterialButton>(R.id.setupSaveButton)
+        saveButton.setOnClickListener { saveSettings() }
+        saveButton.setOnLongClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(getString(R.string.setup_clear_title))
                 .setMessage(getString(R.string.setup_clear_text))

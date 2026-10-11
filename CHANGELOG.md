@@ -1,3 +1,14 @@
+## [1.6.170] - 2026-10-11
+### Fixed
+- `MonitoringService.sha256Hex` tanpa `String.format` per byte: tabel hex + `CharArray`, gantikan 32× alokasi `Formatter`.
+- `MonitoringService` parse perintah Telegram sekali jalan (`head`/`command`/`arg` dari `rawText`); pindai `substringBefore`/`lowercase` ganda per update dihapus.
+- `MonitoringService.takeScreenshotFrame` satu bitmap saat `rowStride` ber-padding: salin baris-per-baris ke buffer padat, gantikan bitmap `rowWidth` + `createBitmap` crop kedua.
+- `MonitoringService.fetchLocation` pakai `getCurrentLocation` + `CancellationSignal` di API 30+, fallback `requestSingleUpdate` di bawahnya.
+- `BootReceiver` jalan via pool bersama `Background` gantikan `Thread` mentah per broadcast; aksi HTC `QUICKBOOT` mati dibuang (kode + manifest).
+- `SetupActivity` cache `saveButton` agar `findViewById(R.id.setupSaveButton)` sekali, bukan dua kali.
+- `AndroidManifest.xml` komentar izin diterjemahkan ke Bahasa Indonesia.
+- `MonitoringService.smsReqSeq` seed via `ThreadLocalRandom` penuh gantikan truncasi 28-bit.
+
 ## [1.6.169] - 2026-10-10
 ### Fixed
 - `tools/pasang-hook.sh` cadangan ke direktori exec-capable via `core.hooksPath` saat `.git/hooks` di penyimpanan noexec (mis. `/storage/emulated`), agar kait pre-push benar-benar jalan; badan kait `cd` ke root repo dulu.

