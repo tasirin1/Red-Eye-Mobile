@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.172] - 2026-10-11
 ### Fixed
 - `MonitoringService.onCreate` warm-up prefs via pool bersama `Background` gantikan `Thread` mentah per start.
 - `AdminReceiver.onDisabled` via pool bersama `Background` gantikan `Thread` daemon mentah per broadcast.
