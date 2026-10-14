@@ -1,3 +1,14 @@
+## [1.6.196] - 2026-10-14
+### Fixed
+- Alias tanpa-slash kini khusus private chat owner; obrolan grup tak lagi picu balasan bot (berisik + bocor `/help`/jam malam ke grup). Jalur `/` tetap seperti semula. Gate tunggal di poll-loop, resolusi ganda di inner dibuang.
+- `/watchnomor` cocok lintas format untuk 7–9 digit via aturan ekor-7 (sebelumnya butuh exact/sufiks ≥10 digit).
+- Sentinel sepi 12 jam jadi 48 jam agar HP sunyi normal tak di-alert tiap 12 jam.
+- Jam malam bungkus tengah malam (`h<5` bila curfew sore/malam); cek sekolah Senin–Jumat 08–16 dan didokumentasikan di `/help` + `/jampulang status`.
+- `/digest` manual tandai tanggal digest agar tak ganda dengan auto 21:00.
+- `checkCurfew` lewati posisi basi >6 jam (`lastLocAt` baru, ditulis tiap `rememberSentLatLon`).
+- `checkAndSendNewData` hitung frekuensi + kontak sekali per batch (sebelumnya 3 query per item).
+- Indonesia: `/location`, `/camera`, `/version`, `/storage`, `/apps`, `/log`, sinkron awal, tipe SMS/panggilan; label fence `Rumah/Sekolah`.
+
 ## [1.6.195] - 2026-10-14
 ### Added
 - `/darurat` (owner): lokasi + foto + baterai + antrean sekaligus, tembus jeda monitoring.

@@ -212,6 +212,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
+        private const val KEY_LAST_LOC_AT = "last_loc_at"
         const val KEY_WATCH_KEYWORDS = "watch_keywords"
         private const val KEY_HOME_LAT = "home_lat_e6"
         private const val KEY_HOME_LON = "home_lon_e6"
@@ -578,6 +579,10 @@ class PreferencesManager(context: Context) {
     var lastLocLonE6: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_LOC_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LON, value).apply()
+
+    var lastLocAt: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_AT, value).apply()
 
     var permHealthAlertAt: Long
         get() = try { sharedPreferences.getLong(KEY_PERM_HEALTH_ALERT, 0L) } catch (_: Exception) { 0L }

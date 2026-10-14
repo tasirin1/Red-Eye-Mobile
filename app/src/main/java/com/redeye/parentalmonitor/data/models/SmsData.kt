@@ -9,13 +9,13 @@ data class SmsData(
 ) {
     fun getTypeString(): String {
         return when (type) {
-            1 -> "Received"
-            2 -> "Sent"
+            1 -> "Masuk"
+            2 -> "Terkirim"
             3 -> "Draft"
             4 -> "Outbox"
-            5 -> "Failed"
-            6 -> "Queued"
-            else -> "Unknown"
+            5 -> "Gagal"
+            6 -> "Antre"
+            else -> "Tak tahu"
         }
     }
 }

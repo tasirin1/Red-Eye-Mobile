@@ -10,14 +10,14 @@ data class CallData(
 ) {
     fun getTypeString(): String {
         return when (type) {
-            1 -> "Incoming"
-            2 -> "Outgoing"
-            3 -> "Missed"
+            1 -> "Masuk"
+            2 -> "Keluar"
+            3 -> "Tak terjawab"
             4 -> "Voicemail"
-            5 -> "Rejected"
-            6 -> "Refused"
-            7 -> "Answered elsewhere"
-            else -> "Unknown"
+            5 -> "Ditolak"
+            6 -> "Menolak"
+            7 -> "Dijawab di lain"
+            else -> "Tak tahu"
         }
     }
     
