@@ -1,3 +1,8 @@
+## [1.6.192] - 2026-10-14
+### Fixed
+- Hapus peta callback mati (~15 baris, hasil dibuang) — satu sumber kebenaran di `handleCallbackQuery`.
+- Baterai + digest jalan walau monitoring di-pause (kesehatan perangkat tetap dikabari).
+
 ## [1.6.191] - 2026-10-14
 ### Fixed
 - `upgradeToPersistent`: flag `storageEncrypted` paling akhir (gagal delta bisa retry); `ensureOwnerPairCode` terkunci + cek manual tanpa regex.

