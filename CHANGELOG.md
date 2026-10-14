@@ -1,3 +1,7 @@
+## [1.6.188] - 2026-10-14
+### Fixed
+- `NotificationForwarderService`: drop-notice `onDestroy` + `flushSync`; prioritas yang tercekik overload ikut antrean; semua 400 wake picu backoff; revive tanpa gate semua-izin (service jalan degraded + sentinel kabari, kegagalan start tetap via worker).
+
 ## [1.6.187] - 2026-10-14
 ### Fixed
 - Balasan saran typo escape input (`Html.escape`) — ketikan `<tag>` tak lagi sebabkan 400-drop + counter menyesatkan; `/version` escape field Build OEM.

@@ -320,7 +320,19 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (x.isEmpty()) {
                     x = try { notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
                 }
-                if (t.isNotEmpty() || x.isNotEmpty()) recordOverflow(pkg, t, x)
+                if (t.isNotEmpty() || x.isNotEmpty()) {
+                    val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
+                    if (squeezedPriority) {
+                        val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
+                        try { record(squeezedLabel, t, x) } catch (_: Exception) { }
+                        try {
+                            queue().addMessage(buildNotifMessage(squeezedLabel, t, x))
+                            queue().flushSync()
+                            MessageScheduler.scheduleMessageSend(this)
+                        } catch (_: Exception) {
+                        }
+                    } else recordOverflow(pkg, t, x)
+                }
             } catch (_: Exception) { }
             return
         }
@@ -620,8 +632,8 @@ class NotificationForwarderService : NotificationListenerService() {
                         prefs.setWakeUpdateIdSync(wakeUpdateId)
                     } catch (_: Exception) {
                     }
-                    wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
                 }
+                wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
             } catch (_: Exception) {
             }
             return
@@ -743,20 +755,6 @@ class NotificationForwarderService : NotificationListenerService() {
                         false
                     }
                     if (!resume) return@launch
-                    val granted = try {
-                        com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions.filter { it != android.Manifest.permission.POST_NOTIFICATIONS }.all {
-                            androidx.core.content.ContextCompat.checkSelfPermission(this@NotificationForwarderService, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        }
-                    } catch (_: Exception) {
-                        false
-                    }
-                    if (!granted) {
-                        try {
-                            MessageScheduler.scheduleBootRestart(this@NotificationForwarderService)
-                        } catch (_: Exception) {
-                        }
-                        return@launch
-                    }
                     try {
                         val restart = android.content.Intent(this@NotificationForwarderService, MonitoringService::class.java).apply {
                             action = MonitoringService.ACTION_START_MONITORING
@@ -788,6 +786,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
                         else "Dropped $drops notifications rejected by Telegram (400)."
                     queue().addMessage(text, true)
+                    queue().flushSync()
                     try {
                         prefsRef?.setPendingNotifDropsSync(0)
                     } catch (_: Exception) {
