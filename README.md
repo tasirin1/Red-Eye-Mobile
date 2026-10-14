@@ -82,6 +82,10 @@ Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
 | `/home lat,lon,rad` | Geofence rumah |
 | `/school lat,lon,rad` | Geofence sekolah |
 | `/digest` | Ringkasan harian |
+| `/darurat` | Lokasi+foto+baterai sekaligus |
+| `/jampulang 21:30` | Alert jam malam/sekolah |
+| `/minggu` | Laporan 7 hari |
+| `/watchnomor 0812` | Awasi nomor |
 | `/photointerval 0-60` | Interval foto menit, `0` manual |
 | `/pause menit` | Jeda foto sementara |
 | `/syncinterval 1-1440` | Interval sync menit |

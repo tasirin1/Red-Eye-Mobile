@@ -1,3 +1,12 @@
+## [1.6.195] - 2026-10-14
+### Added
+- `/darurat` (owner): lokasi + foto + baterai + antrean sekaligus, tembus jeda monitoring.
+- `/jampulang HH:MM|off` (owner): alert 1x/hari bila lewat jam malam masih di luar rumah; plus alert jam sekolah (Senin–Jumat 08:00–15:00 di luar area sekolah).
+- `/minggu` (owner): laporan 7 hari (top kontak, jam tersibuk, begadang 23–05, watch hit) + tombol menu.
+- `/watchnomor nomor,status,off` (owner): label `🚨 Nomor diawasi` di SMS/panggilan + hitung di digest/mingguan.
+- Tombol menu di `/status`, `/ringkas`, `/digest`, `/minggu`.
+- Bahasa Indonesia: menu bot, `/help`, `/status`, SMS/panggilan, patroli, dan pesan umum.
+
 ## [1.6.194] - 2026-10-14
 ### Added
 - `/watch kata1,kata2|status|off` (owner): alert kata berbahaya di SMS + notif prioritas langsung + label `⚠️ Watch`.

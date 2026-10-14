@@ -225,6 +225,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_DATA_AT = "last_data_at"
         private const val KEY_LOC_FAIL_COUNT = "loc_fail_count"
         private const val KEY_HEALTH_ALERT_AT = "health_alert_at"
+        const val KEY_WATCH_NUMBERS = "watch_numbers"
+        private const val KEY_CURFEW_TIME = "curfew_time"
+        private const val KEY_CURFEW_DATE = "curfew_alert_date"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -638,6 +641,18 @@ class PreferencesManager(context: Context) {
     var healthAlertAt: Long
         get() = try { sharedPreferences.getLong(KEY_HEALTH_ALERT_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_HEALTH_ALERT_AT, value).apply()
+
+    var watchNumbers: String
+        get() = try { sharedPreferences.getString(KEY_WATCH_NUMBERS, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_WATCH_NUMBERS, value).apply()
+
+    var curfewTime: String
+        get() = try { sharedPreferences.getString(KEY_CURFEW_TIME, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_CURFEW_TIME, value).apply()
+
+    var curfewAlertDate: String
+        get() = try { sharedPreferences.getString(KEY_CURFEW_DATE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_CURFEW_DATE, value).apply()
 
     private fun readWakePingIds(): MutableSet<Long> {
         return try {
