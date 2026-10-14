@@ -142,8 +142,8 @@ class SendMessageWorker(
                         authCode = outcome.code
                         break
                     }
-                    is SendOutcome.Rejected -> {
-                        rejectedIds.add(queuedMessage.id)
+                    SendOutcome.Rejected -> {
+                        failedIds.add(queuedMessage.id)
                     }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
@@ -504,6 +504,14 @@ class SendMessageWorker(
                 }
                 SendOutcome.Rejected -> {
                     rejected++
+                    if (idx > 0 && !failedKept) {
+                        try {
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                            MessageScheduler.scheduleMessageSend(applicationContext)
+                            failedKept = true
+                        } catch (_: Exception) {
+                        }
+                    }
                     break
                 }
             }

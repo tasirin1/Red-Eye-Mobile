@@ -1,3 +1,11 @@
+## [1.6.207] - 2026-10-15
+### Fixed
+- Prune cache tak lagi hapus file media yang BELUM terkirim (rename `.sent` pada sukses, prune hanya non-sent).
+- Fallback plain 400 non-chat/non-rights sekarang di-queue (tak lagi drop silent di MonitoringService, SendMessageWorker, CrashReporter).
+- Worker `Rejected` kini di-requeue (sama seperti `Failed`).
+- `sendInitialData` aman: cursor hanya maju saat chunk sukses, restart = resume tanpa duplikat.
+- CrashReporter fallback klasifikasi error + retry passif aman.
+
 ## [1.6.206] - 2026-10-15
 ### Fixed
 - `/smsconfirm` validasi ulang izin + blokir premium/darurat; gagal total ikut throttle 60 detik; job lama dibatalkan.
