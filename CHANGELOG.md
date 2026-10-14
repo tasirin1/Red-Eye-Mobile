@@ -1,3 +1,14 @@
+## [1.6.174] - 2026-10-14
+### Fixed
+- `PhoneNumbers.suffixMatch` tolak sisi pendek <10 digit: short-code (mis. `7890`) tak lagi diakui sebagai nomor target 10+ digit.
+- `ContentQuery` bedakan `SecurityException` (log `permission denied`, tanpa fallback buta) dari error OEM lain; `SmsRepository`/`CallLogRepository` `limit.coerceIn(1,200)` + log saat pindai 4 halaman terpotong.
+- `Background` pool `run()` pakai `CallerRunsPolicy` (gantikan `DiscardPolicy` yang buang diam-diam).
+- `CameraService.startBackgroundThread` lewati `join(500)` di main thread, pola sama dengan `stopBackgroundThread`.
+- `MonitoringService`: hapus cabang dead `NO_REPLAY` di callback; expiry callback ikut `SENSITIVE_COMMANDS` (menu basi >300 dtk untuk `/photo`/`/location`/`/screenshot` ditolak); SMS multipart hitung sekali per part (`confirmedParts`); gagal persist offset kini `Log.w` (tak lagi diam).
+- `NotificationForwarderService`: fallback plain 400 rights-limited ikut antre ulang; `onDestroy` `flushSync()` usai salvage batch; drop spam-filter ikut agregat drop-notice.
+- `MessageScheduler.scheduleRateLimited` selalu via `scheduleMessageSendNext` (`REPLACE` tunggal), tak lagi cabang pada flag volatil `workerRunning`.
+- `SetupActivity`/`PreferencesManager`: `saveCoreConfig`/`saveTestCredentials` kembalikan Boolean; toast `setup_test_fail(persist)` bila `commit()` gagal + cek ulang seq usai persist (tutup balapan save-vs-test).
+
 ## [1.6.173] - 2026-10-14
 ### Fixed
 - `MessageQueue.isFresh` fallback ke wall-clock saat `elapsedRealtime` reset (reboot): antrean offline tak lagi dibuang massal sebagai expired.

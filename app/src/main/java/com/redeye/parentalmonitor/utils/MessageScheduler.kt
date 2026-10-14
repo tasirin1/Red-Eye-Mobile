@@ -49,7 +49,7 @@ object MessageScheduler {
     var workerRunning = false
 
     fun scheduleRateLimited(context: Context, initialDelayMs: Long = 0L): Boolean {
-        return if (workerRunning) scheduleMessageSend(context, initialDelayMs) else scheduleMessageSendNext(context, initialDelayMs)
+        return scheduleMessageSendNext(context, initialDelayMs)
     }
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {

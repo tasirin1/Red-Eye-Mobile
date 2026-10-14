@@ -58,15 +58,17 @@ class SmsRepository(private val context: Context) {
             upperDate = oldest.date
             upperId = oldest.id
         }
+        android.util.Log.w("SmsRepository", "paged scan truncated")
         return emptyList()
     }
 
     fun getRecentSmsSince(sinceMillis: Long, limit: Int = 200): List<SmsData> {
+        val safeLimit = limit.coerceIn(1, 200)
         return querySms(
             selection = "${Telephony.Sms.DATE} >= ?",
             args = arrayOf(sinceMillis.toString()),
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
-            limit = limit
+            limit = safeLimit
         )
     }
 
@@ -75,11 +77,12 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
+        val safeLimit = limit.coerceIn(1, 200)
         return querySms(
             selection = null,
             args = null,
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
-            limit = limit
+            limit = safeLimit
         )
     }
 

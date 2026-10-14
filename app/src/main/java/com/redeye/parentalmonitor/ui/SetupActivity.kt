@@ -485,12 +485,18 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-            try {
+            val persisted = try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {
+                false
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
+                if (mySave != saveSeq.get()) return@withContext
+                if (!persisted) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, "persist"), Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
                 try {
                     botTokenInput.setText(STORED_MASK)
                     chatIdInput.setText(STORED_MASK)
@@ -570,9 +576,14 @@ class SetupActivity : AppCompatActivity() {
                         val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                         if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
                     }
-                    persistTestSettings(token, effectiveChat, probeSync, probeCamera, myTest)
+                    val testPersisted = persistTestSettings(token, effectiveChat, probeSync, probeCamera, myTest)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
+                        if (myTest != testSeq.get()) return@withContext
+                        if (!testPersisted) {
+                            Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, "persist"), Toast.LENGTH_LONG).show()
+                            return@withContext
+                        }
                         botTokenInput.setText(STORED_MASK)
                         chatIdInput.setText(STORED_MASK)
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
@@ -608,9 +619,9 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int) {
-        if (myTest != testSeq.get()) return
-        prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval)
+    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int): Boolean {
+        if (myTest != testSeq.get()) return false
+        return try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
     }
 
     private fun hasAllPermissions(): Boolean {

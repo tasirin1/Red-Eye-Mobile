@@ -647,15 +647,15 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
-        saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
+    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
+        return saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
     }
 
-    fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
-        saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
+    fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
+        return saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
     }
 
-    private fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int) {
+    private fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
         try { upgradeToPersistent() } catch (_: Exception) { }
         val editor = sharedPreferences.edit()
         putCredentialState(editor, newToken, newChatId)
@@ -663,7 +663,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
+        return try { editor.commit() } catch (_: Exception) { try { editor.apply(); true } catch (_: Exception) { false } }
     }
 
     fun setMonitoringActive(active: Boolean) {

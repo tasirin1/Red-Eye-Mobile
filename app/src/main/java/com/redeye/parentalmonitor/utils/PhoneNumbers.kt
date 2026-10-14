@@ -28,6 +28,7 @@ object PhoneNumbers {
     private fun suffixMatch(a: String, b: String): Boolean {
         val short = if (a.length <= b.length) a else b
         val long = if (a.length <= b.length) b else a
+        if (short.length < 10) return false
         return long.endsWith(short)
     }
 

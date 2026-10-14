@@ -34,11 +34,12 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getCallsSince(sinceMillis: Long, limit: Int = 200): List<CallData> {
+        val safeLimit = limit.coerceIn(1, 200)
         return queryCalls(
             selection = "${CallLog.Calls.DATE} >= ?",
             args = arrayOf(sinceMillis.toString()),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-            limit = limit
+            limit = safeLimit
         )
     }
 
@@ -120,6 +121,7 @@ class CallLogRepository(private val context: Context) {
             upperDate = oldest.date
             upperId = oldest.id
         }
+        android.util.Log.w("CallLogRepository", "paged scan truncated")
         return emptyList()
     }
 

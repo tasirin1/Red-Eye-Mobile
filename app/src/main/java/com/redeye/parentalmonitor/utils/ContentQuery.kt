@@ -21,6 +21,8 @@ object ContentQuery {
                 }
                 try {
                     resolver.query(uri, projection, bundle, null)
+                } catch (e: SecurityException) {
+                    throw e
                 } catch (_: Exception) {
                     resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
                 }
@@ -29,10 +31,15 @@ object ContentQuery {
             } else {
                 try {
                     resolver.query(uri, projection, selection, args, "$sortOrder LIMIT $safeLimit")
+                } catch (e: SecurityException) {
+                    throw e
                 } catch (_: Exception) {
                     resolver.query(uri, projection, selection, args, sortOrder)
                 }
             }
+        } catch (e: SecurityException) {
+            android.util.Log.w("ContentQuery", "permission denied", e)
+            null
         } catch (_: Exception) {
             null
         }

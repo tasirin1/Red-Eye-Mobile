@@ -69,8 +69,9 @@ class CameraService(private val context: Context) {
             old?.quitSafely()
         } catch (_: Exception) {
         }
+        val onMain = try { android.os.Looper.myLooper() == android.os.Looper.getMainLooper() } catch (_: Exception) { false }
         try {
-            if (old != null && Thread.currentThread() !== old) old.join(500)
+            if (!onMain && old != null && Thread.currentThread() !== old) old.join(500)
         } catch (_: Exception) {
         }
         val thread = HandlerThread("CameraBackground")

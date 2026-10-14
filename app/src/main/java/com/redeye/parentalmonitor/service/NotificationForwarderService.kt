@@ -455,6 +455,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
             record(label, title, text)
+            noteDroppedNotification()
             return
         }
         val message = buildString {
@@ -798,6 +799,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (leftover.isNotEmpty()) {
                 try {
                     queue().addMessages(leftover.map { it.first })
+                    queue().flushSync()
                 } catch (_: Exception) {
                 }
                 try {
@@ -1149,6 +1151,11 @@ class NotificationForwarderService : NotificationListenerService() {
                                     prefs.credentialErrorAt = System.currentTimeMillis()
                                 } catch (_: Exception) {
                                 }
+                                queue().addMessage(message)
+                                MessageScheduler.scheduleMessageSend(this)
+                                return false
+                            }
+                            if (NetworkUtils.isRightsLimited(fallbackBody)) {
                                 queue().addMessage(message)
                                 MessageScheduler.scheduleMessageSend(this)
                                 return false
