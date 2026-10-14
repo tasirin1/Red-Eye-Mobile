@@ -24,6 +24,7 @@ class PreferencesManager(context: Context) {
     private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()
 
     private val upgradeLock = Any()
+    private val wakeIdsLock = Any()
 
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
@@ -592,11 +593,13 @@ class PreferencesManager(context: Context) {
 
     fun addWakePingIds(ids: Collection<Long>) {
         if (ids.isEmpty()) return
-        try {
-            val cur = readWakePingIds()
-            cur.addAll(ids)
-            writeWakePingIds(cur)
-        } catch (_: Exception) {
+        synchronized(wakeIdsLock) {
+            try {
+                val cur = readWakePingIds()
+                cur.addAll(ids)
+                writeWakePingIds(cur)
+            } catch (_: Exception) {
+            }
         }
     }
 

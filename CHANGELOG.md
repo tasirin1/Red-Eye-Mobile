@@ -1,3 +1,8 @@
+## [1.6.187] - 2026-10-14
+### Fixed
+- Balasan saran typo escape input (`Html.escape`) — ketikan `<tag>` tak lagi sebabkan 400-drop + counter menyesatkan; `/version` escape field Build OEM.
+- `addWakePingIds` atomik di bawah kunci (tak ada update hilang).
+
 ## [1.6.186] - 2026-10-14
 ### Fixed
 - `startMonitoring`: restore antrean + pulihkan volume pindah background (tak lagi block main thread).

@@ -1950,8 +1950,8 @@ class MonitoringService : Service() {
                     buildString {
                         appendLine("\u2139\uFE0F <b>Version</b>")
                         appendLine("App: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
-                        appendLine("Android: " + Build.VERSION.SDK_INT + " (" + Build.VERSION.RELEASE + ")")
-                        appendLine("Device: " + Build.MANUFACTURER + " " + Build.MODEL)
+                        appendLine("Android: " + Html.escape(Build.VERSION.SDK_INT.toString()) + " (" + Html.escape(Build.VERSION.RELEASE) + ")")
+                        appendLine("Device: " + Html.escape(Build.MANUFACTURER) + " " + Html.escape(Build.MODEL))
                     }
                 )
             }
@@ -2105,8 +2105,9 @@ class MonitoringService : Service() {
             else -> {
                 if (!senderOk) return
                 val hint = try { suggestCommand(command) } catch (_: Exception) { null }
-                if (hint != null) sendToTelegram("❓ Perintah tak dikenal: $command. Maksudnya $hint? Kirim /help untuk daftar.")
-                else sendToTelegram("❓ Perintah tak dikenal: $command. Kirim /help untuk daftar.")
+                val safeCommand = try { Html.escape(command) } catch (_: Exception) { command }
+                if (hint != null) sendToTelegram("❓ Perintah tak dikenal: $safeCommand. Maksudnya $hint? Kirim /help untuk daftar.")
+                else sendToTelegram("❓ Perintah tak dikenal: $safeCommand. Kirim /help untuk daftar.")
             }
         }
     }
