@@ -190,6 +190,10 @@ class PreferencesManager(context: Context) {
         private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
         private const val KEY_PERM_SNAPSHOT = "perm_snapshot"
         private const val KEY_LAST_PHOTO_HASH = "last_photo_hash"
+        private const val KEY_DIGEST_AT = "digest_at"
+        private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
+        private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
+        private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -522,6 +526,22 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
         }
     }
+
+    var digestAt: Long
+        get() = try { sharedPreferences.getLong(KEY_DIGEST_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_DIGEST_AT, value).apply()
+
+    var batteryAlertAt: Long
+        get() = try { sharedPreferences.getLong(KEY_BATTERY_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_BATTERY_ALERT_AT, value).apply()
+
+    var lastLocLatE6: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LAT, value).apply()
+
+    var lastLocLonE6: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LON, value).apply()
 
     var permHealthAlertAt: Long
         get() = try { sharedPreferences.getLong(KEY_PERM_HEALTH_ALERT, 0L) } catch (_: Exception) { 0L }

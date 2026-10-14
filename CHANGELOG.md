@@ -1,3 +1,11 @@
+## [1.6.183] - 2026-10-14
+### Added
+- Ringkasan berkala tiap 6 jam (SMS/panggilan masuk, antrean, baterai) + peringatan baterai < 15% (throttle 24 jam).
+- Notifikasi prioritas (OTP, panggilan tak terjawab, bank/dompet) lewati batch langsung terkirim; filter spam tetap berlaku.
+- Lokasi hemat: patrol tak kirim ulang koordinat bila < 100 m dari terakhir; `/location` manual sebut jarak dari laporan terakhir.
+- Perintah owner `/ringkas` (status + baterai + antrean + izin sekaligus; menu bot + `/help`).
+- SMS pintar: label "Kemungkinan OTP"/"Kemungkinan promo" di tiap SMS.
+
 ## [1.6.182] - 2026-10-14
 ### Added
 - Mode malam: 23.00–05.00 waktu perangkat, foto otomatis + patrol lokasi berhenti sendiri; SMS/panggilan/notifikasi/perintah tetap jalan. Perintah owner `/night on|off` (menu bot + `/help`), `/status` tampilkan status malam.

