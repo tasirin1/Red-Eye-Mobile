@@ -28,6 +28,15 @@ class SmsRepository(private val context: Context) {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
+        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
+        val exactRows = querySms(
+            selection = "${Telephony.Sms.ADDRESS} = ?",
+            args = arrayOf(norm),
+            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
+            limit = safeLimit
+        )
+        val exactMatched = filterByNumber(exactRows, norm, wantAlt) { it.address }
+        if (exactMatched.isNotEmpty()) return exactMatched.take(safeLimit)
         val fuzzy = buildFuzzy(norm)
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
@@ -35,7 +44,6 @@ class SmsRepository(private val context: Context) {
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )
-        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val matched = filterByNumber(rows, norm, wantAlt) { it.address }
         if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L

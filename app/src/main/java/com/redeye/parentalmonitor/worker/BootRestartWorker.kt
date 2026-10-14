@@ -99,17 +99,15 @@ class BootRestartWorker(
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             return Result.success()
         }
+        if (!prefs.isStorageEncrypted) {
+            postResumeReminder(appContext)
+            return Result.success()
+        }
         if (!prefs.isConfigured()) {
             return Result.success()
         }
-        try {
-            CrashReporter.flushPending(appContext)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
         MessageScheduler.scheduleWatchdog(appContext)
-        return try {
+        val startResult: Result = try {
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
@@ -137,6 +135,13 @@ class BootRestartWorker(
             postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
         }
+        try {
+            CrashReporter.flushPending(appContext)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+        return startResult
     }
 
     private fun postResumeReminder(context: Context) {

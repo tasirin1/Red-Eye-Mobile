@@ -91,6 +91,15 @@ class CallLogRepository(private val context: Context) {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
+        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
+        val exactRows = queryCalls(
+            selection = "${CallLog.Calls.NUMBER} = ?",
+            args = arrayOf(norm),
+            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            limit = safeLimit
+        )
+        val exactMatched = filterCallsByNumber(exactRows, norm, wantAlt)
+        if (exactMatched.isNotEmpty()) return exactMatched.take(safeLimit)
         val fuzzy = buildFuzzy(norm)
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
@@ -98,7 +107,6 @@ class CallLogRepository(private val context: Context) {
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = safeLimit
         )
-        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val matched = filterCallsByNumber(rows, norm, wantAlt)
         if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L

@@ -1,3 +1,15 @@
+## [1.6.198] - 2026-10-14
+### Fixed
+- `/sms` tolak nomor darurat eksplisit (`112`/`110`/`119` dkk, termasuk format `00`/`0`-prefixed).
+- Update edit (`edited_message`) diabaikan: edit pesan tak lagi eksekusi-ulang perintah mutating; set `NO_REPLAY_COMMANDS` mati dibuang.
+- Perintah mutating/sensitif tanpa stempel waktu kini ditolak kedaluwarsa (tutup bypass via update malformed).
+- `/ring` batal bila volume awal tak terbaca (tak ada lagi max permanen).
+- `/ping` ikut awasi `patrolJob` seperti watchdog.
+- `isAuthBlocked` tahan jam mundur (blokir tetap saat `now < at`).
+- `/history` coba cocok-persis berindeks dulu sebelum pindai fuzzy (SMS + call log).
+- Crash-report dikirim sesudah service coba start (restart boot tak tertahan 90 detik).
+- Pengingat tampil bila penyimpanan volatil (token bisa hilang saat reboot).
+
 ## [1.6.197] - 2026-10-14
 ### Fixed
 - Prioritas dicek sebelum dedup 10 detik: OTP/bank identik beruntun tetap terkirim.

@@ -56,11 +56,7 @@ object NetworkUtils {
             val err = prefs.credentialError
             if (err != "401" && err != "403" && err != "400") return false
             val now = System.currentTimeMillis()
-            if (now < prefs.credentialErrorAt) {
-                prefs.credentialError = ""
-                prefs.credentialErrorAt = 0L
-                return false
-            }
+            if (now < prefs.credentialErrorAt) return true
             now - prefs.credentialErrorAt < 30 * 60_000L
         } catch (_: Exception) {
             false
