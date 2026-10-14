@@ -127,7 +127,16 @@ class BootReceiver : BroadcastReceiver() {
         val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON
         if (!updated && bootClear) {
             try {
-                preferencesManager.clearScreenshotConsentSync()
+                if (preferencesManager.hasScreenshotConsent()) {
+                    preferencesManager.clearScreenshotConsentSync()
+                    try {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("📺 Izin screenshot hangus saat reboot. Berikan ulang di Setup bila perlu /screenshot.")
+                        MessageScheduler.scheduleMessageSend(context)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    preferencesManager.clearScreenshotConsentSync()
+                }
             } catch (_: Exception) {
             }
         }
@@ -151,6 +160,11 @@ class BootReceiver : BroadcastReceiver() {
         if (!tryStartService(context)) {
             markHandled(0L)
             MessageScheduler.scheduleBootRestart(context)
+            try {
+                com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 HP habis reboot, monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
+                MessageScheduler.scheduleMessageSend(context)
+            } catch (_: Exception) {
+            }
         } else {
             markHandled(nowBoot)
             try {

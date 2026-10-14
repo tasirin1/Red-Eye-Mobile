@@ -443,9 +443,10 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         }
         val key = pkg + "\n" + title + "\n" + text
+        val priority = try { isPriorityNotif(pkg, title, text) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
-            if (now - prev < 10_000L) true else {
+            if (!priority && now - prev < 10_000L) true else {
                 lastSent[key] = now
                 false
             }
@@ -454,7 +455,6 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
-        val priority = try { isPriorityNotif(pkg, title, text) } catch (_: Exception) { false }
         if (pkgTryAcquire(pkg, now)) {
             if (priority) {
                 record(label, title, text)
@@ -787,6 +787,33 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun salvageBatch() {
+        try {
+            val leftover = synchronized(batchLock) {
+                val items = batchBuf.toList()
+                batchBuf.clear()
+                items
+            }
+            if (leftover.isNotEmpty()) {
+                try {
+                    queue().addMessages(leftover.map { it.first })
+                    queue().flushSync()
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+        try { salvageBatch() } catch (_: Exception) { }
+        try { super.onTaskRemoved(rootIntent) } catch (_: Exception) { }
+    }
+
     override fun onDestroy() {
         try {
             val drops = dropNoticeCount.getAndSet(0)
@@ -820,22 +847,7 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
         }
         try {
-            val leftover = synchronized(batchLock) {
-                val items = batchBuf.toList()
-                batchBuf.clear()
-                items
-            }
-            if (leftover.isNotEmpty()) {
-                try {
-                    queue().addMessages(leftover.map { it.first })
-                    queue().flushSync()
-                } catch (_: Exception) {
-                }
-                try {
-                    MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
-                } catch (_: Exception) {
-                }
-            }
+            salvageBatch()
         } catch (_: Exception) {
         }
         try { wakeJob?.cancel() } catch (_: Exception) { }
@@ -1045,7 +1057,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (migrated == currentChatId) return false
         return try {
-            prefs.chatId = migrated
+            prefs.setChatIdSync(migrated)
             prefs.credentialError = ""
             prefs.credentialErrorAt = 0L
             refreshFwdCreds()

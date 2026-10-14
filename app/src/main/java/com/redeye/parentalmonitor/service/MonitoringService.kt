@@ -717,6 +717,7 @@ class MonitoringService : Service() {
             appendLine("\uD83D\uDEF0 <b>Patrol</b>")
             if (location != null) {
                 try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
+                try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
                 try { checkGeofence(location.latitude, location.longitude) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
                 val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
@@ -774,7 +775,7 @@ class MonitoringService : Service() {
         }
         if (migrated == currentChatId) return false
         return try {
-            preferencesManager.chatId = migrated
+            preferencesManager.setChatIdSync(migrated)
             preferencesManager.credentialError = ""
             preferencesManager.credentialErrorAt = 0L
             refreshCreds()

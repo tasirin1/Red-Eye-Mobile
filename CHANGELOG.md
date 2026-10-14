@@ -1,3 +1,16 @@
+## [1.6.197] - 2026-10-14
+### Fixed
+- Prioritas dicek sebelum dedup 10 detik: OTP/bank identik beruntun tetap terkirim.
+- `removeMessages`/`removeMessage` persist paksa + `clearQueue` commit: kirim-ganda/hilang saat kill dalam jendela 2 detik tertutup.
+- Expiry tahan lompat jam: prune yang gugurkan >50% antrean sekaligus dibatalkan (dugaan jam maju).
+- `sendChunked` batal antar-part: original dihapus setelah sisa diantrekan (urutan aman-ganda), id diteruskan dari worker.
+- `lastLocAt` ditulis tiap fix valid (bukan hanya saat pindah) agar `checkCurfew` tak buta saat HP diam.
+- Test koneksi tak lagi timpa interval (`saveTestIdentity` khusus token+chat).
+- Blokir auth tak lagi gugur saat jam mundur (`now >= errAt` wajib).
+- Migrasi chat-id supergroup tulis sinkron (`setChatIdSync`) di worker + 2 service.
+- `onTaskRemoved` selamatkan batch notif (sebelumnya hanya `onDestroy`).
+- Boot berisik: kabar antrean bila service gagal start + kabar izin screenshot hangus pasca-reboot.
+
 ## [1.6.196] - 2026-10-14
 ### Fixed
 - Alias tanpa-slash kini khusus private chat owner; obrolan grup tak lagi picu balasan bot (berisik + bocor `/help`/jam malam ke grup). Jalur `/` tetap seperti semula. Gate tunggal di poll-loop, resolusi ganda di inner dibuang.

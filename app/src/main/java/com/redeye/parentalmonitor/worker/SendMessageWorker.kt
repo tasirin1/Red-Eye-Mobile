@@ -113,7 +113,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -415,7 +415,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -439,6 +439,13 @@ class SendMessageWorker(
                         if (idx + 1 < parts.size) {
                             try {
                                 messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount)
+                            } catch (_: Exception) {
+                            }
+                            try {
+                                if (origId != null) messageQueue.removeMessages(listOf(origId))
+                            } catch (_: Exception) {
+                            }
+                            try {
                                 MessageScheduler.scheduleMessageSend(applicationContext)
                             } catch (_: Exception) {
                             }
@@ -542,7 +549,7 @@ class SendMessageWorker(
         }
         if (migrated == currentChatId) return false
         return try {
-            preferencesManager.chatId = migrated
+            preferencesManager.setChatIdSync(migrated)
             preferencesManager.credentialError = ""
             preferencesManager.credentialErrorAt = 0L
             try {
@@ -556,7 +563,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null): SendOutcome {
         return try {
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
@@ -573,7 +580,7 @@ class SendMessageWorker(
                     if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
                 }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else sendChunked(message, botToken, chatId, retryCount)
+                else sendChunked(message, botToken, chatId, retryCount, origId)
             } else if (response.code() == 400) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }

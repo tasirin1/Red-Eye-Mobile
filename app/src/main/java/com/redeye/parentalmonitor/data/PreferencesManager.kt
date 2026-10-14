@@ -240,7 +240,7 @@ class PreferencesManager(context: Context) {
                             try {
                                 val now = System.currentTimeMillis()
                                 val errAt = current.credentialErrorAt
-                                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                                if (errAt != 0L && now >= errAt && now - errAt >= 30 * 60_000L) {
                                     current.credentialError = ""
                                     current.credentialErrorAt = 0L
                                 }
@@ -264,7 +264,7 @@ class PreferencesManager(context: Context) {
                     try {
                         val now = System.currentTimeMillis()
                         val errAt = created.credentialErrorAt
-                        if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                        if (errAt != 0L && now >= errAt && now - errAt >= 30 * 60_000L) {
                             created.credentialError = ""
                             created.credentialErrorAt = 0L
                         }
@@ -821,6 +821,26 @@ class PreferencesManager(context: Context) {
 
     fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
         return saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
+    }
+
+    fun saveTestIdentity(newToken: String, newChatId: String): Boolean {
+        try { upgradeToPersistent() } catch (_: Exception) { }
+        return try {
+            val editor = sharedPreferences.edit()
+            putCredentialState(editor, newToken, newChatId)
+            editor.putString(KEY_BOT_TOKEN, newToken)
+            editor.putString(KEY_CHAT_ID, newChatId)
+            editor.commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setChatIdSync(newChatId: String) {
+        try {
+            sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
+        } catch (_: Exception) {
+        }
     }
 
     private fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {

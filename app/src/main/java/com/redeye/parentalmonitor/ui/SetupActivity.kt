@@ -617,7 +617,7 @@ class SetupActivity : AppCompatActivity() {
                         val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                         if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
                     }
-                    val testPersisted = persistTestSettings(token, effectiveChat, probeSync, probeCamera, myTest)
+                    val testPersisted = persistTestSettings(token, effectiveChat, myTest)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
@@ -660,10 +660,10 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int): Boolean {
+    private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+            try { prefs.saveTestIdentity(token, chatId) } catch (_: Exception) { false }
         }
         return outcome ?: false
     }

@@ -80,7 +80,7 @@ class MessageQueue private constructor(context: Context) {
                 loadDropCountsLocked()
                 if (pending.isNotEmpty()) {
                     val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-                    val freshPending = pending.filter { isFresh(it, cutoff) }
+                    val freshPending = filterFresh(pending, cutoff)
                     val expired = pending.size - freshPending.size
                     if (expired > 0) {
                         noteExpiredLocked(expired.toLong())
@@ -195,6 +195,16 @@ class MessageQueue private constructor(context: Context) {
         if (!volatileOnly) persistDropCountsLocked()
     }
 
+    private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
+        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff) }
+        val fresh = items.filter { isFresh(it, wallCutoff) }
+        if (fresh.size * 2 < items.size) {
+            android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
+            return items
+        }
+        return fresh
+    }
+
     private fun isFresh(q: QueuedMessage, wallCutoff: Long): Boolean {
         val mark = q.elapsedAt
         if (mark > 0L) {
@@ -215,9 +225,11 @@ class MessageQueue private constructor(context: Context) {
     private fun pruneVolatileLocked() {
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val before = volatileQueue.size
-        volatileQueue.removeAll { !isFresh(it, cutoff) }
-        val dropped = before - volatileQueue.size
+        val fresh = filterFresh(volatileQueue, cutoff)
+        val dropped = before - fresh.size
         if (dropped > 0) {
+            volatileQueue.clear()
+            volatileQueue.addAll(fresh)
             noteExpiredLocked(dropped.toLong())
             android.util.Log.w("MessageQueue", "Dropped $dropped expired volatile message(s)")
         }
@@ -243,7 +255,7 @@ class MessageQueue private constructor(context: Context) {
             }
             val queue = readLocked().toMutableList()
             queue.removeAll { it.id == messageId }
-            persistLocked(queue)
+            persistLocked(queue, force = true)
         }
     }
 
@@ -257,7 +269,7 @@ class MessageQueue private constructor(context: Context) {
             }
             val queue = readLocked().toMutableList()
             queue.removeAll { it.id in messageIds }
-            persistLocked(queue)
+            persistLocked(queue, force = true)
         }
     }
 
@@ -319,7 +331,7 @@ class MessageQueue private constructor(context: Context) {
             }
             overflowDrops.set(0L)
             expiredDrops.set(0L)
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.apply()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.commit()
         }
         flushSync()
     }
@@ -367,7 +379,7 @@ class MessageQueue private constructor(context: Context) {
     private fun readLocked(): MutableList<QueuedMessage> {
         cached?.let {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-            val freshCached = it.filter { q -> isFresh(q, cutoffCached) }.toMutableList()
+            val freshCached = filterFresh(it, cutoffCached).toMutableList()
             if (freshCached.size != it.size) {
                 noteExpiredLocked((it.size - freshCached.size).toLong())
                 android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
@@ -393,7 +405,7 @@ class MessageQueue private constructor(context: Context) {
             notice
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-        val fresh = loaded.filter { isFresh(it, cutoff) }.toMutableList()
+        val fresh = filterFresh(loaded, cutoff).toMutableList()
         if (fresh.size != loaded.size) {
             noteExpiredLocked((loaded.size - fresh.size).toLong())
             android.util.Log.w("MessageQueue", "Dropped ${loaded.size - fresh.size} expired message(s)")
