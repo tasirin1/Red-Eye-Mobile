@@ -1,3 +1,7 @@
+## [1.6.208] - 2026-10-15
+### Fixed
+- Perbaiki gagal kompilasi sejak v1.6.207: variabel `try` tak terlihat di `finally` (video/audio progress), dan `when` CrashReporter yang buang nilai `delivered`.
+
 ## [1.6.207] - 2026-10-15
 ### Fixed
 - Prune cache tak lagi hapus file media yang BELUM terkirim (rename `.sent` pada sukses, prune hanya non-sent).

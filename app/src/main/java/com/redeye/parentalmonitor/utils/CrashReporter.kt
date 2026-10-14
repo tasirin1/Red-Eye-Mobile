@@ -224,7 +224,7 @@ object CrashReporter {
                         }
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
-                        val fallbackOutcome = try {
+                        val delivered: Boolean = try {
                             val plain = Html.unescape(fitted)
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                             if (plainResp.isSuccessful && plainResp.body()?.ok == true) {
@@ -233,32 +233,23 @@ object CrashReporter {
                                 try {
                                     NetworkUtils.noteRateLimited(NetworkUtils.parseRetryAfter(plainResp.errorBody()?.string()))
                                 } catch (_: Exception) { }
-                                "RATE_LIMITED"
+                                false
                             } else if (plainResp.code() == 401 || plainResp.code() == 403) {
-                                "AUTH_FAILED"
+                                try { prefs.credentialError = "401"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }
+                                false
                             } else if (plainResp.code() == 400) {
-                                val fbBody = plainResp.errorBody()?.string()
-                                if (NetworkUtils.isChatMissing(fbBody)) "CHAT_MISSING"
-                                else if (NetworkUtils.isRightsLimited(fbBody)) "RIGHTS_LIMITED"
-                                else "REJECTED"
-                            } else if (plainResp.code() == 408 || plainResp.code() >= 500) {
-                                "FAILED"
+                                val fbBody = try { plainResp.errorBody()?.string() } catch (_: Exception) { null }
+                                if (NetworkUtils.isChatMissing(fbBody)) {
+                                    try { prefs.credentialError = "400"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }
+                                }
+                                false
                             } else {
-                                "REJECTED"
+                                false
                             }
                         } catch (_: Exception) {
-                            "FAILED"
+                            false
                         }
-                        when (fallbackOutcome) {
-                            true -> true
-                            "RATE_LIMITED" -> { /* will retry on next flush */ false }
-                            "AUTH_FAILED" -> { try { prefs.credentialError = "401"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }; false }
-                            "CHAT_MISSING" -> { try { prefs.credentialError = "400"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }; false }
-                            "RIGHTS_LIMITED" -> false
-                            "FAILED" -> false
-                            "REJECTED" -> false
-                        }
-                    if (delivered == true) {
+                        if (delivered) {
                             if (rest.isBlank()) {
                                 try {
                                     file.delete()

@@ -5588,6 +5588,8 @@ private suspend fun ringDevice(seconds: Int) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (!videoFlushBusy.compareAndSet(false, true)) return
+        var droppedVideos = 0
+        var videoProgress = false
         try {
             if (!hasNetwork()) return
             val pending = try {
@@ -5598,8 +5600,6 @@ private suspend fun ringDevice(seconds: Int) {
                 return
             }
             val now = System.currentTimeMillis()
-            var droppedVideos = 0
-            var videoProgress = false
             for (file in pending) {
                 if (file == activeVideoFile) continue
                 if (now - file.lastModified() < 10_000L) continue
@@ -5652,6 +5652,8 @@ private suspend fun ringDevice(seconds: Int) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (!audioFlushBusy.compareAndSet(false, true)) return
+        var droppedAudio = 0
+        var audioProgress = false
         try {
             if (!hasNetwork()) return
             val pending = try {
@@ -5662,8 +5664,6 @@ private suspend fun ringDevice(seconds: Int) {
                 return
             }
             val now = System.currentTimeMillis()
-            var droppedAudio = 0
-            var audioProgress = false
             for (file in pending) {
                 if (file == activeAudioFile) continue
                 if (now - file.lastModified() < 10_000L) continue
