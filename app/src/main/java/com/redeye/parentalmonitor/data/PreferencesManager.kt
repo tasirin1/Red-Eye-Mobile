@@ -213,6 +213,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
         private const val KEY_LAST_LOC_AT = "last_loc_at"
+        private const val KEY_TRAIL = "trail_24"
+        private const val KEY_BEGADANG_DATE = "begadang_date"
+        private const val KEY_JEMPUT_RAD = "jemput_radius_m"
         const val KEY_WATCH_KEYWORDS = "watch_keywords"
         private const val KEY_HOME_LAT = "home_lat_e6"
         private const val KEY_HOME_LON = "home_lon_e6"
@@ -584,6 +587,18 @@ class PreferencesManager(context: Context) {
     var lastLocAt: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_LOC_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_AT, value).apply()
+
+    var trail24: String
+        get() = try { sharedPreferences.getString(KEY_TRAIL, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_TRAIL, value).apply()
+
+    var begadangDate: String
+        get() = try { sharedPreferences.getString(KEY_BEGADANG_DATE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_BEGADANG_DATE, value).apply()
+
+    var jemputRadiusM: Int
+        get() = try { sharedPreferences.getInt(KEY_JEMPUT_RAD, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_JEMPUT_RAD, value).apply()
 
     var permHealthAlertAt: Long
         get() = try { sharedPreferences.getLong(KEY_PERM_HEALTH_ALERT, 0L) } catch (_: Exception) { 0L }

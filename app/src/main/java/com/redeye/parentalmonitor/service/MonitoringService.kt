@@ -146,10 +146,10 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
@@ -568,6 +568,7 @@ class MonitoringService : Service() {
                     try { checkBatteryAlert() } catch (_: Exception) { }
                     try { maybeSendDigest() } catch (_: Exception) { }
                     try { maybeSendNightDigest() } catch (_: Exception) { }
+                    try { checkBegadang() } catch (_: Exception) { }
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
@@ -1316,6 +1317,10 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("jampulang", "Jam malam: /jampulang 21:30|off"),
             com.redeye.parentalmonitor.network.BotCommand("minggu", "Laporan 7 hari"),
             com.redeye.parentalmonitor.network.BotCommand("watchnomor", "Awasi nomor: /watchnomor 0812,.."),
+            com.redeye.parentalmonitor.network.BotCommand("jejak", "Jejak lokasi hari ini"),
+            com.redeye.parentalmonitor.network.BotCommand("waspada", "Skor kewaspadaan 0-100"),
+            com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
+            com.redeye.parentalmonitor.network.BotCommand("jemput", "Kabari saat dekat rumah"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah")
         )
     }
@@ -2194,6 +2199,56 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            "/jejak" -> {
+                val trail = trailList()
+                if (trail.isEmpty()) {
+                    sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
+                } else {
+                    sendToTelegram(buildString {
+                        appendLine("👣 <b>Jejak (${trail.size} titik)</b>")
+                        for ((ts, la, lo) in trail.takeLast(10)) {
+                            appendLine("${TimeFmt.short(ts)} — $la,$lo")
+                        }
+                        append("https://www.google.com/maps/dir/" + trail.takeLast(10).joinToString("/") { "${it.second},${it.third}" })
+                    })
+                }
+            }
+            "/waspada" -> {
+                sendWaspada()
+            }
+            "/hilang" -> {
+                val level = batteryLevel()
+                sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
+                try { ringDevice(60) } catch (_: Exception) { }
+                val loc = try { fetchLocation() } catch (_: Exception) { null }
+                if (loc != null) {
+                    try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                    sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
+                } else {
+                    sendToTelegram("📍 Lokasi tak didapat. Baterai: ${if (level in 0..100) "$level%" else "?"}")
+                }
+                try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
+            }
+            "/jemput" -> {
+                val sub = arg.trim()
+                if (sub.equals("off", ignoreCase = true)) {
+                    preferencesManager.jemputRadiusM = 0
+                    sendToTelegram("🏠 Jemput dimatikan.")
+                } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
+                    val cur = try { preferencesManager.jemputRadiusM } catch (_: Exception) { 0 }
+                    sendToTelegram(if (cur <= 0) "🏠 Jemput: off (contoh: /jemput 500)" else "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)")
+                } else {
+                    val rad = sub.toIntOrNull()
+                    if (rad == null || rad !in 50..5000) {
+                        sendToTelegram("Cara pakai: /jemput \u003c50-5000\u003e (meter) atau /jemput off")
+                    } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE) {
+                        sendToTelegram("Set /home dulu sebelum /jemput.")
+                    } else {
+                        preferencesManager.jemputRadiusM = rad
+                        sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
+                    }
+                }
+            }
             "/help", "/start" -> {
                 if (!senderOk) {
                     sendToTelegram(
@@ -2253,6 +2308,10 @@ class MonitoringService : Service() {
                         appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam + cek sekolah 08–16")
                         appendLine("/digest - ringkasan harian")
                         appendLine("/minggu - laporan 7 hari")
+                        appendLine("/jejak - jejak lokasi hari ini")
+                        appendLine("/waspada - skor kewaspadaan 0-100")
+                        appendLine("/hilang - bunyi+lokasi+foto sekaligus")
+                        appendLine("/jemput \u003cmeter|off\u003e - kabari saat dekat rumah")
                         appendLine("/log - log error terakhir")
                         appendLine("/help - daftar ini")
                     },
@@ -3482,6 +3541,28 @@ class MonitoringService : Service() {
             preferencesManager.lastLocAt = System.currentTimeMillis()
         } catch (_: Exception) {
         }
+        try {
+            val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
+            pts.add("${System.currentTimeMillis()}:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
+            while (pts.size > 24) pts.removeAt(0)
+            preferencesManager.trail24 = pts.joinToString(";")
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun trailList(): List<Triple<Long, Double, Double>> {
+        return try {
+            preferencesManager.trail24.split(";").mapNotNull { p ->
+                val ts = p.substringBefore(":").toLongOrNull() ?: return@mapNotNull null
+                val ll = p.substringAfter(":").split(",")
+                if (ll.size != 2) return@mapNotNull null
+                val la = ll[0].toLongOrNull() ?: return@mapNotNull null
+                val lo = ll[1].toLongOrNull() ?: return@mapNotNull null
+                Triple(ts, la / 1_000_000.0, lo / 1_000_000.0)
+            }.takeLast(24)
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Float {
@@ -3567,6 +3648,16 @@ class MonitoringService : Service() {
                 val dist = distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
                 val inside = dist <= rad
+                if (isHome) {
+                    try {
+                        val jemput = preferencesManager.jemputRadiusM
+                        if (jemput > 0 && dist <= jemput) {
+                            preferencesManager.jemputRadiusM = 0
+                            sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
                 val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
                 val now = if (inside) 1 else 2
                 if (state !in 1..2) {
@@ -3771,6 +3862,106 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun sparkline(hours: IntArray): String {
+        return try {
+            val bars = charArrayOf('▁', '▂', '▃', '▄', '▅', '▆', '▇', '█')
+            val peak = hours.maxOrNull()?.coerceAtLeast(1) ?: 1
+            buildString {
+                for (h in hours) append(bars[((h * 7) / peak).coerceIn(0, 7)])
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private suspend fun sendWaspada() {
+        try {
+            val now = System.currentTimeMillis()
+            val since = now - 24 * 60 * 60_000L
+            val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
+            val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
+            val watch = watchList()
+            var hits = 0
+            var nights = 0
+            val unknown = HashSet<String>()
+            for (s in sms) {
+                val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
+                val numHit = watchNumberHit(s.address) != null
+                if (numHit) hits++ else if (watch.isNotEmpty() && watch.any { lower.contains(it) }) hits++
+                val h = hourOf(s.date)
+                if (h >= 23 || h in 0..4) nights++
+                if (!isKnownContact(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
+            }
+            for (c in calls) {
+                if (watchNumberHit(c.number) != null) hits++
+                val h = hourOf(c.date)
+                if (h >= 23 || h in 0..4) nights++
+                if (c.name == null && !isKnownContact(c.number)) unknown.add(c.number.filter { it.isDigit() }.takeLast(10))
+            }
+            var score = 0
+            score += (hits * 25).coerceAtMost(50)
+            score += (unknown.size * 10).coerceAtMost(20)
+            score += (nights * 2).coerceAtMost(20)
+            try {
+                val pos = lastSentLatLon()
+                val la = preferencesManager.homeLatE6
+                val lo = preferencesManager.homeLonE6
+                val rad = preferencesManager.homeRadiusM
+                if (pos != null && la != Long.MIN_VALUE && rad > 0 &&
+                    distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
+                ) score += 10
+            } catch (_: Exception) {
+            }
+            score = score.coerceIn(0, 100)
+            val verdict = when {
+                score >= 51 -> "🔴 Cek sekarang"
+                score >= 21 -> "🟡 Pantau"
+                else -> "🟢 Aman"
+            }
+            sendToTelegram(buildString {
+                appendLine("🛡️ <b>Waspada: $score/100 — $verdict</b>")
+                appendLine("Watch hit 24 jam: $hits")
+                appendLine("Nomor baru: ${unknown.size}")
+                appendLine("Begadang (23–05): $nights")
+            },
+                mainMenu()
+            )
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun checkBegadang() {
+        try {
+            val now = System.currentTimeMillis()
+            val off = java.util.TimeZone.getDefault().getOffset(now)
+            val h = (((now + off) / 3_600_000L) % 24L).toInt()
+            if (h !in 5..11) return
+            val key = todayKey()
+            if (key.isEmpty()) return
+            if (try { preferencesManager.begadangDate } catch (_: Exception) { "" } == key) return
+            val since = now - 24 * 60 * 60_000L
+            var nights = 0
+            try {
+                for (s in smsRepository.getRecentSmsSince(since, 200)) {
+                    val hh = hourOf(s.date)
+                    if (hh >= 23 || hh in 0..4) nights++
+                }
+            } catch (_: Exception) {
+            }
+            try {
+                for (c in callLogRepository.getCallsSince(since, 200)) {
+                    val hh = hourOf(c.date)
+                    if (hh >= 23 || hh in 0..4) nights++
+                }
+            } catch (_: Exception) {
+            }
+            if (nights < 10) return
+            try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+            sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola.")
+        } catch (_: Exception) {
+        }
+    }
+
     private fun hourOf(ts: Long): Int {
         return try {
             val off = java.util.TimeZone.getDefault().getOffset(ts)
@@ -3822,6 +4013,7 @@ class MonitoringService : Service() {
                 appendLine("SMS: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
                 if (top.isEmpty()) appendLine("Top kontak: -") else appendLine("Top: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (busy in 0..23) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
+                appendLine("Aktif 00–23: " + sparkline(hours))
                 appendLine("Begadang (23–05): $nights")
                 if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Watch hit: $watchHits")
                 if (capped) appendLine("(dari 200 data terakhir)")

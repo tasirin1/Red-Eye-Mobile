@@ -16,6 +16,11 @@ object TimeFmt {
             return SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
         }
     }
+    private val shortHolder = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("HH:mm", Locale.US)
+        }
+    }
 
     @Volatile
     private var cachedTz: TimeZone? = null
@@ -46,5 +51,15 @@ object TimeFmt {
         val f = fileHolder.get() ?: SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
         f.timeZone = currentTz()
         return f.format(Date(timestamp))
+    }
+
+    fun short(timestamp: Long): String {
+        return try {
+            val f = shortHolder.get() ?: SimpleDateFormat("HH:mm", Locale.US)
+            f.timeZone = currentTz()
+            f.format(Date(timestamp))
+        } catch (_: Exception) {
+            "?"
+        }
     }
 }

@@ -1,3 +1,12 @@
+## [1.6.204] - 2026-10-14
+### Added
+- `/jejak`: 24 titik lokasi terakhir + tautan rute peta.
+- `/waspada`: skor 0–100 dari watch hit, nomor baru, begadang, luar rumah.
+- `/hilang`: bunyi 60 detik + lokasi + foto sekaligus.
+- `/jemput <meter>|off`: kabari sekali saat dekat rumah (butuh `/home`).
+- Alert begadang otomatis (aktivitas 23–05 >10, pagi 1x/hari).
+- Grafik 24 jam di `/minggu`.
+
 ## [1.6.203] - 2026-10-14
 ### Fixed
 - Penjadwal kirim dibatasi (maks 3 antre + 1 jalan): offline lama tak lagi numpuk puluhan run WorkManager; run yang antre menguras semua + sembuh-sendiri 10 menit + reset tiap ganti proses.
