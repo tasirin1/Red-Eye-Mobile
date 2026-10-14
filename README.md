@@ -12,8 +12,9 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Log panggilan masuk/keluar
 - SMS masuk/keluar
 - Foto otomatis tiap interval, atau manual via `/photo`
-- Screenshot layar HP anak via `/screenshot` (izin capture diberikan sekali di Setup)
+- Screenshot layar HP anak via `/screenshot` (izin diberikan di Setup, hangus tiap reboot)
 - Rekam video kamera via `/recordvideo`
+- Watch kata/nomor, geofence rumah-sekolah, jam malam, digest harian/mingguan, skor waspada
 - Teruskan notifikasi HP anak ke Telegram
 - Antrean offline, kirim lagi pas online (penjadwal dibatasi biar hemat baterai)
 - Auto-jalan lagi habis reboot
@@ -66,7 +67,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 
 ## Perintah Telegram
 
-Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
+Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private chat, kode ada di status Setup):
 
 | Perintah | Fungsi |
 |----------|--------|
@@ -86,6 +87,15 @@ Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
 | `/jampulang 21:30` | Alert jam malam/sekolah |
 | `/minggu` | Laporan 7 hari |
 | `/watchnomor 0812` | Awasi nomor |
+| `/jejak` | Jejak lokasi + rute peta |
+| `/waspada` | Skor kewaspadaan 0-100 |
+| `/hilang` | Bunyi + lokasi + foto |
+| `/jemput 500` | Kabari saat dekat rumah |
+| `/night on\|off` | Mode sunyi 23–05 |
+| `/ringkas` | Status + baterai + antrean + izin |
+| `/perms` | Daftar izin |
+| `/patrol on\|off` | Patroli foto + lokasi |
+| `/patrolinterval 5-180` | Interval patroli menit |
 | `/photointerval 0-60` | Interval foto menit, `0` manual |
 | `/pause menit` | Jeda foto sementara |
 | `/syncinterval 1-1440` | Interval sync menit |

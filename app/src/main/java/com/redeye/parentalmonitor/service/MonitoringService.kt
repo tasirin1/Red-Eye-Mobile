@@ -1925,8 +1925,9 @@ class MonitoringService : Service() {
                     } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
                         sendToTelegram("⛔ Only the requester can replace this pending SMS. Reply /smsconfirm to confirm it first, or wait for it to expire.")
                     } else {
+                        val oldPending = if (stagedNumber.isNotEmpty() && stagedNumber != normalized) stagedNumber else ""
                         preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
-                        sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes).")
+                        sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
                     }
                 }
             }
@@ -1941,12 +1942,18 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
+                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
+                } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
+                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
                 } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
                 } else if (!smsBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
                 } else {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
+                    try { smsJob?.cancel() } catch (_: Exception) { }
                     smsJob = serviceScope.launch {
                         try {
                             sendSmsPending(number, smsText, stagedAt)
@@ -2912,6 +2919,7 @@ class MonitoringService : Service() {
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
+                            preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
             } finally {

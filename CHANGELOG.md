@@ -1,3 +1,9 @@
+## [1.6.206] - 2026-10-15
+### Fixed
+- `/smsconfirm` validasi ulang izin + blokir premium/darurat; gagal total ikut throttle 60 detik; job lama dibatalkan.
+- Stage `/sms` baru kabari pending lama yang dibuang.
+- README: tabel perintah lengkap (46) + pairing + koreksi screenshot per-reboot.
+
 ## [1.6.205] - 2026-10-14
 ### Fixed
 - `/hilang` tak blokir perintah 60 detik: bunyi jalan background + cegah tumpang.
