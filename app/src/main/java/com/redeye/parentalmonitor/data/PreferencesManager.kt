@@ -229,6 +229,7 @@ class PreferencesManager(context: Context) {
         const val KEY_WATCH_NUMBERS = "watch_numbers"
         private const val KEY_CURFEW_TIME = "curfew_time"
         private const val KEY_CURFEW_DATE = "curfew_alert_date"
+        private const val KEY_SCHOOL_DATE = "school_alert_date"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -658,6 +659,10 @@ class PreferencesManager(context: Context) {
     var curfewAlertDate: String
         get() = try { sharedPreferences.getString(KEY_CURFEW_DATE, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_CURFEW_DATE, value).apply()
+
+    var schoolAlertDate: String
+        get() = try { sharedPreferences.getString(KEY_SCHOOL_DATE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_SCHOOL_DATE, value).apply()
 
     private fun readWakePingIds(): MutableSet<Long> {
         return try {

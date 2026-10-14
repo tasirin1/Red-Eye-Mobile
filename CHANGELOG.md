@@ -1,3 +1,12 @@
+## [1.6.200] - 2026-10-14
+### Fixed
+- Tombol inline selamat dari dateless-expiry: callback tanpa tanggal kini dapat menu baru (bukan "kedaluwarsa" untuk semua tombol).
+- `checkCurfew` jemput posisi sendiri bila basi >30 menit (patroli mati/malam tak lagi bikin curfew diam); tanggal alert curfew vs sekolah dipisah.
+- Rincian sensitif (`/home`, `/school`, `/jampulang`, `/watch`, `/watchnomor` status) hanya via private chat; penolakan non-owner di grup kini senyap.
+- State geofence korup sembuh diam-diam tanpa alert palsu.
+- Digest/mingguan hitung watch sekali per pesan; `/watch` sebut kata yang dibuang (<3 huruf).
+- 4 field tambah `@Volatile`; "Foto dijeda … mnt".
+
 ## [1.6.199] - 2026-10-14
 ### Fixed
 - `CameraService` anti-curi flag: nomor generasi sesi — callback basi pasca-`forceReset` tak lagi matikan capture baru.
