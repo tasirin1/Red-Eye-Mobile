@@ -21,6 +21,7 @@ class CameraService(private val context: Context) {
     private var imageReader: ImageReader? = null
     private var meteringTexture: android.graphics.SurfaceTexture? = null
     private var meteringSurface: android.view.Surface? = null
+    @Volatile
     private var backgroundHandler: Handler? = null
     @Volatile
     private var backgroundThread: HandlerThread? = null

@@ -42,10 +42,5 @@
         <item name="android:textSize">34sp</item>
     </style>
 
-    <style name="CalculatorButton.Equals">
-        <item name="android:background">@drawable/calc_btn_accent</item>
-        <item name="android:textColor">@android:color/white</item>
-        <item name="android:textSize">34sp</item>
-    </style>
 </resources>
 

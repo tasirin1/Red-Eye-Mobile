@@ -23,6 +23,10 @@ class BootReceiver : BroadcastReceiver() {
         private val handleLock = Any()
         @Volatile
         private var lastHandleAt = 0L
+
+        private fun markHandled(at: Long) {
+            synchronized(handleLock) { lastHandleAt = at }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -35,7 +39,7 @@ class BootReceiver : BroadcastReceiver() {
             val nowUnlock = android.os.SystemClock.elapsedRealtime()
             synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
-                lastHandleAt = nowUnlock
+                markHandled(nowUnlock)
                 try {
                     context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowUnlock).apply()
                 } catch (_: Exception) {
@@ -83,7 +87,7 @@ class BootReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {
-            lastHandleAt = nowBoot
+            markHandled(nowBoot)
             try {
                 context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {
@@ -94,7 +98,7 @@ class BootReceiver : BroadcastReceiver() {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
         } catch (_: Exception) {
-            lastHandleAt = 0L
+            markHandled(0L)
             MessageScheduler.scheduleBootRestart(context)
             return
         }
@@ -132,7 +136,7 @@ class BootReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
-            lastHandleAt = nowBoot
+            markHandled(nowBoot)
             try {
                 context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {
@@ -140,15 +144,15 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         if (!preferencesManager.isConfigured()) {
-            lastHandleAt = 0L
+            markHandled(0L)
             MessageScheduler.scheduleBootRestart(context)
             return
         }
         if (!tryStartService(context)) {
-            lastHandleAt = 0L
+            markHandled(0L)
             MessageScheduler.scheduleBootRestart(context)
         } else {
-            lastHandleAt = nowBoot
+            markHandled(nowBoot)
             try {
                 context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
             } catch (_: Exception) {

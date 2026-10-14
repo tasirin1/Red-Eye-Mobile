@@ -125,7 +125,9 @@ class MonitoringService : Service() {
     private var cachedPhotoPausedUntil = 0L
     @Volatile
     private var cachedSyncInterval = -1
+    @Volatile
     private var cachedPatrolEnabled = false
+    @Volatile
     private var cachedPatrolInterval = 30
     private var cachedSetupTap: android.app.PendingIntent? = null
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
@@ -524,23 +526,25 @@ class MonitoringService : Service() {
         startPeriodicLoops()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
-        try {
-            messageQueue.tryRestorePersistent()
-        } catch (_: Exception) {
-        }
-        val stuckRing = preferencesManager.ringPrevVolume
-        val ringSavedAt = preferencesManager.ringSavedAt
-        val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
-        val ringAgeStart = System.currentTimeMillis() - ringSavedAt
-        if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && (ringAgeStart < 0L || ringAgeStart < 12 * 60 * 60_000L)) {
+        serviceScope.launch {
             try {
-                val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
+                messageQueue.tryRestorePersistent()
             } catch (_: Exception) {
             }
-            preferencesManager.clearRingStateSync()
-        } else if (!ringingNow && (stuckRing >= 0 || ringSavedAt > 0)) {
-            preferencesManager.clearRingStateSync()
+            val stuckRing = preferencesManager.ringPrevVolume
+            val ringSavedAt = preferencesManager.ringSavedAt
+            val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
+            val ringAgeStart = System.currentTimeMillis() - ringSavedAt
+            if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && (ringAgeStart < 0L || ringAgeStart < 12 * 60 * 60_000L)) {
+                try {
+                    val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
+                } catch (_: Exception) {
+                }
+                preferencesManager.clearRingStateSync()
+            } else if (!ringingNow && (stuckRing >= 0 || ringSavedAt > 0)) {
+                preferencesManager.clearRingStateSync()
+            }
         }
         startCommandPolling()
         startLoopWatchdog()
@@ -1884,9 +1888,11 @@ class MonitoringService : Service() {
                     val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
                     val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
                     val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
-                    if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
+                    val nowSms = System.currentTimeMillis()
+                    val lastSentAt = try { preferencesManager.lastSmsSendAt } catch (_: Exception) { 0L }
+                    if (lastSentAt <= nowSms && nowSms - lastSentAt < 60_000L) {
                         sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
-                    } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && System.currentTimeMillis() - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
+                    } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
                         sendToTelegram("⛔ Only the requester can replace this pending SMS. Reply /smsconfirm to confirm it first, or wait for it to expire.")
                     } else {
                         preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
@@ -1899,12 +1905,13 @@ class MonitoringService : Service() {
                 val smsText = preferencesManager.pendingSmsText
                 val stagedAt = preferencesManager.pendingSmsAt
                 val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
-                if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || System.currentTimeMillis() - stagedAt > 300_000L) {
+                val nowConfirm = System.currentTimeMillis()
+                if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
                     preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
-                } else if (System.currentTimeMillis() - preferencesManager.lastSmsSendAt < 60_000L) {
+                } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
                 } else if (!smsBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
@@ -3240,7 +3247,7 @@ class MonitoringService : Service() {
         if (level < 0 || level >= 15) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
-        if (now - last < 24 * 60 * 60_000L) return
+        if (last <= now && now - last < 24 * 60 * 60_000L) return
         try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
         sendToTelegram("🔋 Baterai perangkat tinggal $level%. Colok charger agar monitoring tak putus.")
     }
@@ -3248,7 +3255,7 @@ class MonitoringService : Service() {
     private suspend fun maybeSendDigest() {
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
-        if (now - last < 6 * 60 * 60_000L) return
+        if (last <= now && now - last < 6 * 60 * 60_000L) return
         try { preferencesManager.digestAt = now } catch (_: Exception) { }
         val since = now - 6 * 60 * 60_000L
         val smsCount = try { smsRepository.getRecentSmsSince(since, 200).size } catch (_: Exception) { -1 }
@@ -4047,7 +4054,7 @@ class MonitoringService : Service() {
             if (missing.isEmpty()) return
             val nowMs = System.currentTimeMillis()
             val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
-            if (nowMs - last < 24 * 60 * 60_000L) return
+            if (nowMs >= last && nowMs - last < 24 * 60 * 60_000L) return
             try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
             sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
         } catch (_: Exception) {

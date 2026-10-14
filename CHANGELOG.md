@@ -1,3 +1,10 @@
+## [1.6.186] - 2026-10-14
+### Fixed
+- `startMonitoring`: restore antrean + pulihkan volume pindah background (tak lagi block main thread).
+- Throttle jam-masa-depan: baterai/digest/izin/SMS/pending-SMS tak lagi bisu bila cap tersimpan di masa depan (jam mundur) — fail-open.
+- `BootReceiver.lastHandleAt` tulis di bawah kunci; `cachedPatrol*` + `backgroundHandler` volatile.
+- Bersih-bersih: hapus string `service_running` + style `CalculatorButton.Equals` mati; cabut izin `MODIFY_AUDIO_SETTINGS` yang tak dipakai.
+
 ## [1.6.185] - 2026-10-14
 ### Fixed
 - `onStartCommand` tak lagi refresh prefs di main thread (potensi ANR): keputusan cepat pakai instance aktif, refresh + cek ulang jalan background.
