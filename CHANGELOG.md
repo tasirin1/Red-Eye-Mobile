@@ -1,3 +1,8 @@
+## [1.6.177] - 2026-10-14
+### Added
+- Sentinel izin pintar: ingat snapshot tiap izin (`permSnapshot`) — lapor transisi "Izin hilang" saat dicabut dan "Izin kembali" saat diberikan lagi (tanpa throttle, karena berbasis transisi); pengingat gabungan 24 jam tetap untuk yang belum kembali; laporan inventaris penuh sekali saat baseline. Bit dependen dibekukan (lokasi latar ikut lokasi, akses notifikasi ikut sakelar `/notif`) agar tak ada alert palsu.
+- Perintah owner `/perms` (sensitif + freshness 300 dtk, terdaftar di menu bot + `/help`): daftar checklist ✅/❌ 10 titik izin.
+
 ## [1.6.176] - 2026-10-14
 ### Added
 - Sentinel izin di `MonitoringService.checkPermissionHealth` (tiap siklus sinkronisasi): cek 10 titik (baca/kirim SMS, log panggilan, kontak, kamera, mikrofon, lokasi + lokasi latar, akses notifikasi, baterai tanpa batas); bila ada yang dicabut, kirim peringatan gabungan ke owner, throttle 24 jam (`permHealthAlertAt`). Pencabutan diam-diam (termasuk auto-reset Android bila app lama tak dibuka) kini ketahuan, bukan sunyi.

