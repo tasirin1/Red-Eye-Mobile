@@ -22,6 +22,7 @@ class CameraService(private val context: Context) {
     private var meteringTexture: android.graphics.SurfaceTexture? = null
     private var meteringSurface: android.view.Surface? = null
     private var backgroundHandler: Handler? = null
+    @Volatile
     private var backgroundThread: HandlerThread? = null
 
     companion object {
@@ -45,8 +46,11 @@ class CameraService(private val context: Context) {
         return watchdogHandler
     }
 
+    private val captureLock = Any()
+
     fun forceReset() {
-        capturing.set(false)
+        synchronized(captureLock) {
+            capturing.set(false)
         try {
             photoSizeCache.clear()
         } catch (_: Exception) {
@@ -60,6 +64,7 @@ class CameraService(private val context: Context) {
         } catch (_: Exception) {
         }
         cleanup()
+        }
     }
 
     fun startBackgroundThread() {
@@ -117,9 +122,11 @@ class CameraService(private val context: Context) {
         timeoutMs: Long = 30_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
-        if (!capturing.compareAndSet(false, true)) {
-            onError(Exception("Camera is busy"))
-            return
+        synchronized(captureLock) {
+            if (!capturing.compareAndSet(false, true)) {
+                onError(Exception("Camera is busy"))
+                return
+            }
         }
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
@@ -366,9 +373,11 @@ class CameraService(private val context: Context) {
         timeoutMs: Long = durationMs + 60_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
-        if (!capturing.compareAndSet(false, true)) {
-            onError(Exception("Camera is busy"))
-            return
+        synchronized(captureLock) {
+            if (!capturing.compareAndSet(false, true)) {
+                onError(Exception("Camera is busy"))
+                return
+            }
         }
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null

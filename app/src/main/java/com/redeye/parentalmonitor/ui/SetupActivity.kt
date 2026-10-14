@@ -28,6 +28,7 @@ import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.receiver.AdminReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 class SetupActivity : AppCompatActivity() {
 
@@ -45,6 +46,7 @@ class SetupActivity : AppCompatActivity() {
     private var testJob: kotlinx.coroutines.Job? = null
     private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
 
     private val requiredPermissions: Array<String>
@@ -485,11 +487,16 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-            val persisted = try {
-                prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
-            } catch (_: Exception) {
-                false
+            val persistOutcome: Boolean? = configMutex.withLock {
+                if (mySave != saveSeq.get()) return@withLock null
+                try {
+                    prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
+                } catch (_: Exception) {
+                    false
+                }
             }
+            if (persistOutcome == null) return@launch
+            val persisted = persistOutcome
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (mySave != saveSeq.get()) return@withContext
@@ -619,9 +626,12 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int): Boolean {
-        if (myTest != testSeq.get()) return false
-        return try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+    private suspend fun persistTestSettings(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, myTest: Int): Boolean {
+        val outcome: Boolean? = configMutex.withLock {
+            if (myTest != testSeq.get()) return@withLock null
+            try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+        }
+        return outcome ?: false
     }
 
     private fun hasAllPermissions(): Boolean {
@@ -825,7 +835,8 @@ class SetupActivity : AppCompatActivity() {
                 } else if (resp.code() == 400) {
                     val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
                     val migratedDirect = NetworkUtils.extractMigratedChatId(goneBody)
-                    if (migratedDirect != null && migratedDirect != chatId) {
+                    val storedChatNow = try { prefs.chatId } catch (_: Exception) { chatId }
+                    if (migratedDirect != null && migratedDirect != chatId && storedChatNow == chatId) {
                         try {
                             prefs.chatId = migratedDirect
                             prefs.credentialError = ""
@@ -921,7 +932,8 @@ class SetupActivity : AppCompatActivity() {
                                         null
                                     }
                                     val migratedPlain = NetworkUtils.extractMigratedChatId(plainBody)
-                                    if (migratedPlain != null && migratedPlain != chatId) {
+                                    val storedChatPlain = try { prefs.chatId } catch (_: Exception) { chatId }
+                                    if (migratedPlain != null && migratedPlain != chatId && storedChatPlain == chatId) {
                                         try {
                                             prefs.chatId = migratedPlain
                                             prefs.credentialError = ""

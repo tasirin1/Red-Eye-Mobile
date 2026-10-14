@@ -442,7 +442,17 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
+        val priority = try { isPriorityNotif(pkg, title, text) } catch (_: Exception) { false }
         if (pkgTryAcquire(pkg, now)) {
+            if (priority) {
+                record(label, title, text)
+                try {
+                    queue().addMessage(buildNotifMessage(label, title, text))
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+                return
+            }
             val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
             if (notifySpam) {
                 val lastNotice = dropNoticeAt[pkg] ?: 0L
@@ -458,14 +468,9 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
-        val message = buildString {
-            appendLine("🔔 <b>Notification</b>")
-            appendLine("App: ${Html.escape(label)}")
-            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
-            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
-        }
+        val message = buildNotifMessage(label, title, text)
         record(label, title, text)
-        if (isPriorityNotif(pkg, title, text)) {
+        if (priority) {
             try {
                 kotlinx.coroutines.withContext(fwdSerial) { forwardLocked("❗ " + message, pkg, 1) }
             } catch (_: Exception) {
@@ -475,6 +480,15 @@ class NotificationForwarderService : NotificationListenerService() {
         try {
             forwardToTelegram(message, pkg)
         } catch (_: Exception) {
+        }
+    }
+
+    private fun buildNotifMessage(label: String, title: String, text: String): String {
+        return buildString {
+            appendLine("🔔 <b>Notification</b>")
+            appendLine("App: ${Html.escape(label)}")
+            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
+            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
         }
     }
 
@@ -871,6 +885,26 @@ class NotificationForwarderService : NotificationListenerService() {
     private val batchBuf = ArrayDeque<Pair<String, String>>()
     private var batchJob: Job? = null
 
+    private fun scheduleBatchLocked() {
+        if (batchJob?.isActive == true) return
+        batchJob = scope.launch {
+            try {
+                delay(5_000L)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+            try {
+                kotlinx.coroutines.withContext(fwdSerial) { flushBatch() }
+            } catch (_: Exception) {
+            }
+            synchronized(batchLock) {
+                batchJob = null
+                if (batchBuf.isNotEmpty()) scheduleBatchLocked()
+            }
+        }
+    }
+
     private suspend fun forwardToTelegram(message: String, pkg: String = "") {
         var overflowed = false
         synchronized(batchLock) {
@@ -878,20 +912,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 overflowed = true
             } else {
                 batchBuf.addLast(message to pkg)
-                if (batchJob?.isActive != true) {
-                    batchJob = scope.launch {
-                        try {
-                            delay(5_000L)
-                        } catch (e: kotlinx.coroutines.CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            kotlinx.coroutines.withContext(fwdSerial) { flushBatch() }
-                        } catch (_: Exception) {
-                        }
-                    }
-                }
+                scheduleBatchLocked()
             }
         }
         if (overflowed) {

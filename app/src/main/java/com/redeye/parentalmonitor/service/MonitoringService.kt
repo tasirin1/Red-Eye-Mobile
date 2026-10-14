@@ -2765,6 +2765,7 @@ class MonitoringService : Service() {
                 for (i in 0 until 64) {
                     if (cell[i] > avg) bits = bits or (1L shl i)
                 }
+                if (bits == 0L) bits = 1L
                 bits
             } finally {
                 try { bmp.recycle() } catch (_: Exception) { }

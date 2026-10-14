@@ -1,3 +1,11 @@
+## [1.6.184] - 2026-10-14
+### Fixed
+- `NotificationForwarderService`: timer batch uzur-ulang bila ada item tertinggal (`scheduleBatchLocked`); notifikasi prioritas yang kena spam-throttle diantrekan (tak lagi hilang), bukan dikirim langsung.
+- `SetupActivity`: `configMutex` serialkan persist Save-vs-Test (pemenang selalu yang terbaru, tanpa last-writer acak); migrasi supergroup `sendStatusNow` hanya bila config tak berubah di tengah jalan.
+- `PreferencesManager`: `upgradeToPersistent` delta-pass kedua (tulis saat komit lambat tak hilang); `saveCredentials` jujur `false` bila `commit` gagal; migrasi tipe asing di-log.
+- `CameraService`: `captureLock` serialkan entry capture vs `forceReset` (tak ada lagi dua sesi berebut device); `backgroundThread` volatile.
+- `MonitoringService`: hash foto nol dinormalkan (bingkai polos ikut cek duplikat).
+
 ## [1.6.183] - 2026-10-14
 ### Added
 - Ringkasan berkala tiap 6 jam (SMS/panggilan masuk, antrean, baterai) + peringatan baterai < 15% (throttle 24 jam).

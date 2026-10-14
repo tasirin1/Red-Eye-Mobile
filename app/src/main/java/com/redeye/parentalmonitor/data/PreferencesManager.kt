@@ -31,6 +31,7 @@ class PreferencesManager(context: Context) {
             if (storageEncrypted) return true
             return try {
                 val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
+                val mem = sharedPreferences
                 val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
                 if (snap.isNotEmpty()) {
                     val editor = fresh.edit()
@@ -46,6 +47,21 @@ class PreferencesManager(context: Context) {
                     }
                 }
                 storageEncrypted = true
+                try {
+                    val memNow = mem?.all ?: emptyMap()
+                    if (memNow != snap) {
+                        val editor2 = fresh.edit()
+                        var changed = false
+                        for ((key, value) in memNow) {
+                            if (!snap.containsKey(key) || snap[key] != value) {
+                                putEntryInto(editor2, key, value)
+                                changed = true
+                            }
+                        }
+                        if (changed) editor2.commit()
+                    }
+                } catch (_: Exception) {
+                }
                 true
             } catch (_: Exception) {
                 false
@@ -65,8 +81,9 @@ class PreferencesManager(context: Context) {
                 @Suppress("UNCHECKED_CAST")
                 editor.putStringSet(key, value as Set<String>)
             } catch (_: Exception) {
+                android.util.Log.w("PreferencesManager", "Dropping non-string set for $key during migration")
             }
-            else -> Unit
+            else -> android.util.Log.w("PreferencesManager", "Dropping unknown type for $key during migration")
         }
     }
 
@@ -724,7 +741,7 @@ class PreferencesManager(context: Context) {
         editor.putString(KEY_CHAT_ID, newChatId)
         editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
         editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        return try { editor.commit() } catch (_: Exception) { try { editor.apply(); true } catch (_: Exception) { false } }
+        return try { editor.commit() } catch (_: Exception) { false }
     }
 
     fun setMonitoringActive(active: Boolean) {
