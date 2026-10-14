@@ -1,3 +1,8 @@
+## [1.6.190] - 2026-10-14
+### Fixed
+- `MY_PACKAGE_REPLACED` tambah `<data scheme=package>` — restart habis-update jalan instan (sebelumnya buta, hanya watchdog).
+- Worker: pesan cap-20 yang gugur di run-auth/rate-limit ikut kabar antrean (tak lagi sunyi).
+
 ## [1.6.189] - 2026-10-14
 ### Fixed
 - `CameraService`: tmp foto dibersihkan bila tulis gagal; `camera`/`session` ditutup di semua callback error; `rec.stop()` gagal = error (bukan sukses); urutan rilis recorder-dulu; pesan record bawa cause.

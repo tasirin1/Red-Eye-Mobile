@@ -206,9 +206,12 @@ class SendMessageWorker(
             android.util.Log.w("SendMessageWorker", "Keeping ${rejectedIds.size} rejected message(s) for retry under fresh credentials")
         }
 
+        var authDropped = 0
         if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && !credsChanged && credsSame()) {
             try {
-                if (NetworkUtils.isNetworkAvailable(applicationContext)) messageQueue.registerTransientFailures(failedIds)
+                if (NetworkUtils.isNetworkAvailable(applicationContext)) {
+                    authDropped = messageQueue.registerTransientFailures(failedIds).first.size
+                }
             } catch (_: Exception) {
             }
         }
@@ -219,6 +222,13 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
+            if (authDropped > 0 && !queueCleared && credsSame()) {
+                try {
+                    messageQueue.addMessage("⚠️ $authDropped queued message(s) dropped (after max retries).", true)
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
+            }
             return Result.success()
         }
 
@@ -227,6 +237,13 @@ class SendMessageWorker(
             try {
                 MessageScheduler.scheduleMessageSendNext(applicationContext, rateLimitedSecs * 1000L)
             } catch (_: Exception) {
+            }
+            if (authDropped > 0 && !queueCleared && credsSame()) {
+                try {
+                    messageQueue.addMessage("⚠️ $authDropped queued message(s) dropped (after max retries).", true)
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
             }
             return Result.success()
         }
