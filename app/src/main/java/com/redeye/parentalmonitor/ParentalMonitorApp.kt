@@ -28,7 +28,7 @@ class ParentalMonitorApp : Application() {
         } catch (_: Exception) {
         }
         try {
-            com.redeye.parentalmonitor.utils.Background.run {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(this@ParentalMonitorApp)
                 } catch (_: Exception) {
@@ -71,8 +71,11 @@ class ParentalMonitorApp : Application() {
             } catch (_: Exception) {
             }
             try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_HIGH).apply {
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_MIN).apply {
                     setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                    enableLights(false)
                 }
                 notificationManager.createNotificationChannel(resume)
             } catch (_: Exception) {

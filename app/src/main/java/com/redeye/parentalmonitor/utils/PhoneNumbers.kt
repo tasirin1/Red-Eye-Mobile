@@ -16,11 +16,11 @@ object PhoneNumbers {
             if (haveAlt == want) return true
             if (wantAlt != null && haveAlt == wantAlt) return true
         }
-        if (want.length >= 7 && suffixMatch(have, want)) return true
-        if (wantAlt != null && wantAlt.length >= 7 && suffixMatch(have, wantAlt)) return true
+        if (want.length >= 10 && suffixMatch(have, want)) return true
+        if (wantAlt != null && wantAlt.length >= 10 && suffixMatch(have, wantAlt)) return true
         if (haveAlt != null) {
-            if (want.length >= 7 && suffixMatch(haveAlt, want)) return true
-            if (wantAlt != null && wantAlt.length >= 7 && suffixMatch(haveAlt, wantAlt)) return true
+            if (want.length >= 10 && suffixMatch(haveAlt, want)) return true
+            if (wantAlt != null && wantAlt.length >= 10 && suffixMatch(haveAlt, wantAlt)) return true
         }
         return false
     }
@@ -38,14 +38,14 @@ object PhoneNumbers {
     fun matchesNormalized(haveRaw: String, wantDigits: String): Boolean {
         val have = haveRaw.filter { it.isDigit() }
         if (have.isEmpty() || wantDigits.isEmpty()) return false
-        if (wantDigits.length < 7) return have == wantDigits
+        if (wantDigits.length < 10) return have == wantDigits
         return numbersEqualFast(have, wantDigits, altVariant(wantDigits))
     }
 
     fun matchesPrecomputed(haveRaw: String, wantDigits: String, wantAlt: String?): Boolean {
         val have = haveRaw.filter { it.isDigit() }
         if (have.isEmpty() || wantDigits.isEmpty()) return false
-        if (wantDigits.length < 7) return have == wantDigits
+        if (wantDigits.length < 10) return have == wantDigits
         return numbersEqualFast(have, wantDigits, wantAlt)
     }
 }

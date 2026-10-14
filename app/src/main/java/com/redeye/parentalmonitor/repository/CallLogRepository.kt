@@ -99,11 +99,11 @@ class CallLogRepository(private val context: Context) {
         )
         val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val matched = filterCallsByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
+        if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
-        repeat(10) {
+        repeat(4) {
             val page = queryCalls(
                 selection = "${CallLog.Calls.DATE} >= ? AND (${CallLog.Calls.DATE} < ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} < ?))",
                 args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),

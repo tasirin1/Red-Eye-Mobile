@@ -1,3 +1,18 @@
+## [1.6.173] - 2026-10-14
+### Fixed
+- `MessageQueue.isFresh` fallback ke wall-clock saat `elapsedRealtime` reset (reboot): antrean offline tak lagi dibuang massal sebagai expired.
+- `Background.runCritical` (executor khusus antrean tak terbatas + `CallerRunsPolicy`): tugas restore prefs/antrean dan `BootReceiver`/`AdminReceiver` tak lagi bisa dibuang diam-diam oleh `DiscardPolicy`.
+- `PreferencesManager.setMonitoringActive` tulis `commit()` sinkron agar service langsung baca nilai baru.
+- `SetupActivity.saveSettings` batal simpan + toast `setup_test_fail` saat verifikasi `getMe`/`getChat` gagal jaringan (offline tak lagi simpan kredensial unverifikasi); `clearCredentials` reset juga `monitoringPaused`/`photoPausedUntil`/`patrolEnabled`.
+- `PhoneNumbers` gerbang sufiks 7 ke 10 digit + fallback `SmsRepository`/`CallLogRepository` 10 ke 4 halaman (cegah salah atribusi + pindai 5000 baris).
+- `MonitoringService.NO_REPLAY_COMMANDS` dipersempit ke perintah tak-idempoten (`/sms`, `/smsconfirm`, `/ring`, `/record`, `/recordvideo`, `/lock`); tap tombol inline non-mutasi tak lagi kedaluwarsa oleh tanggal menu; cap dedup update 300 ke 500 + callback 200 ke 500.
+- `MonitoringService.teardownJobs` pulihkan volume alarm bila `ringBusy`; SMS parsial pertahankan pending (bukan clear) + `PendingIntent` per-part bawa extra `part`/`of`.
+- `NotificationForwarderService.forwardLocked` fallback plain kini antre ulang + jadwal saat `429`/`408`/`5xx` (bukan drop 400); reset offset wake pakai `lastUpdateId` segar; dedup tanpa `notifId`; jalur burst ikut notif spam throttled.
+- `SendMessageWorker.sendChunked` sisa chunk antre ulang dengan `retryCount` asal (budget 20 tak lagi reset).
+- `ParentalMonitorApp` channel resume jadi `IMPORTANCE_MIN` senyap (catatan: channel lama di perangkat existing baru berubah setelah install ulang).
+- `.github/workflows/build.yml` artefak `apks` ikut sertakan `mapping.txt` rilis agar crash ter-deobfuscate.
+- Kalkulator tombol `C` pakai `@color/calc_accent_text` + `drawable-night/calc_btn_accent.xml` agar ikut tema malam; komentar manifest Uzbek jadi Indonesia; koreksi klaim `QUICKBOOT` `1.6.170` (penanganan dipertahankan).
+
 ## [1.6.172] - 2026-10-11
 ### Fixed
 - `MonitoringService.onCreate` warm-up prefs via pool bersama `Background` gantikan `Thread` mentah per start.
@@ -18,7 +33,7 @@
 - `MonitoringService` parse perintah Telegram sekali jalan (`head`/`command`/`arg` dari `rawText`); pindai `substringBefore`/`lowercase` ganda per update dihapus.
 - `MonitoringService.takeScreenshotFrame` satu bitmap saat `rowStride` ber-padding: salin baris-per-baris ke buffer padat, gantikan bitmap `rowWidth` + `createBitmap` crop kedua.
 - `MonitoringService.fetchLocation` pakai `getCurrentLocation` + `CancellationSignal` di API 30+, fallback `requestSingleUpdate` di bawahnya.
-- `BootReceiver` jalan via pool bersama `Background` gantikan `Thread` mentah per broadcast; aksi HTC `QUICKBOOT` mati dibuang (kode + manifest).
+- `BootReceiver` jalan via pool bersama `Background` gantikan `Thread` mentah per broadcast; penanganan HTC `QUICKBOOT_POWERON` dipertahankan untuk kompatibilitas ROM lama.
 - `SetupActivity` cache `saveButton` agar `findViewById(R.id.setupSaveButton)` sekali, bukan dua kali.
 - `AndroidManifest.xml` komentar izin diterjemahkan ke Bahasa Indonesia.
 - `MonitoringService.smsReqSeq` seed via `ThreadLocalRandom` penuh gantikan truncasi 28-bit.

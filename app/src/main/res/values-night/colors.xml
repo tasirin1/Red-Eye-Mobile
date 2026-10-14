@@ -16,4 +16,5 @@
     <color name="calc_btn_function">#FF3D3D45</color>
     <color name="calc_btn_text">#FFFFFFFF</color>
     <color name="calc_ripple">#40FFFFFF</color>
+    <color name="calc_accent_text">#FFFFB340</color>
 </resources>

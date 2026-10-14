@@ -360,6 +360,9 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
             try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
             try { prefs.pendingNotifDrops = 0 } catch (_: Exception) { }
+            try { prefs.monitoringPaused = false } catch (_: Exception) { }
+            try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
+            try { prefs.patrolEnabled = false } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -433,6 +436,8 @@ class SetupActivity : AppCompatActivity() {
                 }
             }
             if (mySave != saveSeq.get()) return@launch
+            var verified = true
+            var verifyDetail = ""
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot" + token + "/getMe")
                 if (mySave != saveSeq.get()) return@launch
@@ -469,9 +474,17 @@ class SetupActivity : AppCompatActivity() {
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                verified = false
+                verifyDetail = redactToken(e.message)
             }
             if (mySave != saveSeq.get()) return@launch
+            if (!verified) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, verifyDetail.ifEmpty { "no network" }), Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
             try {
                 prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
             } catch (_: Exception) {

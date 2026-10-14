@@ -56,7 +56,7 @@
         android:theme="@style/Theme.ParentalMonitor"
         tools:targetApi="35">
         
-        <!-- Asosiy activity -->
+        <!-- Activity utama -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">

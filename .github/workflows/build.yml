@@ -88,6 +88,7 @@ jobs:
           name: apks
           path: |
             apks/*.apk
+            app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: error
 
       - name: Publish GitHub Release

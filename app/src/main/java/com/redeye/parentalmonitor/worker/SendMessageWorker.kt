@@ -118,7 +118,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -397,7 +397,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -420,7 +420,7 @@ class SendMessageWorker(
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         if (idx + 1 < parts.size) {
                             try {
-                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""))
+                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount)
                                 MessageScheduler.scheduleMessageSend(applicationContext)
                             } catch (_: Exception) {
                             }
@@ -432,7 +432,7 @@ class SendMessageWorker(
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
                             MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
                             remainderQueued = true
                         } catch (_: Exception) {
@@ -445,7 +445,7 @@ class SendMessageWorker(
                 is SendOutcome.AuthFailed -> {
                     if (idx > 0 && !remainderQueued) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
                             MessageScheduler.scheduleMessageSend(applicationContext)
                             preferencesManager.credentialError = outcome.code.toString()
                             preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -461,7 +461,7 @@ class SendMessageWorker(
                     failed++
                     if (idx > 0 && !failedKept) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""))
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
                             MessageScheduler.scheduleMessageSend(applicationContext)
                             failedKept = true
                         } catch (_: Exception) {
@@ -538,7 +538,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0): SendOutcome {
         return try {
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
@@ -555,7 +555,7 @@ class SendMessageWorker(
                     if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
                 }
                 else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else sendChunked(message, botToken, chatId)
+                else sendChunked(message, botToken, chatId, retryCount)
             } else if (response.code() == 400) {
                 val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }

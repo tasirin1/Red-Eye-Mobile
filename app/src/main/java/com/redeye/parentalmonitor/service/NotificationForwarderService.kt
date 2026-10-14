@@ -303,7 +303,7 @@ class NotificationForwarderService : NotificationListenerService() {
                             return@launch
                         }
                     }
-                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = false, streamKey = notifId.toString())
+                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true, streamKey = notifId.toString())
                 } catch (_: Exception) {
                 } finally {
                     pendingPosts.decrementAndGet()
@@ -429,7 +429,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
             }
         }
-        val key = pkg + "\n" + streamKey + "\n" + title + "\n" + text
+        val key = pkg + "\n" + title + "\n" + text
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
             if (now - prev < 10_000L) true else {
@@ -592,9 +592,10 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 val body400 = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body400.contains("offset")) {
-                    wakeUpdateId = mainLast
+                    val freshMain = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
+                    wakeUpdateId = maxOf(freshMain, wakeUpdateId)
                     try {
-                        prefs.setWakeUpdateIdSync(mainLast)
+                        prefs.setWakeUpdateIdSync(wakeUpdateId)
                     } catch (_: Exception) {
                     }
                     wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
@@ -1111,6 +1112,22 @@ class NotificationForwarderService : NotificationListenerService() {
                                 prefs.credentialErrorAt = System.currentTimeMillis()
                             } catch (_: Exception) {
                             }
+                            queue().addMessage(message)
+                            MessageScheduler.scheduleMessageSend(this)
+                            return false
+                        }
+                        if (fallbackResp.code() == 429) {
+                            val retryAfter = try {
+                                NetworkUtils.parseRetryAfter(fallbackResp.errorBody()?.string())
+                            } catch (_: Exception) {
+                                5L
+                            }
+                            NetworkUtils.noteRateLimited(retryAfter)
+                            queue().addMessage(message)
+                            MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
+                            return false
+                        }
+                        if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
                             queue().addMessage(message)
                             MessageScheduler.scheduleMessageSend(this)
                             return false

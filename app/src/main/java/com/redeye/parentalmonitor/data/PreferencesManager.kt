@@ -99,7 +99,7 @@ class PreferencesManager(context: Context) {
 
         private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {
             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-                com.redeye.parentalmonitor.utils.Background.run {
+                com.redeye.parentalmonitor.utils.Background.runCritical {
                     try {
                         refreshInstance(context.applicationContext)
                     } catch (_: Exception) {
@@ -677,7 +677,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        editor.apply()
+        try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
     }
 
 private class MemoryPrefs : SharedPreferences {

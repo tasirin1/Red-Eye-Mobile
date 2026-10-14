@@ -52,7 +52,7 @@ class BootReceiver : BroadcastReceiver() {
         }
         val bootAction = intent.action
         try {
-            com.redeye.parentalmonitor.utils.Background.run {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     handleBoot(appContext, bootAction)
                 } catch (_: Exception) {

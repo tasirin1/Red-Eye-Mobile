@@ -37,11 +37,11 @@ class SmsRepository(private val context: Context) {
         )
         val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val matched = filterByNumber(rows, norm, wantAlt) { it.address }
-        if (matched.isNotEmpty() || norm.length < 7) return matched.take(safeLimit)
+        if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
-        repeat(10) {
+        repeat(4) {
             val page = querySms(
                 selection = "${Telephony.Sms.DATE} >= ? AND (${Telephony.Sms.DATE} < ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} < ?))",
                 args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),

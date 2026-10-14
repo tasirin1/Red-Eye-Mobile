@@ -17,7 +17,7 @@ class MessageQueue private constructor(context: Context) {
 
     init {
         if (volatileOnly) {
-            com.redeye.parentalmonitor.utils.Background.run {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     tryRestorePersistent()
                 } catch (_: Exception) {
@@ -104,7 +104,7 @@ class MessageQueue private constructor(context: Context) {
     private fun ensureRestored() {
         if (!volatileOnly) return
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-            com.redeye.parentalmonitor.utils.Background.run {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
                 try { tryRestorePersistent() } catch (_: Exception) { }
             }
             return
@@ -115,13 +115,13 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun addMessage(message: String, priority: Boolean = false) {
+    fun addMessage(message: String, priority: Boolean = false, retryCount: Int = 0) {
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
+                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0)))
                 while (volatileQueue.size > cap) {
                     volatileQueue.removeAt(0)
                     noteOverflowLocked()
@@ -129,7 +129,7 @@ class MessageQueue private constructor(context: Context) {
                 return
             }
             val queue = readLocked().toMutableList()
-            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
+            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0)))
             while (queue.size > cap) {
                 queue.removeAt(0)
                 noteOverflowLocked()
@@ -200,7 +200,11 @@ class MessageQueue private constructor(context: Context) {
         if (mark > 0L) {
             return try {
                 val now = android.os.SystemClock.elapsedRealtime()
-                now >= mark && now - mark <= 7 * 24 * 60 * 60_000L
+                if (now < mark) {
+                    q.timestamp >= wallCutoff
+                } else {
+                    now - mark <= 7 * 24 * 60 * 60_000L || q.timestamp >= wallCutoff
+                }
             } catch (_: Exception) {
                 q.timestamp >= wallCutoff
             }
