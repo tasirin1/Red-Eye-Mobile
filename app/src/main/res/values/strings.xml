@@ -11,8 +11,6 @@
     <string name="grant_permissions">Grant all permissions</string>
     <string name="notification_title">Calculator</string>
     <string name="notification_text">Service running</string>
-    <string name="status">Status:</string>
-    <string name="last_sync">Last sync:</string>
     <string name="never">Never</string>
     <string name="settings_saved">Settings saved</string>
     <string name="setup_credentials_cleared">Credentials cleared</string>

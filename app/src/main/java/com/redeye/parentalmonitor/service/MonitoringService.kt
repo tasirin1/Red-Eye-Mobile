@@ -1284,6 +1284,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("history", "Calls+SMS by number"),
             com.redeye.parentalmonitor.network.BotCommand("log", "Show last crash/error log"),
             com.redeye.parentalmonitor.network.BotCommand("patrol", "Auto photo + location patrol"),
+            com.redeye.parentalmonitor.network.BotCommand("patrolinterval", "Set patrol interval 5-180 min"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
     }
@@ -1291,6 +1292,7 @@ class MonitoringService : Service() {
     private fun publicCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
         return listOf(
             com.redeye.parentalmonitor.network.BotCommand("ping", "Check delay"),
+            com.redeye.parentalmonitor.network.BotCommand("start", "Start / pair this device"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Show all commands")
         )
     }
@@ -1300,7 +1302,7 @@ class MonitoringService : Service() {
             val botToken = preferencesManager.botToken
             if (botToken.isEmpty()) return
             val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
-            val tokenHash = sha256Hex(botToken + ":" + ownerId)
+            val tokenHash = sha256Hex(botToken + ":" + ownerId + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
             try {
                 if (preferencesManager.commandsTokenHash == tokenHash) return
             } catch (_: Exception) {

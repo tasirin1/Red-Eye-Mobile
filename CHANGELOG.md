@@ -1,3 +1,8 @@
+## [1.6.193] - 2026-10-14
+### Fixed
+- Menu bot: tambah `/patrolinterval` (owner) + `/start` (publik); hash registrasi ikut `versionCode` agar menu baru benar-benar terdaftar saat upgrade (sebelumnya di-skip diam-diam).
+- Buang string mati `status` + `last_sync`.
+
 ## [1.6.192] - 2026-10-14
 ### Fixed
 - Hapus peta callback mati (~15 baris, hasil dibuang) — satu sumber kebenaran di `handleCallbackQuery`.
