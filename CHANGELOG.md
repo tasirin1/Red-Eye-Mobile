@@ -1,3 +1,10 @@
+## [1.6.205] - 2026-10-14
+### Fixed
+- `/hilang` tak blokir perintah 60 detik: bunyi jalan background + cegah tumpang.
+- Begadang dievaluasi 1x/hari (sebelumnya query tiap siklus 05–11).
+- `/waspada` cache kontak per nomor + abaikan skor luar-rumah bila posisi basi.
+- Header `/jejak` jujur (10 terakhir).
+
 ## [1.6.204] - 2026-10-14
 ### Added
 - `/jejak`: 24 titik lokasi terakhir + tautan rute peta.

@@ -2205,7 +2205,7 @@ class MonitoringService : Service() {
                     sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
                 } else {
                     sendToTelegram(buildString {
-                        appendLine("👣 <b>Jejak (${trail.size} titik)</b>")
+                        appendLine("👣 <b>Jejak (${trail.size} titik, 10 terakhir)</b>")
                         for ((ts, la, lo) in trail.takeLast(10)) {
                             appendLine("${TimeFmt.short(ts)} — $la,$lo")
                         }
@@ -2218,8 +2218,22 @@ class MonitoringService : Service() {
             }
             "/hilang" -> {
                 val level = batteryLevel()
+                if (recordBusy.get()) {
+                    sendToTelegram("⏳ Sudah merekam, tunggu selesai.")
+                    return
+                }
+                if (!ringBusy.compareAndSet(false, true)) {
+                    sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
+                    return
+                }
                 sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
-                try { ringDevice(60) } catch (_: Exception) { }
+                ringJob = serviceScope.launch {
+                    try {
+                        ringDevice(60)
+                    } finally {
+                        ringBusy.set(false)
+                    }
+                }
                 val loc = try { fetchLocation() } catch (_: Exception) { null }
                 if (loc != null) {
                     try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
@@ -3884,30 +3898,40 @@ class MonitoringService : Service() {
             var hits = 0
             var nights = 0
             val unknown = HashSet<String>()
+            val knownCache = HashMap<String, Boolean>()
+            fun knownCached(number: String): Boolean {
+                return knownCache.getOrPut(number) {
+                    try { isKnownContact(number) } catch (_: Exception) { true }
+                }
+            }
             for (s in sms) {
                 val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
                 val numHit = watchNumberHit(s.address) != null
                 if (numHit) hits++ else if (watch.isNotEmpty() && watch.any { lower.contains(it) }) hits++
                 val h = hourOf(s.date)
                 if (h >= 23 || h in 0..4) nights++
-                if (!isKnownContact(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
+                if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
             }
             for (c in calls) {
                 if (watchNumberHit(c.number) != null) hits++
                 val h = hourOf(c.date)
                 if (h >= 23 || h in 0..4) nights++
-                if (c.name == null && !isKnownContact(c.number)) unknown.add(c.number.filter { it.isDigit() }.takeLast(10))
+                if (c.name == null && !knownCached(c.number)) unknown.add(c.number.filter { it.isDigit() }.takeLast(10))
             }
             var score = 0
             score += (hits * 25).coerceAtMost(50)
             score += (unknown.size * 10).coerceAtMost(20)
             score += (nights * 2).coerceAtMost(20)
+            var locNote = ""
             try {
                 val pos = lastSentLatLon()
+                val ageH = (now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }) / 3_600_000L
                 val la = preferencesManager.homeLatE6
                 val lo = preferencesManager.homeLonE6
                 val rad = preferencesManager.homeRadiusM
-                if (pos != null && la != Long.MIN_VALUE && rad > 0 &&
+                if (pos == null || ageH > 6) {
+                    locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
+                } else if (la != Long.MIN_VALUE && rad > 0 &&
                     distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
                 ) score += 10
             } catch (_: Exception) {
@@ -3922,7 +3946,7 @@ class MonitoringService : Service() {
                 appendLine("🛡️ <b>Waspada: $score/100 — $verdict</b>")
                 appendLine("Watch hit 24 jam: $hits")
                 appendLine("Nomor baru: ${unknown.size}")
-                appendLine("Begadang (23–05): $nights")
+                appendLine("Begadang (23–05): $nights$locNote")
             },
                 mainMenu()
             )
@@ -3938,7 +3962,7 @@ class MonitoringService : Service() {
             if (h !in 5..11) return
             val key = todayKey()
             if (key.isEmpty()) return
-            if (try { preferencesManager.begadangDate } catch (_: Exception) { "" } == key) return
+            if (try { preferencesManager.begadangDate } catch (_:Exception) { "" } == key) return
             val since = now - 24 * 60 * 60_000L
             var nights = 0
             try {
@@ -3955,7 +3979,10 @@ class MonitoringService : Service() {
                 }
             } catch (_: Exception) {
             }
-            if (nights < 10) return
+            if (nights < 10) {
+                try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+                return
+            }
             try { preferencesManager.begadangDate = key } catch (_: Exception) { }
             sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola.")
         } catch (_: Exception) {
