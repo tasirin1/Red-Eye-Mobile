@@ -41,6 +41,7 @@ class MessageQueue private constructor(context: Context) {
     private var lastPersistAt = 0L
     private var persistDirty = false
     private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val priorityDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val lock = Any()
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
@@ -52,6 +53,7 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_QUEUE = "queued_messages"
         private const val KEY_OVERFLOW_DROPS = "overflow_drops"
         private const val KEY_EXPIRED_DROPS = "expired_drops"
+        private const val KEY_PRIORITY_DROPS = "priority_drops"
         private const val MAX_QUEUE_SIZE = 100
         const val MAX_TRANSIENT_RETRIES = 20
         private val gson = Gson()
@@ -121,19 +123,16 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0)))
+                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority))
                 while (volatileQueue.size > cap) {
-                    volatileQueue.removeAt(0)
-                    noteOverflowLocked()
+                    evictOldestLocked(volatileQueue)
                 }
                 return
             }
             val queue = readLocked().toMutableList()
-            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0)))
+            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority))
             while (queue.size > cap) {
-                queue.removeAt(0)
-                noteOverflowLocked()
-                android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
+                evictOldestLocked(queue)
             }
             persistLocked(queue)
         }
@@ -146,19 +145,16 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                for (message in messages) volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
+                for (message in messages) volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
                 while (volatileQueue.size > cap) {
-                    volatileQueue.removeAt(0)
-                    noteOverflowLocked()
+                    evictOldestLocked(volatileQueue)
                 }
                 return
             }
             val queue = readLocked().toMutableList()
-            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime()))
+            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
             while (queue.size > cap) {
-                queue.removeAt(0)
-                noteOverflowLocked()
-                android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
+                evictOldestLocked(queue)
             }
             persistLocked(queue)
         }
@@ -168,13 +164,14 @@ class MessageQueue private constructor(context: Context) {
         try {
             overflowDrops.set(sharedPreferences?.getLong(KEY_OVERFLOW_DROPS, 0L) ?: 0L)
             expiredDrops.set(sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L)
+            priorityDrops.set(sharedPreferences?.getLong(KEY_PRIORITY_DROPS, 0L) ?: 0L)
         } catch (_: Exception) {
         }
     }
 
     private fun persistDropCountsLocked() {
         try {
-            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.commit()
+            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.commit()
         } catch (_: Exception) {
         }
     }
@@ -193,6 +190,17 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
         }
         if (!volatileOnly) persistDropCountsLocked()
+    }
+
+    private fun evictOldestLocked(queue: MutableList<QueuedMessage>) {
+        val idx = queue.indexOfFirst { !it.priority }
+        val evicted = if (idx >= 0) queue.removeAt(idx) else queue.removeAt(0)
+        try {
+            if (evicted.priority) priorityDrops.incrementAndGet()
+        } catch (_: Exception) {
+        }
+        noteOverflowLocked()
+        android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
     }
 
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
@@ -325,13 +333,14 @@ class MessageQueue private constructor(context: Context) {
             volatileQueue.clear()
             if (volatileOnly) {
                 try {
-                    PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME).edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.commit()
+                    PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME).edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
                 } catch (_: Exception) {
                 }
             }
             overflowDrops.set(0L)
             expiredDrops.set(0L)
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.commit()
+            priorityDrops.set(0L)
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
         }
         flushSync()
     }
@@ -368,7 +377,7 @@ class MessageQueue private constructor(context: Context) {
                 }
             }
             try {
-                val editor = prefs.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())
+                val editor = prefs.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())
                 if (onMain) editor?.apply() else editor?.commit()
             } catch (_: Exception) {
             }
@@ -445,6 +454,14 @@ class MessageQueue private constructor(context: Context) {
     fun takeOverflowDrops(): Long {
         synchronized(lock) {
             val n = overflowDrops.getAndSet(0L)
+            if (!volatileOnly) persistDropCountsLocked()
+            return n
+        }
+    }
+
+    fun takePriorityDrops(): Long {
+        synchronized(lock) {
+            val n = priorityDrops.getAndSet(0L)
             if (!volatileOnly) persistDropCountsLocked()
             return n
         }

@@ -1,3 +1,12 @@
+## [1.6.201] - 2026-10-14
+### Fixed
+- Initial-sync selesai hanya bila benar tuntas; gagal → coba lagi saat start berikut (kursor sudah maju, tanpa kirim ulang).
+- Flush media tak lagi prune saat nol progres (offline + backlog tak hapus file belum terkirim).
+- Sisa chunk gagal ikut budget retry (`+1`), racun berhenti di 20x; pesan prioritas anti-gusur + drop-notice sebut prioritas.
+- Save offline bisa bila kredensial tak berubah (interval saja).
+- Ganti token/chat reset aturan pemilik lama (watch, geofence, curfew, digest, lokasi, health).
+- Status tampilkan Device admin; boot abaikan umur-restore negatif (jam mundur).
+
 ## [1.6.200] - 2026-10-14
 ### Fixed
 - Tombol inline selamat dari dateless-expiry: callback tanpa tanggal kini dapat menu baru (bukan "kedaluwarsa" untuk semua tombol).

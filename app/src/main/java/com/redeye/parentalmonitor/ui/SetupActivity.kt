@@ -538,6 +538,25 @@ class SetupActivity : AppCompatActivity() {
             }
             if (mySave != saveSeq.get()) return@launch
             if (!verified) {
+                val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+                val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+                if (storedToken.isNotEmpty() && token == storedToken && chatId == storedChat) {
+                    val offSaved: Boolean? = configMutex.withLock {
+                        if (mySave != saveSeq.get()) return@withLock null
+                        try {
+                            prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
+                        if (mySave != saveSeq.get()) return@withContext
+                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_test_fail, verifyDetail.ifEmpty { "no network" }), Toast.LENGTH_LONG).show()
+                        try { updateStatus() } catch (_: Exception) { }
+                    }
+                    return@launch
+                }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, verifyDetail.ifEmpty { "no network" }), Toast.LENGTH_LONG).show()
                 }
@@ -1146,13 +1165,14 @@ class SetupActivity : AppCompatActivity() {
             val shotOn = try { prefs.hasScreenshotConsent() } catch (_: Exception) { false }
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
             val listener = isNotificationAccessGranted()
+            val adminOn = try { (getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(this@SetupActivity, AdminReceiver::class.java)) } catch (_: Exception) { false }
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nDevice admin: " + (if (adminOn) "on" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

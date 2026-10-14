@@ -267,7 +267,8 @@ class SendMessageWorker(
                 val overflow = messageQueue.takeOverflowDrops()
                 if (overflow > 0L) {
                     dropTotal += overflow.toInt()
-                    dropParts.add("$overflow oldest queued (queue full offline)")
+                    val prio = try { messageQueue.takePriorityDrops() } catch (_: Exception) { 0L }
+                    dropParts.add("$overflow oldest queued (queue full offline)" + if (prio > 0L) ", termasuk $prio prioritas" else "")
                 }
             } catch (_: Exception) {
             }
@@ -438,7 +439,7 @@ class SendMessageWorker(
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         if (idx + 1 < parts.size) {
                             try {
-                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount)
+                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount + 1)
                             } catch (_: Exception) {
                             }
                             try {
@@ -457,7 +458,7 @@ class SendMessageWorker(
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
                             MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
                             remainderQueued = true
                         } catch (_: Exception) {
@@ -470,7 +471,7 @@ class SendMessageWorker(
                 is SendOutcome.AuthFailed -> {
                     if (idx > 0 && !remainderQueued) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
                             MessageScheduler.scheduleMessageSend(applicationContext)
                             preferencesManager.credentialError = outcome.code.toString()
                             preferencesManager.credentialErrorAt = System.currentTimeMillis()
@@ -486,7 +487,7 @@ class SendMessageWorker(
                     failed++
                     if (idx > 0 && !failedKept) {
                         try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
                             MessageScheduler.scheduleMessageSend(applicationContext)
                             failedKept = true
                         } catch (_: Exception) {
