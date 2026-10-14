@@ -1,3 +1,7 @@
+## [1.6.176] - 2026-10-14
+### Added
+- Sentinel izin di `MonitoringService.checkPermissionHealth` (tiap siklus sinkronisasi): cek 10 titik (baca/kirim SMS, log panggilan, kontak, kamera, mikrofon, lokasi + lokasi latar, akses notifikasi, baterai tanpa batas); bila ada yang dicabut, kirim peringatan gabungan ke owner, throttle 24 jam (`permHealthAlertAt`). Pencabutan diam-diam (termasuk auto-reset Android bila app lama tak dibuka) kini ketahuan, bukan sunyi.
+
 ## [1.6.175] - 2026-10-14
 ### Fixed
 - `NotificationForwarderService`: spam-throttle tak lagi memanggil `noteDroppedNotification` (notice "Spam filter" khusus sudah cukup; tak ada lagi peringatan "rejected by Telegram (400)" yang salah atribusi).

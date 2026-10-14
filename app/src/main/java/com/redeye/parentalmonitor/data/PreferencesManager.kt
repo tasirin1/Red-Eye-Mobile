@@ -186,6 +186,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_SCREENSHOT_DATA = "screenshot_data"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
+        private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -489,6 +490,17 @@ class PreferencesManager(context: Context) {
     fun setPendingNotifDropsSync(value: Int) {
         try {
             sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    var permHealthAlertAt: Long
+        get() = try { sharedPreferences.getLong(KEY_PERM_HEALTH_ALERT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).apply()
+
+    fun setPermHealthAlertAtSync(value: Long) {
+        try {
+            sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).commit()
         } catch (_: Exception) {
         }
     }
