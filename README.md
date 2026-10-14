@@ -78,6 +78,10 @@ Kirim dari chat owner yang Chat ID-nya disimpan di Setup:
 | `/lastsms` | 5 SMS terakhir |
 | `/lastnotif` | Notifikasi terakhir |
 | `/history nomor` | Gabungan call+SMS per nomor |
+| `/watch kata,status,off` | Alert kata berbahaya |
+| `/home lat,lon,rad` | Geofence rumah |
+| `/school lat,lon,rad` | Geofence sekolah |
+| `/digest` | Ringkasan harian |
 | `/photointerval 0-60` | Interval foto menit, `0` manual |
 | `/pause menit` | Jeda foto sementara |
 | `/syncinterval 1-1440` | Interval sync menit |

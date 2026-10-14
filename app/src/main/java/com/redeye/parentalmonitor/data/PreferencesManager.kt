@@ -212,6 +212,19 @@ class PreferencesManager(context: Context) {
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
+        const val KEY_WATCH_KEYWORDS = "watch_keywords"
+        private const val KEY_HOME_LAT = "home_lat_e6"
+        private const val KEY_HOME_LON = "home_lon_e6"
+        private const val KEY_HOME_RAD = "home_radius_m"
+        private const val KEY_HOME_STATE = "home_state"
+        private const val KEY_SCHOOL_LAT = "school_lat_e6"
+        private const val KEY_SCHOOL_LON = "school_lon_e6"
+        private const val KEY_SCHOOL_RAD = "school_radius_m"
+        private const val KEY_SCHOOL_STATE = "school_state"
+        private const val KEY_NIGHT_DIGEST_DATE = "night_digest_date"
+        private const val KEY_LAST_DATA_AT = "last_data_at"
+        private const val KEY_LOC_FAIL_COUNT = "loc_fail_count"
+        private const val KEY_HEALTH_ALERT_AT = "health_alert_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -573,6 +586,58 @@ class PreferencesManager(context: Context) {
         } catch (_: Exception) {
         }
     }
+
+    var watchKeywords: String
+        get() = try { sharedPreferences.getString(KEY_WATCH_KEYWORDS, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_WATCH_KEYWORDS, value).apply()
+
+    var homeLatE6: Long
+        get() = try { sharedPreferences.getLong(KEY_HOME_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_HOME_LAT, value).apply()
+
+    var homeLonE6: Long
+        get() = try { sharedPreferences.getLong(KEY_HOME_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_HOME_LON, value).apply()
+
+    var homeRadiusM: Int
+        get() = try { sharedPreferences.getInt(KEY_HOME_RAD, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_HOME_RAD, value).apply()
+
+    var homeState: Int
+        get() = try { sharedPreferences.getInt(KEY_HOME_STATE, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_HOME_STATE, value).apply()
+
+    var schoolLatE6: Long
+        get() = try { sharedPreferences.getLong(KEY_SCHOOL_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_LAT, value).apply()
+
+    var schoolLonE6: Long
+        get() = try { sharedPreferences.getLong(KEY_SCHOOL_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_LON, value).apply()
+
+    var schoolRadiusM: Int
+        get() = try { sharedPreferences.getInt(KEY_SCHOOL_RAD, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_RAD, value).apply()
+
+    var schoolState: Int
+        get() = try { sharedPreferences.getInt(KEY_SCHOOL_STATE, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_STATE, value).apply()
+
+    var nightDigestDate: String
+        get() = try { sharedPreferences.getString(KEY_NIGHT_DIGEST_DATE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_NIGHT_DIGEST_DATE, value).apply()
+
+    var lastDataAt: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_DATA_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_DATA_AT, value).apply()
+
+    var locFailCount: Int
+        get() = try { sharedPreferences.getInt(KEY_LOC_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_LOC_FAIL_COUNT, value).apply()
+
+    var healthAlertAt: Long
+        get() = try { sharedPreferences.getLong(KEY_HEALTH_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_HEALTH_ALERT_AT, value).apply()
 
     private fun readWakePingIds(): MutableSet<Long> {
         return try {

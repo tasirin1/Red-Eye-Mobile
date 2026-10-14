@@ -1,3 +1,12 @@
+## [1.6.194] - 2026-10-14
+### Added
+- `/watch kata1,kata2|status|off` (owner): alert kata berbahaya di SMS + notif prioritas langsung + label `⚠️ Watch`.
+- Geofence `/home` + `/school` (`lat,lon,radius|status|off`): alert sekali saat masuk/keluar area, ikut patrol lokasi.
+- Nomor tak dikenal: label `🆕 Nomor baru` + frekuensi `🔁 Nx hari ini` di SMS/panggilan.
+- `/digest`: ringkasan harian 24 jam (SMS/panggilan, kontak teratas, watch hit, antrean, baterai); otomatis tiap jam 21:00+.
+- Alias bahasa alami: `dimana`, `foto`, `ding`, `kunci`, `baterai`, `bantu`, dsb tanpa `/`.
+- Sentinel sepi: alert bila data sepi >12 jam, lokasi gagal 5x beruntun, atau antrean ≥50 (throttle 12 jam).
+
 ## [1.6.193] - 2026-10-14
 ### Fixed
 - Menu bot: tambah `/patrolinterval` (owner) + `/start` (publik); hash registrasi ikut `versionCode` agar menu baru benar-benar terdaftar saat upgrade (sebelumnya di-skip diam-diam).

