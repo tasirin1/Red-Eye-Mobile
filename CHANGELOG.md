@@ -1,3 +1,14 @@
+## [1.6.185] - 2026-10-14
+### Fixed
+- `onStartCommand` tak lagi refresh prefs di main thread (potensi ANR): keputusan cepat pakai instance aktif, refresh + cek ulang jalan background.
+- `rememberOwner` verifikasi tulis disk dulu sebelum isi cache (tak ada owner hantu).
+- Dedup callback hanya catat id yang lolos gate (id asing tak lagi mengusir entri legit).
+- `/contacts` toleran format nomor (7 digit ekor + cocok lintas-format, presisi dijaga di kode).
+- Digest tulis "SMS" (sebelumnya "SMS masuk" padahal hitung semua).
+- Initial-sync sukses reset idle adaptif (tak langsung merenggang).
+- Hint pairing hanya bila owner belum ada.
+- `/uptime` tak negatif saat jam mundur.
+
 ## [1.6.184] - 2026-10-14
 ### Fixed
 - `NotificationForwarderService`: timer batch uzur-ulang bila ada item tertinggal (`scheduleBatchLocked`); notifikasi prioritas yang kena spam-throttle diantrekan (tak lagi hilang), bukan dikirim langsung.

