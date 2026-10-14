@@ -67,6 +67,7 @@
 
         <activity
             android:name=".ui.SetupActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false" />
 
         <service

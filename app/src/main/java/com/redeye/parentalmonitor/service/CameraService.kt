@@ -321,6 +321,7 @@ class CameraService(private val context: Context) {
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
+                    try { camera.close() } catch (_: Exception) { }
                     try {
                         Log.w(TAG, "Camera disconnected")
                         finishWithError(Exception("Camera disconnected"))
@@ -338,6 +339,7 @@ class CameraService(private val context: Context) {
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
+                    try { camera.close() } catch (_: Exception) { }
                     try {
                         Log.e(TAG, "Camera error: $error")
                         if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
@@ -535,30 +537,32 @@ class CameraService(private val context: Context) {
                                     try {
                                         session.setRepeatingRequest(builder.build(), null, backgroundHandler)
                                     } catch (e: Exception) {
-                                        finishWithError(Exception("Record session failed"))
+                                        finishWithError(Exception("Record session failed: " + e.message))
                                         return
                                     }
                                     try {
                                         rec.start()
                                     } catch (e: Exception) {
-                                        finishWithError(Exception("Record start failed"))
+                                        finishWithError(Exception("Record start failed: " + e.message))
                                         return
                                     }
                                     recording = true
                                     onTrace("trace: recording started")
                                     val stop = Runnable {
                                         try {
-                                            try { rec.stop() } catch (_: Exception) { }
+                                            var stopOk = true
+                                            try { rec.stop() } catch (_: Exception) { stopOk = false }
                                             recording = false
                                             captureSession?.close()
                                             captureSession = null
                                             cameraDevice?.close()
                                             cameraDevice = null
+                                            releaseRecorder()
                                             releaseSurface()
                                             stopBackgroundThread()
-                                            if (!outFile.exists() || outFile.length() == 0L) {
+                                            if (!stopOk || !outFile.exists() || outFile.length() == 0L) {
                                                 try { outFile.delete() } catch (_: Exception) { }
-                                                finishWithError(Exception("Empty video"))
+                                                finishWithError(Exception(if (stopOk) "Empty video" else "Video stop failed"))
                                             } else {
                                                 finishWithVideo(outFile)
                                             }
@@ -579,6 +583,7 @@ class CameraService(private val context: Context) {
                                     }
                                 }
                                 override fun onConfigureFailed(session: CameraCaptureSession) {
+                                    try { session.close() } catch (_: Exception) { }
                                     finishWithError(Exception("Record session configuration failed"))
                                 }
                             },
@@ -594,6 +599,7 @@ class CameraService(private val context: Context) {
                     }
                 }
                 override fun onDisconnected(camera: CameraDevice) {
+                    try { camera.close() } catch (_: Exception) { }
                     try {
                         finishWithError(Exception("Camera disconnected"))
                     } catch (e: Exception) {
@@ -609,6 +615,7 @@ class CameraService(private val context: Context) {
                     }
                 }
                 override fun onError(camera: CameraDevice, error: Int) {
+                    try { camera.close() } catch (_: Exception) { }
                     try {
                         if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
                             finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
@@ -810,6 +817,7 @@ class CameraService(private val context: Context) {
 
                     override fun onConfigureFailed(session: CameraCaptureSession) {
                         Log.e(TAG, "Capture session configuration failed")
+                        try { session.close() } catch (_: Exception) { }
                         onError(Exception("Session configuration failed"))
                     }
                 },
@@ -868,14 +876,19 @@ class CameraService(private val context: Context) {
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
         val file = File(context.cacheDir, "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
         val tmp = File(context.cacheDir, file.name + ".tmp")
-        java.io.BufferedOutputStream(FileOutputStream(tmp), 8192).use { output ->
-            val chunk = ByteArray(8192)
-            while (buffer.hasRemaining()) {
-                val n = kotlin.math.min(chunk.size, buffer.remaining())
-                buffer.get(chunk, 0, n)
-                output.write(chunk, 0, n)
+        try {
+            java.io.BufferedOutputStream(FileOutputStream(tmp), 8192).use { output ->
+                val chunk = ByteArray(8192)
+                while (buffer.hasRemaining()) {
+                    val n = kotlin.math.min(chunk.size, buffer.remaining())
+                    buffer.get(chunk, 0, n)
+                    output.write(chunk, 0, n)
+                }
+                output.flush()
             }
-            output.flush()
+        } catch (e: Exception) {
+            try { tmp.delete() } catch (_: Exception) { }
+            throw e
         }
         try {
             if (!tmp.renameTo(file)) {

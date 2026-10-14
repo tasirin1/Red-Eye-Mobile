@@ -1,3 +1,9 @@
+## [1.6.189] - 2026-10-14
+### Fixed
+- `CameraService`: tmp foto dibersihkan bila tulis gagal; `camera`/`session` ditutup di semua callback error; `rec.stop()` gagal = error (bukan sukses); urutan rilis recorder-dulu; pesan record bawa cause.
+- `SetupActivity`: `clearCredentials` ikut cancel worker; `configChanges` cegah recreate+dialog-bocor saat rotasi; deny-permanen diarahkan ke Settings.
+- `MonitoringService`: jarak gagal hitung = tak dikenal (bukan miliaran meter).
+
 ## [1.6.188] - 2026-10-14
 ### Fixed
 - `NotificationForwarderService`: drop-notice `onDestroy` + `flushSync`; prioritas yang tercekik overload ikut antrean; semua 400 wake picu backoff; revive tanpa gate semua-izin (service jalan degraded + sentinel kabari, kegagalan start tetap via worker).

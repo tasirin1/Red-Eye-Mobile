@@ -55,6 +55,10 @@ class SetupActivity : AppCompatActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
+        try {
+            if (result.entries.any { !it.value && !shouldShowRequestPermissionRationale(it.key) }) openAppSettings()
+        } catch (_: Exception) {
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
             val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
@@ -70,7 +74,13 @@ class SetupActivity : AppCompatActivity() {
 
     private val backgroundPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { updateStatus() }
+    ) { granted ->
+        try {
+            if (!granted && !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) openAppSettings()
+        } catch (_: Exception) {
+        }
+        updateStatus()
+    }
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -318,6 +328,8 @@ class SetupActivity : AppCompatActivity() {
 
     private fun clearCredentials() {
         try { stopService(Intent(this, MonitoringService::class.java)) } catch (_: Exception) { }
+        try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
+        try { MessageScheduler.cancelWatchdog(this) } catch (_: Exception) { }
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")

@@ -3295,7 +3295,7 @@ class MonitoringService : Service() {
             android.location.Location.distanceBetween(aLat, aLon, bLat, bLon, out)
             out[0]
         } catch (_: Exception) {
-            Float.MAX_VALUE
+            -1f
         }
     }
 
