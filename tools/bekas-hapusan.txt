@@ -3,3 +3,6 @@
 # Tambahkan nama ke sini tiap menghapus metode: cek_metode_hilang hanya
 # melihat diff saat itu, daftar inilah yang menjaga push-push berikut.
 clearOwnerMenuScope
+Background.run
+workerRunning
+run

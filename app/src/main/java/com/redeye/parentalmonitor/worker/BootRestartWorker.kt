@@ -154,11 +154,6 @@ class BootRestartWorker(
             ) return
         } catch (_: Exception) {
         }
-        lastResumeReminderAt = nowResume
-        try {
-            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowResume).apply()
-        } catch (_: Exception) {
-        }
         try {
             val tap = android.app.PendingIntent.getActivity(
                 context,
@@ -175,6 +170,11 @@ class BootRestartWorker(
                 .build()
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
             manager.notify(RESUME_NOTIF_ID, notification)
+            lastResumeReminderAt = nowResume
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowResume).apply()
+            } catch (_: Exception) {
+            }
         } catch (_: Exception) {
         }
     }

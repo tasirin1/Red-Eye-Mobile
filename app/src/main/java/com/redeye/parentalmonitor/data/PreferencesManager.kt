@@ -25,6 +25,7 @@ class PreferencesManager(context: Context) {
 
     private val upgradeLock = Any()
     private val wakeIdsLock = Any()
+    private val pairCodeLock = Any()
 
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
@@ -47,7 +48,6 @@ class PreferencesManager(context: Context) {
                         try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
                     }
                 }
-                storageEncrypted = true
                 try {
                     val memNow = mem?.all ?: emptyMap()
                     if (memNow != snap) {
@@ -63,6 +63,7 @@ class PreferencesManager(context: Context) {
                     }
                 } catch (_: Exception) {
                 }
+                storageEncrypted = true
                 true
             } catch (_: Exception) {
                 false
@@ -113,7 +114,6 @@ class PreferencesManager(context: Context) {
         private const val PREFS_NAME = "secure_prefs"
 
         private val secureRandom = java.security.SecureRandom()
-        private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
 
         private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {
             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
@@ -486,18 +486,20 @@ class PreferencesManager(context: Context) {
         set(value) = sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
 
     fun ensureOwnerPairCode(): String {
-        try {
-            val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
-            if (cur.matches(PAIR_CODE_REGEX)) return cur
-            val code = (100000 + secureRandom.nextInt(900000)).toString()
+        synchronized(pairCodeLock) {
             try {
-                sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).commit()
+                val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
+                if (cur.length == 6 && cur.all { it in '0'..'9' }) return cur
+                val code = (100000 + secureRandom.nextInt(900000)).toString()
+                try {
+                    sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).commit()
+                } catch (_: Exception) {
+                    return code
+                }
+                return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: code } catch (_: Exception) { code }
             } catch (_: Exception) {
-                return code
+                return ""
             }
-            return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: code } catch (_: Exception) { code }
-        } catch (_: Exception) {
-            return ""
         }
     }
 

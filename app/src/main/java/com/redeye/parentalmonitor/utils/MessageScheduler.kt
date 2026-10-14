@@ -45,9 +45,6 @@ object MessageScheduler {
         }
     }
 
-    @Volatile
-    var workerRunning = false
-
     fun scheduleRateLimited(context: Context, initialDelayMs: Long = 0L): Boolean {
         return scheduleMessageSendNext(context, initialDelayMs)
     }

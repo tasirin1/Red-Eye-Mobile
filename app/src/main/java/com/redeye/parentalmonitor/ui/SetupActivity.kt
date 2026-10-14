@@ -82,9 +82,23 @@ class SetupActivity : AppCompatActivity() {
         updateStatus()
     }
 
+    private val deviceAdminLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { res ->
+        if (res.resultCode == RESULT_OK) {
+            Toast.makeText(this, getString(R.string.setup_admin_ok), Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, getString(R.string.setup_admin_denied), Toast.LENGTH_SHORT).show()
+        }
+        updateStatus()
+    }
+
+    private val shotRequestBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
+        try { shotRequestBusy.set(false) } catch (_: Exception) { }
         if (res.resultCode == RESULT_OK && res.data != null) {
             lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                 try {
@@ -100,6 +114,7 @@ class SetupActivity : AppCompatActivity() {
                 }
             }
         } else {
+            try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_denied), Toast.LENGTH_SHORT).show()
         }
     }
@@ -349,6 +364,13 @@ class SetupActivity : AppCompatActivity() {
                         com.redeye.parentalmonitor.network.DeleteCommandsRequest(
                             com.redeye.parentalmonitor.network.BotCommandScope("chat", oldOwner)
                         )
+                    )
+                } catch (_: Exception) {
+                }
+                try {
+                    com.redeye.parentalmonitor.network.TelegramClient.api.deleteMyCommands(
+                        "https://api.telegram.org/bot$oldToken/deleteMyCommands",
+                        com.redeye.parentalmonitor.network.DeleteCommandsRequest(null)
                     )
                 } catch (_: Exception) {
                 }
@@ -687,6 +709,13 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun stopMonitoringConfirmed() {
+        try {
+            if (!prefs.isMonitoringEnabled) {
+                Toast.makeText(this, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
+                return
+            }
+        } catch (_: Exception) {
+        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
@@ -705,6 +734,13 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringConfirmed() {
+        try {
+            if (prefs.isMonitoringEnabled) {
+                Toast.makeText(this, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+                return
+            }
+        } catch (_: Exception) {
+        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
             try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
@@ -1035,9 +1071,11 @@ class SetupActivity : AppCompatActivity() {
 
     private fun requestScreenCapture() {
         try {
+            if (!shotRequestBusy.compareAndSet(false, true)) return
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
             screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
         } catch (e: Exception) {
+            try { shotRequestBusy.set(false) } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_unsupported), Toast.LENGTH_SHORT).show()
         }
     }
@@ -1057,7 +1095,7 @@ class SetupActivity : AppCompatActivity() {
                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
                 putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.admin_description))
             }
-            startActivity(intent)
+            deviceAdminLauncher.launch(intent)
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
         }

@@ -1,3 +1,10 @@
+## [1.6.191] - 2026-10-14
+### Fixed
+- `upgradeToPersistent`: flag `storageEncrypted` paling akhir (gagal delta bisa retry); `ensureOwnerPairCode` terkunci + cek manual tanpa regex.
+- `SetupActivity`: deny screenshot hapus consent lama; hapus menu global + chat saat clear; guard double-tap start/stop; hasil device-admin dibaca; double-launch screenshot digate.
+- `BootRestartWorker`: throttle reminder dicatat sesudah notify terkirim.
+- Buang mati: `workerRunning`, pool `Background.run` (+ catat di `bekas-hapusan.txt`).
+
 ## [1.6.190] - 2026-10-14
 ### Fixed
 - `MY_PACKAGE_REPLACED` tambah `<data scheme=package>` — restart habis-update jalan instan (sebelumnya buta, hanya watchdog).
