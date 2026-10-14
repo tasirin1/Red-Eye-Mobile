@@ -16,25 +16,26 @@ class MessageQueue private constructor(context: Context) {
     private var sharedPreferences: SharedPreferences? = null
 
     init {
+        // Always try encrypted prefs first; fall back to volatile only if unavailable
+        try {
+            sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
+            volatileOnly = false
+            try {
+                loadDropCountsLocked()
+            } catch (_: Exception) {
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
+            volatileOnly = true
+            sharedPreferences = null
+        }
+        // Schedule persistent restore attempt if we started in volatile mode
         if (volatileOnly) {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     tryRestorePersistent()
                 } catch (_: Exception) {
                 }
-            }
-        } else {
-            try {
-                sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
-                volatileOnly = false
-                try {
-                    loadDropCountsLocked()
-                } catch (_: Exception) {
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("MessageQueue", "Encrypted queue unavailable, using volatile memory", e)
-                volatileOnly = true
-                sharedPreferences = null
             }
         }
     }

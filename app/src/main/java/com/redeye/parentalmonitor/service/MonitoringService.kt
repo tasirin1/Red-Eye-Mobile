@@ -84,6 +84,14 @@ class MonitoringService : Service() {
     @Volatile
     private var cameraCycleMs = 0L
     @Volatile
+    private var commandBeatAt = 0L
+    @Volatile
+    private var commandCycleMs = 0L
+    @Volatile
+    private var patrolBeatAt = 0L
+    @Volatile
+    private var patrolCycleMs = 0L
+    @Volatile
     private var idleDataCycles = 0
     @Volatile
     private var serviceStartAt = 0L
@@ -667,6 +675,8 @@ class MonitoringService : Service() {
     private fun startPatrolLoop() {
         patrolJob = serviceScope.launch {
             while (isActive && patrolJob === coroutineContext[Job]) {
+                patrolBeatAt = android.os.SystemClock.elapsedRealtime()
+                patrolCycleMs = cachedPatrolInterval.coerceIn(5, 180) * 60_000L
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
@@ -913,6 +923,8 @@ class MonitoringService : Service() {
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
             while (isActive && commandJob === coroutineContext[Job]) {
+                commandBeatAt = android.os.SystemClock.elapsedRealtime()
+                commandCycleMs = if (cachedMonitoringPaused) 60_000L else 15_000L
                 if (cachedMonitoringPaused) {
                     try {
                         pollTelegramCommands()
@@ -1428,6 +1440,11 @@ class MonitoringService : Service() {
                 return
             }
         } else if (!senderOk && !chatOk) {
+            return
+        }
+        // Extra guard: mutating/sensitive commands in private chat still require owner
+        if ((command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) && privateChat && !senderOk) {
+            sendToTelegram("\u26D4 Hanya owner yang bisa pakai $command.")
             return
         }
         when (command) {
@@ -5061,7 +5078,9 @@ class MonitoringService : Service() {
                     val nowBeat = android.os.SystemClock.elapsedRealtime()
                     val monitorStuck = monitoringJob?.isActive == true && monitorBeatAt > 0L && monitorCycleMs in 1L..1440 * 60_000L && nowBeat - monitorBeatAt > monitorCycleMs + 10 * 60_000L
                     val cameraStuck = cameraJob?.isActive == true && cameraBeatAt > 0L && cameraCycleMs in 1L..60 * 60_000L && nowBeat - cameraBeatAt > cameraCycleMs + 10 * 60_000L
-                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || patrolJob?.isActive != true || initialStuck || monitorStuck || cameraStuck) {
+                    val commandStuck = commandJob?.isActive == true && commandBeatAt > 0L && commandCycleMs in 1L..1440 * 60_000L && nowBeat - commandBeatAt > commandCycleMs + 10 * 60_000L
+                    val patrolStuck = patrolJob?.isActive == true && patrolBeatAt > 0L && patrolCycleMs in 1L..1440 * 60_000L && nowBeat - patrolBeatAt > patrolCycleMs + 10 * 60_000L
+                    if (monitoringJob?.isActive != true || cameraJob?.isActive != true || commandJob?.isActive != true || patrolJob?.isActive != true || initialStuck || monitorStuck || cameraStuck || commandStuck || patrolStuck) {
                         android.util.Log.w("MonitoringService", "Loop watchdog: restarting dead loops")
                         if (initialStuck) initialSyncRunning.set(false)
                         restartAllLoops(fromWatchdog = true)

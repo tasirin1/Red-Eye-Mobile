@@ -118,10 +118,11 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Initialize synchronously to avoid race with onNotificationPosted
+        prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
+        queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
         scope.launch {
             try {
-                prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
-                queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); wakeUpdateId = -1L; cfgCacheAt = 0L }

@@ -1,3 +1,24 @@
+## [1.6.209] - 2026-10-15
+### Fixed
+- Command auth bypass di private chat: perintah mutating/sensitif sekarang butuh owner meski di private chat.
+- SMS BroadcastReceiver race: registerReceiver sekarang SEBELUM sendMultipartTextMessage.
+- Watchdog sekarang memonitor commandJob & patrolJob via beat timestamps.
+- MessageScheduler counter race: atomic compare-and-set untuk outstandingSends.
+- ContentQuery: error non-SecurityException sekarang di-log, tidak ditelan.
+- MessageQueue volatileOnly: sekarang selalu coba encrypted prefs dulu, fallback volatileOnly bila gagal.
+- PreferencesManager: openPrefs tidak lagi return MemoryPrefs di main thread.
+- NotificationForwarderService: prefsRef & queueRef diinit synchronously di onCreate.
+- MainActivity: debug build tidak lagi return early, monitoring tetap jalan.
+- BootReceiver: debounce tambahan 10 menit (last_full_boot_elapsed) cegah duplicate OEM >60dtk.
+- sendFitted >4000 chars: fallback plain per-chunk.
+- sendSmsPending: timeout per-part, pending dibuang bila nomor premium/darurat, throttle gagal total 60dtk.
+- Media prune: rename .sent pada sukses, prune hanya non-.sent.
+- Worker Rejected: di-requeue seperti Failed + retryCount+1.
+- sendInitialData: cursor hanya maju saat chunk sukses.
+- CrashReporter fallback: klasifikasi error + retry passif.
+- CrashReporter reentrancy guard.
+- BootReceiver: companion object brace tertutup.
+
 ## [1.6.208] - 2026-10-15
 ### Fixed
 - Perbaiki gagal kompilasi sejak v1.6.207: variabel `try` tak terlihat di `finally` (video/audio progress), dan `when` CrashReporter yang buang nilai `delivered`.

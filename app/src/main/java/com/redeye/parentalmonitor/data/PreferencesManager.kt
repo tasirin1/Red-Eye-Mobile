@@ -116,15 +116,6 @@ class PreferencesManager(context: Context) {
         private val secureRandom = java.security.SecureRandom()
 
         private fun openPrefs(context: Context): Pair<SharedPreferences, Boolean> {
-            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-                com.redeye.parentalmonitor.utils.Background.runCritical {
-                    try {
-                        refreshInstance(context.applicationContext)
-                    } catch (_: Exception) {
-                    }
-                }
-                return Pair(MemoryPrefs(), false)
-            }
             return try {
                 Pair(openEncryptedPrefs(context, PREFS_NAME), true)
             } catch (e: Exception) {

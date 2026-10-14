@@ -81,10 +81,12 @@ object CrashReporter {
     }
 
     private val saveLock = Any()
+    private val saveInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private fun savePending(context: Context, report: String) {
-        synchronized(saveLock) {
-            try {
+        if (saveInProgress.getAndSet(true)) return
+        try {
+            synchronized(saveLock) {
                 val file = pendingFile(context)
                 val prev = try {
                     if (file.exists()) stripElapsed(file.readText()) else ""
@@ -102,8 +104,9 @@ object CrashReporter {
                     try { file.delete() } catch (_: Exception) { }
                     tmp.renameTo(file)
                 }
-            } catch (_: Exception) {
             }
+        } finally {
+            saveInProgress.set(false)
         }
     }
 

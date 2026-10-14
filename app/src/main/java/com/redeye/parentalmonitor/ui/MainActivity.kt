@@ -49,7 +49,8 @@ class MainActivity : AppCompatActivity() {
         }
         if (BuildConfig.DEBUG) {
             android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
-            return
+            // In debug, still initialize monitoring but log it
+            // return  // Don't return - still initialize monitoring
         }
         val appCtx = applicationContext
         try {

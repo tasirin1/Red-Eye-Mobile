@@ -25,8 +25,15 @@ class BootReceiver : BroadcastReceiver() {
         private var lastHandleAt = 0L
 
         private fun markHandled(at: Long) {
-            synchronized(handleLock) { lastHandleAt = at }
+        synchronized(handleLock) { lastHandleAt = at }
+        try {
+            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
+                .putLong("last_handle_elapsed", at)
+                .putLong("last_full_boot_elapsed", at)
+                .apply()
+        } catch (_: Exception) {
         }
+    }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -84,6 +91,9 @@ class BootReceiver : BroadcastReceiver() {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
             val lastElapsed = meta.getLong("last_handle_elapsed", 0L)
             if (!updated && !freshBoot && lastElapsed != 0L && nowBoot >= lastElapsed && nowBoot - lastElapsed < 60_000L) return
+            // Additional guard: if we've handled a boot in the last 10 minutes, skip (catches OEM duplicate >60s apart)
+            val lastFullBoot = meta.getLong("last_full_boot_elapsed", 0L)
+            if (!updated && lastFullBoot != 0L && nowBoot - lastFullBoot < 10 * 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {
