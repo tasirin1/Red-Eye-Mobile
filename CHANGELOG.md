@@ -1,3 +1,7 @@
+## [1.6.203] - 2026-10-14
+### Fixed
+- Penjadwal kirim dibatasi (maks 3 antre + 1 jalan): offline lama tak lagi numpuk puluhan run WorkManager; run yang antre menguras semua + sembuh-sendiri 10 menit + reset tiap ganti proses.
+
 ## [1.6.202] - 2026-10-14
 ### Fixed
 - Revive hormati lokasi latar (tak revive pincang; sentinel yang mengabari).

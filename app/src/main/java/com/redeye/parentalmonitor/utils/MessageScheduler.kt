@@ -17,6 +17,10 @@ object MessageScheduler {
     private const val UNIQUE_WORK = "send_queued_messages"
     private const val BOOT_RESTART_WORK = "boot_restart_monitoring"
     private const val BOOT_WATCHDOG_WORK = "monitoring_watchdog"
+    private const val MAX_OUTSTANDING_SEND = 3
+    private const val SEND_SKIP_SELF_HEAL_MS = 10 * 60_000L
+    private val outstandingSends = java.util.concurrent.atomic.AtomicInteger(0)
+    private val lastSendAppendAt = java.util.concurrent.atomic.AtomicLong(0L)
 
     private val netConstraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -24,6 +28,15 @@ object MessageScheduler {
 
     fun scheduleMessageSend(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
+            if (initialDelayMs <= 0L) {
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (outstandingSends.get() >= MAX_OUTSTANDING_SEND &&
+                    now - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
+                ) {
+                    return true
+                }
+                lastSendAppendAt.set(now)
+            }
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
                 .setBackoffCriteria(
@@ -38,6 +51,7 @@ object MessageScheduler {
             val policy = ExistingWorkPolicy.APPEND_OR_REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
+            if (initialDelayMs <= 0L) outstandingSends.incrementAndGet()
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)
@@ -64,6 +78,7 @@ object MessageScheduler {
             val policyNext = ExistingWorkPolicy.REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
+            outstandingSends.set(1)
             true
         } catch (e: Exception) {
             android.util.Log.w("MessageScheduler", "Schedule send failed", e)
@@ -71,7 +86,18 @@ object MessageScheduler {
         }
     }
 
+    fun onSendRunFinished() {
+        try {
+            outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
+        } catch (_: Exception) {
+        }
+    }
+
     fun cancelMessageSend(context: Context) {
+        try {
+            outstandingSends.set(0)
+        } catch (_: Exception) {
+        }
         try {
             WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK)
         } catch (_: Exception) {

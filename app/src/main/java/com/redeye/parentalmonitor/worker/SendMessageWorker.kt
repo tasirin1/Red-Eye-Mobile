@@ -24,16 +24,23 @@ class SendMessageWorker(
     }
 
     override suspend fun doWork(): Result {
-        return try {
-            doWorkInternal()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Throwable) {
+        try {
+            return try {
+                doWorkInternal()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                try {
+                    MessageScheduler.scheduleMessageSendNext(applicationContext, 60_000L)
+                } catch (_: Exception) {
+                }
+                Result.success()
+            }
+        } finally {
             try {
-                MessageScheduler.scheduleMessageSendNext(applicationContext, 60_000L)
+                MessageScheduler.onSendRunFinished()
             } catch (_: Exception) {
             }
-            Result.success()
         }
     }
 
