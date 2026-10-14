@@ -96,6 +96,10 @@ class BootRestartWorker(
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(prefs)
         } catch (_: Exception) {
         }
+        // If auth is blocked, schedule retry instead of giving up
+        if (com.redeye.parentalmonitor.utils.NetworkUtils.isAuthBlocked(prefs)) {
+            return Result.retry()
+        }
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             return Result.success()
         }

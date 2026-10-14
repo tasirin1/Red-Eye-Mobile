@@ -405,14 +405,10 @@ class MessageQueue private constructor(context: Context) {
                 gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
             }
         } catch (e: Exception) {
-            android.util.Log.w("MessageQueue", "Queue storage corrupt, keeping a drop notice")
-            val notice = mutableListOf(QueuedMessage(message = "\u26A0\uFE0F Queued messages were discarded (corrupt storage).", elapsedAt = android.os.SystemClock.elapsedRealtime()))
-            try {
-                sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(notice))?.apply()
-            } catch (_: Exception) {
-            }
-            cached = notice
-            notice
+            android.util.Log.w("MessageQueue", "Queue storage corrupt, attempting recovery: ${e.message}")
+            // DON'T overwrite storage with notice - keep trying to recover
+            // Return empty list but DON'T overwrite the corrupt storage
+            mutableListOf()
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = filterFresh(loaded, cutoff).toMutableList()

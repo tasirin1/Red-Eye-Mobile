@@ -1,3 +1,19 @@
+## [1.6.210] - 2026-10-15
+### Fixed
+- **MessageQueue** corrupt JSON tidak lagi hapus pesan asli (recovery tanpa overwrite).
+- **ringBusy/recordBusy** stuck true permanen → reset di `onCreate` service.
+- **SMS BroadcastReceiver** race: registerReceiver sekarang SEBELUM sendMultipartTextMessage.
+- **Media prune/flush race**: `.sent` rename protected, prune skip saat flush jalan.
+- **BootRestartWorker** auth-blocked → `Result.retry()` bukan `success()`.
+- **CrashReporter** monitoring disabled tetap kirim crash report (hanya skip kalau token/chat kosong).
+- **MessageScheduler** counter race: atomic compare-and-set untuk `outstandingSends`.
+- **ContentQuery**: error non-SecurityException sekarang di-log, tidak ditelan.
+- **MessageQueue volatileOnly**: sekarang selalu coba encrypted prefs dulu, fallback volatileOnly bila gagal.
+- **PreferencesManager**: `openPrefs` tidak lagi return `MemoryPrefs` di main thread.
+- **NotificationForwarderService**: `prefsRef` & `queueRef` diinit synchronously di `onCreate`.
+- **MainActivity**: debug build tidak lagi `return` early, monitoring tetap jalan.
+- **BootReceiver**: debounce tambahan 10 menit (`last_full_boot_elapsed`) cegah duplicate OEM >60dtk.
+
 ## [1.6.209] - 2026-10-15
 ### Fixed
 - Command auth bypass di private chat: perintah mutating/sensitif sekarang butuh owner meski di private chat.

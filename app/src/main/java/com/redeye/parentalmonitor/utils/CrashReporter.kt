@@ -182,9 +182,9 @@ object CrashReporter {
             } catch (_: Exception) {
                 false
             }
-            if (!allowed) {
-                return
-            }
+            // Always allow crash reports through - they're critical for debugging
+            // Only skip if credentials are missing
+            if (token.isEmpty() || chatId.isEmpty()) return
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 if (NetworkUtils.rateLimitedRemainMs() > 0L) return
