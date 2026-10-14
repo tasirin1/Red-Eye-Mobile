@@ -140,6 +140,7 @@ class MonitoringService : Service() {
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
         private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
@@ -2029,7 +2030,9 @@ class MonitoringService : Service() {
             }
             else -> {
                 if (!senderOk) return
-                sendToTelegram("\u2753 Unknown command: $command. Send /help for the list.")
+                val hint = try { suggestCommand(command) } catch (_: Exception) { null }
+                if (hint != null) sendToTelegram("❓ Perintah tak dikenal: $command. Maksudnya $hint? Kirim /help untuk daftar.")
+                else sendToTelegram("❓ Perintah tak dikenal: $command. Kirim /help untuk daftar.")
             }
         }
     }
@@ -2722,6 +2725,53 @@ class MonitoringService : Service() {
             x = x and (x - 1)
         }
         return n
+    }
+
+    private fun editDistance(a: String, b: String): Int {
+        if (a == b) return 0
+        val m = a.length
+        val n = b.length
+        if (m == 0) return n
+        if (n == 0) return m
+        var prev = IntArray(n + 1) { it }
+        var cur = IntArray(n + 1)
+        for (i in 1..m) {
+            cur[0] = i
+            for (j in 1..n) {
+                cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
+            }
+            val tmp = prev
+            prev = cur
+            cur = tmp
+        }
+        return prev[n]
+    }
+
+    private fun transposedEquals(a: String, b: String): Boolean {
+        if (a.length != b.length) return false
+        var i = 0
+        while (i < a.length && a[i] == b[i]) i++
+        if (i + 1 >= a.length) return false
+        if (a[i] != b[i + 1] || a[i + 1] != b[i]) return false
+        for (j in i + 2 until a.length) if (a[j] != b[j]) return false
+        return true
+    }
+
+    private fun suggestCommand(typed: String): String? {
+        var best: String? = null
+        var bestDist = Int.MAX_VALUE
+        for (known in KNOWN_COMMANDS) {
+            val d = try { editDistance(typed, known) } catch (_: Exception) { Int.MAX_VALUE }
+            if (d < bestDist) {
+                bestDist = d
+                best = known
+            }
+        }
+        if (best != null && bestDist == 2) {
+            try { if (transposedEquals(typed, best)) bestDist = 1 } catch (_: Exception) { }
+        }
+        val limit = if (typed.length <= 5) 1 else 2
+        return if (best != null && bestDist in 1..limit) best else null
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {

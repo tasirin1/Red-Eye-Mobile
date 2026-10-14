@@ -1,3 +1,7 @@
+## [1.6.181] - 2026-10-14
+### Added
+- Koreksi salah ketik perintah: perintah tak dikenal dapat saran "Maksudnya /status?" via jarak edit (Levenshtein + tertukar huruf tetangga), ambang ketat untuk perintah pendek agar tak asal tebak.
+
 ## [1.6.180] - 2026-10-14
 ### Added
 - Jaga kamera pintar: bingkai gelap (luma < 12) dilewati + foto duplikat (aHash 8×8, Hamming ≤ 6 vs foto terakhir `lastPhotoHash`) dilewati; manual `/photo` dapat kabar singkat, otomatis/patrol senyap. Berlaku untuk semua jalur foto.
