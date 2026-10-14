@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity() {
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
             if (!preferencesManager.isConfigured()) {
-            android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
             try {
                 MessageScheduler.scheduleBootRestart(this)
             } catch (_: Exception) {
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         if (!hasAllPermissions()) {
-            android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
             try {
                 MessageScheduler.scheduleBootRestart(this)
             } catch (_: Exception) {
@@ -294,14 +294,14 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (!hasBackgroundLocation()) {
-            android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {
                 startMonitoringService()
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
-                android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
+                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
                 try {
                     MessageScheduler.scheduleBootRestart(this)
                 } catch (_: Exception) {

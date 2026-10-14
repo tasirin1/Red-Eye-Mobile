@@ -455,7 +455,6 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
             record(label, title, text)
-            noteDroppedNotification()
             return
         }
         val message = buildString {

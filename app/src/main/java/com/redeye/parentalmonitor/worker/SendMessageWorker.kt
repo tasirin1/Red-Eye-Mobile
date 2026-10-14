@@ -206,6 +206,12 @@ class SendMessageWorker(
             android.util.Log.w("SendMessageWorker", "Keeping ${rejectedIds.size} rejected message(s) for retry under fresh credentials")
         }
 
+        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && !credsChanged && credsSame()) {
+            try {
+                if (NetworkUtils.isNetworkAvailable(applicationContext)) messageQueue.registerTransientFailures(failedIds)
+            } catch (_: Exception) {
+            }
+        }
         if (authCode != 0) {
             try {
                 preferencesManager.credentialError = authCode.toString()

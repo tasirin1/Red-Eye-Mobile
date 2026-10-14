@@ -107,6 +107,19 @@ object CrashReporter {
         }
     }
 
+    private fun writePendingRest(file: File, elapsed0: Long, rest: String) {
+        try {
+            val tmp = File(file.parent, file.name + ".tmp")
+            tmp.writeText((if (elapsed0 > 0L) elapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
+            if (!tmp.renameTo(file)) {
+                try { file.delete() } catch (_: Exception) { }
+                tmp.renameTo(file)
+            }
+        } catch (_: Exception) {
+            try { file.delete() } catch (_: Exception) { }
+        }
+    }
+
     suspend fun flushPending(context: Context) {
         if (!flushing.compareAndSet(false, true)) return
         try {
@@ -184,11 +197,7 @@ object CrashReporter {
                     if (rest.isBlank()) {
                         file.delete()
                     } else {
-                        try {
-                            file.writeText((if (savedElapsed0 > 0L) savedElapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
-                        } catch (_: Exception) {
-                            try { file.delete() } catch (_: Exception) { }
-                        }
+                        writePendingRest(file, savedElapsed0, rest)
                     }
                 } else if (response.code() == 429) {
                     try {
@@ -207,6 +216,13 @@ object CrashReporter {
                     } catch (_: Exception) {
                         null
                     }
+                    if (NetworkUtils.isChatMissing(body)) {
+                        try {
+                            prefs.credentialError = "400"
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                    }
                     if (!NetworkUtils.isChatMissing(body)) {
                         val delivered = try {
                             val plain = Html.unescape(fitted)
@@ -222,11 +238,7 @@ object CrashReporter {
                                 } catch (_: Exception) {
                                 }
                             } else {
-                                try {
-                                    file.writeText((if (savedElapsed0 > 0L) savedElapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
-                                } catch (_: Exception) {
-                                    try { file.delete() } catch (_: Exception) { }
-                                }
+                                writePendingRest(file, savedElapsed0, rest)
                             }
                         }
                     }

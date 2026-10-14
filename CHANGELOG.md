@@ -1,3 +1,11 @@
+## [1.6.175] - 2026-10-14
+### Fixed
+- `NotificationForwarderService`: spam-throttle tak lagi memanggil `noteDroppedNotification` (notice "Spam filter" khusus sudah cukup; tak ada lagi peringatan "rejected by Telegram (400)" yang salah atribusi).
+- `SendMessageWorker`: `failedIds` yang terkumpul sebelum 429/auth dalam satu run ikut `registerTransientFailures` (budget 20 tak lagi telat satu run).
+- `MessageQueue.registerWithBudget`: `maxRetry` hanya dari pesan yang dipertahankan (pesan yang di-drop tak lagi menggerek backoff s/d 480 dtk).
+- `CrashReporter`: 400 chat-missing catat `credentialError` (flush tak lagi coba buta tiap launch); tulis sisa laporan atomik via tmp+rename (`writePendingRest`).
+- `MainActivity`: 4 log rilis (`not configured`, izin, lokasi, gagal start) kini hanya di build debug.
+
 ## [1.6.174] - 2026-10-14
 ### Fixed
 - `PhoneNumbers.suffixMatch` tolak sisi pendek <10 digit: short-code (mis. `7890`) tak lagi diakui sebagai nomor target 10+ digit.

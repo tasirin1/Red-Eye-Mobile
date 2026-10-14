@@ -277,8 +277,8 @@ class MessageQueue private constructor(context: Context) {
                     if (queued.id in messageIds) {
                         val updated = queued.copy(retryCount = queued.retryCount + 1)
                         volatileQueue[i] = updated
-                        if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
                         if (updated.retryCount >= budget) drop.add(updated.id)
+                        else if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
                     }
                 }
                 volatileQueue.removeAll { it.id in drop }
@@ -291,8 +291,8 @@ class MessageQueue private constructor(context: Context) {
                 if (queued.id in messageIds) {
                     val updated = queued.copy(retryCount = queued.retryCount + 1)
                     queue[i] = updated
-                    if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
                     if (updated.retryCount >= budget) drop.add(updated.id)
+                    else if (updated.retryCount > maxRetry) maxRetry = updated.retryCount
                 }
             }
             queue.removeAll { it.id in drop }
