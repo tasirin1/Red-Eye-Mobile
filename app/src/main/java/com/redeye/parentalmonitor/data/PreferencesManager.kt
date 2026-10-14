@@ -165,6 +165,7 @@ class PreferencesManager(context: Context) {
         const val KEY_MONITORING_PAUSED = "monitoring_paused"
         const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         const val KEY_PATROL_ENABLED = "patrol_enabled"
+        const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_PATROL_INTERVAL = "patrol_interval"
         private const val KEY_CAMERA_FACING = "camera_facing"
         const val KEY_USER_CONSENTED = "user_consented_monitoring"
@@ -345,6 +346,10 @@ class PreferencesManager(context: Context) {
     var patrolEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_PATROL_ENABLED, false) } catch (_: Exception) { false }
         set(value) = sharedPreferences.edit().putBoolean(KEY_PATROL_ENABLED, value).apply()
+
+    var nightMode: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_NIGHT_MODE, true) } catch (_: Exception) { true }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_NIGHT_MODE, value).apply()
 
     var patrolInterval: Int
         get() = try { sharedPreferences.getInt(KEY_PATROL_INTERVAL, 30) } catch (_: Exception) { 30 }

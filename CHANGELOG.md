@@ -1,3 +1,7 @@
+## [1.6.182] - 2026-10-14
+### Added
+- Mode malam: 23.00–05.00 waktu perangkat, foto otomatis + patrol lokasi berhenti sendiri; SMS/panggilan/notifikasi/perintah tetap jalan. Perintah owner `/night on|off` (menu bot + `/help`), `/status` tampilkan status malam.
+
 ## [1.6.181] - 2026-10-14
 ### Added
 - Koreksi salah ketik perintah: perintah tak dikenal dapat saran "Maksudnya /status?" via jarak edit (Levenshtein + tertukar huruf tetangga), ambang ketat untuk perintah pendek agar tak asal tebak.

