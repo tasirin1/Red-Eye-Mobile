@@ -489,8 +489,8 @@ def cek_secret(gagal, diff):
         if not baris.startswith("+") or baris.startswith("+++"):
             continue
         isi = baris[1:]
-        if "[" in isi or "]" in isi:
-            continue  # definisi regex seperti TOKEN_REGEX memakai kurung siku
+        if "Regex" in isi or "REGEX" in isi or "Pattern" in isi:
+            continue  # definisi regex seperti TOKEN_REGEX memakai pola khusus
         if POLA_TOKEN_ASLI.search(isi):
             gagal.append("Kemungkinan token bot asli ikut diff — kredensial "
                          "hanya via input manual SetupActivity: %s"

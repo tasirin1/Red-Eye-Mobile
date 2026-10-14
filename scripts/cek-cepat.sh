@@ -39,8 +39,8 @@ if git diff --cached --name-only | grep -E -q '\.(apk|aab|ap_|dex|jks|keystore|p
   echo "GAGAL: binary/APK/secret ikut staged (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
 # 4. Token bot asli jangan ikut staged (definisi regex TOKEN_REGEX dikecualikan:
-# baris berkurung siku tak diperiksa karena token asli tak mengandungnya).
-if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -v '\[' | grep -E -q '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then
+# baris definisi regex tak diperiksa karena token asli tak mengandung kata itu).
+if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -v -E 'Regex|REGEX|Pattern' | grep -E -q '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
 exit $gagal

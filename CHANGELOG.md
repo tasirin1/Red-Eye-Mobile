@@ -1,3 +1,14 @@
+## [1.6.199] - 2026-10-14
+### Fixed
+- `CameraService` anti-curi flag: nomor generasi sesi — callback basi pasca-`forceReset` tak lagi matikan capture baru.
+- Lensa fallback jujur: tanpa lensa yang diminta pakai depan/belakang lain (bukan eksternal) + log; tmp disapu saat init.
+- `clearCredentials` tuntas: sapu file kamera/video/audio/screenshot, hapus menu global walau belum pairing, interval kembali default.
+- Izin notifikasi pakai launcher sendiri (tak lagi picu Settings); status refresh saat screenshot ditolak; device-admin gagal ada toast.
+- Kalkulator: histori ikut reset dari Error.
+- Forwarder ikut sensor chat ID di log.
+- Verifier token tutup lubang `listOf("id:token")` (kecuali baris definisi regex).
+- `safeCut` fallback mundur cari batas aman; `unescape` tambah `&nbsp;` + numerik umum.
+
 ## [1.6.198] - 2026-10-14
 ### Fixed
 - `/sms` tolak nomor darurat eksplisit (`112`/`110`/`119` dkk, termasuk format `00`/`0`-prefixed).

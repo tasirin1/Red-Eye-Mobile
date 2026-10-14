@@ -21,8 +21,15 @@ object TextChunk {
         }
         var cut = scan(max)
         if (cut <= 0) {
-            cut = max.coerceAtLeast(1)
-            if (cut > 0 && cut < text.length && Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
+            var back = max.coerceAtLeast(1)
+            val floor = (max - 64).coerceAtLeast(1)
+            while (back > floor) {
+                if (back < text.length && Character.isHighSurrogate(text[back - 1]) && Character.isLowSurrogate(text[back])) { back -= 1; break }
+                if (text[back - 1] == '&' || text[back - 1] == '<') break
+                back -= 1
+            }
+            cut = back.coerceAtLeast(1)
+            if (cut < text.length && Character.isHighSurrogate(text[cut - 1]) && Character.isLowSurrogate(text[cut])) cut -= 1
             if (cut <= 0) cut = 1
         }
         return cut

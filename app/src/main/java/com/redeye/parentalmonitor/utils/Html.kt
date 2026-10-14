@@ -31,6 +31,11 @@ object Html {
                 "&#39;" -> { out.append('\''); i = semi + 1 }
                 "&#x27;" -> { out.append('\''); i = semi + 1 }
                 "&apos;" -> { out.append('\''); i = semi + 1 }
+                "&nbsp;" -> { out.append(' '); i = semi + 1 }
+                "&#60;" -> { out.append('<'); i = semi + 1 }
+                "&#62;" -> { out.append('>'); i = semi + 1 }
+                "&#38;" -> { out.append('&'); i = semi + 1 }
+                "&#34;" -> { out.append('"'); i = semi + 1 }
                 else -> { out.append(c); i++ }
             }
         }

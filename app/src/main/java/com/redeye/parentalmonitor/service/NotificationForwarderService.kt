@@ -879,7 +879,12 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             ""
         }
-        return com.redeye.parentalmonitor.utils.Redact.token(value, token)
+        val chat = try {
+            prefsRef?.chatId ?: PreferencesManager.getInstance(this).chatId
+        } catch (_: Exception) {
+            ""
+        }
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat)
     }
 
     private fun queue(): MessageQueue {

@@ -131,6 +131,7 @@ class MainActivity : AppCompatActivity() {
             currentNumber = ""
             previousNumber = ""
             operator = ""
+            lastExpression = ""
         }
         if (number == ".") {
             if (currentNumber.contains(".")) return

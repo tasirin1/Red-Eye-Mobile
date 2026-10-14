@@ -33,6 +33,7 @@ class CameraService(private val context: Context) {
     }
 
     private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val sessionSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
     private var watchdogHandler: Handler? = null
@@ -49,9 +50,19 @@ class CameraService(private val context: Context) {
 
     private val captureLock = Any()
 
+    init {
+        try {
+            context.cacheDir?.listFiles { f -> f.isFile && f.name.endsWith(".tmp") }?.forEach {
+                try { it.delete() } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     fun forceReset() {
         synchronized(captureLock) {
             capturing.set(false)
+            sessionSeq.incrementAndGet()
         try {
             photoSizeCache.clear()
         } catch (_: Exception) {
@@ -129,12 +140,13 @@ class CameraService(private val context: Context) {
                 return
             }
         }
+        val mySeq = sessionSeq.get()
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
-                capturing.set(false)
+                if (sessionSeq.get() == mySeq) capturing.set(false)
                 try {
                     timeoutRunnable?.let { r ->
                         try {
@@ -159,7 +171,7 @@ class CameraService(private val context: Context) {
 
         fun finishWithPhoto(file: File) {
             if (done.compareAndSet(false, true)) {
-                capturing.set(false)
+                if (sessionSeq.get() == mySeq) capturing.set(false)
                 try {
                     timeoutRunnable?.let { r ->
                         try {
@@ -382,6 +394,7 @@ class CameraService(private val context: Context) {
                 return
             }
         }
+        val mySeq = sessionSeq.get()
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
         var stopRunnable: Runnable? = null
@@ -402,7 +415,7 @@ class CameraService(private val context: Context) {
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
-                capturing.set(false)
+                if (sessionSeq.get() == mySeq) capturing.set(false)
                 try {
                     timeoutRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
@@ -438,7 +451,7 @@ class CameraService(private val context: Context) {
 
         fun finishWithVideo(file: File) {
             if (done.compareAndSet(false, true)) {
-                capturing.set(false)
+                if (sessionSeq.get() == mySeq) capturing.set(false)
                 try {
                     timeoutRunnable?.let { r ->
                         try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
@@ -781,8 +794,11 @@ class CameraService(private val context: Context) {
         }
         return try {
             val ids = try { cameraManager.cameraIdList } catch (_: Exception) { emptyArray() }
-            ids.firstOrNull { facingOf(it) == lensFacing }
-                ?: ids.firstOrNull { val f = facingOf(it); f != null && f != lensFacing }
+            val exact = ids.firstOrNull { facingOf(it) == lensFacing }
+            if (exact != null) return exact
+            val fallback = ids.firstOrNull { val f = facingOf(it); f == CameraCharacteristics.LENS_FACING_BACK || f == CameraCharacteristics.LENS_FACING_FRONT }
+            if (fallback != null) Log.w(TAG, "Requested lens missing, using fallback camera")
+            fallback
         } catch (e: Exception) {
             Log.e(TAG, "Error finding camera", e)
             null
