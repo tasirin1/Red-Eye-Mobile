@@ -1,3 +1,7 @@
+## [1.6.179] - 2026-10-14
+### Added
+- Hemat baterai adaptif (tanpa seting manual): interval sinkronisasi data merenggang otomatis saat sepi (maks 4× interval user atau 30 mnt) dan langsung rapat lagi saat ada SMS/panggilan baru; watchdog ikut siklus efektif. Foto otomatis dilewati saat perangkat sepi + layar mati (3 siklus kosong); `/photo` manual dan perintah lain tak terpengaruh. `/status` tampilkan status adaptif.
+
 ## [1.6.178] - 2026-10-14
 ### Fixed
 - Tanpa izin tak ada lagi upaya foto/rekam + tak ada media blank: `recordAndSendAudio`/`recordAndSendVideo` cek mic di awal (video juga cek policy kamera + auto-pause); `onPhotoTaken` tolak file kosong; `sendPhotoFile`/`sendVideoFile`/`sendAudioFile` buang file kosong sebagai `DROPPED`; 3 loop flush lewati file kosong diam-diam.

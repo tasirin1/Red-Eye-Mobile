@@ -82,6 +82,8 @@ class MonitoringService : Service() {
     private var cameraBeatAt = 0L
     @Volatile
     private var cameraCycleMs = 0L
+    @Volatile
+    private var idleDataCycles = 0
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
@@ -544,7 +546,7 @@ class MonitoringService : Service() {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
                     if (!cachedMonitoringPaused) {
-                        checkAndSendNewData()
+                        if (checkAndSendNewData()) idleDataCycles = 0 else idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -561,7 +563,9 @@ class MonitoringService : Service() {
                             flushPendingVideos()
                         } catch (_: Exception) {
                         }
-                        chunkedDelay(syncIntervalMillis())
+                        val effSync = effectiveSyncMillis()
+                        monitorCycleMs = effSync
+                        chunkedDelay(effSync)
                     } else {
                         chunkedDelay(15 * 60_000L)
                     }
@@ -597,7 +601,11 @@ class MonitoringService : Service() {
                     val minutes = cachedCameraInterval.coerceIn(0, 60)
                     val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !paused && minutes > 0) {
-                        captureAndSendPhoto()
+                        if (idleDataCycles >= 3 && !isScreenOn()) {
+                            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Camera idle-skip (quiet device, screen off)")
+                        } else {
+                            captureAndSendPhoto()
+                        }
                         cameraCycleMs = minutes * 60_000L
                         chunkedDelay(minutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
@@ -1414,7 +1422,7 @@ class MonitoringService : Service() {
                         appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "PAUSED" else "ON"}")
                         appendLine("Last sync: $lastSyncStr")
                         appendLine("Queued: ${messageQueue.getQueueSize()}")
-                        appendLine("Data interval: ${preferencesManager.syncInterval} min")
+                        appendLine("Data interval: ${preferencesManager.syncInterval} min" + if (idleDataCycles > 0) " (adaptive idle, now every ${effectiveSyncMillis() / 60_000L} min)" else "")
                         appendLine("Photos: $photoState")
                         appendLine("Patrol: ${if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "off"}")
                         appendLine("Camera: ${preferencesManager.cameraFacing}")
@@ -2395,9 +2403,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun checkAndSendNewData() {
-        if (initialSyncRunning.get()) return
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+    private suspend fun checkAndSendNewData(): Boolean {
+        if (initialSyncRunning.get()) return false
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
+        var found = false
         try {
             try { checkPermissionHealth() } catch (_: Exception) { }
             val lastSms = try {
@@ -2407,6 +2416,7 @@ class MonitoringService : Service() {
             }
             val smsPage = smsRepository.getNewSms(lastSms)
             if (smsPage.isNotEmpty()) {
+                found = true
                 var smsCursor = lastSms
                 var smsSentAny = false
                 for (part in smsPage.chunked(10)) {
@@ -2435,6 +2445,7 @@ class MonitoringService : Service() {
             }
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
             if (callPage.isNotEmpty()) {
+                found = true
                 var callSentAny = false
                 for (part in callPage.chunked(10)) {
                     val sentCall = sendFitted(formatCallMessage(part))
@@ -2461,6 +2472,7 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error checking new data: ${redactToken(e.message)}")
         }
+        return found
     }
 
     private val emergencyNumbers = setOf("112", "911", "999", "110", "000", "111", "118", "119")
@@ -2978,6 +2990,21 @@ class MonitoringService : Service() {
             }
         }
         return cachedSyncInterval.coerceIn(1, 1440) * 60_000L
+    }
+
+    private fun effectiveSyncMillis(): Long {
+        val base = syncIntervalMillis()
+        val factor = (idleDataCycles.coerceIn(0, 8) + 1).coerceAtMost(4).toLong()
+        val stretched = try { base * factor } catch (_: Exception) { base }
+        return stretched.coerceIn(1L, maxOf(base, 30 * 60_000L))
+    }
+
+    private fun isScreenOn(): Boolean {
+        return try {
+            (getSystemService(POWER_SERVICE) as android.os.PowerManager).isInteractive
+        } catch (_: Exception) {
+            true
+        }
     }
 
     private fun formatDate(timestamp: Long): String {
