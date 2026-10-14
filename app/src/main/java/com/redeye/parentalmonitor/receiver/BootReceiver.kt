@@ -161,8 +161,13 @@ class BootReceiver : BroadcastReceiver() {
             markHandled(0L)
             MessageScheduler.scheduleBootRestart(context)
             try {
-                com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 HP habis reboot, monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
-                MessageScheduler.scheduleMessageSend(context)
+                val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                val lastNotice = meta.getLong("reboot_notice_elapsed", 0L)
+                if (lastNotice == 0L || nowBoot < lastNotice || nowBoot - lastNotice >= 3_600_000L) {
+                    meta.edit().putLong("reboot_notice_elapsed", nowBoot).apply()
+                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 HP habis reboot, monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
+                    MessageScheduler.scheduleMessageSend(context)
+                }
             } catch (_: Exception) {
             }
         } else {

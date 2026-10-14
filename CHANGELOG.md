@@ -1,3 +1,9 @@
+## [1.6.202] - 2026-10-14
+### Fixed
+- Revive hormati lokasi latar (tak revive pincang; sentinel yang mengabari).
+- Toast status aman dari activity mati; start monitoring anti double-tap; toggle notif debounce 2 detik.
+- Kabar reboot-boot gagal start maks 1x/jam (tak ganda saat unlock beruntun).
+
 ## [1.6.201] - 2026-10-14
 ### Fixed
 - Initial-sync selesai hanya bila benar tuntas; gagal → coba lagi saat start berikut (kursor sudah maju, tanpa kirim ulang).

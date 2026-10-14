@@ -44,6 +44,9 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var shotButton: MaterialButton
     private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
+    private val startGuard = Any()
+    private var startingMonitoring = false
+    private var lastNotifToggleAt = 0L
     private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val configMutex = kotlinx.coroutines.sync.Mutex()
@@ -331,7 +334,7 @@ class SetupActivity : AppCompatActivity() {
 
     private fun reviveMonitoringIfNeeded() {
         try {
-            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions()) {
+            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()) {
                 val intent = Intent(this, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
@@ -782,6 +785,10 @@ class SetupActivity : AppCompatActivity() {
             }
         } catch (_: Exception) {
         }
+        synchronized(startGuard) {
+            if (startingMonitoring) return
+            startingMonitoring = true
+        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
             try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
@@ -802,6 +809,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 updateStatus()
             }
+            synchronized(startGuard) { startingMonitoring = false }
         }
     }
 
@@ -823,6 +831,9 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun toggleNotifForwarding() {
+        val nowToggle = android.os.SystemClock.elapsedRealtime()
+        if (nowToggle - lastNotifToggleAt < 2_000L) return
+        lastNotifToggleAt = nowToggle
         if (!isNotificationAccessGranted()) {
             try {
                 startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -1090,6 +1101,7 @@ class SetupActivity : AppCompatActivity() {
                 val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, failCode)
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, toastRes, toastLen).show()
                     if (ok) reviveMonitoringIfNeeded()
                 }
