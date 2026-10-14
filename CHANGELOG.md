@@ -1,3 +1,7 @@
+## [1.6.178] - 2026-10-14
+### Fixed
+- Tanpa izin tak ada lagi upaya foto/rekam + tak ada media blank: `recordAndSendAudio`/`recordAndSendVideo` cek mic di awal (video juga cek policy kamera + auto-pause); `onPhotoTaken` tolak file kosong; `sendPhotoFile`/`sendVideoFile`/`sendAudioFile` buang file kosong sebagai `DROPPED`; 3 loop flush lewati file kosong diam-diam.
+
 ## [1.6.177] - 2026-10-14
 ### Added
 - Sentinel izin pintar: ingat snapshot tiap izin (`permSnapshot`) — lapor transisi "Izin hilang" saat dicabut dan "Izin kembali" saat diberikan lagi (tanpa throttle, karena berbasis transisi); pengingat gabungan 24 jam tetap untuk yang belum kembali; laporan inventaris penuh sekali saat baseline. Bit dependen dibekukan (lokasi latar ikut lokasi, akses notifikasi ikut sakelar `/notif`) agar tak ada alert palsu.
