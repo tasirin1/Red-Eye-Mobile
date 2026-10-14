@@ -1,3 +1,7 @@
+## [1.6.180] - 2026-10-14
+### Added
+- Jaga kamera pintar: bingkai gelap (luma < 12) dilewati + foto duplikat (aHash 8×8, Hamming ≤ 6 vs foto terakhir `lastPhotoHash`) dilewati; manual `/photo` dapat kabar singkat, otomatis/patrol senyap. Berlaku untuk semua jalur foto.
+
 ## [1.6.179] - 2026-10-14
 ### Added
 - Hemat baterai adaptif (tanpa seting manual): interval sinkronisasi data merenggang otomatis saat sepi (maks 4× interval user atau 30 mnt) dan langsung rapat lagi saat ada SMS/panggilan baru; watchdog ikut siklus efektif. Foto otomatis dilewati saat perangkat sepi + layar mati (3 siklus kosong); `/photo` manual dan perintah lain tak terpengaruh. `/status` tampilkan status adaptif.

@@ -2643,6 +2643,86 @@ class MonitoringService : Service() {
     private fun safeCut(text: String, max: Int): Int {
         return com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, max)
     }
+
+    private fun photoLuma(photoFile: File): Int {
+        return try {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 255
+            var sample = 1
+            while (bounds.outWidth / sample > 48 || bounds.outHeight / sample > 48) sample *= 2
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 255
+            try {
+                var sum = 0L
+                var n = 0
+                val stepX = (bmp.width / 16).coerceAtLeast(1)
+                val stepY = (bmp.height / 16).coerceAtLeast(1)
+                var y = 0
+                while (y < bmp.height) {
+                    var x = 0
+                    while (x < bmp.width) {
+                        val p = bmp.getPixel(x, y)
+                        sum += (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
+                        n++
+                        x += stepX
+                    }
+                    y += stepY
+                }
+                if (n == 0) 255 else (sum / n).toInt().coerceIn(0, 255)
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+            255
+        }
+    }
+
+    private fun photoHash(photoFile: File): Long {
+        return try {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 0L
+            var sample = 1
+            while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 0L
+            try {
+                val cell = IntArray(64)
+                var sum = 0L
+                for (cy in 0 until 8) {
+                    for (cx in 0 until 8) {
+                        val x = (((cx + 0.5) * bmp.width) / 8).toInt().coerceIn(0, bmp.width - 1)
+                        val y = (((cy + 0.5) * bmp.height) / 8).toInt().coerceIn(0, bmp.height - 1)
+                        val p = bmp.getPixel(x, y)
+                        val luma = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
+                        cell[cy * 8 + cx] = luma
+                        sum += luma
+                    }
+                }
+                val avg = (sum / 64).toInt()
+                var bits = 0L
+                for (i in 0 until 64) {
+                    if (cell[i] > avg) bits = bits or (1L shl i)
+                }
+                bits
+            } finally {
+                try { bmp.recycle() } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun hammingDistance(a: Long, b: Long): Int {
+        var x = a xor b
+        var n = 0
+        while (x != 0L) {
+            n++
+            x = x and (x - 1)
+        }
+        return n
+    }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
@@ -3283,6 +3363,38 @@ class MonitoringService : Service() {
                         }
                         return@capturePhoto
                     }
+                    if (photoLuma(photoFile) < 12) {
+                        cameraAttempt.incrementAndGet()
+                        cameraBusy.set(false)
+                        try {
+                            wd.cancel()
+                        } catch (_: Exception) {
+                        }
+                        deleteQuietly(photoFile)
+                        if (reportResult) {
+                            serviceScope.launch {
+                                sendToTelegram("🌑 Photo too dark, skipped. Turn on a light or try /photo again.")
+                            }
+                        }
+                        return@capturePhoto
+                    }
+                    val photoHashNow = photoHash(photoFile)
+                    val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
+                    if (photoHashNow != 0L && prevPhotoHash != 0L && hammingDistance(photoHashNow, prevPhotoHash) <= 6) {
+                        cameraAttempt.incrementAndGet()
+                        cameraBusy.set(false)
+                        try {
+                            wd.cancel()
+                        } catch (_: Exception) {
+                        }
+                        deleteQuietly(photoFile)
+                        if (reportResult) {
+                            serviceScope.launch {
+                                sendToTelegram("♻️ Photo same as the last one, skipped.")
+                            }
+                        }
+                        return@capturePhoto
+                    }
                     cameraAttempt.incrementAndGet()
                     cameraBusy.set(false)
                     try {
@@ -3293,7 +3405,10 @@ class MonitoringService : Service() {
                     serviceScope.launch {
                         try {
                             when (sendPhotoFile(photoFile)) {
-                                MediaSendOutcome.SENT -> flushPendingPhotos()
+                                MediaSendOutcome.SENT -> {
+                                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                                    flushPendingPhotos()
+                                }
                                 MediaSendOutcome.DROPPED -> {
                                     prunePhotoCache()
                                     if (reportResult) {
@@ -3301,6 +3416,7 @@ class MonitoringService : Service() {
                                     }
                                 }
                                 MediaSendOutcome.KEPT -> {
+                                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                                     prunePhotoCache()
                                     if (reportResult) {
                                         sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
