@@ -22,7 +22,26 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  verifikasi:
+    name: Cek path yang berubah
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Verifikasi path (tanpa SDK Android)
+        run: |
+          # Skrip murni-Python: acuan yatim, XML, aturan repo, hapusan salah,
+          # paritas resource, secret, cakupan uji metode diubah.
+          # Gagal di sini = build APK tidak jalan.
+          python3 tools/verifikasi-path.py --rentang "${{ github.event.before }}...${{ github.sha }}"
+      - name: Cek cepat (vektor 0.x, secret, binary)
+        run: bash scripts/cek-cepat.sh
+
   build:
+    needs: [verifikasi]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 

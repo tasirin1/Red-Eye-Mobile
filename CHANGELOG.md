@@ -1,3 +1,7 @@
+## [1.6.222] - 2026-10-15
+### Changed
+- Workflow disederhanakan: verifikasi-path jadi job pertama `build.yml` (build nunggu lolos); berkas workflow lama dihapus.
+
 ## [1.6.221] - 2026-10-15
 ### Fixed
 - Perbaiki gagal kompilasi v1.6.220: helper izin ganda (sudah ada).
