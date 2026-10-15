@@ -1627,8 +1627,8 @@ class MonitoringService : Service() {
                 }
             }
             "/photointerval" -> {
-                val minutes = arg.toIntOrNull()?.coerceIn(0, 60)
-                if (minutes == null) {
+                val minutes = arg.toIntOrNull()
+                if (minutes == null || minutes !in 0..60) {
                     sendToTelegram("Cara pakai: /photointerval \u003c0-60\u003e (0 = manual saja)")
                 } else if (minutes == 0) {
                     preferencesManager.cameraInterval = 0
@@ -1655,8 +1655,8 @@ class MonitoringService : Service() {
                 }
             }
             "/patrolinterval" -> {
-                val minutes = arg.toIntOrNull()?.coerceIn(5, 180)
-                if (minutes == null) {
+                val minutes = arg.toIntOrNull()
+                if (minutes == null || minutes !in 5..180) {
                     sendToTelegram("Cara pakai: /patrolinterval \u003c5-180\u003e")
                 } else {
                     preferencesManager.patrolInterval = minutes
@@ -1684,8 +1684,8 @@ class MonitoringService : Service() {
                 }
             }
             "/pause" -> {
-                val minutes = arg.toIntOrNull()?.coerceIn(1, 480)
-                if (minutes == null) {
+                val minutes = arg.toIntOrNull()
+                if (minutes == null || minutes !in 1..480) {
                     sendToTelegram("Cara pakai: /pause \u003cminutes\u003e (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
@@ -1804,8 +1804,8 @@ class MonitoringService : Service() {
                 )
             }
             "/syncinterval" -> {
-                val minutes = arg.toIntOrNull()?.coerceIn(1, 1440)
-                if (minutes == null) {
+                val minutes = arg.toIntOrNull()
+                if (minutes == null || minutes !in 1..1440) {
                     sendToTelegram("Cara pakai: /syncinterval \u003c1-1440\u003e (minutes)")
                 } else {
                     preferencesManager.syncInterval = minutes
@@ -1881,8 +1881,8 @@ class MonitoringService : Service() {
                 }
             }
             "/ring" -> {
-                val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()?.coerceIn(5, 60)
-                if (seconds == null) {
+                val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()
+                if (seconds == null || seconds !in 5..60) {
                     sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
                 } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
@@ -2167,8 +2167,8 @@ class MonitoringService : Service() {
                     return
                 }
                 val digits = arg.filter { it.isDigit() }
-                if (digits.length < 7) {
-                    sendToTelegram("Cara pakai: /history \u003cnumber\u003e (min 7 digits)")
+                if (digits.length < 7 || digits.length > 20) {
+                    sendToTelegram("Cara pakai: /history \u003cnumber\u003e (7-20 digits)")
                 } else {
                     val calls = try {
                         callLogRepository.getCallsForNumber(digits, 50).take(5)

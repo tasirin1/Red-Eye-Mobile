@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Angka perintah rentang-tegas (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/ring`): di luar rentang ditolak, bukan diam-diam dijepit.
+- `/history` batasi 7–20 digit (pola LIKE raksasa tertutup).
+
 ## [1.6.231] - 2026-10-15
 ### Fixed
 - `forceReset()` hentikan + rilis perekam video aktif dan buang parsialnya (mic tak gantung, tanpa mp4 yatim).
