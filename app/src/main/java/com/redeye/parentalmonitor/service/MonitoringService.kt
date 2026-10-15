@@ -856,6 +856,8 @@ class MonitoringService : Service() {
 
     private val pairHintAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val pairGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
+    private val pairGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -1001,7 +1003,7 @@ class MonitoringService : Service() {
                     delay(60_000)
                 } else if (!hasNetwork()) {
                     delay(60_000)
-                } else if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+                } else if (NetworkUtils.isPollBlocked(preferencesManager)) {
                     delay(300_000)
                 } else {
                     delay((10_000L + idlePolls * 5_000L).coerceAtMost(30_000L))
@@ -1014,7 +1016,7 @@ class MonitoringService : Service() {
 
     private suspend fun pollTelegramCommands(): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
+        if (NetworkUtils.isPollBlocked(preferencesManager)) return false
         val (botToken, chatId) = sendCreds()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
@@ -1152,7 +1154,7 @@ class MonitoringService : Service() {
                     val startHead = command
                     val startArg = arg
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
-                        if (cachedOwnerId == 0L) {
+                        if (cachedOwnerId == 0L && android.os.SystemClock.elapsedRealtime() >= pairGlobalLockoutUntil.get()) {
                             val nowPair = android.os.SystemClock.elapsedRealtime()
                             val lastPair = try { pairAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
                             if (nowPair - lastPair >= 30_000L) {
@@ -1167,11 +1169,23 @@ class MonitoringService : Service() {
                                     val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                                     if (learned) {
                                         try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
+                                        try { pairGlobalFails.set(0) } catch (_: Exception) { }
                                         registerBotCommands()
                                         sendToTelegram("Owner tertaut via /start.")
                                     }
-                                } else if (startTokens.isNotEmpty() && startTokens[0] == chatId) {
-                                    sendPairHint(senderId)
+                                } else {
+                                    if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty()) {
+                                        try {
+                                            if (pairGlobalFails.incrementAndGet() >= 10) {
+                                                pairGlobalFails.set(0)
+                                                pairGlobalLockoutUntil.set(android.os.SystemClock.elapsedRealtime() + 3_600_000L)
+                                            }
+                                        } catch (_: Exception) {
+                                        }
+                                    }
+                                    if (startTokens.isNotEmpty() && startTokens[0] == chatId) {
+                                        sendPairHint(senderId)
+                                    }
                                 }
                             }
                         } else if (senderId != cachedOwnerId.toString()) {

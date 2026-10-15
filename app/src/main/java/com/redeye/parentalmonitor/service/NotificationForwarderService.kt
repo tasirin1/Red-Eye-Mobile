@@ -603,7 +603,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!resumeOk) return
         try {
-            if (NetworkUtils.isAuthBlocked(prefs)) return
+            if (NetworkUtils.isPollBlocked(prefs)) return
         } catch (_: Exception) {
         }
         val ownerId = try { prefs.ownerUserId } catch (_: Exception) { 0L }

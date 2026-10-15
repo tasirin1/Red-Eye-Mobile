@@ -191,6 +191,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
         private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
+        private const val KEY_OWNER_PAIR_AT = "owner_pair_at"
         private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
         private const val KEY_SCREENSHOT_RESULT_CODE = "screenshot_result_code"
         private const val KEY_SCREENSHOT_DATA = "screenshot_data"
@@ -501,10 +502,18 @@ class PreferencesManager(context: Context) {
         synchronized(pairCodeLock) {
             try {
                 val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
-                if (cur.length == 6 && cur.all { it in '0'..'9' }) return cur
+                if (cur.length == 6 && cur.all { it in '0'..'9' }) {
+                    val at = try { sharedPreferences.getLong(KEY_OWNER_PAIR_AT, 0L) } catch (_: Exception) { 0L }
+                    if (at == 0L) {
+                        try { sharedPreferences.edit().putLong(KEY_OWNER_PAIR_AT, System.currentTimeMillis()).apply() } catch (_: Exception) { }
+                        return cur
+                    }
+                    val nowPairCode = System.currentTimeMillis()
+                    if (at <= nowPairCode && nowPairCode - at < 24 * 60 * 60_000L) return cur
+                }
                 val code = (100000 + secureRandom.nextInt(900000)).toString()
                 try {
-                    sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).commit()
+                    sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).putLong(KEY_OWNER_PAIR_AT, System.currentTimeMillis()).commit()
                 } catch (_: Exception) {
                     return code
                 }

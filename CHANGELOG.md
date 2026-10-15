@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Pairing: kode rotasi 24 jam + lockout global 1 jam setelah 10 tebak gagal (throttle per-pengirim tetap).
+- Polling perintah tak lagi ikut auth-block chat-400 (`isPollBlocked` khusus 401/403; kirim tetap diblokir).
+
 ## [1.6.228] - 2026-10-15
 ### Fixed
 - Simpan identitas tolak mode volatil (gagal jujur + toast, bukan toast saved palsu).
