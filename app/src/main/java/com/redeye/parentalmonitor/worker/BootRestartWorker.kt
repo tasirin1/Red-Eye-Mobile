@@ -136,6 +136,7 @@ class BootRestartWorker(
             if (runAttemptCount < 5) Result.retry() else Result.success()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
+            MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
         }

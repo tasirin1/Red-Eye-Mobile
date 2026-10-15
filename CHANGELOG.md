@@ -1,3 +1,10 @@
+## [1.6.216] - 2026-10-15
+### Fixed
+- Watch keyword + echo + status di-escape HTML (anti 400).
+- Command echo di-escape; Setup redact ikut chat ID.
+- Worker cek kredensial tiap pesan (tutup jendela 4 pesan basi).
+- Boot generic-fail ikut jadwalkan kirim antrean.
+
 ## [1.6.215] - 2026-10-15
 ### Fixed
 - Watchdog revive bila mati; kredensial anti-torn-read; job `@Volatile`.

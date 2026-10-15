@@ -172,9 +172,17 @@ class SetupActivity : AppCompatActivity() {
             prefs.botToken.takeIf { it.isNotEmpty() }?.let { secrets.add(it) }
         } catch (_: Exception) {
         }
+        try {
+            prefs.chatId.takeIf { it.isNotEmpty() }?.let { secrets.add(it) }
+        } catch (_: Exception) {
+        }
         if (::botTokenInput.isInitialized) {
             val typed = botTokenInput.text?.toString()?.trim().orEmpty()
             if (typed.isNotEmpty() && typed != STORED_MASK) secrets.add(typed)
+        }
+        if (::chatIdInput.isInitialized) {
+            val typedChat = chatIdInput.text?.toString()?.trim().orEmpty()
+            if (typedChat.isNotEmpty() && typedChat != STORED_MASK) secrets.add(typedChat)
         }
         return com.redeye.parentalmonitor.utils.Redact.token(raw, *secrets.toTypedArray())
     }

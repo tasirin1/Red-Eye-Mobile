@@ -1449,7 +1449,7 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "Command failed: $command ($redacted)")
             try {
                 val detail = redacted.ifEmpty { "unknown error" }
-                sendToTelegram("\u26A0\uFE0F Command $command failed ($detail). Please try again or send /help.")
+                sendToTelegram("\u26A0\uFE0F Command ${Html.escape(command)} failed ($detail). Please try again or send /help.")
             } catch (_: Exception) {
             }
         }
@@ -1459,13 +1459,13 @@ class MonitoringService : Service() {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             val ageSec = if (sentAtSec <= 0L) Long.MAX_VALUE else System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
-                sendToTelegram("\u23F3\uFE0F Command $command kedaluwarsa, kirim lagi.")
+                sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
             }
         }
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             if (!senderOk) {
-                if (privateChat) sendToTelegram("\u26D4 Hanya owner yang bisa pakai $command.")
+                if (privateChat) sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
                 return
             }
         } else if (!senderOk && !chatOk) {
@@ -1473,7 +1473,7 @@ class MonitoringService : Service() {
         }
         // Extra guard: mutating/sensitive commands in private chat still require owner
         if ((command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) && privateChat && !senderOk) {
-            sendToTelegram("\u26D4 Hanya owner yang bisa pakai $command.")
+            sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
             return
         }
         when (command) {
@@ -1526,7 +1526,7 @@ class MonitoringService : Service() {
                         appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
                         appendLine("Kamera: ${preferencesManager.cameraFacing}")
                         appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
-                        appendLine("Watch: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") ?: "mati"))
+                        appendLine("Watch: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
                         appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
                         appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                         appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
@@ -2134,7 +2134,7 @@ class MonitoringService : Service() {
                 if (sub.isEmpty() || sub == "status") {
                     if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                     val cur = watchList()
-                    sendToTelegram(if (cur.isEmpty()) "👁️ Watch: off (contoh: /watch judi,pinjol,bully)" else "👁️ Watch: " + cur.joinToString(", "))
+                    sendToTelegram(if (cur.isEmpty()) "👁️ Watch: off (contoh: /watch judi,pinjol,bully)" else "👁️ Watch: " + cur.joinToString(", ") { Html.escape(it) })
                 } else if (sub == "off" || sub == "clear") {
                     preferencesManager.watchKeywords = ""
                     sendToTelegram("👁️ Watch dimatikan.")
@@ -2145,7 +2145,7 @@ class MonitoringService : Service() {
                         sendToTelegram("Cara pakai: /watch \u003ckata1,kata2\u003e (min 3 huruf, maks 10) atau /watch off")
                     } else {
                         preferencesManager.watchKeywords = words.joinToString(",")
-                        sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") + if (dropped.isNotEmpty()) "\nDiabaikan (<3 huruf): " + dropped.joinToString(", ") else "")
+                        sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (<3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
                     }
                 }
             }
@@ -3660,7 +3660,7 @@ class MonitoringService : Service() {
         return try {
             val lower = body.lowercase(java.util.Locale.ROOT)
             val watch = watchHit(body)
-            if (watch != null) return "⚠️ Watch: $watch"
+            if (watch != null) return "⚠️ Watch: " + Html.escape(watch)
             val hasCode = OTP_CODE_REGEX.containsMatchIn(body)
             val digits = address.filter { it.isDigit() }
             if (hasCode && (digits.isNotEmpty() && digits.length <= 6 || OTP_KEYWORDS.any { lower.contains(it) })) return "🔑 Kemungkinan OTP"

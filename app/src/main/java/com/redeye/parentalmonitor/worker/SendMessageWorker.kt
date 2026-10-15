@@ -107,16 +107,14 @@ class SendMessageWorker(
             if (processed >= 20) {
                 break
             }
-            if (processed % 5 == 0) {
-                val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
-                val curChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
-                if (curToken.isEmpty() || curChat.isEmpty()) {
-                    break
-                }
-                if (curToken != runToken || curChat != runChatId) {
-                    credsChanged = true
-                    break
-                }
+            val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            val curChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+            if (curToken.isEmpty() || curChat.isEmpty()) {
+                break
+            }
+            if (curToken != runToken || curChat != runChatId) {
+                credsChanged = true
+                break
             }
             processed++
             try {
