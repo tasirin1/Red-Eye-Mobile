@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Error fatal worker tak lagi disamarkan jadi sukses (diteruskan ke WorkManager: backoff eksponensial + terlihat di diagnostik).
+
 ## [1.6.238] - 2026-10-15
 ### Fixed
 - Blob antrean rusak langsung dibuang (tak dibaca ulang selamanya, storage tak bocor).
