@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Blob antrean rusak langsung dibuang (tak dibaca ulang selamanya, storage tak bocor).
+
 ## [1.6.237] - 2026-10-15
 ### Fixed
 - Batal kirim pesan panjang kini dihormati (sisa antre tetap terjaga, worker lama berhenti, tak tumpang-tindih).
