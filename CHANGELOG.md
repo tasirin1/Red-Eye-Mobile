@@ -1,3 +1,9 @@
+## [1.6.217] - 2026-10-15
+### Fixed
+- Ganti identitas reset offset update + initial-sync + wake-ping (bot baru tak tuli).
+- Boot fast-path ikut jadwalkan watchdog; umur-restore negatif tak hapus state.
+- Jalur cepat notif ikut baca TEXT_LINES.
+
 ## [1.6.216] - 2026-10-15
 ### Fixed
 - Watch keyword + echo + status di-escape HTML (anti 400).

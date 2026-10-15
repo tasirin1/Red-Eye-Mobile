@@ -53,6 +53,10 @@ class BootReceiver : BroadcastReceiver() {
                     context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowUnlock).apply()
                 } catch (_: Exception) {
                 }
+                try {
+                    MessageScheduler.scheduleWatchdog(context.applicationContext)
+                } catch (_: Exception) {
+                }
                 return
             }
         }
@@ -132,7 +136,7 @@ class BootReceiver : BroadcastReceiver() {
                     } catch (_: Exception) {
                     }
                 }
-            } else if (stuckVolume >= 0 || stuckAt > 0L) {
+            } else if (ringAge >= 0L && (stuckVolume >= 0 || stuckAt > 0L)) {
                 try {
                     preferencesManager.clearRingStateSync()
                 } catch (_: Exception) {

@@ -850,13 +850,16 @@ class PreferencesManager(context: Context) {
             editor.remove(KEY_LAST_LOC_AT)
             editor.remove(KEY_LOC_FAIL_COUNT)
             editor.remove(KEY_HEALTH_ALERT_AT)
+            editor.remove(KEY_LAST_UPDATE_ID)
+            editor.remove(KEY_INITIAL_SYNC_DONE)
+            editor.remove(KEY_INITIAL_SYNC_STARTED)
         }
         if (chatChanged || tokenChanged) {
             editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        if (tokenChanged) {
+        if (tokenChanged || chatChanged) {
             editor.remove(KEY_WAKE_PING_IDS)
         }
     }
