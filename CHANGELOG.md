@@ -1,3 +1,10 @@
+## [1.6.218] - 2026-10-15
+### Fixed
+- `/pause` jujur (manual tetap bisa); `/resume` tak hapus jeda terjadwal; menu basi grup tak spam owner.
+- Izin SMS/call dicek di `/lastcalls`, `/lastsms`, `/history`.
+- Callback tanpa sender dijawab; tombol Stop di menu; alias + `/start` di help/menu.
+- Sekolah 08–15 (teks); jejak prune 24 jam; jemput butuh fence nyala; digest manual tak tekan malam.
+
 ## [1.6.217] - 2026-10-15
 ### Fixed
 - Ganti identitas reset offset update + initial-sync + wake-ping (bot baru tak tuli).

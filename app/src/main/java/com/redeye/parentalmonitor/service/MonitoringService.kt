@@ -1210,7 +1210,10 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
-        val sender = query.from?.id?.toString() ?: return
+        val sender = query.from?.id?.toString() ?: run {
+            try { answerCallback(query.id) } catch (_: Exception) { }
+            return
+        }
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         val ownerOk = isOwner(sender)
@@ -1258,11 +1261,11 @@ class MonitoringService : Service() {
         if (pressedAt > 0L && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
             if (menuAge > MUTATING_MAX_AGE_SEC) {
-                sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
+                if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
         } else if (pressedAt <= 0L && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
-            sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
+            if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
             return
         }
         handleTelegramCommand(command, pressedAt, ownerOk, originOk, false, sender, originChat.isNotEmpty() && originChat == sender)
@@ -1362,7 +1365,8 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("waspada", "Skor kewaspadaan 0-100"),
             com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
             com.redeye.parentalmonitor.network.BotCommand("jemput", "Kabari saat dekat rumah"),
-            com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah")
+            com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah"),
+            com.redeye.parentalmonitor.network.BotCommand("start", "Tautkan/pairing perangkat")
         )
     }
 
@@ -1419,7 +1423,7 @@ class MonitoringService : Service() {
                 listOf(button("\uD83D\uDCF7 Front", "camfront"), button("\uD83D\uDCF7 Back", "camback")),
                 listOf(button("⏸️ Pause 60 min", "pause60"), button("▶️ Resume", "resume")),
                 listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status")),
-                listOf(button("\uD83D\uDDA5 Screenshot", "shot"))
+                listOf(button("\uD83D\uDDA5 Screenshot", "shot"), button("⏹️ Stop", "stop"))
             )
         )
     }
@@ -1449,7 +1453,7 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "Command failed: $command ($redacted)")
             try {
                 val detail = redacted.ifEmpty { "unknown error" }
-                sendToTelegram("\u26A0\uFE0F Command ${Html.escape(command)} failed ($detail). Please try again or send /help.")
+                sendToTelegram("\u26A0\uFE0F Command ${Html.escape(command)} failed (${Html.escape(detail)}). Please try again or send /help.")
             } catch (_: Exception) {
             }
         }
@@ -1559,6 +1563,10 @@ class MonitoringService : Service() {
                 )
             }
             "/lastcalls" -> {
+                if (!hasCallLogPermission()) {
+                    sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
+                    return
+                }
                 val calls = callLogRepository.getAllCalls(5)
                 if (calls.isEmpty()) {
                     sendToTelegram("📞 Tak ada riwayat panggilan.")
@@ -1567,6 +1575,10 @@ class MonitoringService : Service() {
                 }
             }
             "/lastsms" -> {
+                if (!hasSmsPermission()) {
+                    sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
+                    return
+                }
                 val sms = smsRepository.getRecentSms(5)
                 if (sms.isEmpty()) {
                     sendToTelegram("💬 Tak ada SMS.")
@@ -1637,7 +1649,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /pause \u003cminutes\u003e (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
-                    sendToTelegram("⏸️ Foto dijeda $minutes mnt.")
+                    sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
                 }
             }
             "/battery" -> {
@@ -1655,8 +1667,7 @@ class MonitoringService : Service() {
             }
             "/resume" -> {
                 preferencesManager.monitoringPaused = false
-                preferencesManager.photoPausedUntil = 0L
-                sendToTelegram("▶️ Monitoring resumed.")
+                sendToTelegram("▶️ Monitoring jalan lagi.")
             }
             "/location" -> {
                 if (!hasLocationPermission()) {
@@ -2107,6 +2118,10 @@ class MonitoringService : Service() {
                 )
             }
             "/history" -> {
+                if (!hasSmsPermission() || !hasCallLogPermission()) {
+                    sendToTelegram("⚠️ Izin SMS/log panggilan hilang. Berikan di Setup.")
+                    return
+                }
                 val digits = arg.filter { it.isDigit() }
                 if (digits.length < 7) {
                     sendToTelegram("Cara pakai: /history \u003cnumber\u003e (min 7 digits)")
@@ -2193,7 +2208,6 @@ class MonitoringService : Service() {
             }
             "/digest" -> {
                 sendDailyDigest(manual = true)
-                try { preferencesManager.nightDigestDate = todayKey() } catch (_: Exception) { }
             }
             "/darurat" -> {
                 val level = batteryLevel()
@@ -2220,7 +2234,7 @@ class MonitoringService : Service() {
                     if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                     val cur = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
                     val school = fenceStatusText(false)
-                    sendToTelegram("🌙 Jam malam: " + (cur.ifEmpty { "mati" }) + "\n🏫 Cek sekolah 08–16 (Senin–Jumat): " + school)
+                    sendToTelegram("🌙 Jam malam: " + (cur.ifEmpty { "mati" }) + "\n🏫 Cek sekolah 08–15 (Senin–Jumat): " + school)
                 } else if (sub.equals("off", ignoreCase = true)) {
                     preferencesManager.curfewTime = ""
                     sendToTelegram("🌙 Jam malam dimatikan.")
@@ -2309,8 +2323,8 @@ class MonitoringService : Service() {
                     val rad = sub.toIntOrNull()
                     if (rad == null || rad !in 50..5000) {
                         sendToTelegram("Cara pakai: /jemput \u003c50-5000\u003e (meter) atau /jemput off")
-                    } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE) {
-                        sendToTelegram("Set /home dulu sebelum /jemput.")
+                    } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
+                        sendToTelegram("Nyalakan geofence /home dulu sebelum /jemput.")
                     } else {
                         preferencesManager.jemputRadiusM = rad
                         sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
@@ -2373,7 +2387,7 @@ class MonitoringService : Service() {
                         appendLine("/watchnomor \u003cnomor|status|off\u003e - awasi nomor")
                         appendLine("/home \u003clat,lon,rad|status|off\u003e - geofence rumah")
                         appendLine("/school \u003clat,lon,rad|status|off\u003e - geofence sekolah")
-                        appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam + cek sekolah 08–16")
+                        appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam + cek sekolah 08–15")
                         appendLine("/digest - ringkasan harian")
                         appendLine("/minggu - laporan 7 hari")
                         appendLine("/jejak - jejak lokasi hari ini")
@@ -2382,6 +2396,7 @@ class MonitoringService : Service() {
                         appendLine("/jemput \u003cmeter|off\u003e - kabari saat dekat rumah")
                         appendLine("/log - log error terakhir")
                         appendLine("/help - daftar ini")
+                        appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
                     },
                     mainMenu()
                 )
@@ -3640,7 +3655,7 @@ class MonitoringService : Service() {
                 val la = ll[0].toLongOrNull() ?: return@mapNotNull null
                 val lo = ll[1].toLongOrNull() ?: return@mapNotNull null
                 Triple(ts, la / 1_000_000.0, lo / 1_000_000.0)
-            }.takeLast(24)
+            }.filter { it.first > System.currentTimeMillis() - 24 * 60 * 60_000L }.takeLast(24)
         } catch (_: Exception) {
             emptyList()
         }
@@ -4979,6 +4994,20 @@ class MonitoringService : Service() {
             if (!notifEnabled) appendLine("Penerusan notif dimatikan (/notif off).")
             appendLine("Cabut/pasang ulang? Buka Setup di perangkat.")
         }
+    }
+
+    private fun hasSmsPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasCallLogPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_CALL_LOG
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     private fun hasCameraPermission(): Boolean {
