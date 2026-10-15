@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Perintah purba (>1 jam, mis. replay resync) dibuang diam-diam; yang basi (<15 mnt) tetap dibalas.
+
 ## [1.6.233] - 2026-10-15
 ### Fixed
 - Job bunyi/rekam lama di-cancel sebelum referensi ditimpa (restore volume tak balapan).
