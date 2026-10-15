@@ -81,12 +81,9 @@ object CrashReporter {
     }
 
     private val saveLock = Any()
-    private val saveInProgress = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private fun savePending(context: Context, report: String) {
-        if (saveInProgress.getAndSet(true)) return
-        try {
-            synchronized(saveLock) {
+        synchronized(saveLock) {
                 val file = pendingFile(context)
                 val prev = try {
                     if (file.exists()) stripElapsed(file.readText()) else ""
@@ -104,9 +101,6 @@ object CrashReporter {
                     try { file.delete() } catch (_: Exception) { }
                     tmp.renameTo(file)
                 }
-            }
-        } finally {
-            saveInProgress.set(false)
         }
     }
 
@@ -123,6 +117,22 @@ object CrashReporter {
         }
     }
 
+    private fun keepRemainder(file: File, raw: String, rest: String, elapsed0: Long) {
+        try {
+            val cur = try { if (file.exists()) file.readText() else null } catch (_: Exception) { null }
+            if (cur == null || cur == raw) {
+                if (rest.isBlank()) {
+                    try { if (cur != null) file.delete() } catch (_: Exception) { }
+                } else writePendingRest(file, elapsed0, rest)
+                return
+            }
+            val curReport = stripElapsed(cur)
+            val combined = if (rest.isBlank()) curReport else (curReport + "\n---\n" + rest)
+            writePendingRest(file, elapsed0, combined)
+        } catch (_: Exception) {
+        }
+    }
+
     suspend fun flushPending(context: Context) {
         if (!flushing.compareAndSet(false, true)) return
         try {
@@ -134,19 +144,13 @@ object CrashReporter {
                 return
             }
             if (raw.isBlank()) {
-                try {
-                    file.delete()
-                } catch (_: Exception) {
-                }
+                keepRemainder(file, raw, "", 0L)
                 return
             }
             val report = stripElapsed(raw)
             val savedElapsed0 = raw.substring(0, raw.indexOf('\n').takeIf { it > 0 } ?: 0).toLongOrNull() ?: 0L
             if (report.isBlank()) {
-                try {
-                    file.delete()
-                } catch (_: Exception) {
-                }
+                keepRemainder(file, raw, "", 0L)
                 return
             }
             if (!NetworkUtils.isNetworkAvailable(context)) return
@@ -172,7 +176,7 @@ object CrashReporter {
                 val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
                 val age = if (wallAge < 0L && monoAge < 0L) 0L else if (wallAge < 0L) monoAge else if (monoAge < 0L) wallAge else minOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {
-                    try { file.delete() } catch (_: Exception) { }
+                    keepRemainder(file, raw, "", 0L)
                     return
                 }
             } catch (_: Exception) {
@@ -198,9 +202,9 @@ object CrashReporter {
                 val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = fitted, parseMode = "HTML"))
                 if (response.isSuccessful && response.body()?.ok == true) {
                     if (rest.isBlank()) {
-                        file.delete()
+                        keepRemainder(file, raw, "", 0L)
                     } else {
-                        writePendingRest(file, savedElapsed0, rest)
+                        keepRemainder(file, raw, rest, savedElapsed0)
                     }
                 } else if (response.code() == 429) {
                     try {
@@ -254,12 +258,9 @@ object CrashReporter {
                         }
                         if (delivered) {
                             if (rest.isBlank()) {
-                                try {
-                                    file.delete()
-                                } catch (_: Exception) {
-                                }
+                                keepRemainder(file, raw, "", 0L)
                             } else {
-                                writePendingRest(file, savedElapsed0, rest)
+                                keepRemainder(file, raw, rest, savedElapsed0)
                             }
                         }
                     }
