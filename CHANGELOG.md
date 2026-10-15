@@ -1,3 +1,10 @@
+## [1.6.219] - 2026-10-15
+### Fixed
+- Flush media kuras tuntas (maks 3 batch): backlog tak lagi dipangkas prune sebelum dicoba.
+- FGS gagal start jadwalkan boot-restart (tak diam).
+- Ganti identitas reset throttle/sync/foto/digest/begadang/jemput.
+- Auth-blocked tak dihitung sepi (sync tak merenggang sia-sia).
+
 ## [1.6.218] - 2026-10-15
 ### Fixed
 - `/pause` jujur (manual tetap bisa); `/resume` tak hapus jeda terjadwal; menu basi grup tak spam owner.
