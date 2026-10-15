@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.228] - 2026-10-15
 ### Fixed
 - Simpan identitas tolak mode volatil (gagal jujur + toast, bukan toast saved palsu).
 - Status Setup pakai `isConfigured()` (selaras toggle/revive; volatil = belum valid).
