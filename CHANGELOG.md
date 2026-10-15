@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.224] - 2026-10-15
 ### Fixed
 - Kolom interval Setup kosong dari XML sehingga default `BuildConfig.SYNC_INTERVAL` (CI) tampil dan tak tertimpa `5`/`1`.
 - `/ring`, `/record`, `/recordvideo`, `/hilang` kunci flag sendiri dulu sebelum cek lawan (adu audio tertutup).
