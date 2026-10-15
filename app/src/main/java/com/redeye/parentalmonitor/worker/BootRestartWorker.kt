@@ -105,7 +105,7 @@ class BootRestartWorker(
         }
         if (!prefs.isStorageEncrypted) {
             postResumeReminder(appContext)
-            return Result.success()
+            return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         if (!prefs.isConfigured()) {
             return Result.success()

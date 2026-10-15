@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Worker restart coba lagi berbatas saat storage terkunci (tak langsung menyerah; jalur utama unlock tetap lewat receiver).
+
 ## [1.6.240] - 2026-10-15
 ### Fixed
 - Laporan crash berbarengan kini digabung (tak ada yang dibuang); hapus/tulis berkas tertunda hanya bila isi tak berubah (laporan baru selamat, kirim ganda terbatas).
