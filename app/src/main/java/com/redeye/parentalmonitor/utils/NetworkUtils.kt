@@ -67,7 +67,7 @@ object NetworkUtils {
         try {
             if (prefs.credentialError.isEmpty()) return
             val now = System.currentTimeMillis()
-            if (now < prefs.credentialErrorAt || now - prefs.credentialErrorAt >= 30 * 60_000L) {
+            if (now >= prefs.credentialErrorAt && now - prefs.credentialErrorAt >= 30 * 60_000L) {
                 prefs.credentialError = ""
                 prefs.credentialErrorAt = 0L
             }

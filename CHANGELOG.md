@@ -1,3 +1,10 @@
+## [1.6.215] - 2026-10-15
+### Fixed
+- Watchdog revive bila mati; kredensial anti-torn-read; job `@Volatile`.
+- Squeeze hormati jeda/opt-out; wake 401 backoff 5 mnt.
+- Kamera: seq dalam lock; fallback hapus semua handler; sapu mp4 kosong.
+- Premium 976/900 prefix; hitung frekuensi normalisasi digit; sweep tahan jam mundur.
+
 ## [1.6.214] - 2026-10-15
 ### Fixed
 - Toast validasi Setup aman dari activity mati (6 titik).

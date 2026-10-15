@@ -55,6 +55,9 @@ class CameraService(private val context: Context) {
             context.cacheDir?.listFiles { f -> f.isFile && f.name.endsWith(".tmp") }?.forEach {
                 try { it.delete() } catch (_: Exception) { }
             }
+            context.cacheDir?.listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
+                try { it.delete() } catch (_: Exception) { }
+            }
         } catch (_: Exception) {
         }
     }
@@ -134,13 +137,14 @@ class CameraService(private val context: Context) {
         timeoutMs: Long = 30_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
+        var mySeq = 0
         synchronized(captureLock) {
             if (!capturing.compareAndSet(false, true)) {
                 onError(Exception("Camera is busy"))
                 return
             }
+            mySeq = sessionSeq.get()
         }
-        val mySeq = sessionSeq.get()
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
 
@@ -388,13 +392,14 @@ class CameraService(private val context: Context) {
         timeoutMs: Long = durationMs + 60_000L,
         lensFacing: Int = CameraCharacteristics.LENS_FACING_FRONT
     ) {
+        var mySeq = 0
         synchronized(captureLock) {
             if (!capturing.compareAndSet(false, true)) {
                 onError(Exception("Camera is busy"))
                 return
             }
+            mySeq = sessionSeq.get()
         }
-        val mySeq = sessionSeq.get()
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         var timeoutRunnable: Runnable? = null
         var stopRunnable: Runnable? = null
@@ -688,7 +693,11 @@ class CameraService(private val context: Context) {
             if (settled.compareAndSet(false, true)) {
                 stillArmed.set(true)
                 try {
-                    fallback?.let { backgroundHandler?.removeCallbacks(it) }
+                    fallback?.let { r ->
+                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                    }
                 } catch (_: Exception) {
                 }
                 try {

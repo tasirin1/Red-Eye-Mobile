@@ -325,7 +325,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 if (t.isNotEmpty() || x.isNotEmpty()) {
                     val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
-                    if (squeezedPriority) {
+                    if (squeezedPriority && forwardingAllowed()) {
                         val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
                         try { record(squeezedLabel, t, x) } catch (_: Exception) { }
                         val squeezedMsg = try { buildNotifMessage(squeezedLabel, t, x) } catch (_: Exception) { "" }
@@ -635,6 +635,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 prefs.credentialErrorAt = System.currentTimeMillis()
             } catch (_: Exception) {
             }
+            wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 300_000L
             return
         }
         if (response.code() == 400) {
