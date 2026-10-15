@@ -1179,7 +1179,7 @@ class SetupActivity : AppCompatActivity() {
             val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
             fun s(key: String): String = snap[key] as? String ?: ""
             fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
-            val configured = s(PreferencesManager.KEY_BOT_TOKEN).isNotEmpty() && s(PreferencesManager.KEY_CHAT_ID).isNotEmpty()
+            val configured = try { prefs.isConfigured() } catch (_: Exception) { false }
             val perms = hasAllPermissions()
             val enabled = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
             val running = enabled && MonitoringService.isRunning

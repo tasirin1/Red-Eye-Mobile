@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Simpan identitas tolak mode volatil (gagal jujur + toast, bukan toast saved palsu).
+- Status Setup pakai `isConfigured()` (selaras toggle/revive; volatil = belum valid).
+
 ## [1.6.227] - 2026-10-15
 ### Fixed
 - Tombol `=` kalkulator merentang 3 baris (sel kosong kanan-bawah tertutup).

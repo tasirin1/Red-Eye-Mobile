@@ -884,6 +884,7 @@ class PreferencesManager(context: Context) {
 
     fun saveTestIdentity(newToken: String, newChatId: String): Boolean {
         try { upgradeToPersistent() } catch (_: Exception) { }
+        if (!storageEncrypted) return false
         return try {
             val editor = sharedPreferences.edit()
             putCredentialState(editor, newToken, newChatId)
@@ -904,6 +905,7 @@ class PreferencesManager(context: Context) {
 
     private fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
         try { upgradeToPersistent() } catch (_: Exception) { }
+        if (!storageEncrypted) return false
         val editor = sharedPreferences.edit()
         putCredentialState(editor, newToken, newChatId)
         editor.putString(KEY_BOT_TOKEN, newToken)
