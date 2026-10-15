@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.226] - 2026-10-15
 ### Fixed
 - `/smsconfirm` tolak jam-maju/mundur seperti `/sms` (pending tak hangus palsu / tak abadi).
 - `onDestroy` batalkan `serviceScope` sebelum `super.onDestroy()` (selaras `NotificationForwarderService`, tanpa job bocor).
