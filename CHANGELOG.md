@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.239] - 2026-10-15
 ### Fixed
 - Error fatal worker tak lagi disamarkan jadi sukses (diteruskan ke WorkManager: backoff eksponensial + terlihat di diagnostik).
 
