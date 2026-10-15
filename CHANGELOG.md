@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.235] - 2026-10-15
 ### Fixed
 - Berkas terlalu besar (413) dibuang dengan kabar (foto/video/audio; antrean tak macet).
 - Watchdog screenshot menaikkan generasi (basi dibuang, flag tak dicuri).
