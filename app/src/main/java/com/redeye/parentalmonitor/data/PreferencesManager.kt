@@ -773,17 +773,21 @@ class PreferencesManager(context: Context) {
     }
 
     fun clearWakePingIds() {
-        try {
-            sharedPreferences.edit().remove(KEY_WAKE_PING_IDS).apply()
-        } catch (_: Exception) {
+        synchronized(wakeIdsLock) {
+            try {
+                sharedPreferences.edit().remove(KEY_WAKE_PING_IDS).apply()
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun removeWakePingId(updateId: Long) {
-        try {
-            val cur = readWakePingIds()
-            if (cur.remove(updateId)) writeWakePingIds(cur)
-        } catch (_: Exception) {
+        synchronized(wakeIdsLock) {
+            try {
+                val cur = readWakePingIds()
+                if (cur.remove(updateId)) writeWakePingIds(cur)
+            } catch (_: Exception) {
+            }
         }
     }
 

@@ -343,7 +343,6 @@ class MessageQueue private constructor(context: Context) {
             priorityDrops.set(0L)
             sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
         }
-        flushSync()
     }
 
     fun flushSync() {

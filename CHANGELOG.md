@@ -1,3 +1,11 @@
+## [Unreleased]
+### Fixed
+- Berkas terlalu besar (413) dibuang dengan kabar (foto/video/audio; antrean tak macet).
+- Watchdog screenshot menaikkan generasi (basi dibuang, flag tak dicuri).
+- Hash foto hanya disimpan saat terkirim (adegan tertunda tak ditekan).
+- Rekam audio tolak saat backlog penuh (selaras foto/video).
+- Reset kursor SMS/call sinkron; wake-ping lock konsisten; `clearQueue` tanpa tulis-lomba.
+
 ## [1.6.234] - 2026-10-15
 ### Fixed
 - Perintah purba (>1 jam, mis. replay resync) dibuang diam-diam; yang basi (<15 mnt) tetap dibalas.

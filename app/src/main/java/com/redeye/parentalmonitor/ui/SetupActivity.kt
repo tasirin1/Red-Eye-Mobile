@@ -420,9 +420,8 @@ class SetupActivity : AppCompatActivity() {
                 }
             } catch (_: Exception) {
             }
-            try { prefs.lastSmsId = 0L } catch (_: Exception) { }
-            try { prefs.lastCallTimestamp = 0L } catch (_: Exception) { }
-            try { prefs.lastCallId = 0L } catch (_: Exception) { }
+            try { prefs.setSmsCursorSync(0L) } catch (_: Exception) { }
+            try { prefs.setCallCursorSync(0L, 0L) } catch (_: Exception) { }
             try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
             try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
