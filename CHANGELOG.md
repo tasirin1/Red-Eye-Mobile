@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- `forceReset()` hentikan + rilis perekam video aktif dan buang parsialnya (mic tak gantung, tanpa mp4 yatim).
+- `onListenerDisconnected()` jadwalkan 1x coba-ikat ulang 60 dtk bila kena throttle (forward tak mati lama).
+
 ## [1.6.230] - 2026-10-15
 ### Fixed
 - 400 permanen benar tak antre (log kini jujur; worker memang langsung buang).

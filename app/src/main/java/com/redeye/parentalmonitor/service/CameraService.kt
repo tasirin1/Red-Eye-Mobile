@@ -51,6 +51,10 @@ class CameraService(private val context: Context) {
     }
 
     private val captureLock = Any()
+    @Volatile
+    private var activeRecorder: android.media.MediaRecorder? = null
+    @Volatile
+    private var activeVideoFile: java.io.File? = null
 
     init {
         try {
@@ -78,6 +82,21 @@ class CameraService(private val context: Context) {
         }
         try {
             watchdogHandler?.removeCallbacksAndMessages(null)
+        } catch (_: Exception) {
+        }
+        try {
+            activeRecorder?.stop()
+        } catch (_: Exception) {
+        }
+        try {
+            activeRecorder?.release()
+        } catch (_: Exception) {
+        }
+        activeRecorder = null
+        try {
+            val staleVideo = activeVideoFile
+            activeVideoFile = null
+            if (staleVideo != null && staleVideo.exists()) staleVideo.delete()
         } catch (_: Exception) {
         }
         cleanup()
@@ -448,6 +467,8 @@ class CameraService(private val context: Context) {
                 try {
                     val stale = pendingOut
                     pendingOut = null
+                    activeVideoFile = null
+                    activeRecorder = null
                     if (stale != null && stale.exists()) stale.delete()
                 } catch (_: Exception) {
                 }
@@ -475,6 +496,8 @@ class CameraService(private val context: Context) {
                 releaseRecorder()
                 releaseSurface()
                 pendingOut = null
+                activeVideoFile = null
+                activeRecorder = null
                 onVideoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
             } else {
@@ -520,12 +543,14 @@ class CameraService(private val context: Context) {
             val videoSize = chooseVideoSize(cameraManager, cameraId)
             val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
             pendingOut = outFile
+            activeVideoFile = outFile
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
             } else {
                 android.media.MediaRecorder()
             }
             recorder = rec
+            activeRecorder = rec
             rec.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
             rec.setVideoSource(android.media.MediaRecorder.VideoSource.SURFACE)
             rec.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)

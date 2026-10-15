@@ -52,6 +52,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private val dropNoticeLock = Any()
     @Volatile
     private var lastRebindAt = 0L
+    private val rebindRetryScheduled = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var lastReviveAt = 0L
     @Volatile
@@ -550,7 +551,16 @@ class NotificationForwarderService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         android.util.Log.w("NotifForwarder", "Notification listener disconnected")
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastRebindAt < 60_000L) return
+        if (now - lastRebindAt < 60_000L) {
+            if (rebindRetryScheduled.compareAndSet(false, true)) {
+                scope.launch {
+                    try { kotlinx.coroutines.delay(60_000L) } catch (_: Exception) { }
+                    try { rebindRetryScheduled.set(false) } catch (_: Exception) { }
+                    try { requestRebind(ComponentName(this@NotificationForwarderService, NotificationForwarderService::class.java)) } catch (_: Exception) { }
+                }
+            }
+            return
+        }
         lastRebindAt = now
         try {
             requestRebind(ComponentName(this, NotificationForwarderService::class.java))
