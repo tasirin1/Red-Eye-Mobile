@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.238] - 2026-10-15
 ### Fixed
 - Blob antrean rusak langsung dibuang (tak dibaca ulang selamanya, storage tak bocor).
 
