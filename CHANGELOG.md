@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.225] - 2026-10-15
 ### Fixed
 - Log error/warning release dibungkus `BuildConfig.DEBUG` (8 titik: kalkulator, admin, scheduler) — tak bocor ke logcat.
 - Consent screenshot basi auto-hapus saat sistem menolak token (`SecurityException`) — status Setup jujur `off`, bukan `granted` palsu.
