@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Notifikasi prioritas tak lagi macet permanen (kirim langsung di jalur serial, tanpa tunggu diri sendiri).
+
 ## [1.6.235] - 2026-10-15
 ### Fixed
 - Berkas terlalu besar (413) dibuang dengan kabar (foto/video/audio; antrean tak macet).

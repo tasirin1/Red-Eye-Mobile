@@ -503,7 +503,7 @@ class NotificationForwarderService : NotificationListenerService() {
         record(label, title, text)
         if (priority) {
             try {
-                kotlinx.coroutines.withContext(fwdSerial) { forwardLocked("❗ " + message, pkg, 1) }
+                forwardLocked("❗ " + message, pkg, 1)
             } catch (_: Exception) {
             }
             return
