@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Job bunyi/rekam lama di-cancel sebelum referensi ditimpa (restore volume tak balapan).
+
 ## [1.6.232] - 2026-10-15
 ### Fixed
 - Angka perintah rentang-tegas (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/ring`): di luar rentang ditolak, bukan diam-diam dijepit.

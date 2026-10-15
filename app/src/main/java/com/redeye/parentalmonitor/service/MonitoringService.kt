@@ -1890,6 +1890,7 @@ class MonitoringService : Service() {
                     ringBusy.set(false)
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
+                    try { ringJob?.cancel() } catch (_: Exception) { }
                     ringJob = serviceScope.launch {
                         try {
                             ringDevice(seconds)
@@ -1951,6 +1952,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
+                    try { recordJob?.cancel() } catch (_: Exception) { }
                     recordJob = serviceScope.launch {
                         try {
                             recordAndSendAudio(seconds)
@@ -1975,6 +1977,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
+                    try { recordJob?.cancel() } catch (_: Exception) { }
                     recordJob = serviceScope.launch {
                         try {
                             recordAndSendVideo(seconds)
@@ -2342,6 +2345,7 @@ class MonitoringService : Service() {
                     return
                 }
                 sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
+                try { ringJob?.cancel() } catch (_: Exception) { }
                 ringJob = serviceScope.launch {
                     try {
                         ringDevice(60)
