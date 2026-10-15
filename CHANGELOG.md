@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.227] - 2026-10-15
 ### Fixed
 - Tombol `=` kalkulator merentang 3 baris (sel kosong kanan-bawah tertutup).
 - Judul `# Changelog` + presisi docs (pemicu `main`-only, pengecualian tag di `concurrency`).
