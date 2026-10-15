@@ -471,18 +471,21 @@ class SetupActivity : AppCompatActivity() {
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
             if (!token.matches(TOKEN_REGEX)) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
             if (!isChatIdValid(chatId)) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
@@ -491,6 +494,7 @@ class SetupActivity : AppCompatActivity() {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
                     }
                     return@launch
@@ -618,12 +622,14 @@ class SetupActivity : AppCompatActivity() {
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
             if (!token.matches(TOKEN_REGEX) || !isChatIdValid(chatId)) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
                 }
                 return@launch

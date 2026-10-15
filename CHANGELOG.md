@@ -1,3 +1,10 @@
+## [1.6.214] - 2026-10-15
+### Fixed
+- Toast validasi Setup aman dari activity mati (6 titik).
+- Guard boot 10 mnt hanya bila service jalan (reboot ganda tetap revive).
+- Verifikasi-path jalan juga di PR (gagal-cepat sebelum build).
+- `gradlew` executable.
+
 ## [1.6.213] - 2026-10-15
 ### Fixed
 - Penjadwal: hitung ganda counter diperbaiki (gagal enqueue kembalikan hitungan).
