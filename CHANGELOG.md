@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.230] - 2026-10-15
 ### Fixed
 - 400 permanen benar tak antre (log kini jujur; worker memang langsung buang).
 - Parsing perintah satu splitter (`\s+` di tahap-1 dan `/sms`); edit pesan diproses (bukan hilang diam-diam).
