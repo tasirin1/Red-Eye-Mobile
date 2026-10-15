@@ -455,7 +455,7 @@ class SendMessageWorker(
                                 MessageScheduler.scheduleMessageSend(applicationContext)
                             } catch (_: Exception) {
                             }
-                            return SendOutcome.Sent
+                            throw e
                         }
                         throw e
                     }
