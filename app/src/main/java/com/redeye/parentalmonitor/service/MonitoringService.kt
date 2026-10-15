@@ -173,6 +173,8 @@ class MonitoringService : Service() {
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
+        @Volatile
+        private var commandsRegFailAt = 0L
         private const val AUTH_NOTIF_ID = 4
         @Volatile
         var isRunning = false
@@ -596,6 +598,7 @@ class MonitoringService : Service() {
                     try { checkBatteryAlert() } catch (_: Exception) { }
                     try { maybeSendDigest() } catch (_: Exception) { }
                     try { maybeSendNightDigest() } catch (_: Exception) { }
+                    try { maybeRetryBotCommands() } catch (_: Exception) { }
                     try { checkBegadang() } catch (_: Exception) { }
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
@@ -1411,10 +1414,24 @@ class MonitoringService : Service() {
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
+                try { commandsRegFailAt = System.currentTimeMillis() } catch (_: Exception) { }
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${publicResp.code()}")
             }
         } catch (e: Exception) {
+            try { commandsRegFailAt = System.currentTimeMillis() } catch (_: Exception) { }
             android.util.Log.w("MonitoringService", "Command menu registration error: ${redactToken(e.message)}")
+        }
+    }
+
+    private suspend fun maybeRetryBotCommands() {
+        try {
+            val failAt = commandsRegFailAt
+            if (failAt <= 0L) return
+            val now = System.currentTimeMillis()
+            if (failAt > now || now - failAt < 3_600_000L) return
+            try { commandsRegFailAt = 0L } catch (_: Exception) { }
+            registerBotCommands()
+        } catch (_: Exception) {
         }
     }
 
@@ -1576,7 +1593,8 @@ class MonitoringService : Service() {
                 if (calls.isEmpty()) {
                     sendToTelegram("📞 Tak ada riwayat panggilan.")
                 } else {
-                    sendToTelegram(formatCallMessage(calls))
+                    val knownCalls = try { calls.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                    sendToTelegram(formatCallMessage(calls, knownCalls))
                 }
             }
             "/lastsms" -> {
@@ -1588,7 +1606,9 @@ class MonitoringService : Service() {
                 if (sms.isEmpty()) {
                     sendToTelegram("💬 Tak ada SMS.")
                 } else {
-                    sendToTelegram(formatSmsMessage(sms))
+                    val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                    val freqSms = try { batchFreqMap() } catch (_: Exception) { null }
+                    sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
                 }
             }
             "/photointerval" -> {
@@ -2144,8 +2164,10 @@ class MonitoringService : Service() {
                     if (calls.isEmpty() && sms.isEmpty()) {
                         sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (search covers roughly the last 12 months).")
                     } else {
-                        if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls))
-                        if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms))
+                        val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                        val freqH = try { batchFreqMap() } catch (_: Exception) { null }
+                        if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
+                        if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
                     }
                 }
             }
@@ -3618,7 +3640,7 @@ class MonitoringService : Service() {
         val level = batteryLevel()
         sendToTelegram(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
-            appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}")
+            appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}${if (smsCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
@@ -3818,7 +3840,7 @@ class MonitoringService : Service() {
             val level = batteryLevel()
             sendToTelegram(buildString {
                 appendLine("🌙 <b>Ringkasan harian</b>")
-                appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
+                appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Watch hit: $hits")
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
@@ -4523,6 +4545,19 @@ class MonitoringService : Service() {
                             when (sendPhotoFile(photoFile)) {
                                 MediaSendOutcome.SENT -> {
                                     try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                                    try {
+                                        val used = cameraService.lastLensFacing
+                                        val asked = selectedLensFacing()
+                                        if (used != -1 && used != asked) {
+                                            val name = when (used) {
+                                                android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
+                                                android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"
+                                                else -> "lain"
+                                            }
+                                            sendToTelegram("📷 Lensa yang diminta tak ada, dipakai kamera $name.")
+                                        }
+                                    } catch (_: Exception) {
+                                    }
                                     flushPendingPhotos()
                                 }
                                 MediaSendOutcome.DROPPED -> {

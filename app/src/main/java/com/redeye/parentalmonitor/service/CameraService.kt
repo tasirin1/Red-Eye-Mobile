@@ -34,6 +34,8 @@ class CameraService(private val context: Context) {
 
     private val capturing = java.util.concurrent.atomic.AtomicBoolean(false)
     private val sessionSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile
+    var lastLensFacing = -1
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
     private var watchdogHandler: Handler? = null
@@ -804,9 +806,15 @@ class CameraService(private val context: Context) {
         return try {
             val ids = try { cameraManager.cameraIdList } catch (_: Exception) { emptyArray() }
             val exact = ids.firstOrNull { facingOf(it) == lensFacing }
-            if (exact != null) return exact
+            if (exact != null) {
+                lastLensFacing = lensFacing
+                return exact
+            }
             val fallback = ids.firstOrNull { val f = facingOf(it); f == CameraCharacteristics.LENS_FACING_BACK || f == CameraCharacteristics.LENS_FACING_FRONT }
-            if (fallback != null) Log.w(TAG, "Requested lens missing, using fallback camera")
+            if (fallback != null) {
+                Log.w(TAG, "Requested lens missing, using fallback camera")
+                lastLensFacing = facingOf(fallback) ?: -1
+            }
             fallback
         } catch (e: Exception) {
             Log.e(TAG, "Error finding camera", e)

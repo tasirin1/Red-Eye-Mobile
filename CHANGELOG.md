@@ -1,3 +1,13 @@
+## [1.6.220] - 2026-10-15
+### Fixed
+- Status Setup tak hilang saat jaringan lempar exception.
+- Flag monitoring ON hanya setelah service benar jalan.
+- Histori notif hormati opt-out (disable = tak catat).
+- Menu bot retry tiap jam bila gagal daftar.
+- Lensa fallback dikabari ke owner.
+- `/lastsms`, `/lastcalls`, `/history` hemat query batch.
+- Digest tulis cap 200 data.
+
 ## [1.6.219] - 2026-10-15
 ### Fixed
 - Flush media kuras tuntas (maks 3 batch): backlog tak lagi dipangkas prune sebelum dicoba.

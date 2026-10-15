@@ -395,6 +395,8 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (!cfgEnabled) {
             try {
+                val dis = try { (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).userDisabledMonitoring } catch (_: Exception) { false }
+                if (dis) return
                 val gatedExtras = notification.extras
                 val gatedTitle = gatedExtras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
                 var gatedBody = gatedExtras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()

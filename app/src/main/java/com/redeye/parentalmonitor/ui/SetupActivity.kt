@@ -800,7 +800,6 @@ class SetupActivity : AppCompatActivity() {
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
-                try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
                 try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
@@ -813,6 +812,7 @@ class SetupActivity : AppCompatActivity() {
                         } else {
                             startService(intent)
                         }
+                        try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -915,8 +915,8 @@ class SetupActivity : AppCompatActivity() {
                     appendLine("Battery restriction: ${if (isBatteryExempt()) "off" else "ON — tap Disable Battery Restriction"}")
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
-                val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
                 pending = text
+                val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 var failCode = resp.code()
                 if (ok) {
