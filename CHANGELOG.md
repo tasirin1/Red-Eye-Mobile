@@ -1,3 +1,7 @@
+## [1.6.211] - 2026-10-15
+### Fixed
+- Perbaiki gagal kompilasi v1.6.210: `capturing` tak ada di service (buang), `markHandled` companion terima `context` (7 call site).
+
 ## [1.6.210] - 2026-10-15
 ### Fixed
 - **MessageQueue** corrupt JSON tidak lagi hapus pesan asli (recovery tanpa overwrite).

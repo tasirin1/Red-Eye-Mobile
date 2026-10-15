@@ -192,7 +192,6 @@ class MonitoringService : Service() {
             recordBusy.set(false)
             smsBusy.set(false)
             cameraBusy.set(false)
-            capturing.set(false)
         } catch (_: Exception) {
         }
         try {
