@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.232] - 2026-10-15
 ### Fixed
 - Angka perintah rentang-tegas (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/ring`): di luar rentang ditolak, bukan diam-diam dijepit.
 - `/history` batasi 7–20 digit (pola LIKE raksasa tertutup).
