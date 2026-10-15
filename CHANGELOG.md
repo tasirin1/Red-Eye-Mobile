@@ -1,3 +1,10 @@
+## [Unreleased]
+### Fixed
+- Kolom interval Setup kosong dari XML sehingga default `BuildConfig.SYNC_INTERVAL` (CI) tampil dan tak tertimpa `5`/`1`.
+- `/ring`, `/record`, `/recordvideo`, `/hilang` kunci flag sendiri dulu sebelum cek lawan (adu audio tertutup).
+- `toggleMonitoring` tawarkan izin notifikasi (Android 13+) sebelum dialog persetujuan.
+- `cek-cepat.sh` pindai tracked tree saat tak ada staged (cek secret tak lagi buta di CI).
+
 ## [1.6.223] - 2026-10-15
 ### Fixed
 - Konfigurasi volatil tak lagi dianggap tersimpan (`isConfigured` syarat storage terenkripsi; gagal keystore = terlihat belum tersimpan, bukan monitoring mati diam-diam).

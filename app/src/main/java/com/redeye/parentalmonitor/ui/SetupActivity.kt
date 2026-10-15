@@ -752,6 +752,13 @@ class SetupActivity : AppCompatActivity() {
             }
             return
         }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                try { notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+        }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.setup_consent_title))
             .setMessage(getString(R.string.setup_consent_text))

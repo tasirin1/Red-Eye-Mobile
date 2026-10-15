@@ -1869,10 +1869,11 @@ class MonitoringService : Service() {
                 val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()?.coerceIn(5, 60)
                 if (seconds == null) {
                     sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
-                } else if (recordBusy.get()) {
-                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
+                } else if (recordBusy.get()) {
+                    ringBusy.set(false)
+                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else {
                     ringJob = serviceScope.launch {
                         try {
@@ -1928,10 +1929,11 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /record \u003c5-600\u003e (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
-                } else if (ringBusy.get()) {
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                } else if (ringBusy.get()) {
+                    recordBusy.set(false)
+                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
                     recordJob = serviceScope.launch {
@@ -1951,10 +1953,11 @@ class MonitoringService : Service() {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Camera permission missing. Open Setup and grant Camera permission.")
-                } else if (ringBusy.get()) {
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                } else if (ringBusy.get()) {
+                    recordBusy.set(false)
+                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
                 } else {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
                     recordJob = serviceScope.launch {
@@ -2313,12 +2316,13 @@ class MonitoringService : Service() {
             }
             "/hilang" -> {
                 val level = batteryLevel()
-                if (recordBusy.get()) {
-                    sendToTelegram("⏳ Sudah merekam, tunggu selesai.")
-                    return
-                }
                 if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
+                    return
+                }
+                if (recordBusy.get()) {
+                    ringBusy.set(false)
+                    sendToTelegram("⏳ Sudah merekam, tunggu selesai.")
                     return
                 }
                 sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")

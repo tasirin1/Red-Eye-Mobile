@@ -43,4 +43,14 @@ fi
 if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -v -E 'Regex|REGEX|Pattern' | grep -E -q '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
+# 5. Mode CI: tak ada staged (index bersih) → pindai tracked tree.
+# Menangkap secret yang terlanjur ter-commit via --no-verify.
+if [ -z "$(git diff --cached --name-only)" ]; then
+  if git ls-files | grep -E -q '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$'; then
+    echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
+  fi
+  if git grep -I -E -n '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null | grep -v -E 'Regex|REGEX|Pattern' | grep -q .; then
+    echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
+  fi
+fi
 exit $gagal
