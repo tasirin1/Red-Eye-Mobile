@@ -1,3 +1,10 @@
+## [Unreleased]
+### Fixed
+- 400 permanen benar tak antre (log kini jujur; worker memang langsung buang).
+- Parsing perintah satu splitter (`\s+` di tahap-1 dan `/sms`); edit pesan diproses (bukan hilang diam-diam).
+- `/smsconfirm` tahan jam-mundur (pending tak dihapus skew).
+- `AdminReceiver` `refreshInstance()` sebelum baca (peringatan admin tak hilang saat keystore blip).
+
 ## [1.6.229] - 2026-10-15
 ### Fixed
 - Pairing: kode rotasi 24 jam + lockout global 1 jam setelah 10 tebak gagal (throttle per-pengirim tetap).

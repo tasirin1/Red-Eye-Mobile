@@ -1143,14 +1143,15 @@ class MonitoringService : Service() {
                 if (callback != null) {
                     handleCallbackQuery(callback)
                 } else {
-                    val message = update.message ?: update.channelPost
+                    val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
                     val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
-                    val head = rawText.substringBefore(" ")
+                    val headArg = rawText.split(CMD_SPLIT_REGEX, limit = 2)
+                    val head = headArg.getOrNull(0).orEmpty()
                     val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
-                    val arg = if (head.length < rawText.length) rawText.substring(head.length + 1).trim() else ""
+                    val arg = headArg.getOrNull(1)?.trim().orEmpty()
                     val startHead = command
                     val startArg = arg
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
@@ -1984,8 +1985,9 @@ class MonitoringService : Service() {
                 }
             }
             "/sms" -> {
-                val number = arg.substringBefore(" ").trim()
-                val smsText = arg.substringAfter(" ", "").trim()
+                val numberArg = arg.split(CMD_SPLIT_REGEX, limit = 2)
+                val number = numberArg.getOrNull(0)?.trim().orEmpty()
+                val smsText = numberArg.getOrNull(1)?.trim().orEmpty()
                 var badChar = false
                 var plusCount = 0
                 val digits = StringBuilder(number.length + 1)
@@ -2038,7 +2040,7 @@ class MonitoringService : Service() {
                 val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
-                    if (stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
@@ -3528,20 +3530,12 @@ class MonitoringService : Service() {
                                 noteDroppedMessage()
                             } catch (_: Exception) {
                             }
-                            if (queueOnFail) {
-                                messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSend(this)
-                            }
                             return false
                         } else {
                             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
                             try {
                                 noteDroppedMessage()
                             } catch (_: Exception) {
-                            }
-                            if (queueOnFail) {
-                                messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSend(this)
                             }
                             return false
                         }
@@ -3557,10 +3551,6 @@ class MonitoringService : Service() {
                     try {
                         noteDroppedMessage()
                     } catch (_: Exception) {
-                    }
-                    if (queueOnFail) {
-                        messageQueue.addMessage(plain)
-                        MessageScheduler.scheduleMessageSend(this)
                     }
                     return false
                 }
