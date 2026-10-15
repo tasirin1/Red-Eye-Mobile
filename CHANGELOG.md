@@ -1,3 +1,13 @@
+## [1.6.212] - 2026-10-15
+### Fixed
+- HTC QUICKBOOT didukung lagi (manifest + receiver).
+- Ring-restore boot hanya hapus state bila restore sukses.
+- `cancelBootRestart` baru; dipanggil saat Clear + Stop; `patrolInterval` ikut reset saat Clear.
+- Screenshot-notice boot hanya bila terkonfigurasi.
+- Stage SMS kabari bila teks beda; pending aman dari jam mundur.
+- Test koneksi murni cek jaringan (validasi interval hanya di Save).
+- Guard start anti macet (`finally`).
+
 ## [1.6.211] - 2026-10-15
 ### Fixed
 - Perbaiki gagal kompilasi v1.6.210: `capturing` tak ada di service (buang), `markHandled` companion terima `context` (7 call site).

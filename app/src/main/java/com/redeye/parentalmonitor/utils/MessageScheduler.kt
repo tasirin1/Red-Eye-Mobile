@@ -117,6 +117,13 @@ object MessageScheduler {
         }
     }
 
+    fun cancelBootRestart(context: Context) {
+        try {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(BOOT_RESTART_WORK)
+        } catch (_: Exception) {
+        }
+    }
+
     fun cancelWatchdog(context: Context) {
         try {
             WorkManager.getInstance(context.applicationContext).cancelUniqueWork(BOOT_WATCHDOG_WORK)

@@ -358,6 +358,7 @@ class SetupActivity : AppCompatActivity() {
         try { stopService(Intent(this, MonitoringService::class.java)) } catch (_: Exception) { }
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
         try { MessageScheduler.cancelWatchdog(this) } catch (_: Exception) { }
+        try { MessageScheduler.cancelBootRestart(this) } catch (_: Exception) { }
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")
@@ -402,6 +403,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.ownerPairCode = "" } catch (_: Exception) { }
             try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
             try { prefs.cameraInterval = 1 } catch (_: Exception) { }
+            try { prefs.patrolInterval = 30 } catch (_: Exception) { }
             try {
                 cacheDir?.listFiles { f ->
                     f.isFile && (f.name.startsWith("camera_") || f.name.startsWith("video_") || f.name.startsWith("audio_") || f.name.startsWith("screenshot_"))
@@ -606,14 +608,6 @@ class SetupActivity : AppCompatActivity() {
     private fun testConnection() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
-        val probeSyncParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
-        val probeCameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
-        if (probeSyncParsed == null || probeCameraParsed == null || probeSyncParsed !in 1..1440 || probeCameraParsed !in 0..60) {
-            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
-            return
-        }
-        val probeSync = probeSyncParsed
-        val probeCamera = probeCameraParsed
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
@@ -764,6 +758,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
+            try { MessageScheduler.cancelBootRestart(this@SetupActivity) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -790,26 +785,29 @@ class SetupActivity : AppCompatActivity() {
             startingMonitoring = true
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
-            try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                if (isFinishing || isDestroyed) return@withContext
-                val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
-                    action = MonitoringService.ACTION_START_MONITORING
-                }
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(intent)
-                    } else {
-                        startService(intent)
+            try {
+                try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
+                try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
+                        action = MonitoringService.ACTION_START_MONITORING
                     }
-                    Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+                    }
+                    updateStatus()
                 }
-                updateStatus()
+            } finally {
+                synchronized(startGuard) { startingMonitoring = false }
             }
-            synchronized(startGuard) { startingMonitoring = false }
         }
     }
 

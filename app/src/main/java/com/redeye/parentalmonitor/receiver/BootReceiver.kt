@@ -12,12 +12,14 @@ class BootReceiver : BroadcastReceiver() {
 
     companion object {
         private const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
+        private const val ACTION_HTC_QUICKBOOT = "com.htc.intent.action.QUICKBOOT_POWERON"
 
         private val BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
-            ACTION_QUICKBOOT_POWERON
+            ACTION_QUICKBOOT_POWERON,
+            ACTION_HTC_QUICKBOOT
         )
 
         private val handleLock = Any()
@@ -117,14 +119,18 @@ class BootReceiver : BroadcastReceiver() {
             val stuckAt = preferencesManager.ringSavedAt
             val ringAge = System.currentTimeMillis() - stuckAt
             if (stuckVolume >= 0 && stuckAt > 0L && ringAge >= 0L && (ringAge > 60_000L && ringAge < 12 * 60 * 60_000L)) {
+                var restored = false
                 try {
                     val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
                     audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckVolume, 0)
+                    restored = true
                 } catch (_: Exception) {
                 }
-                try {
-                    preferencesManager.clearRingStateSync()
-                } catch (_: Exception) {
+                if (restored) {
+                    try {
+                        preferencesManager.clearRingStateSync()
+                    } catch (_: Exception) {
+                    }
                 }
             } else if (stuckVolume >= 0 || stuckAt > 0L) {
                 try {
@@ -134,15 +140,17 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON
+        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT
         if (!updated && bootClear) {
             try {
                 if (preferencesManager.hasScreenshotConsent()) {
                     preferencesManager.clearScreenshotConsentSync()
-                    try {
-                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("📺 Izin screenshot hangus saat reboot. Berikan ulang di Setup bila perlu /screenshot.")
-                        MessageScheduler.scheduleMessageSend(context)
-                    } catch (_: Exception) {
+                    if (preferencesManager.isConfigured()) {
+                        try {
+                            com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("📺 Izin screenshot hangus saat reboot. Berikan ulang di Setup bila perlu /screenshot.")
+                            MessageScheduler.scheduleMessageSend(context)
+                        } catch (_: Exception) {
+                        }
                     }
                 } else {
                     preferencesManager.clearScreenshotConsentSync()
