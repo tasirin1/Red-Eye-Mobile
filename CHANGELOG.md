@@ -1,3 +1,7 @@
+## [1.6.221] - 2026-10-15
+### Fixed
+- Perbaiki gagal kompilasi v1.6.220: helper izin ganda (sudah ada).
+
 ## [1.6.220] - 2026-10-15
 ### Fixed
 - Status Setup tak hilang saat jaringan lempar exception.

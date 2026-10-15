@@ -4911,20 +4911,6 @@ class MonitoringService : Service() {
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    private fun hasSmsPermission(): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.READ_SMS
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun hasCallLogPermission(): Boolean {
-        return androidx.core.content.ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.READ_CALL_LOG
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
     private fun hasContactsPermission(): Boolean {
         return androidx.core.content.ContextCompat.checkSelfPermission(
             this,
