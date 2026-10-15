@@ -62,6 +62,8 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var wakeBackoffUntil = 0L
     @Volatile
+    private var wakeOffsetFail = 0
+    @Volatile
     private var netCheckAt = 0L
     @Volatile
     private var netCached = false
@@ -326,11 +328,14 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (squeezedPriority) {
                         val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
                         try { record(squeezedLabel, t, x) } catch (_: Exception) { }
-                        try {
-                            queue().addMessage(buildNotifMessage(squeezedLabel, t, x))
-                            queue().flushSync()
-                            MessageScheduler.scheduleMessageSend(this)
-                        } catch (_: Exception) {
+                        val squeezedMsg = try { buildNotifMessage(squeezedLabel, t, x) } catch (_: Exception) { "" }
+                        scope.launch {
+                            try {
+                                if (squeezedMsg.isNotEmpty()) queue().addMessage(squeezedMsg)
+                                queue().flushSync()
+                                MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+                            } catch (_: Exception) {
+                            }
                         }
                     } else recordOverflow(pkg, t, x)
                 }
@@ -504,7 +509,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (raw.isNotEmpty()) {
                     val low = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
                     val hit = raw.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.firstOrNull { it.length >= 3 && low.contains(it) }
-                    if (hit != null) appendLine("⚠️ Watch: $hit")
+                    if (hit != null) appendLine("⚠️ Watch: " + Html.escape(hit))
                 }
             } catch (_: Exception) {
             }
@@ -636,11 +641,21 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 val body400 = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body400.contains("offset")) {
-                    val freshMain = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
-                    wakeUpdateId = maxOf(freshMain, wakeUpdateId)
-                    try {
-                        prefs.setWakeUpdateIdSync(wakeUpdateId)
-                    } catch (_: Exception) {
+                    wakeOffsetFail++
+                    if (wakeOffsetFail >= 3) {
+                        wakeOffsetFail = 0
+                        wakeUpdateId = 0L
+                        try {
+                            prefs.setWakeUpdateIdSync(0L)
+                        } catch (_: Exception) {
+                        }
+                    } else {
+                        val freshMain = try { prefs.lastUpdateId } catch (_: Exception) { mainLast }
+                        wakeUpdateId = maxOf(freshMain, wakeUpdateId)
+                        try {
+                            prefs.setWakeUpdateIdSync(wakeUpdateId)
+                        } catch (_: Exception) {
+                        }
                     }
                 }
                 wakeBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
@@ -698,6 +713,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (u.updateId > mainLast) pingIds.add(u.updateId)
         }
         wakeUpdateId = maxId
+        wakeOffsetFail = 0
         try {
             prefs.setWakeUpdateIdSync(maxId)
         } catch (_: Exception) {

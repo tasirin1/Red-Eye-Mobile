@@ -1,3 +1,15 @@
+## [1.6.213] - 2026-10-15
+### Fixed
+- Penjadwal: hitung ganda counter diperbaiki (gagal enqueue kembalikan hitungan).
+- Boot retry auth dibatasi 5x (andalkan watchdog 15 mnt).
+- Callback: dedup dulu, jawab sekali.
+- Replay: offset di-pre-claim untuk perintah mutating.
+- Polling 5xx/408 backoff 60 detik.
+- Squeeze prioritas jalan background (anti ANR).
+- Watch keyword di-escape.
+- Wake 400-offset reset setelah 3x gagal.
+- Ganti identitas reset kursor/SMS pending/ring/screenshot/drop.
+
 ## [1.6.212] - 2026-10-15
 ### Fixed
 - HTC QUICKBOOT didukung lagi (manifest + receiver).

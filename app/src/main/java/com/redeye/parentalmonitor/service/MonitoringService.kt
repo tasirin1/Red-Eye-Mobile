@@ -1085,6 +1085,10 @@ class MonitoringService : Service() {
             }
             return false
         }
+        if (response.code() == 408 || response.code() >= 500) {
+            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
+            return false
+        }
         if (!response.isSuccessful || response.body()?.ok != true) return false
         try {
             preferencesManager.credentialError = ""
@@ -1162,6 +1166,9 @@ class MonitoringService : Service() {
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
                             val effCommand = input.substringBefore(" ")
                             val wakeSeen = effCommand == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
+                            if (effCommand in MUTATING_COMMANDS) {
+                                try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
+                            }
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
                             if (wakeSeen) {
                                 try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
@@ -1170,6 +1177,9 @@ class MonitoringService : Service() {
                             val aliasInput = resolveAliasInput(command, arg)
                             val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
                             if (aliasInput != null && privateOwner) {
+                                if (aliasInput.substringBefore(" ") in MUTATING_COMMANDS) {
+                                    try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
+                                }
                                 handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, false, senderId, true)
                             }
                         }
@@ -1197,7 +1207,6 @@ class MonitoringService : Service() {
             answerCallback(query.id)
             return
         }
-        answerCallback(query.id)
         val dupCallback = synchronized(handledCallbackIds) {
             val seen = !handledCallbackIds.add(query.id)
             while (handledCallbackIds.size > 500) {
@@ -1215,6 +1224,7 @@ class MonitoringService : Service() {
             }
             seen
         }
+        try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         val command = when (query.data) {
