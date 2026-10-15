@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.234] - 2026-10-15
 ### Fixed
 - Perintah purba (>1 jam, mis. replay resync) dibuang diam-diam; yang basi (<15 mnt) tetap dibalas.
 
