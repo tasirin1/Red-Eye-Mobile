@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Tombol `=` kalkulator merentang 3 baris (sel kosong kanan-bawah tertutup).
+- Judul `# Changelog` + presisi docs (pemicu `main`-only, pengecualian tag di `concurrency`).
+
 ## [1.6.226] - 2026-10-15
 ### Fixed
 - `/smsconfirm` tolak jam-maju/mundur seperti `/sms` (pending tak hangus palsu / tak abadi).
