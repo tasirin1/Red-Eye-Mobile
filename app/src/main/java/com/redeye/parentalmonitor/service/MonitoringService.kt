@@ -2023,8 +2023,8 @@ class MonitoringService : Service() {
                 val stagedAt = preferencesManager.pendingSmsAt
                 val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
                 val nowConfirm = System.currentTimeMillis()
-                if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || nowConfirm - stagedAt > 300_000L) {
-                    if (stagedAt <= 0L || nowConfirm - stagedAt > 300_000L) preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
+                    if (stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) preferencesManager.writeSmsPendingSync("", "", 0L, "")
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
@@ -4390,8 +4390,8 @@ class MonitoringService : Service() {
         }
         cachedSetupTap = null
         isRunning = false
-        super.onDestroy()
         serviceScope.cancel()
+        super.onDestroy()
     }
     
     // ═══════════════════════════════════════════════════════════

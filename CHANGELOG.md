@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- `/smsconfirm` tolak jam-maju/mundur seperti `/sms` (pending tak hangus palsu / tak abadi).
+- `onDestroy` batalkan `serviceScope` sebelum `super.onDestroy()` (selaras `NotificationForwarderService`, tanpa job bocor).
+
 ## [1.6.225] - 2026-10-15
 ### Fixed
 - Log error/warning release dibungkus `BuildConfig.DEBUG` (8 titik: kalkulator, admin, scheduler) — tak bocor ke logcat.
