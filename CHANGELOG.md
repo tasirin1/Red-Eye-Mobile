@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.233] - 2026-10-15
 ### Fixed
 - Job bunyi/rekam lama di-cancel sebelum referensi ditimpa (restore volume tak balapan).
 
