@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.236] - 2026-10-15
 ### Fixed
 - Notifikasi prioritas tak lagi macet permanen (kirim langsung di jalur serial, tanpa tunggu diri sendiri).
 
