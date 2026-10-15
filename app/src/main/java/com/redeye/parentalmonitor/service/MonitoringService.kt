@@ -4750,7 +4750,12 @@ class MonitoringService : Service() {
                 Intent.parseUri(uri, 0)
             }
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            projection = mpm.getMediaProjection(code, data)
+            try {
+                projection = mpm.getMediaProjection(code, data)
+            } catch (e: SecurityException) {
+                try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
+                return null
+            }
             val metrics = DisplayMetrics()
             val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
             try {

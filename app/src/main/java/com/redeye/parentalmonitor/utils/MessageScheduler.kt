@@ -71,7 +71,7 @@ object MessageScheduler {
             }
             true
         } catch (e: Exception) {
-            android.util.Log.w("MessageScheduler", "Schedule send failed", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false
         }
     }
@@ -98,7 +98,7 @@ object MessageScheduler {
             outstandingSends.set(1)
             true
         } catch (e: Exception) {
-            android.util.Log.w("MessageScheduler", "Schedule send failed", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false
         }
     }
@@ -143,7 +143,7 @@ object MessageScheduler {
                 .enqueueUniquePeriodicWork(BOOT_WATCHDOG_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
             true
         } catch (e: Exception) {
-            android.util.Log.w("MessageScheduler", "Schedule watchdog failed", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule watchdog failed", e)
             false
         }
     }
@@ -163,7 +163,7 @@ object MessageScheduler {
                 .enqueueUniqueWork(BOOT_RESTART_WORK, ExistingWorkPolicy.KEEP, restartRequest)
             true
         } catch (e: Exception) {
-            android.util.Log.w("MessageScheduler", "Schedule reboot restart failed", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule reboot restart failed", e)
             false
         }
     }

@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivity(Intent(this, SetupActivity::class.java))
         } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Failed to open setup", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to open setup", e)
             try {
                 Toast.makeText(this, getString(R.string.msg_open_setup_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             } catch (_: Exception) {
@@ -343,7 +343,7 @@ class MainActivity : AppCompatActivity() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as regular service")
             }
         } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Failed to start service", e)
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to start service", e)
             throw e
         }
     }

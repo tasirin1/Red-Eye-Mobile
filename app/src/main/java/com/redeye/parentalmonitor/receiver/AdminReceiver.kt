@@ -15,7 +15,7 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
-        android.util.Log.w("AdminReceiver", "Device Admin disabled!")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("AdminReceiver", "Device Admin disabled!")
         try {
             Toast.makeText(context, context.getString(R.string.admin_disabled), Toast.LENGTH_LONG).show()
         } catch (_: Exception) {
@@ -40,7 +40,7 @@ class AdminReceiver : DeviceAdminReceiver() {
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
-        android.util.Log.w("AdminReceiver", "Attempting to disable Device Admin!")
+        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("AdminReceiver", "Attempting to disable Device Admin!")
         return try {
             context.getString(R.string.admin_disable_warning)
         } catch (_: Exception) {

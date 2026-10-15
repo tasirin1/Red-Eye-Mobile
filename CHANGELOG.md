@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Log error/warning release dibungkus `BuildConfig.DEBUG` (8 titik: kalkulator, admin, scheduler) — tak bocor ke logcat.
+- Consent screenshot basi auto-hapus saat sistem menolak token (`SecurityException`) — status Setup jujur `off`, bukan `granted` palsu.
+
 ## [1.6.224] - 2026-10-15
 ### Fixed
 - Kolom interval Setup kosong dari XML sehingga default `BuildConfig.SYNC_INTERVAL` (CI) tampil dan tak tertimpa `5`/`1`.
