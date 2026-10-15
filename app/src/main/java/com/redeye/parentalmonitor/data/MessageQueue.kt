@@ -433,7 +433,9 @@ class MessageQueue private constructor(context: Context) {
         lastPersistAt = now
         persistDirty = false
         try {
-            prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))?.apply()
+            val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
+            if (force && android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
+            else editor?.apply()
         } catch (_: Exception) {
         }
     }

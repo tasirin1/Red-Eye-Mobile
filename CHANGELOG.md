@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- Konfigurasi volatil tak lagi dianggap tersimpan (`isConfigured` syarat storage terenkripsi; gagal keystore = terlihat belum tersimpan, bukan monitoring mati diam-diam).
+- Hapus pesan antrean tulis sinkron di luar main-thread (duplikat kirim ulang pasca-crash menyempit).
+
 ## [1.6.222] - 2026-10-15
 ### Changed
 - Workflow disederhanakan: verifikasi-path jadi job pertama `build.yml` (build nunggu lolos); berkas workflow lama dihapus.

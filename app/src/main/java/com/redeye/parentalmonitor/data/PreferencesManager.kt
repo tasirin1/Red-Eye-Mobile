@@ -394,7 +394,7 @@ class PreferencesManager(context: Context) {
         set(value) = sharedPreferences.edit().putString(KEY_CAMERA_FACING, value).apply()
 
     fun isConfigured(): Boolean {
-        return try { botToken.isNotEmpty() && chatId.isNotEmpty() } catch (_: Exception) { false }
+        return try { storageEncrypted && botToken.isNotEmpty() && chatId.isNotEmpty() } catch (_: Exception) { false }
     }
 
     fun registerChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
