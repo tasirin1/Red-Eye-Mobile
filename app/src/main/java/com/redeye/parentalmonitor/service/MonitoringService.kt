@@ -383,7 +383,6 @@ class MonitoringService : Service() {
                 return START_NOT_STICKY
             }
             }
-            START_STICKY
         } catch (_: Exception) {
             START_STICKY
         }

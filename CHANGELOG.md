@@ -1,3 +1,13 @@
+## [Unreleased]
+### Fixed
+- SetupActivity tidak lagi menghapus input kredensial yang belum disimpan saat aktivitas direkreasi (putar layar / proses berhenti).
+- Hapus kode mati (unreachable START_STICKY) di MonitoringService.onStartCommand.
+
+## [1.6.273] - 2026-10-16
+### Fixed
+- SetupActivity tidak lagi menghapus input kredensial yang belum disimpan saat aktivitas direkreasi (putar layar / proses berhenti).
+- Hapus kode mati (unreachable START_STICKY) di MonitoringService.onStartCommand.
+
 ## [1.6.272] - 2026-10-16
 ### Changed
 - Tema aplikasi ikut logo: primer biru `#2196F3`, sekunder oranye `#FF9800` (ungu hilang).

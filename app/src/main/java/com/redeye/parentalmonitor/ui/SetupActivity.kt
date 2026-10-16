@@ -310,22 +310,6 @@ class SetupActivity : AppCompatActivity() {
         notifButton = findViewById(R.id.setupNotifButton)
         shotButton = findViewById(R.id.setupShotButton)
 
-        try {
-            botTokenInput.setText("")
-        } catch (_: Exception) {
-        }
-        try {
-            chatIdInput.setText("")
-        } catch (_: Exception) {
-        }
-        try {
-            syncIntervalInput.setText("")
-        } catch (_: Exception) {
-        }
-        try {
-            cameraIntervalInput.setText("")
-        } catch (_: Exception) {
-        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
                 PreferencesManager.refreshInstance(this@SetupActivity)
