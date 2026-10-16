@@ -5,6 +5,13 @@
 - Halaman Setup tanpa top bar + judul ganda — konten langsung status + form.
 - Kalkulator tanpa top bar sistem — full kalkulator + stealth.
 
+## [1.6.269] - 2026-10-16
+### Fixed
+- WakeLock video dilepas saat watchdog timeout (tak digantung 120 dtk).
+- Notif konflik 409 tetap terkirim saat ambiguitas wake-loop (hanya restart-sendiri yang sunyi) — poller liar tak luput.
+- Transisi geofence masuk/keluar abaikan fix kasar (gate akurasi = radius), cegah flip + spam ganda.
+- Hapus staging kedaluwarsa/diblokir kini berguard-ID, tak bisa sapu staging baru.
+
 ## [1.6.268] - 2026-10-16
 ### Added
 - Backup/restore setingan via file `.redeyebak` terenkripsi PIN (AES-GCM + PBKDF2): tombol Backup/Restore di Setup; restore mengisi form, Save tetap verifikasi.

@@ -1079,7 +1079,8 @@ class MonitoringService : Service() {
             idlePolls = 4
             try {
                 val nowConflict = System.currentTimeMillis()
-                if (!selfConflict && nowConflict - updateConflictNoticeAt > 3_600_000L) {
+                val quietRestart = try { now409 - lastLoopRestartAt < 60_000L } catch (_: Exception) { false }
+                if (!quietRestart && nowConflict - updateConflictNoticeAt > 3_600_000L) {
                     updateConflictNoticeAt = nowConflict
                     serviceScope.launch {
                         sendToTelegram("Bot polling conflict (409): another client is reading updates, commands delayed. Stop other polling clients.")
@@ -2072,14 +2073,14 @@ class MonitoringService : Service() {
                 val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
-                    if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
                     sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
                 } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
-                    preferencesManager.writeSmsPendingSync("", "", 0L, "")
+                    preferencesManager.clearSmsPendingIf(stagedAt)
                     sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
                 } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
                     sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
@@ -3830,7 +3831,7 @@ class MonitoringService : Service() {
                     if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
                     continue
                 }
-                if (state != now) {
+                if (state != now && (accuracyM < 0f || accuracyM <= rad.toFloat())) {
                     if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
                     val name = if (isHome) "Rumah" else "Sekolah"
                     val verb = if (inside) "masuk" else "keluar"
@@ -5634,6 +5635,7 @@ class MonitoringService : Service() {
             if (videoAttempt.get() == attempt && recordBusy.compareAndSet(true, false)) {
                 videoAttempt.incrementAndGet()
                 try { cameraService.forceReset() } catch (_: Exception) { }
+                releaseOpWakeLock(videoLock)
                 android.util.Log.w("MonitoringService", "Video watchdog: recording did not finish, flag reset")
                 sendToTelegram("⚠️ Video recording timed out without a response. Please try /recordvideo again.")
             }
