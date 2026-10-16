@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.243] - 2026-10-16
 ### Fixed
 - Masa jeda rate-limit tak lagi hangus saat loop restart (tak memancing 429 berulang).
 
