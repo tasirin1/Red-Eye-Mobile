@@ -1,3 +1,7 @@
+## [1.6.265] - 2026-10-16
+### Fixed
+- Video rekaman kini bawa hint orientasi (sensor + rotasi layar, sama seperti foto) — tak lagi miring di Telegram saat HP tegak.
+
 ## [1.6.264] - 2026-10-16
 ### Fixed
 - Blob antrean korup tak lagi memusnahkan semua pesan unsent: salinan backup otomatis dipakai + sembuh ke depan; penghapusan antrean ikut bersihkan backup.

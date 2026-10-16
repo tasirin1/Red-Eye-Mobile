@@ -558,6 +558,10 @@ class CameraService(private val context: Context) {
             rec.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
             rec.setVideoSize(videoSize.first, videoSize.second)
             try {
+                rec.setOrientationHint(getJpegOrientation(cameraManager, cameraId, lensFacing))
+            } catch (_: Exception) {
+            }
+            try {
                 val ranges = cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
                 if (ranges?.any { it.lower <= 24 && 24 <= it.upper } == true) rec.setVideoFrameRate(24)
             } catch (_: Exception) {
