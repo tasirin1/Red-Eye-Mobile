@@ -373,7 +373,7 @@ class MonitoringService : Service() {
                             if (shouldAutoResume() || needsCredsRetry()) {
                                 MessageScheduler.scheduleBootRestart(this@MonitoringService)
                             } else {
-                                stopSelf()
+                                stopSelfResult(startId)
                             }
                         } catch (_: Exception) {
                         }
