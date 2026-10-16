@@ -1,3 +1,7 @@
+## [1.6.260] - 2026-10-16
+### Fixed
+- Interval adaptif tak lagi direset oleh data yang gagal terkirim — saat offline, retry melambat hemat baterai/kuota, bukan mengetat tiap siklus.
+
 ## [1.6.259] - 2026-10-16
 ### Fixed
 - Notifikasi terbuang saat burst (>64 antre) kini dihitung + dilaporkan ke owner (notif agregat), tak lagi hilang diam-diam di history volatil.
