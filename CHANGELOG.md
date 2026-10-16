@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.242] - 2026-10-16
 ### Fixed
 - Pesan masuk langsung ditulis tahan-mati (tak hilang bila proses mati sedetik kemudian).
 
