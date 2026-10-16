@@ -4262,8 +4262,6 @@ class MonitoringService : Service() {
         }
         initialSyncRunning.set(false)
         idlePolls = 0
-        commandBackoffUntil = 0L
-        mediaBackoffUntil = 0L
         try {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {

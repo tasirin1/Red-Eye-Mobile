@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Masa jeda rate-limit tak lagi hangus saat loop restart (tak memancing 429 berulang).
+
 ## [1.6.242] - 2026-10-16
 ### Fixed
 - Pesan masuk langsung ditulis tahan-mati (tak hilang bila proses mati sedetik kemudian).
