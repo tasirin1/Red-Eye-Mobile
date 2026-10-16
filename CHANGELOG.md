@@ -1,3 +1,7 @@
+## [1.6.246] - 2026-10-16
+### Fixed
+- Perbaiki error kompilasi v1.6.245: `DisplayManager.DISPLAY_ID_PRIMARY`/`DISPLAY_ID_DEFAULT` tidak ada di SDK; pakai `Display.DEFAULT_DISPLAY`.
+
 ## [1.6.245] - 2026-10-16
 ### Fixed
 - Kamera foto miring di landscape: rotasi JPEG via DisplayManager, bukan context.display (service tidak punya display).
