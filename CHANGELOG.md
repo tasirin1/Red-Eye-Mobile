@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Pesan masuk langsung ditulis tahan-mati (tak hilang bila proses mati sedetik kemudian).
+
 ## [1.6.241] - 2026-10-15
 ### Fixed
 - Worker restart coba lagi berbatas saat storage terkunci (tak langsung menyerah; jalur utama unlock tetap lewat receiver).

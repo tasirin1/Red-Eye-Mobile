@@ -135,7 +135,7 @@ class MessageQueue private constructor(context: Context) {
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            persistLocked(queue)
+            persistLocked(queue, force = true)
         }
     }
 
@@ -157,7 +157,7 @@ class MessageQueue private constructor(context: Context) {
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            persistLocked(queue)
+            persistLocked(queue, force = true)
         }
     }
 
@@ -435,7 +435,7 @@ class MessageQueue private constructor(context: Context) {
         persistDirty = false
         try {
             val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
-            if (force && android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
+            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
             else editor?.apply()
         } catch (_: Exception) {
         }
