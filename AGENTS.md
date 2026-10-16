@@ -39,6 +39,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Jangan tambah komentar inline di kode kecuali diminta.
 - Jangan tambah header lisensi/copyright.
 - Jangan `git commit` / buat branch kecuali diminta eksplisit atau diwajibkan alur rilis `§8`.
+- Mode perbaiki = maraton: kerjakan temuan satu per satu sampai habis; tiap putaran cek antrian CI (`gh run list`), bila ada gagal build dahulukan perbaikannya baru lanjut ke temuan lain.
 - Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding — fitur dimatikan di `app/build.gradle`).
 
 ## 6. Changelog & Dokumentasi
