@@ -1,3 +1,7 @@
+## [1.6.251] - 2026-10-16
+### Fixed
+- Polling `getUpdates` kini hormati flood-wait global 429 (tidur sampai masa rate-limit habis), tak lagi memperpanjang pemblokiran Telegram saat antrean kirim sedang ditahan.
+
 ## [1.6.250] - 2026-10-16
 ### Fixed
 - `/restart`/watchdog tak lagi membisukan perintah 5 menit: 409 dalam 60 dtk setelah restart dianggap konflik-sendiri (backoff 60 dtk, tanpa notif "another client"); 409 murni eksternal tetap 300 dtk + notif.

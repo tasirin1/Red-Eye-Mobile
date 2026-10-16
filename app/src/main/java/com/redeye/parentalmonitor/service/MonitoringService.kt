@@ -1020,6 +1020,11 @@ class MonitoringService : Service() {
     private suspend fun pollTelegramCommands(): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isPollBlocked(preferencesManager)) return false
+        val rateRemainMs = NetworkUtils.rateLimitedRemainMs()
+        if (rateRemainMs > 0L) {
+            commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + rateRemainMs)
+            return false
+        }
         val (botToken, chatId) = sendCreds()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
