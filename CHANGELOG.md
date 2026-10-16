@@ -1,3 +1,7 @@
+## [1.6.264] - 2026-10-16
+### Fixed
+- Blob antrean korup tak lagi memusnahkan semua pesan unsent: salinan backup otomatis dipakai + sembuh ke depan; penghapusan antrean ikut bersihkan backup.
+
 ## [1.6.263] - 2026-10-16
 ### Fixed
 - Staging SMS satu-slot kini atomik (`synchronized`): kirim-berhasil tak lagi bisa menghapus staging baru yang masuk di tengah jalan.

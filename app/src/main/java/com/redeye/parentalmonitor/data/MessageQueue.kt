@@ -52,6 +52,7 @@ class MessageQueue private constructor(context: Context) {
     companion object {
         private const val QUEUE_PREFS_NAME = "encrypted_queue"
         private const val KEY_QUEUE = "queued_messages"
+        private const val KEY_QUEUE_BAK = "queued_messages_bak"
         private const val KEY_OVERFLOW_DROPS = "overflow_drops"
         private const val KEY_EXPIRED_DROPS = "expired_drops"
         private const val KEY_PRIORITY_DROPS = "priority_drops"
@@ -334,14 +335,14 @@ class MessageQueue private constructor(context: Context) {
             volatileQueue.clear()
             if (volatileOnly) {
                 try {
-                    PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME).edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
+                    PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME).edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
                 } catch (_: Exception) {
                 }
             }
             overflowDrops.set(0L)
             expiredDrops.set(0L)
             priorityDrops.set(0L)
-            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
+            sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
         }
     }
 
@@ -398,18 +399,43 @@ class MessageQueue private constructor(context: Context) {
             return it
         }
         val json = sharedPreferences?.getString(KEY_QUEUE, null)
+        var parsedOk = false
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()
             else {
-                gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
+                val parsed = gson.fromJson(json, arrayType)?.toMutableList() ?: mutableListOf()
+                parsedOk = true
+                parsed
             }
         } catch (e: Exception) {
-            android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${e.message}")
+            val bakJson = try { sharedPreferences?.getString(KEY_QUEUE_BAK, null) } catch (_: Exception) { null }
+            val recovered: MutableList<QueuedMessage> = try {
+                if (bakJson == null) mutableListOf()
+                else gson.fromJson(bakJson, arrayType)?.toMutableList() ?: mutableListOf()
+            } catch (_: Exception) {
+                mutableListOf()
+            }
+            if (bakJson != null) {
+                android.util.Log.w("MessageQueue", "Queue storage corrupt, recovered ${recovered.size} message(s) from backup")
+            } else {
+                android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${e.message}")
+            }
             try {
-                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.commit()
+                persistLocked(recovered, force = true)
             } catch (_: Exception) {
             }
-            mutableListOf()
+            recovered
+        }
+        if (parsedOk && json != null) {
+            try {
+                val prefs = sharedPreferences
+                if (prefs != null && prefs.getString(KEY_QUEUE_BAK, null) != json) {
+                    val editor = prefs.edit()?.putString(KEY_QUEUE_BAK, json)
+                    if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
+                    else editor?.apply()
+                }
+            } catch (_: Exception) {
+            }
         }
         val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
         val fresh = filterFresh(loaded, cutoff).toMutableList()
