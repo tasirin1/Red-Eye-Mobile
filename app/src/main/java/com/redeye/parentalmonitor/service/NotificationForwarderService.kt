@@ -176,6 +176,10 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun recordOverflow(pkg: String, title: String, text: String) {
+        try {
+            noteDroppedNotification()
+        } catch (_: Exception) {
+        }
         val cached = try { synchronized(appLabelCache) { appLabelCache[pkg] } } catch (_: Exception) { null }
         if (cached != null) {
             try { record(cached, title, text) } catch (_: Exception) { }
@@ -1075,8 +1079,8 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (count <= 0) return
         try {
-            val text = if (count == 1) "Dropped 1 notification rejected by Telegram (400)."
-                else "Dropped $count notifications rejected by Telegram (400)."
+            val text = if (count == 1) "Dropped 1 notification (rejected/overflow)."
+                else "Dropped $count notifications (rejected/overflow)."
             queue().addMessage(text, true)
             MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
         } catch (_: Exception) {

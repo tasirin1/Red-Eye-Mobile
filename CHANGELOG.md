@@ -1,3 +1,7 @@
+## [1.6.259] - 2026-10-16
+### Fixed
+- Notifikasi terbuang saat burst (>64 antre) kini dihitung + dilaporkan ke owner (notif agregat), tak lagi hilang diam-diam di history volatil.
+
 ## [1.6.258] - 2026-10-16
 ### Fixed
 - Geofence rumah/sekolah + `/jemput` kini dievaluasi tiap lokasi segar (`/location`, `/darurat`, `/hilang`), tak hanya saat patroli — hanya kabari saat status berubah, tanpa spam.
