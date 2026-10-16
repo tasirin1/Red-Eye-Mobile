@@ -1,3 +1,7 @@
+## [Unreleased]
+### Changed
+- Tema aplikasi ikut logo: primer biru `#2196F3`, sekunder oranye `#FF9800` (ungu hilang).
+
 ## [1.6.271] - 2026-10-16
 ### Changed
 - Kalkulator ikut palet logo: latar navy gelap, display slate `#37474F`, angka abu-biru `#607D8B`, fungsi oranye `#FF9800`, samadengan hijau `#4CAF50` — siang/malam sama.
