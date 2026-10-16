@@ -54,7 +54,7 @@ object NetworkUtils {
     fun isAuthBlocked(prefs: PreferencesManager): Boolean {
         return try {
             val err = prefs.credentialError
-            if (err != "401" && err != "403" && err != "400") return false
+            if (err != "401" && err != "403") return false
             val now = System.currentTimeMillis()
             if (now < prefs.credentialErrorAt) return true
             now - prefs.credentialErrorAt < 30 * 60_000L

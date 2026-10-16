@@ -1216,10 +1216,10 @@ class MonitoringService : Service() {
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
                             val effCommand = input.substringBefore(" ")
                             val wakeSeen = effCommand == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
+                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
                             if (effCommand in MUTATING_COMMANDS) {
                                 try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
                             }
-                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
                             if (wakeSeen) {
                                 try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
                             }
@@ -2066,10 +2066,11 @@ class MonitoringService : Service() {
                 }
             }
             "/smsconfirm" -> {
-                val number = preferencesManager.pendingSmsNumber
-                val smsText = preferencesManager.pendingSmsText
-                val stagedAt = preferencesManager.pendingSmsAt
-                val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
+                val pending = try { preferencesManager.readSmsPendingSync() } catch (_: Exception) { null }
+                val number = pending?.getOrNull(0) ?: ""
+                val smsText = pending?.getOrNull(1) ?: ""
+                val stagedAt = pending?.getOrNull(2)?.toLongOrNull() ?: 0L
+                val stagedBy = pending?.getOrNull(3) ?: ""
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
                     if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)

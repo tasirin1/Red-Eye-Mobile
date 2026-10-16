@@ -3,6 +3,14 @@
 - SetupActivity tidak lagi menghapus input kredensial yang belum disimpan saat aktivitas direkreasi (putar layar / proses berhenti).
 - Hapus kode mati (unreachable START_STICKY) di MonitoringService.onStartCommand.
 
+## [Unreleased]
+### Fixed
+- Dua konsumen getUpdates (MonitoringService + NotificationForwarderService) tidak lagi bertabrakan dengan HTTP 409; NotificationForwarderService tidak lagi polling getUpdates, hanya memicu start service saat kondisi terpenuhi.
+- PreferencesManager semua setter sekarang pakai .commit() (sinkron) bukan .apply() (asinkron), mencegah kehilangan state kritis (token, chatId, cursor SMS/call) saat proses terbunuh tiba-tiba.
+- Offset Telegram ditandai diproses SESUDAH perintah dieksekusi, bukan sebelum, mencegah hilangnya perintah saat gagal setengah jalan.
+- isAuthBlocked dan isPollBlocked sekarang konsisten: keduanya tidak memperlakukan HTTP 400 sebagai auth-blocked.
+- Race condition TOCTOU pada konfirmasi SMS (/smsconfirm): pending SMS sekarang dibaca secara atomik via PreferencesManager.readSmsPendingSync() di bawah smsPendingLock.
+
 ## [1.6.273] - 2026-10-16
 ### Fixed
 - SetupActivity tidak lagi menghapus input kredensial yang belum disimpan saat aktivitas direkreasi (putar layar / proses berhenti).
