@@ -2008,11 +2008,7 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
                     try { recordJob?.cancel() } catch (_: Exception) { }
                     recordJob = serviceScope.launch {
-                        try {
-                            recordAndSendVideo(seconds)
-                        } finally {
-                            recordBusy.set(false)
-                        }
+                        recordAndSendVideo(seconds)
                     }
                 }
             }
@@ -6220,9 +6216,9 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             }
-            if (photoProgress || droppedPhotos > 0) prunePhotoCache()
         } finally {
             photoFlushBusy.set(false)
+            if (photoProgress || droppedPhotos > 0) prunePhotoCache()
         }
     }
 

@@ -1,14 +1,19 @@
-## [Unreleased]
+## [1.6.276] - 2026-10-16
 ### Fixed
-- SetupActivity tidak lagi menghapus input kredensial yang belum disimpan saat aktivitas direkreasi (putar layar / proses berhenti).
-- Hapus kode mati (unreachable START_STICKY) di MonitoringService.onStartCommand.
+- `/recordvideo` tidak lagi melepas flag `recordBusy` seketika setelah perekaman dimulai: flag tetap terkunci selama video direkam sehingga `/recordvideo` kedua dan `/ring`/`/hilang` bersamaan tertahan, dan watchdog timeout video (forceReset kamera + lepas WakeLock) berfungsi kembali.
+- `flushPendingPhotos` benar-benar memangkas cache foto sesudah flush; pemangkasan sebelumnya selalu no-op karena dipanggil saat flag flush masih aktif, kini konsisten dengan audio/video.
 
-## [Unreleased]
+## [1.6.275] - 2026-10-16
 ### Fixed
+- Build v1.6.274 gagal diperbaiki: setter `PreferencesManager` kembali memakai `.apply()` (perubahan ke `.commit()` dibatalkan).
 - Dua konsumen getUpdates (MonitoringService + NotificationForwarderService) tidak lagi bertabrakan dengan HTTP 409; NotificationForwarderService tidak lagi polling getUpdates, hanya memicu start service saat kondisi terpenuhi.
 - Offset Telegram ditandai diproses SESUDAH perintah dieksekusi, bukan sebelum, mencegah hilangnya perintah saat gagal setengah jalan.
 - isAuthBlocked dan isPollBlocked sekarang konsisten: keduanya tidak memperlakukan HTTP 400 sebagai auth-blocked.
 - Race condition TOCTOU pada konfirmasi SMS (/smsconfirm): pending SMS sekarang dibaca secara atomik via PreferencesManager.readSmsPendingSync() di bawah smsPendingLock.
+
+## [1.6.274] - 2026-10-16
+### Fixed
+- Percobaan memindahkan seluruh setter `PreferencesManager` ke `.commit()` — build CI gagal, dibatalkan pada `[1.6.275]`.
 
 ## [1.6.273] - 2026-10-16
 ### Fixed
