@@ -1,3 +1,7 @@
+## [1.6.257] - 2026-10-16
+### Fixed
+- Rekaman audio/video + bunyi kini menahan WakeLock (batas-waktu otomatis) agar durasi tepat dan pengiriman susulan tak tertunda Doze; izin normal `WAKE_LOCK` ditambah ke manifest.
+
 ## [1.6.256] - 2026-10-16
 ### Fixed
 - `/hilang` tak lagi ditolak total saat rekaman jalan: bunyi dilewati (hindari konflik audio), lokasi + foto tetap dikirim — bukti darurat tak pernah gagal total.

@@ -5230,7 +5230,28 @@ class MonitoringService : Service() {
         return "\uD83D\uDD14 Ring finished."
     }
 
-private suspend fun ringDevice(seconds: Int) {
+    private fun acquireOpWakeLock(tag: String, timeoutMs: Long): android.os.PowerManager.WakeLock? {
+        return try {
+            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "RedEye:$tag").apply { setReferenceCounted(false) }.also {
+                try {
+                    it.acquire(timeoutMs.coerceAtLeast(60_000L))
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun releaseOpWakeLock(lock: android.os.PowerManager.WakeLock?) {
+        try {
+            if (lock?.isHeld == true) lock.release()
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun ringDevice(seconds: Int) {
         val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         val stream = android.media.AudioManager.STREAM_ALARM
         val previous = try {
@@ -5242,6 +5263,7 @@ private suspend fun ringDevice(seconds: Int) {
             sendToTelegram("⚠️ Volume tak terbaca, /ring dibatalkan agar tak macet maksimal.")
             return
         }
+        val ringLock = acquireOpWakeLock("ring", seconds * 1000L + 60_000L)
         try {
             preferencesManager.setRingStateSync(previous, System.currentTimeMillis())
         } catch (_: Exception) {
@@ -5324,6 +5346,7 @@ private suspend fun ringDevice(seconds: Int) {
         } catch (e: Exception) {
             sendToTelegram("\u26A0\uFE0F Ring failed.")
         } finally {
+            releaseOpWakeLock(ringLock)
             try {
                 player?.setOnCompletionListener(null)
             } catch (_: Exception) {
@@ -5374,6 +5397,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
         }
         ensureForegroundTypes()
+        val audioLock = acquireOpWakeLock("record", seconds * 1000L + 180_000L)
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
@@ -5456,6 +5480,7 @@ private suspend fun ringDevice(seconds: Int) {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Record failed.")
         } finally {
+            releaseOpWakeLock(audioLock)
             try {
                 recorder?.release()
             } catch (_: Exception) {
@@ -5593,6 +5618,7 @@ private suspend fun ringDevice(seconds: Int) {
             }
         }
         val attempt = videoAttempt.incrementAndGet()
+        val videoLock = acquireOpWakeLock("recordvideo", seconds * 1000L + 120_000L)
         videoWatchdog?.cancel()
         val wd = serviceScope.launch {
             delay(seconds * 1000L + 120_000L)
@@ -5639,6 +5665,7 @@ private suspend fun ringDevice(seconds: Int) {
                             }
                         } finally {
                             activeVideoFile = null
+                            releaseOpWakeLock(videoLock)
                             recordBusy.set(false)
                         }
                     }
@@ -5647,6 +5674,7 @@ private suspend fun ringDevice(seconds: Int) {
                     if (videoAttempt.get() != attempt) return@captureVideo
                     videoAttempt.incrementAndGet()
                     try { wd.cancel() } catch (_: Exception) { }
+                    releaseOpWakeLock(videoLock)
                     recordBusy.set(false)
                     serviceScope.launch {
                         sendToTelegram("⚠️ Video record failed: " + sanitizedCameraError(e.message))
@@ -5657,6 +5685,7 @@ private suspend fun ringDevice(seconds: Int) {
         } catch (e: Exception) {
             videoAttempt.incrementAndGet()
             try { wd.cancel() } catch (_: Exception) { }
+            releaseOpWakeLock(videoLock)
             recordBusy.set(false)
             android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
             serviceScope.launch {
