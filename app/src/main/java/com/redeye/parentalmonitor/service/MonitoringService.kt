@@ -1992,6 +1992,9 @@ class MonitoringService : Service() {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..180) {
                     sendToTelegram("Cara pakai: /recordvideo \u003c5-180\u003e (seconds)")
+                } else if (seconds * 300_000L > 48L * 1024L * 1024L) {
+                    val maxSecs = ((48L * 1024L * 1024L) / 300_000L).toInt().coerceIn(5, 180)
+                    sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * 300_000L) / (1024L * 1024L)} MB, melebihi batas 48 MB. Coba ≤$maxSecs dtk.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {

@@ -1,3 +1,7 @@
+## [1.6.262] - 2026-10-16
+### Fixed
+- `/recordvideo` durasi yang pasti melebihi 48 MB ditolak di depan (dengan saran detik aman), bukan setelah menunggu rekaman 3 menit.
+
 ## [1.6.261] - 2026-10-16
 ### Fixed
 - `/jejak` benar-benar 24 jam: jejak diprune berdasar umur (bukan 24 titik), patroli 5 menit tak lagi menghapus jejak pagi (cap darurat 300 titik).
