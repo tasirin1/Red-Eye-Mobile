@@ -1,3 +1,7 @@
+## [1.6.256] - 2026-10-16
+### Fixed
+- `/hilang` tak lagi ditolak total saat rekaman jalan: bunyi dilewati (hindari konflik audio), lokasi + foto tetap dikirim — bukti darurat tak pernah gagal total.
+
 ## [1.6.255] - 2026-10-16
 ### Fixed
 - Worker yang dibatalkan (`REPLACE` tiba saat kirim) kini menghapus ID yang sudah terkirim sebelum mati — tak ada lagi pesan ganda di Telegram setelah rate-limit/backoff.

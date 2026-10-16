@@ -2366,16 +2366,16 @@ class MonitoringService : Service() {
                 }
                 if (recordBusy.get()) {
                     ringBusy.set(false)
-                    sendToTelegram("⏳ Sudah merekam, tunggu selesai.")
-                    return
-                }
-                sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
-                try { ringJob?.cancel() } catch (_: Exception) { }
-                ringJob = serviceScope.launch {
-                    try {
-                        ringDevice(60)
-                    } finally {
-                        ringBusy.set(false)
+                    sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
+                } else {
+                    sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
+                    try { ringJob?.cancel() } catch (_: Exception) { }
+                    ringJob = serviceScope.launch {
+                        try {
+                            ringDevice(60)
+                        } finally {
+                            ringBusy.set(false)
+                        }
                     }
                 }
                 val loc = try { fetchLocation() } catch (_: Exception) { null }
