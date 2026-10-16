@@ -6,3 +6,4 @@ clearOwnerMenuScope
 Background.run
 workerRunning
 run
+onSupportNavigateUp

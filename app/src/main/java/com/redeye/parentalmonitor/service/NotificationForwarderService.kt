@@ -863,8 +863,8 @@ class NotificationForwarderService : NotificationListenerService() {
             val drops = dropNoticeCount.getAndSet(0)
             if (drops > 0) {
                 try {
-                    val text = if (drops == 1) "Dropped 1 notification rejected by Telegram (400)."
-                        else "Dropped $drops notifications rejected by Telegram (400)."
+                    val text = if (drops == 1) "Dropped 1 notification (rejected/overflow)."
+                        else "Dropped $drops notifications (rejected/overflow)."
                     queue().addMessage(text, true)
                     queue().flushSync()
                     try {

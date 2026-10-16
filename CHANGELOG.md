@@ -5,6 +5,15 @@
 - Halaman Setup tanpa top bar + judul ganda — konten langsung status + form.
 - Kalkulator tanpa top bar sistem — full kalkulator + stealth.
 
+## [1.6.270] - 2026-10-16
+### Fixed
+- Teks drop-notif `onDestroy` forwarder jujur (rejected/overflow), samakan jalur utama.
+- Backup ekspor isi form yang valid (bukan prefs basi) — ketik baru langsung Backup tanpa Save tetap benar.
+### Removed
+- Override `onSupportNavigateUp()` yatim di Setup (tak terjangkau sejak ActionBar di-hide).
+### Changed
+- README: PR tak lagi picu CI (ikut hapus trigger).
+
 ## [1.6.269] - 2026-10-16
 ### Fixed
 - WakeLock video dilepas saat watchdog timeout (tak digantung 120 dtk).

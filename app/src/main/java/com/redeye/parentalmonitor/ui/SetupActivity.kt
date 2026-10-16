@@ -399,11 +399,6 @@ class SetupActivity : AppCompatActivity() {
         updateStatus()
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
-    }
-
     override fun onResume() {
         super.onResume()
         reviveMonitoringIfNeeded()
@@ -724,8 +719,16 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun backupSettings() {
-        val token = try { prefs.botToken } catch (_: Exception) { "" }
-        val chatId = try { prefs.chatId } catch (_: Exception) { "" }
+        val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+        val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+        val uiToken = resolveStored(botTokenInput.text.toString().trim(), storedToken)
+        val uiChat = resolveStored(chatIdInput.text.toString().trim(), storedChat)
+        val token = if (uiToken.matches(TOKEN_REGEX)) uiToken else storedToken
+        val chatId = if (isChatIdValid(uiChat)) uiChat else storedChat
+        val uiInterval = syncIntervalInput.text.toString().trim().toIntOrNull()
+        val interval = if (uiInterval != null && uiInterval in 1..1440) uiInterval else try { prefs.syncInterval } catch (_: Exception) { 5 }
+        val uiCam = cameraIntervalInput.text.toString().trim().toIntOrNull()
+        val camInterval = if (uiCam != null && uiCam in 0..60) uiCam else try { prefs.cameraInterval } catch (_: Exception) { 1 }
         if (token.isEmpty() || chatId.isEmpty()) {
             Toast.makeText(this, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
             return
@@ -735,10 +738,7 @@ class SetupActivity : AppCompatActivity() {
             lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                 val blob = try {
                     com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                        token, chatId,
-                        try { prefs.syncInterval } catch (_: Exception) { 5 },
-                        try { prefs.cameraInterval } catch (_: Exception) { 1 },
-                        pin
+                        token, chatId, interval, camInterval, pin
                     )
                 } catch (_: Exception) {
                     null
