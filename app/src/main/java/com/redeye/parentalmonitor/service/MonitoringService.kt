@@ -1239,8 +1239,16 @@ class MonitoringService : Service() {
                 try {
                     if (update.updateId > preferencesManager.lastUpdateId) {
                         preferencesManager.setLastUpdateIdSync(update.updateId)
+                        if (preferencesManager.lastUpdateId < update.updateId) {
+                            commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                            android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
+                        }
                     }
                 } catch (_: Exception) {
+                    try {
+                        commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                    } catch (_: Exception) {
+                    }
                     android.util.Log.w("MonitoringService", "offset persist failed")
                 }
             }

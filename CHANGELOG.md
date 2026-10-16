@@ -1,3 +1,7 @@
+## [1.6.253] - 2026-10-16
+### Fixed
+- Offset perintah yang gagal tersimpan (disk penuh/keystore) tak lagi diam: polling mundur 60 dtk (fail-closed) alih-alih mengeksekusi perintah yang tak bisa dikonfirmasi lalu memutar ulang massal setelah restart.
+
 ## [1.6.252] - 2026-10-16
 ### Fixed
 - Saat kredensial diblokir, pesan tetap diantre tapi tak lagi memicu worker yang pasti gagal (hemat baterai; antrean terkirim otomatis setelah token diperbaiki via revive/start).
