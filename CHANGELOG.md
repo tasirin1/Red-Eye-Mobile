@@ -1,3 +1,7 @@
+## [Unreleased]
+### Removed
+- Pemicu `pull_request` di workflow build — CI hanya jalan saat push ke `main`, push tag `v*`, atau manual.
+
 ## [1.6.267] - 2026-10-16
 ### Fixed
 - Penolakan izin permanen kini jelaskan dulu via Toast sebelum lempar ke Settings (tak lagi pindah diam-diam).
