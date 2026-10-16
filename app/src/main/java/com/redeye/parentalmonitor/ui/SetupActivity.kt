@@ -240,8 +240,10 @@ class SetupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_setup)
 
         prefs = PreferencesManager.getInstance(this)
-        supportActionBar?.title = getString(R.string.setup_title)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        try {
+            supportActionBar?.hide()
+        } catch (_: Exception) {
+        }
 
         botTokenInput = findViewById(R.id.setupBotTokenInput)
         chatIdInput = findViewById(R.id.setupChatIdInput)

@@ -25,14 +25,6 @@
                 android:padding="16dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="4dp"
-                    android:text="@string/setup_title"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
                     android:id="@+id/setupStatusText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
