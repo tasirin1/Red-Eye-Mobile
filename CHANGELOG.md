@@ -1,12 +1,11 @@
-## [Unreleased]
+## [1.6.271] - 2026-10-16
 ### Changed
 - Kalkulator ikut palet logo: latar navy gelap, display slate `#37474F`, angka abu-biru `#607D8B`, fungsi oranye `#FF9800`, samadengan hijau `#4CAF50` — siang/malam sama.
 - Kalkulator dipadatkan (padding, tombol, huruf mengecil) + nama aplikasi ikut bahasa HP (Indonesia: Kalkulator).
-### Removed
-- Pemicu `pull_request` di workflow build — CI hanya jalan saat push ke `main`, push tag `v*`, atau manual.
-### Changed
 - Halaman Setup tanpa top bar + judul ganda — konten langsung status + form.
 - Kalkulator tanpa top bar sistem — full kalkulator + stealth.
+### Removed
+- Pemicu `pull_request` di workflow build — CI hanya jalan saat push ke `main`, push tag `v*`, atau manual.
 
 ## [1.6.270] - 2026-10-16
 ### Fixed
