@@ -38,6 +38,10 @@ class MainActivity : AppCompatActivity() {
         preferencesManager = PreferencesManager.getInstance(this)
 
         setContentView(R.layout.activity_calculator)
+        try {
+            supportActionBar?.hide()
+        } catch (_: Exception) {
+        }
         initCalculator()
         if (savedInstanceState != null) {
             currentNumber = savedInstanceState.getString("currentNumber", "")

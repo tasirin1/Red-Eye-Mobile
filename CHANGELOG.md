@@ -3,6 +3,7 @@
 - Pemicu `pull_request` di workflow build — CI hanya jalan saat push ke `main`, push tag `v*`, atau manual.
 ### Changed
 - Halaman Setup tanpa top bar + judul ganda — konten langsung status + form.
+- Kalkulator tanpa top bar sistem — full kalkulator + stealth.
 
 ## [1.6.267] - 2026-10-16
 ### Fixed
