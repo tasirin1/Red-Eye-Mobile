@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.244] - 2026-10-16
 ### Fixed
 - Stop service tak lagi berisiko mematikan start baru yang datang susulan.
 
