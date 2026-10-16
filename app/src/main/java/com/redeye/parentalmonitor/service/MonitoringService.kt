@@ -1063,8 +1063,9 @@ class MonitoringService : Service() {
             return false
         }
         if (response.code() == 409) {
+            val now409 = android.os.SystemClock.elapsedRealtime()
             val selfConflict = try {
-                android.os.SystemClock.elapsedRealtime() - NotificationForwarderService.lastWakePollAt < 60_000L
+                now409 - NotificationForwarderService.lastWakePollAt < 60_000L || now409 - lastLoopRestartAt < 60_000L
             } catch (_: Exception) {
                 false
             }
