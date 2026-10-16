@@ -1,3 +1,7 @@
+## [1.6.261] - 2026-10-16
+### Fixed
+- `/jejak` benar-benar 24 jam: jejak diprune berdasar umur (bukan 24 titik), patroli 5 menit tak lagi menghapus jejak pagi (cap darurat 300 titik).
+
 ## [1.6.260] - 2026-10-16
 ### Fixed
 - Interval adaptif tak lagi direset oleh data yang gagal terkirim — saat offline, retry melambat hemat baterai/kuota, bukan mengetat tiap siklus.

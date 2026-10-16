@@ -3702,10 +3702,13 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
+            val now = System.currentTimeMillis()
+            val cutoff = now - 24 * 60 * 60_000L
             val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
-            pts.add("${System.currentTimeMillis()}:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
-            while (pts.size > 24) pts.removeAt(0)
-            preferencesManager.trail24 = pts.joinToString(";")
+            pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
+            val fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }.toMutableList()
+            while (fresh.size > 300) fresh.removeAt(0)
+            preferencesManager.trail24 = (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
         } catch (_: Exception) {
         }
     }
