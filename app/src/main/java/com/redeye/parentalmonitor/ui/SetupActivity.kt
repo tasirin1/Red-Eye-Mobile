@@ -59,7 +59,10 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         try {
-            if (result.entries.any { !it.value && !shouldShowRequestPermissionRationale(it.key) }) openAppSettings()
+            if (result.entries.any { !it.value && !shouldShowRequestPermissionRationale(it.key) }) {
+                Toast.makeText(this, getString(R.string.setup_open_settings), Toast.LENGTH_LONG).show()
+                openAppSettings()
+            }
         } catch (_: Exception) {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -79,7 +82,10 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         try {
-            if (!granted && !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) openAppSettings()
+            if (!granted && !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+                Toast.makeText(this, getString(R.string.setup_open_settings), Toast.LENGTH_LONG).show()
+                openAppSettings()
+            }
         } catch (_: Exception) {
         }
         updateStatus()

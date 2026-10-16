@@ -1,3 +1,7 @@
+## [1.6.267] - 2026-10-16
+### Fixed
+- Penolakan izin permanen kini jelaskan dulu via Toast sebelum lempar ke Settings (tak lagi pindah diam-diam).
+
 ## [1.6.266] - 2026-10-16
 ### Fixed
 - Test Connection kini bedakan token salah format vs chat ID salah format (seperti Save), tak lagi semua jadi "bad token".

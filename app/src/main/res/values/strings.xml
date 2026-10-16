@@ -40,6 +40,7 @@
     <string name="setup_bad_token">Invalid token format, must contain :</string>
     <string name="setup_bad_chat">Invalid chat ID format, must be numeric</string>
     <string name="setup_bad_interval">Invalid interval, must be 1-1440 min (camera 0-60 min)</string>
+    <string name="setup_open_settings">Permission denied permanently, opening Settings to enable manually</string>
     <string name="setup_testing">Sending test message…</string>
     <string name="setup_test_success">✅ Test successful! Check your Telegram.</string>
     <string name="setup_test_fail">❌ Test failed: %1$s</string>
