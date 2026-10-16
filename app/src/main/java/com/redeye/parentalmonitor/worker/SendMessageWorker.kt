@@ -148,6 +148,12 @@ class SendMessageWorker(
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
+                if (sentIds.size > flushedSent) {
+                    try {
+                        messageQueue.removeMessages(sentIds)
+                    } catch (_: Exception) {
+                    }
+                }
                 throw e
             } catch (e: Exception) {
                 val detail = (e.message ?: "").let { m -> var out = if (runToken.isNotEmpty()) m.replace(runToken, "***") else m; out = if (runChatId.isNotEmpty()) out.replace(runChatId, "***") else out; out }

@@ -1,3 +1,7 @@
+## [1.6.255] - 2026-10-16
+### Fixed
+- Worker yang dibatalkan (`REPLACE` tiba saat kirim) kini menghapus ID yang sudah terkirim sebelum mati — tak ada lagi pesan ganda di Telegram setelah rate-limit/backoff.
+
 ## [1.6.254] - 2026-10-16
 ### Fixed
 - SMS yang gagal total (nol part terkirim) tak lagi memicu cooldown 60 dtk — retry `/smsconfirm` langsung bisa jalan; throttle tetap berlaku bila sebagian/seluruh part terkirim (cegah duplikat).
