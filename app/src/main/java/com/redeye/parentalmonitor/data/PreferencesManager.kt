@@ -26,6 +26,7 @@ class PreferencesManager(context: Context) {
     private val upgradeLock = Any()
     private val wakeIdsLock = Any()
     private val pairCodeLock = Any()
+    private val smsPendingLock = Any()
 
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
@@ -711,35 +712,41 @@ class PreferencesManager(context: Context) {
     }
 
     fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
-        try {
-            sharedPreferences.edit()
-                .putString(KEY_PENDING_SMS_NUMBER, number)
-                .putString(KEY_PENDING_SMS_TEXT, text)
-                .putLong(KEY_PENDING_SMS_AT, at)
-                .putString(KEY_PENDING_SMS_OWNER, owner)
-                .commit()
-        } catch (_: Exception) {
+        synchronized(smsPendingLock) {
+            try {
+                sharedPreferences.edit()
+                    .putString(KEY_PENDING_SMS_NUMBER, number)
+                    .putString(KEY_PENDING_SMS_TEXT, text)
+                    .putLong(KEY_PENDING_SMS_AT, at)
+                    .putString(KEY_PENDING_SMS_OWNER, owner)
+                    .commit()
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun clearSmsPendingIf(at: Long) {
-        try {
-            if (sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L) == at) {
-                sharedPreferences.edit()
-                    .putString(KEY_PENDING_SMS_NUMBER, "")
-                    .putString(KEY_PENDING_SMS_TEXT, "")
-                    .putLong(KEY_PENDING_SMS_AT, 0L)
-                    .putString(KEY_PENDING_SMS_OWNER, "")
-                    .commit()
+        synchronized(smsPendingLock) {
+            try {
+                if (sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L) == at) {
+                    sharedPreferences.edit()
+                        .putString(KEY_PENDING_SMS_NUMBER, "")
+                        .putString(KEY_PENDING_SMS_TEXT, "")
+                        .putLong(KEY_PENDING_SMS_AT, 0L)
+                        .putString(KEY_PENDING_SMS_OWNER, "")
+                        .commit()
+                }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
     }
 
     fun touchSmsPendingSync(at: Long) {
-        try {
-            sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).commit()
-        } catch (_: Exception) {
+        synchronized(smsPendingLock) {
+            try {
+                sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).commit()
+            } catch (_: Exception) {
+            }
         }
     }
 
