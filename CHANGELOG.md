@@ -1,3 +1,7 @@
+## [1.6.266] - 2026-10-16
+### Fixed
+- Test Connection kini bedakan token salah format vs chat ID salah format (seperti Save), tak lagi semua jadi "bad token".
+
 ## [1.6.265] - 2026-10-16
 ### Fixed
 - Video rekaman kini bawa hint orientasi (sensor + rotasi layar, sama seperti foto) — tak lagi miring di Telegram saat HP tegak.

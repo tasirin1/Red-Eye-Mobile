@@ -634,10 +634,17 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
-            if (!token.matches(TOKEN_REGEX) || !isChatIdValid(chatId)) {
+            if (!token.matches(TOKEN_REGEX)) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+            if (!isChatIdValid(chatId)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
