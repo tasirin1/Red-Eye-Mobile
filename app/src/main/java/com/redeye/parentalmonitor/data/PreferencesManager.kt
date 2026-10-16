@@ -744,9 +744,20 @@ class PreferencesManager(context: Context) {
     fun touchSmsPendingSync(at: Long) {
         synchronized(smsPendingLock) {
             try {
-                sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).commit()
+                sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).apply()
             } catch (_: Exception) {
             }
+        }
+    }
+
+    fun readSmsPendingSync(): Array<String?> {
+        synchronized(smsPendingLock) {
+            return arrayOf(
+                try { sharedPreferences.getString(KEY_PENDING_SMS_NUMBER, "") } catch (_: Exception) { null },
+                try { sharedPreferences.getString(KEY_PENDING_SMS_TEXT, "") } catch (_: Exception) { null },
+                try { sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L).toString() } catch (_: Exception) { "0" },
+                try { sharedPreferences.getString(KEY_PENDING_SMS_OWNER, "") } catch (_: Exception) { null }
+            )
         }
     }
 
