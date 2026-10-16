@@ -1,3 +1,7 @@
+## [1.6.258] - 2026-10-16
+### Fixed
+- Geofence rumah/sekolah + `/jemput` kini dievaluasi tiap lokasi segar (`/location`, `/darurat`, `/hilang`), tak hanya saat patroli — hanya kabari saat status berubah, tanpa spam.
+
 ## [1.6.257] - 2026-10-16
 ### Fixed
 - Rekaman audio/video + bunyi kini menahan WakeLock (batas-waktu otomatis) agar durasi tepat dan pengiriman susulan tak tertunda Doze; izin normal `WAKE_LOCK` ditambah ke manifest.

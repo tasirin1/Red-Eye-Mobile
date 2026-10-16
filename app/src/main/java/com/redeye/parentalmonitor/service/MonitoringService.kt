@@ -1746,6 +1746,7 @@ class MonitoringService : Service() {
                         val prev = lastSentLatLon()
                         val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                         rememberSentLatLon(location.latitude, location.longitude)
+                        try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                         val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
                         sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near")
                     }
@@ -2289,6 +2290,7 @@ class MonitoringService : Service() {
                 val loc = try { fetchLocation() } catch (_: Exception) { null }
                 if (loc != null) {
                     try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                    try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
                     sendToTelegram(buildString {
                         appendLine("📍 <b>Lokasi darurat</b>")
                         appendLine("https://maps.google.com/?q=${loc.latitude},${loc.longitude}")
@@ -2381,6 +2383,7 @@ class MonitoringService : Service() {
                 val loc = try { fetchLocation() } catch (_: Exception) { null }
                 if (loc != null) {
                     try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                    try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
                     sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
                 } else {
                     sendToTelegram("📍 Lokasi tak didapat. Baterai: ${if (level in 0..100) "$level%" else "?"}")
