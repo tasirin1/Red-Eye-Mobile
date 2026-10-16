@@ -51,7 +51,7 @@
         android:columnCount="4"
         android:rowCount="5">
 
-        <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Function" android:text="C" />
+        <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="C" />
         <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.Function" android:text="÷" />
         <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.Function" android:text="×" />
         <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.Function" android:text="−" />

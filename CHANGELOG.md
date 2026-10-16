@@ -1,6 +1,7 @@
 ## [Unreleased]
 ### Changed
 - Tema aplikasi ikut logo: primer biru `#2196F3`, sekunder oranye `#FF9800` (ungu hilang).
+- Kalkulator gaya iOS: hitam, tombol lingkaran (angka abu gelap, C abu terang, operator oranye), display tanpa kartu.
 
 ## [1.6.271] - 2026-10-16
 ### Changed

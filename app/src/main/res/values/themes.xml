@@ -36,6 +36,11 @@
     <style name="CalculatorButton.Function">
     </style>
 
+    <style name="CalculatorButton.Utility">
+        <item name="android:background">@drawable/calc_btn_utility</item>
+        <item name="android:textColor">@android:color/black</item>
+    </style>
+
     <style name="CalculatorButton.Accent">
         <item name="android:background">@drawable/calc_btn_accent</item>
         <item name="android:textColor">@android:color/white</item>

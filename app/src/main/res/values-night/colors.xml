@@ -7,13 +7,14 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="ic_launcher_background">#2196F3</color>
-    <color name="calc_background">#FF101D29</color>
-    <color name="calc_display_bg">#FF37474F</color>
-    <color name="calc_display_stroke">#FF607D8B</color>
+    <color name="calc_background">#FF000000</color>
+    <color name="calc_display_bg">#FF000000</color>
+    <color name="calc_display_stroke">#FF000000</color>
     <color name="calc_display_text">#FFFFFFFF</color>
-    <color name="calc_history_text">#FFB0BEC5</color>
-    <color name="calc_btn_number">#FF607D8B</color>
-    <color name="calc_btn_function">#FFFF9800</color>
+    <color name="calc_history_text">#FFA5A5A5</color>
+    <color name="calc_btn_number">#FF333333</color>
+    <color name="calc_btn_function">#FFFF9F0A</color>
+    <color name="calc_btn_utility">#FFA5A5A5</color>
     <color name="calc_btn_text">#FFFFFFFF</color>
     <color name="calc_ripple">#40FFFFFF</color>
 </resources>
