@@ -1,3 +1,7 @@
+## [1.6.247] - 2026-10-16
+### Fixed
+- `SendMessageWorker`: pesan yang ditolak permanen Telegram (HTTP 4xx, mis. format salah) langsung di-drop + notif drop, tidak lagi masuk retry transient yang menahan jendela 20 pesan dan buang kuota/baterai.
+
 ## [1.6.246] - 2026-10-16
 ### Fixed
 - Perbaiki error kompilasi v1.6.245: `DisplayManager.DISPLAY_ID_PRIMARY`/`DISPLAY_ID_DEFAULT` tidak ada di SDK; pakai `Display.DEFAULT_DISPLAY`.

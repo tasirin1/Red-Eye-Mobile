@@ -141,7 +141,7 @@ class SendMessageWorker(
                         break
                     }
                     SendOutcome.Rejected -> {
-                        failedIds.add(queuedMessage.id)
+                        rejectedIds.add(queuedMessage.id)
                     }
                     SendOutcome.Failed -> {
                         failedIds.add(queuedMessage.id)
