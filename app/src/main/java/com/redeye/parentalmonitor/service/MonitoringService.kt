@@ -3261,7 +3261,6 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
                 messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
             }
             return false
         }
@@ -3370,7 +3369,6 @@ class MonitoringService : Service() {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
                 if (queueOnFail) {
                     messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
                 }
                 return false
             }

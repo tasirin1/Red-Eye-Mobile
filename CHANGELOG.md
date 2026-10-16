@@ -1,3 +1,7 @@
+## [1.6.252] - 2026-10-16
+### Fixed
+- Saat kredensial diblokir, pesan tetap diantre tapi tak lagi memicu worker yang pasti gagal (hemat baterai; antrean terkirim otomatis setelah token diperbaiki via revive/start).
+
 ## [1.6.251] - 2026-10-16
 ### Fixed
 - Polling `getUpdates` kini hormati flood-wait global 429 (tidur sampai masa rate-limit habis), tak lagi memperpanjang pemblokiran Telegram saat antrean kirim sedang ditahan.
