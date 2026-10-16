@@ -3057,7 +3057,6 @@ class MonitoringService : Service() {
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
-                            preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                             sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
                 }
             } finally {

@@ -1,3 +1,7 @@
+## [1.6.254] - 2026-10-16
+### Fixed
+- SMS yang gagal total (nol part terkirim) tak lagi memicu cooldown 60 dtk — retry `/smsconfirm` langsung bisa jalan; throttle tetap berlaku bila sebagian/seluruh part terkirim (cegah duplikat).
+
 ## [1.6.253] - 2026-10-16
 ### Fixed
 - Offset perintah yang gagal tersimpan (disk penuh/keystore) tak lagi diam: polling mundur 60 dtk (fail-closed) alih-alih mengeksekusi perintah yang tak bisa dikonfirmasi lalu memutar ulang massal setelah restart.
