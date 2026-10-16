@@ -1,3 +1,7 @@
+## [1.6.249] - 2026-10-16
+### Fixed
+- `/jemput` tak lagi melucuti oleh fix lokasi buruk: notif + disarm hanya bila akurasi fix setidaknya seketat radius jemput; fix kasar (mis. jaringan ±1500 m) menunda, bukan memicu palsu.
+
 ## [1.6.248] - 2026-10-16
 ### Fixed
 - Polling perintah tak lagi mati selamanya saat Telegram menolak offset (400): 2x gagal hanya backoff, gagal ke-3 beruntun resync offset ke 0 (sembuh sendiri; perintah basi hasil replay tetap ditolak guard kedaluwarsa).

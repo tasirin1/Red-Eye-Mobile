@@ -756,7 +756,7 @@ class MonitoringService : Service() {
             if (location != null) {
                 try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
                 try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
-                try { checkGeofence(location.latitude, location.longitude) } catch (_: Exception) { }
+                try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
                 val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (dist >= 0f && dist < 100f) {
@@ -3782,7 +3782,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun checkGeofence(lat: Double, lon: Double) {
+    private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f) {
         try {
             val fences = listOf(
                 Triple(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM) to true,
@@ -3797,7 +3797,7 @@ class MonitoringService : Service() {
                 if (isHome) {
                     try {
                         val jemput = preferencesManager.jemputRadiusM
-                        if (jemput > 0 && dist <= jemput) {
+                        if (jemput > 0 && dist <= jemput && (accuracyM < 0f || accuracyM <= jemput.toFloat())) {
                             preferencesManager.jemputRadiusM = 0
                             sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
                         }
