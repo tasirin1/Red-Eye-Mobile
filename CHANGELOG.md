@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- Kalkulator ikut palet logo: latar navy gelap, display slate `#37474F`, angka abu-biru `#607D8B`, fungsi oranye `#FF9800`, samadengan hijau `#4CAF50` — siang/malam sama.
 ### Removed
 - Pemicu `pull_request` di workflow build — CI hanya jalan saat push ke `main`, push tag `v*`, atau manual.
 ### Changed
