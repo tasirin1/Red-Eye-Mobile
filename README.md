@@ -64,6 +64,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Data baru masuk ke bot tiap interval yang kamu set.
 - Foto ngikutin interval kamera, `0` berarti manual via `/photo` aja.
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
+- Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; restore hanya mengisi form, tetap tap Save.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
 
 ## Perintah Telegram

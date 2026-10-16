@@ -51,6 +51,61 @@ class SetupActivity : AppCompatActivity() {
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
+    private var pendingBackupBlob: String? = null
+
+    private val backupLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val blob = pendingBackupBlob
+        pendingBackupBlob = null
+        if (uri == null || blob == null) return@registerForActivityResult
+        try {
+            contentResolver.openOutputStream(uri)?.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
+            Toast.makeText(this, getString(R.string.backup_done), Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val restoreLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val text = try {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+        } catch (_: Exception) {
+            null
+        }
+        if (text.isNullOrBlank()) {
+            Toast.makeText(this, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
+        askPin(getString(R.string.restore_pin_title), false) { pin ->
+            if (pin == null) return@askPin
+            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                val data = try {
+                    com.redeye.parentalmonitor.utils.SettingsBackup.import(text, pin)
+                } catch (_: Exception) {
+                    null
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    if (data == null) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
+                        return@withContext
+                    }
+                    try {
+                        botTokenInput.setText(data.token)
+                        chatIdInput.setText(data.chatId)
+                        syncIntervalInput.setText(data.syncInterval.toString())
+                        cameraIntervalInput.setText(data.cameraInterval.toString())
+                    } catch (_: Exception) {
+                    }
+                    Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     private val requiredPermissions: Array<String>
         get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
@@ -312,6 +367,13 @@ class SetupActivity : AppCompatActivity() {
             true
         }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
+        findViewById<MaterialButton>(R.id.setupBackupButton).setOnClickListener { backupSettings() }
+        findViewById<MaterialButton>(R.id.setupRestoreButton).setOnClickListener {
+            try {
+                restoreLauncher.launch(arrayOf("application/octet-stream"))
+            } catch (_: Exception) {
+            }
+        }
         findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
             requestLocationPermissions()
         }
@@ -619,6 +681,80 @@ class SetupActivity : AppCompatActivity() {
                 try {
                     updateStatus()
                 } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {
+        val first = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = getString(R.string.backup_pin_hint)
+        }
+        val second = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = getString(R.string.backup_pin_hint2)
+        }
+        val box = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, 0)
+            addView(first)
+            if (confirm) addView(second)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(box)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> done(null) }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val pin = first.text.toString()
+                if (pin.length < 4) {
+                    done(null)
+                    return@setPositiveButton
+                }
+                if (confirm && pin != second.text.toString()) {
+                    Toast.makeText(this, getString(R.string.backup_pin_mismatch), Toast.LENGTH_LONG).show()
+                    done(null)
+                    return@setPositiveButton
+                }
+                done(pin)
+            }
+            .setOnCancelListener { done(null) }
+            .show()
+    }
+
+    private fun backupSettings() {
+        val token = try { prefs.botToken } catch (_: Exception) { "" }
+        val chatId = try { prefs.chatId } catch (_: Exception) { "" }
+        if (token.isEmpty() || chatId.isEmpty()) {
+            Toast.makeText(this, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
+            return
+        }
+        askPin(getString(R.string.backup_pin_title), true) { pin ->
+            if (pin == null) return@askPin
+            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                val blob = try {
+                    com.redeye.parentalmonitor.utils.SettingsBackup.export(
+                        token, chatId,
+                        try { prefs.syncInterval } catch (_: Exception) { 5 },
+                        try { prefs.cameraInterval } catch (_: Exception) { 1 },
+                        pin
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    if (blob == null) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
+                        return@withContext
+                    }
+                    pendingBackupBlob = blob
+                    try {
+                        backupLauncher.launch("redeye-backup.redeyebak")
+                    } catch (_: Exception) {
+                        pendingBackupBlob = null
+                    }
                 }
             }
         }

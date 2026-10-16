@@ -5,6 +5,10 @@
 - Halaman Setup tanpa top bar + judul ganda — konten langsung status + form.
 - Kalkulator tanpa top bar sistem — full kalkulator + stealth.
 
+## [1.6.268] - 2026-10-16
+### Added
+- Backup/restore setingan via file `.redeyebak` terenkripsi PIN (AES-GCM + PBKDF2): tombol Backup/Restore di Setup; restore mengisi form, Save tetap verifikasi.
+
 ## [1.6.267] - 2026-10-16
 ### Fixed
 - Penolakan izin permanen kini jelaskan dulu via Toast sebelum lempar ke Settings (tak lagi pindah diam-diam).

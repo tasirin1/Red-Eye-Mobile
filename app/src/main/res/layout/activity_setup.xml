@@ -108,8 +108,22 @@
                     android:id="@+id/setupTestButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
                     android:text="@string/setup_test"
                     app:icon="@android:drawable/ic_menu_send" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupBackupButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/backup_settings" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupRestoreButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/restore_settings" />
 
             </LinearLayout>
 
