@@ -1,3 +1,7 @@
+## [1.6.248] - 2026-10-16
+### Fixed
+- Polling perintah tak lagi mati selamanya saat Telegram menolak offset (400): 2x gagal hanya backoff, gagal ke-3 beruntun resync offset ke 0 (sembuh sendiri; perintah basi hasil replay tetap ditolak guard kedaluwarsa).
+
 ## [1.6.247] - 2026-10-16
 ### Fixed
 - `SendMessageWorker`: pesan yang ditolak permanen Telegram (HTTP 4xx, mis. format salah) langsung di-drop + notif drop, tidak lagi masuk retry transient yang menahan jendela 20 pesan dan buang kuota/baterai.

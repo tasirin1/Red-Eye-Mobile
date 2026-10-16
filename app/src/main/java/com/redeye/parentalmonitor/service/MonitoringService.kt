@@ -945,6 +945,8 @@ class MonitoringService : Service() {
     @Volatile
     private var updateConflictNoticeAt = 0L
     @Volatile
+    private var offsetFailCount = 0
+    @Volatile
     private var mediaBackoffUntil = 0L
     private val msgDropCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var msgDropJob: Job? = null
@@ -1096,7 +1098,17 @@ class MonitoringService : Service() {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset")) {
-                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, backing off without offset reset")
+                    offsetFailCount++
+                    if (offsetFailCount >= 3) {
+                        offsetFailCount = 0
+                        try {
+                            preferencesManager.setLastUpdateIdSync(0L)
+                        } catch (_: Exception) {
+                        }
+                        android.util.Log.w("MonitoringService", "getUpdates offset rejected 3x, resynced offset to 0")
+                    } else {
+                        android.util.Log.w("MonitoringService", "getUpdates offset rejected, backing off without offset reset")
+                    }
                     commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
                 }
             } catch (_: Exception) {
@@ -1108,6 +1120,7 @@ class MonitoringService : Service() {
             return false
         }
         if (!response.isSuccessful || response.body()?.ok != true) return false
+        offsetFailCount = 0
         try {
             preferencesManager.credentialError = ""
             preferencesManager.credentialErrorAt = 0L
