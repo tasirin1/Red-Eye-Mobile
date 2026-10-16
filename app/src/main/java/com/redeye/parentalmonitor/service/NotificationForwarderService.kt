@@ -261,7 +261,7 @@ class NotificationForwarderService : NotificationListenerService() {
             pkg
         }
         val notifId = sbn.id
-        if (pendingPosts.get() > 32) {
+        if (pendingPosts.get() > MAX_QUEUED) {
             val fbTitle = try {
                 notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
             } catch (_: Exception) {

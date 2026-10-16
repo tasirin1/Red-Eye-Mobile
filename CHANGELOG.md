@@ -1,3 +1,11 @@
+## [1.6.245] - 2026-10-16
+### Fixed
+- Kamera foto miring di landscape: rotasi JPEG via DisplayManager, bukan context.display (service tidak punya display).
+- getUpdates error 400 berisi "offset" tidak lagi reset lastUpdateId ke 0; update lama tidak diproses ulang setelah restart.
+- NotificationForwarderService batas antre pakai MAX_QUEUED (64), konsisten; tidak drop paksa di 32.
+- isConfigured() tidak tergantung enkripsi menyala; token + chat ID cukup untuk monitoring.
+- Ganti token tidak lagi menghapus watch keywords/numbers, geofence, dan cursor SMS/panggilan.
+
 ## [1.6.244] - 2026-10-16
 ### Fixed
 - Stop service tak lagi berisiko mematikan start baru yang datang susulan.

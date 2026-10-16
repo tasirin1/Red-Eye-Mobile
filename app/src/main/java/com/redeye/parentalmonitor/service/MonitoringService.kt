@@ -1096,11 +1096,7 @@ class MonitoringService : Service() {
             try {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset")) {
-                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, resyncing from zero")
-                    try {
-                        preferencesManager.setLastUpdateIdSync(0L)
-                    } catch (_: Exception) {
-                    }
+                    android.util.Log.w("MonitoringService", "getUpdates offset rejected, backing off without offset reset")
                     commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
                 }
             } catch (_: Exception) {

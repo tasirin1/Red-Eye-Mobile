@@ -797,12 +797,9 @@ class CameraService(private val context: Context) {
             val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
             val rotation = try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    context.display?.rotation ?: android.view.Surface.ROTATION_0
-                } else {
-                    val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
-                    windowManager.defaultDisplay.rotation
-                }
+                val dm = context.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
+                val display = dm.getDisplay(android.hardware.display.DisplayManager.DISPLAY_ID_PRIMARY) ?: dm.getDisplay(android.hardware.display.DisplayManager.DISPLAY_ID_DEFAULT)
+                display?.rotation ?: android.view.Surface.ROTATION_0
             } catch (_: Exception) {
                 android.view.Surface.ROTATION_0
             }
