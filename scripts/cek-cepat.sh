@@ -53,4 +53,14 @@ if [ -z "$(git diff --cached --name-only)" ]; then
     echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
+# 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
+loop_dup=""
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  d=$(awk '/^[[:space:]]*@[A-Za-z_]+[[:space:]]*$/{ if ($0==prev) { print FNR; exit } prev=$0; next } { prev="" }' "$f" 2>/dev/null || true)
+  if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
+done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
+if [ -n "$loop_dup" ]; then
+  echo "GAGAL: anotasi ganda berturut-turut (tak repeatable) di $loop_dup"; gagal=1;
+fi
 exit $gagal

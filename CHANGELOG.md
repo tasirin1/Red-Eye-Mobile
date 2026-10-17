@@ -1,4 +1,8 @@
 ## [Unreleased]
+### Fixed
+- Perbaikan build: anotasi `@Volatile` yang tak sengaja ditulis dua kali di `MonitoringService` membuat kompilasi galat, sehingga tag `v1.6.305`–`v1.6.307` gagal dibangun dan tidak menerbitkan rilis. Seluruh perubahan sejak `v1.6.304` (thread/ANR, pengerasan izin & worker, efisiensi & kerapian) baru terbit di versi ini.
+### Added
+- `scripts/cek-cepat.sh` kini memeriksa anotasi ganda berturut-turut (mis. dua `@Volatile`) pada berkas Kotlin/Java, supaya galat kompilasi sejenis tertangkap sebelum push.
 
 ## [1.6.307] - 2026-10-17
 ### Changed

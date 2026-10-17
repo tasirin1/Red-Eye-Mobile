@@ -67,7 +67,6 @@ class MonitoringService : Service() {
     @Volatile
     private var activePhotoFile: File? = null
     @Volatile
-    @Volatile
     private var activeShotFile: File? = null
     @Volatile
     private var activeVideoFile: File? = null
