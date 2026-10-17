@@ -106,6 +106,15 @@ class NotificationForwarderService : NotificationListenerService() {
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
+        fun requestRebindFrom(context: Context) {
+            try {
+                android.service.notification.NotificationListenerService.requestRebind(
+                    ComponentName(context, NotificationForwarderService::class.java)
+                )
+            } catch (_: Exception) {
+            }
+        }
+
         fun record(app: String, title: String, text: String) {
             synchronized(historyLock) {
                 history.addLast(NotifRecord(app, title, text, System.currentTimeMillis()))

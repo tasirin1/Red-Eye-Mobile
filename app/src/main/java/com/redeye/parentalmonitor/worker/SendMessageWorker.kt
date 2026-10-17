@@ -122,6 +122,7 @@ class SendMessageWorker(
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
+                        noteSendOk()
                         if (sentIds.size - flushedSent >= 5) {
                             try {
                                 messageQueue.removeMessages(sentIds)
@@ -445,6 +446,7 @@ class SendMessageWorker(
         for ((idx, part) in parts.withIndex()) {
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
+                    noteSendOk()
                     try {
                         delay(500)
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -580,6 +582,17 @@ class SendMessageWorker(
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private fun noteSendOk() {
+        try {
+            preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+        } catch (_: Exception) {
+        }
+        try {
+            if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
+        } catch (_: Exception) {
         }
     }
 

@@ -136,6 +136,12 @@ interface TelegramApi {
         @Url url: String,
         @Body body: DeleteCommandsRequest
     ): Response<TelegramResponse>
+
+    @POST
+    suspend fun deleteWebhook(
+        @Url url: String,
+        @Body body: Map<String, String>
+    ): Response<TelegramResponse>
     
     @Multipart
     @POST

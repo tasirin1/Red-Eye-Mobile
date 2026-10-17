@@ -68,6 +68,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
 - Anti-mati: service dipantau jam bangun adaptif (3 menit sesaat setelah dipulihkan, 10 menit saat layar mati, 15 menit saat layar nyala) — kalau sistem menghentikannya (Doze/hemat baterai), service dihidupkan lagi otomatis dan kamu dapat pesan Telegram berisi perkiraan jam berhentinya (maksimal sekali per 6 jam; kalau berhenti berkali-kali, jumlah kematiannya disebut). Tombol Anti-kill &amp; Autostart membantu mengizinkan autostart merek HP + "tampil di atas aplikasi lain" supaya makin jarang mati, dan tombol Tes anti-mati (atau perintah `/cekmati`) membuktikan pemulihan ini benar-benar jalan di HP-mu.
 - Hemat daya: saat baterai ≤15% dan tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) supaya HP tidak mati kehabisan daya; kamu diberi kabar saat mode ini mulai dan saat kembali normal.
+- Deteksi "hidup tapi bisu": waktu kirim sukses terakhir dicatat. Kalau sudah >90 menit tak ada kiriman berhasil padahal ada antrean dan jaringan normal (bukan token salah), aplikasi memulihkan sendiri bertahap (tiap 45 menit): 1) putar ulang antrean + segarkan kredensial, 2) hapus webhook + daftar ulang menu command, 3) hidupkan ulang semua loop — lalu mengabari hasilnya. Perintah `/sembuh` menjalankan pemulihan penuh kapan pun kamu minta.
 - `SYSTEM_ALERT_WINDOW` (tampil di atas aplikasi lain) bersifat opsional; hanya dipakai agar layanan lebih mudah dihidupkan ulang dari latar di Android 12+, dan hanya aktif kalau kamu mengizinkannya lewat tombol Anti-kill.
 - Service monitoring memakai tipe foreground `specialUse` (`FOREGROUND_SERVICE_SPECIAL_USE`) di Android 14+, supaya tidak kena batas 6 jam/24 jam tipe `dataSync` di Android 15+; kalau percobaan `startForeground` dengan tipe lengkap ditolak (mis. saat diluncurkan dari boot di Android 15+), service mencoba ulang dengan `specialUse` saja.
 
@@ -110,6 +111,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/uptime` | Lama service jalan |
 | `/alive` | Denyut terakhir + berapa kali service dipulihkan |
 | `/cekmati` | Uji anti-mati: service dihentikan paksa, lalu lapor apakah jam bangun menghidupkannya lagi |
+| `/sembuh` | Pemulihan penuh: segarkan kredensial, hapus webhook, daftar ulang menu, hidupkan ulang semua loop |
 | `/heartbeat <1-48\|0>` | Laporan berkala "masih hidup" (`0` = mati) |
 | `/version` | Versi app + device |
 | `/stop` / `/resume` | Jeda/lanjut monitoring (`/resume` sekaligus membatalkan jeda foto otomatis) |

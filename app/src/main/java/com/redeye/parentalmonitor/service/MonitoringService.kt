@@ -177,10 +177,10 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -193,6 +193,9 @@ class MonitoringService : Service() {
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
         private const val LOW_BATTERY_LEVEL = 15
+        private const val SILENT_LINK_MS = 90 * 60_000L
+        private const val SILENT_HEAL_SPACING_MS = 45 * 60_000L
+        private const val SILENT_MAX_STAGE = 3
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -596,6 +599,10 @@ class MonitoringService : Service() {
             serviceScope.launch { reportLivenessSelfTest() }
         } catch (_: Exception) {
         }
+        try {
+            seedSendOkMarker()
+        } catch (_: Exception) {
+        }
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
             serviceScope.launch {
                 sendToTelegram("Storage fallback active: secure storage unavailable, data kept in volatile memory until Setup is reopened.")
@@ -677,6 +684,7 @@ class MonitoringService : Service() {
                     try { checkBegadang() } catch (_: Exception) { }
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
+                    try { checkSilentLink() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
                         if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
@@ -1522,15 +1530,17 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun registerBotCommands() {
+    private suspend fun registerBotCommands(force: Boolean = false) {
         try {
             val botToken = preferencesManager.botToken
             if (botToken.isEmpty()) return
             val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
             val tokenHash = sha256Hex(botToken + ":" + ownerId + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
-            try {
-                if (preferencesManager.commandsTokenHash == tokenHash) return
-            } catch (_: Exception) {
+            if (!force) {
+                try {
+                    if (preferencesManager.commandsTokenHash == tokenHash) return
+                } catch (_: Exception) {
+                }
             }
             val url = "https://api.telegram.org/bot$botToken/setMyCommands"
             val publicResp = TelegramClient.api.setMyCommands(url, com.redeye.parentalmonitor.network.SetMyCommandsRequest(publicCommandList()))
@@ -1543,8 +1553,7 @@ class MonitoringService : Service() {
                 val ownerResp = TelegramClient.api.setMyCommands(url, ownerBody)
                 ownerOk = ownerResp.isSuccessful && ownerResp.body()?.ok == true
             }
-            if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {
-                try {
+            if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {                try {
                     preferencesManager.commandsTokenHash = tokenHash
                 } catch (_: Exception) {
                 }
@@ -2251,6 +2260,9 @@ class MonitoringService : Service() {
             "/cekmati" -> {
                 runLivenessSelfTest()
             }
+            "/sembuh" -> {
+                runFullRecovery()
+            }
             "/heartbeat" -> {
                 if (arg.isBlank()) {
                     val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
@@ -2587,6 +2599,7 @@ class MonitoringService : Service() {
                         appendLine("/uptime - lama service jalan")
                         appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
                         appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
+                        appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
                         appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
@@ -3566,6 +3579,7 @@ class MonitoringService : Service() {
                     preferencesManager.credentialErrorAt = 0L
                 } catch (_: Exception) {
                 }
+                noteSendOk()
                 return true
             } else if (response.code() == 429) {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
@@ -3632,6 +3646,7 @@ class MonitoringService : Service() {
                                 preferencesManager.credentialErrorAt = 0L
                             } catch (_: Exception) {
                             }
+                            noteSendOk()
                             return true
                         } else if (fallbackResp.code() == 429) {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
@@ -4473,6 +4488,14 @@ class MonitoringService : Service() {
             appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem" +
                 if (unreported > 0) " (belum dilaporkan: ${unreported}x)" else "")
             appendLine("Watchdog: " + Liveness.intervalText(this@MonitoringService))
+            val sendAge = silentLinkAgeMs()
+            val heals = try { preferencesManager.silentHeals } catch (_: Exception) { 0 }
+            val sendText = when {
+                sendAge < 0L -> "?"
+                sendAge < 30 * 60_000L -> "OK (" + durationText(sendAge) + " lalu)"
+                else -> "BISU " + durationText(sendAge) + " lalu"
+            }
+            appendLine("Jalur kirim: $sendText" + (if (heals > 0) " · dipulihkan sendiri ${heals}x" else ""))
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
             appendLine("Tipe FGS aktif: " + fgsTypesText(appliedFgsTypes))
             if (level in 0..100) appendLine("Baterai: $level%" +
@@ -4564,6 +4587,129 @@ class MonitoringService : Service() {
 
     private fun selfTestPending(): Boolean {
         return try { preferencesManager.liveTestPending } catch (_: Exception) { false }
+    }
+
+    private fun noteSendOk() {
+        try {
+            preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+        } catch (_: Exception) {
+        }
+        try {
+            if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun silentLinkAgeMs(): Long {
+        return try {
+            val last = preferencesManager.lastSendOkElapsed
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            if (last <= 0L || last > nowElapsed) -1L else nowElapsed - last
+        } catch (_: Exception) {
+            -1L
+        }
+    }
+
+    private fun seedSendOkMarker() {
+        try {
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val last = preferencesManager.lastSendOkElapsed
+            if (last <= 0L || last > nowElapsed) {
+                preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), nowElapsed)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun clearWebhook() {
+        try {
+            val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            if (botToken.isEmpty()) return
+            val url = "https://api.telegram.org/bot$botToken/deleteWebhook"
+            TelegramClient.api.deleteWebhook(url, emptyMap())
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun checkSilentLink() {
+        if (cachedMonitoringPaused) return
+        val age = silentLinkAgeMs()
+        if (age < SILENT_LINK_MS) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (!hasNetwork()) return
+        val hasWork = try { messageQueue.hasMessages() } catch (_: Exception) { false }
+        if (!hasWork) return
+        val stage = try { preferencesManager.silentHealStage } catch (_: Exception) { 0 }
+        if (stage >= SILENT_MAX_STAGE) return
+        val now = System.currentTimeMillis()
+        val lastHeal = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
+        if (lastHeal > 0L && now > lastHeal && now - lastHeal < SILENT_HEAL_SPACING_MS) return
+        try { preferencesManager.silentHealAt = now } catch (_: Exception) { }
+        try { preferencesManager.silentHealStage = stage + 1 } catch (_: Exception) { }
+        try {
+            val heals = preferencesManager.silentHeals
+            preferencesManager.silentHeals = heals + 1
+        } catch (_: Exception) {
+        }
+        val minutes = (age / 60_000L).coerceAtLeast(1L)
+        try {
+            healSilentLink(stage + 1)
+        } catch (_: Exception) {
+        }
+        try {
+            sendToTelegram("🩺 <b>Jalur kirim tampak bisu</b>\nSudah ±$minutes menit tanpa kiriman berhasil padahal ada antrean. Pemulihan tahap ${stage + 1}/$SILENT_MAX_STAGE sudah saya jalankan (${silentHealLabel(stage + 1)}). Kalau pesan ini sampai, jalur sudah normal lagi.")
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun silentHealLabel(stage: Int): String {
+        return when (stage) {
+            1 -> "putar ulang antrean + segarkan kredensial"
+            2 -> "hapus webhook + daftar ulang menu command"
+            else -> "hidupkan ulang semua loop"
+        }
+    }
+
+    private suspend fun healSilentLink(stage: Int) {
+        when (stage) {
+            1 -> {
+                try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
+                refreshCreds()
+                try { MessageScheduler.scheduleMessageSend(this, 0L) } catch (_: Exception) { }
+            }
+            2 -> {
+                clearWebhook()
+                registerBotCommands(true)
+            }
+            else -> {
+                restartAllLoops()
+            }
+        }
+    }
+
+    private suspend fun runFullRecovery() {
+        val hadQueue = try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }
+        refreshCreds()
+        clearWebhook()
+        registerBotCommands(true)
+        try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
+        try { MessageScheduler.scheduleBootRestart(this) } catch (_: Exception) { }
+        try { MessageScheduler.scheduleWatchdog(this) } catch (_: Exception) { }
+        try { Liveness.schedule(this) } catch (_: Exception) { }
+        try { NotificationForwarderService.requestRebindFrom(this) } catch (_: Exception) { }
+        restartAllLoops(true)
+        try {
+            preferencesManager.silentHealStage = 0
+            preferencesManager.silentHealAt = 0L
+        } catch (_: Exception) { }
+        try {
+            sendToTelegram("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• Semua loop dihidupkan ulang, jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
+        } catch (_: Exception) {
+        }
+        try {
+            MessageScheduler.scheduleMessageSend(this, 0L)
+        } catch (_: Exception) {
+        }
     }
 
     private fun runLivenessSelfTest() {
