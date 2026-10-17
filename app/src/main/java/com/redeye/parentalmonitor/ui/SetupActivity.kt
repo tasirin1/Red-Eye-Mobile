@@ -946,6 +946,8 @@ class SetupActivity : AppCompatActivity() {
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
                 try { MessageScheduler.scheduleWatchdog(this@SetupActivity) } catch (_: Exception) { }
+                try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
+                try { com.redeye.parentalmonitor.utils.Liveness.schedule(this@SetupActivity) } catch (_: Exception) { }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
                     val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
@@ -957,8 +959,6 @@ class SetupActivity : AppCompatActivity() {
                         } else {
                             startService(intent)
                         }
-                        try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
-                        try { com.redeye.parentalmonitor.utils.Liveness.schedule(this@SetupActivity) } catch (_: Exception) { }
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()

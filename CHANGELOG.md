@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.319] - 2026-10-17
+### Fixed
+- Balapan tulis-baca jejak lokasi: titik `/jejak` (`trail24`) dan penghitung kegagalan lokasi (`locFailCount`) kini dikunci, sehingga sapuan patroli dan permintaan `/location` yang berjalan bersamaan tidak lagi saling menimpa (titik jejak hilang / penghitung tak pernah mencapai ambang peringatan). Keduanya berjalan di `Dispatchers.IO` yang multi-thread.
+- Laporan otomatis "monitoring hidup lagi" hanya menandai sudah-terkirim dan memasang cooldown 6 jam setelah pesannya benar-benar masuk antrean; sebelumnya penandanya ditulis lebih dulu, jadi bila antrean gagal laporannya hilang permanen.
+- Pengaturan mulai/hentikan monitoring tidak lagi menulis penyimpanan terenkripsi langsung di main thread: `setMonitoringActive` memakai `commitGuarded` (commit di luar main thread, `apply` bila terpaksa di main thread). Setup juga menyalakan status monitoring **sebelum** memulai layanan, sehingga layanan tidak sempat menolak start karena masih membaca status "dimatikan".
+
 ## [1.6.318] - 2026-10-17
 ### Fixed
 - Penerusan notifikasi tidak lagi kehilangan notifikasi yang sedang dikirim saat layanannya dihentikan sistem. Sebelumnya `onDestroy` menyelamatkan isi buffer **sebelum** scope dibatalkan, sehingga sisa batch yang sedang menunggu jaringan baru dikembalikan ke buffer setelah penyelamatan berjalan — lalu hilang bersama prosesnya. Kini sisa batch saat pembatalan langsung dipindah ke antrean pesan yang tahan mati (`MessageQueue`) dan dijadwalkan ulang.

@@ -924,7 +924,7 @@ class MonitoringService : Service() {
                 }
                 appendLine("Akurasi: ±${location.accuracy.toInt()} m")
             } else {
-                try { preferencesManager.locFailCount = (preferencesManager.locFailCount + 1).coerceAtMost(100) } catch (_: Exception) { }
+                bumpLocFailCount()
                 appendLine("Lokasi: tak didapat")
             }
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")
@@ -2551,7 +2551,7 @@ class MonitoringService : Service() {
                         appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                     })
                 } else {
-                    try { preferencesManager.locFailCount = (preferencesManager.locFailCount + 1).coerceAtMost(100) } catch (_: Exception) { }
+                    bumpLocFailCount()
                     sendToTelegram("📍 Lokasi tak didapat (GPS mati?). Baterai: ${if (level in 0..100) "$level%" else "?"}")
                 }
                 try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
@@ -4154,6 +4154,17 @@ class MonitoringService : Service() {
         }
     }
 
+    private val prefsRmwLock = Any()
+
+    private fun bumpLocFailCount() {
+        try {
+            synchronized(prefsRmwLock) {
+                preferencesManager.locFailCount = (preferencesManager.locFailCount + 1).coerceAtMost(100)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private fun rememberSentLatLon(lat: Double, lon: Double) {
         try {
             preferencesManager.lastLocLatE6 = (lat * 1_000_000).toLong()
@@ -4162,13 +4173,15 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            val now = System.currentTimeMillis()
-            val cutoff = now - 24 * 60 * 60_000L
-            val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
-            pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
-            val fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }.toMutableList()
-            while (fresh.size > 300) fresh.removeAt(0)
-            preferencesManager.trail24 = (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
+            synchronized(prefsRmwLock) {
+                val now = System.currentTimeMillis()
+                val cutoff = now - 24 * 60 * 60_000L
+                val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
+                pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
+                val fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }.toMutableList()
+                while (fresh.size > 300) fresh.removeAt(0)
+                preferencesManager.trail24 = (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
+            }
         } catch (_: Exception) {
         }
     }
@@ -4688,7 +4701,7 @@ class MonitoringService : Service() {
             if (pos == null || locAge > 30 * 60_000L) {
                 val fix = try { fetchLocation() } catch (_: Exception) { null }
                 if (fix == null) {
-                    try { preferencesManager.locFailCount = (preferencesManager.locFailCount + 1).coerceAtMost(100) } catch (_: Exception) { }
+                    bumpLocFailCount()
                     return
                 }
                 try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }

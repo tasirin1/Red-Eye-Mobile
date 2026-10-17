@@ -975,7 +975,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        try { editor.commit() } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
+        try { commitGuarded(editor) } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
     }
 
 private class MemoryPrefs : SharedPreferences {
