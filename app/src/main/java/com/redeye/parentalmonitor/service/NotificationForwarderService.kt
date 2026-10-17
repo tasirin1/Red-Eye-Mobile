@@ -911,8 +911,20 @@ class NotificationForwarderService : NotificationListenerService() {
             if (curCount > 0) leftover.add(cur.toString() to curPkg)
             while (index < items.size) leftover.add(items[index++])
             if (leftover.isNotEmpty()) {
-                synchronized(batchLock) {
-                    for (i in leftover.indices.reversed()) batchBuf.addFirst(leftover[i])
+                if (t is kotlinx.coroutines.CancellationException) {
+                    try {
+                        queue().addMessages(leftover.map { it.first })
+                        queue().flushSync()
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        MessageScheduler.scheduleMessageSend(this)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    synchronized(batchLock) {
+                        for (i in leftover.indices.reversed()) batchBuf.addFirst(leftover[i])
+                    }
                 }
             }
             throw t

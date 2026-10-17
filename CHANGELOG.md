@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.318] - 2026-10-17
+### Fixed
+- Penerusan notifikasi tidak lagi kehilangan notifikasi yang sedang dikirim saat layanannya dihentikan sistem. Sebelumnya `onDestroy` menyelamatkan isi buffer **sebelum** scope dibatalkan, sehingga sisa batch yang sedang menunggu jaringan baru dikembalikan ke buffer setelah penyelamatan berjalan — lalu hilang bersama prosesnya. Kini sisa batch saat pembatalan langsung dipindah ke antrean pesan yang tahan mati (`MessageQueue`) dan dijadwalkan ulang.
+- Tombol **Matikan monitoring** di Setup kini selalu benar-benar menghentikan layanan. Sebelumnya `stopService` berada di dalam blok yang menyerah lebih dulu bila activity sudah `isFinishing`/`isDestroyed` (mis. owner menekan Back segera setelah menekan tombol), jadi status tersimpan "mati" tetapi layanan dan loop pemantauan tetap berjalan.
+
 ## [1.6.317] - 2026-10-17
 ### Fixed
 - Balasan perintah tak lagi hilang saat perintah itu sendiri menjalankan ulang loop. Sebelumnya `/restart`, `/sembuh`, `/ping` (saat loop dijalankan ulang), pemberitahuan watchdog, dan laporan pemulihan "jalur kirim tampak bisu" dikirim dari coroutine yang **sedang dibatalkan** oleh `restartAllLoops()` sehingga balasannya dibuang diam-diam — owner melihat perintah seperti tidak dijawab padahal aksinya berjalan. Kini balasan dikirim lewat job terpisah (`replyLater`) yang tidak ikut dibatalkan.

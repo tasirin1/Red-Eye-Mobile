@@ -922,14 +922,10 @@ class SetupActivity : AppCompatActivity() {
             try { MessageScheduler.cancelBootRestart(this@SetupActivity) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
+            try { stopService(Intent(this@SetupActivity, MonitoringService::class.java)) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
-                try {
-                    stopService(Intent(this@SetupActivity, MonitoringService::class.java))
-                    Toast.makeText(this@SetupActivity, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
-                }
+                Toast.makeText(this@SetupActivity, getString(R.string.monitoring_inactive), Toast.LENGTH_SHORT).show()
                 updateStatus()
             }
         }
