@@ -42,7 +42,6 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var permissionButton: MaterialButton
     private lateinit var notifButton: MaterialButton
     private lateinit var shotButton: MaterialButton
-    private lateinit var hideIconButton: MaterialButton
     private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
     private val startGuard = Any()
@@ -305,7 +304,6 @@ class SetupActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.setupPermissionButton)
         notifButton = findViewById(R.id.setupNotifButton)
         shotButton = findViewById(R.id.setupShotButton)
-        hideIconButton = findViewById(R.id.setupHideIconButton)
 
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -367,7 +365,6 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
         findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
-        findViewById<MaterialButton>(R.id.setupHideIconButton).setOnClickListener { onHideIconPressed() }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -387,7 +384,6 @@ class SetupActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         reviveMonitoringIfNeeded()
-        syncLauncherIconState()
         updateStatus()
     }
 
@@ -1381,57 +1377,6 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun launcherAlias(): ComponentName = ComponentName(packageName, "$packageName.ui.Launcher")
-
-    private fun applyLauncherIconHidden(hidden: Boolean): Boolean {
-        return try {
-            packageManager.setComponentEnabledSetting(
-                launcherAlias(),
-                if (hidden) PackageManager.COMPONENT_ENABLED_STATE_DISABLED else PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                PackageManager.DONT_KILL_APP
-            )
-            try { prefs.launcherIconHidden = hidden } catch (_: Exception) { }
-            true
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun syncLauncherIconState() {
-        try {
-            val want = prefs.launcherIconHidden
-            val isHidden = packageManager.getComponentEnabledSetting(launcherAlias()) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            if (want != isHidden) applyLauncherIconHidden(want)
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun onHideIconPressed() {
-        val hidden = try { prefs.launcherIconHidden } catch (_: Exception) { false }
-        if (hidden) {
-            if (applyLauncherIconHidden(false)) {
-                Toast.makeText(this, getString(R.string.setup_show_icon_done), Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(this, getString(R.string.setup_hide_icon_fail), Toast.LENGTH_LONG).show()
-            }
-            updateStatus()
-            return
-        }
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(getString(R.string.setup_hide_icon))
-            .setMessage(getString(R.string.setup_hide_icon_confirm))
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                if (applyLauncherIconHidden(true)) {
-                    Toast.makeText(this, getString(R.string.setup_hide_icon_done), Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(this, getString(R.string.setup_hide_icon_fail), Toast.LENGTH_LONG).show()
-                }
-                updateStatus()
-            }
-            .show()
-    }
-
     private fun updateStatus() {
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
@@ -1499,7 +1444,6 @@ class SetupActivity : AppCompatActivity() {
                 else -> getString(R.string.setup_notif_off)
             }
             shotButton.text = if (shotOn) getString(R.string.setup_shot_ok) else getString(R.string.setup_shot)
-            hideIconButton.text = if (try { prefs.launcherIconHidden } catch (_: Exception) { false }) getString(R.string.setup_show_icon) else getString(R.string.setup_hide_icon)
             }
         }
     }

@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Removed
+- Tombol **Sembunyikan ikon launcher** beserta seluruh pendukungnya (`activity-alias` `.ui.Launcher`, tile Quick Settings `SetupTileService`, preferensi `launcher_icon_hidden`, string terkait) dibatalkan. Sebabnya: sejak Android 10 ikon tak benar-benar hilang — `LauncherAppsService` menyuntikkan entri "Info Aplikasi" bila app meminta izin dan masih punya activity launcher yang default-aktif di manifest (`activityInfo.enabled` tidak ikut berubah saat `setComponentEnabledSetting(DISABLED)`), sehingga ikon sisa malah membuka Setelan. Mematikannya butuh API `@SystemApi` (`setSyntheticAppDetailsActivityEnabled`) atau ikon yang tak ada sejak instal.
 
 ## [1.6.315] - 2026-10-17
 ### Added

@@ -63,21 +63,15 @@
         android:theme="@style/Theme.ParentalMonitor"
         tools:targetApi="35">
         
-        <!-- Activity utama (ikon launcher ada di alias agar bisa disembunyikan) -->
+        <!-- Activity utama -->
         <activity
             android:name=".ui.MainActivity"
-            android:exported="true" />
-
-        <activity-alias
-            android:name=".ui.Launcher"
-            android:targetActivity=".ui.MainActivity"
-            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
+        </activity>
 
         <activity
             android:name=".ui.SetupActivity"
@@ -107,19 +101,6 @@
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
-
-        <!-- Tile panel notifikasi: pintu masuk cadangan saat ikon launcher disembunyikan -->
-        <service
-            android:name=".service.SetupTileService"
-            android:enabled="true"
-            android:exported="true"
-            android:icon="@drawable/ic_notification"
-            android:label="${appLabel}"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
 

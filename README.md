@@ -19,7 +19,6 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Antrean offline, kirim lagi pas online (penjadwal dibatasi biar hemat baterai)
 - Auto-jalan lagi habis reboot
 - Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
-- Mode stealth: app menyamar sebagai kalkulator (kode `1234` + `=`) dan ikonnya bisa disembunyikan dari layar utama tanpa menghapus app
 
 ## Ambil APK-nya
 
@@ -58,7 +57,6 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 11. Tap Anti-kill &amp; Autostart: izinkan autostart merek HP (Xiaomi/Oppo/Vivo/Huawei/Samsung/dll), matikan batasan baterai, dan izinkan "tampil di atas aplikasi lain". Nyalakan Device Admin kalau perlu. Setelah itu tap Tes anti-mati untuk membuktikan service bisa hidup lagi sendiri di HP ini.
 12. Kalau mau ringkasan pemakaian layar (perintah `/layar`), tap Screen time access lalu aktifkan untuk app ini.
 13. Tap Enable monitoring, selesai. Cek via Send Status.
-14. (Opsional) Tap Sembunyikan ikon launcher kalau mau app tak kelihatan di layar utama. Cara buka halaman Setup lagi: ketuk tile "Calculator" di panel notifikasi (Quick Settings) atau ketuk notifikasi pemantauan; tombol yang sama bisa menampilkan ikonnya kembali. App tidak terhapus dan pemantauan tetap jalan.
 
 Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit.
 
@@ -68,7 +66,6 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Foto ngikutin interval kamera, `0` berarti manual via `/photo` aja.
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
 - Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; restore hanya mengisi form, tetap tap Save.
-- Ikon disembunyikan: kalau tombol Sembunyikan ikon launcher dipakai, app hilang dari layar utama tapi pemantauan tetap jalan. Dua pintu masuk pengganti ke halaman Setup: tile "Calculator" di panel notifikasi (tambahkan sekali lewat Edit tiles) dan notifikasi pemantauan yang menempel — jadi tak mungkin terkunci.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
 - Anti-mati: service dipantau jam bangun adaptif (3 menit sesaat setelah dipulihkan, 10 menit saat layar mati, 15 menit saat layar nyala) — kalau sistem menghentikannya (Doze/hemat baterai), service dihidupkan lagi otomatis dan kamu dapat pesan Telegram berisi perkiraan jam berhentinya (maksimal sekali per 6 jam; kalau berhenti berkali-kali, jumlah kematiannya disebut). Tombol Anti-kill &amp; Autostart membantu mengizinkan autostart merek HP + "tampil di atas aplikasi lain" supaya makin jarang mati, dan tombol Tes anti-mati (atau perintah `/cekmati`) membuktikan pemulihan ini benar-benar jalan di HP-mu.
 - Hemat daya: saat baterai ≤15% dan tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) supaya HP tidak mati kehabisan daya; kamu diberi kabar saat mode ini mulai dan saat kembali normal.

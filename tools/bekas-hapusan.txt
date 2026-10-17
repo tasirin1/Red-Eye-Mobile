@@ -16,3 +16,7 @@ addWakePingIds
 setWakeUpdateIdSync
 touchSmsPendingSync
 matchesNormalized
+applyLauncherIconHidden
+launcherAlias
+onHideIconPressed
+syncLauncherIconState
