@@ -14,6 +14,7 @@
     <string name="notification_text">Layanan berjalan</string>
     <string name="never">Tidak pernah</string>
     <string name="settings_saved">Setingan tersimpan</string>
+    <string name="setup_save_no_storage">Tidak tersimpan permanen — penyimpanan aman (keystore) tak tersedia di HP ini, kredensial tak bisa disimpan</string>
     <string name="setup_credentials_cleared">Kredensial dihapus</string>
     <string name="setup_clear_title">Hapus kredensial?</string>
     <string name="setup_clear_text">Ini menghapus token bot, menghentikan monitoring, dan membuang antrean pesan. Lanjut?</string>

@@ -636,7 +636,9 @@ class SetupActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@withContext
                 if (mySave != saveSeq.get()) return@withContext
                 if (!persisted) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, "persist"), Toast.LENGTH_LONG).show()
+                    val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
+                    val msg = if (storageOk) getString(R.string.setup_test_fail, "persist") else getString(R.string.setup_save_no_storage)
+                    Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
                     return@withContext
                 }
                 try {

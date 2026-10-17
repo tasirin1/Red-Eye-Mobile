@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 ### Fixed
-- Pemilihan lokasi kini memakai fix **paling akurat**, bukan yang pertama tersedia. Dari sekian sinyal yang aktif (GPS + jaringan) aplikasi mengumpulkan hasilnya, berhenti begitu ada fix akurat (≤50 m), lalu memilih yang akuratnya paling kecil — termasuk pada daftar lokasi cache (dulu jaringan selalu dicoba lebih dulu tanpa membandingkan akurasi). Akibatnya `/location`, `/darurat`, `/hilang`, patroli, dan pemeriksaan geofence tidak lagi memakai taksiran jaringan yang bisa meleset ratusan meter, sehingga kabar masuk/keluar rumah/sekolah tidak lagi sering tertahan penjaga akurasi.
+- Penyimpanan aman: proses migrasi penyimpanan (`upgradeToPersistent`) kini memeriksa hasil penulisan (`commit`) dan tidak lagi menandai "terenkripsi" bila penulisan gagal. Penanda internal yang ditulis dari jalur UI/notifikasi (status sinkron awal, status nada dering, jumlah notifikasi terbuang) memakai `apply()` sehingga tidak memblokir thread utama. Pesan gagal simpan kredensial juga diperjelas: bila penyimpanan aman (keystore) tidak tersedia di HP, owner langsung diberi tahu kredensial tidak bisa disimpan permanen (sebelumnya hanya "Test failed: persist").
 
 ## [1.6.300] - 2026-10-17
 ### Added

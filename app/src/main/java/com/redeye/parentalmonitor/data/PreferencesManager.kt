@@ -41,13 +41,7 @@ class PreferencesManager(context: Context) {
                     for ((key, value) in snap) {
                         putEntryInto(editor, key, value)
                     }
-                    editor.commit()
-                }
-                sharedPreferences = fresh
-                synchronized(listenerLock) {
-                    for (l in listenerSet) {
-                        try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
-                    }
+                    if (!editor.commit()) return false
                 }
                 try {
                     val memNow = mem?.all ?: emptyMap()
@@ -60,9 +54,15 @@ class PreferencesManager(context: Context) {
                                 changed = true
                             }
                         }
-                        if (changed) editor2.commit()
+                        if (changed && !editor2.commit()) return false
                     }
                 } catch (_: Exception) {
+                }
+                sharedPreferences = fresh
+                synchronized(listenerLock) {
+                    for (l in listenerSet) {
+                        try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
+                    }
                 }
                 storageEncrypted = true
                 true
@@ -87,6 +87,19 @@ class PreferencesManager(context: Context) {
                 android.util.Log.w("PreferencesManager", "Dropping non-string set for $key during migration")
             }
             else -> android.util.Log.w("PreferencesManager", "Dropping unknown type for $key during migration")
+        }
+    }
+
+    private fun commitGuarded(editor: android.content.SharedPreferences.Editor): Boolean {
+        return try {
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                editor.apply()
+                true
+            } else {
+                editor.commit()
+            }
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -337,7 +350,7 @@ class PreferencesManager(context: Context) {
 
     fun setInitialSyncDoneSync(done: Boolean) {
         try {
-            sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, done).commit()
+            commitGuarded(sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, done))
         } catch (_: Exception) {
         }
     }
@@ -348,7 +361,7 @@ class PreferencesManager(context: Context) {
 
     fun setInitialSyncStartedSync(started: Boolean) {
         try {
-            sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, started).commit()
+            commitGuarded(sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, started))
         } catch (_: Exception) {
         }
     }
@@ -577,14 +590,14 @@ class PreferencesManager(context: Context) {
 
     fun setRingStateSync(prev: Int, at: Long) {
         try {
-            sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, prev).putLong(KEY_RING_SAVED_AT, at).commit()
+            commitGuarded(sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, prev).putLong(KEY_RING_SAVED_AT, at))
         } catch (_: Exception) {
         }
     }
 
     fun clearRingStateSync() {
         try {
-            sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, -1).putLong(KEY_RING_SAVED_AT, 0L).commit()
+            commitGuarded(sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, -1).putLong(KEY_RING_SAVED_AT, 0L))
         } catch (_: Exception) {
         }
     }
@@ -667,7 +680,7 @@ class PreferencesManager(context: Context) {
 
     fun setPendingNotifDropsSync(value: Int) {
         try {
-            sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).commit()
+            commitGuarded(sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value))
         } catch (_: Exception) {
         }
     }
