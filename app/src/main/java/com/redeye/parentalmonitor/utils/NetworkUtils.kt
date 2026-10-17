@@ -63,17 +63,7 @@ object NetworkUtils {
         }
     }
 
-    fun isPollBlocked(prefs: PreferencesManager): Boolean {
-        return try {
-            val err = prefs.credentialError
-            if (err != "401" && err != "403") return false
-            val now = System.currentTimeMillis()
-            if (now < prefs.credentialErrorAt) return true
-            now - prefs.credentialErrorAt < 30 * 60_000L
-        } catch (_: Exception) {
-            false
-        }
-    }
+    fun isPollBlocked(prefs: PreferencesManager): Boolean = isAuthBlocked(prefs)
 
     fun sweepAuthBlock(prefs: PreferencesManager) {
         try {

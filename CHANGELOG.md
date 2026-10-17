@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Fixed
+- Worker pemulihan setelah reboot memakai mekanisme ulang-coba bawaan WorkManager (`Result.retry()`) dengan backoff eksponensial yang memang sudah disiapkan, alih-alih menjadwalkan ulang pekerjaan lalu mengaku sukses — backoff di kode dulu tidak pernah berlaku.
+- Setup: izin notifikasi yang ditolak permanen tidak lagi memaksa halaman Pengaturan terbuka (pemantauan tetap jalan tanpa izin itu); di Android 11 ke atas permintaan lokasi latar tidak lagi memanggil dialog yang selalu ditolak, melainkan langsung mengarahkan ke Pengaturan.
+- Pesan "ditolak Telegram (400)" diperjelas: untuk foto, tangkapan layar, audio, dan video kini menyebut "berkas kosong/tak didukung"; untuk pesan teks menyebut "kosong atau permanen tak valid" — sebelumnya mudah disalahartikan sebagai masalah token/chat.
+- `NetworkUtils.isPollBlocked` tidak lagi menyalin isi `isAuthBlocked` (kini mendelegasikan) agar aturan blokir sementara 30 menit hanya ada di satu tempat.
 
 ## [1.6.305] - 2026-10-17
 ### Fixed

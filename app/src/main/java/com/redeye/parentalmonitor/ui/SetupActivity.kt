@@ -114,7 +114,7 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         try {
-            if (result.entries.any { !it.value && !shouldShowRequestPermissionRationale(it.key) }) {
+            if (result.entries.any { !it.value && it.key != Manifest.permission.POST_NOTIFICATIONS && !shouldShowRequestPermissionRationale(it.key) }) {
                 Toast.makeText(this, getString(R.string.setup_open_settings), Toast.LENGTH_LONG).show()
                 openAppSettings()
             }
@@ -124,9 +124,14 @@ class SetupActivity : AppCompatActivity() {
             val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
             val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
             if ((fine || coarse) && !hasBackgroundLocation()) {
-                try {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } catch (_: Exception) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+                    openAppSettings()
+                } else {
+                    try {
+                        backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }

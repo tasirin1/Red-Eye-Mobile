@@ -76,11 +76,7 @@ class BootRestartWorker(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Throwable) {
-            try {
-                MessageScheduler.scheduleBootRestart(applicationContext)
-            } catch (_: Exception) {
-            }
-            Result.success()
+            Result.retry()
         }
     }
 

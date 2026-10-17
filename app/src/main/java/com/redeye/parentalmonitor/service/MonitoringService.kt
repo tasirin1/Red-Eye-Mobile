@@ -3594,8 +3594,8 @@ class MonitoringService : Service() {
         }
         if (count <= 0) return
         try {
-            val text = if (count == 1) "Dropped 1 message rejected by Telegram (400)."
-                else "Dropped $count messages rejected by Telegram (400)."
+            val text = if (count == 1) "Dropped 1 message rejected by Telegram (400) — empty or permanently invalid."
+                else "Dropped $count messages rejected by Telegram (400) — empty or permanently invalid."
             messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
@@ -5347,7 +5347,7 @@ class MonitoringService : Service() {
                                 MediaSendOutcome.DROPPED -> {
                                     prunePhotoCache()
                                     if (reportResult) {
-                                        sendToTelegram("⚠️ Photo rejected by Telegram (400), file discarded.")
+                                        sendToTelegram("⚠️ Photo rejected by Telegram (400) — file empty/unsupported, discarded.")
                                     }
                                 }
                                 MediaSendOutcome.KEPT -> {
@@ -5487,7 +5487,7 @@ class MonitoringService : Service() {
                         MediaSendOutcome.DROPPED -> {
                             prunePhotoCache()
                             if (reportResult) {
-                                sendToTelegram("⚠️ Screenshot rejected by Telegram (400), file discarded.")
+                                sendToTelegram("⚠️ Screenshot rejected by Telegram (400) — file empty/unsupported, discarded.")
                             }
                         }
                         MediaSendOutcome.KEPT -> {
@@ -6340,7 +6340,7 @@ class MonitoringService : Service() {
                         flushPendingAudio()
                     } catch (_: Exception) {
                     }
-                    sendToTelegram("\u26A0\uFE0F Audio rejected by Telegram (400), file discarded.")
+                    sendToTelegram("\u26A0\uFE0F Audio rejected by Telegram (400) — file empty/unsupported, discarded.")
                 }
                 MediaSendOutcome.KEPT -> {
                     keepForRetry = true
@@ -6557,7 +6557,7 @@ class MonitoringService : Service() {
                                     }
                                     MediaSendOutcome.DROPPED -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
-                                        sendToTelegram("⚠️ Video rejected by Telegram (400), file discarded.")
+                                        sendToTelegram("⚠️ Video rejected by Telegram (400) — file empty/unsupported, discarded.")
                                     }
                                     MediaSendOutcome.KEPT -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
@@ -6721,7 +6721,7 @@ class MonitoringService : Service() {
             }
             if (droppedVideos > 0) {
                 try {
-                    messageQueue.addMessage("⚠️ $droppedVideos video file(s) rejected by Telegram (400), discarded.", true)
+                    messageQueue.addMessage("⚠️ $droppedVideos video file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -6792,7 +6792,7 @@ class MonitoringService : Service() {
             }
             if (droppedAudio > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio audio file(s) rejected by Telegram (400), discarded.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio audio file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -7109,7 +7109,7 @@ class MonitoringService : Service() {
         }
             if (droppedPhotos > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos photo file(s) rejected by Telegram (400), discarded.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos photo file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
