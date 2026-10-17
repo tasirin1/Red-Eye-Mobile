@@ -106,7 +106,7 @@ class NotificationForwarderService : NotificationListenerService() {
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
-        fun requestRebindFrom(context: Context) {
+        fun requestRebindFrom(context: android.content.Context) {
             try {
                 android.service.notification.NotificationListenerService.requestRebind(
                     ComponentName(context, NotificationForwarderService::class.java)
