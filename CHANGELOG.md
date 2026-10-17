@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.330] - 2026-10-17
+### Removed
+- Sisa fitur "wake ping" yang sudah mati: penulis daftar id-nya (`addWakePingIds`, `setWakeUpdateIdSync`) sudah dibuang lebih dulu, tetapi pembacanya masih tertinggal — `wakePingSeen()`, `removeWakePingId()`, `clearWakePingIds()`, `readWakePingIds()`, `writeWakePingIds()`, kunci `KEY_WAKE_PING_IDS` di `PreferencesManager`, pemanggilannya di `SetupActivity`, serta parameter `wakeSeen` yang diteruskan ke `handleTelegramCommand()`/`handleTelegramCommandInner()` dan syarat `!wakeSeen` pada `/ping`. Karena daftar itu tak pernah terisi, `wakeSeen` selalu `false` sehingga kode tersebut hanya menyesatkan (tampak seolah ada penanda ping yang membangunkan aplikasi). Tidak ada perubahan perilaku — `/ping` memang selalu boleh menjalankan ulang loop dengan pembatas `pingRestartDue()`. Nama metode yang dihapus dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.329] - 2026-10-17
 ### Fixed
 - `/hematdata on` kini benar-benar menahan foto otomatis: sebelumnya hanya media yang sudah masuk antrean (`flushPendingPhotos()`, `flushPendingVideos()`, `flushPendingAudio()`) yang ditahan, sedangkan foto hasil pemotretan otomatis (interval kamera & patroli) tetap dikirim langsung lewat `sendPhotoFile()` walau sedang memakai data seluler — bertentangan dengan janji di `README.md`. Kini foto otomatis juga ditahan; berkasnya tetap tersimpan di cache dan ikut terkirim otomatis begitu tersambung Wi-Fi. Sidik foto ikut dicatat saat ditahan agar pemotretan berikutnya yang sama tetap terdeteksi duplikat dan tidak menumpuk di antrean.

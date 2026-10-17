@@ -24,7 +24,6 @@ class PreferencesManager(context: Context) {
     private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()
 
     private val upgradeLock = Any()
-    private val wakeIdsLock = Any()
     private val pairCodeLock = Any()
     private val smsPendingLock = Any()
 
@@ -206,7 +205,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_OWNER_ID = "owner_user_id"
         private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
         private const val KEY_OWNER_PAIR_AT = "owner_pair_at"
-        private const val KEY_WAKE_PING_IDS = "wake_ping_ids"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
         private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
@@ -803,25 +801,6 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getString(KEY_SCHOOL_DATE, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_SCHOOL_DATE, value).apply()
 
-    private fun readWakePingIds(): MutableSet<Long> {
-        return try {
-            sharedPreferences.getString(KEY_WAKE_PING_IDS, "")
-                ?.split(",")
-                ?.mapNotNull { it.toLongOrNull() }
-                ?.toMutableSet() ?: mutableSetOf()
-        } catch (_: Exception) {
-            mutableSetOf()
-        }
-    }
-
-    private fun writeWakePingIds(ids: Collection<Long>) {
-        try {
-            val capped = ids.sorted().takeLast(50)
-            sharedPreferences.edit().putString(KEY_WAKE_PING_IDS, capped.joinToString(",")).apply()
-        } catch (_: Exception) {
-        }
-    }
-
     fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
         synchronized(smsPendingLock) {
             try {
@@ -884,33 +863,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun wakePingSeen(updateId: Long): Boolean {
-        return try {
-            readWakePingIds().contains(updateId)
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    fun clearWakePingIds() {
-        synchronized(wakeIdsLock) {
-            try {
-                sharedPreferences.edit().remove(KEY_WAKE_PING_IDS).apply()
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    fun removeWakePingId(updateId: Long) {
-        synchronized(wakeIdsLock) {
-            try {
-                val cur = readWakePingIds()
-                if (cur.remove(updateId)) writeWakePingIds(cur)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
         val changed = try {
             newToken != botToken || newChatId != chatId
@@ -931,9 +883,6 @@ class PreferencesManager(context: Context) {
         }
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
-        if (tokenChanged || chatChanged) {
-            editor.remove(KEY_WAKE_PING_IDS)
-        }
     }
 
     fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {

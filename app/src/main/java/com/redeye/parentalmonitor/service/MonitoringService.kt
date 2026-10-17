@@ -1385,13 +1385,9 @@ class MonitoringService : Service() {
                             val aliasInput = resolveAliasInput(command, arg)
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
                             val effCommand = input.substringBefore(" ")
-                            val wakeSeen = effCommand == "/ping" && try { preferencesManager.wakePingSeen(update.updateId) } catch (_: Exception) { false }
-                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, wakeSeen, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
+                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, senderId = senderId, privateChat = msgChatId.isNotEmpty() && msgChatId == senderId)
                             if (effCommand in MUTATING_COMMANDS) {
                                 try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
-                            }
-                            if (wakeSeen) {
-                                try { preferencesManager.removeWakePingId(update.updateId) } catch (_: Exception) { }
                             }
                         } else {
                             val aliasInput = resolveAliasInput(command, arg)
@@ -1666,7 +1662,7 @@ class MonitoringService : Service() {
         )
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
         val nowSec = System.currentTimeMillis() / 1000L
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
@@ -1684,7 +1680,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, wakeSeen, senderId, privateChat)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1698,7 +1694,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, wakeSeen: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             val ageSec = if (sentAtSec <= 0L) Long.MAX_VALUE else System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
@@ -2112,20 +2108,20 @@ class MonitoringService : Service() {
                 try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
-                        if (senderOk && !wakeSeen && cameraJob?.isActive != true && pingRestartDue()) {
+                        if (senderOk && cameraJob?.isActive != true && pingRestartDue()) {
                             restartCameraLoop()
                             pingRestartMark()
                         }
-                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, wakeSeen, senderId, privateChat)
+                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, senderId, privateChat)
                     }
                     "location", "loc", "gps" -> {
-                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, wakeSeen, senderId, privateChat)
+                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, senderId, privateChat)
                     }
                     "" -> {
                         val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
                         var restarted = false
-                        if (!loopsOk && senderOk && !wakeSeen && pingRestartDue()) {
+                        if (!loopsOk && senderOk && pingRestartDue()) {
                             restarted = restartAllLoops()
                             if (restarted) pingRestartMark()
                         }

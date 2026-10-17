@@ -13,6 +13,11 @@ clearScreenshotConsentSync
 saveTestIdentity
 isKill
 addWakePingIds
+readWakePingIds
+writeWakePingIds
+wakePingSeen
+clearWakePingIds
+removeWakePingId
 setWakeUpdateIdSync
 touchSmsPendingSync
 matchesNormalized
