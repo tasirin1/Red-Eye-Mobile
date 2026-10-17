@@ -76,7 +76,7 @@ class BootRestartWorker(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Throwable) {
-            Result.retry()
+            if (runAttemptCount < 5) Result.retry() else Result.success()
         }
     }
 

@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.321] - 2026-10-17
+### Changed
+- Daftar nomor diawasi kini dibaca sekali per laporan/per pesan lalu dipakai ulang, bukan diparse ulang untuk setiap SMS dan panggilan. Pada laporan 200 SMS + 200 panggilan, pemotongan/pemfilteran string preferensi itu sebelumnya terjadi ratusan kali dalam satu perulangan.
+- Hitungan "berulang hari ini" per nomor di dalam satu laporan SMS kini dihitung sekali per nomor (memo per batch) alih-alih dua kueri riwayat SMS + panggilan untuk setiap pesan dengan nomor yang sama.
+- Pemeriksaan jaringan pada pengiriman foto disamakan dengan video/audio (`hasNetwork()` di awal), agar percobaan unggah di kondisi tanpa jaringan tidak menghabiskan kuota percobaan/backoff sebelum benar-benar ada jaringan.
+- `BootRestartWorker` tidak lagi mencoba ulang tanpa batas saat `doWork` gagal berulang (maks 5 percobaan seperti jalur lain di worker itu).
+
 ## [1.6.320] - 2026-10-17
 ### Fixed
 - Laporan panjang yang dipecah per 4000 karakter tidak lagi kehilangan potongan yang gagal terkirim saat pengiriman dibatalkan di tengah jalan (mis. layanan dihentikan sistem). Sebelumnya hanya potongan *setelah* potongan terakhir yang berhasil yang diselamatkan, sedangkan potongan yang gagal terkirim (berada sebelum indeks terakhir) ikut hilang; kini keduanya masuk antrean tahan-mati.

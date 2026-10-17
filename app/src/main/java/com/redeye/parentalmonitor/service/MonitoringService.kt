@@ -3338,6 +3338,8 @@ class MonitoringService : Service() {
     }
 
     private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: Map<String, Int>? = null, knownMap: Map<String, Boolean>? = null): String {
+        val watchNums = watchNumbers()
+        val todayCounts = HashMap<String, Int>()
         return buildString {
             appendLine("💬 <b>SMS baru (${smsList.size})</b>")
             appendLine()
@@ -3347,12 +3349,12 @@ class MonitoringService : Service() {
                 val tag = smsTag(sms.address, sms.body)
                 if (tag.isNotEmpty()) appendLine(tag)
                 try {
-                    if (watchNumberHit(sms.address) != null) appendLine("🚨 Nomor diawasi")
+                    if (watchNumberHit(sms.address, watchNums) != null) appendLine("🚨 Nomor diawasi")
                 } catch (_: Exception) {
                 }
                 try {
                     val key = sms.address.filter { it.isDigit() }.takeLast(10)
-                    val freq = freqMap?.get(key) ?: todayCountFor(sms.address)
+                    val freq = freqMap?.get(key) ?: todayCounts.getOrPut(key) { todayCountFor(sms.address) }
                     if (freq >= 3) appendLine("🔁 $freq x hari ini")
                     val known = knownMap?.get(sms.address) ?: isKnownContact(sms.address)
                     if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
@@ -3369,6 +3371,7 @@ class MonitoringService : Service() {
     }
 
     private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>, knownMap: Map<String, Boolean>? = null): String {
+        val watchNums = watchNumbers()
         return buildString {
             appendLine("📞 <b>Panggilan baru (${callList.size})</b>")
             appendLine()
@@ -3385,7 +3388,7 @@ class MonitoringService : Service() {
                     }
                 }
                 try {
-                    if (watchNumberHit(call.number) != null) appendLine("🚨 Nomor diawasi")
+                    if (watchNumberHit(call.number, watchNums) != null) appendLine("🚨 Nomor diawasi")
                 } catch (_: Exception) {
                 }
                 appendLine("🔄 Jenis: ${call.getTypeString()}")
@@ -4345,16 +4348,17 @@ class MonitoringService : Service() {
             }
             val top = freq.entries.sortedByDescending { it.value }.take(3)
             val watch = watchList()
+            val watchNums = watchNumbers()
             var hits = 0
             for (s in sms) {
-                if (watchNumbers().isNotEmpty() && watchNumberHit(s.address) != null) hits++
+                if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) hits++
                 else if (watch.isNotEmpty()) {
                     val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
                     if (watch.any { lower.contains(it) }) hits++
                 }
             }
             try {
-                for (c in calls) if (watchNumberHit(c.number) != null) hits++
+                for (c in calls) if (watchNumberHit(c.number, watchNums) != null) hits++
             } catch (_: Exception) {
             }
             val level = batteryLevel()
@@ -4494,9 +4498,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun watchNumberHit(number: String): String? {
+    private fun watchNumberHit(number: String, list: List<String> = watchNumbers()): String? {
         return try {
-            val list = watchNumbers()
             if (list.isEmpty()) return null
             val have = number.filter { it.isDigit() }
             if (have.isEmpty()) return null
@@ -4528,6 +4531,7 @@ class MonitoringService : Service() {
             val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
             val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
             val watch = watchList()
+            val watchNums = watchNumbers()
             var hits = 0
             var nights = 0
             val unknown = HashSet<String>()
@@ -4539,14 +4543,14 @@ class MonitoringService : Service() {
             }
             for (s in sms) {
                 val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
-                val numHit = watchNumberHit(s.address) != null
+                val numHit = watchNumberHit(s.address, watchNums) != null
                 if (numHit) hits++ else if (watch.isNotEmpty() && watch.any { lower.contains(it) }) hits++
                 val h = hourOf(s.date)
                 if (h >= 23 || h in 0..4) nights++
                 if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
             }
             for (c in calls) {
-                if (watchNumberHit(c.number) != null) hits++
+                if (watchNumberHit(c.number, watchNums) != null) hits++
                 val h = hourOf(c.date)
                 if (h >= 23 || h in 0..4) nights++
                 if (c.name == null && !knownCached(c.number)) unknown.add(c.number.filter { it.isDigit() }.takeLast(10))
@@ -4653,7 +4657,7 @@ class MonitoringService : Service() {
                     if (h >= 23 || h < 5) nights++
                 }
                 val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
-                if (watchNums.isNotEmpty() && watchNumberHit(s.address) != null) watchHits++
+                if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) watchHits++
                 else if (watch.any { lower.contains(it) }) watchHits++
             }
             for (c in calls) {
@@ -4664,7 +4668,7 @@ class MonitoringService : Service() {
                     hours[h]++
                     if (h >= 23 || h < 5) nights++
                 }
-                if (watchNums.isNotEmpty() && watchNumberHit(c.number) != null) watchHits++
+                if (watchNums.isNotEmpty() && watchNumberHit(c.number, watchNums) != null) watchHits++
             }
             val top = freq.entries.sortedByDescending { it.value }.take(5)
             val busy = hours.indices.maxByOrNull { hours[it] } ?: -1
@@ -7142,6 +7146,7 @@ class MonitoringService : Service() {
         var droppedPhotos = 0
         var photoProgress = false
         try {
+            if (!hasNetwork()) return
             var batches = 0
             drain@ while (batches < 3) {
                 val pending = try {
