@@ -96,6 +96,8 @@ class MonitoringService : Service() {
     @Volatile
     private var idleDataCycles = 0
     @Volatile
+    private var lowPowerNotified = false
+    @Volatile
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
@@ -188,6 +190,7 @@ class MonitoringService : Service() {
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
+        private const val LOW_BATTERY_LEVEL = 15
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -713,15 +716,18 @@ class MonitoringService : Service() {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     cameraBeatAt = android.os.SystemClock.elapsedRealtime()
                     val minutes = cachedCameraInterval.coerceIn(0, 60)
+                    val lowPower = lowPowerActive()
+                    val effMinutes = if (lowPower) (minutes * 2).coerceAtMost(60) else minutes
+                    try { syncLowPowerNotice(lowPower) } catch (_: Exception) { }
                     val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
-                    if (!cachedMonitoringPaused && !paused && !isNightPaused() && minutes > 0) {
+                    if (!cachedMonitoringPaused && !paused && !isNightPaused() && effMinutes > 0) {
                         if (idleDataCycles >= 3 && !isScreenOn()) {
                             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Camera idle-skip (quiet device, screen off)")
                         } else {
                             captureAndSendPhoto()
                         }
-                        cameraCycleMs = minutes * 60_000L
-                        chunkedDelay(minutes * 60_000L)
+                        cameraCycleMs = effMinutes * 60_000L
+                        chunkedDelay(effMinutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         cameraCycleMs = 5 * 60_000L
                         chunkedDelay(5 * 60_000L)
@@ -771,13 +777,15 @@ class MonitoringService : Service() {
         patrolJob = serviceScope.launch {
             while (isActive && patrolJob === coroutineContext[Job]) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
-                patrolCycleMs = cachedPatrolInterval.coerceIn(5, 180) * 60_000L
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
+                    val lowPower = lowPowerActive()
+                    val effMinutes = if (lowPower) (minutes * 2).coerceAtMost(180) else minutes
+                    patrolCycleMs = effMinutes * 60_000L
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
-                        patrolRound()
-                        chunkedDelay(minutes * 60_000L)
+                        if (!lowPower) patrolRound()
+                        chunkedDelay(effMinutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         chunkedDelay(15 * 60_000L)
                     } else {
@@ -3756,14 +3764,45 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun isCharging(): Boolean {
+        return try {
+            (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.isCharging == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun lowPowerActive(): Boolean {
+        val level = batteryLevel()
+        return level in 0..LOW_BATTERY_LEVEL && !isCharging()
+    }
+
+    private suspend fun syncLowPowerNotice(lowPower: Boolean) {
+        try {
+            if (lowPower || !lowPowerNotified) return
+            lowPowerNotified = false
+            val noticeAt = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
+            val now = System.currentTimeMillis()
+            if (noticeAt > 0L && now > noticeAt && now - noticeAt < 24 * 60 * 60_000L) {
+                try { preferencesManager.batteryAlertAt = 0L } catch (_: Exception) { }
+                sendToTelegram("🔋 Baterai kembali normal — foto otomatis & patroli berjalan seperti biasa.")
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private suspend fun checkBatteryAlert() {
         val level = batteryLevel()
-        if (level < 0 || level >= 15) return
+        if (level < 0 || level >= LOW_BATTERY_LEVEL) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
         if (last <= now && now - last < 24 * 60 * 60_000L) return
         try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
-        sendToTelegram("🔋 Baterai perangkat tinggal $level%. Colok charger agar monitoring tak putus.")
+        val throttled = lowPowerActive()
+        if (throttled) lowPowerNotified = true
+        sendToTelegram("🔋 Baterai perangkat tinggal $level%." +
+            (if (throttled) " Foto otomatis & patroli diperlambat sampai di-charge." else "") +
+            " Colok charger agar monitoring tak putus.")
     }
 
     private suspend fun maybeSendDigest() {
@@ -4410,10 +4449,11 @@ class MonitoringService : Service() {
             } else "?")
             appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem" +
                 if (unreported > 0) " (belum dilaporkan: ${unreported}x)" else "")
-            appendLine("Watchdog: tiap ~10 mnt")
+            appendLine("Watchdog: " + Liveness.intervalText(this@MonitoringService))
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
             appendLine("Tipe FGS aktif: " + fgsTypesText(appliedFgsTypes))
-            if (level in 0..100) appendLine("Baterai: $level%")
+            if (level in 0..100) appendLine("Baterai: $level%" +
+                (if (lowPowerActive()) " (hemat daya: foto/patroli diperlambat)" else ""))
         }
     }
 

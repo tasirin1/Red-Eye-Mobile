@@ -1,3 +1,10 @@
+## [Unreleased]
+### Added
+- Hemat daya pintar: saat baterai ≤15% dan HP tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) agar HP tidak mati kehabisan daya; pesan peringatan baterai menyebutkan perlambatan ini, dan begitu di-charge atau kembali di atas 15% owner menerima kabar "baterai kembali normal" sekali per kejadian.
+### Changed
+- Jam liveness kini adaptif lewat `Liveness.intervalMs()`: **3 menit** selama satu jam pertama setelah layanan terbunuh (mode waspada, karena OEM sedang agresif), **10 menit** saat layar mati (kematian paling sering terjadi di sini), dan **15 menit** saat layar menyala (layanan sedang aktif) — hemat baterai tanpa mengorbankan kecepatan pemulihan.
+- `/alive` dan baris `Liveness` di Setup menampilkan selang watchdog yang sedang berlaku (mode waspada / layar nyala / layar mati) dan menandai saat mode hemat daya aktif.
+
 ## [1.6.292] - 2026-10-17
 ### Added
 - `receiver/TimeChangeReceiver.kt`: pemicu ulang saat jam/zona/tanggal HP diubah (`TIME_SET`, `TIMEZONE_CHANGED`, `DATE_CHANGED`) — memasang ulang jam liveness dan, bila layanan ternyata sudah mati, langsung menghidupkannya lagi. Jadi setelan jam yang berubah pun menjadi kesempatan pemulihan, bukan celah.

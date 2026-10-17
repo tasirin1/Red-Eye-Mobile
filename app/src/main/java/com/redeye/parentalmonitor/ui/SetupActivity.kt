@@ -1380,6 +1380,7 @@ class SetupActivity : AppCompatActivity() {
             val livenessLine = "\nLiveness: " + (if (running) "alive" else "not running") +
                 (if (aliveAgoMin >= 0L) " (last beat ${aliveAgoMin}m ago)" else "") +
                 (if (kills > 0) " · recovered ${kills}x" else "") +
+                " · watchdog " + com.redeye.parentalmonitor.utils.Liveness.intervalText(this@SetupActivity) +
                 " · heartbeat " + (if (heartHours > 0) "${heartHours}h" else "off")
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(

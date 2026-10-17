@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.PowerManager
 import android.os.SystemClock
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
@@ -17,13 +18,53 @@ import java.util.Locale
 object Liveness {
     const val ACTION_ALARM = "com.redeye.parentalmonitor.action.LIVENESS_ALARM"
     private const val REQ_CODE = 4711
-    private const val INTERVAL_MS = 10 * 60_000L
+    private const val URGENT_INTERVAL_MS = 3 * 60_000L
+    private const val SCREEN_OFF_INTERVAL_MS = 10 * 60_000L
+    private const val SCREEN_ON_INTERVAL_MS = 15 * 60_000L
+    private const val URGENT_WINDOW_MS = 60 * 60_000L
     private const val KILL_MIN_MS = 3 * 60_000L
     private const val STALE_GAP_MS = 15 * 60_000L
     private const val KILLS_PER_REPORT = 3
     private const val REPORT_COOLDOWN_MS = 6 * 60 * 60_000L
     private const val ALIVE_WRITE_MIN_GAP_MS = 60_000L
     private val lastWriteAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val urgentUntilElapsed = java.util.concurrent.atomic.AtomicLong(0L)
+
+    fun intervalMs(context: Context): Long {
+        return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
+            URGENT_INTERVAL_MS
+        } else if (isScreenInteractive(context)) {
+            SCREEN_ON_INTERVAL_MS
+        } else {
+            SCREEN_OFF_INTERVAL_MS
+        }
+    }
+
+    fun intervalText(context: Context): String {
+        return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
+            "3 mnt (mode waspada)"
+        } else if (isScreenInteractive(context)) {
+            "15 mnt (layar nyala)"
+        } else {
+            "10 mnt (layar mati)"
+        }
+    }
+
+    fun noteKillDetected() {
+        try {
+            urgentUntilElapsed.set(SystemClock.elapsedRealtime() + URGENT_WINDOW_MS)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun isScreenInteractive(context: Context): Boolean {
+        return try {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            powerManager?.isInteractive ?: true
+        } catch (_: Exception) {
+            true
+        }
+    }
 
     fun allowed(manager: PreferencesManager): Boolean {
         return try {
@@ -38,7 +79,7 @@ object Liveness {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + INTERVAL_MS,
+                SystemClock.elapsedRealtime() + intervalMs(context),
                 pending(context)
             )
         } catch (_: Exception) {
@@ -75,6 +116,7 @@ object Liveness {
             if (prevElapsed > 0L && nowElapsed > prevElapsed) {
                 val downMs = nowElapsed - prevElapsed
                 if (downMs >= KILL_MIN_MS) {
+                    noteKillDetected()
                     val kills = try { manager.livenessKills } catch (_: Exception) { 0 } + 1
                     val unreported = try { manager.livenessKillsUnreported } catch (_: Exception) { 0 } + 1
                     try { manager.livenessKills = kills } catch (_: Exception) { }
@@ -122,6 +164,7 @@ object Liveness {
             return
         }
         schedule(context)
+        noteKillDetected()
         val started = try {
             val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
