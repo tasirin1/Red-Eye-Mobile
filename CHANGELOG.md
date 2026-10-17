@@ -1,3 +1,9 @@
+## [1.6.279] - 2026-10-17
+### Changed
+- Tipe foreground service kini memakai `specialUse` (Android 14+, dengan izin `FOREGROUND_SERVICE_SPECIAL_USE` + `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) alih-alih `dataSync` yang dibatasi 6 jam per 24 jam di Android 15+: `MonitoringService` dan `SystemForegroundService` milik `BootRestartWorker` memakai helper `baseForegroundType()`/`fgsType()`, dan `startForeground` dicoba ulang dengan tipe dasar itu bila tipe lengkap ditolak (mis. tipe `dataSync|camera|microphone|mediaProjection` dilarang saat diluncurkan dari `BOOT_COMPLETED` di Android 15+).
+### Fixed
+- `MonitoringService` tidak lagi dibiarkan hidup tanpa foreground saat semua percobaan `startForeground` gagal: `startForegroundImmediate()` mengembalikan hasil dan service `stopSelf()` (setelah menjadwalkan boot restart + watchdog), sehingga tidak lagi kena `RemoteServiceException` "did not then call `Service.startForeground()`" (crash tiap boot di Android 15+).
+
 ## [1.6.278] - 2026-10-17
 ### Fixed
 - `/screenshot` kini mendaftarkan `MediaProjection.Callback` sebelum `createVirtualDisplay()` sesuai syarat sejak `targetSdk` 34 (Android 14): tanpa callback, `createVirtualDisplay()` selalu melempar `IllegalStateException` di Android 14+ sehingga screenshot tidak pernah berhasil sama sekali. Callback juga melepas `VirtualDisplay`/`ImageReader` saat sesi dihentikan sistem dan di-`unregister` di blok `finally`.
