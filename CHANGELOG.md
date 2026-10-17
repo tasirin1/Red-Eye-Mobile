@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.312] - 2026-10-17
 ### Changed
 - Konsistensi bahasa pesan Telegram (tahap 1 dari 3 — media): pesan foto, tangkap layar, video, rekaman suara, berdering, batas antrean berkas, serta petunjuk blokir kamera yang sebelumnya berbahasa Inggris kini berbahasa Indonesia, mis. `Photo rejected by Telegram (400) — file empty/unsupported, discarded.` → `Foto ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.` Tanpa perubahan logika.
 
