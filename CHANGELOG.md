@@ -2,6 +2,8 @@
 ### Fixed
 - Backup yang dibuat di Android 8.0+ (API 26+, kunci diturunkan dengan `PBKDF2WithHmacSHA256`) kini bisa dipulihkan di Android 7.0–7.1 (API 24–25): perangkat API 24–25 tak punya `SecretKeyFactory` untuk PBKDF2-HMAC-SHA256 sehingga `deriveKey(modern=true)` dulu jatuh ke PBKDF2-HMAC-SHA1 dan tag GCM tidak pernah cocok (restore selalu gagal). Kini bila algoritma itu tak tersedia, kunci diturunkan dengan implementasi PBKDF2-HMAC-SHA256 murni (`Mac` HmacSHA256, RFC 2898, kata sandi UTF-8) yang menghasilkan kunci identik dengan jalur platform, sehingga backup modern tetap bisa dibuka di perangkat lama.
 
+- `CameraService` tidak lagi membocorkan kamera saat `onOpened` datang terlambat: bila watchdog/timeout sudah memanggil `finishWithError` → `cleanup()` (yang menutup kamera dan mengosongkan `cameraDevice`), callback `onOpened` yang menyusul dulu tetap menyetel `cameraDevice = camera` dan membuat sesi capture, sehingga kamera baru tak pernah ditutup dan `finishWithPhoto`/`finishWithVideo` bisa terpanggil setelah selesai. Kini `onOpened` (jalur foto maupun video) menutup kamera yang datang bila permintaan sudah selesai (`done`).
+
 ## [1.6.284] - 2026-10-17
 ### Fixed
 - Tombol `Test` di Setup tidak lagi membuang perubahan interval: `Test` membatalkan job `Save` yang sedang berjalan (menaikkan `saveSeq`) tetapi hanya menyimpan token + chat ID, sehingga hasil verifikasi `Save` yang tertunda — termasuk `syncInterval`/`cameraInterval` yang baru diketik — tidak pernah ditulis. `Test` kini menyimpan token, chat ID, dan kedua interval sekaligus (memakai `saveTestCredentials` yang tersedia; `saveTestIdentity` yang hanya menulis token+chat dihapus) dengan rentang valid `1..1440`/`0..60` dan jatuh ke nilai tersimpan bila kolom interval tidak valid.

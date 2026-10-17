@@ -343,6 +343,10 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
+                        if (done.get()) {
+                            try { camera.close() } catch (_: Exception) { }
+                            return
+                        }
                         cameraDevice = camera
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
                         onTrace("trace: camera opened")
@@ -574,6 +578,10 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
+                        if (done.get()) {
+                            try { camera.close() } catch (_: Exception) { }
+                            return
+                        }
                         cameraDevice = camera
                         val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
                         builder.addTarget(recordSurface)
