@@ -1,5 +1,9 @@
 ## [Unreleased]
 ### Added
+- Kabar saat Device Admin **hendak** dimatikan: `AdminReceiver.onDisableRequested()` kini tidak hanya menampilkan peringatan ke pemakai HP, tapi juga langsung mengirim pesan ke owner **sebelum** tombol "Nonaktifkan" ditekan, lalu meminta `MonitoringService` (`ACTION_ADMIN_ALERT`) mengambil lokasi + foto saat itu juga — jadi momen paling krusial (percobaan mencabut proteksi) tidak lagi lewat tanpa jejak.
+
+## [1.6.296] - 2026-10-17
+### Added
 - Kabar aplikasi baru: tiap ada aplikasi **dipasang** (yang bukan bawaan sistem) atau **dihapus** di HP anak, owner langsung dapat pesan Telegram berisi nama aplikasi + nama paketnya (`📦 Aplikasi baru dipasang` / `🗑️ Aplikasi dihapus`). Memakai pemberitahuan bawaan Android (`PACKAGE_ADDED`/`PACKAGE_REMOVED`) lewat `receiver/PackageChangeReceiver.kt`, tanpa izin tambahan; pembaruan aplikasi (`EXTRA_REPLACING`) dan aplikasi bawaan ROM diabaikan agar tidak berisik.
 
 ## [1.6.295] - 2026-10-17
