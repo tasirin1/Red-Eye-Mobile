@@ -86,15 +86,15 @@ class BootRestartWorker(
             Liveness.schedule(appContext)
         } catch (_: Exception) {
         }
+        if (MonitoringService.isRunning) {
+            MessageScheduler.scheduleMessageSend(appContext)
+            return Result.success()
+        }
         try {
             setForeground(getForegroundInfo())
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
-        }
-        if (MonitoringService.isRunning) {
-            MessageScheduler.scheduleMessageSend(appContext)
-            return Result.success()
         }
         val prefs = try {
             PreferencesManager.refreshInstance(appContext)

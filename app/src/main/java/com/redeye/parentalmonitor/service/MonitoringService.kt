@@ -1375,7 +1375,7 @@ class MonitoringService : Service() {
                                     }
                                 }
                             }
-                        } else if (senderId != cachedOwnerId.toString()) {
+                        } else if (cachedOwnerId != 0L && senderId != cachedOwnerId.toString()) {
                             sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
                         }
                     }

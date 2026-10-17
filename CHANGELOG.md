@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.331] - 2026-10-17
+### Fixed
+- `/start <chatId> <kode>` tidak lagi menjawab "Pemasangan diabaikan: pemilik sudah tertaut." saat sebenarnya belum ada pemilik: syaratnya dulu `senderId != cachedOwnerId.toString()`, dan `cachedOwnerId` masih `0` (pemasangan sedang dikunci karena terlalu banyak percobaan salah) sehingga pembandingnya `"0"` yang tak akan pernah sama dengan id Telegram mana pun — pesannya menyesatkan dan menutup peluang pemasangan sah. Kini pesan itu hanya dikirim bila benar-benar sudah ada pemilik lain.
+- `BootRestartWorker` (watchdog 15 menit) memeriksa dulu apakah `MonitoringService` sudah berjalan sebelum memanggil `setForeground()`: dulu notifikasi foreground dinyalakan setiap 15 menit hanya untuk dibatalkan beberapa milidetik kemudian ketika layanan ternyata sudah jalan — selain berkedip di bar notifikasi, pola itu juga menghabiskan kuota peluncuran foreground service yang dibatasi sistem sejak Android 12.
+
 ## [1.6.330] - 2026-10-17
 ### Removed
 - Sisa fitur "wake ping" yang sudah mati: penulis daftar id-nya (`addWakePingIds`, `setWakeUpdateIdSync`) sudah dibuang lebih dulu, tetapi pembacanya masih tertinggal — `wakePingSeen()`, `removeWakePingId()`, `clearWakePingIds()`, `readWakePingIds()`, `writeWakePingIds()`, kunci `KEY_WAKE_PING_IDS` di `PreferencesManager`, pemanggilannya di `SetupActivity`, serta parameter `wakeSeen` yang diteruskan ke `handleTelegramCommand()`/`handleTelegramCommandInner()` dan syarat `!wakeSeen` pada `/ping`. Karena daftar itu tak pernah terisi, `wakeSeen` selalu `false` sehingga kode tersebut hanya menyesatkan (tampak seolah ada penanda ping yang membangunkan aplikasi). Tidak ada perubahan perilaku — `/ping` memang selalu boleh menjalankan ulang loop dengan pembatas `pingRestartDue()`. Nama metode yang dihapus dicatat di `tools/bekas-hapusan.txt`.
