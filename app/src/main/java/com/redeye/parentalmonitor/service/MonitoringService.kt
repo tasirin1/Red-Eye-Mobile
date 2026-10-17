@@ -103,6 +103,19 @@ class MonitoringService : Service() {
     private val shotAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
     private var appliedFgsTypes = 0
+    private val shotSessionLock = Any()
+    private var shotProjection: MediaProjection? = null
+    private var shotDisplay: VirtualDisplay? = null
+    private var shotReader: ImageReader? = null
+    private var shotTokenUri = ""
+    private var shotWidth = 0
+    private var shotHeight = 0
+    private var shotReleaseJob: Job? = null
+    private val shotStopCallback = object : MediaProjection.Callback() {
+        override fun onStop() {
+            releaseShotSession()
+        }
+    }
 
     private enum class MediaSendOutcome {
         SENT, KEPT, DROPPED
@@ -151,6 +164,7 @@ class MonitoringService : Service() {
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
+        private const val SHOT_SESSION_IDLE_MS = 10 * 60_000L
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
@@ -4438,6 +4452,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
+            releaseShotSession()
+        } catch (_: Exception) {
+        }
+        try {
             teardownJobs()
         } catch (_: Exception) {
         }
@@ -4731,6 +4749,7 @@ class MonitoringService : Service() {
                     takeScreenshotFrame()
                 } catch (e: SecurityException) {
                     try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
+                    try { releaseShotSession() } catch (_: Exception) { }
                     try { wd.cancel() } catch (_: Exception) { }
                     shotBusy.set(false)
                     if (reportResult) {
@@ -4789,56 +4808,143 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun releaseShotSession() {
+        val reader: ImageReader?
+        val display: VirtualDisplay?
+        val projection: MediaProjection?
+        val releaseJob: Job?
+        synchronized(shotSessionLock) {
+            reader = shotReader
+            display = shotDisplay
+            projection = shotProjection
+            releaseJob = shotReleaseJob
+            shotReader = null
+            shotDisplay = null
+            shotProjection = null
+            shotTokenUri = ""
+            shotWidth = 0
+            shotHeight = 0
+            shotReleaseJob = null
+        }
+        try { releaseJob?.cancel() } catch (_: Exception) { }
+        try { reader?.close() } catch (_: Exception) { }
+        try { display?.release() } catch (_: Exception) { }
+        try {
+            if (projection != null) projection.unregisterCallback(shotStopCallback)
+        } catch (_: Exception) {
+        }
+        try { projection?.stop() } catch (_: Exception) { }
+    }
+
+    private fun scheduleShotSessionRelease() {
+        val job = serviceScope.launch {
+            kotlinx.coroutines.delay(SHOT_SESSION_IDLE_MS)
+            releaseShotSession()
+        }
+        val previous = synchronized(shotSessionLock) {
+            val old = shotReleaseJob
+            shotReleaseJob = job
+            old
+        }
+        try { previous?.cancel() } catch (_: Exception) { }
+    }
+
+    private fun ensureShotSession(code: Int, uri: String): ImageReader? {
+        val metrics = DisplayMetrics()
+        val wm = try { getSystemService(WINDOW_SERVICE) as android.view.WindowManager } catch (_: Exception) { null }
+        if (wm == null) return null
+        try {
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealMetrics(metrics)
+        } catch (_: Exception) {
+            try {
+                @Suppress("DEPRECATION")
+                wm.defaultDisplay.getMetrics(metrics)
+            } catch (_: Exception) {
+            }
+        }
+        val rawWidth = metrics.widthPixels
+        val rawHeight = metrics.heightPixels
+        if (rawWidth <= 0 || rawHeight <= 0) return null
+        val scale = if (rawWidth > 720) 720f / rawWidth else 1f
+        val width = (rawWidth * scale).toInt()
+        val height = (rawHeight * scale).toInt()
+        val density = (metrics.densityDpi * scale).toInt().coerceAtLeast(1)
+        synchronized(shotSessionLock) {
+            val existing = shotReader
+            if (existing != null && shotProjection != null && shotTokenUri == uri && shotWidth == width && shotHeight == height) {
+                return existing
+            }
+        }
+        releaseShotSession()
+        val data = try {
+            Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
+        } catch (_: Exception) {
+            try {
+                Intent.parseUri(uri, 0)
+            } catch (_: Exception) {
+                return null
+            }
+        }
+        val mpm = try { getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager } catch (_: Exception) { return null }
+        val projection = try {
+            mpm.getMediaProjection(code, data)
+        } catch (e: SecurityException) {
+            try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
+            return null
+        } ?: return null
+        val reader = try {
+            ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        } catch (_: Exception) {
+            try { projection.stop() } catch (_: Exception) { }
+            return null
+        }
+        try {
+            projection.registerCallback(shotStopCallback, android.os.Handler(android.os.Looper.getMainLooper()))
+        } catch (_: Exception) {
+            try { reader.close() } catch (_: Exception) { }
+            try { projection.stop() } catch (_: Exception) { }
+            return null
+        }
+        val display = try {
+            projection.createVirtualDisplay("redeye-shot", width, height, density, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+        } catch (_: Exception) {
+            try { reader.close() } catch (_: Exception) { }
+            try { projection.stop() } catch (_: Exception) { }
+            return null
+        }
+        synchronized(shotSessionLock) {
+            shotProjection = projection
+            shotDisplay = display
+            shotReader = reader
+            shotTokenUri = uri
+            shotWidth = width
+            shotHeight = height
+        }
+        return reader
+    }
+
     private suspend fun takeScreenshotFrame(): File? {
         val code = try { preferencesManager.screenshotResultCode } catch (_: Exception) { 0 }
         val uri = try { preferencesManager.screenshotData } catch (_: Exception) { "" }
-        if (code == 0 || uri.isEmpty()) return null
-        var projection: MediaProjection? = null
-        var display: VirtualDisplay? = null
-        var reader: ImageReader? = null
-        var stopCallback: MediaProjection.Callback? = null
+        if (code == 0 || uri.isEmpty()) {
+            releaseShotSession()
+            return null
+        }
+        val reader = try { ensureShotSession(code, uri) } catch (_: Exception) { null } ?: return null
+        val width: Int
+        val height: Int
+        synchronized(shotSessionLock) {
+            width = shotWidth
+            height = shotHeight
+        }
+        if (width <= 0 || height <= 0) return null
+        scheduleShotSessionRelease()
         try {
-            val data = try {
-                Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
-            } catch (_: Exception) {
-                Intent.parseUri(uri, 0)
-            }
-            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            try {
-                projection = mpm.getMediaProjection(code, data)
-            } catch (e: SecurityException) {
-                try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
-                return null
-            }
-            val callback = object : MediaProjection.Callback() {
-                override fun onStop() {
-                    try { display?.release() } catch (_: Exception) { }
-                    try { reader?.close() } catch (_: Exception) { }
-                }
-            }
-            stopCallback = callback
-            projection?.registerCallback(callback, android.os.Handler(android.os.Looper.getMainLooper()))
-            val metrics = DisplayMetrics()
-            val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
-            try {
-                @Suppress("DEPRECATION")
-                wm.defaultDisplay.getRealMetrics(metrics)
-            } catch (_: Exception) {
-                @Suppress("DEPRECATION")
-                wm.defaultDisplay.getMetrics(metrics)
-            }
-            var width = metrics.widthPixels
-            var height = metrics.heightPixels
-            if (width <= 0 || height <= 0) return null
-            val scale = if (width > 720) 720f / width else 1f
-            width = (width * scale).toInt()
-            height = (height * scale).toInt()
-            val density = (metrics.densityDpi * scale).toInt().coerceAtLeast(1)
-            reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-            display = projection.createVirtualDisplay("redeye-shot", width, height, density, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+            try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
             var image: android.media.Image? = null
-            for (i in 0 until 12) {
-                try { image = reader.acquireLatestImage() } catch (_: Exception) { }
+            for (i in 0 until 20) {
+                image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
                 if (image != null) break
                 kotlinx.coroutines.delay(100)
             }
@@ -4886,14 +4992,7 @@ class MonitoringService : Service() {
                 try { img.close() } catch (_: Exception) { }
             }
         } finally {
-            try {
-                val cb = stopCallback
-                if (cb != null) projection?.unregisterCallback(cb)
-            } catch (_: Exception) {
-            }
-            try { display?.release() } catch (_: Exception) { }
-            try { reader?.close() } catch (_: Exception) { }
-            try { projection?.stop() } catch (_: Exception) { }
+            scheduleShotSessionRelease()
         }
     }
 
