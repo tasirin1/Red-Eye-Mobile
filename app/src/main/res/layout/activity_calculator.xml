@@ -52,14 +52,14 @@
         android:rowCount="5">
 
         <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="C" />
-        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.Function" android:text="÷" />
-        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.Function" android:text="×" />
-        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.Function" android:text="−" />
+        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton" android:text="÷" />
+        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton" android:text="×" />
+        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton" android:text="−" />
 
         <Button android:id="@+id/btn7" style="@style/CalculatorButton.Number" android:text="7" />
         <Button android:id="@+id/btn8" style="@style/CalculatorButton.Number" android:text="8" />
         <Button android:id="@+id/btn9" style="@style/CalculatorButton.Number" android:text="9" />
-        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton.Function" android:text="+" />
+        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton" android:text="+" />
 
         <Button android:id="@+id/btn4" style="@style/CalculatorButton.Number" android:text="4" />
         <Button android:id="@+id/btn5" style="@style/CalculatorButton.Number" android:text="5" />

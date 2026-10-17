@@ -26,7 +26,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 try {
                     try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
-                    if (prefs.isConfigured()) {
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
                         com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Admin perangkat dimatikan di HP ini. Proteksi hapus aplikasi MATI.", true)
                         com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
                     }

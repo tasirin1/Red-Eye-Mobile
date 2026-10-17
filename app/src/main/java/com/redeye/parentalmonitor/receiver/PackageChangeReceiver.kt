@@ -54,6 +54,7 @@ class PackageChangeReceiver : BroadcastReceiver() {
             return
         }
         if (!prefs.isConfigured()) return
+        if (prefs.userDisabledMonitoring) return
         val text = if (action == Intent.ACTION_PACKAGE_ADDED) {
             if (isSystemApp(context, pkg)) return
             "📦 <b>Aplikasi baru dipasang</b>\n" + appLabel(context, pkg) + "\n<code>" + pkg + "</code>"

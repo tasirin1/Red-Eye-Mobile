@@ -30,7 +30,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray" />
+                    android:textColor="?android:attr/textColorSecondary" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"

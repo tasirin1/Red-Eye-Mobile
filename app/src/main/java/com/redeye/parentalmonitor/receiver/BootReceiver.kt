@@ -28,11 +28,17 @@ class BootReceiver : BroadcastReceiver() {
         @Volatile
         private var lastHandleAt = 0L
 
-        private fun markHandled(context: android.content.Context, at: Long) {
+        private fun markHandled(context: android.content.Context, at: Long, full: Boolean = true) {
             synchronized(handleLock) { lastHandleAt = at }
             try {
                 context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
                     .putLong("last_handle_elapsed", at)
+                    .apply()
+            } catch (_: Exception) {
+            }
+            if (!full) return
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
                     .putLong("last_full_boot_elapsed", at)
                     .apply()
             } catch (_: Exception) {
@@ -55,10 +61,6 @@ class BootReceiver : BroadcastReceiver() {
             synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
                 markHandled(context, nowUnlock)
-                try {
-                    context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowUnlock).apply()
-                } catch (_: Exception) {
-                }
                 try {
                     MessageScheduler.scheduleWatchdog(context.applicationContext)
                 } catch (_: Exception) {
@@ -114,17 +116,13 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (!updated && MonitoringService.isRunning) {
             markHandled(context, nowBoot)
-            try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
-            } catch (_: Exception) {
-            }
             return
         }
         val preferencesManager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
         } catch (_: Exception) {
-            markHandled(context, 0L)
+            markHandled(context, 0L, full = false)
             MessageScheduler.scheduleBootRestart(context)
             return
         }
