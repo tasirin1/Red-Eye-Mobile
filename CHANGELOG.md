@@ -1,4 +1,8 @@
 ## [Unreleased]
+### Changed
+- Efisiensi pemindaian berkas: pemeriksaan "hemat kuota" (jaringan terukur + jumlah media tertahan) kini dihitung sekali lalu dipakai ulang dalam jendela 15 detik. Dulu ketiga penguras (foto, video, rekaman) memindai isi direktori cache secara berulang pada putaran loop yang sama. Kabar "N foto/video/rekaman ditahan" tetap maksimal sekali per 6 jam.
+### Fixed
+- Penghitung media tertahan tak lagi ikut menghitung rekaman yang sedang berjalan (`activeAudioFile`), sehingga angka yang dilaporkan dan keputusan penahanan hemat kuota tidak lagi kelebihan satu berkas.
 
 ## [1.6.309] - 2026-10-17
 ### Changed

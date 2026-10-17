@@ -200,6 +200,10 @@ class MonitoringService : Service() {
     private var cachedVehicleEnabled = true
     @Volatile
     private var cachedDataSaver = false
+    @Volatile
+    private var dataSaverCheckedAtElapsed = 0L
+    @Volatile
+    private var dataSaverDeferResult = false
     private var vehiclePrevFix: Triple<Double, Double, Long>? = null
     private var vehicleFastSamples = 0
     @Volatile
@@ -236,6 +240,7 @@ class MonitoringService : Service() {
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
         private const val LOW_BATTERY_LEVEL = 15
+        private const val DATA_SAVER_CHECK_WINDOW_MS = 15_000L
         private const val VEHICLE_MIN_SPEED_MPS = 8.3f
         private const val VEHICLE_MAX_SPEED_MPS = 55f
         private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
@@ -4049,7 +4054,7 @@ class MonitoringService : Service() {
                         file.name.startsWith("video_") && file.name.endsWith(".mp4") ||
                         file.name.startsWith("audio_") && file.name.endsWith(".m4a")
                     )
-            }?.count { it != activePhotoFile && it != activeShotFile && it != activeVideoFile } ?: 0
+            }?.count { it != activePhotoFile && it != activeShotFile && it != activeVideoFile && it != activeAudioFile } ?: 0
         } catch (_: Exception) {
             0
         }
@@ -4057,19 +4062,27 @@ class MonitoringService : Service() {
 
     private suspend fun dataSaverDeferMedia(): Boolean {
         if (!cachedDataSaver) return false
-        if (!isMeteredNetwork()) return false
-        val pending = pendingMediaCount()
-        if (pending <= 0) return false
+        val nowElapsed = android.os.SystemClock.elapsedRealtime()
+        if (nowElapsed - dataSaverCheckedAtElapsed < DATA_SAVER_CHECK_WINDOW_MS) return dataSaverDeferResult
+        var deferred = false
         try {
-            val now = System.currentTimeMillis()
-            val last = preferencesManager.dataSaverNoticeAt
-            if (last == 0L || now - last >= 6 * 60 * 60_000L) {
-                preferencesManager.dataSaverNoticeAt = now
-                sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
+            if (isMeteredNetwork()) {
+                val pending = pendingMediaCount()
+                if (pending > 0) {
+                    deferred = true
+                    val now = System.currentTimeMillis()
+                    val last = preferencesManager.dataSaverNoticeAt
+                    if (last == 0L || now - last >= 6 * 60 * 60_000L) {
+                        preferencesManager.dataSaverNoticeAt = now
+                        sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
+                    }
+                }
             }
         } catch (_: Exception) {
         }
-        return true
+        dataSaverCheckedAtElapsed = nowElapsed
+        dataSaverDeferResult = deferred
+        return deferred
     }
 
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
