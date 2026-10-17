@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.328] - 2026-10-17
+### Fixed
+- Berkas media yang sedang dipakai tak lagi saling menimpa penandanya: `MonitoringService` dulu menyimpan satu slot per jenis (`activePhotoFile`, `activeVideoFile`, `activeShotFile`, `activeAudioFile`), jadi saat pengiriman satu berkas masih berjalan sementara berkas lain dengan jenis sama mulai diproses, penanda yang lama tertimpa dan berkas lama bisa ikut terkirim dua kali oleh `flushPendingPhotos()`, atau ikut terbuang oleh pembersihan cache. Penanda kini disimpan dalam satu himpunan berkas aktif (`activeMediaFiles`) yang sanggup menampung banyak berkas sekaligus.
+- Video yang sedang direkam kini dihitung aktif sejak `MediaRecorder` mulai menulis, bukan baru setelah rekaman selesai: `CameraService.currentVideoFile()` dipakai pengecekan aktif di `MonitoringService`, sehingga berkas video setengah jadi tidak mungkin keburu dikirim atau dihapus pembersihan cache.
+
 ## [1.6.327] - 2026-10-17
 ### Fixed
 - `/stop` dan `/resume` kini langsung berlaku: sebelumnya jeda hanya memperbarui konfigurasi (`refreshLoopConfig()`) sementara loop data sudah tertidur di `delay()` sampai siklus sinkronisasi habis — dengan `/syncinterval 1440` efeknya baru terasa sampai 24 jam kemudian, jadi panggilan/SMS/foto masih terkumpul (atau masih tertahan) jauh setelah perintah dijawab. Loop data sekarang menunggu dalam potongan 30 detik dan langsung menyadari perubahan status jeda, dua arah.

