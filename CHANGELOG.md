@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.306] - 2026-10-17
 ### Fixed
 - Worker pemulihan setelah reboot memakai mekanisme ulang-coba bawaan WorkManager (`Result.retry()`) dengan backoff eksponensial yang memang sudah disiapkan, alih-alih menjadwalkan ulang pekerjaan lalu mengaku sukses — backoff di kode dulu tidak pernah berlaku.
 - Setup: izin notifikasi yang ditolak permanen tidak lagi memaksa halaman Pengaturan terbuka (pemantauan tetap jalan tanpa izin itu); di Android 11 ke atas permintaan lokasi latar tidak lagi memanggil dialog yang selalu ditolak, melainkan langsung mengarahkan ke Pengaturan.
