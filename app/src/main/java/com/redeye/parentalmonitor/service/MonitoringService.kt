@@ -4007,7 +4007,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun dataSaverDeferMedia(): Boolean {
+    private suspend fun dataSaverDeferMedia(): Boolean {
         if (!cachedDataSaver) return false
         if (!isMeteredNetwork()) return false
         val pending = pendingMediaCount()
