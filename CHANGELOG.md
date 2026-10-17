@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.311] - 2026-10-17
 ### Changed
 - Efisiensi penulisan antrean: `flushSync` kini hanya menulis ulang antrean bila memang ada perubahan yang belum tersimpan. Sebelumnya tiap pemanggil — pekerja pengiriman, penerus notifikasi, penanganan memori rendah — menulis ulang seluruh JSON antrean walau penambahan/penghapusan pesan barusan sudah tersimpan, sehingga terjadi penulisan ganda ke penyimpanan terenkripsi.
 
