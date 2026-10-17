@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.325] - 2026-10-17
+### Fixed
+- `MY_PACKAGE_REPLACED` tak pernah sampai ke `BootReceiver`: aksi itu dulu berada dalam satu `<intent-filter>` bersama `<data android:scheme="package"/>` (sejak `v1.6.190`), padahal broadcast itu tidak membawa URI/MIME sehingga seluruh filter gagal uji data dan `onReceive()` tak pernah dipanggil. Akibatnya tiap aplikasi selesai di-update, pemantauan tidak dihidupkan tepat waktu — hanya menunggu alarm kelangsungan hidup (3–15 menit) atau reboot berikutnya. Filter kini dipisah: `MY_PACKAGE_REPLACED` berdiri sendiri, `PACKAGE_RESTARTED` tetap bersama `<data>`.
+### Added
+- Penjaga baru di `tools/verifikasi-path.py`: gagal bila ada `<intent-filter>` yang mencampur broadcast tanpa URI/MIME (`MY_PACKAGE_REPLACED`, `BOOT_COMPLETED`, `USER_PRESENT`, `USER_UNLOCKED`, `QUICKBOOT_POWERON`) dengan `<data>` — regresi jenis ini sudah pernah lolos sekali, sekarang tertangkap sebelum push.
+
 ## [1.6.324] - 2026-10-17
 ### Fixed
 - `/screenshot` tidak lagi cuma berhasil sekali per izin: sesi `MediaProjection` (`VirtualDisplay` + `ImageReader`) kini dipertahankan dan dipakai ulang antar pengambilan. Sejak `targetSdk` 34 (Android 14+), `createVirtualDisplay()` hanya boleh dipanggil **sekali** per instance `MediaProjection` dan panggilan kedua melempar `SecurityException`; karena kode rilis sebelumnya melepas `VirtualDisplay`/`ImageReader` tiap pengambilan, pengambilan kedua selalu mencoba membuat `VirtualDisplay` baru di proyeksi yang sama — lemparan itu tertelan di dalam `ensureShotSession()` sehingga `/screenshot` berikutnya selalu dijawab "⚠️ Tangkap layar gagal…" walau izinnya masih hidup dan status Setup tetap `granted`.

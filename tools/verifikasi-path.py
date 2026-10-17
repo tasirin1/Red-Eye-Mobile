@@ -240,6 +240,28 @@ def cek_manifest(gagal):
                 or os.path.isfile(dasar + ".java")):
             gagal.append("Komponen manifest tanpa kelas: %s"
                          % nama)
+    # Broadcast yang TIDAK membawa URI/MIME wajib berada di filter tanpa
+    # <data>; kalau dicampur, uji data gagal dan broadcast-nya tak pernah
+    # sampai (nyata: MY_PACKAGE_REPLACED + <data scheme="package">).
+    aksi_tanpa_data = {
+        "android.intent.action.MY_PACKAGE_REPLACED",
+        "android.intent.action.BOOT_COMPLETED",
+        "android.intent.action.USER_PRESENT",
+        "android.intent.action.USER_UNLOCKED",
+        "android.intent.action.QUICKBOOT_POWERON",
+        "com.htc.intent.action.QUICKBOOT_POWERON",
+    }
+    for saring in pohon.getroot().iter("intent-filter"):
+        if saring.find("data") is None:
+            continue
+        for aksi in saring.findall("action"):
+            nama_aksi = aksi.get(
+                "{http://schemas.android.com/apk/res/android}name", "")
+            if nama_aksi in aksi_tanpa_data:
+                gagal.append(
+                    "Filter %s tak boleh punya <data> (intent itu tanpa "
+                    "URI/MIME, broadcast-nya jadi tak pernah sampai)"
+                    % nama_aksi)
 
 
 def cek_duplikat_definisi(gagal):
