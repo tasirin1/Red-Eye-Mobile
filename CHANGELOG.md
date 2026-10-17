@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.300] - 2026-10-17
 ### Added
 - Hemat kuota: perintah `/hematdata on|off|status` (alias `hematdata`/`hematkuota`/`kuota`). Saat nyala dan HP sedang memakai data seluler (jaringan *metered*), pengiriman foto/video/rekaman yang mengantre ditahan di cache dulu dan langsung dikirim otomatis begitu tersambung Wi-Fi/jaringan tak berkuota — SMS, lokasi, notifikasi, dan chat teks tidak terpengaruh. Saat penahanan pertama dalam 6 jam, owner dikabari sekali (`📶 Hemat kuota: N foto/video/rekaman ditahan`). Deteksi jaringan lewat `ConnectivityManager`/`NetworkCapabilities` (`NET_CAPABILITY_NOT_METERED`).
 
