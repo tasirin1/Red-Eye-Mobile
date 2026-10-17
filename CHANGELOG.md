@@ -1,3 +1,9 @@
+## [Unreleased]
+### Added
+- Perintah `/alive`: laporan denyut — status, uptime, denyut terakhir, berapa kali service dipulihkan, watchdog, tipe foreground yang benar-benar aktif, dan level baterai.
+- Perintah `/heartbeat &lt;1-48|0&gt;`: laporan "masih hidup" berkala (default mati) yang dihitung dari stempel `heartbeat_at`, jadi owner bisa memilih menerima kabar rutin tanpa harus meminta `/alive` manual.
+- Baris `Liveness` di halaman Setup: status hidup/mati, denyut terakhir berapa menit lalu, jumlah pemulihan, dan setelan heartbeat.
+
 ## [1.6.288] - 2026-10-17
 ### Added
 - `utils/AutoStart.kt` + tombol `Anti-kill & Autostart` di Setup: dialog panduan berisi langkah anti-mati (autostart merek, pembatasan baterai, "tampil di atas aplikasi lain") dengan status hidup/mati untuk dua yang bisa dideteksi. Tombol autostart membuka layar setelan khusus merek (Xiaomi/Redmi/Poco, Oppo/Realme, Vivo/iQOO, Huawei/Honor, Samsung, OnePlus, Asus, Meizu, Letv, Nokia) dengan daftar kandidat komponen per merek dan jatuh ke halaman Info Aplikasi bila tak ada yang cocok; izin "tampil di atas aplikasi lain" dibuka lewat `ACTION_MANAGE_OVERLAY_PERMISSION`.

@@ -227,6 +227,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_ALIVE_AT = "last_alive_at"
         private const val KEY_LIVENESS_KILLS = "liveness_kills"
         private const val KEY_LIVENESS_REPORT_AT = "liveness_report_at"
+        private const val KEY_HEARTBEAT_HOURS = "heartbeat_hours"
+        private const val KEY_HEARTBEAT_AT = "heartbeat_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -462,6 +464,14 @@ class PreferencesManager(context: Context) {
     var livenessReportAt: Long
         get() = try { sharedPreferences.getLong(KEY_LIVENESS_REPORT_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LIVENESS_REPORT_AT, value).apply()
+
+    var heartbeatHours: Int
+        get() = try { sharedPreferences.getInt(KEY_HEARTBEAT_HOURS, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_HEARTBEAT_HOURS, value).apply()
+
+    var heartbeatAt: Long
+        get() = try { sharedPreferences.getLong(KEY_HEARTBEAT_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_AT, value).apply()
 
     fun setRingStateSync(prev: Int, at: Long) {
         try {

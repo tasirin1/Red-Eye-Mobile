@@ -107,6 +107,8 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/status` | Status monitoring |
 | `/battery` | Level baterai |
 | `/uptime` | Lama service jalan |
+| `/alive` | Denyut terakhir + berapa kali service dipulihkan |
+| `/heartbeat <1-48\|0>` | Laporan berkala "masih hidup" (`0` = mati) |
 | `/version` | Versi app + device |
 | `/stop` / `/resume` | Jeda/lanjut monitoring |
 | `/notif on\|off\|status` | Forward notifikasi |

