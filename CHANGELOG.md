@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.309] - 2026-10-17
 ### Changed
 - Efisiensi: layanan sistem yang sering dipakai (baterai, statistik pemakaian layar, lokasi, konektivitas, audio, daya, kebijakan perangkat, proyeksi layar, jendela) kini diambil sekali lalu dipakai ulang, alih-alih memanggil `getSystemService` berulang di jalur yang sering berjalan — loop pemantauan, patroli, laporan baterai, `/battery`, `/lock`, `/ring`, kamera, dan tangkap layar. Pemanggilan `getSystemService` di `MonitoringService` turun dari 22 titik menjadi 11 (9 di antaranya deklarasi simpanan, 2 sisanya jalur jarang: notifikasi & SMS). Perilaku tak berubah: bila layanan sistem tak tersedia, tiap jalur tetap memakai nilai cadangan yang sama seperti sebelumnya.
 
