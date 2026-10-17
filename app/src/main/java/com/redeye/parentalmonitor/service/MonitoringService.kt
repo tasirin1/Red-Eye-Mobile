@@ -103,6 +103,8 @@ class MonitoringService : Service() {
     private val shotAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
     private var appliedFgsTypes = 0
+    @Volatile
+    private var coreInitialized = false
     private val shotSessionLock = Any()
     private var shotDisplay: VirtualDisplay? = null
     private var shotReader: ImageReader? = null
@@ -290,6 +292,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         restoreRingVolumeIfStuck()
+        coreInitialized = true
     }
 
     private fun restoreRingVolumeIfStuck() {
@@ -342,8 +345,10 @@ class MonitoringService : Service() {
                     appliedFgsTypes = startTypes
                     return true
                 } catch (_: Exception) {
+                    val fallback = baseForegroundType()
                     try {
-                        startForeground(NOTIFICATION_ID, notification, baseForegroundType())
+                        startForeground(NOTIFICATION_ID, notification, fallback)
+                        appliedFgsTypes = fallback
                         return true
                     } catch (_: Exception) {
                     }
@@ -377,6 +382,7 @@ class MonitoringService : Service() {
             false
         }
         if (!foregroundOk) return START_NOT_STICKY
+        if (!coreInitialized) return START_NOT_STICKY
         return try {
             when (intent?.action) {
             ACTION_START_MONITORING -> {
@@ -5059,6 +5065,12 @@ class MonitoringService : Service() {
             startForeground(NOTIFICATION_ID, notification, types)
             appliedFgsTypes = types
         } catch (_: Exception) {
+            val fallback = baseForegroundType()
+            try {
+                startForeground(NOTIFICATION_ID, notification, fallback)
+                appliedFgsTypes = fallback
+            } catch (_: Exception) {
+            }
         }
     }
 

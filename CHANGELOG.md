@@ -1,3 +1,8 @@
+## [Unreleased]
+### Fixed
+- `MonitoringService` tidak lagi bisa dijalankan tanpa inti siap: bila `startForegroundImmediate()` gagal di `onCreate` (mis. diluncurkan dari boot di Android 15+), inisialisasi `smsRepository`/`callLogRepository`/`messageQueue`/`cameraService` dihentikan, lalu `onStartCommand` tetap dipanggil dan — bila percobaan foreground kedua berhasil — langsung memakai field `lateinit` yang belum diinisialisasi (crash `UninitializedPropertyAccessException`). Kini ada penanda `coreInitialized` dan `onStartCommand` berhenti (`START_NOT_STICKY`) sampai inti benar-benar siap.
+- Tipe foreground service yang benar-benar aktif tidak lagi salah dicatat: jalur cadangan `startForeground(..., baseForegroundType())` di `startForegroundImmediate()` dan `ensureForegroundTypes()` kini menulis `appliedFgsTypes`, sehingga `ensureForegroundTypes()` tidak berulang kali mencoba tipe lengkap yang memang ditolak (dan tetap turun ke tipe dasar bila tipe lengkap ditolak).
+
 ## [1.6.282] - 2026-10-17
 ### Fixed
 - `/screenshot` benar-benar berfungsi: token izin `MediaProjection` tidak lagi disimpan ke preferensi berbentuk string URI (yang membuang `IBinder` token sehingga `getMediaProjection` selalu mengembalikan `null` dan status Setup tetap "Screenshot: granted" walau `/screenshot` tak pernah berhasil). Izin kini dipegang di memori proses (`utils/ScreenCapture`), `MediaProjection` diambil sekali dan dipakai ulang, `VirtualDisplay`/`ImageReader` hanya dilepas per pengambilan (projection tetap hidup), dan izin baru dicabut saat sesi dihentikan sistem, service mati, atau pengguna meminta izin ulang — sehingga `/screenshot` berikutnya tidak lagi memanggil `getMediaProjection` kedua kali (`SecurityException` di Android 14+) dan status Setup selalu jujur.
