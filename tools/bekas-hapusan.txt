@@ -12,3 +12,6 @@ saveScreenshotConsentSync
 clearScreenshotConsentSync
 saveTestIdentity
 isKill
+addWakePingIds
+setWakeUpdateIdSync
+touchSmsPendingSync

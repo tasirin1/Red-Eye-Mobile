@@ -181,14 +181,8 @@ object CrashReporter {
                 }
             } catch (_: Exception) {
             }
-            val allowed = try {
-                prefs.isMonitoringEnabled && prefs.userConsentedMonitoring && !prefs.userDisabledMonitoring && !prefs.monitoringPaused
-            } catch (_: Exception) {
-                false
-            }
             // Always allow crash reports through - they're critical for debugging
             // Only skip if credentials are missing
-            if (token.isEmpty() || chatId.isEmpty()) return
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 if (NetworkUtils.rateLimitedRemainMs() > 0L) return

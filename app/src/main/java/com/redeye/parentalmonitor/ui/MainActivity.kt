@@ -51,11 +51,6 @@ class MainActivity : AppCompatActivity() {
             justCalculated = savedInstanceState.getBoolean("justCalculated", false)
             updateCalculatorDisplay()
         }
-        if (BuildConfig.DEBUG) {
-            android.util.Log.i("MainActivity", "Entering DEBUG mode - CALCULATOR UI")
-            // In debug, still initialize monitoring but log it
-            // return  // Don't return - still initialize monitoring
-        }
         val appCtx = applicationContext
         try {
             com.redeye.parentalmonitor.utils.Background.runCritical {

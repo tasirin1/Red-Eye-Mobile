@@ -181,7 +181,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_INITIAL_SYNC_STARTED = "initial_sync_started"
         const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
-        private const val KEY_WAKE_UPDATE_ID = "wake_update_id"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
@@ -381,17 +380,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var wakeUpdateId: Long
-        get() = try { sharedPreferences.getLong(KEY_WAKE_UPDATE_ID, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_WAKE_UPDATE_ID, value).apply()
-
-    fun setWakeUpdateIdSync(id: Long) {
-        try {
-            sharedPreferences.edit().putLong(KEY_WAKE_UPDATE_ID, id).commit()
-        } catch (_: Exception) {
-        }
-    }
-
     var lastPhotoTime: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_TIME, value).apply()
@@ -543,9 +531,6 @@ class PreferencesManager(context: Context) {
     var liveTestLastAt: Long
         get() = try { sharedPreferences.getLong(KEY_LIVE_TEST_LAST_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_LAST_AT, value).apply()
-
-    val lastSendOkAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SEND_OK_AT, 0L) } catch (_: Exception) { 0L }
 
     val lastSendOkElapsed: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SEND_OK_ELAPSED, 0L) } catch (_: Exception) { 0L }
@@ -837,18 +822,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun addWakePingIds(ids: Collection<Long>) {
-        if (ids.isEmpty()) return
-        synchronized(wakeIdsLock) {
-            try {
-                val cur = readWakePingIds()
-                cur.addAll(ids)
-                writeWakePingIds(cur)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
         synchronized(smsPendingLock) {
             try {
@@ -874,15 +847,6 @@ class PreferencesManager(context: Context) {
                         .putString(KEY_PENDING_SMS_OWNER, "")
                         .commit()
                 }
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    fun touchSmsPendingSync(at: Long) {
-        synchronized(smsPendingLock) {
-            try {
-                sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, at).apply()
             } catch (_: Exception) {
             }
         }

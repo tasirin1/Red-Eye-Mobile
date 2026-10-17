@@ -59,12 +59,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private var lastWakeStartAt = 0L
     private var wakeJob: Job? = null
     @Volatile
-    private var wakeUpdateId = -1L
-    @Volatile
-    private var wakeBackoffUntil = 0L
-    @Volatile
-    private var wakeOffsetFail = 0
-    @Volatile
     private var netCheckAt = 0L
     @Volatile
     private var netCached = false
@@ -86,17 +80,10 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > 100
         }
     }
-    private val wakePingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
-            return size > 64
-        }
-    }
 
     data class NotifRecord(val app: String, val title: String, val text: String, val at: Long)
 
     companion object {
-        @Volatile
-        var lastWakePollAt = 0L
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
@@ -138,7 +125,7 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 refreshFwdCreds()
                 fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); wakeUpdateId = -1L; cfgCacheAt = 0L }
+                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
                     if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
                 }
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }

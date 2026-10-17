@@ -14,6 +14,9 @@ class MessageQueue private constructor(context: Context) {
     private val volatileQueue = mutableListOf<QueuedMessage>()
     @Volatile
     private var sharedPreferences: SharedPreferences? = null
+    private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val priorityDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
 
     init {
         // Always try encrypted prefs first; fall back to volatile only if unavailable
@@ -41,9 +44,6 @@ class MessageQueue private constructor(context: Context) {
     }
     private var lastPersistAt = 0L
     private var persistDirty = false
-    private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
-    private val priorityDrops = java.util.concurrent.atomic.AtomicLong(0L)
-    private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val lock = Any()
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
     private var cached: MutableList<QueuedMessage>? = null
