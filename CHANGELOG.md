@@ -1,6 +1,9 @@
 ## [Unreleased]
 ### Added
 - Deteksi naik kendaraan: kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam, maks 200 km/jam agar lompatan GPS tidak dianggap nyata) dua sampel berturut-turut saat kecepatan dihitung sendiri dari jarak/waktu — atau sekali saja kalau HP memberi kecepatan hardware — owner dapat kabar `🚗 Sepertinya sedang berkendara` berisi kecepatan + lokasi + baterai. Maksimal satu kabar per 20 menit; hanya memakai lokasi cache (`getLastKnownLocation`, tanpa menyalakan GPS tambahan), jadi tidak menambah boros baterai. Bisa dimatikan dengan `/kendara off` (alias `kendara`/`berkendara`/`kendaraan`).
+
+## [1.6.298] - 2026-10-17
+### Added
 - Ringkasan screen-time: perintah `/layar [1-24]` (alias `layar`/`screentime`) melaporkan total pemakaian layar + 6 aplikasi paling lama dipakai, dan ringkasan harian (`sendDailyDigest`) menyisipkan satu baris "Layar 24 jam: … · teratas …". Sumber data `UsageStatsManager` (`utils/UsageAccess.kt` untuk cek izin), izin opsional `PACKAGE_USAGE_STATS` yang diaktifkan pemilik HP lewat tombol **Screen time access** di Setup (`Settings.ACTION_USAGE_ACCESS_SETTINGS`) — tanpa izin itu perintah menjawab dengan panduan singkat, dan fitur lain tetap jalan seperti biasa. Hanya aplikasi yang punya ikon peluncur yang dihitung, aplikasi sendiri & proses sistem diabaikan.
 
 ## [1.6.297] - 2026-10-17
