@@ -319,7 +319,7 @@ class MessageQueue private constructor(context: Context) {
                 }
             }
             queue.removeAll { it.id in drop }
-            persistLocked(queue)
+            persistLocked(queue, force = true)
             return Pair(drop, maxRetry)
         }
     }

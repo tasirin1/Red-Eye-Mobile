@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.333] - 2026-10-17
+### Fixed
+- Perubahan `retryCount` dan pembuangan pesan di antrean kini langsung ditulis ke penyimpanan: `MessageQueue.registerWithBudget()` memakai `persistLocked()` tanpa `force`, sehingga bila penulisan terakhir terjadi kurang dari 2 detik sebelumnya perubahan itu hanya ditandai `persistDirty` dan menunggu `flushSync()`. Di `SendMessageWorker` pemanggilan `flushSync()` justru terjadi SEBELUM `registerTransientFailures()`, jadi bila proses dibunuh setelahnya (umum di perangkat hemat baterai) kenaikan percobaan dan pembuangan pesan yang sudah mentok hilang — pesan yang semestinya dibuang kembali ke antrean dan menunggu siklus berikutnya. Penulisan pada jalur ini kini dipaksa (`force = true`).
+
 ## [1.6.332] - 2026-10-17
 ### Fixed
 - Penanda "jalur kirim hidup" kini juga disegarkan kiriman media: sebelumnya hanya kiriman teks yang memanggil `noteSendOk()` (`MonitoringService` dan `SendMessageWorker`), sehingga saat foto/video/rekaman berhasil diunggah penanda `last_send_ok` tetap tua dan `checkSilentLink()` bisa menuduh "jalur kirim tampak bisu" — laporan palsu terkirim plus pemulihan bertahap dijalankan (putar ulang antrean, hapus webhook, hidupkan ulang semua loop) padahal jalur sehat. Kini `sendPhotoFile()`, `sendVideoFile()`, dan `sendAudioFile()` juga memanggil `noteSendOk()` saat berhasil.
