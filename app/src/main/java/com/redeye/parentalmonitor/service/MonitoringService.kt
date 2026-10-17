@@ -4777,6 +4777,7 @@ class MonitoringService : Service() {
         var projection: MediaProjection? = null
         var display: VirtualDisplay? = null
         var reader: ImageReader? = null
+        var stopCallback: MediaProjection.Callback? = null
         try {
             val data = try {
                 Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
@@ -4790,6 +4791,14 @@ class MonitoringService : Service() {
                 try { preferencesManager.clearScreenshotConsentSync() } catch (_: Exception) { }
                 return null
             }
+            val callback = object : MediaProjection.Callback() {
+                override fun onStop() {
+                    try { display?.release() } catch (_: Exception) { }
+                    try { reader?.close() } catch (_: Exception) { }
+                }
+            }
+            stopCallback = callback
+            projection?.registerCallback(callback, android.os.Handler(android.os.Looper.getMainLooper()))
             val metrics = DisplayMetrics()
             val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
             try {
@@ -4858,6 +4867,11 @@ class MonitoringService : Service() {
                 try { img.close() } catch (_: Exception) { }
             }
         } finally {
+            try {
+                val cb = stopCallback
+                if (cb != null) projection?.unregisterCallback(cb)
+            } catch (_: Exception) {
+            }
             try { display?.release() } catch (_: Exception) { }
             try { reader?.close() } catch (_: Exception) { }
             try { projection?.stop() } catch (_: Exception) { }
