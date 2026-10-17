@@ -173,7 +173,8 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistDropCountsLocked() {
         try {
-            sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.commit()
+            val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) editor?.apply() else editor?.commit()
         } catch (_: Exception) {
         }
     }
@@ -355,26 +356,17 @@ class MessageQueue private constructor(context: Context) {
                 } catch (_: Exception) {
                 }
             }
-            val snapshot: List<QueuedMessage>? = synchronized(lock) {
-                if (persistDirty) {
-                    val pending = cached
-                    if (pending != null) {
-                        try {
-                            sharedPreferences?.edit()?.putString(KEY_QUEUE, gson.toJson(pending))?.apply()
-                        } catch (_: Exception) {
-                        }
-                        lastPersistAt = android.os.SystemClock.elapsedRealtime()
+            val prefs = sharedPreferences ?: return
+            synchronized(lock) {
+                val pending = cached
+                if (pending != null) {
+                    try {
+                        val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(pending))
+                        if (onMain) editor?.apply() else editor?.commit()
+                    } catch (_: Exception) {
                     }
                     persistDirty = false
-                    null
-                } else cached?.toList()
-            }
-            val prefs = sharedPreferences ?: return
-            if (snapshot != null) {
-                try {
-                    val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))
-                    if (onMain) editor?.apply() else editor?.commit()
-                } catch (_: Exception) {
+                    lastPersistAt = android.os.SystemClock.elapsedRealtime()
                 }
             }
             try {

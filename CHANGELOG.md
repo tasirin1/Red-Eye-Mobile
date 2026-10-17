@@ -1,3 +1,10 @@
+## [Unreleased]
+### Fixed
+- `NotificationForwarderService.flushBatch` tidak lagi membuang notifikasi yang belum terkirim bila job dibatalkan/dihentikan di tengah: batch diambil dari `batchBuf` lalu dikosongkan di awal, sehingga item sisa (dan potongan teks yang sedang disusun) hilang senyap karena `salvageBatch` hanya menyelamatkan `batchBuf` yang sudah kosong. Kini item yang belum terkirim dikembalikan ke depan `batchBuf` saat `flushBatch` berhenti tak normal, sehingga bisa dicoba lagi/diselamatkan.
+- `MessageQueue.flushSync` menulis snapshot ke preferensi tanpa memegang `lock`, membuka jendela clobber: penulisan snapshot lama (kadang `commit()`) bisa menimpa antrean yang lebih baru yang ditulis thread lain. Penulisan sekarang dilakukan di dalam `lock` agar urut dengan mutasi antrean.
+- `MessageQueue.persistDropCountsLocked` memakai `commit()` sinkron yang bisa berjalan di main thread (mis. dari `BroadcastReceiver` lewat `addMessage`), berisiko ANR; kini `apply()` saat di main thread dan `commit()` di luar main thread.
+- String default (Inggris) `setup_saved_offline` di `values/strings.xml` masih berbahasa Indonesia; kini berbahasa Inggris (`values-in` tetap Indonesia).
+
 ## [1.6.285] - 2026-10-17
 ### Fixed
 - Backup yang dibuat di Android 8.0+ (API 26+, kunci diturunkan dengan `PBKDF2WithHmacSHA256`) kini bisa dipulihkan di Android 7.0–7.1 (API 24–25): perangkat API 24–25 tak punya `SecretKeyFactory` untuk PBKDF2-HMAC-SHA256 sehingga `deriveKey(modern=true)` dulu jatuh ke PBKDF2-HMAC-SHA1 dan tag GCM tidak pernah cocok (restore selalu gagal). Kini bila algoritma itu tak tersedia, kunci diturunkan dengan implementasi PBKDF2-HMAC-SHA256 murni (`Mac` HmacSHA256, RFC 2898, kata sandi UTF-8) yang menghasilkan kunci identik dengan jalur platform, sehingga backup modern tetap bisa dibuka di perangkat lama.

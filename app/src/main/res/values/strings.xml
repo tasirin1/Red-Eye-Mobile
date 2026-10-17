@@ -55,7 +55,7 @@
     <string name="setup_testing">Sending test message…</string>
     <string name="setup_test_success">✅ Test successful! Check your Telegram.</string>
     <string name="setup_test_fail">❌ Test failed: %1$s</string>
-    <string name="setup_saved_offline">Tersimpan offline (interval saja, kredensial tak berubah)</string>
+    <string name="setup_saved_offline">Saved offline (interval only, credentials unchanged)</string>
     <string name="setup_admin_on">✅ Protection already enabled</string>
     <string name="setup_admin_ok">✅ Protection enabled</string>
     <string name="setup_admin_denied">Protection not enabled</string>

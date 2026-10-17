@@ -862,6 +862,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var cur = StringBuilder()
         var curCount = 0
         var curPkg = ""
+        var index = 0
         suspend fun flushCur() {
             if (curCount <= 0) return
             forwardLocked(cur.toString(), curPkg, curCount)
@@ -869,32 +870,46 @@ class NotificationForwarderService : NotificationListenerService() {
             curCount = 0
             curPkg = ""
         }
-        for ((msg, pkg) in items) {
-            if (msg.length > 4000) {
-                flushCur()
-                var rest = msg
-                while (rest.length > 4000) {
-                    var cut = rest.lastIndexOf("\n\n", 4000)
-                    if (cut <= 0) cut = 4000
-                    cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                    forwardLocked(rest.substring(0, cut), pkg, 1)
-                    rest = rest.substring(cut).trimStart('\n')
-                    if (rest.isEmpty()) break
+        try {
+            while (index < items.size) {
+                val (msg, pkg) = items[index]
+                index++
+                if (msg.length > 4000) {
+                    flushCur()
+                    var rest = msg
+                    while (rest.length > 4000) {
+                        var cut = rest.lastIndexOf("\n\n", 4000)
+                        if (cut <= 0) cut = 4000
+                        cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
+                        forwardLocked(rest.substring(0, cut), pkg, 1)
+                        rest = rest.substring(cut).trimStart('\n')
+                        if (rest.isEmpty()) break
+                    }
+                    if (rest.isNotEmpty()) forwardLocked(rest, pkg, 1)
+                    continue
                 }
-                if (rest.isNotEmpty()) forwardLocked(rest, pkg, 1)
-                continue
+                if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
+                if (curCount > 0) {
+                    cur.append("\n\n")
+                    if (curPkg != pkg) curPkg = ""
+                } else {
+                    curPkg = pkg
+                }
+                cur.append(msg)
+                curCount++
             }
-            if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
-            if (curCount > 0) {
-                cur.append("\n\n")
-                if (curPkg != pkg) curPkg = ""
-            } else {
-                curPkg = pkg
+            flushCur()
+        } catch (t: Throwable) {
+            val leftover = ArrayList<Pair<String, String>>()
+            if (curCount > 0) leftover.add(cur.toString() to curPkg)
+            while (index < items.size) leftover.add(items[index++])
+            if (leftover.isNotEmpty()) {
+                synchronized(batchLock) {
+                    for (i in leftover.indices.reversed()) batchBuf.addFirst(leftover[i])
+                }
             }
-            cur.append(msg)
-            curCount++
+            throw t
         }
-        flushCur()
     }
 
     private fun noteDroppedNotification(count: Int = 1) {
