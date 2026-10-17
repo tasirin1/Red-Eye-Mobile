@@ -67,13 +67,19 @@ class MonitoringService : Service() {
     @Volatile
     private var activePhotoFile: File? = null
     @Volatile
+    @Volatile
     private var activeShotFile: File? = null
     @Volatile
     private var activeVideoFile: File? = null
+    @Volatile
     private var ringJob: Job? = null
+    @Volatile
     private var recordJob: Job? = null
+    @Volatile
     private var smsJob: Job? = null
+    @Volatile
     private var watchdogJob: Job? = null
+    @Volatile
     private var loopWatchdogJob: Job? = null
     @Volatile
     private var loopWatchdogNoticeAt = 0L
@@ -101,8 +107,10 @@ class MonitoringService : Service() {
     private var serviceStartAt = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile
     private var videoWatchdog: Job? = null
     private val shotBusy = AtomicBoolean(false)
+    @Volatile
     private var shotWatchdog: Job? = null
     private val shotAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
@@ -5494,6 +5502,8 @@ class MonitoringService : Service() {
                 }
                 shotBusy.set(false)
             } catch (e: kotlinx.coroutines.CancellationException) {
+                shotBusy.set(false)
+                try { wd.cancel() } catch (_: Exception) { }
                 throw e
             } catch (e: Exception) {
                 shotBusy.set(false)

@@ -534,9 +534,7 @@ class CameraService(private val context: Context) {
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
-                val mh = mainHandler()
-                if (mh != null) mh.postDelayed(timeout, timeoutMs)
-                else backgroundHandler?.postDelayed(timeout, timeoutMs) ?: false
+                backgroundHandler?.postDelayed(timeout, timeoutMs) ?: false
             } catch (_: Exception) {
                 false
             }

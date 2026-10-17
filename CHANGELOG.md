@@ -1,4 +1,8 @@
 ## [Unreleased]
+### Fixed
+- Screenshot: bila proses tangkap layar dibatalkan sistem (mis. layanan berhenti di tengah jalan), penanda "sedang menangkap" kini ikut dibersihkan — dulu bisa tersangkut menyala sehingga `/screenshot` berikutnya dijawab "masih berjalan".
+- Rekaman video: batas waktu (timeout) kamera kini berjalan di thread latar kamera, bukan thread utama. Menghentikan perekam saat timeout bisa makan waktu dan dulu berisiko membuat aplikasi tak responsif (ANR) saat kamera lambat ditutup.
+- Penanda lintas-thread di layanan pemantauan (berkas foto aktif, tugas latar/dering/rekaman/SMS, watchdog foto & video) kini `@Volatile` agar perubahannya terlihat antar-thread dan watchdog tidak tertinggal.
 
 ## [1.6.304] - 2026-10-17
 ### Fixed
