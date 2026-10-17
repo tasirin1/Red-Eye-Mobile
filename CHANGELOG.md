@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.317] - 2026-10-17
+### Fixed
+- Balasan perintah tak lagi hilang saat perintah itu sendiri menjalankan ulang loop. Sebelumnya `/restart`, `/sembuh`, `/ping` (saat loop dijalankan ulang), pemberitahuan watchdog, dan laporan pemulihan "jalur kirim tampak bisu" dikirim dari coroutine yang **sedang dibatalkan** oleh `restartAllLoops()` sehingga balasannya dibuang diam-diam — owner melihat perintah seperti tidak dijawab padahal aksinya berjalan. Kini balasan dikirim lewat job terpisah (`replyLater`) yang tidak ikut dibatalkan.
+
 ## [1.6.316] - 2026-10-17
 ### Removed
 - Tombol **Sembunyikan ikon launcher** beserta seluruh pendukungnya (`activity-alias` `.ui.Launcher`, tile Quick Settings `SetupTileService`, preferensi `launcher_icon_hidden`, string terkait) dibatalkan. Sebabnya: sejak Android 10 ikon tak benar-benar hilang — `LauncherAppsService` menyuntikkan entri "Info Aplikasi" bila app meminta izin dan masih punya activity launcher yang default-aktif di manifest (`activityInfo.enabled` tidak ikut berubah saat `setComponentEnabledSetting(DISABLED)`), sehingga ikon sisa malah membuka Setelan. Mematikannya butuh API `@SystemApi` (`setSyntheticAppDetailsActivityEnabled`) atau ikon yang tak ada sejak instal.

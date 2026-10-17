@@ -2029,7 +2029,7 @@ class MonitoringService : Service() {
             }
             "/restart" -> {
                 if (restartAllLoops()) {
-                    sendToTelegram("\u267B\uFE0F Loops restarted.")
+                    replyLater("\u267B\uFE0F Loops restarted.")
                 } else {
                     sendToTelegram("⏳️ Restart dibatasi, coba lagi sebentar.")
                 }
@@ -2138,12 +2138,13 @@ class MonitoringService : Service() {
                             if (restarted) pingRestartMark()
                         }
                         val tail = if (restarted) " ⏰ Loop dijalankan ulang." else ""
-                        if (sentAtSec > 0) {
+                        val pong = if (sentAtSec > 0) {
                             val lag = System.currentTimeMillis() / 1000L - sentAtSec
-                            sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
+                            "\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail
                         } else {
-                            sendToTelegram("\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail)
+                            "\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail
                         }
+                        if (restarted) replyLater(pong) else sendToTelegram(pong)
                     }
                     else -> {
                         sendToTelegram("Cara pakai: /ping [camera|location]")
@@ -3629,6 +3630,18 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun replyLater(message: String) {
+        try {
+            serviceScope.launch {
+                try {
+                    sendToTelegram(message)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private suspend fun sendToTelegram(
         message: String,
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
@@ -4941,10 +4954,7 @@ class MonitoringService : Service() {
             healSilentLink(stage + 1)
         } catch (_: Exception) {
         }
-        try {
-            sendToTelegram("🩺 <b>Jalur kirim tampak bisu</b>\nSudah ±$minutes menit tanpa kiriman berhasil padahal ada antrean. Pemulihan tahap ${stage + 1}/$SILENT_MAX_STAGE sudah saya jalankan (${silentHealLabel(stage + 1)}). Kalau pesan ini sampai, jalur sudah normal lagi.")
-        } catch (_: Exception) {
-        }
+        replyLater("🩺 <b>Jalur kirim tampak bisu</b>\nSudah ±$minutes menit tanpa kiriman berhasil padahal ada antrean. Pemulihan tahap ${stage + 1}/$SILENT_MAX_STAGE sudah saya jalankan (${silentHealLabel(stage + 1)}). Kalau pesan ini sampai, jalur sudah normal lagi.")
     }
 
     private fun silentHealLabel(stage: Int): String {
@@ -4987,10 +4997,7 @@ class MonitoringService : Service() {
             preferencesManager.silentHealStage = 0
             preferencesManager.silentHealAt = 0L
         } catch (_: Exception) { }
-        try {
-            sendToTelegram("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• Semua loop dihidupkan ulang, jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
-        } catch (_: Exception) {
-        }
+        replyLater("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• Semua loop dihidupkan ulang, jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
         try {
             MessageScheduler.scheduleMessageSend(this, 0L)
         } catch (_: Exception) {
@@ -6147,7 +6154,7 @@ class MonitoringService : Service() {
                         val now = android.os.SystemClock.elapsedRealtime()
                         if (now - loopWatchdogNoticeAt > 3_600_000L) {
                             loopWatchdogNoticeAt = now
-                            sendToTelegram("\u267B\uFE0F Watchdog restarted dead loops.")
+                            replyLater("\u267B\uFE0F Watchdog restarted dead loops.")
                         }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
