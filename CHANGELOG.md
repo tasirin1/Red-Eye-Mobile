@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.293] - 2026-10-17
 ### Added
 - Hemat daya pintar: saat baterai ≤15% dan HP tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) agar HP tidak mati kehabisan daya; pesan peringatan baterai menyebutkan perlambatan ini, dan begitu di-charge atau kembali di atas 15% owner menerima kabar "baterai kembali normal" sekali per kejadian.
 ### Changed
