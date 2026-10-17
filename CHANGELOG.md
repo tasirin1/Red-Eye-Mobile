@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.285] - 2026-10-17
 ### Fixed
 - Backup yang dibuat di Android 8.0+ (API 26+, kunci diturunkan dengan `PBKDF2WithHmacSHA256`) kini bisa dipulihkan di Android 7.0–7.1 (API 24–25): perangkat API 24–25 tak punya `SecretKeyFactory` untuk PBKDF2-HMAC-SHA256 sehingga `deriveKey(modern=true)` dulu jatuh ke PBKDF2-HMAC-SHA1 dan tag GCM tidak pernah cocok (restore selalu gagal). Kini bila algoritma itu tak tersedia, kunci diturunkan dengan implementasi PBKDF2-HMAC-SHA256 murni (`Mac` HmacSHA256, RFC 2898, kata sandi UTF-8) yang menghasilkan kunci identik dengan jalur platform, sehingga backup modern tetap bisa dibuka di perangkat lama.
 
