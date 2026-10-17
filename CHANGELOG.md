@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.315] - 2026-10-17
 ### Added
 - Tombol **Sembunyikan ikon launcher** di Setup: ikon app (alias launcher) dinonaktifkan tanpa menghapus app dan tanpa mematikan pemantauan, lalu bisa ditampilkan lagi dari tombol yang sama. Ada dialog konfirmasi yang menjelaskan cara membuka Setup lagi. Dua pintu masuk pengganti: **tile Quick Settings** bernama sama dengan app ("Calculator", `SetupTileService`) di panel notifikasi, dan notifikasi pemantauan yang menempel. Keadaan disembunyikan disimpan (`launcher_icon_hidden`) dan disinkronkan ulang tiap halaman Setup dibuka (tahan reinstall/pembaruan). Kode dial rahasia sengaja TIDAK dipakai karena sejak Android 11 broadcast `SECRET_CODE` tidak lagi sampai ke app pihak ketiga.
 
