@@ -359,7 +359,7 @@ class MessageQueue private constructor(context: Context) {
             val prefs = sharedPreferences ?: return
             synchronized(lock) {
                 val pending = cached
-                if (pending != null) {
+                if (pending != null && persistDirty) {
                     try {
                         val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(pending))
                         if (onMain) editor?.apply() else editor?.commit()
