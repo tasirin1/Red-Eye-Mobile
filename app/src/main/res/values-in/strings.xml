@@ -86,6 +86,8 @@
     <string name="msg_open_setup_failed">Tak bisa buka setup: %1$s</string>
     <string name="resume_title">Layanan dijeda</string>
     <string name="resume_text">Ketuk untuk buka setingan</string>
+    <string name="storage_fallback_title">Penyimpanan aman tak tersedia</string>
+    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Ketuk untuk buka Setup dan simpan ulang.</string>
     <string name="admin_disabled">⚠️ Proteksi dimatikan!</string>
     <string name="admin_disable_warning">⚠️ Hati-hati! Admin Perangkat harus dimatikan sebelum uninstall aplikasi ini!</string>
 </resources>

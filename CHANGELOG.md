@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.334] - 2026-10-17
+### Fixed
+- Kredensial hilang karena penyimpanan aman (keystore) tak tersedia kini berkabar jelas: bila `EncryptedSharedPreferences` gagal dibuka, `PreferencesManager` diam-diam beralih ke penyimpanan memori, sehingga token/chat kosong, `isConfigured()` menjadi `false`, dan pemantauan berhenti tanpa kabar — pesan "mode cadangan" ke Telegram pun tak bisa terkirim justru karena kredensialnya kosong. Kini `BootRestartWorker` (watchdog 15 menit) menampilkan notifikasi lokal khusus "Penyimpanan aman tak tersedia — kredensial tak bisa disimpan, jadi pemantauan berhenti; ketuk untuk membuka Setup dan simpan ulang" (`storage_fallback_title`/`storage_fallback_text`, Inggris + Indonesia) di kanal yang sama dengan pengingat "Layanan dijeda".
+### Changed
+- Pengingat Setup dari `BootRestartWorker` dirapikan: `postResumeReminder()` dan pengingat baru itu berbagi satu helper `postSetupReminder()` (judul, teks, penanda, dan id notifikasi sebagai parameter), dengan pembatas 3 jam per jenis pengingat — dulu satu variabel statis bersama yang bisa saling menutup.
+
 ## [1.6.333] - 2026-10-17
 ### Fixed
 - Perubahan `retryCount` dan pembuangan pesan di antrean kini langsung ditulis ke penyimpanan: `MessageQueue.registerWithBudget()` memakai `persistLocked()` tanpa `force`, sehingga bila penulisan terakhir terjadi kurang dari 2 detik sebelumnya perubahan itu hanya ditandai `persistDirty` dan menunggu `flushSync()`. Di `SendMessageWorker` pemanggilan `flushSync()` justru terjadi SEBELUM `registerTransientFailures()`, jadi bila proses dibunuh setelahnya (umum di perangkat hemat baterai) kenaikan percobaan dan pembuangan pesan yang sudah mentok hilang — pesan yang semestinya dibuang kembali ke antrean dan menunggu siklus berikutnya. Penulisan pada jalur ini kini dipaksa (`force = true`).

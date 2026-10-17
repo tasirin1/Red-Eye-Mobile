@@ -114,7 +114,7 @@ class BootRestartWorker(
             return Result.success()
         }
         if (!prefs.isStorageEncrypted) {
-            postResumeReminder(appContext)
+            postStorageFallbackReminder(appContext)
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         if (!prefs.isConfigured()) {
@@ -160,11 +160,20 @@ class BootRestartWorker(
     }
 
     private fun postResumeReminder(context: Context) {
+        postSetupReminder(context, R.string.resume_title, R.string.resume_text, "last_resume_elapsed", RESUME_NOTIF_ID)
+    }
+
+    private fun postStorageFallbackReminder(context: Context) {
+        postSetupReminder(context, R.string.storage_fallback_title, R.string.storage_fallback_text, "last_storage_warn_elapsed", STORAGE_NOTIF_ID)
+    }
+
+    private fun postSetupReminder(context: Context, titleRes: Int, textRes: Int, markerKey: String, notifId: Int) {
         val nowResume = android.os.SystemClock.elapsedRealtime()
-        if (lastResumeReminderAt != 0L && nowResume - lastResumeReminderAt < 3 * 60 * 60_000L) return
+        val lastAt = lastReminderAt[markerKey] ?: 0L
+        if (lastAt != 0L && nowResume - lastAt < 3 * 60 * 60_000L) return
         try {
             val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-            val lastElapsed = meta.getLong("last_resume_elapsed", 0L)
+            val lastElapsed = meta.getLong(markerKey, 0L)
             if (lastElapsed != 0L && nowResume >= lastElapsed && nowResume - lastElapsed < 3 * 60 * 60_000L) return
         } catch (_: Exception) {
         }
@@ -183,16 +192,16 @@ class BootRestartWorker(
             )
             val notification = NotificationCompat.Builder(context, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(context.getString(R.string.resume_title))
-                .setContentText(context.getString(R.string.resume_text))
+                .setContentTitle(context.getString(titleRes))
+                .setContentText(context.getString(textRes))
                 .setContentIntent(tap)
                 .setAutoCancel(true)
                 .build()
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-            manager.notify(RESUME_NOTIF_ID, notification)
-            lastResumeReminderAt = nowResume
+            manager.notify(notifId, notification)
+            lastReminderAt[markerKey] = nowResume
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_resume_elapsed", nowResume).apply()
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong(markerKey, nowResume).apply()
             } catch (_: Exception) {
             }
         } catch (_: Exception) {
@@ -202,7 +211,7 @@ class BootRestartWorker(
     companion object {
         private const val NOTIF_ID = 2
         private const val RESUME_NOTIF_ID = 3
-        @Volatile
-        private var lastResumeReminderAt = 0L
+        private const val STORAGE_NOTIF_ID = 4
+        private val lastReminderAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     }
 }

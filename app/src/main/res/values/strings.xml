@@ -85,6 +85,8 @@
     <string name="msg_open_setup_failed">Could not open setup: %1$s</string>
     <string name="resume_title">Service paused</string>
     <string name="resume_text">Tap to open settings</string>
+    <string name="storage_fallback_title">Secure storage unavailable</string>
+    <string name="storage_fallback_text">Credentials cannot be stored, so monitoring is stopped. Tap to open Setup and save them again.</string>
     <string name="admin_disabled">⚠️ Protection disabled!</string>
     <string name="admin_disable_warning">⚠️ Caution! Device Admin must be disabled before uninstalling this app!</string>
 </resources>
