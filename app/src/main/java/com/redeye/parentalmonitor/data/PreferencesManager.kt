@@ -232,6 +232,11 @@ class PreferencesManager(context: Context) {
         private const val KEY_LIVENESS_REPORT_AT = "liveness_report_at"
         private const val KEY_HEARTBEAT_HOURS = "heartbeat_hours"
         private const val KEY_HEARTBEAT_AT = "heartbeat_at"
+        private const val KEY_LIVE_TEST_PENDING = "live_test_pending"
+        private const val KEY_LIVE_TEST_STARTED_ELAPSED = "live_test_started_elapsed"
+        private const val KEY_LIVE_TEST_BY_ALARM = "live_test_by_alarm"
+        private const val KEY_LIVE_TEST_LAST_SEC = "live_test_last_sec"
+        private const val KEY_LIVE_TEST_LAST_AT = "live_test_last_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -496,6 +501,26 @@ class PreferencesManager(context: Context) {
     var heartbeatAt: Long
         get() = try { sharedPreferences.getLong(KEY_HEARTBEAT_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_AT, value).apply()
+
+    var liveTestPending: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_LIVE_TEST_PENDING, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_PENDING, value).apply()
+
+    var liveTestStartedElapsed: Long
+        get() = try { sharedPreferences.getLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_STARTED_ELAPSED, value).apply()
+
+    var liveTestByAlarm: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_LIVE_TEST_BY_ALARM, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).apply()
+
+    var liveTestLastSec: Int
+        get() = try { sharedPreferences.getInt(KEY_LIVE_TEST_LAST_SEC, -1) } catch (_: Exception) { -1 }
+        set(value) = sharedPreferences.edit().putInt(KEY_LIVE_TEST_LAST_SEC, value).apply()
+
+    var liveTestLastAt: Long
+        get() = try { sharedPreferences.getLong(KEY_LIVE_TEST_LAST_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_LAST_AT, value).apply()
 
     fun setRingStateSync(prev: Int, at: Long) {
         try {

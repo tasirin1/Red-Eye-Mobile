@@ -1,3 +1,10 @@
+## [Unreleased]
+### Added
+- Uji mandiri anti-mati: perintah `/cekmati` (alias `cekmati`/`ujimati`) dan tombol **Tes anti-mati** di Setup. Servis sengaja menghentikan dirinya sendiri (seperti dibunuh sistem), hanya jam bangun (watchdog) yang boleh menghidupkannya lagi ±45 detik kemudian, lalu owner menerima laporan berapa detik servis hidup kembali — plus catatan bila yang menghidupkan bukan jam bangun, bila gagal (>10 menit), atau bila uji terputus reboot. Jadi keandalan anti-mati terbukti di HP masing-masing, bukan cuma di CI.
+- Baris `Liveness` di Setup menyebut hasil uji terakhir (`self-test 42s` / `running` / `not run`).
+### Changed
+- Teks panduan Anti-kill menyebut rentang pemulihan 3–15 menit (bukan "tiap 10 menit") dan mengajak menjalankan uji anti-mati.
+
 ## [1.6.293] - 2026-10-17
 ### Added
 - Hemat daya pintar: saat baterai ≤15% dan HP tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) agar HP tidak mati kehabisan daya; pesan peringatan baterai menyebutkan perlambatan ini, dan begitu di-charge atau kembali di atas 15% owner menerima kabar "baterai kembali normal" sekali per kejadian.

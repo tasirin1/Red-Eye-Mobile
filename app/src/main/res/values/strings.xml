@@ -24,7 +24,10 @@
     <string name="setup_battery">Disable Battery Restriction</string>
     <string name="setup_antikill">Anti-kill &amp; Autostart</string>
     <string name="antikill_title">Keep monitoring alive</string>
-    <string name="antikill_text">%1$s devices can stop this app automatically. Do these so monitoring keeps running:\n\n1. Autostart / background start — tap "Autostart settings" below\n2. Battery restriction — tap "Disable Battery Restriction" on the Setup page\n3. Display over other apps — helps the app start itself again\n\nIf it still gets stopped, the app tries to revive itself every 10 minutes and will message you when it recovers.</string>
+    <string name="antikill_text">%1$s devices can stop this app automatically. Do these so monitoring keeps running:\n\n1. Autostart / background start — tap "Autostart settings" below\n2. Battery restriction — tap "Disable Battery Restriction" on the Setup page\n3. Display over other apps — helps the app start itself again\n\nIf it still gets stopped, the app revives itself within 3–15 minutes and will message you when it recovers. Tap "Test anti-kill" to prove it works on this phone.</string>
+    <string name="setup_selfcheck">Test anti-kill (self-test)</string>
+    <string name="selfcheck_started">Self-test started — the service stops now and should be back within about a minute. The result is sent to the owner chat.</string>
+    <string name="selfcheck_off">Turn monitoring on first, then run the self-test.</string>
     <string name="antikill_autostart">Autostart settings</string>
     <string name="antikill_overlay">Allow display over apps</string>
     <string name="antikill_battery_ok">Battery restriction: already off</string>

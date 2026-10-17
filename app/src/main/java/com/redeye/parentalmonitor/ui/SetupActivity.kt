@@ -355,6 +355,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
         findViewById<MaterialButton>(R.id.setupAntiKillButton).setOnClickListener { showAntiKillWizard() }
+        findViewById<MaterialButton>(R.id.setupSelfCheckButton).setOnClickListener { startSelfCheck() }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
         findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
@@ -1035,6 +1036,26 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
+    private fun startSelfCheck() {
+        if (!prefs.isMonitoringEnabled || !MonitoringService.isRunning) {
+            Toast.makeText(this, getString(R.string.selfcheck_off), Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val intent = Intent(this, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_LIVENESS_TEST
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+            Toast.makeText(this, getString(R.string.selfcheck_started), Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun showAntiKillWizard() {
         val brand = com.redeye.parentalmonitor.utils.AutoStart.manufacturerLabel()
         val batteryOk = isBatteryExempt()
@@ -1377,10 +1398,14 @@ class SetupActivity : AppCompatActivity() {
             val heartHours = try { prefs.heartbeatHours } catch (_: Exception) { 0 }
             val aliveAgoMin = if (lastAliveElapsed > 0L) ((android.os.SystemClock.elapsedRealtime() - lastAliveElapsed) / 60_000L).coerceAtLeast(0L)
             else if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
+            val testSec = try { prefs.liveTestLastSec } catch (_: Exception) { -1 }
+            val testPending = try { prefs.liveTestPending } catch (_: Exception) { false }
+            val testLine = if (testPending) "self-test running" else if (testSec >= 0) "self-test ${testSec}s" else "self-test not run"
             val livenessLine = "\nLiveness: " + (if (running) "alive" else "not running") +
                 (if (aliveAgoMin >= 0L) " (last beat ${aliveAgoMin}m ago)" else "") +
                 (if (kills > 0) " · recovered ${kills}x" else "") +
                 " · watchdog " + com.redeye.parentalmonitor.utils.Liveness.intervalText(this@SetupActivity) +
+                " · $testLine" +
                 " · heartbeat " + (if (heartHours > 0) "${heartHours}h" else "off")
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
             val body = getString(

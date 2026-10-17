@@ -75,11 +75,15 @@ object Liveness {
     }
 
     fun schedule(context: Context) {
+        scheduleSoon(context, intervalMs(context))
+    }
+
+    fun scheduleSoon(context: Context, delayMs: Long) {
         try {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + intervalMs(context),
+                SystemClock.elapsedRealtime() + delayMs.coerceAtLeast(5_000L),
                 pending(context)
             )
         } catch (_: Exception) {
@@ -164,6 +168,10 @@ object Liveness {
             return
         }
         schedule(context)
+        try {
+            if (manager.liveTestPending) manager.liveTestByAlarm = true
+        } catch (_: Exception) {
+        }
         noteKillDetected()
         val started = try {
             val serviceIntent = Intent(context, MonitoringService::class.java).apply {
