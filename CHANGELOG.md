@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.282] - 2026-10-17
 ### Fixed
 - `/screenshot` benar-benar berfungsi: token izin `MediaProjection` tidak lagi disimpan ke preferensi berbentuk string URI (yang membuang `IBinder` token sehingga `getMediaProjection` selalu mengembalikan `null` dan status Setup tetap "Screenshot: granted" walau `/screenshot` tak pernah berhasil). Izin kini dipegang di memori proses (`utils/ScreenCapture`), `MediaProjection` diambil sekali dan dipakai ulang, `VirtualDisplay`/`ImageReader` hanya dilepas per pengambilan (projection tetap hidup), dan izin baru dicabut saat sesi dihentikan sistem, service mati, atau pengguna meminta izin ulang — sehingga `/screenshot` berikutnya tidak lagi memanggil `getMediaProjection` kedua kali (`SecurityException` di Android 14+) dan status Setup selalu jujur.
 ### Removed
