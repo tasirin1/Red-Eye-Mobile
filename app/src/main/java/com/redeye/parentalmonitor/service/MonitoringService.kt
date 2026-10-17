@@ -203,6 +203,7 @@ class MonitoringService : Service() {
         private const val VEHICLE_MIN_SPEED_MPS = 8.3f
         private const val VEHICLE_MAX_SPEED_MPS = 55f
         private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
+        private const val LOCATION_GOOD_ACCURACY_M = 50f
         private const val SILENT_LINK_MS = 90 * 60_000L
         private const val SILENT_HEAL_SPACING_MS = 45 * 60_000L
         private const val SILENT_MAX_STAGE = 3
@@ -1027,6 +1028,19 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun bestFix(candidates: List<android.location.Location>): android.location.Location? {
+        var best: android.location.Location? = null
+        var bestScore = Float.MAX_VALUE
+        for (candidate in candidates) {
+            val score = if (candidate.accuracy > 0f) candidate.accuracy else Float.MAX_VALUE
+            if (score < bestScore) {
+                bestScore = score
+                best = candidate
+            }
+        }
+        return best
     }
 
     private fun refreshLoopConfig() {
@@ -2774,8 +2788,8 @@ class MonitoringService : Service() {
             try {
                 val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
                 val providers = listOf(
-                    android.location.LocationManager.NETWORK_PROVIDER,
-                    android.location.LocationManager.GPS_PROVIDER
+                    android.location.LocationManager.GPS_PROVIDER,
+                    android.location.LocationManager.NETWORK_PROVIDER
                 ).filter {
                     try {
                         locationManager.isProviderEnabled(it)
@@ -2783,19 +2797,23 @@ class MonitoringService : Service() {
                         false
                     }
                 }
+                if (providers.isEmpty()) return@withContext null
+                val lastKnown = mutableListOf<android.location.Location>()
                 for (provider in providers) {
                     try {
                         val last = locationManager.getLastKnownLocation(provider)
                         if (last != null && isFreshLocation(last)) {
-                            return@withContext last
+                            lastKnown.add(last)
                         }
-                    } catch (_: SecurityException) {
-                        continue
+                    } catch (_: Exception) {
                     }
                 }
-                if (providers.isEmpty()) return@withContext null
+                bestFix(lastKnown)?.let { return@withContext it }
                 val fix = try {
                     coroutineScope {
+                        val collected = java.util.concurrent.ConcurrentLinkedQueue<android.location.Location>()
+                        val settled = CompletableDeferred<Unit>()
+                        val remaining = java.util.concurrent.atomic.AtomicInteger(providers.size)
                         val pending = providers.map { provider ->
                             async {
                                 val result = CompletableDeferred<android.location.Location?>()
@@ -2828,44 +2846,33 @@ class MonitoringService : Service() {
                                         result.complete(null)
                                     }
                                 }
-                                try {
+                                val got = try {
                                     result.await()
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                    null
                                 } finally {
                                     try {
                                         locationManager.removeUpdates(listener)
                                     } catch (_: Exception) {
                                     }
                                 }
-                            }
-                        }
-                        val won = try {
-                            kotlinx.coroutines.withTimeoutOrNull(15_000L) {
-                                val winner = CompletableDeferred<android.location.Location?>()
-                                val left = java.util.concurrent.atomic.AtomicInteger(pending.size)
-                                for (task in pending) {
-                                    task.invokeOnCompletion {
-                                        val got = try {
-                                            task.getCompleted()
-                                        } catch (_: Exception) {
-                                            null
-                                        }
-                                        if (got != null) {
-                                            try {
-                                                if (!winner.isCompleted) winner.complete(got)
-                                            } catch (_: Exception) {
-                                            }
-                                        } else if (left.decrementAndGet() == 0) {
-                                            try {
-                                                if (!winner.isCompleted) winner.complete(null)
-                                            } catch (_: Exception) {
-                                            }
-                                        }
+                                if (got != null) {
+                                    collected.add(got)
+                                    if (got.accuracy > 0f && got.accuracy <= LOCATION_GOOD_ACCURACY_M) {
+                                        settled.complete(Unit)
                                     }
                                 }
-                                winner.await()
+                                if (remaining.decrementAndGet() <= 0) {
+                                    settled.complete(Unit)
+                                }
+                                got
                             }
+                        }
+                        try {
+                            kotlinx.coroutines.withTimeoutOrNull(15_000L) { settled.await() }
                         } catch (_: Exception) {
-                            null
                         }
                         for (task in pending) {
                             try {
@@ -2873,7 +2880,7 @@ class MonitoringService : Service() {
                             } catch (_: Exception) {
                             }
                         }
-                        won
+                        bestFix(collected.toList())
                     }
                 } catch (_: Exception) {
                     null
