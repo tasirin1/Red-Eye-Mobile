@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.338] - 2026-10-17
+### Fixed
+- Ikon bulat `@mipmap/ic_launcher_round` juga mendapat cadangan untuk Android 7.0–7.1: rilis sebelumnya hanya `@mipmap/ic_launcher` yang diberi padanan non-v26, sedangkan `android:roundIcon` tetap menunjuk berkas yang hanya ada di `mipmap-anydpi-v26`. Kini ada `mipmap-anydpi/ic_launcher_round.xml` dengan isi sama.
+### Added
+- Guard permanen di `tools/verifikasi-path.py` (`cek_ikon_launcher()`): bila `minSdk < 26` dan ada berkas di `res/mipmap-anydpi-v26/`, setiap nama wajib punya padanan di folder `mipmap` tanpa kualifikasi versi — supaya ikon launcher tak lagi hilang diam-diam di Android 7.0–7.1 saat ikon adaptive ditambah atau diganti.
+
 ## [1.6.337] - 2026-10-17
 ### Fixed
 - Ikon peluncur untuk Android 7.0–7.1 (API 24–25): `android:icon` menunjuk `@mipmap/ic_launcher`, tetapi satu-satunya berkasnya ada di `mipmap-anydpi-v26` (adaptive icon yang hanya dipakai API 26+), sehingga di API 24–25 ikon aplikasi tak punya gambar yang cocok. Ditambahkan `mipmap-anydpi/ic_launcher.xml` (layer-list: `@color/ic_launcher_background` + `@drawable/ic_launcher_foreground`) sebagai cadangan; di API 26+ adaptive icon tetap yang dipakai.

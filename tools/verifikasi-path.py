@@ -652,6 +652,34 @@ def cek_paritas_resource(gagal):
         gagal.append("Paritas resource tak terbaca: %s" % e)
 
 
+def cek_ikon_launcher(gagal):
+    """Ikon adaptive (mipmap-anydpi-v26) wajib punya cadangan non-v26 bila minSdk < 26."""
+    m = re.search(r"minSdk\s+(\d+)", baca("app/build.gradle"))
+    if not m or int(m.group(1)) >= 26:
+        return
+    akar_res = os.path.join(AKAR, "app", "src", "main", "res")
+    try:
+        folder = sorted(os.listdir(akar_res))
+    except OSError:
+        return
+    cadangan = [f for f in folder if f.startswith("mipmap") and "-v" not in f]
+    if not cadangan:
+        gagal.append("Tak ada folder mipmap tanpa kualifikasi versi padahal "
+                     "minSdk < 26 (ikon launcher kosong di API 24-25)")
+        return
+    v26 = os.path.join(akar_res, "mipmap-anydpi-v26")
+    if not os.path.isdir(v26):
+        return
+    for nama in sorted(os.listdir(v26)):
+        if not nama.endswith(".xml"):
+            continue
+        if not any(os.path.exists(os.path.join(akar_res, f, nama))
+                   for f in cadangan):
+            gagal.append(
+                "Ikon %s hanya ada di mipmap-anydpi-v26 padahal minSdk < 26 "
+                "(tambahkan cadangan di %s)" % (nama, cadangan[0]))
+
+
 def cek_import_mati(gagal):
     """Import Kotlin/Java yang namanya tak dipakai di kode (GAGAL)."""
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
@@ -754,6 +782,7 @@ def utama():
     cek_sinkron_terjemah(gagal)
     cek_import_mati(gagal)
     cek_paritas_resource(gagal)
+    cek_ikon_launcher(gagal)
     cek_aturan_repo(gagal, berubah)
     cek_secret(gagal, diff)
     cek_kurung_kode(gagal, berubah)
