@@ -4097,25 +4097,31 @@ class MonitoringService : Service() {
         if (!cachedDataSaver) return false
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
         if (nowElapsed - dataSaverCheckedAtElapsed < DATA_SAVER_CHECK_WINDOW_MS) return dataSaverDeferResult
-        var deferred = false
-        try {
-            if (isMeteredNetwork()) {
-                val pending = pendingMediaCount()
-                if (pending > 0) {
-                    deferred = true
-                    val now = System.currentTimeMillis()
-                    val last = preferencesManager.dataSaverNoticeAt
-                    if (last == 0L || now - last >= 6 * 60 * 60_000L) {
-                        preferencesManager.dataSaverNoticeAt = now
-                        sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
-                    }
-                }
-            }
-        } catch (_: Exception) {
-        }
+        val deferred = dataSaverHoldNow(0)
         dataSaverCheckedAtElapsed = nowElapsed
         dataSaverDeferResult = deferred
         return deferred
+    }
+
+    private suspend fun dataSaverHoldNow(extraPending: Int): Boolean {
+        if (!cachedDataSaver) return false
+        try {
+            if (!isMeteredNetwork()) return false
+        } catch (_: Exception) {
+            return false
+        }
+        val pending = pendingMediaCount() + extraPending
+        if (pending <= 0) return false
+        try {
+            val now = System.currentTimeMillis()
+            val last = preferencesManager.dataSaverNoticeAt
+            if (last == 0L || now - last >= 6 * 60 * 60_000L) {
+                preferencesManager.dataSaverNoticeAt = now
+                sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
+            }
+        } catch (_: Exception) {
+        }
+        return true
     }
 
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
@@ -5396,6 +5402,11 @@ class MonitoringService : Service() {
                     markMediaActive(photoFile)
                     serviceScope.launch {
                         try {
+                            if (!reportResult && dataSaverHoldNow(1)) {
+                                try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                                android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
+                                return@launch
+                            }
                             when (sendPhotoFile(photoFile)) {
                                 MediaSendOutcome.SENT -> {
                                     try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }

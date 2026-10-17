@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.329] - 2026-10-17
+### Fixed
+- `/hematdata on` kini benar-benar menahan foto otomatis: sebelumnya hanya media yang sudah masuk antrean (`flushPendingPhotos()`, `flushPendingVideos()`, `flushPendingAudio()`) yang ditahan, sedangkan foto hasil pemotretan otomatis (interval kamera & patroli) tetap dikirim langsung lewat `sendPhotoFile()` walau sedang memakai data seluler — bertentangan dengan janji di `README.md`. Kini foto otomatis juga ditahan; berkasnya tetap tersimpan di cache dan ikut terkirim otomatis begitu tersambung Wi-Fi. Sidik foto ikut dicatat saat ditahan agar pemotretan berikutnya yang sama tetap terdeteksi duplikat dan tidak menumpuk di antrean.
+### Changed
+- Cakupan `/hematdata` diperjelas di `README.md`: foto otomatis dan foto patroli ikut ditahan, sedangkan permintaan langsung seperti `/photo`, `/screenshot`, `/recordvideo`, `/recordaudio` tetap dikirim segera supaya jawaban perintah tidak terasa "hilang".
+
 ## [1.6.328] - 2026-10-17
 ### Fixed
 - Berkas media yang sedang dipakai tak lagi saling menimpa penandanya: `MonitoringService` dulu menyimpan satu slot per jenis (`activePhotoFile`, `activeVideoFile`, `activeShotFile`, `activeAudioFile`), jadi saat pengiriman satu berkas masih berjalan sementara berkas lain dengan jenis sama mulai diproses, penanda yang lama tertimpa dan berkas lama bisa ikut terkirim dua kali oleh `flushPendingPhotos()`, atau ikut terbuang oleh pembersihan cache. Penanda kini disimpan dalam satu himpunan berkas aktif (`activeMediaFiles`) yang sanggup menampung banyak berkas sekaligus.
