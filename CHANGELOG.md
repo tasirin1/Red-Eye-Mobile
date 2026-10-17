@@ -1,5 +1,13 @@
 ## [Unreleased]
 ### Added
+- Deteksi "hidup tapi bisu": waktu kirim sukses terakhir dicatat (dari `sendToTelegram` dan worker antrean). Bila sudah >90 menit tidak ada kiriman berhasil padahal antrean berisi dan jaringan normal tanpa token bermasalah, aplikasi memulihkan sendiri bertahap tiap 45 menit — tahap 1 putar ulang antrean + segarkan kredensial, tahap 2 hapus webhook + daftar ulang menu command, tahap 3 hidupkan ulang semua loop — lalu mengabari hasilnya (maksimal 3 tahap per episode, direset begitu ada kiriman sukses).
+- Perintah `/sembuh` (alias `sembuh`/`pulih`): pemulihan penuh atas permintaan — segarkan kredensial, hapus webhook, daftar ulang menu command, pasang ulang jam bangun + watchdog + worker, minta ulang akses notifikasi, hidupkan ulang semua loop, lalu kirim laporan apa saja yang dikerjakan.
+- Baris "Jalur kirim" di `/alive`: berapa lama sejak kiriman sukses terakhir (OK/BISU) + berapa kali pemulihan otomatis dijalankan.
+### Changed
+- `registerBotCommands` menerima `force` sehingga bisa didaftar ulang paksa saat pemulihan (sebelumnya selalu berhenti di penanda hash), dan `TelegramApi` menambah `deleteWebhook` — jalur pemulihan untuk kasus webhook tertinggal (penyebab klasik `getUpdates` 409/command tak masuk).
+
+## [1.6.294] - 2026-10-17
+### Added
 - Uji mandiri anti-mati: perintah `/cekmati` (alias `cekmati`/`ujimati`) dan tombol **Tes anti-mati** di Setup. Servis sengaja menghentikan dirinya sendiri (seperti dibunuh sistem), hanya jam bangun (watchdog) yang boleh menghidupkannya lagi ±45 detik kemudian, lalu owner menerima laporan berapa detik servis hidup kembali — plus catatan bila yang menghidupkan bukan jam bangun, bila gagal (>10 menit), atau bila uji terputus reboot. Jadi keandalan anti-mati terbukti di HP masing-masing, bukan cuma di CI.
 - Baris `Liveness` di Setup menyebut hasil uji terakhir (`self-test 42s` / `running` / `not run`).
 ### Changed
