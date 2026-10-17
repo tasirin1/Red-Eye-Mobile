@@ -1,3 +1,9 @@
+## [1.6.280] - 2026-10-17
+### Changed
+- `/screenshot` tidak lagi sekali pakai per izin di Android 14+: sesi `MediaProjection` (projection + `VirtualDisplay` + `ImageReader`) disimpan dan dipakai ulang untuk `/screenshot` berikutnya selama izin sama, lalu dilepas otomatis 10 menit setelah pengambilan terakhir — juga dilepas saat izin hilang, orientasi/ukuran layar berubah, sesi dihentikan sistem (`onStop`), atau service mati. Sebelumnya token izin `MediaProjection` hanya boleh dipakai sekali (`getMediaProjection` kedua melempar `SecurityException`) sehingga `/screenshot` gagal total dan izin dicabut.
+### Fixed
+- Frame screenshot tidak lagi bisa basi: satu frame lama dibuang dari buffer sebelum menunggu frame baru, jadi yang dikirim adalah gambar terkini (bukan frame sisa sesi sebelumnya).
+
 ## [1.6.279] - 2026-10-17
 ### Changed
 - Tipe foreground service kini memakai `specialUse` (Android 14+, dengan izin `FOREGROUND_SERVICE_SPECIAL_USE` + `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`) alih-alih `dataSync` yang dibatasi 6 jam per 24 jam di Android 15+: `MonitoringService` dan `SystemForegroundService` milik `BootRestartWorker` memakai helper `baseForegroundType()`/`fgsType()`, dan `startForeground` dicoba ulang dengan tipe dasar itu bila tipe lengkap ditolak (mis. tipe `dataSync|camera|microphone|mediaProjection` dilarang saat diluncurkan dari `BOOT_COMPLETED` di Android 15+).
