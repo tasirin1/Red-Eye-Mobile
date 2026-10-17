@@ -1,4 +1,8 @@
 ## [Unreleased]
+### Changed
+- Efisiensi & kerapian: penghitung sepi (`idleDataCycles`) berhenti di 8 sesuai batas pemakaiannya (dulu bisa naik sampai 100 tanpa guna); `/uptime` menghitung durasi dari jam monoton (`elapsedRealtime`) sehingga tidak kacau bila jam HP diubah; indentasi blok `forceReset()` pada kamera dan `markHandled()` di penerima boot dirapikan.
+### Removed
+- Helper nomor telepon tak terpakai (`PhoneNumbers.matches` dan `matchesNormalized`) dihapus — semua pemanggil memakai `matchesPrecomputed`.
 
 ## [1.6.306] - 2026-10-17
 ### Fixed

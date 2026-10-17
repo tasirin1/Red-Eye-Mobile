@@ -72,34 +72,34 @@ class CameraService(private val context: Context) {
         synchronized(captureLock) {
             capturing.set(false)
             sessionSeq.incrementAndGet()
-        try {
-            photoSizeCache.clear()
-        } catch (_: Exception) {
-        }
-        try {
-            backgroundHandler?.removeCallbacksAndMessages(null)
-        } catch (_: Exception) {
-        }
-        try {
-            watchdogHandler?.removeCallbacksAndMessages(null)
-        } catch (_: Exception) {
-        }
-        try {
-            activeRecorder?.stop()
-        } catch (_: Exception) {
-        }
-        try {
-            activeRecorder?.release()
-        } catch (_: Exception) {
-        }
-        activeRecorder = null
-        try {
-            val staleVideo = activeVideoFile
-            activeVideoFile = null
-            if (staleVideo != null && staleVideo.exists()) staleVideo.delete()
-        } catch (_: Exception) {
-        }
-        cleanup()
+            try {
+                photoSizeCache.clear()
+            } catch (_: Exception) {
+            }
+            try {
+                backgroundHandler?.removeCallbacksAndMessages(null)
+            } catch (_: Exception) {
+            }
+            try {
+                watchdogHandler?.removeCallbacksAndMessages(null)
+            } catch (_: Exception) {
+            }
+            try {
+                activeRecorder?.stop()
+            } catch (_: Exception) {
+            }
+            try {
+                activeRecorder?.release()
+            } catch (_: Exception) {
+            }
+            activeRecorder = null
+            try {
+                val staleVideo = activeVideoFile
+                activeVideoFile = null
+                if (staleVideo != null && staleVideo.exists()) staleVideo.delete()
+            } catch (_: Exception) {
+            }
+            cleanup()
         }
     }
 

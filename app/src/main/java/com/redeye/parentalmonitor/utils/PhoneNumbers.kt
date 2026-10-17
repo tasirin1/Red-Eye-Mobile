@@ -32,17 +32,6 @@ object PhoneNumbers {
         return long.endsWith(short)
     }
 
-    fun matches(raw: String, digits: String, pick: (String) -> String = { it }): Boolean {
-        return matchesNormalized(pick(raw), digits.filter { it.isDigit() })
-    }
-
-    fun matchesNormalized(haveRaw: String, wantDigits: String): Boolean {
-        val have = haveRaw.filter { it.isDigit() }
-        if (have.isEmpty() || wantDigits.isEmpty()) return false
-        if (wantDigits.length < 10) return have == wantDigits
-        return numbersEqualFast(have, wantDigits, altVariant(wantDigits))
-    }
-
     fun matchesPrecomputed(haveRaw: String, wantDigits: String, wantAlt: String?): Boolean {
         val have = haveRaw.filter { it.isDigit() }
         if (have.isEmpty() || wantDigits.isEmpty()) return false

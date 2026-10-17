@@ -29,15 +29,15 @@ class BootReceiver : BroadcastReceiver() {
         private var lastHandleAt = 0L
 
         private fun markHandled(context: android.content.Context, at: Long) {
-        synchronized(handleLock) { lastHandleAt = at }
-        try {
-            context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
-                .putLong("last_handle_elapsed", at)
-                .putLong("last_full_boot_elapsed", at)
-                .apply()
-        } catch (_: Exception) {
+            synchronized(handleLock) { lastHandleAt = at }
+            try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
+                    .putLong("last_handle_elapsed", at)
+                    .putLong("last_full_boot_elapsed", at)
+                    .apply()
+            } catch (_: Exception) {
+            }
         }
-    }
     }
 
     override fun onReceive(context: Context, intent: Intent) {

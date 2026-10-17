@@ -105,6 +105,8 @@ class MonitoringService : Service() {
     private var lowPowerNotified = false
     @Volatile
     private var serviceStartAt = 0L
+    @Volatile
+    private var serviceStartElapsed = 0L
     private val cameraAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
@@ -546,6 +548,7 @@ class MonitoringService : Service() {
             try { startLoopWatchdog() } catch (_: Exception) { }
         }
         serviceStartAt = System.currentTimeMillis()
+        serviceStartElapsed = android.os.SystemClock.elapsedRealtime()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
 
         // Cancel any previous loops so a restart never duplicates work
@@ -719,7 +722,7 @@ class MonitoringService : Service() {
                     try { checkVehicle() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
-                        if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
+                        if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(8)
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -2294,7 +2297,10 @@ class MonitoringService : Service() {
                 if (started <= 0) {
                     sendToTelegram("\u23F1\uFE0F Uptime: tak tahu.")
                 } else {
-                    val minutes = ((System.currentTimeMillis() - started) / 60_000L).coerceAtLeast(0L)
+                    val elapsed = android.os.SystemClock.elapsedRealtime() - serviceStartElapsed
+                    val wall = System.currentTimeMillis() - started
+                    val millis = if (serviceStartElapsed > 0L && elapsed >= 0L) elapsed else wall
+                    val minutes = (millis / 60_000L).coerceAtLeast(0L)
                     val hours = minutes / 60
                     val days = hours / 24
                     val span = when {
