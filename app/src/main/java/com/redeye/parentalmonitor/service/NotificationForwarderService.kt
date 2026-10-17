@@ -396,16 +396,6 @@ class NotificationForwarderService : NotificationListenerService() {
             cfgCacheAt = nowCfg
         }
         if (!cfgEnabled) {
-            try {
-                val dis = try { (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).userDisabledMonitoring } catch (_: Exception) { false }
-                if (dis) return
-                val gatedExtras = notification.extras
-                val gatedTitle = gatedExtras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-                var gatedBody = gatedExtras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-                if (gatedBody.isEmpty()) gatedBody = gatedExtras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
-                if (gatedTitle.isNotEmpty() || gatedBody.isNotEmpty()) record(overflowLabel(pkg), gatedTitle, gatedBody)
-            } catch (_: Exception) {
-            }
             return
         }
         val title: String

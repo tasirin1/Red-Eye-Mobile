@@ -5670,7 +5670,6 @@ class MonitoringService : Service() {
         if (live != null) {
             val attached = attachShotReader(live, width, height, density)
             if (attached != null) return attached
-            releaseShotSession()
             return null
         }
         releaseShotSurface()
@@ -5688,6 +5687,7 @@ class MonitoringService : Service() {
             return null
         } catch (_: Exception) {
             try { reader.close() } catch (_: Exception) { }
+            releaseShotSession()
             return null
         }
         synchronized(shotSessionLock) {

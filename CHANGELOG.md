@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.326] - 2026-10-17
+### Fixed
+- Riwayat notifikasi tidak lagi terisi saat pemantauan dijeda: `NotificationForwarderService` masih memanggil `record(...)` untuk notifikasi yang masuk saat `monitoringPaused` (atau saat pemantauan belum aktif), padahal jalur lain di berkas yang sama memakai penjaga `historyAllowed()` yang menolak jeda. Akibatnya judul dan isi notifikasi (mis. kode OTP/bank) masa jeda masih bisa dibaca lewat `/lastnotif` walau `/stop` menjanjikan pemantauan berhenti. Kini saat pemantauan tidak aktif/jeda, notifikasi tak dicatat sama sekali.
+- Izin tangkap layar tidak lagi dicabut karena kegagalan sesaat: bila penyesuaian ukuran sesi (`VirtualDisplay.resize()`/`setSurface()`) gagal, `/screenshot` berikutnya masih memakai sesi yang sama (dulu `releaseShotSession()` langsung dijalankan sehingga izin hilang dan status Setup berubah `off` tanpa sebab nyata). Sebaliknya, kegagalan saat membuat `VirtualDisplay` pada token baru — termasuk error non-`SecurityException` — kini selalu melepas sesi + izin, supaya permintaan berikutnya meminta izin segar alih-alih mengulang `createVirtualDisplay` kedua pada token yang sama (dilarang sejak Android 14).
+
 ## [1.6.325] - 2026-10-17
 ### Fixed
 - `MY_PACKAGE_REPLACED` tak pernah sampai ke `BootReceiver`: aksi itu dulu berada dalam satu `<intent-filter>` bersama `<data android:scheme="package"/>` (sejak `v1.6.190`), padahal broadcast itu tidak membawa URI/MIME sehingga seluruh filter gagal uji data dan `onReceive()` tak pernah dipanggil. Akibatnya tiap aplikasi selesai di-update, pemantauan tidak dihidupkan tepat waktu — hanya menunggu alarm kelangsungan hidup (3–15 menit) atau reboot berikutnya. Filter kini dipisah: `MY_PACKAGE_REPLACED` berdiri sendiri, `PACKAGE_RESTARTED` tetap bersama `<data>`.
