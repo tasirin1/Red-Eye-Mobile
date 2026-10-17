@@ -42,6 +42,35 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("AdminReceiver", "Attempting to disable Device Admin!")
+        val appContext = context.applicationContext
+        try {
+            val alert = Intent(appContext, com.redeye.parentalmonitor.service.MonitoringService::class.java).apply {
+                action = com.redeye.parentalmonitor.service.MonitoringService.ACTION_ADMIN_ALERT
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                appContext.startForegroundService(alert)
+            } else {
+                appContext.startService(alert)
+            }
+        } catch (_: Exception) {
+        }
+        try {
+            com.redeye.parentalmonitor.utils.Background.runCritical {
+                try {
+                    com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext)
+                    val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
+                    if (prefs.isConfigured()) {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage(
+                            "🚨 <b>Ada percobaan mematikan Device Admin</b>\nProteksi hapus aplikasi sebentar lagi mati. Foto + lokasi saya siapkan.",
+                            true
+                        )
+                        com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(appContext)
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
         return try {
             context.getString(R.string.admin_disable_warning)
         } catch (_: Exception) {

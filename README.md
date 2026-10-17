@@ -18,7 +18,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Teruskan notifikasi HP anak ke Telegram
 - Antrean offline, kirim lagi pas online (penjadwal dibatasi biar hemat baterai)
 - Auto-jalan lagi habis reboot
-- Proteksi uninstall opsional via Device Admin
+- Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
 
 ## Ambil APK-nya
 

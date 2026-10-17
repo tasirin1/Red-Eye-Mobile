@@ -168,6 +168,7 @@ class MonitoringService : Service() {
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
+        const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
@@ -416,6 +417,18 @@ class MonitoringService : Service() {
                     startMonitoring()
                 }
                 return START_NOT_STICKY
+            }
+            ACTION_ADMIN_ALERT -> {
+                if (!isRunning && shouldAutoResume()) {
+                    startMonitoring()
+                }
+                if (isRunning) {
+                    try {
+                        serviceScope.launch { handleAdminAlert() }
+                    } catch (_: Exception) {
+                    }
+                }
+                return START_STICKY
             }
             else -> {
                 if (shouldAutoResume()) {
@@ -4587,6 +4600,21 @@ class MonitoringService : Service() {
 
     private fun selfTestPending(): Boolean {
         return try { preferencesManager.liveTestPending } catch (_: Exception) { false }
+    }
+
+    private suspend fun handleAdminAlert() {
+        try {
+            val loc = try { fetchLocation() } catch (_: Exception) { null }
+            val level = batteryLevel()
+            val battery = if (level in 0..100) "\nBaterai: $level%" else ""
+            if (loc != null) {
+                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\n📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m$battery")
+            } else {
+                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat (GPS mati?).$battery")
+            }
+            try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 
     private fun noteSendOk() {
