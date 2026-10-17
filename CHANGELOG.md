@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.287] - 2026-10-17
 ### Added
 - `utils/Liveness.kt` + `receiver/LivenessReceiver.kt`: jam bangun (watchdog) berbasis `AlarmManager.setAndAllowWhileIdle` — tanpa izin khusus dan tetap berbunyi saat Doze — yang dipasang tiap ~10 menit. Bila `MonitoringService` sudah mati padahal monitoring masih aktif, receiver menghidupkannya kembali lewat `startForegroundService` (dan jatuh ke `BootRestartWorker` bila sistem melarang start foreground dari latar), lalu memasang jam berikutnya. Ini jalur pemulihan cepat yang tidak bergantung kuota WorkManager.
 - Penanda "terakhir hidup" (`last_alive_at`), penghitung pemulihan (`liveness_kills`), dan stempel laporan (`liveness_report_at`) di `PreferencesManager`. Bila layanan hidup lagi setelah berhenti ≥15 menit, owner otomatis menerima pesan Telegram berisi perkiraan jam berhenti dan lamanya (maksimal sekali per 6 jam), jadi kematian layanan tidak lagi senyap.
