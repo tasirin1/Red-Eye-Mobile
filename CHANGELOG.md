@@ -1,3 +1,14 @@
+## [Unreleased]
+### Added
+- `receiver/TimeChangeReceiver.kt`: pemicu ulang saat jam/zona/tanggal HP diubah (`TIME_SET`, `TIMEZONE_CHANGED`, `DATE_CHANGED`) — memasang ulang jam liveness dan, bila layanan ternyata sudah mati, langsung menghidupkannya lagi. Jadi setelan jam yang berubah pun menjadi kesempatan pemulihan, bukan celah.
+- Penanda "terakhir hidup" berbasis waktu monoton (`last_alive_elapsed`) dan penghitung pemulihan yang belum dilaporkan (`liveness_kills_unreported`) di `PreferencesManager`.
+### Changed
+- Jam liveness memakai `AlarmManager.ELAPSED_REALTIME_WAKEUP` (waktu monoton) alih-alih `RTC_WAKEUP` (jam dinding): mengubah jam/zona HP tidak lagi menggeser atau menghilangkan jadwalnya.
+- Deteksi kematian layanan dihitung dari waktu monoton, bukan jam dinding, sehingga mengubah jam HP tidak lagi memicu laporan "mati sejak pukul X" yang keliru; reboot (waktu monoton kembali dari nol) juga tidak lagi dianggap kematian.
+- Laporan pemulihan lebih hemat sekaligus lebih informatif: kematian ≥3 menit dihitung (`liveness_kills`), tetapi pesan Telegram hanya dikirim bila layanan berhenti ≥15 menit **atau** sudah 3× berhenti sejak laporan terakhir (tetap maksimal sekali per 6 jam) — teksnya menyebut "Sudah berhenti N× sejak laporan terakhir".
+- Receiver liveness menyegarkan penanda "terakhir hidup" setiap jam bangun selama layanan benar-benar hidup, supaya lama mati terukur tepat walau selang sinkronisasi data diperpanjang.
+- `/alive` dan baris `Liveness` di Setup memakai waktu monoton untuk "denyut terakhir ... lalu" (tidak lagi salah saat jam HP diubah) dan menampilkan jumlah pemulihan yang belum dilaporkan.
+
 ## [1.6.291] - 2026-10-17
 ### Added
 - Diagnosa blokir kamera: pesan kegagalan foto/video kini menyebut **paket admin penyebabnya** (dari `getActiveAdmins()` + `getCameraDisabled(admin)`), bukan lagi pesan umum "another admin app".

@@ -475,7 +475,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
             try { prefs.patrolEnabled = false } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
-            try { prefs.lastAliveAt = 0L } catch (_: Exception) { }
+            try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -912,7 +912,7 @@ class SetupActivity : AppCompatActivity() {
             try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelBootRestart(this@SetupActivity) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
-            try { prefs.lastAliveAt = 0L } catch (_: Exception) { }
+            try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -1372,9 +1372,11 @@ class SetupActivity : AppCompatActivity() {
             val listener = isNotificationAccessGranted()
             val adminOn = try { (getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(this@SetupActivity, AdminReceiver::class.java)) } catch (_: Exception) { false }
             val lastAlive = try { prefs.lastAliveAt } catch (_: Exception) { 0L }
+            val lastAliveElapsed = try { prefs.lastAliveElapsed } catch (_: Exception) { 0L }
             val kills = try { prefs.livenessKills } catch (_: Exception) { 0 }
             val heartHours = try { prefs.heartbeatHours } catch (_: Exception) { 0 }
-            val aliveAgoMin = if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
+            val aliveAgoMin = if (lastAliveElapsed > 0L) ((android.os.SystemClock.elapsedRealtime() - lastAliveElapsed) / 60_000L).coerceAtLeast(0L)
+            else if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
             val livenessLine = "\nLiveness: " + (if (running) "alive" else "not running") +
                 (if (aliveAgoMin >= 0L) " (last beat ${aliveAgoMin}m ago)" else "") +
                 (if (kills > 0) " · recovered ${kills}x" else "") +

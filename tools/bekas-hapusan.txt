@@ -11,3 +11,4 @@ scheduleShotSessionRelease
 saveScreenshotConsentSync
 clearScreenshotConsentSync
 saveTestIdentity
+isKill

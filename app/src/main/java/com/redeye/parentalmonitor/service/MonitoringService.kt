@@ -12,6 +12,7 @@ import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import androidx.core.app.NotificationCompat
 import com.redeye.parentalmonitor.ParentalMonitorApp
@@ -4391,16 +4392,24 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         val started = serviceStartAt
         val lastAlive = try { preferencesManager.lastAliveAt } catch (_: Exception) { 0L }
+        val lastAliveElapsed = try { preferencesManager.lastAliveElapsed } catch (_: Exception) { 0L }
         val kills = try { preferencesManager.livenessKills } catch (_: Exception) { 0 }
+        val unreported = try { preferencesManager.livenessKillsUnreported } catch (_: Exception) { 0 }
         val beat = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
         val level = batteryLevel()
+        val beatAge = if (lastAliveElapsed > 0L) SystemClock.elapsedRealtime() - lastAliveElapsed
+        else if (lastAlive > 0L) now - lastAlive else -1L
         return buildString {
             appendLine("💚 <b>Alive</b>")
             appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
             appendLine("Uptime: ${if (started > 0) durationText(now - started) else "?"}")
             if (started > 0) appendLine("Sejak: " + formatDate(started))
-            appendLine("Denyut terakhir: ${if (lastAlive > 0) durationText(now - lastAlive) + " lalu" else "?"}")
-            appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem")
+            appendLine("Denyut terakhir: " + if (beatAge >= 0L) {
+                val at = if (lastAlive > 0L) " pukul " + Liveness.clockText(lastAlive) else ""
+                durationText(beatAge) + " lalu" + at
+            } else "?")
+            appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem" +
+                if (unreported > 0) " (belum dilaporkan: ${unreported}x)" else "")
             appendLine("Watchdog: tiap ~10 mnt")
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
             appendLine("Tipe FGS aktif: " + fgsTypesText(appliedFgsTypes))

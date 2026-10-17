@@ -4,9 +4,12 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.SystemClock
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.receiver.LivenessReceiver
+import com.redeye.parentalmonitor.service.MonitoringService
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -15,7 +18,9 @@ object Liveness {
     const val ACTION_ALARM = "com.redeye.parentalmonitor.action.LIVENESS_ALARM"
     private const val REQ_CODE = 4711
     private const val INTERVAL_MS = 10 * 60_000L
+    private const val KILL_MIN_MS = 3 * 60_000L
     private const val STALE_GAP_MS = 15 * 60_000L
+    private const val KILLS_PER_REPORT = 3
     private const val REPORT_COOLDOWN_MS = 6 * 60 * 60_000L
     private const val ALIVE_WRITE_MIN_GAP_MS = 60_000L
     private val lastWriteAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -32,8 +37,8 @@ object Liveness {
         try {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + INTERVAL_MS,
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                SystemClock.elapsedRealtime() + INTERVAL_MS,
                 pending(context)
             )
         } catch (_: Exception) {
@@ -50,30 +55,41 @@ object Liveness {
 
     fun markAlive(manager: PreferencesManager, force: Boolean = false) {
         try {
-            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val nowElapsed = SystemClock.elapsedRealtime()
             if (!force) {
                 val last = lastWriteAt.get()
                 if (last != 0L && nowElapsed - last < ALIVE_WRITE_MIN_GAP_MS) return
             }
             lastWriteAt.set(nowElapsed)
-            manager.lastAliveAt = System.currentTimeMillis()
+            manager.setLastAliveMarker(System.currentTimeMillis(), nowElapsed)
         } catch (_: Exception) {
         }
     }
 
     fun noteServiceStart(context: Context, manager: PreferencesManager) {
         try {
-            val now = System.currentTimeMillis()
-            val previous = try { manager.lastAliveAt } catch (_: Exception) { 0L }
-            val lastReport = try { manager.livenessReportAt } catch (_: Exception) { 0L }
-            if (isKill(previous, now) && reportDue(lastReport, now)) {
-                val kills = try { manager.livenessKills } catch (_: Exception) { 0 }
-                try { manager.livenessKills = kills + 1 } catch (_: Exception) { }
-                try { manager.livenessReportAt = now } catch (_: Exception) { }
-                try {
-                    MessageQueue.getInstance(context).addMessage(resurrectionText(previous, now))
-                    MessageScheduler.scheduleMessageSend(context)
-                } catch (_: Exception) {
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val nowWall = System.currentTimeMillis()
+            val prevElapsed = try { manager.lastAliveElapsed } catch (_: Exception) { 0L }
+            val prevWall = try { manager.lastAliveAt } catch (_: Exception) { 0L }
+            if (prevElapsed > 0L && nowElapsed > prevElapsed) {
+                val downMs = nowElapsed - prevElapsed
+                if (downMs >= KILL_MIN_MS) {
+                    val kills = try { manager.livenessKills } catch (_: Exception) { 0 } + 1
+                    val unreported = try { manager.livenessKillsUnreported } catch (_: Exception) { 0 } + 1
+                    try { manager.livenessKills = kills } catch (_: Exception) { }
+                    try { manager.livenessKillsUnreported = unreported } catch (_: Exception) { }
+                    val lastReport = try { manager.livenessReportAt } catch (_: Exception) { 0L }
+                    val significant = downMs >= STALE_GAP_MS || unreported >= KILLS_PER_REPORT
+                    if (significant && reportDue(lastReport, nowWall)) {
+                        try { manager.livenessReportAt = nowWall } catch (_: Exception) { }
+                        try { manager.livenessKillsUnreported = 0 } catch (_: Exception) { }
+                        try {
+                            MessageQueue.getInstance(context).addMessage(resurrectionText(prevWall, downMs, unreported))
+                            MessageScheduler.scheduleMessageSend(context)
+                        } catch (_: Exception) {
+                        }
+                    }
                 }
             }
             markAlive(manager, force = true)
@@ -83,21 +99,56 @@ object Liveness {
 
     fun noteStopped(manager: PreferencesManager) {
         try {
-            manager.lastAliveAt = 0L
+            manager.setLastAliveMarker(0L, 0L)
         } catch (_: Exception) {
         }
     }
 
-    fun isKill(previousActivityAt: Long, now: Long): Boolean {
-        return previousActivityAt > 0L && now > previousActivityAt && now - previousActivityAt >= STALE_GAP_MS
+    fun handleWakeUp(context: Context) {
+        val manager = try {
+            PreferencesManager.refreshInstance(context)
+            PreferencesManager.getInstance(context)
+        } catch (_: Exception) {
+            schedule(context)
+            return
+        }
+        if (!allowed(manager)) {
+            cancel(context)
+            return
+        }
+        if (MonitoringService.isRunning) {
+            markAlive(manager)
+            schedule(context)
+            return
+        }
+        schedule(context)
+        val started = try {
+            val serviceIntent = Intent(context, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_START_MONITORING
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+        if (!started) {
+            try {
+                MessageScheduler.scheduleBootRestart(context)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     fun reportDue(lastReportAt: Long, now: Long): Boolean {
         return lastReportAt == 0L || now < lastReportAt || now - lastReportAt >= REPORT_COOLDOWN_MS
     }
 
-    fun gapText(previous: Long, now: Long): String {
-        val minutes = ((now - previous) / 60_000L).coerceAtLeast(1L)
+    fun gapText(downMs: Long): String {
+        val minutes = (downMs / 60_000L).coerceAtLeast(1L)
         return if (minutes >= 60L) "${minutes / 60L} jam ${minutes % 60L} menit" else "$minutes menit"
     }
 
@@ -109,8 +160,13 @@ object Liveness {
         }
     }
 
-    private fun resurrectionText(previous: Long, now: Long): String {
-        return "♻️ Monitoring hidup lagi. Sebelumnya berhenti sekitar pukul ${clockText(previous)} (±${gapText(previous, now)})."
+    private fun resurrectionText(previousWall: Long, downMs: Long, kills: Int): String {
+        val gap = gapText(downMs)
+        return if (kills <= 1) {
+            "♻️ Monitoring hidup lagi. Sebelumnya berhenti sekitar pukul ${clockText(previousWall)} (±$gap)."
+        } else {
+            "♻️ Monitoring hidup lagi. Sudah berhenti $kills× sejak laporan terakhir (terakhir sekitar pukul ${clockText(previousWall)}, ±$gap)."
+        }
     }
 
     private fun pending(context: Context): PendingIntent {

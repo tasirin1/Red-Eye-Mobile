@@ -226,7 +226,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_CURFEW_DATE = "curfew_alert_date"
         private const val KEY_SCHOOL_DATE = "school_alert_date"
         private const val KEY_LAST_ALIVE_AT = "last_alive_at"
+        private const val KEY_LAST_ALIVE_ELAPSED = "last_alive_elapsed"
         private const val KEY_LIVENESS_KILLS = "liveness_kills"
+        private const val KEY_LIVENESS_KILLS_UNREPORTED = "liveness_kills_unreported"
         private const val KEY_LIVENESS_REPORT_AT = "liveness_report_at"
         private const val KEY_HEARTBEAT_HOURS = "heartbeat_hours"
         private const val KEY_HEARTBEAT_AT = "heartbeat_at"
@@ -462,9 +464,26 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_ALIVE_AT, value).apply()
 
+    var lastAliveElapsed: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_ELAPSED, 0L) } catch (_: Exception) { 0L }
+
+    fun setLastAliveMarker(wallAt: Long, elapsedAt: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_LAST_ALIVE_AT, wallAt)
+                .putLong(KEY_LAST_ALIVE_ELAPSED, elapsedAt)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var livenessKills: Int
         get() = try { sharedPreferences.getInt(KEY_LIVENESS_KILLS, 0) } catch (_: Exception) { 0 }
         set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS, value).apply()
+
+    var livenessKillsUnreported: Int
+        get() = try { sharedPreferences.getInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS_UNREPORTED, value).apply()
 
     var livenessReportAt: Long
         get() = try { sharedPreferences.getLong(KEY_LIVENESS_REPORT_AT, 0L) } catch (_: Exception) { 0L }
