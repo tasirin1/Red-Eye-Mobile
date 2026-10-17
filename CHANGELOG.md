@@ -1,3 +1,10 @@
+## [Unreleased]
+### Added
+- `utils/AutoStart.kt` + tombol `Anti-kill & Autostart` di Setup: dialog panduan berisi langkah anti-mati (autostart merek, pembatasan baterai, "tampil di atas aplikasi lain") dengan status hidup/mati untuk dua yang bisa dideteksi. Tombol autostart membuka layar setelan khusus merek (Xiaomi/Redmi/Poco, Oppo/Realme, Vivo/iQOO, Huawei/Honor, Samsung, OnePlus, Asus, Meizu, Letv, Nokia) dengan daftar kandidat komponen per merek dan jatuh ke halaman Info Aplikasi bila tak ada yang cocok; izin "tampil di atas aplikasi lain" dibuka lewat `ACTION_MANAGE_OVERLAY_PERMISSION`.
+- Izin `SYSTEM_ALERT_WINDOW` (opsional, hanya dibuka lewat dialog Anti-kill): membantu Android 12+ mengizinkan layanan dinyalakan kembali dari latar saat watchdog menghidupkannya.
+### Changed
+- Wizard anti-kill muncul otomatis sekali setelah monitoring dinyalakan bila pembatasan baterai masih aktif atau izin "tampil di atas aplikasi lain" belum diberikan, supaya langkah anti-mati tidak terlewat.
+
 ## [1.6.287] - 2026-10-17
 ### Added
 - `utils/Liveness.kt` + `receiver/LivenessReceiver.kt`: jam bangun (watchdog) berbasis `AlarmManager.setAndAllowWhileIdle` — tanpa izin khusus dan tetap berbunyi saat Doze — yang dipasang tiap ~10 menit. Bila `MonitoringService` sudah mati padahal monitoring masih aktif, receiver menghidupkannya kembali lewat `startForegroundService` (dan jatuh ke `BootRestartWorker` bila sistem melarang start foreground dari latar), lalu memasang jam berikutnya. Ini jalur pemulihan cepat yang tidak bergantung kuota WorkManager.

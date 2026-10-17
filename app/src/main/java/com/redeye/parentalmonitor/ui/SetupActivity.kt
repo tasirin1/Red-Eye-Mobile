@@ -354,6 +354,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupAdminButton).setOnClickListener { activateDeviceAdmin() }
         findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
+        findViewById<MaterialButton>(R.id.setupAntiKillButton).setOnClickListener { showAntiKillWizard() }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
         findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
@@ -958,6 +959,12 @@ class SetupActivity : AppCompatActivity() {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
                     }
                     updateStatus()
+                    try {
+                        if (!isBatteryExempt() || !com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this@SetupActivity)) {
+                            showAntiKillWizard()
+                        }
+                    } catch (_: Exception) {
+                    }
                 }
             } finally {
                 synchronized(startGuard) { startingMonitoring = false }
@@ -1026,6 +1033,39 @@ class SetupActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showAntiKillWizard() {
+        val brand = com.redeye.parentalmonitor.utils.AutoStart.manufacturerLabel()
+        val batteryOk = isBatteryExempt()
+        val overlayOk = com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this)
+        val message = buildString {
+            append(getString(R.string.antikill_text, brand))
+            append("\n\n")
+            appendLine(getString(if (batteryOk) R.string.antikill_battery_ok else R.string.antikill_battery_off))
+            append(getString(if (overlayOk) R.string.antikill_overlay_ok else R.string.antikill_overlay_off))
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.antikill_title))
+            .setMessage(message)
+            .setPositiveButton(getString(R.string.antikill_autostart)) { _, _ ->
+                try {
+                    if (!com.redeye.parentalmonitor.utils.AutoStart.open(this)) {
+                        Toast.makeText(this, getString(R.string.antikill_unknown), Toast.LENGTH_LONG).show()
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            .setNeutralButton(getString(R.string.antikill_overlay)) { _, _ ->
+                try {
+                    if (!com.redeye.parentalmonitor.utils.AutoStart.openOverlaySettings(this)) {
+                        Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun sendStatusNow() {

@@ -54,7 +54,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 8. Tap Grant permissions sampai semua hijau, lalu grant background location Allow all the time.
 9. Nyalakan akses notifikasi kalau mau forward notifikasi.
 10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`.
-11. Matikan batasan baterai biar nggak dimatikan Doze, nyalakan Device Admin kalau perlu.
+11. Tap Anti-kill &amp; Autostart: izinkan autostart merek HP (Xiaomi/Oppo/Vivo/Huawei/Samsung/dll), matikan batasan baterai, dan izinkan "tampil di atas aplikasi lain". Nyalakan Device Admin kalau perlu.
 12. Tap Enable monitoring, selesai. Cek via Send Status.
 
 Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit.
@@ -66,6 +66,8 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
 - Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; restore hanya mengisi form, tetap tap Save.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
+- Anti-mati: service dipantau jam bangun tiap 10 menit — kalau sistem menghentikannya (Doze/hemat baterai), service dihidupkan lagi otomatis dan kamu dapat pesan Telegram berisi perkiraan jam berhentinya (maksimal sekali per 6 jam). Tombol Anti-kill &amp; Autostart membantu mengizinkan autostart merek HP + "tampil di atas aplikasi lain" supaya makin jarang mati.
+- `SYSTEM_ALERT_WINDOW` (tampil di atas aplikasi lain) bersifat opsional; hanya dipakai agar layanan lebih mudah dihidupkan ulang dari latar di Android 12+, dan hanya aktif kalau kamu mengizinkannya lewat tombol Anti-kill.
 - Service monitoring memakai tipe foreground `specialUse` (`FOREGROUND_SERVICE_SPECIAL_USE`) di Android 14+, supaya tidak kena batas 6 jam/24 jam tipe `dataSync` di Android 15+; kalau percobaan `startForeground` dengan tipe lengkap ditolak (mis. saat diluncurkan dari boot di Android 15+), service mencoba ulang dengan `specialUse` saja.
 
 ## Perintah Telegram

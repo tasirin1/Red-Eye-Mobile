@@ -22,6 +22,16 @@
     <string name="setup_test">Test Connection</string>
     <string name="setup_admin">Enable Protection</string>
     <string name="setup_battery">Disable Battery Restriction</string>
+    <string name="setup_antikill">Anti-kill &amp; Autostart</string>
+    <string name="antikill_title">Keep monitoring alive</string>
+    <string name="antikill_text">%1$s devices can stop this app automatically. Do these so monitoring keeps running:\n\n1. Autostart / background start — tap "Autostart settings" below\n2. Battery restriction — tap "Disable Battery Restriction" on the Setup page\n3. Display over other apps — helps the app start itself again\n\nIf it still gets stopped, the app tries to revive itself every 10 minutes and will message you when it recovers.</string>
+    <string name="antikill_autostart">Autostart settings</string>
+    <string name="antikill_overlay">Allow display over apps</string>
+    <string name="antikill_battery_ok">Battery restriction: already off</string>
+    <string name="antikill_battery_off">Battery restriction: still on — use "Disable Battery Restriction"</string>
+    <string name="antikill_overlay_ok">Display over apps: already allowed</string>
+    <string name="antikill_overlay_off">Display over apps: not yet</string>
+    <string name="antikill_unknown">Autostart screen not found on this device, opening App info instead</string>
     <string name="setup_battery_on">✅ Battery restriction already off</string>
     <string name="setup_bg_request">Grant background location (Allow all the time)</string>
     <string name="setup_bg_granted">Background location granted</string>

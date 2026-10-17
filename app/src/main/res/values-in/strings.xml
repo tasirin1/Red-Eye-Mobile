@@ -23,6 +23,16 @@
     <string name="setup_test">Tes Koneksi</string>
     <string name="setup_admin">Aktifkan Proteksi</string>
     <string name="setup_battery">Matikan Pembatasan Baterai</string>
+    <string name="setup_antikill">Anti-mati &amp; Autostart</string>
+    <string name="antikill_title">Agar monitoring tidak mati sendiri</string>
+    <string name="antikill_text">HP %1$s bisa menghentikan aplikasi ini otomatis. Lakukan ini supaya monitoring tetap jalan:\n\n1. Autostart / jalan di latar — ketuk "Setelan Autostart" di bawah\n2. Pembatasan baterai — ketuk "Matikan Pembatasan Baterai" di halaman Setup\n3. Tampil di atas aplikasi lain — membantu aplikasi menghidupkan dirinya lagi\n\nKalau tetap dihentikan, aplikasi mencoba hidup lagi tiap 10 menit dan akan mengabari Anda saat berhasil.</string>
+    <string name="antikill_autostart">Setelan Autostart</string>
+    <string name="antikill_overlay">Izinkan tampil di atas</string>
+    <string name="antikill_battery_ok">Pembatasan baterai: sudah mati</string>
+    <string name="antikill_battery_off">Pembatasan baterai: masih nyala — pakai "Matikan Pembatasan Baterai"</string>
+    <string name="antikill_overlay_ok">Tampil di atas: sudah diizinkan</string>
+    <string name="antikill_overlay_off">Tampil di atas: belum</string>
+    <string name="antikill_unknown">Layar Autostart tak ditemukan, membuka Info Aplikasi</string>
     <string name="setup_battery_on">✅ Pembatasan baterai sudah mati</string>
     <string name="setup_bg_request">Berikan lokasi latar (Izinkan sepanjang waktu)</string>
     <string name="setup_bg_granted">Lokasi latar diberikan</string>
