@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.332] - 2026-10-17
+### Fixed
+- Penanda "jalur kirim hidup" kini juga disegarkan kiriman media: sebelumnya hanya kiriman teks yang memanggil `noteSendOk()` (`MonitoringService` dan `SendMessageWorker`), sehingga saat foto/video/rekaman berhasil diunggah penanda `last_send_ok` tetap tua dan `checkSilentLink()` bisa menuduh "jalur kirim tampak bisu" — laporan palsu terkirim plus pemulihan bertahap dijalankan (putar ulang antrean, hapus webhook, hidupkan ulang semua loop) padahal jalur sehat. Kini `sendPhotoFile()`, `sendVideoFile()`, dan `sendAudioFile()` juga memanggil `noteSendOk()` saat berhasil.
+- Tingkat pemulihan `checkSilentLink()` hanya dinaikkan setelah upaya pemulihannya benar-benar dijalankan: dulu `silentHealStage` dan `silentHeals` naik SEBELUM `healSilentLink()` dipanggil, jadi bila upaya itu gagal (mis. `registerBotCommands()` melempar) satu tahap habis tanpa pernah dikerjakan dan laporan "pemulihan tahap N sudah saya jalankan" menjadi keliru. Bila upaya gagal, laporan tidak dikirim dan tingkat tidak naik (jarak antar-upaya tetap dijaga `silentHealAt`).
+
 ## [1.6.331] - 2026-10-17
 ### Fixed
 - `/start <chatId> <kode>` tidak lagi menjawab "Pemasangan diabaikan: pemilik sudah tertaut." saat sebenarnya belum ada pemilik: syaratnya dulu `senderId != cachedOwnerId.toString()`, dan `cachedOwnerId` masih `0` (pemasangan sedang dikunci karena terlalu banyak percobaan salah) sehingga pembandingnya `"0"` yang tak akan pernah sama dengan id Telegram mana pun — pesannya menyesatkan dan menutup peluang pemasangan sah. Kini pesan itu hanya dikirim bila benar-benar sudah ada pemilik lain.

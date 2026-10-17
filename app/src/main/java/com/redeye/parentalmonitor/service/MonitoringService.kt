@@ -4979,6 +4979,13 @@ class MonitoringService : Service() {
         val lastHeal = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
         if (lastHeal > 0L && now > lastHeal && now - lastHeal < SILENT_HEAL_SPACING_MS) return
         try { preferencesManager.silentHealAt = now } catch (_: Exception) { }
+        val healed = try {
+            healSilentLink(stage + 1)
+            true
+        } catch (_: Exception) {
+            false
+        }
+        if (!healed) return
         try { preferencesManager.silentHealStage = stage + 1 } catch (_: Exception) { }
         try {
             val heals = preferencesManager.silentHeals
@@ -4986,10 +4993,6 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         val minutes = (age / 60_000L).coerceAtLeast(1L)
-        try {
-            healSilentLink(stage + 1)
-        } catch (_: Exception) {
-        }
         replyLater("🩺 <b>Jalur kirim tampak bisu</b>\nSudah ±$minutes menit tanpa kiriman berhasil padahal ada antrean. Pemulihan tahap ${stage + 1}/$SILENT_MAX_STAGE sudah saya jalankan (${silentHealLabel(stage + 1)}). Kalau pesan ini sampai, jalur sudah normal lagi.")
     }
 
@@ -6537,6 +6540,7 @@ class MonitoringService : Service() {
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
             val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart)
             if (response.isSuccessful && response.body()?.ok == true) {
+                noteSendOk()
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.SENT
             }
@@ -6747,6 +6751,7 @@ class MonitoringService : Service() {
             val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart)
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
+                noteSendOk()
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.SENT
             }
@@ -7131,6 +7136,7 @@ class MonitoringService : Service() {
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
+                noteSendOk()
                 preferencesManager.lastPhotoTime = System.currentTimeMillis()
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.SENT
