@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.304] - 2026-10-17
 ### Fixed
 - `/jemput` melaporkan dengan jujur: bila radius tersimpan tetapi geofence `/home` sedang mati, statusnya kini "tersimpan tapi TIDAK aktif" (dulu selalu bilang "aktif" walau tak akan pernah berbunyi).
 - Deteksi berkendara (`/kendara`) tidak lagi memakai sampel lokasi berakurasi buruk (lebih dari 80 m) sebagai pembanding kecepatan berikutnya; `/kendara status` juga memberi catatan bila interval lokasi lebih dari 30 menit (perhitungan kecepatan dari jarak/waktu tidak jalan) dan teks bantuan menyebut syarat itu.
