@@ -115,6 +115,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- Liveness watchdog - revives monitoring after it is killed -->
+        <receiver
+            android:name=".receiver.LivenessReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- Device Admin - protects against uninstall -->
         <receiver
             android:name=".receiver.AdminReceiver"

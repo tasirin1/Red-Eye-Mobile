@@ -23,6 +23,7 @@ import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
+import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
@@ -329,6 +330,7 @@ class MonitoringService : Service() {
                 .setContentTitle(getString(R.string.notification_title))
                 .setContentText(getString(R.string.notification_text))
                 .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .setOngoing(true)
                 .setSilent(true)
                 .setShowWhen(false)
@@ -366,6 +368,10 @@ class MonitoringService : Service() {
         }
         try {
             MessageScheduler.scheduleWatchdog(this)
+        } catch (_: Exception) {
+        }
+        try {
+            Liveness.schedule(this)
         } catch (_: Exception) {
         }
         try {
@@ -502,6 +508,7 @@ class MonitoringService : Service() {
         val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
         try {
             notificationBuilder.setContentIntent(setupTapIntent())
@@ -558,6 +565,14 @@ class MonitoringService : Service() {
         }
         isRunning = true
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started")
+        try {
+            Liveness.schedule(this)
+        } catch (_: Exception) {
+        }
+        try {
+            Liveness.noteServiceStart(this, preferencesManager)
+        } catch (_: Exception) {
+        }
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
             serviceScope.launch {
                 sendToTelegram("Storage fallback active: secure storage unavailable, data kept in volatile memory until Setup is reopened.")
@@ -630,6 +645,7 @@ class MonitoringService : Service() {
                 try {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
+                    try { Liveness.markAlive(preferencesManager) } catch (_: Exception) { }
                     try { checkBatteryAlert() } catch (_: Exception) { }
                     try { maybeSendDigest() } catch (_: Exception) { }
                     try { maybeSendNightDigest() } catch (_: Exception) { }
@@ -4393,6 +4409,7 @@ class MonitoringService : Service() {
             if (shouldAutoResume()) {
                 MessageScheduler.scheduleBootRestart(this)
                 MessageScheduler.scheduleWatchdog(this)
+                Liveness.schedule(this)
             }
         } catch (_: Exception) {
         }
@@ -4417,6 +4434,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
+            Liveness.schedule(this)
+        } catch (_: Exception) {
+        }
+        try {
             teardownJobs()
         } catch (_: Exception) {
         }
@@ -4432,13 +4453,26 @@ class MonitoringService : Service() {
 
     override fun onDestroy() {
         try {
-            if (shouldAutoResume()) {
+            if (shouldAutoResume() || needsCredsRetry()) {
                 try {
                     MessageScheduler.scheduleBootRestart(this)
                 } catch (_: Exception) {
                 }
                 try {
                     MessageScheduler.scheduleWatchdog(this)
+                } catch (_: Exception) {
+                }
+                try {
+                    Liveness.schedule(this)
+                } catch (_: Exception) {
+                }
+            } else {
+                try {
+                    Liveness.noteStopped(preferencesManager)
+                } catch (_: Exception) {
+                }
+                try {
+                    Liveness.cancel(this)
                 } catch (_: Exception) {
                 }
             }
@@ -5058,6 +5092,7 @@ class MonitoringService : Service() {
                 .setContentText(getString(R.string.notification_text))
                 .setContentIntent(setupTapIntent())
                 .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                 .setOngoing(true)
                 .setSilent(true)
                 .setShowWhen(false)

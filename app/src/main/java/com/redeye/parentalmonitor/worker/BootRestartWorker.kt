@@ -13,6 +13,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
 
 class BootRestartWorker(
@@ -50,6 +51,7 @@ class BootRestartWorker(
             .setContentTitle(applicationContext.getString(R.string.notification_title))
             .setContentText(applicationContext.getString(R.string.notification_text))
             .setContentIntent(tap)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
             .setSilent(true)
             .build()
@@ -84,6 +86,10 @@ class BootRestartWorker(
 
     private suspend fun doWorkInternal(): Result {
         val appContext = applicationContext
+        try {
+            Liveness.schedule(appContext)
+        } catch (_: Exception) {
+        }
         try {
             setForeground(getForegroundInfo())
         } catch (e: kotlinx.coroutines.CancellationException) {

@@ -406,6 +406,7 @@ class SetupActivity : AppCompatActivity() {
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
         try { MessageScheduler.cancelWatchdog(this) } catch (_: Exception) { }
         try { MessageScheduler.cancelBootRestart(this) } catch (_: Exception) { }
+        try { com.redeye.parentalmonitor.utils.Liveness.cancel(this) } catch (_: Exception) { }
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")
@@ -473,6 +474,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
             try { prefs.patrolEnabled = false } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+            try { prefs.lastAliveAt = 0L } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -908,6 +910,8 @@ class SetupActivity : AppCompatActivity() {
             try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelBootRestart(this@SetupActivity) } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
+            try { prefs.lastAliveAt = 0L } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 try {
@@ -948,6 +952,7 @@ class SetupActivity : AppCompatActivity() {
                             startService(intent)
                         }
                         try { prefs.setMonitoringActive(true) } catch (_: Exception) { }
+                        try { com.redeye.parentalmonitor.utils.Liveness.schedule(this@SetupActivity) } catch (_: Exception) { }
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()

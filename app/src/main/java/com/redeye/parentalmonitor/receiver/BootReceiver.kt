@@ -62,6 +62,10 @@ class BootReceiver : BroadcastReceiver() {
         }
         val appContext = context.applicationContext
         MessageScheduler.scheduleWatchdog(appContext)
+        try {
+            com.redeye.parentalmonitor.utils.Liveness.schedule(appContext)
+        } catch (_: Exception) {
+        }
         val pendingResult = try {
             goAsync()
         } catch (_: Exception) {
