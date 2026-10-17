@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.323] - 2026-10-17
+### Security
+- PIN backup baru wajib **6 digit** (sebelumnya 4). Berkas backup memuat token bot, dan PIN adalah satu-satunya pelindung isinya; dengan 4 digit angka hanya ada 10.000 kemungkinan sehingga brute-force offline sangat murah—terlebih berkasnya bisa ikut tersalin ke penyimpanan cloud. Pemulihan tetap menerima PIN lama minimal 4 digit, jadi berkas backup yang sudah ada tidak terkunci.
+
+### Changed
+- Dialog PIN: PIN backup yang kurang dari 6 digit kini diberi pesan "PIN terlalu pendek", bukan membatalkan tanpa penjelasan. Petunjuk isian juga dibedakan antara isian backup (min 6) dan pemulihan (min 4).
+
 ## [1.6.322] - 2026-10-17
 ### Removed
 - Kode mati: cabang penjaga owner yang tak pernah tercapai (perintah mutating/sensitif sudah dikembalikan lebih dulu di atasnya), variabel alias `startHead`/`startArg`, parameter `startId` yang tak dipakai di `handleFgsTimeout`, variabel `errorBody` yang tak dipakai di `sendVideoFile`, pemeriksaan `wm == null` ganda, saringan `!name.endsWith(".sent")` yang tak pernah benar (tidak ada kode yang me-rename ke `.sent`) beserta komentarnya, dan inisialisasi `volatileOnly` yang selalu langsung ditimpa blok `init`.

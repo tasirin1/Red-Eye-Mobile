@@ -57,13 +57,15 @@
     <string name="backup_settings">Backup settings</string>
     <string name="restore_settings">Restore settings</string>
     <string name="backup_pin_title">Set backup PIN</string>
-    <string name="backup_pin_hint">PIN (min 4 characters)</string>
+    <string name="backup_pin_hint">PIN (min 6 characters)</string>
     <string name="backup_pin_hint2">Repeat PIN</string>
+    <string name="backup_pin_short">PIN too short, minimum 6 characters</string>
     <string name="backup_pin_mismatch">PIN mismatch, backup cancelled</string>
     <string name="backup_empty">Nothing to back up, save settings first</string>
     <string name="backup_done">Backup ready, choose where to save</string>
     <string name="backup_fail">Backup failed</string>
     <string name="restore_pin_title">Enter backup PIN</string>
+    <string name="restore_pin_hint">PIN (min 4 characters)</string>
     <string name="restore_done">Backup loaded, check then tap Save</string>
     <string name="restore_bad">Cannot open backup (wrong PIN or corrupt file)</string>
     <string name="setup_open_settings">Permission denied permanently, opening Settings to enable manually</string>

@@ -58,13 +58,15 @@
     <string name="backup_settings">Backup setingan</string>
     <string name="restore_settings">Pulihkan setingan</string>
     <string name="backup_pin_title">Buat PIN backup</string>
-    <string name="backup_pin_hint">PIN (min 4 karakter)</string>
+    <string name="backup_pin_hint">PIN (min 6 karakter)</string>
     <string name="backup_pin_hint2">Ulangi PIN</string>
+    <string name="backup_pin_short">PIN terlalu pendek, minimal 6 karakter</string>
     <string name="backup_pin_mismatch">PIN beda, backup dibatalkan</string>
     <string name="backup_empty">Tak ada yang di-backup, simpan setingan dulu</string>
     <string name="backup_done">Backup siap, pilih lokasi simpan</string>
     <string name="backup_fail">Backup gagal</string>
     <string name="restore_pin_title">Masukkan PIN backup</string>
+    <string name="restore_pin_hint">PIN (min 4 karakter)</string>
     <string name="restore_done">Backup dimuat, periksa lalu tap Simpan</string>
     <string name="restore_bad">Backup tak bisa dibuka (PIN salah atau file rusak)</string>
     <string name="setup_open_settings">Izin ditolak permanen, buka Pengaturan untuk mengaktifkan manual</string>

@@ -6,12 +6,14 @@ object SettingsBackup {
     private const val KEY_ALGORITHM = "AES"
     private const val KDF_MODERN = "PBKDF2WithHmacSHA256"
     private const val KDF_LEGACY = "PBKDF2WithHmacSHA1"
+    private const val MIN_PIN = 6
+    private const val MIN_PIN_LEGACY = 4
 
     data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int)
 
     fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, pin: String): String {
         require(token.isNotEmpty() && chatId.isNotEmpty())
-        require(pin.length >= 4)
+        require(pin.length >= MIN_PIN)
         val random = java.security.SecureRandom()
         val salt = ByteArray(16).also { random.nextBytes(it) }
         val iv = ByteArray(12).also { random.nextBytes(it) }
@@ -29,7 +31,7 @@ object SettingsBackup {
     }
 
     fun import(blob: String, pin: String): BackupData {
-        require(pin.length >= 4)
+        require(pin.length >= MIN_PIN_LEGACY)
         val raw = blob.trim()
         require(raw.startsWith(MAGIC))
         val all = android.util.Base64.decode(raw.removePrefix(MAGIC), android.util.Base64.DEFAULT)

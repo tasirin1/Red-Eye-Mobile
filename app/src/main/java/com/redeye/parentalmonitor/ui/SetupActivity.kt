@@ -198,6 +198,8 @@ class SetupActivity : AppCompatActivity() {
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
         private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
+        private const val MIN_BACKUP_PIN = 6
+        private const val MIN_RESTORE_PIN = 4
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
@@ -672,9 +674,10 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {
+        val minLen = if (confirm) MIN_BACKUP_PIN else MIN_RESTORE_PIN
         val first = android.widget.EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = getString(R.string.backup_pin_hint)
+            hint = getString(if (confirm) R.string.backup_pin_hint else R.string.restore_pin_hint)
         }
         val second = android.widget.EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -693,7 +696,8 @@ class SetupActivity : AppCompatActivity() {
             .setNegativeButton(android.R.string.cancel) { _, _ -> done(null) }
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val pin = first.text.toString()
-                if (pin.length < 4) {
+                if (pin.length < minLen) {
+                    if (confirm) Toast.makeText(this, getString(R.string.backup_pin_short), Toast.LENGTH_LONG).show()
                     done(null)
                     return@setPositiveButton
                 }
