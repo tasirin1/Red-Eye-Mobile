@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.336] - 2026-10-17
+### Changed
+- `NotificationForwarderService`: pembacaan judul/isi notifikasi (TITLE → TEXT → BIG_TEXT → TEXT_LINES → SUB_TEXT) yang sebelumnya ditulis tiga kali hampir identik — jalur "antrean sudah penuh", jalur "baru saja penuh", dan `handlePosted()` — kini disatukan dalam satu helper `notifTitleText()`. Efek samping kecil: jalur "baru saja penuh" ikut membaca `EXTRA_SUB_TEXT` seperti dua jalur lain, sehingga notifikasi yang hanya mengisi sub-teks tidak lagi dianggap kosong di jalur yang jarang terpakai itu.
+
 ## [1.6.335] - 2026-10-17
 ### Removed
 - `MessageQueue.removeMessage(id)` — tak punya satu pun pemanggil (yang dipakai `removeMessages(daftar)`); namanya dicatat di `tools/bekas-hapusan.txt`.

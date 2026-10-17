@@ -263,27 +263,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val notifId = sbn.id
         if (pendingPosts.get() > MAX_QUEUED) {
-            val fbTitle = try {
-                notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-            } catch (_: Exception) {
-                ""
-            }
-            val fbText = try {
-                val e = notification.extras
-                var b = e.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-                if (b.isEmpty()) b = e.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
-                if (b.isEmpty()) {
-                    try {
-                        val lines = e.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
-                        if (!lines.isNullOrEmpty()) b = lines.joinToString("\n").trim()
-                    } catch (_: Exception) {
-                    }
-                }
-                if (b.isEmpty()) b = e.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
-                b
-            } catch (_: Exception) {
-                ""
-            }
+            val (fbTitle, fbText) = notifTitleText(notification)
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
             if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
                 pendingPosts.decrementAndGet()
@@ -327,14 +307,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
             try {
-                val t = try { notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
-                var x = try { notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
-                if (x.isEmpty()) {
-                    x = try { notification.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty() } catch (_: Exception) { "" }
-                }
-                if (x.isEmpty()) {
-                    x = try { notification.extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()?.joinToString("\n")?.trim().orEmpty() } catch (_: Exception) { "" }
-                }
+                val (t, x) = notifTitleText(notification)
                 if (t.isNotEmpty() || x.isNotEmpty()) {
                     val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
                     if (squeezedPriority && forwardingAllowed()) {
@@ -360,6 +333,30 @@ class NotificationForwarderService : NotificationListenerService() {
             } finally {
                 pendingPosts.decrementAndGet()
             }
+        }
+    }
+
+    private fun notifTitleText(notification: Notification): Pair<String, String> {
+        return try {
+            val extras = notification.extras
+            val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+            var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            if (body.isEmpty()) {
+                body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+            }
+            if (body.isEmpty()) {
+                try {
+                    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
+                    if (!lines.isNullOrEmpty()) body = lines.joinToString("\n").trim()
+                } catch (_: Exception) {
+                }
+            }
+            if (body.isEmpty()) {
+                body = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
+            }
+            Pair(title, body)
+        } catch (_: Exception) {
+            Pair("", "")
         }
     }
 
@@ -398,29 +395,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!cfgEnabled) {
             return
         }
-        val title: String
-        val text: String
-        try {
-            val extras = notification.extras
-            title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-            var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-            if (body.isEmpty()) {
-                body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
-            }
-            if (body.isEmpty()) {
-                try {
-                    val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
-                    if (!lines.isNullOrEmpty()) body = lines.joinToString("\n").trim()
-                } catch (_: Exception) {
-                }
-            }
-            if (body.isEmpty()) {
-                body = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
-            }
-            text = body
-        } catch (_: Exception) {
-            return
-        }
+        val (title, text) = notifTitleText(notification)
         if (title.isEmpty() && text.isEmpty()) return
         val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
             val info = packageManager.getApplicationInfo(pkg, 0)
