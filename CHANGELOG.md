@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.337] - 2026-10-17
+### Fixed
+- Ikon peluncur untuk Android 7.0–7.1 (API 24–25): `android:icon` menunjuk `@mipmap/ic_launcher`, tetapi satu-satunya berkasnya ada di `mipmap-anydpi-v26` (adaptive icon yang hanya dipakai API 26+), sehingga di API 24–25 ikon aplikasi tak punya gambar yang cocok. Ditambahkan `mipmap-anydpi/ic_launcher.xml` (layer-list: `@color/ic_launcher_background` + `@drawable/ic_launcher_foreground`) sebagai cadangan; di API 26+ adaptive icon tetap yang dipakai.
+### Changed
+- `calc_btn_accent.xml` kini merujuk `@color/calc_ripple` dan `@color/calc_btn_function` seperti tombol kalkulator lainnya, bukan menulis ulang nilai `#40FFFFFF`/`#FFFF9F0A` — supaya perubahan tema warna tidak meninggalkan satu tombol yang berbeda.
+- `values/strings.xml` diberi deklarasi `<?xml version="1.0" encoding="utf-8"?>` agar seragam dengan berkas resource lain.
+### Added
+- Workflow `Build APK` kini benar-benar berjalan saat ada PR ke `main` seperti yang sudah tertulis di `AGENTS.md`/`README.md`: ditambahkan pemicu `pull_request` (dengan `paths-ignore` yang sama) dan rentang verifikasi memakai `${{ github.event.pull_request.base.sha || github.event.before || '' }}` karena `github.event.before` kosong pada event PR.
+
 ## [1.6.336] - 2026-10-17
 ### Changed
 - `NotificationForwarderService`: pembacaan judul/isi notifikasi (TITLE → TEXT → BIG_TEXT → TEXT_LINES → SUB_TEXT) yang sebelumnya ditulis tiga kali hampir identik — jalur "antrean sudah penuh", jalur "baru saja penuh", dan `handlePosted()` — kini disatukan dalam satu helper `notifTitleText()`. Efek samping kecil: jalur "baru saja penuh" ikut membaca `EXTRA_SUB_TEXT` seperti dua jalur lain, sehingga notifikasi yang hanya mengisi sub-teks tidak lagi dianggap kosong di jalur yang jarang terpakai itu.

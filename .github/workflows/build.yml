@@ -7,6 +7,11 @@ on:
     paths-ignore:
       - "**.md"
       - "LICENSE"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
   workflow_dispatch:
 
 permissions:
@@ -31,7 +36,7 @@ jobs:
           # Skrip murni-Python: acuan yatim, XML, aturan repo, hapusan salah,
           # paritas resource, secret, cakupan uji metode diubah.
           # Gagal di sini = build APK tidak jalan.
-          python3 tools/verifikasi-path.py --rentang "${{ github.event.before }}...${{ github.sha }}"
+          python3 tools/verifikasi-path.py --rentang "${{ github.event.pull_request.base.sha || github.event.before || '' }}...${{ github.sha }}"
       - name: Cek cepat (vektor 0.x, secret, binary)
         run: bash scripts/cek-cepat.sh
 
