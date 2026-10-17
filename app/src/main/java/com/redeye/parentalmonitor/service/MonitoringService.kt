@@ -46,6 +46,33 @@ class MonitoringService : Service() {
     private lateinit var callLogRepository: CallLogRepository
     private lateinit var messageQueue: MessageQueue
     private lateinit var cameraService: CameraService
+    private val batteryManager: BatteryManager? by lazy {
+        try { getSystemService(BATTERY_SERVICE) as? BatteryManager } catch (_: Exception) { null }
+    }
+    private val usageStatsManager: android.app.usage.UsageStatsManager? by lazy {
+        try { getSystemService(USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager } catch (_: Exception) { null }
+    }
+    private val locationManagerSvc: android.location.LocationManager? by lazy {
+        try { getSystemService(LOCATION_SERVICE) as? android.location.LocationManager } catch (_: Exception) { null }
+    }
+    private val connectivityManager: android.net.ConnectivityManager? by lazy {
+        try { getSystemService(CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager } catch (_: Exception) { null }
+    }
+    private val audioManagerSvc: android.media.AudioManager? by lazy {
+        try { getSystemService(AUDIO_SERVICE) as? android.media.AudioManager } catch (_: Exception) { null }
+    }
+    private val powerManagerSvc: android.os.PowerManager? by lazy {
+        try { getSystemService(POWER_SERVICE) as? android.os.PowerManager } catch (_: Exception) { null }
+    }
+    private val devicePolicySvc: android.app.admin.DevicePolicyManager? by lazy {
+        try { getSystemService(DEVICE_POLICY_SERVICE) as? android.app.admin.DevicePolicyManager } catch (_: Exception) { null }
+    }
+    private val mediaProjectionSvc: MediaProjectionManager? by lazy {
+        try { getSystemService(MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager } catch (_: Exception) { null }
+    }
+    private val windowManagerSvc: android.view.WindowManager? by lazy {
+        try { getSystemService(WINDOW_SERVICE) as? android.view.WindowManager } catch (_: Exception) { null }
+    }
     
     private val scopeErrorHandler = CoroutineExceptionHandler { _, error ->
         try {
@@ -341,9 +368,8 @@ class MonitoringService : Service() {
                 }
                 return
             }
-            val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
             try {
-                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
+                audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
             } catch (_: Exception) {
             }
             try {
@@ -684,8 +710,7 @@ class MonitoringService : Service() {
             val ringAgeStart = System.currentTimeMillis() - ringSavedAt
             if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && (ringAgeStart < 0L || ringAgeStart < 12 * 60 * 60_000L)) {
                 try {
-                    val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
+                    audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
                 } catch (_: Exception) {
                 }
                 preferencesManager.clearRingStateSync()
@@ -877,16 +902,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             null
         }
-        val batteryManager = try {
-            getSystemService(BATTERY_SERVICE) as? BatteryManager
-        } catch (_: Exception) {
-            null
-        }
-        val level = try {
-            batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
-        } catch (_: Exception) {
-            -1
-        }
+        val level = batteryLevel()
         val body = buildString {
             appendLine("\uD83D\uDEF0 <b>Patrol</b>")
             if (location != null) {
@@ -1879,11 +1895,7 @@ class MonitoringService : Service() {
                 }
             }
             "/battery" -> {
-                val level = try {
-                    (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
-                } catch (_: Exception) {
-                    -1
-                }
+                val level = batteryLevel()
                 val levelText = if (level in 0..100) "$level%" else "tak tahu"
                 sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText")
             }
@@ -2060,9 +2072,9 @@ class MonitoringService : Service() {
             }
             "/lock" -> {
                 try {
-                    val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                    val dpm = devicePolicySvc
                     val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
-                    if (!dpm.isAdminActive(admin)) {
+                    if (dpm == null || !dpm.isAdminActive(admin)) {
                         sendToTelegram("\u26A0\uFE0F Device Admin not active. Enable it in Setup first.")
                     } else {
                         dpm.lockNow()
@@ -2812,7 +2824,7 @@ class MonitoringService : Service() {
         ensureForegroundTypes()
         return withContext(Dispatchers.IO) {
             try {
-                val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+                val locationManager = locationManagerSvc ?: return@withContext null
                 val providers = listOf(
                     android.location.LocationManager.GPS_PROVIDER,
                     android.location.LocationManager.NETWORK_PROVIDER
@@ -3867,7 +3879,7 @@ class MonitoringService : Service() {
 
     private fun isScreenOn(): Boolean {
         return try {
-            (getSystemService(POWER_SERVICE) as android.os.PowerManager).isInteractive
+            powerManagerSvc?.isInteractive ?: true
         } catch (_: Exception) {
             true
         }
@@ -3894,7 +3906,7 @@ class MonitoringService : Service() {
 
     private fun batteryLevel(): Int {
         return try {
-            (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
         } catch (_: Exception) {
             -1
         }
@@ -3902,7 +3914,7 @@ class MonitoringService : Service() {
 
     private fun isCharging(): Boolean {
         return try {
-            (getSystemService(BATTERY_SERVICE) as? BatteryManager)?.isCharging == true
+            batteryManager?.isCharging == true
         } catch (_: Exception) {
             false
         }
@@ -3918,7 +3930,7 @@ class MonitoringService : Service() {
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 60 * 60_000L
         return try {
-            val manager = getSystemService(USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
+            val manager = usageStatsManager ?: return null
             val stats = manager.queryAndAggregateUsageStats(start, end) ?: return null
             val pm = packageManager
             val rows = mutableListOf<Triple<String, Long, String>>()
@@ -3965,7 +3977,7 @@ class MonitoringService : Service() {
     private fun lastCachedLocation(): android.location.Location? {
         if (!hasLocationPermission()) return null
         return try {
-            val manager = getSystemService(LOCATION_SERVICE) as? android.location.LocationManager ?: return null
+            val manager = locationManagerSvc ?: return null
             var best: android.location.Location? = null
             for (provider in listOf(android.location.LocationManager.GPS_PROVIDER, android.location.LocationManager.NETWORK_PROVIDER)) {
                 val loc = try { manager.getLastKnownLocation(provider) } catch (_: Exception) { null } ?: continue
@@ -4020,7 +4032,7 @@ class MonitoringService : Service() {
 
     private fun isMeteredNetwork(): Boolean {
         return try {
-            val cm = getSystemService(CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+            val cm = connectivityManager ?: return false
             val active = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(active) ?: return false
             !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
@@ -4811,8 +4823,7 @@ class MonitoringService : Service() {
             val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
             if (previous < 0) return
             try {
-                val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-                audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
+                audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
             } catch (_: Exception) {
             }
             try {
@@ -5551,7 +5562,7 @@ class MonitoringService : Service() {
     private fun resolveShotProjection(): MediaProjection? {
         com.redeye.parentalmonitor.utils.ScreenCapture.current()?.let { return it }
         val request = com.redeye.parentalmonitor.utils.ScreenCapture.request() ?: return null
-        val mpm = try { getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager } catch (_: Exception) { return null }
+        val mpm = mediaProjectionSvc ?: return null
         val acquired = try {
             mpm.getMediaProjection(request.first, request.second)
         } catch (e: SecurityException) {
@@ -5574,7 +5585,7 @@ class MonitoringService : Service() {
 
     private fun ensureShotSession(): ImageReader? {
         val metrics = DisplayMetrics()
-        val wm = try { getSystemService(WINDOW_SERVICE) as android.view.WindowManager } catch (_: Exception) { null }
+        val wm = windowManagerSvc ?: return null
         if (wm == null) return null
         try {
             @Suppress("DEPRECATION")
@@ -5733,7 +5744,7 @@ class MonitoringService : Service() {
     private fun cameraBlockingAdmins(): List<String> {
         val names = ArrayList<String>()
         try {
-            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            val dpm = devicePolicySvc ?: return names
             val admins = try { dpm.activeAdmins } catch (_: Exception) { null }
             for (admin in admins ?: emptyList()) {
                 try {
@@ -5869,7 +5880,7 @@ class MonitoringService : Service() {
 
     private fun isBatteryExempt(): Boolean {
         return try {
-            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            val pm = powerManagerSvc ?: return true
             pm.isIgnoringBatteryOptimizations(packageName)
         } catch (_: Exception) {
             true
@@ -5993,7 +6004,7 @@ class MonitoringService : Service() {
 
     private fun isCameraDisabledByPolicy(): Boolean {
         try {
-            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            val dpm = devicePolicySvc ?: return false
             try {
                 if (dpm.getCameraDisabled(null)) return true
             } catch (_: Exception) {
@@ -6137,7 +6148,7 @@ class MonitoringService : Service() {
 
     private fun acquireOpWakeLock(tag: String, timeoutMs: Long): android.os.PowerManager.WakeLock? {
         return try {
-            val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            val pm = powerManagerSvc ?: return null
             pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "RedEye:$tag").apply { setReferenceCounted(false) }.also {
                 try {
                     it.acquire(timeoutMs.coerceAtLeast(60_000L))
@@ -6157,7 +6168,11 @@ class MonitoringService : Service() {
     }
 
     private suspend fun ringDevice(seconds: Int) {
-        val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val audioManager = audioManagerSvc
+        if (audioManager == null) {
+            sendToTelegram("⚠️ Volume tak terbaca, /ring dibatalkan agar tak macet maksimal.")
+            return
+        }
         val stream = android.media.AudioManager.STREAM_ALARM
         val previous = try {
             audioManager.getStreamVolume(stream)
