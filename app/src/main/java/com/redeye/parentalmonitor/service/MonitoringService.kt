@@ -269,14 +269,6 @@ class MonitoringService : Service() {
         if (!startForegroundImmediate()) {
             return
         }
-        // Reset busy flags on startup - they may be stuck true from a previous crash
-        try {
-            ringBusy.set(false)
-            recordBusy.set(false)
-            smsBusy.set(false)
-            cameraBusy.set(false)
-        } catch (_: Exception) {
-        }
         try {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
@@ -594,21 +586,13 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) {
-            // DEBUG: Show detailed notification
-            notificationBuilder
-                .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text))
-        } else {
-            // RELEASE: Minimal/hidden notification
-            notificationBuilder
-                .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text))
-                .setShowWhen(false)
-                .setSound(null)
-                .setVibrate(null)
-                .setSilent(true)
-        }
+        notificationBuilder
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text))
+            .setShowWhen(false)
+            .setSound(null)
+            .setVibrate(null)
+            .setSilent(true)
 
         var foregroundTypes = computeForegroundTypes()
         val foregroundNotification = try {
@@ -808,10 +792,10 @@ class MonitoringService : Service() {
                             captureAndSendPhoto()
                         }
                         cameraCycleMs = effMinutes * 60_000L
-                        chunkedDelay(effMinutes * 60_000L)
+                        delayMs(effMinutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         cameraCycleMs = 5 * 60_000L
-                        chunkedDelay(5 * 60_000L)
+                        delayMs(5 * 60_000L)
                     } else {
                         val adminPaused = photoPauseSource() == PHOTO_PAUSE_ADMIN
                         if (adminPaused) {
@@ -820,17 +804,17 @@ class MonitoringService : Service() {
                                 cachedPhotoPausedUntil = until
                                 try { preferencesManager.photoPausedUntil = until } catch (_: Exception) { }
                                 cameraCycleMs = 2 * 60_000L
-                                chunkedDelay(2 * 60_000L)
+                                delayMs(2 * 60_000L)
                             } else {
                                 try { resumePhotosAfterPolicyLift() } catch (_: Exception) { }
                                 cameraCycleMs = 2_000L
-                                chunkedDelay(2_000L)
+                                delayMs(2_000L)
                             }
                         } else {
                             val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
                             val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
                             cameraCycleMs = idle
-                            chunkedDelay(idle)
+                            delayMs(idle)
                         }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -866,11 +850,11 @@ class MonitoringService : Service() {
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
                         if (!lowPower) patrolRound()
-                        chunkedDelay(effMinutes * 60_000L)
+                        delayMs(effMinutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
-                        chunkedDelay(15 * 60_000L)
+                        delayMs(15 * 60_000L)
                     } else {
-                        chunkedDelay(30 * 60_000L)
+                        delayMs(30 * 60_000L)
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -929,7 +913,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun chunkedDelay(totalMs: Long) {
+    private suspend fun delayMs(totalMs: Long) {
         if (totalMs <= 0L) return
         currentCoroutineContext().ensureActive()
         delay(totalMs)
@@ -4925,7 +4909,7 @@ class MonitoringService : Service() {
 
     private fun noteSendOk() {
         try {
-            preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+            preferencesManager.setLastSendOkMarker(android.os.SystemClock.elapsedRealtime())
         } catch (_: Exception) {
         }
         try {
@@ -4949,7 +4933,7 @@ class MonitoringService : Service() {
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             val last = preferencesManager.lastSendOkElapsed
             if (last <= 0L || last > nowElapsed) {
-                preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), nowElapsed)
+                preferencesManager.setLastSendOkMarker(nowElapsed)
             }
         } catch (_: Exception) {
         }

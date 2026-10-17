@@ -316,7 +316,7 @@ class NotificationForwarderService : NotificationListenerService() {
                             return@launch
                         }
                     }
-                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true, streamKey = notifId.toString())
+                    emitPost(pkg, groupKey, label, fbTitle, fbText, nowFb, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true)
                 } catch (_: Exception) {
                 } finally {
                     pendingPosts.decrementAndGet()
@@ -442,10 +442,10 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         }
         val now = android.os.SystemClock.elapsedRealtime()
-        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true, streamKey = notifId.toString())
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), notifySpam = true)
     }
 
-    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean, streamKey: String = "") {
+    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean, notifySpam: Boolean) {
         if (trackGroup && groupKey.isNotEmpty()) {
             try {
                 synchronized(groupSeen) { groupSeen[groupKey] = now }

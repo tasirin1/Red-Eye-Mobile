@@ -257,19 +257,6 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun removeMessage(messageId: String) {
-        synchronized(lock) {
-            ensureRestored()
-            if (volatileOnly) {
-                volatileQueue.removeAll { it.id == messageId }
-                return
-            }
-            val queue = readLocked().toMutableList()
-            queue.removeAll { it.id == messageId }
-            persistLocked(queue, force = true)
-        }
-    }
-
     fun removeMessages(messageIds: Collection<String>) {
         if (messageIds.isEmpty()) return
         synchronized(lock) {

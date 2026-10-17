@@ -247,7 +247,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_LIVE_TEST_BY_ALARM = "live_test_by_alarm"
         private const val KEY_LIVE_TEST_LAST_SEC = "live_test_last_sec"
         private const val KEY_LIVE_TEST_LAST_AT = "live_test_last_at"
-        private const val KEY_LAST_SEND_OK_AT = "last_send_ok_at"
         private const val KEY_LAST_SEND_OK_ELAPSED = "last_send_ok_elapsed"
         private const val KEY_SILENT_HEAL_AT = "silent_heal_at"
         private const val KEY_SILENT_HEAL_STAGE = "silent_heal_stage"
@@ -533,10 +532,9 @@ class PreferencesManager(context: Context) {
     val lastSendOkElapsed: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SEND_OK_ELAPSED, 0L) } catch (_: Exception) { 0L }
 
-    fun setLastSendOkMarker(wallAt: Long, elapsedAt: Long) {
+    fun setLastSendOkMarker(elapsedAt: Long) {
         try {
             sharedPreferences.edit()
-                .putLong(KEY_LAST_SEND_OK_AT, wallAt)
                 .putLong(KEY_LAST_SEND_OK_ELAPSED, elapsedAt)
                 .apply()
         } catch (_: Exception) {

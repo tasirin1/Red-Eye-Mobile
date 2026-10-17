@@ -18,6 +18,8 @@ writeWakePingIds
 wakePingSeen
 clearWakePingIds
 removeWakePingId
+removeMessage
+chunkedDelay
 setWakeUpdateIdSync
 touchSmsPendingSync
 matchesNormalized

@@ -587,7 +587,7 @@ class SendMessageWorker(
 
     private fun noteSendOk() {
         try {
-            preferencesManager.setLastSendOkMarker(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+            preferencesManager.setLastSendOkMarker(android.os.SystemClock.elapsedRealtime())
         } catch (_: Exception) {
         }
         try {

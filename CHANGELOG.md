@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.335] - 2026-10-17
+### Removed
+- `MessageQueue.removeMessage(id)` — tak punya satu pun pemanggil (yang dipakai `removeMessages(daftar)`); namanya dicatat di `tools/bekas-hapusan.txt`.
+- Kunci preferensi `last_send_ok_at` (`KEY_LAST_SEND_OK_AT`) — nilainya ditulis setiap `setLastSendOkMarker()` dipanggil tetapi tak pernah dibaca; parameter `wallAt` yang jadi mubazir ikut hilang sehingga signature-nya kini `setLastSendOkMarker(elapsedAt)`.
+- Parameter `streamKey` pada `NotificationForwarderService.emitPost()` — tak pernah dipakai di badan fungsi.
+- Blok reset `ringBusy`, `recordBusy`, `smsBusy`, `cameraBusy` di `MonitoringService.onCreate()` beserta komentarnya: keempatnya `AtomicBoolean` yang selalu `false` pada instans baru, jadi blok itu tak pernah mengubah apa pun.
+### Changed
+- `chunkedDelay()` di `MonitoringService` diganti nama menjadi `delayMs()`: isinya memang `delay()` biasa tanpa pemotongan, sehingga nama lamanya menyesatkan sekarang ada `pauseAwareDelay()` di sebelahnya.
+- Notifikasi foreground layanan kini selalu senyap (`setShowWhen(false)`, tanpa suara/getaran): dulu ada cabang DEBUG/RELEASE yang isinya sama tetapi berkomentar "DEBUG: tampilkan detail", sehingga `setShowWhen` dan silent hanya berlaku di build rilis.
+- `CameraService` menutup `CaptureSession`, `CameraDevice`, dan `ImageReader` satu per satu dengan penjagaan sendiri: dulu tiga `close()` tanpa penjagaan sehingga satu lemparan dapat menggagalkan sisa pembersihan (`stopBackgroundThread()` dan `finishWithPhoto()` tak jalan → penanda `cameraBusy` tersangkut sampai watchdog 45 detik).
+- `TimeFmt`: elvis mati pada `ThreadLocal` (`fullHolder.get() ?: SimpleDateFormat(...)` dan dua saudaranya) dihapus — `initialValue()` selalu mengembalikan nilai, jadi cabang `?:` itu tak pernah terpakai.
+
 ## [1.6.334] - 2026-10-17
 ### Fixed
 - Kredensial hilang karena penyimpanan aman (keystore) tak tersedia kini berkabar jelas: bila `EncryptedSharedPreferences` gagal dibuka, `PreferencesManager` diam-diam beralih ke penyimpanan memori, sehingga token/chat kosong, `isConfigured()` menjadi `false`, dan pemantauan berhenti tanpa kabar — pesan "mode cadangan" ke Telegram pun tak bisa terkirim justru karena kredensialnya kosong. Kini `BootRestartWorker` (watchdog 15 menit) menampilkan notifikasi lokal khusus "Penyimpanan aman tak tersedia — kredensial tak bisa disimpan, jadi pemantauan berhenti; ketuk untuk membuka Setup dan simpan ulang" (`storage_fallback_title`/`storage_fallback_text`, Inggris + Indonesia) di kanal yang sama dengan pengingat "Layanan dijeda".

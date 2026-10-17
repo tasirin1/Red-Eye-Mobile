@@ -42,20 +42,20 @@ object TimeFmt {
     }
 
     fun full(timestamp: Long): String {
-        val f = fullHolder.get() ?: SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.US)
+        val f = fullHolder.get()
         f.timeZone = currentTz()
         return f.format(Date(timestamp))
     }
 
     fun fileStamp(timestamp: Long): String {
-        val f = fileHolder.get() ?: SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+        val f = fileHolder.get()
         f.timeZone = currentTz()
         return f.format(Date(timestamp))
     }
 
     fun short(timestamp: Long): String {
         return try {
-            val f = shortHolder.get() ?: SimpleDateFormat("HH:mm", Locale.US)
+            val f = shortHolder.get()
             f.timeZone = currentTz()
             f.format(Date(timestamp))
         } catch (_: Exception) {

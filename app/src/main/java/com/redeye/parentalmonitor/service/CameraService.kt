@@ -314,11 +314,11 @@ class CameraService(private val context: Context) {
                                 }
                             }
 
-                            captureSession?.close()
+                            try { captureSession?.close() } catch (_: Exception) { }
                             captureSession = null
-                            cameraDevice?.close()
+                            try { cameraDevice?.close() } catch (_: Exception) { }
                             cameraDevice = null
-                            imageReader?.close()
+                            try { imageReader?.close() } catch (_: Exception) { }
                             imageReader = null
                             try {
                                 meteringSurface?.release()
