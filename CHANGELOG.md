@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- Konsistensi bahasa pesan Telegram (tahap 2 dari 3 — izin & perintah): pesan izin/Setup (kamera, mikrofon, SMS, kontak, notifikasi), `/lock`, `/flush`, pembersihan antrean, `/sms` beserta konfirmasinya, `/notif`, laporan pesan ditolak Telegram (400), serta pesan video yang tertunda kini berbahasa Indonesia. Tanpa perubahan logika.
 
 ## [1.6.312] - 2026-10-17
 ### Changed

