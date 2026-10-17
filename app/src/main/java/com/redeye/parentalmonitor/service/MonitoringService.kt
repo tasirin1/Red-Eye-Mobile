@@ -768,9 +768,9 @@ class MonitoringService : Service() {
                         }
                         val effSync = effectiveSyncMillis()
                         monitorCycleMs = effSync
-                        chunkedDelay(effSync)
+                        pauseAwareDelay(effSync)
                     } else {
-                        chunkedDelay(15 * 60_000L)
+                        pauseAwareDelay(15 * 60_000L)
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -938,6 +938,17 @@ class MonitoringService : Service() {
         if (totalMs <= 0L) return
         currentCoroutineContext().ensureActive()
         delay(totalMs)
+    }
+
+    private suspend fun pauseAwareDelay(totalMs: Long) {
+        val pausedAtStart = cachedMonitoringPaused
+        var remaining = totalMs.coerceAtLeast(0L)
+        while (remaining > 0L) {
+            val slice = remaining.coerceAtMost(30_000L)
+            delay(slice)
+            remaining -= slice
+            if (cachedMonitoringPaused != pausedAtStart) return
+        }
     }
 
     private val credsLock = Any()

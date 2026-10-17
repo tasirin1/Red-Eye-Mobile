@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.327] - 2026-10-17
+### Fixed
+- `/stop` dan `/resume` kini langsung berlaku: sebelumnya jeda hanya memperbarui konfigurasi (`refreshLoopConfig()`) sementara loop data sudah tertidur di `delay()` sampai siklus sinkronisasi habis — dengan `/syncinterval 1440` efeknya baru terasa sampai 24 jam kemudian, jadi panggilan/SMS/foto masih terkumpul (atau masih tertahan) jauh setelah perintah dijawab. Loop data sekarang menunggu dalam potongan 30 detik dan langsung menyadari perubahan status jeda, dua arah.
+
 ## [1.6.326] - 2026-10-17
 ### Fixed
 - Riwayat notifikasi tidak lagi terisi saat pemantauan dijeda: `NotificationForwarderService` masih memanggil `record(...)` untuk notifikasi yang masuk saat `monitoringPaused` (atau saat pemantauan belum aktif), padahal jalur lain di berkas yang sama memakai penjaga `historyAllowed()` yang menolak jeda. Akibatnya judul dan isi notifikasi (mis. kode OTP/bank) masa jeda masih bisa dibaca lewat `/lastnotif` walau `/stop` menjanjikan pemantauan berhenti. Kini saat pemantauan tidak aktif/jeda, notifikasi tak dicatat sama sekali.
