@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.324] - 2026-10-17
+### Fixed
+- `/screenshot` tidak lagi cuma berhasil sekali per izin: sesi `MediaProjection` (`VirtualDisplay` + `ImageReader`) kini dipertahankan dan dipakai ulang antar pengambilan. Sejak `targetSdk` 34 (Android 14+), `createVirtualDisplay()` hanya boleh dipanggil **sekali** per instance `MediaProjection` dan panggilan kedua melempar `SecurityException`; karena kode rilis sebelumnya melepas `VirtualDisplay`/`ImageReader` tiap pengambilan, pengambilan kedua selalu mencoba membuat `VirtualDisplay` baru di proyeksi yang sama — lemparan itu tertelan di dalam `ensureShotSession()` sehingga `/screenshot` berikutnya selalu dijawab "⚠️ Tangkap layar gagal…" walau izinnya masih hidup dan status Setup tetap `granted`.
+### Changed
+- Perubahan ukuran/orientasi layar tidak lagi memaksa sesi dibuat ulang (itu juga butuh `createVirtualDisplay()` kedua): `VirtualDisplay` yang hidup di-`resize()` dan `ImageReader` baru dipasang ke surface yang sama. Bila penyesuaian itu gagal, sesi dan izin dilepas agar status Setup jujur dan `/screenshot` meminta izin ulang.
+- Sesi tangkap layar hanya dilepas saat sesinya benar-benar berakhir (sistem memanggil `onStop`, izin dicabut/di-`grant` ulang dari Setup, atau layanan mati), bukan tiap pengambilan. Antrean `ImageReader` yang penuh menghentikan penulisan frame saat menganggur, jadi tidak ada penangkapan layar berjalan terus saat tak dipakai.
+
 ## [1.6.323] - 2026-10-17
 ### Security
 - PIN backup baru wajib **6 digit** (sebelumnya 4). Berkas backup memuat token bot, dan PIN adalah satu-satunya pelindung isinya; dengan 4 digit angka hanya ada 10.000 kemungkinan sehingga brute-force offline sangat murah—terlebih berkasnya bisa ikut tersalin ke penyimpanan cloud. Pemulihan tetap menerima PIN lama minimal 4 digit, jadi berkas backup yang sudah ada tidak terkunci.

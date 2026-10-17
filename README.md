@@ -12,7 +12,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Log panggilan masuk/keluar
 - SMS masuk/keluar
 - Foto otomatis tiap interval, atau manual via `/photo`
-- Screenshot layar HP anak via `/screenshot` (izin diberikan di Setup, hangus tiap reboot; sejak Android 14 satu izin dipakai berulang selama sesi, ±10 menit sejak screenshot terakhir)
+- Screenshot layar HP anak via `/screenshot` (izin diberikan di Setup, hangus tiap reboot; sejak Android 14 satu izin dipakai berulang selama sesinya hidup — sesi berakhir bila layar dikunci atau dihentikan dari chip status bar, lalu izinnya perlu diberikan lagi di Setup)
 - Rekam video kamera via `/recordvideo`
 - Watch kata/nomor, geofence rumah-sekolah, jam malam, digest harian/mingguan, skor waspada
 - Teruskan notifikasi HP anak ke Telegram

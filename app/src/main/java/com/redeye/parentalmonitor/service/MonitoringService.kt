@@ -148,6 +148,7 @@ class MonitoringService : Service() {
     private val shotSessionLock = Any()
     private var shotDisplay: VirtualDisplay? = null
     private var shotReader: ImageReader? = null
+    private var shotProjection: MediaProjection? = null
     private var shotWidth = 0
     private var shotHeight = 0
     private val shotStopCallback = object : MediaProjection.Callback() {
@@ -5571,6 +5572,7 @@ class MonitoringService : Service() {
             display = shotDisplay
             shotReader = null
             shotDisplay = null
+            shotProjection = null
             shotWidth = 0
             shotHeight = 0
         }
@@ -5612,6 +5614,30 @@ class MonitoringService : Service() {
         return acquired
     }
 
+    private fun attachShotReader(display: VirtualDisplay, width: Int, height: Int, density: Int): ImageReader? {
+        val reader = try {
+            ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        } catch (_: Exception) {
+            return null
+        }
+        try {
+            display.resize(width, height, density)
+            display.setSurface(reader.surface)
+        } catch (_: Exception) {
+            try { reader.close() } catch (_: Exception) { }
+            return null
+        }
+        val previous = synchronized(shotSessionLock) {
+            val old = shotReader
+            shotReader = reader
+            shotWidth = width
+            shotHeight = height
+            old
+        }
+        try { previous?.close() } catch (_: Exception) { }
+        return reader
+    }
+
     private fun ensureShotSession(): ImageReader? {
         val metrics = DisplayMetrics()
         val wm = windowManagerSvc ?: return null
@@ -5634,9 +5660,18 @@ class MonitoringService : Service() {
         val density = (metrics.densityDpi * scale).toInt().coerceAtLeast(1)
         synchronized(shotSessionLock) {
             val existing = shotReader
-            if (existing != null && com.redeye.parentalmonitor.utils.ScreenCapture.current() != null && shotWidth == width && shotHeight == height) {
+            if (existing != null && shotProjection != null && shotProjection === liveShotProjection() && shotWidth == width && shotHeight == height) {
                 return existing
             }
+        }
+        val live = synchronized(shotSessionLock) {
+            if (shotProjection != null && shotProjection === liveShotProjection()) shotDisplay else null
+        }
+        if (live != null) {
+            val attached = attachShotReader(live, width, height, density)
+            if (attached != null) return attached
+            releaseShotSession()
+            return null
         }
         releaseShotSurface()
         val projection = resolveShotProjection() ?: return null
@@ -5647,6 +5682,10 @@ class MonitoringService : Service() {
         }
         val display = try {
             projection.createVirtualDisplay("redeye-shot", width, height, density, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+        } catch (e: SecurityException) {
+            try { reader.close() } catch (_: Exception) { }
+            releaseShotSession()
+            return null
         } catch (_: Exception) {
             try { reader.close() } catch (_: Exception) { }
             return null
@@ -5654,10 +5693,15 @@ class MonitoringService : Service() {
         synchronized(shotSessionLock) {
             shotDisplay = display
             shotReader = reader
+            shotProjection = projection
             shotWidth = width
             shotHeight = height
         }
         return reader
+    }
+
+    private fun liveShotProjection(): MediaProjection? {
+        return try { com.redeye.parentalmonitor.utils.ScreenCapture.current() } catch (_: Exception) { null }
     }
 
     private suspend fun takeScreenshotFrame(): File? {
@@ -5673,59 +5717,55 @@ class MonitoringService : Service() {
             height = shotHeight
         }
         if (width <= 0 || height <= 0) return null
+        try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
+        var image: android.media.Image? = null
+        for (i in 0 until 20) {
+            image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
+            if (image != null) break
+            kotlinx.coroutines.delay(100)
+        }
+        val img = image ?: return null
         try {
-            try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
-            var image: android.media.Image? = null
-            for (i in 0 until 20) {
-                image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
-                if (image != null) break
-                kotlinx.coroutines.delay(100)
+            val planes = try { img.planes } catch (_: Exception) { null }
+            if (planes == null || planes.isEmpty()) return null
+            val plane = planes[0]
+            val stride = try { plane.pixelStride } catch (_: Exception) { 0 }
+            if (stride <= 0 || height <= 0) return null
+            val rowWidth = plane.rowStride / stride
+            if (rowWidth < width) return null
+            val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            if (rowWidth == width) {
+                bmp.copyPixelsFromBuffer(plane.buffer)
+            } else if (stride == 4) {
+                val src = plane.buffer
+                val rowBytes = width * 4
+                val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
+                for (y in 0 until height) {
+                    src.position(y * plane.rowStride)
+                    val slice = src.slice()
+                    slice.limit(rowBytes)
+                    packed.put(slice)
+                }
+                packed.flip()
+                bmp.copyPixelsFromBuffer(packed)
+            } else {
+                try { bmp.recycle() } catch (_: Exception) { }
+                return null
             }
-            val img = image ?: return null
+            val cropped = bmp
+            val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
             try {
-                val planes = try { img.planes } catch (_: Exception) { null }
-                if (planes == null || planes.isEmpty()) return null
-                val plane = planes[0]
-                val stride = try { plane.pixelStride } catch (_: Exception) { 0 }
-                if (stride <= 0 || height <= 0) return null
-                val rowWidth = plane.rowStride / stride
-                if (rowWidth < width) return null
-                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                if (rowWidth == width) {
-                    bmp.copyPixelsFromBuffer(plane.buffer)
-                } else if (stride == 4) {
-                    val src = plane.buffer
-                    val rowBytes = width * 4
-                    val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
-                    for (y in 0 until height) {
-                        src.position(y * plane.rowStride)
-                        val slice = src.slice()
-                        slice.limit(rowBytes)
-                        packed.put(slice)
-                    }
-                    packed.flip()
-                    bmp.copyPixelsFromBuffer(packed)
-                } else {
-                    try { bmp.recycle() } catch (_: Exception) { }
-                    return null
-                }
-                val cropped = bmp
-                val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
-                try {
-                    java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
-                } catch (_: Exception) {
-                    deleteQuietly(out)
-                    return null
-                } finally {
-                    try { cropped.recycle() } catch (_: Exception) { }
-                }
-                if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
-                return out
+                java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            } catch (_: Exception) {
+                deleteQuietly(out)
+                return null
             } finally {
-                try { img.close() } catch (_: Exception) { }
+                try { cropped.recycle() } catch (_: Exception) { }
             }
+            if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
+            return out
         } finally {
-            releaseShotSurface()
+            try { img.close() } catch (_: Exception) { }
         }
     }
 
