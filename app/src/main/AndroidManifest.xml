@@ -136,8 +136,19 @@
             </intent-filter>
         </receiver>
 
-        <!-- Device Admin - protects against uninstall -->
+        <!-- App install/uninstall - tells the owner what was added or removed -->
         <receiver
+            android:name=".receiver.PackageChangeReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Device Admin - protects against uninstall -->        <receiver
             android:name=".receiver.AdminReceiver"
             android:description="@string/admin_description"
             android:label="${appLabel}"

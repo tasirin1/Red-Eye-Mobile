@@ -1,3 +1,7 @@
+## [Unreleased]
+### Added
+- Kabar aplikasi baru: tiap ada aplikasi **dipasang** (yang bukan bawaan sistem) atau **dihapus** di HP anak, owner langsung dapat pesan Telegram berisi nama aplikasi + nama paketnya (`📦 Aplikasi baru dipasang` / `🗑️ Aplikasi dihapus`). Memakai pemberitahuan bawaan Android (`PACKAGE_ADDED`/`PACKAGE_REMOVED`) lewat `receiver/PackageChangeReceiver.kt`, tanpa izin tambahan; pembaruan aplikasi (`EXTRA_REPLACING`) dan aplikasi bawaan ROM diabaikan agar tidak berisik.
+
 ## [1.6.295] - 2026-10-17
 ### Added
 - Deteksi "hidup tapi bisu": waktu kirim sukses terakhir dicatat (dari `sendToTelegram` dan worker antrean). Bila sudah >90 menit tidak ada kiriman berhasil padahal antrean berisi dan jaringan normal tanpa token bermasalah, aplikasi memulihkan sendiri bertahap tiap 45 menit — tahap 1 putar ulang antrean + segarkan kredensial, tahap 2 hapus webhook + daftar ulang menu command, tahap 3 hidupkan ulang semua loop — lalu mengabari hasilnya (maksimal 3 tahap per episode, direset begitu ada kiriman sukses).
