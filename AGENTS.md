@@ -40,6 +40,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Jangan tambah header lisensi/copyright.
 - Jangan `git commit` / buat branch kecuali diminta eksplisit atau diwajibkan alur rilis `§8`.
 - Mode perbaiki = maraton: kerjakan temuan satu per satu sampai habis; tiap putaran cek antrian CI (`gh run list`), bila ada gagal build dahulukan perbaikannya baru lanjut ke temuan lain.
+- Audit menyeluruh = sub-agen paralel + verifikasi mandiri: pecah jadi 2–5 sub-agen per area, lalu verifikasi sendiri tiap klaim berat langsung ke kode (`rg`/`sed`) sebelum masuk laporan/patch — klaim sub-agen bukan fakta sampai terbukti. Aturan maraton + sub-agen ini berlaku lintas repo (versi kanonik: `SOUL.md` di memori agen).
 - Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding — fitur dimatikan di `app/build.gradle`).
 
 ## 6. Changelog & Dokumentasi
