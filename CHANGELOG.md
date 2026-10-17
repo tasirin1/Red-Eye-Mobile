@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.308] - 2026-10-17
 ### Fixed
 - Perbaikan build: anotasi `@Volatile` yang tak sengaja ditulis dua kali di `MonitoringService` membuat kompilasi galat, sehingga tag `v1.6.305`–`v1.6.307` gagal dibangun dan tidak menerbitkan rilis. Seluruh perubahan sejak `v1.6.304` (thread/ANR, pengerasan izin & worker, efisiensi & kerapian) baru terbit di versi ini.
 ### Added
