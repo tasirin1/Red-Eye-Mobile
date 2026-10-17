@@ -1,3 +1,10 @@
+## [Unreleased]
+### Changed
+- `NotificationForwarderService` memulihkan akses notifikasi dengan backoff bertingkat (30 detik → 2 → 5 → 15 → 30 menit, maksimal 5 percobaan, direset saat tersambung lagi) dan `requestRebind` kini dipanggil di main thread seperti yang diwajibkan API; sebelumnya hanya satu percobaan ulang 60 detik dari thread latar.
+- `MonitoringService` menangani `onTrimMemory`/`onLowMemory`: saat memori kritis antrean pesan ditulis ke disk (`flushSync`) dan jam liveness dipasang lebih dulu, jadi kalau proses dibunuh sistem setelahnya pemulihan tetap cepat dan antrean tidak hilang.
+- `BootReceiver` menambah pemicu ulang `USER_PRESENT` (HP dibuka/unlock) dan `PACKAGE_RESTARTED` (hanya untuk paket sendiri), sehingga monitoring dihidupkan lagi saat HP mulai dipakai, bukan cuma saat boot; pesan pemberitahuannya dibuat umum karena tak selalu berasal dari reboot.
+- Catatan: jalur gagal `onStartCommand` tetap `START_NOT_STICKY` (bukan diubah ke sticky) karena pemulihan sudah dipegang jam liveness 10 menit + `BootRestartWorker` + pemicu boot/unlock, dan sticky-restart pada `onCreate` yang gagal berisiko loop restart yang dibatasi sistem (dan tak berefek setelah `stopSelf()`).
+
 ## [1.6.289] - 2026-10-17
 ### Added
 - Perintah `/alive`: laporan denyut — status, uptime, denyut terakhir, berapa kali service dipulihkan, watchdog, tipe foreground yang benar-benar aktif, dan level baterai.

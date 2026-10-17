@@ -50,9 +50,9 @@ class NotificationForwarderService : NotificationListenerService() {
     private var dropNoticeJob: Job? = null
     private var dropRestored = false
     private val dropNoticeLock = Any()
-    @Volatile
-    private var lastRebindAt = 0L
-    private val rebindRetryScheduled = java.util.concurrent.atomic.AtomicBoolean(false)
+    private var rebindAttempt = 0
+    private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val rebindRunnable = Runnable { runRebind() }
     @Volatile
     private var lastReviveAt = 0L
     @Volatile
@@ -100,6 +100,7 @@ class NotificationForwarderService : NotificationListenerService() {
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
+        private val REBIND_DELAYS_MS = longArrayOf(30_000L, 120_000L, 300_000L, 900_000L, 1_800_000L)
         private const val WAKE_PING_COOLDOWN_MS = 120_000L
         private val PRIORITY_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
         private val history = ArrayDeque<NotifRecord>()
@@ -538,6 +539,11 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         reviveMonitoringIfNeeded()
+        try {
+            rebindAttempt = 0
+            rebindHandler.removeCallbacks(rebindRunnable)
+        } catch (_: Exception) {
+        }
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("NotifForwarder", "Notification listener connected")
         scope.launch {
             try {
@@ -554,22 +560,26 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         android.util.Log.w("NotifForwarder", "Notification listener disconnected")
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastRebindAt < 60_000L) {
-            if (rebindRetryScheduled.compareAndSet(false, true)) {
-                scope.launch {
-                    try { kotlinx.coroutines.delay(60_000L) } catch (_: Exception) { }
-                    try { rebindRetryScheduled.set(false) } catch (_: Exception) { }
-                    try { requestRebind(ComponentName(this@NotificationForwarderService, NotificationForwarderService::class.java)) } catch (_: Exception) { }
-                }
-            }
-            return
+        scheduleRebind()
+    }
+
+    private fun scheduleRebind() {
+        try {
+            if (rebindAttempt >= REBIND_DELAYS_MS.size) return
+            val delayMs = REBIND_DELAYS_MS[rebindAttempt.coerceIn(0, REBIND_DELAYS_MS.size - 1)]
+            rebindAttempt++
+            rebindHandler.removeCallbacks(rebindRunnable)
+            rebindHandler.postDelayed(rebindRunnable, delayMs)
+        } catch (_: Exception) {
         }
-        lastRebindAt = now
+    }
+
+    private fun runRebind() {
         try {
             requestRebind(ComponentName(this, NotificationForwarderService::class.java))
         } catch (_: Exception) {
         }
+        scheduleRebind()
     }
 
     private fun startWakeLoop() {
@@ -744,6 +754,7 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
         }
         try { wakeJob?.cancel() } catch (_: Exception) { }
+        try { rebindHandler.removeCallbacks(rebindRunnable) } catch (_: Exception) { }
         try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
         scope.cancel()
         super.onDestroy()

@@ -4526,6 +4526,23 @@ class MonitoringService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTrimMemory(level: Int) {
+        try {
+            if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+                try { messageQueue.flushSync() } catch (_: Exception) { }
+                try { Liveness.schedule(this) } catch (_: Exception) { }
+            }
+        } catch (_: Exception) {
+        }
+        try { super.onTrimMemory(level) } catch (_: Exception) { }
+    }
+
+    override fun onLowMemory() {
+        try { messageQueue.flushSync() } catch (_: Exception) { }
+        try { Liveness.schedule(this) } catch (_: Exception) { }
+        try { super.onLowMemory() } catch (_: Exception) { }
+    }
+
     override fun onDestroy() {
         try {
             if (shouldAutoResume() || needsCredsRetry()) {

