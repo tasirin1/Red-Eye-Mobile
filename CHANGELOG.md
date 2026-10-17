@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.307] - 2026-10-17
 ### Changed
 - Efisiensi & kerapian: penghitung sepi (`idleDataCycles`) berhenti di 8 sesuai batas pemakaiannya (dulu bisa naik sampai 100 tanpa guna); `/uptime` menghitung durasi dari jam monoton (`elapsedRealtime`) sehingga tidak kacau bila jam HP diubah; indentasi blok `forceReset()` pada kamera dan `markHandled()` di penerima boot dirapikan.
 ### Removed
