@@ -1,3 +1,7 @@
+## [1.6.281] - 2026-10-17
+### Fixed
+- Semua balasan "Cara pakai …", menu `/help`, dan `/notif` memuat placeholder `<…>` literal di dalam pesan `parseMode` HTML; Telegram menolaknya dengan HTTP 400 (`can't parse entities: Unsupported start tag`) sehingga placeholder berawalan huruf (mis. `<number>`, `<on|off>`) dihapus oleh fallback teks polos (pesan tampil tanpa parameter, mis. "Cara pakai: /sms") dan placeholder berawalan non-huruf (mis. `<0-60>`, `<5-180>`) membuat pesannya di-drop total tanpa fallback (karena `Html.unescape` tak mengubah apa pun). Placeholder kini dikirim sebagai entitas `&lt;`/`&gt;` sehingga lolos parser HTML Telegram dan tampil utuh sebagai `<…>`; teks `/watch` yang memuat "Diabaikan (<3 huruf)" juga diperbaiki.
+
 ## [1.6.280] - 2026-10-17
 ### Changed
 - `/screenshot` tidak lagi sekali pakai per izin di Android 14+: sesi `MediaProjection` (projection + `VirtualDisplay` + `ImageReader`) disimpan dan dipakai ulang untuk `/screenshot` berikutnya selama izin sama, lalu dilepas otomatis 10 menit setelah pengambilan terakhir — juga dilepas saat izin hilang, orientasi/ukuran layar berubah, sesi dihentikan sistem (`onStop`), atau service mati. Sebelumnya token izin `MediaProjection` hanya boleh dipakai sekali (`getMediaProjection` kedua melempar `SecurityException`) sehingga `/screenshot` gagal total dan izin dicabut.
