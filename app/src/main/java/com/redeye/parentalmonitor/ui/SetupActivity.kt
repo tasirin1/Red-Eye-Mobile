@@ -356,6 +356,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
         findViewById<MaterialButton>(R.id.setupAntiKillButton).setOnClickListener { showAntiKillWizard() }
         findViewById<MaterialButton>(R.id.setupSelfCheckButton).setOnClickListener { startSelfCheck() }
+        findViewById<MaterialButton>(R.id.setupUsageButton).setOnClickListener { com.redeye.parentalmonitor.utils.UsageAccess.openSettings(this) }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
         findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
@@ -1408,12 +1409,14 @@ class SetupActivity : AppCompatActivity() {
                 " · $testLine" +
                 " · heartbeat " + (if (heartHours > 0) "${heartHours}h" else "off")
             val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
+            val usageOn = try { com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity) } catch (_: Exception) { false }
+            val usageLine = "\nScreen time: " + (if (usageOn) "ready" else "not allowed (tap the button)")
             val body = getString(
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + livenessLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nDevice admin: " + (if (adminOn) "on" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
+            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + livenessLine + usageLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nDevice admin: " + (if (adminOn) "on" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

@@ -23,6 +23,11 @@
     <!-- Internet untuk (bot Telegram) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Ringkasan screen-time (diizinkan pemilik HP lewat Setelan > Akses penggunaan) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     
     <!-- Tugas latar belakang untuk -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

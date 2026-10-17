@@ -27,6 +27,7 @@
     <string name="antikill_title">Agar monitoring tidak mati sendiri</string>
     <string name="antikill_text">HP %1$s bisa menghentikan aplikasi ini otomatis. Lakukan ini supaya monitoring tetap jalan:\n\n1. Autostart / jalan di latar — ketuk "Setelan Autostart" di bawah\n2. Pembatasan baterai — ketuk "Matikan Pembatasan Baterai" di halaman Setup\n3. Tampil di atas aplikasi lain — membantu aplikasi menghidupkan dirinya lagi\n\nKalau tetap dihentikan, aplikasi hidup lagi dalam 3–15 menit dan akan mengabari Anda saat berhasil. Ketuk "Tes anti-mati" untuk membuktikan di HP ini.</string>
     <string name="setup_selfcheck">Tes anti-mati (uji mandiri)</string>
+    <string name="setup_screen_time">Akses screen time</string>
     <string name="selfcheck_started">Uji dimulai — servis dihentikan sekarang dan harus hidup lagi ±1 menit. Hasilnya dikirim ke chat owner.</string>
     <string name="selfcheck_off">Nyalakan monitoring dulu, baru jalankan uji anti-mati.</string>
     <string name="antikill_autostart">Setelan Autostart</string>
