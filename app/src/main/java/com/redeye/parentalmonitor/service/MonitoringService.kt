@@ -1396,7 +1396,7 @@ class MonitoringService : Service() {
                                 if (aliasInput.substringBefore(" ") in MUTATING_COMMANDS) {
                                     try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
                                 }
-                                handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, false, senderId, true)
+                                handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, senderId, true)
                             }
                         }
                     }
@@ -1483,7 +1483,7 @@ class MonitoringService : Service() {
             if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
             return
         }
-        handleTelegramCommand(command, pressedAt, ownerOk, originOk, false, sender, originChat.isNotEmpty() && originChat == sender)
+        handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
     }
 
     private fun postAuthFailureReminder(code: Int) {
