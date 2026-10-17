@@ -1736,7 +1736,8 @@ class MonitoringService : Service() {
                         appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
                         appendLine("Sync terakhir: $lastSyncStr")
                         appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                        appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0) " (sepi adaptif, kini tiap ${effectiveSyncMillis() / 60_000L} mnt)" else "")
+                        val effMin = effectiveSyncMillis() / 60_000L
+                        appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0 && effMin > preferencesManager.syncInterval) " (sepi adaptif, kini tiap $effMin mnt)" else "")
                         appendLine("Foto: $photoState")
                         appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
                         appendLine("Kamera: ${preferencesManager.cameraFacing}")
@@ -2319,8 +2320,13 @@ class MonitoringService : Service() {
                         preferencesManager.vehicleAlertEnabled = false
                         sendToTelegram("🚗 Kabar berkendara: mati.")
                     }
-                    "status" -> sendToTelegram("🚗 Kabar berkendara: " + if (preferencesManager.vehicleAlertEnabled) "nyala" else "mati")
-                    else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit.")
+                    "status" -> {
+                        val on = preferencesManager.vehicleAlertEnabled
+                        val interval = try { preferencesManager.syncInterval } catch (_: Exception) { 0 }
+                        val note = if (on && interval > 30) " (catatan: interval lokasi $interval mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
+                        sendToTelegram("🚗 Kabar berkendara: " + (if (on) "nyala" else "mati") + note)
+                    }
+                    else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
                 }
                 try { refreshLoopConfig() } catch (_: Exception) { }
             }
@@ -2612,7 +2618,14 @@ class MonitoringService : Service() {
                     sendToTelegram("🏠 Jemput dimatikan.")
                 } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
                     val cur = try { preferencesManager.jemputRadiusM } catch (_: Exception) { 0 }
-                    sendToTelegram(if (cur <= 0) "🏠 Jemput: off (contoh: /jemput 500)" else "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)")
+                    val homeReady = try { preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0 } catch (_: Exception) { false }
+                    sendToTelegram(
+                        when {
+                            cur <= 0 -> "🏠 Jemput: off (contoh: /jemput 500)"
+                            !homeReady -> "🏠 Jemput: tersimpan ±${cur} m, tapi TIDAK aktif — geofence /home sedang mati/kosong. Hidupkan /home dulu."
+                            else -> "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)"
+                        }
+                    )
                 } else {
                     val rad = sub.toIntOrNull()
                     if (rad == null || rad !in 50..5000) {
@@ -3913,8 +3926,11 @@ class MonitoringService : Service() {
     }
 
     private fun screenTimeFull(hours: Int): String {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) {
+            return "📱 Izin \"Usage access\" belum aktif. Buka Setup → tombol \"Screen time access\", aktifkan untuk aplikasi ini, lalu coba lagi."
+        }
         val rows = usageRows(hours)
-            ?: return "📱 Izin \"Usage access\" belum aktif. Buka Setup → tombol \"Screen time access\", aktifkan untuk aplikasi ini, lalu coba lagi."
+            ?: return "📱 Data pemakaian layar tak bisa dibaca sekarang. Coba lagi sebentar; bila tetap gagal, matikan lalu hidupkan lagi izin \"Usage access\" aplikasi ini."
         if (rows.isEmpty()) return "📱 Belum ada data pemakaian layar $hours jam terakhir."
         val total = rows.sumOf { it.second }
         return buildString {
@@ -3955,11 +3971,11 @@ class MonitoringService : Service() {
         val fix = lastCachedLocation() ?: return
         val now = System.currentTimeMillis()
         val prev = vehiclePrevFix
-        vehiclePrevFix = Triple(fix.latitude, fix.longitude, fix.time)
         if (fix.accuracy > 80f) {
             vehicleFastSamples = 0
             return
         }
+        vehiclePrevFix = Triple(fix.latitude, fix.longitude, fix.time)
         var speed = if (fix.hasSpeed()) fix.speed else -1f
         var hardwareSpeed = speed >= 0f
         if (speed < 0f && prev != null) {
@@ -4047,7 +4063,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkBatteryAlert() {
         val level = batteryLevel()
-        if (level < 0 || level >= LOW_BATTERY_LEVEL) return
+        if (level < 0 || level > LOW_BATTERY_LEVEL) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
         if (last <= now && now - last < 24 * 60 * 60_000L) return

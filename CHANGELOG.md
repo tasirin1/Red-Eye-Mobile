@@ -1,4 +1,10 @@
 ## [Unreleased]
+### Fixed
+- `/jemput` melaporkan dengan jujur: bila radius tersimpan tetapi geofence `/home` sedang mati, statusnya kini "tersimpan tapi TIDAK aktif" (dulu selalu bilang "aktif" walau tak akan pernah berbunyi).
+- Deteksi berkendara (`/kendara`) tidak lagi memakai sampel lokasi berakurasi buruk (lebih dari 80 m) sebagai pembanding kecepatan berikutnya; `/kendara status` juga memberi catatan bila interval lokasi lebih dari 30 menit (perhitungan kecepatan dari jarak/waktu tidak jalan) dan teks bantuan menyebut syarat itu.
+- Kabar baterai lemah kini juga terkirim saat baterai tepat di ambang 15% (dulu pemeriksaan memakai `<` sehingga ambangnya sendiri terlewat).
+- `/layar` membedakan tiga kondisi: izin Usage access belum aktif, data gagal dibaca, atau memang belum ada pemakaian — sebelumnya izin dan kegagalan baca sama-sama tampil sebagai "izin belum aktif".
+- Laporan `/status` hanya menyebut "sepi adaptif" bila interval memang sedang direntangkan (dulu selalu menyebut walau perentangan tak pernah berlaku untuk interval 30 menit ke atas).
 
 ## [1.6.303] - 2026-10-17
 ### Fixed
