@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.289] - 2026-10-17
 ### Added
 - Perintah `/alive`: laporan denyut — status, uptime, denyut terakhir, berapa kali service dipulihkan, watchdog, tipe foreground yang benar-benar aktif, dan level baterai.
 - Perintah `/heartbeat &lt;1-48|0&gt;`: laporan "masih hidup" berkala (default mati) yang dihitung dari stempel `heartbeat_at`, jadi owner bisa memilih menerima kabar rutin tanpa harus meminta `/alive` manual.
