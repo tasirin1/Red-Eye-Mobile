@@ -5048,11 +5048,11 @@ class MonitoringService : Service() {
     }
 
     private fun ensureForegroundTypes() {
-        try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-            val types = computeForegroundTypes()
-            if (types == appliedFgsTypes) return
-            val notification = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val types = computeForegroundTypes()
+        if (types == appliedFgsTypes) return
+        val notification = try {
+            NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(getString(R.string.notification_title))
                 .setContentText(getString(R.string.notification_text))
@@ -5062,6 +5062,10 @@ class MonitoringService : Service() {
                 .setSilent(true)
                 .setShowWhen(false)
                 .build()
+        } catch (_: Exception) {
+            return
+        }
+        try {
             startForeground(NOTIFICATION_ID, notification, types)
             appliedFgsTypes = types
         } catch (_: Exception) {

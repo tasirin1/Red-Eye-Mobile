@@ -2,6 +2,7 @@
 ### Fixed
 - `MonitoringService` tidak lagi bisa dijalankan tanpa inti siap: bila `startForegroundImmediate()` gagal di `onCreate` (mis. diluncurkan dari boot di Android 15+), inisialisasi `smsRepository`/`callLogRepository`/`messageQueue`/`cameraService` dihentikan, lalu `onStartCommand` tetap dipanggil dan — bila percobaan foreground kedua berhasil — langsung memakai field `lateinit` yang belum diinisialisasi (crash `UninitializedPropertyAccessException`). Kini ada penanda `coreInitialized` dan `onStartCommand` berhenti (`START_NOT_STICKY`) sampai inti benar-benar siap.
 - Tipe foreground service yang benar-benar aktif tidak lagi salah dicatat: jalur cadangan `startForeground(..., baseForegroundType())` di `startForegroundImmediate()` dan `ensureForegroundTypes()` kini menulis `appliedFgsTypes`, sehingga `ensureForegroundTypes()` tidak berulang kali mencoba tipe lengkap yang memang ditolak (dan tetap turun ke tipe dasar bila tipe lengkap ditolak).
+- Perbaikan build: `ensureForegroundTypes()` menyusun notifikasi di luar `try` sehingga variabelnya tetap terlihat di blok `catch` (build `v1.6.283` sempat gagal kompilasi, tag dipindahkan ke commit ini).
 
 ## [1.6.282] - 2026-10-17
 ### Fixed
