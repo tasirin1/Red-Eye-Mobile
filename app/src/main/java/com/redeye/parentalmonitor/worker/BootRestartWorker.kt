@@ -31,7 +31,7 @@ class BootRestartWorker(
                 .setSilent(true)
                 .build()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ForegroundInfo(NOTIF_ID, fallback, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                ForegroundInfo(NOTIF_ID, fallback, fgsType())
             } else {
                 ForegroundInfo(NOTIF_ID, fallback)
             }
@@ -54,9 +54,17 @@ class BootRestartWorker(
             .setSilent(true)
             .build()
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            ForegroundInfo(NOTIF_ID, notification, fgsType())
         } else {
             ForegroundInfo(NOTIF_ID, notification)
+        }
+    }
+
+    private fun fgsType(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         }
     }
 

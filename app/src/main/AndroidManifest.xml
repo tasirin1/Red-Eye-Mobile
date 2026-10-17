@@ -27,6 +27,7 @@
     <!-- Tugas latar belakang untuk -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -73,7 +74,7 @@
 
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="dataSync|specialUse"
             tools:node="merge" />
 
         <!-- Monitoring service -->
@@ -81,7 +82,11 @@
             android:name=".service.MonitoringService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync|camera|location|microphone|mediaProjection" />
+            android:foregroundServiceType="dataSync|specialUse|camera|location|microphone|mediaProjection">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="parental monitoring of the child device: sync SMS/call log, camera capture, location checks, notification forwarding" />
+        </service>
 
         <service
             android:name=".service.NotificationForwarderService"

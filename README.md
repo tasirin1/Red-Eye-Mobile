@@ -66,6 +66,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
 - Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; restore hanya mengisi form, tetap tap Save.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
+- Service monitoring memakai tipe foreground `specialUse` (`FOREGROUND_SERVICE_SPECIAL_USE`) di Android 14+, supaya tidak kena batas 6 jam/24 jam tipe `dataSync` di Android 15+; kalau percobaan `startForeground` dengan tipe lengkap ditolak (mis. saat diluncurkan dari boot di Android 15+), service mencoba ulang dengan `specialUse` saja.
 
 ## Perintah Telegram
 

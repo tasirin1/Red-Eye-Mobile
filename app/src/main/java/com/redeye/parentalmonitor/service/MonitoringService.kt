@@ -193,7 +193,9 @@ class MonitoringService : Service() {
             }
             return
         }
-        startForegroundImmediate()
+        if (!startForegroundImmediate()) {
+            return
+        }
         // Reset busy flags on startup - they may be stuck true from a previous crash
         try {
             ringBusy.set(false)
@@ -306,7 +308,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun startForegroundImmediate() {
+    private fun startForegroundImmediate(): Boolean {
         try {
             val tap = try { setupTapIntent() } catch (_: Exception) { null }
             val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
@@ -322,32 +324,49 @@ class MonitoringService : Service() {
             val startTypes = try {
                 computeForegroundTypes()
             } catch (_: Exception) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                baseForegroundType()
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 try {
                     startForeground(NOTIFICATION_ID, notification, startTypes)
                     appliedFgsTypes = startTypes
+                    return true
                 } catch (_: Exception) {
-                    startForeground(NOTIFICATION_ID, notification)
+                    try {
+                        startForeground(NOTIFICATION_ID, notification, baseForegroundType())
+                        return true
+                    } catch (_: Exception) {
+                    }
                 }
             } else {
                 startForeground(NOTIFICATION_ID, notification)
+                return true
             }
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Immediate foreground start failed: ${redactToken(e.message)}")
-            try {
-                MessageScheduler.scheduleBootRestart(this)
-            } catch (_: Exception) {
-            }
         }
+        try {
+            MessageScheduler.scheduleBootRestart(this)
+        } catch (_: Exception) {
+        }
+        try {
+            MessageScheduler.scheduleWatchdog(this)
+        } catch (_: Exception) {
+        }
+        try {
+            stopSelf()
+        } catch (_: Exception) {
+        }
+        return false
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        try {
+        val foregroundOk = try {
             startForegroundImmediate()
         } catch (_: Exception) {
+            false
         }
+        if (!foregroundOk) return START_NOT_STICKY
         return try {
             when (intent?.action) {
             ACTION_START_MONITORING -> {
@@ -510,9 +529,9 @@ class MonitoringService : Service() {
                     startForeground(
                         NOTIFICATION_ID,
                         foregroundNotification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                        baseForegroundType()
                     )
-                    appliedFgsTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    appliedFgsTypes = baseForegroundType()
                 } else {
                     startForeground(NOTIFICATION_ID, foregroundNotification)
                 }
@@ -4923,8 +4942,16 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun baseForegroundType(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        }
+    }
+
     private fun computeForegroundTypes(): Int {
-        var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        var types = baseForegroundType()
         if (hasCameraPermission()) {
             types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         }
