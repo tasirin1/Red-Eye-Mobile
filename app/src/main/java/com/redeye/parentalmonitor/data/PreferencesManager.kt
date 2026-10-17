@@ -464,7 +464,7 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_ALIVE_AT, value).apply()
 
-    var lastAliveElapsed: Long
+    val lastAliveElapsed: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_ELAPSED, 0L) } catch (_: Exception) { 0L }
 
     fun setLastAliveMarker(wallAt: Long, elapsedAt: Long) {
