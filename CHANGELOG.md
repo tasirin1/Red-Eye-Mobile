@@ -1,3 +1,7 @@
+## [1.6.277] - 2026-10-17
+### Fixed
+- Backup/restore (`SettingsBackup`) gagal total di Android 7.0–7.1 (API 24–25) karena `PBKDF2WithHmacSHA256` baru tersedia sejak API 26: kini kunci diturunkan dengan SHA256 bila ada dan otomatis jatuh ke `PBKDF2WithHmacSHA1` bila tidak, sedangkan impor mencoba SHA256 lebih dulu lalu SHA1 agar backup lama (API 24–25) tetap bisa dipulihkan di perangkat baru.
+
 ## [1.6.276] - 2026-10-16
 ### Fixed
 - `/recordvideo` tidak lagi melepas flag `recordBusy` seketika setelah perekaman dimulai: flag tetap terkunci selama video direkam sehingga `/recordvideo` kedua dan `/ring`/`/hilang` bersamaan tertahan, dan watchdog timeout video (forceReset kamera + lepas WakeLock) berfungsi kembali.
