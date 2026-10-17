@@ -116,6 +116,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/sembuh` | Pemulihan penuh: segarkan kredensial, hapus webhook, daftar ulang menu, hidupkan ulang semua loop |
 | `/layar [1-24]` | Ringkasan pemakaian layar per aplikasi (butuh izin "Usage access" dari Setup) |
 | `/kendara on\|off\|status` | Kabar kalau lokasi menunjukkan kecepatan tinggi (naik motor/mobil), maks 1× per 20 menit |
+| `/hematdata on\|off\|status` | Tahan kirim foto/video/rekaman sampai tersambung Wi-Fi (hemat kuota; SMS/lokasi/notifikasi tetap jalan) |
 | `/heartbeat <1-48\|0>` | Laporan berkala "masih hidup" (`0` = mati) |
 | `/version` | Versi app + device |
 | `/stop` / `/resume` | Jeda/lanjut monitoring (`/resume` sekaligus membatalkan jeda foto otomatis) |

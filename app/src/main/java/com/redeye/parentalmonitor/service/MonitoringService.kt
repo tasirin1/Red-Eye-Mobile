@@ -162,6 +162,8 @@ class MonitoringService : Service() {
     private var cachedPatrolInterval = 30
     @Volatile
     private var cachedVehicleEnabled = true
+    @Volatile
+    private var cachedDataSaver = false
     private var vehiclePrevFix: Triple<Double, Double, Long>? = null
     private var vehicleFastSamples = 0
     @Volatile
@@ -182,10 +184,10 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -1036,6 +1038,7 @@ class MonitoringService : Service() {
             cachedPatrolEnabled = preferencesManager.patrolEnabled
             cachedPatrolInterval = preferencesManager.patrolInterval
             cachedVehicleEnabled = preferencesManager.vehicleAlertEnabled
+            cachedDataSaver = preferencesManager.dataSaverEnabled
         } catch (_: Exception) {
         }
     }
@@ -1534,6 +1537,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("darurat", "Lokasi+foto+baterai sekaligus"),
             com.redeye.parentalmonitor.network.BotCommand("layar", "Ringkasan pemakaian layar per aplikasi"),
             com.redeye.parentalmonitor.network.BotCommand("kendara", "Kabar berkendara: /kendara on|off|status"),
+            com.redeye.parentalmonitor.network.BotCommand("hematdata", "Tahan media sampai Wi-Fi: /hematdata on|off"),
             com.redeye.parentalmonitor.network.BotCommand("jampulang", "Jam malam: /jampulang 21:30|off"),
             com.redeye.parentalmonitor.network.BotCommand("minggu", "Laporan 7 hari"),
             com.redeye.parentalmonitor.network.BotCommand("watchnomor", "Awasi nomor: /watchnomor 0812,.."),
@@ -2306,6 +2310,21 @@ class MonitoringService : Service() {
                 }
                 try { refreshLoopConfig() } catch (_: Exception) { }
             }
+            "/hematdata" -> {
+                when (arg.lowercase(java.util.Locale.ROOT).trim()) {
+                    "on", "nyala" -> {
+                        preferencesManager.dataSaverEnabled = true
+                        sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi.")
+                    }
+                    "off", "mati" -> {
+                        preferencesManager.dataSaverEnabled = false
+                        sendToTelegram("📶 Hemat kuota: mati (semua media dikirim kapan saja).")
+                    }
+                    "status" -> sendToTelegram("📶 Hemat kuota: " + if (preferencesManager.dataSaverEnabled) "nyala" else "mati")
+                    else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman hanya dikirim saat tidak pakai kuota (Wi-Fi); SMS/lokasi/notifikasi tetap jalan seperti biasa.")
+                }
+                try { refreshLoopConfig() } catch (_: Exception) { }
+            }
             "/heartbeat" -> {
                 if (arg.isBlank()) {
                     val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
@@ -2645,6 +2664,7 @@ class MonitoringService : Service() {
                         appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
                         appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
                         appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
+                        appendLine("/hematdata on|off|status - tahan kirim foto/video sampai tersambung Wi-Fi")
                         appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
@@ -3960,6 +3980,48 @@ class MonitoringService : Service() {
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
         sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\nAkurasi: ±${fix.accuracy.toInt()} m$battery")
         try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
+    }
+
+    private fun isMeteredNetwork(): Boolean {
+        return try {
+            val cm = getSystemService(CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return false
+            val active = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(active) ?: return false
+            !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun pendingMediaCount(): Int {
+        return try {
+            cacheDir.listFiles { file ->
+                file.isFile && file.length() > 0L && (
+                    (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") ||
+                        file.name.startsWith("video_") && file.name.endsWith(".mp4") ||
+                        file.name.startsWith("audio_") && file.name.endsWith(".m4a")
+                    )
+            }?.count { it != activePhotoFile && it != activeShotFile && it != activeVideoFile } ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    private fun dataSaverDeferMedia(): Boolean {
+        if (!cachedDataSaver) return false
+        if (!isMeteredNetwork()) return false
+        val pending = pendingMediaCount()
+        if (pending <= 0) return false
+        try {
+            val now = System.currentTimeMillis()
+            val last = preferencesManager.dataSaverNoticeAt
+            if (last == 0L || now - last >= 6 * 60 * 60_000L) {
+                preferencesManager.dataSaverNoticeAt = now
+                sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
+            }
+        } catch (_: Exception) {
+        }
+        return true
     }
 
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
@@ -6587,6 +6649,7 @@ class MonitoringService : Service() {
     private suspend fun flushPendingVideos(max: Int = 3) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
+        if (dataSaverDeferMedia()) return
         if (!videoFlushBusy.compareAndSet(false, true)) return
         var droppedVideos = 0
         var videoProgress = false
@@ -6657,6 +6720,7 @@ class MonitoringService : Service() {
     private suspend fun flushPendingAudio(max: Int = 5) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
+        if (dataSaverDeferMedia()) return
         if (!audioFlushBusy.compareAndSet(false, true)) return
         var droppedAudio = 0
         var audioProgress = false
@@ -6974,6 +7038,7 @@ class MonitoringService : Service() {
     private suspend fun flushPendingPhotos(max: Int = 10) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
+        if (dataSaverDeferMedia()) return
         if (!photoFlushBusy.compareAndSet(false, true)) return
         var droppedPhotos = 0
         var photoProgress = false

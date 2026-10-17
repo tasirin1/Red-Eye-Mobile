@@ -244,6 +244,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_SILENT_HEALS = "silent_heals"
         private const val KEY_VEHICLE_ALERT_ENABLED = "vehicle_alert_enabled"
         private const val KEY_LAST_VEHICLE_ALERT_AT = "last_vehicle_alert_at"
+        private const val KEY_DATA_SAVER_ENABLED = "data_saver_enabled"
+        private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
 
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
@@ -564,6 +566,14 @@ class PreferencesManager(context: Context) {
     var lastVehicleAlertAt: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_VEHICLE_ALERT_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_VEHICLE_ALERT_AT, value).apply()
+
+    var dataSaverEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_DATA_SAVER_ENABLED, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_DATA_SAVER_ENABLED, value).apply()
+
+    var dataSaverNoticeAt: Long
+        get() = try { sharedPreferences.getLong(KEY_DATA_SAVER_NOTICE_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_DATA_SAVER_NOTICE_AT, value).apply()
 
     fun setRingStateSync(prev: Int, at: Long) {
         try {

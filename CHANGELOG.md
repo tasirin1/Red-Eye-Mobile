@@ -1,5 +1,6 @@
 ## [Unreleased]
 ### Added
+- Hemat kuota: perintah `/hematdata on|off|status` (alias `hematdata`/`hematkuota`/`kuota`). Saat nyala dan HP sedang memakai data seluler (jaringan *metered*), pengiriman foto/video/rekaman yang mengantre ditahan di cache dulu dan langsung dikirim otomatis begitu tersambung Wi-Fi/jaringan tak berkuota — SMS, lokasi, notifikasi, dan chat teks tidak terpengaruh. Saat penahanan pertama dalam 6 jam, owner dikabari sekali (`📶 Hemat kuota: N foto/video/rekaman ditahan`). Deteksi jaringan lewat `ConnectivityManager`/`NetworkCapabilities` (`NET_CAPABILITY_NOT_METERED`).
 - Deteksi naik kendaraan: kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam, maks 200 km/jam agar lompatan GPS tidak dianggap nyata) dua sampel berturut-turut saat kecepatan dihitung sendiri dari jarak/waktu — atau sekali saja kalau HP memberi kecepatan hardware — owner dapat kabar `🚗 Sepertinya sedang berkendara` berisi kecepatan + lokasi + baterai. Maksimal satu kabar per 20 menit; hanya memakai lokasi cache (`getLastKnownLocation`, tanpa menyalakan GPS tambahan), jadi tidak menambah boros baterai. Bisa dimatikan dengan `/kendara off` (alias `kendara`/`berkendara`/`kendaraan`).
 
 ## [1.6.298] - 2026-10-17
