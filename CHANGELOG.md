@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.305] - 2026-10-17
 ### Fixed
 - Screenshot: bila proses tangkap layar dibatalkan sistem (mis. layanan berhenti di tengah jalan), penanda "sedang menangkap" kini ikut dibersihkan — dulu bisa tersangkut menyala sehingga `/screenshot` berikutnya dijawab "masih berjalan".
 - Rekaman video: batas waktu (timeout) kamera kini berjalan di thread latar kamera, bukan thread utama. Menghentikan perekam saat timeout bisa makan waktu dan dulu berisiko membuat aplikasi tak responsif (ANR) saat kamera lambat ditutup.
