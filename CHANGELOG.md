@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.292] - 2026-10-17
 ### Added
 - `receiver/TimeChangeReceiver.kt`: pemicu ulang saat jam/zona/tanggal HP diubah (`TIME_SET`, `TIMEZONE_CHANGED`, `DATE_CHANGED`) — memasang ulang jam liveness dan, bila layanan ternyata sudah mati, langsung menghidupkannya lagi. Jadi setelan jam yang berubah pun menjadi kesempatan pemulihan, bukan celah.
 - Penanda "terakhir hidup" berbasis waktu monoton (`last_alive_elapsed`) dan penghitung pemulihan yang belum dilaporkan (`liveness_kills_unreported`) di `PreferencesManager`.
