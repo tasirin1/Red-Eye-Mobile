@@ -161,6 +161,10 @@ class MonitoringService : Service() {
     @Volatile
     private var cachedPatrolInterval = 30
     @Volatile
+    private var cachedVehicleEnabled = true
+    private var vehiclePrevFix: Triple<Double, Double, Long>? = null
+    private var vehicleFastSamples = 0
+    @Volatile
     private var cachedSetupTap: android.app.PendingIntent? = null
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
     private val handledCallbackIds = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
@@ -178,10 +182,10 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar")
+        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val MUTATING_MAX_AGE_SEC = 300L
@@ -194,6 +198,9 @@ class MonitoringService : Service() {
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
         private const val LOW_BATTERY_LEVEL = 15
+        private const val VEHICLE_MIN_SPEED_MPS = 8.3f
+        private const val VEHICLE_MAX_SPEED_MPS = 55f
+        private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
         private const val SILENT_LINK_MS = 90 * 60_000L
         private const val SILENT_HEAL_SPACING_MS = 45 * 60_000L
         private const val SILENT_MAX_STAGE = 3
@@ -698,6 +705,7 @@ class MonitoringService : Service() {
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
                     try { checkSilentLink() } catch (_: Exception) { }
+                    try { checkVehicle() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
                         if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(100)
@@ -1027,6 +1035,7 @@ class MonitoringService : Service() {
             cachedSyncInterval = preferencesManager.syncInterval
             cachedPatrolEnabled = preferencesManager.patrolEnabled
             cachedPatrolInterval = preferencesManager.patrolInterval
+            cachedVehicleEnabled = preferencesManager.vehicleAlertEnabled
         } catch (_: Exception) {
         }
     }
@@ -1524,6 +1533,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("digest", "Kirim ringkasan harian"),
             com.redeye.parentalmonitor.network.BotCommand("darurat", "Lokasi+foto+baterai sekaligus"),
             com.redeye.parentalmonitor.network.BotCommand("layar", "Ringkasan pemakaian layar per aplikasi"),
+            com.redeye.parentalmonitor.network.BotCommand("kendara", "Kabar berkendara: /kendara on|off|status"),
             com.redeye.parentalmonitor.network.BotCommand("jampulang", "Jam malam: /jampulang 21:30|off"),
             com.redeye.parentalmonitor.network.BotCommand("minggu", "Laporan 7 hari"),
             com.redeye.parentalmonitor.network.BotCommand("watchnomor", "Awasi nomor: /watchnomor 0812,.."),
@@ -2281,6 +2291,21 @@ class MonitoringService : Service() {
                 val hours = arg.trim().toIntOrNull()?.coerceIn(1, 24) ?: 24
                 sendToTelegram(screenTimeFull(hours))
             }
+            "/kendara" -> {
+                when (arg.lowercase(java.util.Locale.ROOT).trim()) {
+                    "on", "nyala" -> {
+                        preferencesManager.vehicleAlertEnabled = true
+                        sendToTelegram("🚗 Kabar berkendara: nyala.")
+                    }
+                    "off", "mati" -> {
+                        preferencesManager.vehicleAlertEnabled = false
+                        sendToTelegram("🚗 Kabar berkendara: mati.")
+                    }
+                    "status" -> sendToTelegram("🚗 Kabar berkendara: " + if (preferencesManager.vehicleAlertEnabled) "nyala" else "mati")
+                    else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit.")
+                }
+                try { refreshLoopConfig() } catch (_: Exception) { }
+            }
             "/heartbeat" -> {
                 if (arg.isBlank()) {
                     val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
@@ -2619,6 +2644,7 @@ class MonitoringService : Service() {
                         appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
                         appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
                         appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
+                        appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
                         appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                         appendLine("/contacts &lt;nama&gt; - cari kontak")
                         appendLine("/apps [N] - daftar aplikasi")
@@ -3877,6 +3903,63 @@ class MonitoringService : Service() {
         val total = rows.sumOf { it.second }
         val top = rows.first()
         return "Layar $hours jam: " + durationText(total) + " · teratas " + Html.escape(top.first) + " " + durationText(top.second)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun lastCachedLocation(): android.location.Location? {
+        if (!hasLocationPermission()) return null
+        return try {
+            val manager = getSystemService(LOCATION_SERVICE) as? android.location.LocationManager ?: return null
+            var best: android.location.Location? = null
+            for (provider in listOf(android.location.LocationManager.GPS_PROVIDER, android.location.LocationManager.NETWORK_PROVIDER)) {
+                val loc = try { manager.getLastKnownLocation(provider) } catch (_: Exception) { null } ?: continue
+                if (best == null || loc.time > best.time) best = loc
+            }
+            val fix = best ?: return null
+            if (System.currentTimeMillis() - fix.time > 30 * 60_000L) return null
+            fix
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun checkVehicle() {
+        if (!cachedVehicleEnabled) return
+        val fix = lastCachedLocation() ?: return
+        val now = System.currentTimeMillis()
+        val prev = vehiclePrevFix
+        vehiclePrevFix = Triple(fix.latitude, fix.longitude, fix.time)
+        if (fix.accuracy > 80f) {
+            vehicleFastSamples = 0
+            return
+        }
+        var speed = if (fix.hasSpeed()) fix.speed else -1f
+        var hardwareSpeed = speed >= 0f
+        if (speed < 0f && prev != null) {
+            val dt = fix.time - prev.third
+            if (dt in 30_000L..30 * 60_000L) {
+                val dist = distanceMeters(prev.first, prev.second, fix.latitude, fix.longitude)
+                if (dist >= 20f) {
+                    speed = dist / (dt / 1000f)
+                    hardwareSpeed = false
+                }
+            }
+        }
+        if (speed < VEHICLE_MIN_SPEED_MPS || speed > VEHICLE_MAX_SPEED_MPS) {
+            vehicleFastSamples = 0
+            return
+        }
+        vehicleFastSamples += 1
+        if (!hardwareSpeed && vehicleFastSamples < 2) return
+        vehicleFastSamples = 0
+        val last = try { preferencesManager.lastVehicleAlertAt } catch (_: Exception) { 0L }
+        if (now - last < VEHICLE_COOLDOWN_MS) return
+        try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
+        val kmh = (speed * 3.6f).toInt()
+        val level = batteryLevel()
+        val battery = if (level in 0..100) "\nBaterai: $level%" else ""
+        sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\nAkurasi: ±${fix.accuracy.toInt()} m$battery")
+        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
     }
 
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
