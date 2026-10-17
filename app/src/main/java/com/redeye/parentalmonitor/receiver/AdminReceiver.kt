@@ -27,7 +27,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                     try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
                     if (prefs.isConfigured()) {
-                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Device Admin was disabled on the device. Uninstall protection is OFF.", true)
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Admin perangkat dimatikan di HP ini. Proteksi hapus aplikasi MATI.", true)
                         com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
                     }
                 } catch (_: Exception) {
@@ -74,7 +74,7 @@ class AdminReceiver : DeviceAdminReceiver() {
         return try {
             context.getString(R.string.admin_disable_warning)
         } catch (_: Exception) {
-            "Disabling admin will turn off uninstall protection."
+            "Mematikan admin akan mematikan proteksi hapus aplikasi."
         }
     }
 }

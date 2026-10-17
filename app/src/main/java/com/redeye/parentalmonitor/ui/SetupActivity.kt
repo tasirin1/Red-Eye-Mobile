@@ -617,13 +617,13 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (mySave != saveSeq.get()) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_test_fail, verifyDetail.ifEmpty { "no network" }), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_test_fail, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
                         try { updateStatus() } catch (_: Exception) { }
                     }
                     return@launch
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, verifyDetail.ifEmpty { "no network" }), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
                 }
                 return@launch
             }
@@ -1117,11 +1117,11 @@ class SetupActivity : AppCompatActivity() {
                 val chatId = prefs.chatId
                 val lastSync = prefs.lastSyncTime
                 val text = buildString {
-                    appendLine("📊 <b>Status</b> (direct)")
-                    appendLine("Monitoring flag: ${if (prefs.isMonitoringEnabled) "ON" else "OFF"}")
-                    appendLine("Last sync: ${if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)}")
-                    appendLine("Last photo: ${if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)}")
-                    appendLine("Battery restriction: ${if (isBatteryExempt()) "off" else "ON — tap Disable Battery Restriction"}")
+                    appendLine("📊 <b>Status</b> (langsung)")
+                    appendLine("Pemantauan: ${if (prefs.isMonitoringEnabled) "NYALA" else "MATI"}")
+                    appendLine("Sinkron terakhir: ${if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)}")
+                    appendLine("Foto terakhir: ${if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)}")
+                    appendLine("Pembatasan baterai: ${if (isBatteryExempt()) "bebas" else "NYALA — tekan tombol Disable Battery Restriction"}")
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 pending = text
@@ -1171,7 +1171,7 @@ class SetupActivity : AppCompatActivity() {
                         } catch (_: Exception) {
                         }
                         try {
-                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
                             MessageScheduler.scheduleMessageSend(applicationContext)
                         } catch (_: Exception) {
                         }
@@ -1268,7 +1268,7 @@ class SetupActivity : AppCompatActivity() {
                                         } catch (_: Exception) {
                                         }
                                         try {
-                                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
                                             MessageScheduler.scheduleMessageSend(applicationContext)
                                         } catch (_: Exception) {
                                         }
@@ -1394,7 +1394,7 @@ class SetupActivity : AppCompatActivity() {
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
             val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
-            val ownerLine = if (ownerKnown) "\nOwner: recognized" else if (pairCode.isNotEmpty()) "\nOwner: unknown - DM the bot /start <chat ID> $pairCode privately to unlock owner commands" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
+            val ownerLine = if (ownerKnown) "\nPemilik: dikenali" else if (pairCode.isNotEmpty()) "\nPemilik: belum dikenal - DM bot /start <chat ID> $pairCode secara pribadi untuk membuka perintah pemilik" else "\nPemilik: belum dikenal - DM bot /start <chat ID> secara pribadi untuk membuka perintah pemilik"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
@@ -1408,22 +1408,22 @@ class SetupActivity : AppCompatActivity() {
             else if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
             val testSec = try { prefs.liveTestLastSec } catch (_: Exception) { -1 }
             val testPending = try { prefs.liveTestPending } catch (_: Exception) { false }
-            val testLine = if (testPending) "self-test running" else if (testSec >= 0) "self-test ${testSec}s" else "self-test not run"
-            val livenessLine = "\nLiveness: " + (if (running) "alive" else "not running") +
-                (if (aliveAgoMin >= 0L) " (last beat ${aliveAgoMin}m ago)" else "") +
-                (if (kills > 0) " · recovered ${kills}x" else "") +
-                " · watchdog " + com.redeye.parentalmonitor.utils.Liveness.intervalText(this@SetupActivity) +
+            val testLine = if (testPending) "uji mandiri berjalan" else if (testSec >= 0) "uji mandiri ${testSec} dtk" else "uji mandiri belum dijalankan"
+            val livenessLine = "\nKelangsungan: " + (if (running) "hidup" else "tidak berjalan") +
+                (if (aliveAgoMin >= 0L) " (denyut terakhir ${aliveAgoMin} mnt lalu)" else "") +
+                (if (kills > 0) " · pulih ${kills}x" else "") +
+                " · pengawas " + com.redeye.parentalmonitor.utils.Liveness.intervalText(this@SetupActivity) +
                 " · $testLine" +
-                " · heartbeat " + (if (heartHours > 0) "${heartHours}h" else "off")
-            val authLine = if (credErr.isNotEmpty()) "\nAuth: FAILED ($credErr) - check bot token" else ""
+                " · denyut " + (if (heartHours > 0) "${heartHours} jam" else "mati")
+            val authLine = if (credErr.isNotEmpty()) "\nAuth: GAGAL ($credErr) - periksa token bot" else ""
             val usageOn = try { com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity) } catch (_: Exception) { false }
-            val usageLine = "\nScreen time: " + (if (usageOn) "ready" else "not allowed (tap the button)")
+            val usageLine = "\nWaktu layar: " + (if (usageOn) "siap" else "belum diizinkan (tekan tombolnya)")
             val body = getString(
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBattery: " + (if (exempt) "unrestricted" else "restricted") + "\nStorage: " + (if (encrypted) "encrypted" else "volatile (keystore unavailable)") + authLine + ownerLine + livenessLine + usageLine + "\nNotifications: " + (if (listener && notifOn) "forwarding" else "off") + "\nScreenshot: " + (if (shotOn) "granted" else "off") + "\nDevice admin: " + (if (adminOn) "on" else "off") + "\nSystem notifications: " + (if (postOn) "allowed" else "blocked") + "\nPatrol: " + (try { if (prefs.patrolEnabled) "on every ${prefs.patrolInterval} min" else "off" } catch (_: Exception) { "-" }) + "\n" + getString(
+            ) + "\nBaterai: " + (if (exempt) "tanpa batas" else "dibatasi") + "\nPenyimpanan: " + (if (encrypted) "terenkripsi" else "sementara (keystore tak tersedia)") + authLine + ownerLine + livenessLine + usageLine + "\nNotifikasi: " + (if (listener && notifOn) "diteruskan" else "mati") + "\nTangkap layar: " + (if (shotOn) "diizinkan" else "mati") + "\nAdmin perangkat: " + (if (adminOn) "nyala" else "mati") + "\nNotifikasi sistem: " + (if (postOn) "diizinkan" else "diblokir") + "\nPatroli: " + (try { if (prefs.patrolEnabled) "nyala tiap ${prefs.patrolInterval} mnt" else "mati" } catch (_: Exception) { "-" }) + "\n" + getString(
             R.string.setup_location_fmt,
             if (fg) "OK" else "-",
             if (bg) "OK" else "-"

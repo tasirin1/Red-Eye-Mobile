@@ -494,7 +494,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         dropNoticeAt.entries.removeIf { it.value < cutoff }
                     }
                     dropNoticeAt[pkg] = now
-                    forwardToTelegram("Spam filter: 10+ updates from " + Html.escape(spamLabel) + " in 2 min, extras kept in /lastnotif history.", "")
+                    forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotif.", "")
                 }
             }
             record(label, title, text)
@@ -517,7 +517,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun buildNotifMessage(label: String, title: String, text: String): String {
         return buildString {
-            appendLine("🔔 <b>Notification</b>")
+            appendLine("🔔 <b>Notifikasi</b>")
             try {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).watchKeywords
                 if (raw.isNotEmpty()) {
@@ -527,9 +527,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             } catch (_: Exception) {
             }
-            appendLine("App: ${Html.escape(label)}")
-            if (title.isNotEmpty()) appendLine("Title: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
-            if (text.isNotEmpty()) appendLine("Text: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
+            appendLine("Apl: ${Html.escape(label)}")
+            if (title.isNotEmpty()) appendLine("Judul: ${Html.escape(title).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 200)) }}")
+            if (text.isNotEmpty()) appendLine("Isi: ${Html.escape(text).let { it.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(it, 300)) }}")
         }
     }
 
@@ -718,8 +718,8 @@ class NotificationForwarderService : NotificationListenerService() {
             val drops = dropNoticeCount.getAndSet(0)
             if (drops > 0) {
                 try {
-                    val text = if (drops == 1) "Dropped 1 notification (rejected/overflow)."
-                        else "Dropped $drops notifications (rejected/overflow)."
+                    val text = if (drops == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
+                        else "$drops notifikasi dibuang (ditolak/antrean penuh)."
                     queue().addMessage(text, true)
                     queue().flushSync()
                     try {
@@ -950,8 +950,8 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (count <= 0) return
         try {
-            val text = if (count == 1) "Dropped 1 notification (rejected/overflow)."
-                else "Dropped $count notifications (rejected/overflow)."
+            val text = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
+                else "$count notifikasi dibuang (ditolak/antrean penuh)."
             queue().addMessage(text, true)
             MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
         } catch (_: Exception) {
@@ -982,7 +982,7 @@ class NotificationForwarderService : NotificationListenerService() {
             prefs.credentialErrorAt = 0L
             refreshFwdCreds()
             try {
-                queue().addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                queue().addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }

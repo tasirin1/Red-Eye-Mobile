@@ -231,7 +231,7 @@ class SendMessageWorker(
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && credsSame()) {
                 try {
-                    messageQueue.addMessage("⚠️ $authDropped queued message(s) dropped (after max retries).", true)
+                    messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
                 }
@@ -247,7 +247,7 @@ class SendMessageWorker(
             }
             if (authDropped > 0 && !queueCleared && credsSame()) {
                 try {
-                    messageQueue.addMessage("⚠️ $authDropped queued message(s) dropped (after max retries).", true)
+                    messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
                 }
@@ -274,13 +274,13 @@ class SendMessageWorker(
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
                     dropTotal += expired.toInt()
-                    dropParts.add("$expired expired (older than 7 days)")
+                    dropParts.add("$expired kedaluwarsa (lebih dari 7 hari)")
                 }
                 val overflow = messageQueue.takeOverflowDrops()
                 if (overflow > 0L) {
                     dropTotal += overflow.toInt()
                     val prio = try { messageQueue.takePriorityDrops() } catch (_: Exception) { 0L }
-                    dropParts.add("$overflow oldest queued (queue full offline)" + if (prio > 0L) ", termasuk $prio prioritas" else "")
+                    dropParts.add("$overflow paling lama di antrean (antrean penuh saat offline)" + if (prio > 0L) ", termasuk $prio prioritas" else "")
                 }
             } catch (_: Exception) {
             }
@@ -299,7 +299,7 @@ class SendMessageWorker(
                     if (dropped.isNotEmpty() && credsSame()) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
                         dropTotal += dropped.size
-                        dropParts.add("${dropped.size} after max retries")
+                        dropParts.add("${dropped.size} setelah percobaan maksimal")
                     }
                 } catch (_: Exception) {
                 }
@@ -314,7 +314,7 @@ class SendMessageWorker(
                     ""
                 }
                 dropTotal += rejectedIds.size
-                dropParts.add("${rejectedIds.size} rejected (HTTP 4xx)")
+                dropParts.add("${rejectedIds.size} ditolak (HTTP 4xx)")
             } catch (_: Exception) {
             }
         }
@@ -536,11 +536,11 @@ class SendMessageWorker(
         } catch (_: Exception) {
             ""
         }
-        val reason = detail.ifEmpty { "after max retries" }
+        val reason = detail.ifEmpty { "setelah percobaan maksimal" }
         val text = if (clean.isEmpty()) {
-            "⚠️ $count queued message(s) dropped ($reason). Gaps may include SMS/call history; re-check with /lastsms, /lastcalls or /history."
+            "⚠️ $count pesan dalam antrean dibuang ($reason). Bisa ada celah di riwayat SMS/panggilan; cek ulang dengan /lastsms, /lastcalls, atau /history."
         } else {
-            "⚠️ $count queued message(s) dropped ($reason). Sample: $clean"
+            "⚠️ $count pesan dalam antrean dibuang ($reason). Contoh: $clean"
         }
         try {
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
@@ -575,7 +575,7 @@ class SendMessageWorker(
             preferencesManager.credentialError = ""
             preferencesManager.credentialErrorAt = 0L
             try {
-                messageQueue.addMessage("\u267B\uFE0F Group upgraded to supergroup \u2014 chat ID updated automatically.", true)
+                messageQueue.addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
                 MessageScheduler.scheduleMessageSend(applicationContext)
             } catch (_: Exception) {
             }

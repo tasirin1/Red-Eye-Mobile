@@ -161,7 +161,7 @@ class CameraService(private val context: Context) {
         var mySeq = 0
         synchronized(captureLock) {
             if (!capturing.compareAndSet(false, true)) {
-                onError(Exception("Camera is busy"))
+                onError(Exception("Kamera sedang dipakai"))
                 return
             }
             mySeq = sessionSeq.get()
@@ -229,7 +229,7 @@ class CameraService(private val context: Context) {
             onTrace("trace: starting capture")
             startBackgroundThread()
             if (backgroundHandler == null) {
-                finishWithError(Exception("Camera unavailable (background handler not ready)"))
+                finishWithError(Exception("Kamera tak tersedia (penangan latar belum siap)"))
                 return
             }
 
@@ -243,7 +243,7 @@ class CameraService(private val context: Context) {
                 }
                 imageReader = null
                 stopBackgroundThread()
-                finishWithError(Exception("Selected camera not found"))
+                finishWithError(Exception("Kamera yang dipilih tak ditemukan"))
                 return
             }
 
@@ -253,7 +253,7 @@ class CameraService(private val context: Context) {
             val timeout = Runnable {
                 Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
                 onTrace("trace: TIMEOUT waiting for camera")
-                finishWithError(Exception("Capture timed out: camera opened but no image arrived"))
+                finishWithError(Exception("Pemotretan timeout: kamera terbuka tapi tak ada gambar"))
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
@@ -274,7 +274,7 @@ class CameraService(private val context: Context) {
                 false
             }
             if (!watchdogScheduled) {
-                finishWithError(Exception("Camera unavailable (timeout watchdog not ready)"))
+                finishWithError(Exception("Kamera tak tersedia (pemantau timeout belum siap)"))
                 return
             }
 
@@ -355,7 +355,7 @@ class CameraService(private val context: Context) {
                         finishWithError(e)
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -365,15 +365,15 @@ class CameraService(private val context: Context) {
                     try { camera.close() } catch (_: Exception) { }
                     try {
                         Log.w(TAG, "Camera disconnected")
-                        finishWithError(Exception("Camera disconnected"))
+                        finishWithError(Exception("Kamera terputus"))
                     } catch (e: Exception) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -384,18 +384,18 @@ class CameraService(private val context: Context) {
                     try {
                         Log.e(TAG, "Camera error: $error")
                         if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
-                            finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                            finishWithError(Exception("Kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"))
                         } else {
-                            finishWithError(Exception("Camera error: $error"))
+                            finishWithError(Exception("Galat kamera: $error"))
                         }
                     } catch (e: Exception) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -420,7 +420,7 @@ class CameraService(private val context: Context) {
         var mySeq = 0
         synchronized(captureLock) {
             if (!capturing.compareAndSet(false, true)) {
-                onError(Exception("Camera is busy"))
+                onError(Exception("Kamera sedang dipakai"))
                 return
             }
             mySeq = sessionSeq.get()
@@ -517,20 +517,20 @@ class CameraService(private val context: Context) {
             onTrace("trace: starting video capture")
             startBackgroundThread()
             if (backgroundHandler == null) {
-                finishWithError(Exception("Camera unavailable (background handler not ready)"))
+                finishWithError(Exception("Kamera tak tersedia (penangan latar belum siap)"))
                 return
             }
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = getCameraId(cameraManager, lensFacing)
             if (cameraId == null) {
                 stopBackgroundThread()
-                finishWithError(Exception("Selected camera not found"))
+                finishWithError(Exception("Kamera yang dipilih tak ditemukan"))
                 return
             }
             val timeout = Runnable {
                 Log.e(TAG, "Video capture timed out after ${timeoutMs}ms")
                 onTrace("trace: TIMEOUT waiting for video")
-                finishWithError(Exception("Video capture timed out"))
+                finishWithError(Exception("Perekaman video timeout"))
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
@@ -539,7 +539,7 @@ class CameraService(private val context: Context) {
                 false
             }
             if (!watchdogScheduled) {
-                finishWithError(Exception("Camera unavailable (timeout watchdog not ready)"))
+                finishWithError(Exception("Kamera tak tersedia (pemantau timeout belum siap)"))
                 return
             }
             val videoSize = chooseVideoSize(cameraManager, cameraId)
@@ -572,7 +572,7 @@ class CameraService(private val context: Context) {
             rec.setOutputFile(outFile.absolutePath)
             rec.prepare()
             videoSurface = rec.surface
-            val recordSurface = videoSurface ?: run { finishWithError(Exception("Record surface unavailable")); return }
+            val recordSurface = videoSurface ?: run { finishWithError(Exception("Permukaan rekaman tak tersedia")); return }
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
@@ -592,13 +592,13 @@ class CameraService(private val context: Context) {
                                     try {
                                         session.setRepeatingRequest(builder.build(), null, backgroundHandler)
                                     } catch (e: Exception) {
-                                        finishWithError(Exception("Record session failed: " + e.message))
+                                        finishWithError(Exception("Sesi rekaman gagal: " + e.message))
                                         return
                                     }
                                     try {
                                         rec.start()
                                     } catch (e: Exception) {
-                                        finishWithError(Exception("Record start failed: " + e.message))
+                                        finishWithError(Exception("Mulai merekam gagal: " + e.message))
                                         return
                                     }
                                     recording = true
@@ -617,7 +617,7 @@ class CameraService(private val context: Context) {
                                             stopBackgroundThread()
                                             if (!stopOk || !outFile.exists() || outFile.length() == 0L) {
                                                 try { outFile.delete() } catch (_: Exception) { }
-                                                finishWithError(Exception(if (stopOk) "Empty video" else "Video stop failed"))
+                                                finishWithError(Exception(if (stopOk) "Video kosong" else "Gagal menghentikan video"))
                                             } else {
                                                 finishWithVideo(outFile)
                                             }
@@ -633,13 +633,13 @@ class CameraService(private val context: Context) {
                                         false
                                     }
                                     if (!stopScheduled) {
-                                        finishWithError(Exception("Camera unavailable (stop schedule failed)"))
+                                        finishWithError(Exception("Kamera tak tersedia (gagal menjadwalkan penghentian)"))
                                         return
                                     }
                                 }
                                 override fun onConfigureFailed(session: CameraCaptureSession) {
                                     try { session.close() } catch (_: Exception) { }
-                                    finishWithError(Exception("Record session configuration failed"))
+                                    finishWithError(Exception("Konfigurasi sesi rekaman gagal"))
                                 }
                             },
                             backgroundHandler
@@ -648,7 +648,7 @@ class CameraService(private val context: Context) {
                         finishWithError(e)
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -656,15 +656,15 @@ class CameraService(private val context: Context) {
                 override fun onDisconnected(camera: CameraDevice) {
                     try { camera.close() } catch (_: Exception) { }
                     try {
-                        finishWithError(Exception("Camera disconnected"))
+                        finishWithError(Exception("Kamera terputus"))
                     } catch (e: Exception) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -673,18 +673,18 @@ class CameraService(private val context: Context) {
                     try { camera.close() } catch (_: Exception) { }
                     try {
                         if (error == CameraDevice.StateCallback.ERROR_CAMERA_DISABLED) {
-                            finishWithError(Exception("Camera disabled by policy (CAMERA_DISABLED)"))
+                            finishWithError(Exception("Kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"))
                         } else {
-                            finishWithError(Exception("Camera error: $error"))
+                            finishWithError(Exception("Galat kamera: $error"))
                         }
                     } catch (e: Exception) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     } catch (t: Throwable) {
                         try {
-                            finishWithError(Exception("Camera callback failure"))
+                            finishWithError(Exception("Kegagalan callback kamera"))
                         } catch (_: Exception) {
                         }
                     }
@@ -745,7 +745,7 @@ class CameraService(private val context: Context) {
                     session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
                         override fun onCaptureFailed(session: CameraCaptureSession, request: CaptureRequest, failure: CaptureFailure) {
                             Log.e(TAG, "Still capture failed: ${failure.reason}")
-                            onError(Exception("Still capture failed (${failure.reason})"))
+                            onError(Exception("Pemotretan gagal (${failure.reason})"))
                         }
                     }, backgroundHandler)
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture request sent")
@@ -769,7 +769,7 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) { false }
             if (!meterScheduled) { fireStill(); return }
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            val previewSurface = meteringSurface ?: run { onError(Exception("Camera closed")); return }
+            val previewSurface = meteringSurface ?: run { onError(Exception("Kamera ditutup")); return }
             meteringBuilder.addTarget(previewSurface)
             meteringBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
             session.setRepeatingRequest(
@@ -862,8 +862,8 @@ class CameraService(private val context: Context) {
         onTrace: (String) -> Unit = {}
     ) {
         try {
-            val surface = imageReader?.surface ?: run { onError(Exception("Camera closed")); return }
-            val meterSurface = meteringSurface ?: run { onError(Exception("Camera closed")); return }
+            val surface = imageReader?.surface ?: run { onError(Exception("Kamera ditutup")); return }
+            val meterSurface = meteringSurface ?: run { onError(Exception("Kamera ditutup")); return }
             val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
             captureBuilder.addTarget(surface)
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -883,7 +883,7 @@ class CameraService(private val context: Context) {
                     override fun onConfigureFailed(session: CameraCaptureSession) {
                         Log.e(TAG, "Capture session configuration failed")
                         try { session.close() } catch (_: Exception) { }
-                        onError(Exception("Session configuration failed"))
+                        onError(Exception("Konfigurasi sesi gagal"))
                     }
                 },
                 backgroundHandler
@@ -958,11 +958,11 @@ class CameraService(private val context: Context) {
         try {
             if (!tmp.renameTo(file)) {
                 try { tmp.delete() } catch (_: Exception) { }
-                throw java.io.IOException("rename failed")
+                throw java.io.IOException("gagal mengganti nama")
             }
         } catch (e: Exception) {
             try { tmp.delete() } catch (_: Exception) { }
-            throw java.io.IOException("save failed", e)
+            throw java.io.IOException("gagal menyimpan", e)
         }
         return file
     }

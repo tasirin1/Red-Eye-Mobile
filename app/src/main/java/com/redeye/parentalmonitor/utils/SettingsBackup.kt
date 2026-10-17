@@ -57,7 +57,7 @@ object SettingsBackup {
                 if (failure == null) failure = e
             }
         }
-        throw failure ?: javax.crypto.AEADBadTagException("decrypt failed")
+        throw failure ?: javax.crypto.AEADBadTagException("gagal mendekripsi")
     }
 
     private fun deriveKey(pin: String, salt: ByteArray, modern: Boolean): javax.crypto.SecretKey {
