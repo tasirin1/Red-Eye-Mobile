@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.295] - 2026-10-17
 ### Added
 - Deteksi "hidup tapi bisu": waktu kirim sukses terakhir dicatat (dari `sendToTelegram` dan worker antrean). Bila sudah >90 menit tidak ada kiriman berhasil padahal antrean berisi dan jaringan normal tanpa token bermasalah, aplikasi memulihkan sendiri bertahap tiap 45 menit — tahap 1 putar ulang antrean + segarkan kredensial, tahap 2 hapus webhook + daftar ulang menu command, tahap 3 hidupkan ulang semua loop — lalu mengabari hasilnya (maksimal 3 tahap per episode, direset begitu ada kiriman sukses).
 - Perintah `/sembuh` (alias `sembuh`/`pulih`): pemulihan penuh atas permintaan — segarkan kredensial, hapus webhook, daftar ulang menu command, pasang ulang jam bangun + watchdog + worker, minta ulang akses notifikasi, hidupkan ulang semua loop, lalu kirim laporan apa saja yang dikerjakan.
