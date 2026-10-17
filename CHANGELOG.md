@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.291] - 2026-10-17
 ### Added
 - Diagnosa blokir kamera: pesan kegagalan foto/video kini menyebut **paket admin penyebabnya** (dari `getActiveAdmins()` + `getCameraDisabled(admin)`), bukan lagi pesan umum "another admin app".
 - Sumber jeda foto ikut disimpan (`photo_pause_source`): jeda karena blokir admin (120 menit, dipantau tiap 2 menit) dibedakan dari blokir tak dikenal/HAL (ulangan tiap 15 menit).
