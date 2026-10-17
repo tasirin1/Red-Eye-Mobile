@@ -58,7 +58,11 @@ class SetupActivity : AppCompatActivity() {
     ) { uri ->
         val blob = pendingBackupBlob
         pendingBackupBlob = null
-        if (uri == null || blob == null) return@registerForActivityResult
+        if (uri == null) return@registerForActivityResult
+        if (blob == null) {
+            Toast.makeText(this, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
+            return@registerForActivityResult
+        }
         try {
             contentResolver.openOutputStream(uri)?.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
             Toast.makeText(this, getString(R.string.backup_done), Toast.LENGTH_LONG).show()
@@ -349,7 +353,7 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupBackupButton).setOnClickListener { backupSettings() }
         findViewById<MaterialButton>(R.id.setupRestoreButton).setOnClickListener {
             try {
-                restoreLauncher.launch(arrayOf("application/octet-stream"))
+                restoreLauncher.launch(arrayOf("application/octet-stream", "*/*"))
             } catch (_: Exception) {
             }
         }

@@ -3566,11 +3566,18 @@ class MonitoringService : Service() {
                 if (idx != chunks.lastIndex) delay(300)
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
-            if (queueOnFail && lastSentIdx + 1 < chunks.size) {
-                try {
-                    messageQueue.addMessages(chunks.subList(lastSentIdx + 1, chunks.size))
-                    MessageScheduler.scheduleMessageSend(this)
-                } catch (_: Exception) {
+            if (queueOnFail) {
+                val pending = ArrayList<String>()
+                if (lastSentIdx + 1 < chunks.size) pending.addAll(chunks.subList(lastSentIdx + 1, chunks.size))
+                for (f in failed) {
+                    if (!pending.contains(f)) pending.add(f)
+                }
+                if (pending.isNotEmpty()) {
+                    try {
+                        messageQueue.addMessages(pending)
+                        MessageScheduler.scheduleMessageSend(this)
+                    } catch (_: Exception) {
+                    }
                 }
             }
             throw e

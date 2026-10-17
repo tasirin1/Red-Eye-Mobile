@@ -85,35 +85,41 @@ object CrashReporter {
     private fun savePending(context: Context, report: String) {
         synchronized(saveLock) {
                 val file = pendingFile(context)
-                val prev = try {
-                    if (file.exists()) stripElapsed(file.readText()) else ""
+                val prevRaw = try {
+                    if (file.exists()) file.readText() else ""
                 } catch (_: Exception) {
                     ""
                 }
+                val prev = stripElapsed(prevRaw)
                 val merged = if (prev.isBlank()) report else (prev + "\n---\n" + report)
                 val cap = MAX_CHARS * 2 + 16
                 var start = if (merged.length > cap) merged.length - cap else 0
                 if (start > 0 && start < merged.length && Character.isLowSurrogate(merged[start]) && Character.isHighSurrogate(merged[start - 1])) start += 1
                 val combined = if (start > 0) merged.substring(start) else merged
-                val tmp = File(file.parent, file.name + ".tmp")
-                tmp.writeText(android.os.SystemClock.elapsedRealtime().toString() + "\n" + combined)
-                if (!tmp.renameTo(file)) {
-                    try { file.delete() } catch (_: Exception) { }
-                    tmp.renameTo(file)
-                }
+                val elapsed0 = prevRaw.substringBefore('\n').toLongOrNull() ?: 0L
+                writeReportFile(file, (if (elapsed0 > 0L) elapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + combined)
+        }
+    }
+
+    private fun writeReportFile(file: File, text: String) {
+        val tmp = File(file.parent, file.name + ".tmp")
+        try {
+            tmp.writeText(text)
+            if (tmp.renameTo(file)) return
+            tmp.copyTo(file, overwrite = true)
+        } catch (_: Exception) {
+        } finally {
+            try {
+                if (tmp.exists()) tmp.delete()
+            } catch (_: Exception) {
+            }
         }
     }
 
     private fun writePendingRest(file: File, elapsed0: Long, rest: String) {
         try {
-            val tmp = File(file.parent, file.name + ".tmp")
-            tmp.writeText((if (elapsed0 > 0L) elapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
-            if (!tmp.renameTo(file)) {
-                try { file.delete() } catch (_: Exception) { }
-                tmp.renameTo(file)
-            }
+            writeReportFile(file, (if (elapsed0 > 0L) elapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + rest)
         } catch (_: Exception) {
-            try { file.delete() } catch (_: Exception) { }
         }
     }
 

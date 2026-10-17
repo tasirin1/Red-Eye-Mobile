@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.320] - 2026-10-17
+### Fixed
+- Laporan panjang yang dipecah per 4000 karakter tidak lagi kehilangan potongan yang gagal terkirim saat pengiriman dibatalkan di tengah jalan (mis. layanan dihentikan sistem). Sebelumnya hanya potongan *setelah* potongan terakhir yang berhasil yang diselamatkan, sedangkan potongan yang gagal terkirim (berada sebelum indeks terakhir) ikut hilang; kini keduanya masuk antrean tahan-mati.
+- Laporan crash tertunda: umur laporan tidak lagi ter-reset setiap kali laporan baru disatukan ke berkas yang sama (stempel waktu tertua dipertahankan), sehingga laporan yang benar-benar tua tetap dibuang sesuai batas 7 hari.
+- Penulisan berkas laporan crash tidak lagi menghapus berkas asli lebih dulu sebelum penggantinya berhasil; bila `rename` gagal, isi asli tetap utuh (sebelumnya berkas asli hilang dan sisa data hanya tertinggal di `.tmp` yang tidak pernah dibaca).
+- Backup pengaturan: bila blob backup hilang (mis. proses aplikasi dibunuh saat dialog simpan terbuka sehingga callback kembali tanpa blob), kegagalan kini diberitahukan lewat pesan, bukan diam tanpa pesan.
+- Pemilih berkas **Restore** kini juga menerima MIME `*/*`, sehingga berkas `.redeyebak` tetap bisa dipilih walau penyimpanan melaporkan MIME selain `application/octet-stream`.
+
 ## [1.6.319] - 2026-10-17
 ### Fixed
 - Balapan tulis-baca jejak lokasi: titik `/jejak` (`trail24`) dan penghitung kegagalan lokasi (`locFailCount`) kini dikunci, sehingga sapuan patroli dan permintaan `/location` yang berjalan bersamaan tidak lagi saling menimpa (titik jejak hilang / penghitung tak pernah mencapai ambang peringatan). Keduanya berjalan di `Dispatchers.IO` yang multi-thread.
