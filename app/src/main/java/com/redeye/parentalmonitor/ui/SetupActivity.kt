@@ -737,6 +737,10 @@ class SetupActivity : AppCompatActivity() {
     private fun testConnection() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
+        val intervalParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
+        val cameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
+        val syncInterval = if (intervalParsed != null && intervalParsed in 1..1440) intervalParsed else try { prefs.syncInterval } catch (_: Exception) { 5 }
+        val cameraInterval = if (cameraParsed != null && cameraParsed in 0..60) cameraParsed else try { prefs.cameraInterval } catch (_: Exception) { 1 }
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
@@ -793,7 +797,7 @@ class SetupActivity : AppCompatActivity() {
                         val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                         if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
                     }
-                    val testPersisted = persistTestSettings(token, effectiveChat, myTest)
+                    val testPersisted = persistTestSettings(token, effectiveChat, myTest, syncInterval, cameraInterval)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
@@ -836,10 +840,10 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int): Boolean {
+    private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            try { prefs.saveTestIdentity(token, chatId) } catch (_: Exception) { false }
+            try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
         }
         return outcome ?: false
     }

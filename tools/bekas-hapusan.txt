@@ -10,3 +10,4 @@ onSupportNavigateUp
 scheduleShotSessionRelease
 saveScreenshotConsentSync
 clearScreenshotConsentSync
+saveTestIdentity
