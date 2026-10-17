@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.290] - 2026-10-17
 ### Changed
 - `NotificationForwarderService` memulihkan akses notifikasi dengan backoff bertingkat (30 detik → 2 → 5 → 15 → 30 menit, maksimal 5 percobaan, direset saat tersambung lagi) dan `requestRebind` kini dipanggil di main thread seperti yang diwajibkan API; sebelumnya hanya satu percobaan ulang 60 detik dari thread latar.
 - `MonitoringService` menangani `onTrimMemory`/`onLowMemory`: saat memori kritis antrean pesan ditulis ke disk (`flushSync`) dan jam liveness dipasang lebih dulu, jadi kalau proses dibunuh sistem setelahnya pemulihan tetap cepat dan antrean tidak hilang.
