@@ -1,17 +1,19 @@
-## [1.6.301] - 2026-10-17
-### Fixed
-- Pemilihan lokasi kini memakai fix **paling akurat**, bukan yang pertama tersedia. Dari sekian sinyal yang aktif (GPS + jaringan) aplikasi mengumpulkan hasilnya, berhenti begitu ada fix akurat (≤50 m), lalu memilih yang akuratnya paling kecil — termasuk pada daftar lokasi cache (dulu jaringan selalu dicoba lebih dulu tanpa membandingkan akurasi). Akibatnya `/location`, `/darurat`, `/hilang`, patroli, dan pemeriksaan geofence tidak lagi memakai taksiran jaringan yang bisa meleset ratusan meter, sehingga kabar masuk/keluar rumah/sekolah tidak lagi sering tertahan penjaga akurasi.
-
-## [1.6.302] - 2026-10-17
-### Fixed
-- Penyimpanan aman: proses migrasi penyimpanan (`upgradeToPersistent`) kini memeriksa hasil penulisan (`commit`) dan tidak lagi menandai "terenkripsi" bila penulisan gagal. Penanda internal yang ditulis dari jalur UI/notifikasi (status sinkron awal, status nada dering, jumlah notifikasi terbuang) memakai `apply()` sehingga tidak memblokir thread utama. Pesan gagal simpan kredensial juga diperjelas: bila penyimpanan aman (keystore) tidak tersedia di HP, owner langsung diberi tahu kredensial tidak bisa disimpan permanen (sebelumnya hanya "Test failed: persist").
-
 ## [Unreleased]
+
+## [1.6.303] - 2026-10-17
 ### Fixed
 - Penghitung pesan terbuang (antrean penuh/kedaluwarsa/prioritas) kini benar-benar dimuat saat aplikasi mulai: blok inisialisasi `MessageQueue` dulu berjalan sebelum variabel penghitungnya siap, sehingga pemuatan gagal diam-diam dan angka drop di laporan selalu 0.
 - Pelapor crash: baris pemeriksaan kredensial yang terduplikasi dirapikan, dan variabel sisa yang tak dipakai dibuang.
 ### Removed
 - Kode mati dibersihkan: sisa fitur "wake poll" yang tak terpakai (`wakeUpdateId`, `wakeBackoffUntil`, `wakeOffsetFail`, `wakePingRate`, `lastWakePollAt` beserta klausa self-conflict `409` yang selalu bernilai salah), helper tak terpakai (`lastSendOkAt`, `setWakeUpdateIdSync`, `touchSmsPendingSync`, `addWakePingIds`), serta warna `purple_*`/`teal_*` yang tak dipakai (berkas `values-night/colors.xml` yang isinya sama persis dihapus agar warna malam ikut `values/colors.xml`).
+
+## [1.6.302] - 2026-10-17
+### Fixed
+- Penyimpanan aman: proses migrasi penyimpanan (`upgradeToPersistent`) kini memeriksa hasil penulisan (`commit`) dan tidak lagi menandai "terenkripsi" bila penulisan gagal. Penanda internal yang ditulis dari jalur UI/notifikasi (status sinkron awal, status nada dering, jumlah notifikasi terbuang) memakai `apply()` sehingga tidak memblokir thread utama. Pesan gagal simpan kredensial juga diperjelas: bila penyimpanan aman (keystore) tidak tersedia di HP, owner langsung diberi tahu kredensial tidak bisa disimpan permanen (sebelumnya hanya "Test failed: persist").
+
+## [1.6.301] - 2026-10-17
+### Fixed
+- Pemilihan lokasi kini memakai fix **paling akurat**, bukan yang pertama tersedia. Dari sekian sinyal yang aktif (GPS + jaringan) aplikasi mengumpulkan hasilnya, berhenti begitu ada fix akurat (≤50 m), lalu memilih yang akuratnya paling kecil — termasuk pada daftar lokasi cache (dulu jaringan selalu dicoba lebih dulu tanpa membandingkan akurasi). Akibatnya `/location`, `/darurat`, `/hilang`, patroli, dan pemeriksaan geofence tidak lagi memakai taksiran jaringan yang bisa meleset ratusan meter, sehingga kabar masuk/keluar rumah/sekolah tidak lagi sering tertahan penjaga akurasi.
 
 ## [1.6.300] - 2026-10-17
 ### Added
