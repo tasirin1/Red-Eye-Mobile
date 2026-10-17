@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.314] - 2026-10-17
 ### Changed
 - Konsistensi bahasa pesan Telegram (tahap 3 dari 3 — sisanya): alasan kegagalan kamera/rekaman, laporan status/ringkas/ping, riwayat SMS & panggilan, pesan awal pemantauan, lencana keyboard inline (menu), perintah `/patrol`, `/night`, `/syncinterval`, `/contacts`, `/history`, `/pause`, `/record`, pesan patroli/malam, peringatan admin perangkat, kartu Status di Setup, label penerusan notifikasi (Notifikasi/Apl/Judul/Isi), laporan antrean pesan dibuang, serta bahan pesan upgrade grup supergrup kini berbahasa Indonesia. Tanpa perubahan logika.
 
