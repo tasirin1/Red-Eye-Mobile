@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.286] - 2026-10-17
 ### Fixed
 - `NotificationForwarderService.flushBatch` tidak lagi membuang notifikasi yang belum terkirim bila job dibatalkan/dihentikan di tengah: batch diambil dari `batchBuf` lalu dikosongkan di awal, sehingga item sisa (dan potongan teks yang sedang disusun) hilang senyap karena `salvageBatch` hanya menyelamatkan `batchBuf` yang sudah kosong. Kini item yang belum terkirim dikembalikan ke depan `batchBuf` saat `flushBatch` berhenti tak normal, sehingga bisa dicoba lagi/diselamatkan.
 - `MessageQueue.flushSync` menulis snapshot ke preferensi tanpa memegang `lock`, membuka jendela clobber: penulisan snapshot lama (kadang `commit()`) bisa menimpa antrean yang lebih baru yang ditulis thread lain. Penulisan sekarang dilakukan di dalam `lock` agar urut dengan mutasi antrean.
