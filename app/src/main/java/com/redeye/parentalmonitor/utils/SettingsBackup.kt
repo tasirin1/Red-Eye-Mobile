@@ -61,13 +61,42 @@ object SettingsBackup {
     }
 
     private fun deriveKey(pin: String, salt: ByteArray, modern: Boolean): javax.crypto.SecretKey {
-        val factory = try {
-            javax.crypto.SecretKeyFactory.getInstance(if (modern) KDF_MODERN else KDF_LEGACY)
-        } catch (e: Exception) {
-            if (!modern) throw e
-            javax.crypto.SecretKeyFactory.getInstance(KDF_LEGACY)
+        if (modern) {
+            try {
+                val factory = javax.crypto.SecretKeyFactory.getInstance(KDF_MODERN)
+                val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, 256)
+                return javax.crypto.spec.SecretKeySpec(factory.generateSecret(spec).encoded, KEY_ALGORITHM)
+            } catch (_: Exception) {
+                return javax.crypto.spec.SecretKeySpec(pbkdf2Sha256(pin, salt, ITERATIONS, 32), KEY_ALGORITHM)
+            }
         }
+        val factory = javax.crypto.SecretKeyFactory.getInstance(KDF_LEGACY)
         val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, 256)
         return javax.crypto.spec.SecretKeySpec(factory.generateSecret(spec).encoded, KEY_ALGORITHM)
+    }
+
+    private fun pbkdf2Sha256(pin: String, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        val key = javax.crypto.spec.SecretKeySpec(pin.toByteArray(Charsets.UTF_8), "HmacSHA256")
+        val hLen = 32
+        val blocks = (keyLength + hLen - 1) / hLen
+        val out = ByteArray(blocks * hLen)
+        val input = ByteArray(salt.size + 4)
+        System.arraycopy(salt, 0, input, 0, salt.size)
+        for (i in 1..blocks) {
+            input[salt.size] = (i ushr 24).toByte()
+            input[salt.size + 1] = (i ushr 16).toByte()
+            input[salt.size + 2] = (i ushr 8).toByte()
+            input[salt.size + 3] = i.toByte()
+            mac.init(key)
+            var u = mac.doFinal(input)
+            val t = u.copyOf()
+            for (c in 2..iterations) {
+                u = mac.doFinal(u)
+                for (k in t.indices) t[k] = (t[k].toInt() xor u[k].toInt()).toByte()
+            }
+            System.arraycopy(t, 0, out, (i - 1) * hLen, hLen)
+        }
+        return out.copyOf(keyLength)
     }
 }
