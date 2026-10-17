@@ -144,24 +144,6 @@ class BootReceiver : BroadcastReceiver() {
             }
         } catch (_: Exception) {
         }
-        val bootClear = intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT
-        if (!updated && bootClear) {
-            try {
-                if (preferencesManager.hasScreenshotConsent()) {
-                    preferencesManager.clearScreenshotConsentSync()
-                    if (preferencesManager.isConfigured()) {
-                        try {
-                            com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("📺 Izin screenshot hangus saat reboot. Berikan ulang di Setup bila perlu /screenshot.")
-                            MessageScheduler.scheduleMessageSend(context)
-                        } catch (_: Exception) {
-                        }
-                    }
-                } else {
-                    preferencesManager.clearScreenshotConsentSync()
-                }
-            } catch (_: Exception) {
-            }
-        }
         try {
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(preferencesManager)
         } catch (_: Exception) {

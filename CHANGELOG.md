@@ -1,3 +1,9 @@
+## [Unreleased]
+### Fixed
+- `/screenshot` benar-benar berfungsi: token izin `MediaProjection` tidak lagi disimpan ke preferensi berbentuk string URI (yang membuang `IBinder` token sehingga `getMediaProjection` selalu mengembalikan `null` dan status Setup tetap "Screenshot: granted" walau `/screenshot` tak pernah berhasil). Izin kini dipegang di memori proses (`utils/ScreenCapture`), `MediaProjection` diambil sekali dan dipakai ulang, `VirtualDisplay`/`ImageReader` hanya dilepas per pengambilan (projection tetap hidup), dan izin baru dicabut saat sesi dihentikan sistem, service mati, atau pengguna meminta izin ulang — sehingga `/screenshot` berikutnya tidak lagi memanggil `getMediaProjection` kedua kali (`SecurityException` di Android 14+) dan status Setup selalu jujur.
+### Removed
+- Penyimpanan izin screenshot ke `PreferencesManager` (`screenshotResultCode`, `screenshotData`, `saveScreenshotConsentSync`, `clearScreenshotConsentSync`, `hasScreenshotConsent`) beserta pembersihan izin di `BootReceiver`; izin screenshot sekarang hanya hidup selama proses aplikasi.
+
 ## [1.6.281] - 2026-10-17
 ### Fixed
 - Semua balasan "Cara pakai …", menu `/help`, dan `/notif` memuat placeholder `<…>` literal di dalam pesan `parseMode` HTML; Telegram menolaknya dengan HTTP 400 (`can't parse entities: Unsupported start tag`) sehingga placeholder berawalan huruf (mis. `<number>`, `<on|off>`) dihapus oleh fallback teks polos (pesan tampil tanpa parameter, mis. "Cara pakai: /sms") dan placeholder berawalan non-huruf (mis. `<0-60>`, `<5-180>`) membuat pesannya di-drop total tanpa fallback (karena `Html.unescape` tak mengubah apa pun). Placeholder kini dikirim sebagai entitas `&lt;`/`&gt;` sehingga lolos parser HTML Telegram dan tampil utuh sebagai `<…>`; teks `/watch` yang memuat "Diabaikan (<3 huruf)" juga diperbaiki.

