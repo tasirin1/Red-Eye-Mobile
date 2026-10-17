@@ -1,3 +1,12 @@
+## [Unreleased]
+### Added
+- Diagnosa blokir kamera: pesan kegagalan foto/video kini menyebut **paket admin penyebabnya** (dari `getActiveAdmins()` + `getCameraDisabled(admin)`), bukan lagi pesan umum "another admin app".
+- Sumber jeda foto ikut disimpan (`photo_pause_source`): jeda karena blokir admin (120 menit, dipantau tiap 2 menit) dibedakan dari blokir tak dikenal/HAL (ulangan tiap 15 menit).
+### Changed
+- Foto otomatis kini **pulih sendiri begitu blokir kamera dicabut**: selama jeda-blokir-admin, siklus kamera memeriksa status tiap 2 menit; begitu `getCameraDisabled` kembali normal, jeda dibatalkan dan owner diberi kabar "✅ Camera block lifted — automatic photos resumed." (sebelumnya harus menunggu penuh 120 menit). Selama masih diblokir, jeda diperpanjang tanpa percobaan kamera dan tanpa notifikasi berulang.
+- `/resume` kini benar-benar membatalkan jeda foto otomatis seperti yang dijanjikan petunjuk pesannya (sebelumnya hanya melanjutkan monitoring, jeda foto tetap berjalan).
+- Blokir kamera yang tidak berasal dari admin perangkat memakai jeda pendek 15 menit (bukan 120 menit) karena tak ada yang bisa dicabut di Settings.
+
 ## [1.6.290] - 2026-10-17
 ### Changed
 - `NotificationForwarderService` memulihkan akses notifikasi dengan backoff bertingkat (30 detik → 2 → 5 → 15 → 30 menit, maksimal 5 percobaan, direset saat tersambung lagi) dan `requestRebind` kini dipanggil di main thread seperti yang diwajibkan API; sebelumnya hanya satu percobaan ulang 60 detik dari thread latar.

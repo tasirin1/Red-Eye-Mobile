@@ -174,6 +174,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
         const val KEY_MONITORING_PAUSED = "monitoring_paused"
         const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
+        const val KEY_PHOTO_PAUSE_SOURCE = "photo_pause_source"
         const val KEY_PATROL_ENABLED = "patrol_enabled"
         const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_PATROL_INTERVAL = "patrol_interval"
@@ -381,6 +382,10 @@ class PreferencesManager(context: Context) {
     var photoPausedUntil: Long
         get() = try { sharedPreferences.getLong(KEY_PHOTO_PAUSED_UNTIL, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_UNTIL, value).apply()
+
+    var photoPauseSource: Int
+        get() = try { sharedPreferences.getInt(KEY_PHOTO_PAUSE_SOURCE, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).apply()
 
     var patrolEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_PATROL_ENABLED, false) } catch (_: Exception) { false }
@@ -892,6 +897,7 @@ class PreferencesManager(context: Context) {
             editor.putBoolean(KEY_USER_CONSENTED, true)
             editor.putBoolean(KEY_MONITORING_PAUSED, false)
             editor.putLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
+            editor.putInt(KEY_PHOTO_PAUSE_SOURCE, 0)
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }

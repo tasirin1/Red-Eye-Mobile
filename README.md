@@ -110,7 +110,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/alive` | Denyut terakhir + berapa kali service dipulihkan |
 | `/heartbeat <1-48\|0>` | Laporan berkala "masih hidup" (`0` = mati) |
 | `/version` | Versi app + device |
-| `/stop` / `/resume` | Jeda/lanjut monitoring |
+| `/stop` / `/resume` | Jeda/lanjut monitoring (`/resume` sekaligus membatalkan jeda foto otomatis) |
 | `/notif on\|off\|status` | Forward notifikasi |
 | `/restart` | Restart loop monitoring |
 | `/flush` | Kirim antrean sekarang |
@@ -134,7 +134,8 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | Play Protect blokir | Install anyway |
 | App not installed | Uninstall versi lama dulu, beda signature |
 | Sepi, nggak ada pesan | Test Connection ulang, cek token/Chat ID |
-| Monitoring mati | Cek izin + matikan optimasi baterai |
+| Monitoring mati | Cek izin + matikan optimasi baterai + pakai tombol Anti-kill & Autostart |
+| Foto bilang "camera disabled by device policy" | Ada admin/parental control lain (atau saklar privasi kamera merek) yang menutup kamera. Pesannya kini menyebut paket admin penyebabnya; buka Settings > Security > Device admin apps dan izinkan kamera. Foto otomatis lanjut sendiri begitu blokir dicabut (±2 menit), dan bila bukan dari admin hanya diulang tiap 15 menit |
 | Lokasi gagal | Nyalakan Precise location + GPS + background location |
 | Nggak bisa uninstall | Matikan Device Admin dulu di Settings |
 
