@@ -2155,7 +2155,7 @@ class MonitoringService : Service() {
                 if (seconds == null || seconds !in 5..600) {
                     sendToTelegram("Cara pakai: /record &lt;5-600&gt; (seconds)")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                    sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else if (ringBusy.get()) {
@@ -2181,9 +2181,9 @@ class MonitoringService : Service() {
                     val maxSecs = ((48L * 1024L * 1024L) / 300_000L).toInt().coerceIn(5, 180)
                     sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * 300_000L) / (1024L * 1024L)} MB, melebihi batas 48 MB. Coba ≤$maxSecs dtk.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+                    sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Camera permission missing. Open Setup and grant Camera permission.")
+                    sendToTelegram("\u26A0\uFE0F Camera permission missing. Buka Setup dan berikan izin Kamera.")
                 } else if (!recordBusy.compareAndSet(false, true)) {
                     sendToTelegram("\u23F1\uFE0F Already recording, please wait.")
                 } else if (ringBusy.get()) {
@@ -5210,7 +5210,7 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("Auth rejected, photo delayed until the token is fixed in Setup.")
+                    sendToTelegram("Token ditolak — foto ditahan sampai token diperbaiki di Setup.")
                 }
             }
             return
@@ -5218,7 +5218,7 @@ class MonitoringService : Service() {
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("Rate limited, photo delayed for retry.")
+                    sendToTelegram("Dibatasi Telegram (rate limit) — foto ditahan lalu dicoba lagi.")
                 }
             }
             return
@@ -5231,7 +5231,7 @@ class MonitoringService : Service() {
             if (pendingPhotoCount() >= 10) {
                 serviceScope.launch {
                     if (reportResult) {
-                        sendToTelegram("⚠️ Photo backlog full (offline). Oldest unsent discarded; newest capture skipped.")
+                        sendToTelegram("⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati.")
                     } else {
                         notifyCameraFailure("photo backlog full")
                     }
@@ -5242,7 +5242,7 @@ class MonitoringService : Service() {
         if (!hasCameraPermission()) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: camera permission missing. Open Setup and grant Camera permission.")
+                    sendToTelegram("⚠️ Gagal memotret: izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
                 } else {
                     notifyCameraFailure("camera permission missing")
                 }
@@ -5254,7 +5254,7 @@ class MonitoringService : Service() {
             val blockers = cameraBlockingAdmins()
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError("CAMERA_DISABLED") + " " + policyFailureHint(blockers))
+                    sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError("CAMERA_DISABLED") + " " + policyFailureHint(blockers))
                 } else {
                     notifyCameraFailure("camera disabled by device policy (CAMERA_DISABLED)")
                 }
@@ -5264,7 +5264,7 @@ class MonitoringService : Service() {
         if (!cameraBusy.compareAndSet(false, true)) {
             if (reportResult) {
                 serviceScope.launch {
-                    sendToTelegram("⚠️ Camera is busy, please try /photo again in a moment.")
+                    sendToTelegram("⚠️ Kamera sedang dipakai, coba /photo lagi sebentar.")
                 }
             }
             return
@@ -5281,7 +5281,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture timed out without a response. Please try /photo again.")
+                    sendToTelegram("⚠️ Pemotretan tak menjawab (timeout). Coba /photo lagi.")
                 }
             }
         }
@@ -5309,7 +5309,7 @@ class MonitoringService : Service() {
                         deleteQuietly(photoFile)
                         if (reportResult) {
                             serviceScope.launch {
-                                sendToTelegram("⚠️ Photo capture produced an empty file. Please try /photo again.")
+                                sendToTelegram("⚠️ Foto yang dihasilkan kosong. Coba /photo lagi.")
                             }
                         }
                         return@capturePhoto
@@ -5324,7 +5324,7 @@ class MonitoringService : Service() {
                         deleteQuietly(photoFile)
                         if (reportResult) {
                             serviceScope.launch {
-                                sendToTelegram("🌑 Photo too dark, skipped. Turn on a light or try /photo again.")
+                                sendToTelegram("🌑 Foto terlalu gelap, dilewati. Nyalakan lampu atau coba /photo lagi.")
                             }
                         }
                         return@capturePhoto
@@ -5341,7 +5341,7 @@ class MonitoringService : Service() {
                         deleteQuietly(photoFile)
                         if (reportResult) {
                             serviceScope.launch {
-                                sendToTelegram("♻️ Photo same as the last one, skipped.")
+                                sendToTelegram("♻️ Foto sama dengan yang terakhir, dilewati.")
                             }
                         }
                         return@capturePhoto
@@ -5376,13 +5376,13 @@ class MonitoringService : Service() {
                                 MediaSendOutcome.DROPPED -> {
                                     prunePhotoCache()
                                     if (reportResult) {
-                                        sendToTelegram("⚠️ Photo rejected by Telegram (400) — file empty/unsupported, discarded.")
+                                        sendToTelegram("⚠️ Foto ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
                                     }
                                 }
                                 MediaSendOutcome.KEPT -> {
                                     prunePhotoCache()
                                     if (reportResult) {
-                                        sendToTelegram("⚠️ Photo captured but upload failed. File kept for retry.")
+                                        sendToTelegram("⚠️ Foto berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
                                     }
                                 }
                             }
@@ -5405,7 +5405,7 @@ class MonitoringService : Service() {
                     serviceScope.launch {
                         if (reportResult) {
                             val hint = if (policyBlocked) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(exception.message)
-                            sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError(exception.message) + " " + hint)
+                            sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(exception.message) + " " + hint)
                         } else {
                             notifyCameraFailure(sanitizedCameraError(exception.message))
                         }
@@ -5421,7 +5421,7 @@ class MonitoringService : Service() {
             if (policyBlocked) autoPausePhotosOnPolicyBlock()
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Photo capture failed: " + sanitizedCameraError(e.message) + ".")
+                    sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(e.message) + ".")
                 } else {
                     notifyCameraFailure(sanitizedCameraError(e.message))
                 }
@@ -5437,7 +5437,7 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("Auth rejected, screenshot delayed until the token is fixed in Setup.")
+                    sendToTelegram("Token ditolak — tangkap layar ditahan sampai token diperbaiki di Setup.")
                 }
             }
             return
@@ -5445,7 +5445,7 @@ class MonitoringService : Service() {
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("Rate limited, screenshot delayed for retry.")
+                    sendToTelegram("Dibatasi Telegram (rate limit) — tangkap layar ditahan lalu dicoba lagi.")
                 }
             }
             return
@@ -5453,7 +5453,7 @@ class MonitoringService : Service() {
         if (!hasScreenshotConsent()) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Screen capture not granted. Open Setup and tap Capture Screen, then allow it once.")
+                    sendToTelegram("⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali.")
                 }
             }
             return
@@ -5461,7 +5461,7 @@ class MonitoringService : Service() {
         if (!shotBusy.compareAndSet(false, true)) {
             serviceScope.launch {
                 if (reportResult) {
-                    sendToTelegram("⚠️ Screenshot still running, please try /screenshot again in a moment.")
+                    sendToTelegram("⚠️ Tangkap layar masih berjalan, coba /screenshot lagi sebentar.")
                 }
             }
             return
@@ -5474,7 +5474,7 @@ class MonitoringService : Service() {
                 shotAttempt.incrementAndGet()
                 android.util.Log.w("MonitoringService", "Screenshot watchdog: capture did not finish, flag reset")
                 if (reportResult) {
-                    sendToTelegram("⚠️ Screenshot timed out without a response. Please try /screenshot again.")
+                    sendToTelegram("⚠️ Tangkap layar tak menjawab (timeout). Coba /screenshot lagi.")
                 }
             }
         }
@@ -5490,7 +5490,7 @@ class MonitoringService : Service() {
                     try { wd.cancel() } catch (_: Exception) { }
                     shotBusy.set(false)
                     if (reportResult) {
-                        sendToTelegram("⚠️ Screen capture was revoked. Open Setup and tap Capture Screen to grant it again.")
+                        sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
                     } else {
                         notifyPhotoSendFailure("screen capture revoked")
                     }
@@ -5505,7 +5505,7 @@ class MonitoringService : Service() {
                 if (shotFile == null) {
                     shotBusy.set(false)
                     if (reportResult) {
-                        sendToTelegram("⚠️ Screenshot failed. If the system revoked access, grant it again in Setup (Capture Screen).")
+                        sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
                     }
                     return@launch
                 }
@@ -5516,13 +5516,13 @@ class MonitoringService : Service() {
                         MediaSendOutcome.DROPPED -> {
                             prunePhotoCache()
                             if (reportResult) {
-                                sendToTelegram("⚠️ Screenshot rejected by Telegram (400) — file empty/unsupported, discarded.")
+                                sendToTelegram("⚠️ Tangkap layar ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
                             }
                         }
                         MediaSendOutcome.KEPT -> {
                             prunePhotoCache()
                             if (reportResult) {
-                                sendToTelegram("⚠️ Screenshot captured but upload failed. File kept for retry.")
+                                sendToTelegram("⚠️ Tangkap layar berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
                             }
                         }
                     }
@@ -5540,7 +5540,7 @@ class MonitoringService : Service() {
                 android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
                 serviceScope.launch {
                     if (reportResult) {
-                        sendToTelegram("⚠️ Screenshot failed. If the system revoked access, grant it again in Setup (Capture Screen).")
+                        sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
                     }
                 }
             }
@@ -5749,7 +5749,7 @@ class MonitoringService : Service() {
             preferencesManager.photoPausedUntil = 0L
             preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
             cachedPhotoPausedUntil = 0L
-            sendToTelegram("✅ Camera block lifted — automatic photos resumed.")
+            sendToTelegram("✅ Blokir kamera dicabut — foto otomatis jalan lagi.")
         } catch (_: Exception) {
         }
     }
@@ -5772,14 +5772,14 @@ class MonitoringService : Service() {
 
     private fun policyFailureHint(blockers: List<String>): String {
         if (blockers.isNotEmpty()) {
-            return "Camera is blocked by device policy: " + blockers.joinToString(", ") +
-                ". Open Settings > Security > Device admin apps and allow the camera for that app, or pause photos with /pause." +
-                " Automatic photos paused 120 min; they resume on their own once the block is lifted."
+            return "Kamera diblokir kebijakan perangkat: " + blockers.joinToString(", ") +
+                ". Buka Setelan > Keamanan > Aplikasi admin perangkat lalu izinkan kamera untuk aplikasi itu, atau jeda foto dengan /pause." +
+                " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
         if (isCameraDisabledByPolicy()) {
-            return "The system reports the camera is disabled by device policy, but the blocking admin could not be listed (usually a work profile, device owner, or OEM parental control)." +
-                " Check Settings > Security > Device admin apps, or pause photos with /pause." +
-                " Automatic photos paused 120 min; they resume on their own once the block is lifted."
+            return "Sistem melaporkan kamera dimatikan kebijakan perangkat, tapi aplikasi admin penyebabnya tak bisa didaftar (biasanya profil kerja, device owner, atau kontrol orang tua bawaan pabrikan)." +
+                " Periksa Setelan > Keamanan > Aplikasi admin perangkat, atau jeda foto dengan /pause." +
+                " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
         return "The camera reports it is blocked, but no device admin disables it — likely the phone's own camera privacy switch (Xiaomi/Oppo/Samsung/OEM) or another parental-control tool." +
             " Retrying every 15 min; send /photointerval 0 to turn auto photos off."
@@ -5795,7 +5795,7 @@ class MonitoringService : Service() {
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             val hint = if (policyError) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(clean)
-            sendToTelegram("⚠️ Photo capture failed: $clean. $hint")
+            sendToTelegram("⚠️ Gagal memotret: $clean. $hint")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice: ${redactToken(e.message)}")
         }
@@ -5807,7 +5807,7 @@ class MonitoringService : Service() {
             val last = preferencesManager.lastUploadErrorNotice
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
-            sendToTelegram("⚠️ Photo upload failed ($detail). Will retry automatically.")
+            sendToTelegram("⚠️ Unggah foto gagal ($detail). Akan dicoba otomatis.")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice: ${redactToken(e.message)}")
         }
@@ -6034,9 +6034,9 @@ class MonitoringService : Service() {
     }
 
     private fun cameraFailureHint(reason: String?): String {
-        if (!hasCameraPermission()) return "Open Setup and grant Camera permission."
-        if (isCameraPolicyError(reason) || isCameraDisabledByPolicy()) return "Camera is blocked by device policy (another admin app, work profile, or parental control disabled it). Check Settings > Security > Device admin apps, remove the camera restriction, or pause photos with /pause."
-        return "The camera may be in use by another app."
+        if (!hasCameraPermission()) return "Buka Setup dan berikan izin Kamera."
+        if (isCameraPolicyError(reason) || isCameraDisabledByPolicy()) return "Kamera diblokir kebijakan perangkat (aplikasi admin lain, profil kerja, atau kontrol orang tua mematikannya). Periksa Setelan > Keamanan > Aplikasi admin perangkat, cabut pembatasan kamera, atau jeda foto dengan /pause."
+        return "Kamera mungkin sedang dipakai aplikasi lain."
     }
 
     private fun pendingVideoCount(): Int {
@@ -6242,7 +6242,7 @@ class MonitoringService : Service() {
             if (!usePlayer) {
                 ringtone = android.media.RingtoneManager.getRingtone(applicationContext, uri)
                 if (ringtone == null) {
-                    sendToTelegram("⚠️ Ring failed (no alarm sound).")
+                    sendToTelegram("⚠️ Gagal berdering (suara alarm tak tersedia).")
                     return
                 }
                 try {
@@ -6270,14 +6270,14 @@ class MonitoringService : Service() {
                 }
                 return
             }
-            sendToTelegram("\uD83D\uDD14 Ringing for $seconds s\u2026")
+            sendToTelegram("\uD83D\uDD14 Berdering $seconds dtk\u2026")
             kotlinx.coroutines.delay(seconds * 1000L)
             currentCoroutineContext().ensureActive()
             sendToTelegram(finishedRingText())
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            sendToTelegram("\u26A0\uFE0F Ring failed.")
+            sendToTelegram("\u26A0\uFE0F Gagal berdering.")
         } finally {
             releaseOpWakeLock(ringLock)
             try {
@@ -6310,11 +6310,11 @@ class MonitoringService : Service() {
     @Suppress("DEPRECATION")
     private suspend fun recordAndSendAudio(seconds: Int) {
         if (!hasMicPermission()) {
-            sendToTelegram("⚠️ Microphone permission missing. Open Setup and grant Microphone permission.")
+            sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             return
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
-            sendToTelegram("Rate limited, audio delayed for retry.")
+            sendToTelegram("Dibatasi Telegram (rate limit) — rekaman ditahan lalu dicoba lagi.")
             return
         }
         val pendingAudio = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
@@ -6325,7 +6325,7 @@ class MonitoringService : Service() {
             }
             val pendingAudioNow = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
             if (pendingAudioNow >= MAX_AUDIO_KEPT) {
-                sendToTelegram("Audio backlog full (offline). Oldest unsent discarded; newest recording skipped.")
+                sendToTelegram("Antrean rekaman penuh (offline). Yang paling lama yang belum terkirim dibuang; rekaman baru dilewati.")
                 return
             }
         }
@@ -6358,13 +6358,13 @@ class MonitoringService : Service() {
                     deleteQuietly(audioFile)
                 } catch (_: Exception) {
                 }
-                sendToTelegram("Record failed (empty audio). Please try again.")
+                sendToTelegram("Gagal merekam (audio kosong). Coba lagi.")
                 return
             }
             audioOutcome = sendAudioFile(audioFile)
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
-                    sendToTelegram("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
+                    sendToTelegram("\uD83C\uDF99\uFE0F Rekaman terkirim (${seconds} dtk).")
                     flushPendingAudio()
                 }
                 MediaSendOutcome.DROPPED -> {
@@ -6373,7 +6373,7 @@ class MonitoringService : Service() {
                         flushPendingAudio()
                     } catch (_: Exception) {
                     }
-                    sendToTelegram("\u26A0\uFE0F Audio rejected by Telegram (400) — file empty/unsupported, discarded.")
+                    sendToTelegram("\u26A0\uFE0F Rekaman ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
                 }
                 MediaSendOutcome.KEPT -> {
                     keepForRetry = true
@@ -6381,7 +6381,7 @@ class MonitoringService : Service() {
                         flushPendingAudio()
                     } catch (_: Exception) {
                     }
-                    sendToTelegram("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
+                    sendToTelegram("\u26A0\uFE0F Rekaman jadi tapi gagal dikirim. Berkas disimpan untuk dicoba otomatis.")
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -6391,14 +6391,14 @@ class MonitoringService : Service() {
             }
             if (audioOutcome == MediaSendOutcome.SENT) {
                 try {
-                    messageQueue.addMessage("\uD83C\uDF99\uFE0F Audio sent (${seconds}s).")
+                    messageQueue.addMessage("\uD83C\uDF99\uFE0F Rekaman terkirim (${seconds} dtk).")
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
             } else if (audioOutcome == MediaSendOutcome.KEPT) {
                 keepForRetry = true
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F Audio recorded but send failed. File kept for automatic retry.")
+                    messageQueue.addMessage("\u26A0\uFE0F Rekaman jadi tapi gagal dikirim. Berkas disimpan untuk dicoba otomatis.")
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -6408,10 +6408,10 @@ class MonitoringService : Service() {
             throw e
         } catch (e: SecurityException) {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
-            sendToTelegram("\u26A0\uFE0F Microphone permission missing. Open Setup and grant Microphone permission.")
+            sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
         } catch (e: Exception) {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
-            sendToTelegram("\u26A0\uFE0F Record failed.")
+            sendToTelegram("\u26A0\uFE0F Gagal merekam.")
         } finally {
             releaseOpWakeLock(audioLock)
             try {
@@ -6518,14 +6518,14 @@ class MonitoringService : Service() {
         if (!hasCameraPermission()) {
             recordBusy.set(false)
             serviceScope.launch {
-                sendToTelegram("⚠️ Camera permission missing. Open Setup and grant Camera permission.")
+                sendToTelegram("⚠️ Camera permission missing. Buka Setup dan berikan izin Kamera.")
             }
             return
         }
         if (!hasMicPermission()) {
             recordBusy.set(false)
             serviceScope.launch {
-                sendToTelegram("⚠️ Microphone permission missing. Open Setup and grant Microphone permission.")
+                sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             }
             return
         }
@@ -6546,7 +6546,7 @@ class MonitoringService : Service() {
             if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
                 recordBusy.set(false)
                 serviceScope.launch {
-                    sendToTelegram("⚠️ Video backlog full (offline). Oldest unsent discarded; newest recording skipped.")
+                    sendToTelegram("⚠️ Antrean video penuh (offline). Yang paling lama yang belum terkirim dibuang; video baru dilewati.")
                 }
                 return
             }
@@ -6561,7 +6561,7 @@ class MonitoringService : Service() {
                 try { cameraService.forceReset() } catch (_: Exception) { }
                 releaseOpWakeLock(videoLock)
                 android.util.Log.w("MonitoringService", "Video watchdog: recording did not finish, flag reset")
-                sendToTelegram("⚠️ Video recording timed out without a response. Please try /recordvideo again.")
+                sendToTelegram("⚠️ Perekaman video tak menjawab (timeout). Coba /recordvideo lagi.")
             }
         }
         videoWatchdog = wd
@@ -6581,20 +6581,20 @@ class MonitoringService : Service() {
                         try {
                             if (videoFile.length() > 48L * 1024L * 1024L) {
                                 deleteQuietly(videoFile)
-                                sendToTelegram("⚠️ Video too large (>48 MB). Try /recordvideo with fewer seconds.")
+                                sendToTelegram("⚠️ Video terlalu besar (>48 MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
                                 when (sendVideoFile(videoFile)) {
                                     MediaSendOutcome.SENT -> {
-                                        sendToTelegram("🎥 Video sent (${seconds}s).")
+                                        sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
                                         flushPendingVideos()
                                     }
                                     MediaSendOutcome.DROPPED -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
-                                        sendToTelegram("⚠️ Video rejected by Telegram (400) — file empty/unsupported, discarded.")
+                                        sendToTelegram("⚠️ Video ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
                                     }
                                     MediaSendOutcome.KEPT -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
-                                        sendToTelegram("⚠️ Video recorded but send failed. File kept for automatic retry.")
+                                        sendToTelegram("⚠️ Video jadi tapi gagal dikirim. Berkas disimpan untuk dicoba otomatis.")
                                     }
                                 }
                             }
@@ -6612,7 +6612,7 @@ class MonitoringService : Service() {
                     releaseOpWakeLock(videoLock)
                     recordBusy.set(false)
                     serviceScope.launch {
-                        sendToTelegram("⚠️ Video record failed: " + sanitizedCameraError(e.message))
+                        sendToTelegram("⚠️ Gagal merekam video: " + sanitizedCameraError(e.message))
                     }
                 },
                 timeoutMs = seconds * 1000L + 60_000L
@@ -6754,7 +6754,7 @@ class MonitoringService : Service() {
             }
             if (droppedVideos > 0) {
                 try {
-                    messageQueue.addMessage("⚠️ $droppedVideos video file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
+                    messageQueue.addMessage("⚠️ $droppedVideos berkas video ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -6775,7 +6775,7 @@ class MonitoringService : Service() {
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
-                messageQueue.addMessage("⚠️ ${dropped.size} video file(s) dropped (cache full).", true)
+                messageQueue.addMessage("⚠️ ${dropped.size} berkas video dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
@@ -6825,7 +6825,7 @@ class MonitoringService : Service() {
             }
             if (droppedAudio > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio audio file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio berkas rekaman ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -6846,7 +6846,7 @@ class MonitoringService : Service() {
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
-                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} audio file(s) dropped (cache full).", true)
+                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas rekaman dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
@@ -7142,7 +7142,7 @@ class MonitoringService : Service() {
         }
             if (droppedPhotos > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos photo file(s) rejected by Telegram (400) — empty/unsupported, discarded.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos berkas foto ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -7176,7 +7176,7 @@ class MonitoringService : Service() {
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
-                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} photo file(s) dropped (cache full).", true)
+                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
