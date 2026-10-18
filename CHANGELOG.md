@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.372] - 2026-10-18
+### Fixed
+- Dua `/screenshot` tak lagi bisa berjalan bersamaan (ABA pada `shotBusy`): watchdog 45 dtk melepas flag lalu menaikkan `shotAttempt`, dan coroutine lama yang mendapati attempt-nya tak lagi cocok tetap memanggil `shotBusy.set(false)` — sehingga penangkapan baru kehilangan penjaganya dan dua sesi berbagi `shotReader`/`shotDisplay` yang sama. Semua pelepasan flag di jalur itu kini lewat `clearShotBusy(seq)` yang hanya berlaku bila attempt-nya masih yang terbaru.
+- Pesan \"Rekaman terkirim\" tak lagi bisa dobel: cabang `MediaSendOutcome.SENT` memanggil `flushPendingAudio()` tanpa penjagaan, sehingga pembatalan di tengah flush masuk ke handler `CancellationException` yang mengantrekan teks yang sama untuk kedua kalinya. Kini pengiriman notifikasi dan flush masing-masing dijaga dan `audioOutcome` dibersihkan setelah notifikasi terkirim.
+- Penanda `...` pada riwayat SMS awal kini benar: dulu memakai `sms.body.length > 200` padahal yang dipotong hasil `Html.escape()` (satu `&` menjadi `&amp;`), sehingga isi yang sudah utuh masih ditandai terpotong — dan sebaliknya. Kini mengikuti pola `formatSmsMessage` (bandingkan panjang teks penuh hasil escape dengan hasil potongannya).
+- Penanda \"sinkron awal berjalan\" tak lagi bisa dimatikan job lama: `finally` job sinkron menggunakan `initialSyncJob === self`, padahal `cancel()` tidak menunggu — bila job lama selesai setelah penanda dinyalakan job baru, penanda ikut padam sehingga `checkAndSendNewData` bisa berjalan bersamaan dengan backfill. Kini dijaga nomor generasi (`initialSyncGen`).
+- `/recordvideo` kini memakai `try/finally` untuk `recordBusy` seperti `/record`, agar flag \"sedang merekam\" tak tersangkut bila fungsi berubah/melempar di luar jalur yang sudah membersihkannya.
+
 ## [1.6.371] - 2026-10-18
 ### Fixed
 - Gerbang \"menu kedaluwarsa\" untuk tombol kembali bekerja pada perintah beraugumen: tombol `/camera depan`, `/camera belakang`, dan `/pause 60` dulu lolos tanpa cek kedaluwarsa karena `MUTATING_COMMANDS`/`SENSITIVE_COMMANDS` hanya memuat bentuk telanjang (`/camera`, `/pause`), sehingga perintah lama dari menu basi tetap dijalankan. Pemeriksaan kini memakai token pertama perintah.

