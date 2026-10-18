@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.344] - 2026-10-18
+### Fixed
+- Rekaman video kini ditulis ke berkas sementara `video_*.mp4.tmp` lalu diganti nama menjadi `video_*.mp4` hanya setelah perekaman berhenti dengan benar. Sebelumnya `MediaRecorder` menulis langsung ke berkas akhir, sehingga rekaman yang terpotong (proses aplikasi mati/force-stop di tengah rekaman) meninggalkan berkas `.mp4` yang tetap dianggap sah dan ikut diunggah antrean video. Berkas sementara sudah disapu otomatis saat `CameraService` dibuat.
+- `CrashReporter` tak lagi mengantre ulang laporan yang barusan terkirim: bila ada laporan baru masuk selagi pengiriman berlangsung, yang disimpan hanya bagian baru (ditambah sisa yang belum terkirim), bukan seluruh isi berkas termasuk laporan lama yang sudah dikirim.
+
 ## [1.6.343] - 2026-10-18
 ### Fixed
 - Kode `403` Telegram tak lagi diperlakukan sama dengan `401`. `403` berarti bot diblokir/dikeluarkan dari chat (token tetap benar), jadi pesannya kini jujur: notifikasi menjadi "Bot diblokir/dikeluarkan dari chat (403)", dan `/flush` berbunyi "bot diblokir atau dikeluarkan dari chat — buka Telegram lalu buka blokir/undang ulang bot". Sebelumnya keduanya menyuruh "Perbaiki token di Setup", menyesatkan karena tokennya memang benar.

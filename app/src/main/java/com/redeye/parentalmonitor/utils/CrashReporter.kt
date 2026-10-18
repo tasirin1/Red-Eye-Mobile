@@ -132,6 +132,16 @@ object CrashReporter {
                 } else writePendingRest(file, elapsed0, rest)
                 return
             }
+            val appended = if (cur.startsWith(raw)) cur.substring(raw.length).removePrefix("\n---\n") else null
+            if (appended != null) {
+                val combined = when {
+                    rest.isBlank() -> appended
+                    appended.isBlank() -> rest
+                    else -> rest + "\n---\n" + appended
+                }
+                writePendingRest(file, elapsed0, combined)
+                return
+            }
             val curReport = stripElapsed(cur)
             val combined = if (rest.isBlank()) curReport else (curReport + "\n---\n" + rest)
             writePendingRest(file, elapsed0, combined)

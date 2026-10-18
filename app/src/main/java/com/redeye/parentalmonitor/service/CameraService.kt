@@ -546,8 +546,9 @@ class CameraService(private val context: Context) {
             }
             val videoSize = chooseVideoSize(cameraManager, cameraId)
             val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
-            pendingOut = outFile
-            activeVideoFile = outFile
+            val tmpFile = File(context.cacheDir, outFile.name + ".tmp")
+            pendingOut = tmpFile
+            activeVideoFile = tmpFile
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
             } else {
@@ -571,7 +572,7 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             rec.setVideoEncodingBitRate(if (videoSize.first * videoSize.second >= 1280 * 720) 2_000_000 else 1_000_000)
-            rec.setOutputFile(outFile.absolutePath)
+            rec.setOutputFile(tmpFile.absolutePath)
             rec.prepare()
             videoSurface = rec.surface
             val recordSurface = videoSurface ?: run { finishWithError(Exception("Permukaan rekaman tak tersedia")); return }
@@ -617,8 +618,10 @@ class CameraService(private val context: Context) {
                                             releaseRecorder()
                                             releaseSurface()
                                             stopBackgroundThread()
-                                            if (!stopOk || !outFile.exists() || outFile.length() == 0L) {
-                                                try { outFile.delete() } catch (_: Exception) { }
+                                            val finalized = stopOk && tmpFile.exists() && tmpFile.length() > 0L &&
+                                                try { tmpFile.renameTo(outFile) } catch (_: Exception) { false }
+                                            if (!finalized) {
+                                                try { tmpFile.delete() } catch (_: Exception) { }
                                                 finishWithError(Exception(if (stopOk) "Video kosong" else "Gagal menghentikan video"))
                                             } else {
                                                 finishWithVideo(outFile)
