@@ -355,14 +355,14 @@ class NotificationForwarderService : NotificationListenerService() {
             record(appLabel, title, text)
             return
         }
+        val now = android.os.SystemClock.elapsedRealtime()
         if (isSummary && groupKey.isNotEmpty()) {
             val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
-            if (nowCfg - seenAt < 120_000L) {
+            if (now - seenAt < 120_000L) {
                 record(appLabel, title, text)
                 return
             }
         }
-        val now = android.os.SystemClock.elapsedRealtime()
         emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty())
     }
 
@@ -946,7 +946,7 @@ class NotificationForwarderService : NotificationListenerService() {
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
             if (rateRemain > 0L) {
                 queue().addMessage(message)
-                MessageScheduler.scheduleRateLimited(this, rateRemain)
+                MessageScheduler.scheduleMessageSendNext(this, rateRemain)
                 return
             }
             val nowNet = android.os.SystemClock.elapsedRealtime()
@@ -983,7 +983,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 NetworkUtils.noteRateLimited(retryAfter)
                 queue().addMessage(message)
-                MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
+                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                 return
             }
             if (response.code() == 400) {
@@ -1037,7 +1037,7 @@ class NotificationForwarderService : NotificationListenerService() {
                             }
                             NetworkUtils.noteRateLimited(retryAfter)
                             queue().addMessage(message)
-                            MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
+                            MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                             return
                         }
                         if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
