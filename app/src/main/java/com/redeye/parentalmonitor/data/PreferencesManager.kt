@@ -245,7 +245,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_LIVE_TEST_STARTED_ELAPSED = "live_test_started_elapsed"
         private const val KEY_LIVE_TEST_BY_ALARM = "live_test_by_alarm"
         private const val KEY_LIVE_TEST_LAST_SEC = "live_test_last_sec"
-        private const val KEY_LIVE_TEST_LAST_AT = "live_test_last_at"
         private const val KEY_LAST_SEND_OK_ELAPSED = "last_send_ok_elapsed"
         private const val KEY_SILENT_HEAL_AT = "silent_heal_at"
         private const val KEY_SILENT_HEAL_STAGE = "silent_heal_stage"
@@ -513,10 +512,6 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getInt(KEY_LIVE_TEST_LAST_SEC, -1) } catch (_: Exception) { -1 }
         set(value) = sharedPreferences.edit().putInt(KEY_LIVE_TEST_LAST_SEC, value).apply()
 
-    var liveTestLastAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LIVE_TEST_LAST_AT, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_LAST_AT, value).apply()
-
     val lastSendOkElapsed: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SEND_OK_ELAPSED, 0L) } catch (_: Exception) { 0L }
 
@@ -665,9 +660,8 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var lastPhotoHash: Long
+    val lastPhotoHash: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_HASH, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_HASH, value).apply()
 
     fun setLastPhotoHashSync(value: Long) {
         try {

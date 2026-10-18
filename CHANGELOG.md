@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [1.6.356] - 2026-10-18
+### Fixed
+- Kalkulator: menekan operator (`+`, `-`, `×`, `÷`) ketika layar sudah berisi `5 +` kini mengganti operatornya menjadi `5 ×` alih-alih diam; sebelumnya `5 + × 3 =` menghasilkan `8`, kini `15`.
+- Perintah Telegram mutating/sensitif (`/location`, `/kamera`, dan sejenisnya) tak lagi ditolak "kedaluwarsa" saat Telegram tak menyertakan waktu kirim (`sentAtSec <= 0`). Gerbang umurnya kini sejalan dengan pemeriksa luar yang memakai `sentAtSec > 0` sebagai syarat.
+- Saat antrean foto penuh (offline) dan laporan hasil dimatikan, pesan yang dikirim kini berbahasa Indonesia dan tak lagi menyarankan kamera dipakai aplikasi lain.
+- `deleteQuietly()` menghormati hasil `File.delete()`: bila berkas gagal dihapus, isinya dikosongkan agar tak terkirim ulang sebagai duplikat.
+
+### Removed
+- Preferensi tulis-saja `liveTestLastAt` beserta `KEY_LIVE_TEST_LAST_AT` dihapus.
+- Setter `lastPhotoHash` yang tak pernah dipakai dihapus; kini `val` dan penyimpanan lewat `setLastPhotoHashSync()`.
+- Field `message_id`/`messageId` pada DTO `TelegramIncomingMessage` dihapus karena tak pernah dibaca.
+- `setBackoffCriteria()` pada permintaan kerja `SendMessageWorker` dihapus — worker itu selalu `Result.success()`, jadi backoff tak pernah aktif.
+- Deklarasi `xmlns` `tools`/`android` yang tak terpakai dihapus dari `themes.xml` dan `device_admin.xml`.
+
+### Changed
+- Indentasi dibetulkan pada blok `startMonitoringInBackground()` (`MainActivity.kt`), argumen `getString()` dan badan `withContext` (`SetupActivity.kt`), blok `synchronized` (`CrashReporter.kt`), serta `val pending` di `flushPendingPhotos()`.
+- Komentar Device Admin di `AndroidManifest.xml` dipindah ke baris terpisah.
+- 23 baris kosong berlebih di `app/build.gradle` dirapikan.
+
 ## [1.6.355] - 2026-10-18
 ### Fixed
 - Indentasi tiga blok `drain@ while` di `flushPendingPhotos()`, `flushPendingVideos()`, dan `flushPendingAudio()` dibetulkan — badannya satu tingkat terlalu dangkal sehingga kurung penutupnya tampak menutup lebih awal (di `flushPendingPhotos()` bahkan tampak menutup blok `try`). Tak ada perubahan perilaku, hanya struktur yang kini terbaca sesuai kenyataan. Baris kosong yang hilang di antara `restartAllLoops()` dan `startLoopWatchdog()` juga dikembalikan.

@@ -155,7 +155,8 @@
             </intent-filter>
         </receiver>
 
-        <!-- Device Admin - protects against uninstall -->        <receiver
+        <!-- Device Admin - protects against uninstall -->
+        <receiver
             android:name=".receiver.AdminReceiver"
             android:description="@string/admin_description"
             android:label="${appLabel}"

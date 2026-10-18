@@ -50,11 +50,6 @@ object MessageScheduler {
             lastSendAppendAt.set(now)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
-                .setBackoffCriteria(
-                    androidx.work.BackoffPolicy.EXPONENTIAL,
-                    10,
-                    TimeUnit.SECONDS
-                )
 
             val policy = ExistingWorkPolicy.APPEND_OR_REPLACE
             try {

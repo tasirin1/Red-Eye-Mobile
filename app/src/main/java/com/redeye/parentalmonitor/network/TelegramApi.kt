@@ -45,7 +45,6 @@ data class TelegramChat(
 )
 
 data class TelegramIncomingMessage(
-    @SerializedName("message_id") val messageId: Long,
     @SerializedName("chat") val chat: TelegramChat,
     @SerializedName("from") val from: TelegramUser? = null,
     @SerializedName("text") val text: String?,

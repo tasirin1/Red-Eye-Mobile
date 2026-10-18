@@ -1644,7 +1644,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
-            val ageSec = if (sentAtSec <= 0L) Long.MAX_VALUE else System.currentTimeMillis() / 1000L - sentAtSec
+            val ageSec = if (sentAtSec <= 0L) 0L else System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
@@ -5090,7 +5090,6 @@ class MonitoringService : Service() {
         }
         val secs = (nowElapsed - startedElapsed) / 1000L
         try { preferencesManager.liveTestLastSec = secs.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() } catch (_: Exception) { }
-        try { preferencesManager.liveTestLastAt = System.currentTimeMillis() } catch (_: Exception) { }
         val text = if (secs > 10 * 60L) {
             "❌ <b>Uji anti-mati gagal</b>\nServis baru hidup lagi setelah $secs detik (lebih dari 10 menit). Jam bangun tampaknya tidak berjalan — buka Setup &gt; Anti-kill dan kerjakan langkahnya, lalu uji lagi."
         } else if (byAlarm) {
@@ -5276,7 +5275,7 @@ class MonitoringService : Service() {
                     if (reportResult) {
                         sendToTelegram("⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati.")
                     } else {
-                        notifyCameraFailure("photo backlog full")
+                        sendToTelegram("⚠️ Antrean foto penuh (offline). Foto baru dilewati sampai antrean terkirim.")
                     }
                 }
                 return
@@ -7129,10 +7128,10 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             var batches = 0
             drain@ while (batches < 3) {
-                    val pending = try {
-                        cacheDir.listFiles { file ->
-                            file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-                        }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                val pending = try {
+                    cacheDir.listFiles { file ->
+                        file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -7173,7 +7172,7 @@ class MonitoringService : Service() {
 
     private fun deleteQuietly(file: File) {
         try {
-            file.delete()
+            if (!file.delete() && file.exists()) file.writeBytes(ByteArray(0))
         } catch (_: Exception) {
         }
     }

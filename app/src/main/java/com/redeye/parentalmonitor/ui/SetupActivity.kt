@@ -1426,26 +1426,26 @@ class SetupActivity : AppCompatActivity() {
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
             ) + "\nBaterai: " + (if (exempt) "tanpa batas" else "dibatasi") + "\nPenyimpanan: " + (if (encrypted) "terenkripsi" else "sementara (keystore tak tersedia)") + authLine + ownerLine + livenessLine + usageLine + "\nNotifikasi: " + (if (listener && notifOn) "diteruskan" else "mati") + "\nTangkap layar: " + (if (shotOn) "diizinkan" else "mati") + "\nAdmin perangkat: " + (if (adminOn) "nyala" else "mati") + "\nNotifikasi sistem: " + (if (postOn) "diizinkan" else "diblokir") + "\nPatroli: " + (try { if (prefs.patrolEnabled) "nyala tiap ${prefs.patrolInterval} mnt" else "mati" } catch (_: Exception) { "-" }) + "\n" + getString(
-            R.string.setup_location_fmt,
-            if (fg) "OK" else "-",
-            if (bg) "OK" else "-"
+                R.string.setup_location_fmt,
+                if (fg) "OK" else "-",
+                if (bg) "OK" else "-"
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
-            statusText.text = body
-            toggleButton.text = if (enabled) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
-            toggleButton.isEnabled = configured || enabled
-            permissionButton.text = when {
-                !perms -> getString(R.string.grant_permissions)
-                !bg -> getString(R.string.setup_bg_request)
-                else -> getString(R.string.msg_permissions_granted)
-            }
-            notifButton.text = when {
-                !listener -> getString(R.string.setup_notif)
-                notifOn -> getString(R.string.setup_notif_on)
-                else -> getString(R.string.setup_notif_off)
-            }
-            shotButton.text = if (shotOn) getString(R.string.setup_shot_ok) else getString(R.string.setup_shot)
+                statusText.text = body
+                toggleButton.text = if (enabled) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
+                toggleButton.isEnabled = configured || enabled
+                permissionButton.text = when {
+                    !perms -> getString(R.string.grant_permissions)
+                    !bg -> getString(R.string.setup_bg_request)
+                    else -> getString(R.string.msg_permissions_granted)
+                }
+                notifButton.text = when {
+                    !listener -> getString(R.string.setup_notif)
+                    notifOn -> getString(R.string.setup_notif_on)
+                    else -> getString(R.string.setup_notif_off)
+                }
+                shotButton.text = if (shotOn) getString(R.string.setup_shot_ok) else getString(R.string.setup_shot)
             }
         }
     }
