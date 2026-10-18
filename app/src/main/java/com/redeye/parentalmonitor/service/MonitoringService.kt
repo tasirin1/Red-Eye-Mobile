@@ -141,6 +141,8 @@ class MonitoringService : Service() {
     @Volatile
     private var appliedFgsTypes = 0
     @Volatile
+    private var rejectedFgsTypes = 0
+    @Volatile
     private var coreInitialized = false
     private val shotSessionLock = Any()
     private var shotDisplay: VirtualDisplay? = null
@@ -302,17 +304,14 @@ class MonitoringService : Service() {
         if (!startForegroundImmediate()) {
             return
         }
-        try {
-            com.redeye.parentalmonitor.utils.Background.runCritical {
-                try {
-                    if (PreferencesManager.refreshInstance(this)) {
-                        refreshCreds()
-                        refreshLoopConfig()
-                    }
-                } catch (_: Exception) {
+        com.redeye.parentalmonitor.utils.Background.runCritical {
+            try {
+                if (PreferencesManager.refreshInstance(this)) {
+                    refreshCreds()
+                    refreshLoopConfig()
                 }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             try {
@@ -3937,7 +3936,7 @@ class MonitoringService : Service() {
         return level in 0..LOW_BATTERY_LEVEL && !isCharging()
     }
 
-    private fun usageRows(hours: Int): List<Triple<String, Long, String>>? {
+    private fun usageRows(hours: Int): List<Pair<String, Long>>? {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 60 * 60_000L
@@ -3945,7 +3944,7 @@ class MonitoringService : Service() {
             val manager = usageStatsManager ?: return null
             val stats = manager.queryAndAggregateUsageStats(start, end) ?: return null
             val pm = packageManager
-            val rows = mutableListOf<Triple<String, Long, String>>()
+            val rows = mutableListOf<Pair<String, Long>>()
             for ((pkg, stat) in stats) {
                 if (pkg == packageName) continue
                 val ms = stat.totalTimeInForeground
@@ -3953,7 +3952,7 @@ class MonitoringService : Service() {
                 val launchable = try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
                 if (!launchable) continue
                 val label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { pkg }
-                rows.add(Triple(label, ms, pkg))
+                rows.add(label to ms)
             }
             rows.sortByDescending { it.second }
             rows
@@ -5255,11 +5254,12 @@ class MonitoringService : Service() {
         }
         val photosBefore = pendingPhotoCount()
         if (photosBefore >= MAX_PHOTO_KEPT) {
-            try {
+            val pruned = try {
                 prunePhotoCache(MAX_PHOTO_KEPT - 1)
             } catch (_: Exception) {
+                -1
             }
-            val photosAfter = pendingPhotoCount()
+            val photosAfter = if (pruned >= 0) pruned else pendingPhotoCount()
             if (photosAfter >= MAX_PHOTO_KEPT) {
                 serviceScope.launch {
                     if (reportResult) {
@@ -6033,14 +6033,17 @@ class MonitoringService : Service() {
     private fun ensureForegroundTypes() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val types = computeForegroundTypes()
-        if (types == appliedFgsTypes) return
+        if (types == appliedFgsTypes || types == rejectedFgsTypes) return
         val notification = try {
             buildForegroundNotification()
         } catch (_: Exception) {
             return
         }
         val before = appliedFgsTypes
-        if (!applyForegroundTypes(notification)) return
+        if (!applyForegroundTypes(notification)) {
+            rejectedFgsTypes = types
+            return
+        }
         if (appliedFgsTypes != types && appliedFgsTypes != before) {
             android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + fgsTypesText(appliedFgsTypes) + " (diminta " + fgsTypesText(types) + ")")
         }
@@ -7221,8 +7224,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
     }
-    private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT) {
-        if (photoFlushBusy.get()) return
+    private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT): Int {
+        if (photoFlushBusy.get()) return -1
         try {
             try {
                 cacheDir.listFiles { file ->
@@ -7232,17 +7235,20 @@ class MonitoringService : Service() {
             }
             val photos = cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
+            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
             val dropped = photos.dropLast(maxKept)
-            if (dropped.isEmpty()) return
+            val remaining = photos.size - dropped.size
+            if (dropped.isEmpty()) return remaining
             dropped.forEach { deleteQuietly(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
+            return remaining
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error pruning photo cache: ${redactToken(e.message)}")
         }
+        return -1
     }
 }

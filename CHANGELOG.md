@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.378] - 2026-10-18
+### Changed
+- Tipe FGS yang sudah ditolak sistem tak dicoba ulang tiap tangkapan: `ensureForegroundTypes()` dulu mengulang `startForeground` dengan tipe lengkap yang sama pada setiap lokasi/foto/screenshot/audio/video (dan itu memang gagal terus bila penyebabnya konfigurasi manifest). Penolakan kini diingat di `rejectedFgsTypes`, dan bila izin berubah sehingga tipe yang dihitung berbeda, percobaan otomatis jalan lagi.
+- `prunePhotoCache()` mengembalikan sisa berkas setelah dipangkas, jadi jalur "cache foto penuh" cukup sekali memindai direktori (dulu tiga kali: hitung sebelum, pangkas, hitung sesudah). Bila pemangkasan dilewati/bermasalah (nilai `-1`), hitungan ulang dipakai seperti sebelumnya sehingga pesan status tetap benar.
+- `usageRows()` mengembalikan `Pair(nama, milidetik)` — komponen ketiga (`pkg`) memang tak pernah dibaca pemanggilnya.
+- `Background.runCritical()` tak lagi membungkus `execute()` dengan catch yang tak terjangkau (executor ber-antrean tak terbatas + CallerRunsPolicy) dan tak lagi mencoba menjalankan blok di thread pemanggil sebagai cadangan; pembungkus catch kembar di pemanggilnya juga dibuang.
+- Pemeriksaan ambang `outstandingSends` di `MessageScheduler.scheduleMessageSend()` tak lagi ditulis dua kali — cek di dalam loop compare-and-set sudah mencakup kasus pertama.
+
 ## [1.6.377] - 2026-10-18
 ### Fixed
 - Kartu status Setup tak lagi bisa menampilkan data lama: `updateStatus()` memuat data di `Dispatchers.IO` lalu menulis ke UI, dan tiga pemanggilan beruntun (buka halaman/`onResume`/hasil launcher) bisa selesai tak berurutan sehingga hasil yang lebih lama menimpa yang lebih baru. Kini tiap pemanggilan bernomor urut (`statusSeq`) dan hasil yang sudah kedaluwarsa dibuang.

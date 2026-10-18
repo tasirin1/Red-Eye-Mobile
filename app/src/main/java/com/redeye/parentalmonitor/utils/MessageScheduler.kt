@@ -30,13 +30,6 @@ object MessageScheduler {
         return try {
             val now = android.os.SystemClock.elapsedRealtime()
             // Atomic check-and-increment to avoid race condition
-            val current = outstandingSends.get()
-            if (current >= MAX_OUTSTANDING_SEND &&
-                now - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
-            ) {
-                return true
-            }
-            // Use atomic compare-and-set loop for the increment
             var updated = false
             while (!updated) {
                 val cur = outstandingSends.get()

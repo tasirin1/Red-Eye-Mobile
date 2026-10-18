@@ -9,14 +9,7 @@ object Background {
     )
 
     fun runCritical(block: () -> Unit) {
-        try {
-            critical.execute {
-                try {
-                    block()
-                } catch (_: Exception) {
-                }
-            }
-        } catch (_: Exception) {
+        critical.execute {
             try {
                 block()
             } catch (_: Exception) {
