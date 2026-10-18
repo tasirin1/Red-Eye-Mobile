@@ -94,9 +94,12 @@ class MessageQueue private constructor(context: Context) {
                     }
                     val queue = readLocked().toMutableList()
                     queue.addAll(freshPending)
+                    var evicted = 0
                     while (queue.size > MAX_QUEUE_SIZE) {
-                        evictOldestLocked(queue)
+                        evictOldestLocked(queue, persist = false)
+                        evicted++
                     }
+                    if (evicted > 0) persistDropCountsLocked()
                     persistLocked(queue)
                 }
                 volatileQueue.clear()
@@ -155,16 +158,22 @@ class MessageQueue private constructor(context: Context) {
             if (volatileOnly) {
                 pruneVolatileLocked()
                 for (message in messages) volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
+                var evictedVolatile = 0
                 while (volatileQueue.size > cap) {
-                    evictOldestLocked(volatileQueue)
+                    evictOldestLocked(volatileQueue, persist = false)
+                    evictedVolatile++
                 }
+                if (evictedVolatile > 0) persistDropCountsLocked()
                 return
             }
             val queue = readLocked().toMutableList()
             for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
+            var evictedBatch = 0
             while (queue.size > cap) {
-                evictOldestLocked(queue)
+                evictOldestLocked(queue, persist = false)
+                evictedBatch++
             }
+            if (evictedBatch > 0) persistDropCountsLocked()
             persistLocked(queue, force = true)
         }
     }
@@ -199,38 +208,43 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    private fun noteOverflowLocked(by: Long = 1L) {
+    private fun noteOverflowLocked(by: Long = 1L, persist: Boolean = true) {
+        noteDropLocked(overflowDrops, by, persist)
+    }
+
+    private fun noteExpiredLocked(by: Long = 1L, persist: Boolean = true) {
+        noteDropLocked(expiredDrops, by, persist)
+    }
+
+    private fun noteDropLocked(counter: java.util.concurrent.atomic.AtomicLong, by: Long, persist: Boolean) {
         try {
-            overflowDrops.addAndGet(by)
+            counter.addAndGet(by)
         } catch (_: Exception) {
         }
         dropsDirty = true
-        persistDropCountsLocked()
+        if (persist) persistDropCountsLocked()
     }
 
-    private fun noteExpiredLocked(by: Long = 1L) {
-        try {
-            expiredDrops.addAndGet(by)
-        } catch (_: Exception) {
-        }
-        dropsDirty = true
-        persistDropCountsLocked()
-    }
-
-    private fun evictOldestLocked(queue: MutableList<QueuedMessage>) {
+    private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {
         val idx = queue.indexOfFirst { !it.priority }
         val evicted = if (idx >= 0) queue.removeAt(idx) else queue.removeAt(0)
         try {
             if (evicted.priority) priorityDrops.incrementAndGet()
         } catch (_: Exception) {
         }
-        noteOverflowLocked()
+        noteOverflowLocked(persist = persist)
         android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
     }
 
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
-        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff) }
-        val fresh = items.filter { isFresh(it, wallCutoff) }
+        val now = try {
+            android.os.SystemClock.elapsedRealtime()
+        } catch (_: Exception) {
+            0L
+        }
+        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff, now) }
+        if (items.all { isFresh(it, wallCutoff, now) }) return items
+        val fresh = items.filter { isFresh(it, wallCutoff, now) }
         if (fresh.size * 2 < items.size) {
             android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
             return items
@@ -238,18 +252,13 @@ class MessageQueue private constructor(context: Context) {
         return fresh
     }
 
-    private fun isFresh(q: QueuedMessage, wallCutoff: Long): Boolean {
+    private fun isFresh(q: QueuedMessage, wallCutoff: Long, now: Long): Boolean {
         val mark = q.elapsedAt
         if (mark > 0L) {
-            return try {
-                val now = android.os.SystemClock.elapsedRealtime()
-                if (now < mark) {
-                    q.timestamp >= wallCutoff
-                } else {
-                    now - mark <= 7 * 24 * 60 * 60_000L || q.timestamp >= wallCutoff
-                }
-            } catch (_: Exception) {
+            return if (now < mark) {
                 q.timestamp >= wallCutoff
+            } else {
+                now - mark <= 7 * 24 * 60 * 60_000L || q.timestamp >= wallCutoff
             }
         }
         return q.timestamp >= wallCutoff
@@ -389,12 +398,13 @@ class MessageQueue private constructor(context: Context) {
     private fun readLocked(): MutableList<QueuedMessage> {
         cached?.let {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
-            val freshCached = filterFresh(it, cutoffCached).toMutableList()
+            val freshCached = filterFresh(it, cutoffCached)
             if (freshCached.size != it.size) {
                 noteExpiredLocked((it.size - freshCached.size).toLong())
                 android.util.Log.w("MessageQueue", "Dropped ${it.size - freshCached.size} expired message(s)")
-                persistLocked(freshCached)
-                return freshCached
+                val kept = freshCached.toMutableList()
+                persistLocked(kept)
+                return kept
             }
             return it
         }
@@ -477,30 +487,29 @@ class MessageQueue private constructor(context: Context) {
             return readLocked().isNotEmpty()
         }
     }
+
+    private fun takeDropsLocked(counter: java.util.concurrent.atomic.AtomicLong): Long {
+        val n = counter.getAndSet(0L)
+        dropsDirty = true
+        persistDropCountsLocked()
+        return n
+    }
+
     fun takeOverflowDrops(): Long {
         synchronized(lock) {
-            val n = overflowDrops.getAndSet(0L)
-            dropsDirty = true
-            persistDropCountsLocked()
-            return n
+            return takeDropsLocked(overflowDrops)
         }
     }
 
     fun takePriorityDrops(): Long {
         synchronized(lock) {
-            val n = priorityDrops.getAndSet(0L)
-            dropsDirty = true
-            persistDropCountsLocked()
-            return n
+            return takeDropsLocked(priorityDrops)
         }
     }
 
     fun takeExpiredDrops(): Long {
         synchronized(lock) {
-            val n = expiredDrops.getAndSet(0L)
-            dropsDirty = true
-            persistDropCountsLocked()
-            return n
+            return takeDropsLocked(expiredDrops)
         }
     }
 

@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.364] - 2026-10-18
+### Changed
+- `MessageQueue`: penghapusan pesan saat antrean penuh tak lagi menulis penghitung tetes ke penyimpanan terenkripsi satu kali per pesan. Loop pengusiran pada pemulihan, `addMessage`, dan `addMessages` kini mengumpulkan tetes lalu menulis sekali di akhir (`evictOldestLocked(persist = false)` + `persistDropCountsLocked()`), sehingga penambahan borongan yang mengusir puluhan pesan tidak lagi melakukan puluhan `commit()` berenkripsi.
+- `MessageQueue.filterFresh`/`isFresh`: `SystemClock.elapsedRealtime()` dihitung sekali per pemanggilan (dulu per item) dan ada jalur cepat tanpa alokasi saat semua item masih segar; `readLocked` tak lagi menyalin daftar dua kali (`filter` + `toMutableList`) pada kasus umum.
+- `MessageQueue`: pasangan kembar `takeOverflowDrops`/`takePriorityDrops`/`takeExpiredDrops` dan `noteOverflowLocked`/`noteExpiredLocked` disatukan lewat `takeDropsLocked(counter)` dan `noteDropLocked(counter, by, persist)`.
+
 ## [1.6.363] - 2026-10-18
 ### Fixed
 - Notifikasi "Pemasangan diabaikan: pemilik sudah tertaut" tak lagi bisa dibanjirkan oleh pengirim asing. Sebelumnya setiap `/start` dari nomor tak dikenal langsung memicu pesan Telegram; kini dibatasi satu notifikasi per 10 menit (`PAIR_NOTICE_COOLDOWN_MS`).
