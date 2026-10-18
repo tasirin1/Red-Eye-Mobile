@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.346] - 2026-10-18
+### Changed
+- Logika "chat pindah ke supergrup" disatukan jadi `NetworkUtils.adoptMigratedChat()`; sebelumnya isinya (±30 baris) diduplikasi hampir persis di `MonitoringService` dan `NotificationForwarderService`, rawan berbeda diam-diam saat salah satu diperbaiki. Teks pemberitahuannya kini bersumber tunggal di `NetworkUtils.MIGRATED_CHAT_NOTICE`.
+- `NotificationForwarderService.emitPost()` tak lagi menerima parameter `notifySpam` yang selalu bernilai `true` di semua pemanggil.
+- `forwardLocked()` tak lagi mengembalikan `Boolean` yang diabaikan seluruh pemanggilnya.
+- Cabang "antrean penuh" di `onNotificationPosted()` disederhanakan: pemeriksaan ganda yang membuat blok `scope.launch` di dalamnya praktis tak pernah tereksekusi (kini hanya mungkin lewat balapan jarang) dibuang; notifikasi saat antrean penuh selalu lewat `recordOverflow`. Fungsi `historyAllowed()` yang tinggal dipakai blok itu ikut dihapus.
+### Fixed
+- `README.md`: perintah rekam audio tertulis `/recordaudio`, padahal perintah aslinya `/record` (`/recordaudio` tak dikenal bot).
+
 ## [1.6.345] - 2026-10-18
 ### Changed
 - Foto kamera tak lagi di-decode empat kali. `photoLuma()` dan `photoHash()` (masing-masing membaca dimensi + men-decode bitmap) disatukan jadi `photoStats()` yang men-decode sekali lalu mengembalikan (kecerahan, sidik) sekaligus — dipakai untuk cek gelap dan cek duplikat pada berkas yang sama.

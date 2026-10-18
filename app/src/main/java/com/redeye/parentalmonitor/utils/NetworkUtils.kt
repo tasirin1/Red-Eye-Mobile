@@ -109,6 +109,39 @@ object NetworkUtils {
         return null
     }
 
+    val MIGRATED_CHAT_NOTICE = "\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis."
+
+    fun adoptMigratedChat(
+        prefs: PreferencesManager,
+        errorBody: String?,
+        currentChatId: String,
+        refresh: () -> Unit,
+        announce: () -> Unit
+    ): Boolean {
+        val migrated = extractMigratedChatId(errorBody) ?: return false
+        val stored = try { prefs.chatId } catch (_: Exception) { currentChatId }
+        if (migrated == stored) {
+            try {
+                prefs.credentialError = ""
+                prefs.credentialErrorAt = 0L
+                refresh()
+            } catch (_: Exception) {
+            }
+            return true
+        }
+        if (migrated == currentChatId) return false
+        return try {
+            prefs.setChatIdSync(migrated)
+            prefs.credentialError = ""
+            prefs.credentialErrorAt = 0L
+            refresh()
+            try { announce() } catch (_: Exception) { }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun parseRetryAfter(errorBody: String?): Long {
         if (errorBody.isNullOrEmpty()) return 5L
         try {

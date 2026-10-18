@@ -30,3 +30,4 @@ syncLauncherIconState
 setInitialSyncStartedSync
 photoHash
 photoLuma
+historyAllowed

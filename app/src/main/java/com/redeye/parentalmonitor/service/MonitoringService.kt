@@ -935,33 +935,17 @@ class MonitoringService : Service() {
     }
 
     private fun adoptMigratedChat(errorBody: String?, currentChatId: String): Boolean {
-        val migrated = NetworkUtils.extractMigratedChatId(errorBody) ?: return false
-        val stored = try { preferencesManager.chatId } catch (_: Exception) { currentChatId }
-        if (migrated == stored) {
-            try {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
-                refreshCreds()
-            } catch (_: Exception) {
-            }
-            return true
-        }
-        if (migrated == currentChatId) return false
-        return try {
-            preferencesManager.setChatIdSync(migrated)
-            preferencesManager.credentialError = ""
-            preferencesManager.credentialErrorAt = 0L
-            refreshCreds()
-            try {
-                messageQueue.addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
+        return NetworkUtils.adoptMigratedChat(
+            preferencesManager,
+            errorBody,
+            currentChatId,
+            refresh = { refreshCreds() },
+            announce = {
+                messageQueue.addMessage(NetworkUtils.MIGRATED_CHAT_NOTICE, true)
                 MessageScheduler.scheduleMessageSend(this)
-            } catch (_: Exception) {
+                android.util.Log.i("MonitoringService", "Chat migrated to supergroup, adopting new chat id")
             }
-            android.util.Log.i("MonitoringService", "Chat migrated to supergroup, adopting new chat id")
-            true
-        } catch (_: Exception) {
-            false
-        }
+        )
     }
 
     private fun isOwner(senderId: String): Boolean {
