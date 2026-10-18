@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.357] - 2026-10-18
+### Removed
+- Parameter `reportResult` pada `captureAndSendScreenshot()` dihapus — satu-satunya pemanggilnya (`/screenshot`) selalu mengirim `true`, jadi semua cabang `if (reportResult)` dan cabang `else`-nya (yang menyembunyikan kegagalan izin) adalah kode mati. Perilaku laporan tak berubah.
+- Batas atas `coerceIn(0, 8)` pada perhitungan `factor` sync dihapus (kini `coerceAtLeast(0)`) — `+ 1` lalu `coerceAtMost(4)` membuat batas 8 mustahil berpengaruh.
+- Cabang mati `if (fresh.isEmpty()) pts.takeLast(1)` di `rememberSentLatLon()` dihapus — titik baru selalu bertanggal `now` sehingga `fresh` tak pernah kosong.
+- `try/catch` yang tak terjangkau membungkus `scope.launch { ... }` di `NotificationForwarderService` dihapus; `launch` tak melempar sinkron, jadi jalur `catch`-nya mustahil.
+- Konfigurasi uji mati di `app/build.gradle` dihapus (`testInstrumentationRunner` dan seluruh `testImplementation`/`androidTestImplementation`) karena repo tak punya `app/src/test` maupun `app/src/androidTest`, dan CI hanya menjalankan `assembleDebug assembleRelease`.
+
 ## [1.6.356] - 2026-10-18
 ### Fixed
 - Kalkulator: menekan operator (`+`, `-`, `×`, `÷`) ketika layar sudah berisi `5 +` kini mengganti operatornya menjadi `5 ×` alih-alih diam; sebelumnya `5 + × 3 =` menghasilkan `8`, kini `15`.

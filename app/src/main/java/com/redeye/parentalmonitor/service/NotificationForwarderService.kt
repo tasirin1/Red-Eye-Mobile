@@ -188,12 +188,8 @@ class NotificationForwarderService : NotificationListenerService() {
             try { record(cached, title, text) } catch (_: Exception) { }
             return
         }
-        try {
-            scope.launch {
-                try { record(overflowLabel(pkg), title, text) } catch (_: Exception) { }
-            }
-        } catch (_: Exception) {
-            try { record(pkg, title, text) } catch (_: Exception) { }
+        scope.launch {
+            try { record(overflowLabel(pkg), title, text) } catch (_: Exception) { }
         }
     }
 

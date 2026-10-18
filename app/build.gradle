@@ -15,10 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 383
-        versionName "1.6.356"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 384
+        versionName "1.6.357"
 
         // Interval sync default: hanya dari CI via -PSYNC_INTERVAL / env SYNC_INTERVAL.
         // Kredensial bot TIDAK pernah dibake ke APK; satu-satunya sumber adalah
@@ -119,13 +117,4 @@ dependencies {
     // SharedPreferences encryption
     implementation 'androidx.security:security-crypto:1.1.0'
     
-    // Test dependencies
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
-    testImplementation 'org.mockito:mockito-core:5.3.1'
-    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.0.0'
-    
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
