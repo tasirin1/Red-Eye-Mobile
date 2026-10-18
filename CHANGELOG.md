@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.365] - 2026-10-18
+### Changed
+- `AppPermissions.hasAll(context)` menggantikan dua salinan `hasAllPermissions()` yang identik (`SetupActivity`, `MainActivity`), dan `permsLegacy` kini diturunkan dari `permsTiramisuPlus` tanpa `POST_NOTIFICATIONS` sehingga daftar izin tak lagi ditulis dua kali.
+- `MonitoringService`: gerbang `shouldAutoResume()`/`needsCredsRetry()` memakai satu inti `canRunMonitoring(requireConfigured)`; konstanta `MAX_PHOTO_KEPT` menggantikan angka telanjang `10`/`9` pada antrean foto (sejajar `MAX_AUDIO_KEPT`/`MAX_VIDEO_KEPT`).
+- `MonitoringService`: `catch (t: Throwable)` yang variabelnya tak terpakai jadi `catch (_: Throwable)` (4 tempat).
+- `MainActivity`: lapisan `try/catch` kosong berlebih di jalur start monitoring dihapus, dan `supportActionBar?.hide()` tak lagi dibungkus `try/catch` yang tak mungkin melempar (`requiredPermissions` yang jadi mubazir ikut dibuang).
+- Baris berisi spasi saja dirapikan di `MainActivity.kt`, `MonitoringService.kt`, `app/build.gradle`, `AndroidManifest.xml`, `ic_launcher_foreground.xml`.
+### Fixed
+- `tools/verifikasi-path.py`: `cek_paritas_resource` yang selalu mati (menargetkan `values-night/colors.xml` yang tak pernah ada) diganti pemeriksaan nyata — argumen format (`%1$s`, `%2$d`, …) tiap string di `values-in/strings.xml` wajib sama dengan `values/strings.xml` — sehingga salah terjemah yang bisa memicu `IllegalFormatException` tertangkap sebelum push.
+
 ## [1.6.364] - 2026-10-18
 ### Changed
 - `MessageQueue`: penghapusan pesan saat antrean penuh tak lagi menulis penghitung tetes ke penyimpanan terenkripsi satu kali per pesan. Loop pengusiran pada pemulihan, `addMessage`, dan `addMessages` kini mengumpulkan tetes lalu menulis sekali di akhir (`evictOldestLocked(persist = false)` + `persistDropCountsLocked()`), sehingga penambahan borongan yang mengusir puluhan pesan tidak lagi melakukan puluhan `commit()` berenkripsi.

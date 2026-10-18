@@ -874,9 +874,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun hasAllPermissions(): Boolean {
-        return requiredPermissions.filter { it != Manifest.permission.POST_NOTIFICATIONS }.all {
-            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
-        }
+        return com.redeye.parentalmonitor.utils.AppPermissions.hasAll(this)
     }
 
     private fun toggleMonitoring() {

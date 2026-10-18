@@ -255,6 +255,7 @@ class MonitoringService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
+        private const val MAX_PHOTO_KEPT = 10
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
@@ -553,20 +554,20 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun shouldAutoResume(): Boolean {
+    private fun canRunMonitoring(requireConfigured: Boolean): Boolean {
         return try {
-            preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
+            preferencesManager.isMonitoringEnabled && preferencesManager.isConfigured() == requireConfigured && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
         } catch (_: Exception) {
             false
         }
     }
 
+    private fun shouldAutoResume(): Boolean {
+        return canRunMonitoring(true)
+    }
+
     private fun needsCredsRetry(): Boolean {
-        return try {
-            preferencesManager.isMonitoringEnabled && !preferencesManager.isConfigured() && !preferencesManager.userDisabledMonitoring && preferencesManager.userConsentedMonitoring
-        } catch (_: Exception) {
-            false
-        }
+        return canRunMonitoring(false)
     }
 
 
@@ -867,7 +868,7 @@ class MonitoringService : Service() {
                         delay(10_000L)
                     } catch (_: Exception) {
                     }
-                } catch (t: Throwable) {
+                } catch (_: Throwable) {
                     android.util.Log.e("MonitoringService", "Fatal patrol error, loop survives")
                     try {
                         delay(10_000L)
@@ -1100,7 +1101,7 @@ class MonitoringService : Service() {
                         throw e
                     } catch (e: Exception) {
                         android.util.Log.e("MonitoringService", "Error polling commands while paused: ${redactToken(e.message)}")
-                    } catch (t: Throwable) {
+                    } catch (_: Throwable) {
                         android.util.Log.e("MonitoringService", "Fatal polling error while paused, loop survives")
                     }
                     delay(60_000)
@@ -1123,7 +1124,7 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Error polling commands: ${redactToken(e.message)}")
-                } catch (t: Throwable) {
+                } catch (_: Throwable) {
                     android.util.Log.e("MonitoringService", "Fatal polling error, loop survives")
                 }
                 if (!preferencesManager.isConfigured()) {
@@ -5259,12 +5260,12 @@ class MonitoringService : Service() {
             }
             return
         }
-        if (pendingPhotoCount() >= 10) {
+        if (pendingPhotoCount() >= MAX_PHOTO_KEPT) {
             try {
-                prunePhotoCache(9)
+                prunePhotoCache(MAX_PHOTO_KEPT - 1)
             } catch (_: Exception) {
             }
-            if (pendingPhotoCount() >= 10) {
+            if (pendingPhotoCount() >= MAX_PHOTO_KEPT) {
                 serviceScope.launch {
                     if (reportResult) {
                         sendToTelegram("⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati.")
@@ -6242,7 +6243,7 @@ class MonitoringService : Service() {
                     throw e
                 } catch (e: Exception) {
                     android.util.Log.e("MonitoringService", "Loop watchdog error: ${redactToken(e.message)}")
-                } catch (t: Throwable) {
+                } catch (_: Throwable) {
                     android.util.Log.e("MonitoringService", "Fatal watchdog error, watchdog survives")
                 }
             }
@@ -7089,7 +7090,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun flushPendingPhotos(max: Int = 10) {
+    private suspend fun flushPendingPhotos(max: Int = MAX_PHOTO_KEPT) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (dataSaverDeferMedia()) return
@@ -7148,7 +7149,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
     }
-    private fun prunePhotoCache(maxKept: Int = 10) {
+    private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT) {
         if (photoFlushBusy.get()) return
         try {
             try {

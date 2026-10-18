@@ -632,24 +632,20 @@ def cek_locale_baru(gagal, diff):
                          % isi.strip()[:80])
 
 
-def nama_warna(path):
-    return set(re.findall(r'<color\s+name="([^"]+)"', baca(path)))
+def argumen_format(isi):
+    return sorted(re.findall(r'%(?:\d+\$)?[a-zA-Z%]', isi))
 
 
 def cek_paritas_resource(gagal):
-    """Paritas siang/malam otomatis (GAGAL bila miring)."""
-    try:
-        siang = nama_warna("app/src/main/res/values/colors.xml")
-        malam = nama_warna("app/src/main/res/values-night/colors.xml")
-        if siang and malam:
-            if siang - malam:
-                gagal.append("colors.xml siang berlebih vs night: "
-                             + ", ".join(sorted(siang - malam)[:10]))
-            if malam - siang:
-                gagal.append("values-night/colors.xml berlebih vs siang: "
-                             + ", ".join(sorted(malam - siang)[:10]))
-    except OSError as e:
-        gagal.append("Paritas resource tak terbaca: %s" % e)
+    """Argumen format string Indonesia wajib sama dengan Inggris (cegah crash)."""
+    if not os.path.isfile(os.path.join(AKAR, "app/src/main/res/values-in/strings.xml")):
+        return
+    pola = re.compile(r'<string\s+name="([^"]+)"[^>]*>(.*?)</string>', re.S)
+    inggris = dict(pola.findall(baca("app/src/main/res/values/strings.xml")))
+    indonesia = dict(pola.findall(baca("app/src/main/res/values-in/strings.xml")))
+    for nama, isi in sorted(indonesia.items()):
+        if nama in inggris and argumen_format(isi) != argumen_format(inggris[nama]):
+            gagal.append("Argumen format beda di values-in: " + nama)
 
 
 def cek_ikon_launcher(gagal):

