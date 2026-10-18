@@ -50,7 +50,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 try {
                     com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext)
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
-                    if (prefs.isConfigured()) {
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
                         com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage(
                             "🚨 <b>Ada percobaan mematikan Device Admin</b>\nProteksi hapus aplikasi sebentar lagi mati. Foto + lokasi saya siapkan.",
                             true

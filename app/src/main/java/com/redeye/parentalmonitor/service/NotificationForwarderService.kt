@@ -255,25 +255,26 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
-            try {
-                val (t, x) = notifTitleText(notification)
-                if (t.isNotEmpty() || x.isNotEmpty()) {
-                    val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
-                    if (squeezedPriority && forwardingAllowed()) {
-                        val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
-                        try { record(squeezedLabel, t, x) } catch (_: Exception) { }
-                        val squeezedMsg = try { buildNotifMessage(squeezedLabel, t, x) } catch (_: Exception) { "" }
-                        scope.launch {
+            scope.launch {
+                try {
+                    val (t, x) = notifTitleText(notification)
+                    if (t.isNotEmpty() || x.isNotEmpty()) {
+                        val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
+                        if (squeezedPriority && forwardingAllowed()) {
+                            val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
+                            try { record(squeezedLabel, t, x) } catch (_: Exception) { }
+                            val squeezedMsg = try { buildNotifMessage(squeezedLabel, t, x) } catch (_: Exception) { "" }
                             try {
                                 if (squeezedMsg.isNotEmpty()) queue().addMessage(squeezedMsg)
                                 queue().flushSync()
                                 MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
                             } catch (_: Exception) {
                             }
-                        }
-                    } else recordOverflow(pkg, t, x)
+                        } else recordOverflow(pkg, t, x)
+                    }
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) { }
+            }
             return
         }
         scope.launch(fwdSerial) {

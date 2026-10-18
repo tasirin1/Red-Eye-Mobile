@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.373] - 2026-10-18
+### Fixed
+- Kabar pasang/hapus aplikasi tak lagi dikirim saat monitoring tak berjalan: `PackageChangeReceiver` hanya memeriksa `isConfigured()` + `userDisabledMonitoring`, sehingga saat monitoring mati/jeda (`isMonitoringEnabled`, `monitoringPaused`) pesan tetap masuk; kini memakai gerbang yang sama dengan penerus notifikasi (`isConfigured() && isMonitoringEnabled && !monitoringPaused && !userDisabledMonitoring && userConsentedMonitoring`).
+- Alert \"ada percobaan mematikan Device Admin\" tak lagi dikirim setelah pemilik mematikan monitoring: `AdminReceiver.onDisableRequested` hanya memakai `isConfigured()`, berbeda dari `onDisabled` yang memakai `isConfigured() && !userDisabledMonitoring`.
+- `onNotificationPosted` tak lagi mengerjakan `buildNotifMessage()` (baca `watchKeywords` dari prefs terenkripsi + `Html.escape`) di thread binder pada jalur antrean penuh — pemrosesan dipindah ke coroutine seperti jalur normal, supaya thread sistem tak tertahan.
+### Changed
+- Pemeriksaan paket hanya sekali `getApplicationInfo()` per kabar aplikasi baru: label dan status aplikasi sistem dulu memanggil PackageManager dua kali untuk paket yang sama; helper `appLabel()`/`isSystemApp()` yang terpisah dihapus.
+- `ACTION_USER_PRESENT` dan `ACTION_USER_UNLOCKED` kini diperlakukan sama: keduanya memakai dedupe 60 detik sebelum menjadwalkan ulang alarm, sehingga buka-kunci berulang tidak menjadwalkan ulang alarm tanpa perlu.
+- `markHandled()` menulis `boot_meta` dalam satu `apply()` (dulu dua edit/apply terpisah untuk satu event).
+
 ## [1.6.372] - 2026-10-18
 ### Fixed
 - Dua `/screenshot` tak lagi bisa berjalan bersamaan (ABA pada `shotBusy`): watchdog 45 dtk melepas flag lalu menaikkan `shotAttempt`, dan coroutine lama yang mendapati attempt-nya tak lagi cocok tetap memanggil `shotBusy.set(false)` — sehingga penangkapan baru kehilangan penjaganya dan dua sesi berbagi `shotReader`/`shotDisplay` yang sama. Semua pelepasan flag di jalur itu kini lewat `clearShotBusy(seq)` yang hanya berlaku bila attempt-nya masih yang terbaru.

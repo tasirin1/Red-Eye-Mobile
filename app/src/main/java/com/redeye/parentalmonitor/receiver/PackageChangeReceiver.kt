@@ -38,11 +38,21 @@ class PackageChangeReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             return
         }
-        if (!prefs.isConfigured()) return
-        if (prefs.userDisabledMonitoring) return
+        val active = try {
+            prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+        if (!active) return
         val text = if (action == Intent.ACTION_PACKAGE_ADDED) {
-            if (isSystemApp(context, pkg)) return
-            "📦 <b>Aplikasi baru dipasang</b>\n" + appLabel(context, pkg) + "\n<code>" + pkg + "</code>"
+            val info = try { context.packageManager.getApplicationInfo(pkg, 0) } catch (_: Exception) { null }
+            if (info != null && (info.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0) return
+            val label = try {
+                if (info == null) pkg else context.packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+            } catch (_: Exception) {
+                pkg
+            }
+            "📦 <b>Aplikasi baru dipasang</b>\n" + android.text.Html.escapeHtml(label) + "\n<code>" + pkg + "</code>"
         } else {
             "🗑️ <b>Aplikasi dihapus</b>\n<code>" + pkg + "</code>"
         }
@@ -50,26 +60,6 @@ class PackageChangeReceiver : BroadcastReceiver() {
             MessageQueue.getInstance(context).addMessage(text, true)
             MessageScheduler.scheduleMessageSend(context)
         } catch (_: Exception) {
-        }
-    }
-
-    private fun appLabel(context: Context, pkg: String): String {
-        return try {
-            val manager = context.packageManager
-            val info = manager.getApplicationInfo(pkg, 0)
-            val label = manager.getApplicationLabel(info).toString()
-            android.text.Html.escapeHtml(label.ifEmpty { pkg })
-        } catch (_: Exception) {
-            pkg
-        }
-    }
-
-    private fun isSystemApp(context: Context, pkg: String): Boolean {
-        return try {
-            val info = context.packageManager.getApplicationInfo(pkg, 0)
-            (info.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
-        } catch (_: Exception) {
-            false
         }
     }
 }

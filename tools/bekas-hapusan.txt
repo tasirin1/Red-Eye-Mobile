@@ -36,3 +36,5 @@ todayCountFor
 saveCoreConfig
 saveTestCredentials
 scheduleRateLimited
+appLabel
+isSystemApp

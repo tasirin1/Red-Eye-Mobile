@@ -32,16 +32,10 @@ class BootReceiver : BroadcastReceiver() {
         private fun markHandled(context: android.content.Context, at: Long, full: Boolean = true) {
             synchronized(handleLock) { lastHandleAt = at }
             try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
+                val editor = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
                     .putLong("last_handle_elapsed", at)
-                    .apply()
-            } catch (_: Exception) {
-            }
-            if (!full) return
-            try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit()
-                    .putLong("last_full_boot_elapsed", at)
-                    .apply()
+                if (full) editor.putLong("last_full_boot_elapsed", at)
+                editor.apply()
             } catch (_: Exception) {
             }
         }
@@ -57,11 +51,11 @@ class BootReceiver : BroadcastReceiver() {
             val restartedPart = intent.data?.schemeSpecificPart
             if (restartedPart != null && restartedPart != context.packageName) return
         }
-        if (intent.action == Intent.ACTION_USER_UNLOCKED) {
-            val nowUnlock = android.os.SystemClock.elapsedRealtime()
-            synchronized(handleLock) { if (lastHandleAt != 0L && nowUnlock - lastHandleAt < 60_000L) return }
+        if (intent.action == Intent.ACTION_USER_PRESENT || intent.action == Intent.ACTION_USER_UNLOCKED) {
+            val nowEvent = android.os.SystemClock.elapsedRealtime()
+            synchronized(handleLock) { if (lastHandleAt != 0L && nowEvent - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
-                markHandled(context, nowUnlock)
+                markHandled(context, nowEvent)
                 try {
                     MessageScheduler.scheduleWatchdog(context.applicationContext)
                 } catch (_: Exception) {
