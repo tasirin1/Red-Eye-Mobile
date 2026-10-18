@@ -56,8 +56,9 @@ object NetworkUtils {
             val err = prefs.credentialError
             if (err != "401" && err != "403") return false
             val now = System.currentTimeMillis()
-            if (now < prefs.credentialErrorAt) return true
-            now - prefs.credentialErrorAt < 30 * 60_000L
+            val at = prefs.credentialErrorAt
+            if (now < at) return false
+            now - at < 30 * 60_000L
         } catch (_: Exception) {
             false
         }
@@ -75,7 +76,8 @@ object NetworkUtils {
         try {
             if (prefs.credentialError.isEmpty()) return
             val now = System.currentTimeMillis()
-            if (now >= prefs.credentialErrorAt && now - prefs.credentialErrorAt >= 30 * 60_000L) {
+            val at = prefs.credentialErrorAt
+            if (now < at || now - at >= 30 * 60_000L) {
                 prefs.credentialError = ""
                 prefs.credentialErrorAt = 0L
             }

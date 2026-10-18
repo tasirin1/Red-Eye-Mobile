@@ -5154,7 +5154,9 @@ class MonitoringService : Service() {
 
     override fun onTrimMemory(level: Int) {
         try {
-            if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+            val memoryPressure = level != android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN &&
+                level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
+            if (memoryPressure) {
                 try { messageQueue.flushSync() } catch (_: Exception) { }
                 try { Liveness.schedule(this) } catch (_: Exception) { }
             }

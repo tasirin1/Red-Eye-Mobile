@@ -252,13 +252,6 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             pkg
         }
-        if (pendingPosts.get() > MAX_QUEUED) {
-            val (fbTitle, fbText) = notifTitleText(notification)
-            if (fbTitle.isEmpty() && fbText.isEmpty()) return
-            recordOverflow(pkg, fbTitle, fbText)
-            return
-        }
-
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
             try {

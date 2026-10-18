@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.361] - 2026-10-18
+### Fixed
+- Stempel waktu galat kredensial yang "di masa depan" tak lagi memblokir polling selamanya. `NetworkUtils.isAuthBlocked()` kini memperlakukan `credentialErrorAt > now` sebagai kedaluwarsa (bukan terblokir) dan `sweepAuthBlock()` ikut membersihkannya — sebelumnya syarat `now >= credentialErrorAt` membuat pembersihan mustahil, sehingga `getUpdates` berhenti diam-diam bila jam perangkat pernah mundur setelah galat 401/403 tersimpan. Dua blok pembersih serupa di `PreferencesManager.refreshInstance()` ikut diperbaiki.
+- `MonitoringService.onTrimMemory()` tak lagi salah menganggap `TRIM_MEMORY_UI_HIDDEN` (20) sebagai tekanan memori kritis (`TRIM_MEMORY_RUNNING_CRITICAL` = 15). Sebelumnya `flushSync()` dan `Liveness.schedule()` dipanggil setiap aplikasi masuk background.
+- Kirim ganda saat pengiriman berpotongan dibatalkan tepat setelah potongan **terakhir**: `SendMessageWorker` kini tetap menghapus pesan asli dari antrean. Sebelumnya syarat `idx + 1 < parts.size` gagal sehingga `origId` tertinggal dan pesan terkirim ulang utuh pada run berikutnya.
+- Retry penghapusan pesan yang ditolak (HTTP 4xx) di `SendMessageWorker` kini memakai penanda lokal (`rejectedRemoved`) alih-alih `incrementalFailed` yang bocor lintas operasi (kegagalan flush lain bisa memicu penghapusan ulang yang tak perlu). Variabel `incrementalFailed` dihapus.
+- Penjaga `pendingPosts.get() > MAX_QUEUED` di `NotificationForwarderService.onNotificationPosted()` dihapus — tak pernah benar (penghitung paling tinggi 64 lalu `incrementAndGet()` langsung menurunkannya kembali), sedangkan jalur squeezed-priority di bawahnya sudah menangani batas itu.
+
 ## [1.6.360] - 2026-10-18
 ### Changed
 - `SendMessageWorker`: tiga blok penanganan HTTP 400 yang hampir identik (di `sendMessage()`, `sendSingleChunk()`, dan jalur pesan panjang) disatukan menjadi helper `classify400(response, chatId)`. Pesan panjang yang ditolak 400 tetap dipotong lewat `sendChunked()`, sisanya lewat `sendPlainFallback()`. Tak ada perubahan perilaku.

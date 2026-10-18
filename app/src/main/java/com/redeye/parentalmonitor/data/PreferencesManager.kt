@@ -264,7 +264,7 @@ class PreferencesManager(context: Context) {
                             try {
                                 val now = System.currentTimeMillis()
                                 val errAt = current.credentialErrorAt
-                                if (errAt != 0L && now >= errAt && now - errAt >= 30 * 60_000L) {
+                                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
                                     current.credentialError = ""
                                     current.credentialErrorAt = 0L
                                 }
@@ -288,7 +288,7 @@ class PreferencesManager(context: Context) {
                     try {
                         val now = System.currentTimeMillis()
                         val errAt = created.credentialErrorAt
-                        if (errAt != 0L && now >= errAt && now - errAt >= 30 * 60_000L) {
+                        if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
                             created.credentialError = ""
                             created.credentialErrorAt = 0L
                         }

@@ -92,7 +92,6 @@ class SendMessageWorker(
         val runChatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         if (runToken.isEmpty() || runChatId.isEmpty()) return Result.success()
         var credsChanged = false
-        var incrementalFailed = false
         var flushedSent = 0
 
         var queueCleared = false
@@ -128,7 +127,6 @@ class SendMessageWorker(
                                 messageQueue.removeMessages(sentIds)
                                 flushedSent = sentIds.size
                             } catch (_: Exception) {
-                                incrementalFailed = true
                             }
                         }
                         delay(100)
@@ -169,7 +167,6 @@ class SendMessageWorker(
                 try {
                     messageQueue.removeMessages(sentIds)
                 } catch (_: Exception) {
-                    incrementalFailed = true
                 }
             }
             try {
@@ -189,7 +186,6 @@ class SendMessageWorker(
             try {
                 messageQueue.removeMessages(sentIds)
             } catch (_: Exception) {
-                incrementalFailed = true
             }
         }
         try {
@@ -197,12 +193,13 @@ class SendMessageWorker(
         } catch (_: Exception) {
         }
         if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
+            var rejectedRemoved = false
             try {
                 messageQueue.removeMessages(rejectedIds)
+                rejectedRemoved = true
             } catch (_: Exception) {
-                incrementalFailed = true
             }
-            if (incrementalFailed) {
+            if (!rejectedRemoved) {
                 try {
                     messageQueue.removeMessages(rejectedIds)
                 } catch (_: Exception) {
@@ -451,7 +448,11 @@ class SendMessageWorker(
                                 MessageScheduler.scheduleMessageSend(applicationContext)
                             } catch (_: Exception) {
                             }
-                            throw e
+                        } else {
+                            try {
+                                if (origId != null) messageQueue.removeMessages(listOf(origId))
+                            } catch (_: Exception) {
+                            }
                         }
                         throw e
                     }
