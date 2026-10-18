@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.368] - 2026-10-18
+### Fixed
+- Batch SMS/panggilan tak lagi diantrekan ulang tiap siklus saat perangkat offline. Dulu `checkAndSendNewData()` tetap membaca riwayat dan `sendFitted()` menyimpan salinan ke antrean lalu mengembalikan `false` (kursor tak maju), sehingga SMS/panggilan yang sama disalin berulang sampai antrean 100 slot penuh, pesan lain tergusur, dan saat online pemilik menerima batch yang sama berkali-kali. Kini siklus data berhenti lebih awal bila tak ada jaringan atau API sedang membatasi (`rateLimitedRemainMs()`), dan pengiriman dari jalur data memakai `queueOnFail = false` sehingga kegagalan berarti "coba lagi siklus berikutnya dari kursor", bukan salinan antrean.
+- Sinkron riwayat awal tak lagi mengaku selesai saat pembacaan gagal. Kegagalan `getNewSms()`/`getNewCalls()` dulu disamakan dengan "tidak ada riwayat" sehingga `initialSyncDone` diset permanen dan pemilik dikirimi "Belum ada riwayat SMS/panggilan di HP ini" padahal datanya sekadar belum bisa dibaca (izin belum siap setelah boot). Kini kegagalan baca ditandai terpisah, sinkron ditunda, dan dicoba ulang otomatis 30 menit kemudian (hanya saat jaringan tersedia) — termasuk saat pengiriman riwayat hanya terkirim sebagian.
+- Jalur fallback (HTML gagal → teks polos) mencatat rate limit global: respons 429 di sana dulu tidak memanggil `NetworkUtils.noteRateLimited()`, sehingga gerbang rate limit tetap 0 dan pengiriman berikutnya menghajar API lagi alih-alih menunggu.
+- Peringatan "antrean foto penuh" hanya dikirim untuk permintaan manual (`reportResult`), tidak lagi tiap siklus kamera otomatis saat offline; teks "yang paling lama dibuang" hanya dipakai bila pemangkasan benar-benar membebaskan slot, bukan sekadar diklaim.
+
 ## [1.6.367] - 2026-10-18
 ### Fixed
 - Izin tangkap layar yang masih sah tak lagi dicabut sendiri oleh aplikasi saat pengambilan gagal. Bila `getMediaProjection()` ditolak sistem atau `registerCallback` gagal, `utils/ScreenCapture` tidak lagi di-`revoke()` dan sesi tidak dilepas — permintaan `/screenshot` berikutnya masih bisa mencoba selagi sesinya hidup; izin kini hanya lepas saat sistem memanggil `onStop`, layanan monitoring berhenti, atau pemilik meminta izin baru dari Setup.
