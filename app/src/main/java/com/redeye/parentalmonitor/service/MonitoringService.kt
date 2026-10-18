@@ -707,7 +707,7 @@ class MonitoringService : Service() {
     private fun startPeriodicLoops() {
         monitoringJob = serviceScope.launch {
             val self = coroutineContext[Job]
-            while (isActive && monitoringJob === self) {
+            while (isActive && (monitoringJob == null || monitoringJob === self)) {
                 try {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
@@ -773,7 +773,7 @@ class MonitoringService : Service() {
     private fun startCameraLoop() {
         cameraJob = serviceScope.launch {
             val self = coroutineContext[Job]
-            while (isActive && cameraJob === self) {
+            while (isActive && (cameraJob == null || cameraJob === self)) {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     cameraBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -842,7 +842,7 @@ class MonitoringService : Service() {
     private fun startPatrolLoop() {
         patrolJob = serviceScope.launch {
             val self = coroutineContext[Job]
-            while (isActive && patrolJob === self) {
+            while (isActive && (patrolJob == null || patrolJob === self)) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
@@ -1088,7 +1088,7 @@ class MonitoringService : Service() {
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
             val self = coroutineContext[Job]
-            while (isActive && commandJob === self) {
+            while (isActive && (commandJob == null || commandJob === self)) {
                 commandBeatAt = android.os.SystemClock.elapsedRealtime()
                 commandCycleMs = if (cachedMonitoringPaused) 60_000L else 15_000L
                 if (cachedMonitoringPaused) {
@@ -2029,7 +2029,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
                 } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
-                } else if (recorderActive.get()) {
+                } else if (recordBusy.get() || recorderActive.get()) {
                     ringBusy.set(false)
                     sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
                 } else {
@@ -2556,7 +2556,7 @@ class MonitoringService : Service() {
                     sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
                     return
                 }
-                if (recorderActive.get()) {
+                if (recordBusy.get() || recorderActive.get()) {
                     ringBusy.set(false)
                     sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
                 } else {
@@ -6207,7 +6207,7 @@ class MonitoringService : Service() {
         }
         loopWatchdogJob = serviceScope.launch {
             val self = coroutineContext[Job]
-            while (isActive && loopWatchdogJob === self) {
+            while (isActive && (loopWatchdogJob == null || loopWatchdogJob === self)) {
                 try {
                     delay(300_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {

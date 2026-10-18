@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.362] - 2026-10-18
+### Fixed
+- Penjaga lima loop inti `MonitoringService` (`monitoringJob`, `cameraJob`, `patrolJob`, `commandJob`, `loopWatchdogJob`) tak lagi bisa langsung keluar saat baru dijalankan. Sebelumnya syarat `X === self` dievaluasi sebelum field job terisi (field baru diisi setelah `launch` kembali), sehingga loop bisa berhenti tanpa jejak bila badan korutin berjalan lebih dulu; kini kondisi memperlakukan field yang belum terisi (`null`) sebagai "belum digantikan".
+- `/ring` dan `/hilang` kini memeriksa `recordBusy` juga, bukan hanya `recorderActive`. `recorderActive` baru diset saat perekam benar-benar berjalan (di dalam korutin `recordAndSendAudio`/`recordAndSendVideo`), sedangkan `recordBusy` diset sinkron begitu `/record` atau `/recordvideo` diterima — celah "berdering tepat saat perekaman akan dimulai" tertutup.
+
 ## [1.6.361] - 2026-10-18
 ### Fixed
 - Stempel waktu galat kredensial yang "di masa depan" tak lagi memblokir polling selamanya. `NetworkUtils.isAuthBlocked()` kini memperlakukan `credentialErrorAt > now` sebagai kedaluwarsa (bukan terblokir) dan `sweepAuthBlock()` ikut membersihkannya — sebelumnya syarat `now >= credentialErrorAt` membuat pembersihan mustahil, sehingga `getUpdates` berhenti diam-diam bila jam perangkat pernah mundur setelah galat 401/403 tersimpan. Dua blok pembersih serupa di `PreferencesManager.refreshInstance()` ikut diperbaiki.
