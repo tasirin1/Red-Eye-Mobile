@@ -620,7 +620,7 @@ class SetupActivity : AppCompatActivity() {
                     val offSaved: Boolean? = configMutex.withLock {
                         if (mySave != saveSeq.get()) return@withLock null
                         try {
-                            prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
+                            prefs.saveCredentials(token, chatId, interval, cameraInterval)
                         } catch (_: Exception) {
                             false
                         }
@@ -641,7 +641,7 @@ class SetupActivity : AppCompatActivity() {
             val persistOutcome: Boolean? = configMutex.withLock {
                 if (mySave != saveSeq.get()) return@withLock null
                 try {
-                    prefs.saveCoreConfig(token, chatId, interval, cameraInterval)
+                    prefs.saveCredentials(token, chatId, interval, cameraInterval)
                 } catch (_: Exception) {
                     false
                 }
@@ -868,7 +868,7 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            try { prefs.saveTestCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+            try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
         }
         return outcome ?: false
     }
@@ -1141,7 +1141,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                     try {
                         MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                        MessageScheduler.scheduleRateLimited(applicationContext, retryAfter * 1000L)
+                        MessageScheduler.scheduleMessageSendNext(applicationContext, retryAfter * 1000L)
                     } catch (_: Exception) {
                     }
                 } else if (resp.code() == 401 || resp.code() == 403) {

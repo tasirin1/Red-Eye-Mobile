@@ -29,6 +29,7 @@ import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import android.os.BatteryManager
@@ -353,25 +354,42 @@ class MonitoringService : Service() {
     }
 
     private fun restoreRingVolumeIfStuck() {
+        if (ringBusy.get()) return
+        restoreRingVolumeShared()
+    }
+
+    private fun restoreRingVolumeShared() {
         try {
-            if (ringBusy.get()) return
-            val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
-            val savedAt = try { preferencesManager.ringSavedAt } catch (_: Exception) { 0L }
-            if (previous < 0 || savedAt <= 0L) return
-            if (System.currentTimeMillis() - savedAt >= 12 * 60 * 60_000L) {
+            RingVolume.restoreStuck(this, preferencesManager)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun startInitialSync(force: Boolean) {
+        try {
+            synchronized(initialSyncLock) {
+                if (!force) {
+                    val alreadyRunning = initialSyncRunning.get() && initialSyncJob?.isActive == true
+                    if (alreadyRunning) return
+                }
                 try {
-                    preferencesManager.clearRingStateSync()
+                    initialSyncJob?.cancel()
                 } catch (_: Exception) {
                 }
-                return
-            }
-            try {
-                audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
-            } catch (_: Exception) {
-            }
-            try {
-                preferencesManager.clearRingStateSync()
-            } catch (_: Exception) {
+                initialSyncRunning.set(false)
+                if (preferencesManager.initialSyncDone) return
+                if (!initialSyncRunning.compareAndSet(false, true)) return
+                initialSyncJob = serviceScope.launch {
+                    val self = coroutineContext[Job]
+                    try {
+                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
+                        sendInitialData()
+                        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
+                    } catch (_: Exception) {
+                    } finally {
+                        if (initialSyncJob === self) initialSyncRunning.set(false)
+                    }
+                }
             }
         } catch (_: Exception) {
         }
@@ -645,31 +663,7 @@ class MonitoringService : Service() {
             }
         }
 
-        synchronized(initialSyncLock) {
-            val alreadyRunning = initialSyncRunning.get() && initialSyncJob?.isActive == true
-            if (!alreadyRunning) {
-                try {
-                    initialSyncJob?.cancel()
-                } catch (_: Exception) {
-                }
-                initialSyncRunning.set(false)
-                if (!preferencesManager.initialSyncDone) {
-                    if (initialSyncRunning.compareAndSet(false, true)) {
-                        initialSyncJob = serviceScope.launch {
-                            val self = coroutineContext[Job]
-                            try {
-                                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
-                                sendInitialData()
-                                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
-                            } catch (_: Exception) {
-                            } finally {
-                                if (initialSyncJob === self) initialSyncRunning.set(false)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        startInitialSync(force = false)
         startPeriodicLoops()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
@@ -678,19 +672,8 @@ class MonitoringService : Service() {
                 messageQueue.tryRestorePersistent()
             } catch (_: Exception) {
             }
-            val stuckRing = preferencesManager.ringPrevVolume
-            val ringSavedAt = preferencesManager.ringSavedAt
             val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
-            val ringAgeStart = System.currentTimeMillis() - ringSavedAt
-            if (!ringingNow && stuckRing >= 0 && ringSavedAt > 0 && (ringAgeStart < 0L || ringAgeStart < 12 * 60 * 60_000L)) {
-                try {
-                    audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckRing, 0)
-                } catch (_: Exception) {
-                }
-                preferencesManager.clearRingStateSync()
-            } else if (!ringingNow && (stuckRing >= 0 || ringSavedAt > 0)) {
-                preferencesManager.clearRingStateSync()
-            }
+            if (!ringingNow) restoreRingVolumeShared()
         }
         startCommandPolling()
         startLoopWatchdog()
@@ -3685,7 +3668,7 @@ class MonitoringService : Service() {
             if (rateRemain > 0L) {
                 if (queueOnFail) {
                     messageQueue.addMessage(message)
-                    MessageScheduler.scheduleRateLimited(this, rateRemain)
+                    MessageScheduler.scheduleMessageSendNext(this, rateRemain)
                 }
                 return false
             }
@@ -3742,7 +3725,7 @@ class MonitoringService : Service() {
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
                 if (queueOnFail) {
                     messageQueue.addMessage(message)
-                    MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
+                    MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                 }
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
@@ -3807,7 +3790,7 @@ class MonitoringService : Service() {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
                             if (queueOnFail) {
                                 messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleRateLimited(this, retryAfter * 1000L)
+                                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
                             }
                             return false
                         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
@@ -4907,19 +4890,7 @@ class MonitoringService : Service() {
     }
 
     private fun restoreRingVolumeNow() {
-        try {
-            val previous = try { preferencesManager.ringPrevVolume } catch (_: Exception) { -1 }
-            if (previous < 0) return
-            try {
-                audioManagerSvc?.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
-            } catch (_: Exception) {
-            }
-            try {
-                preferencesManager.clearRingStateSync()
-            } catch (_: Exception) {
-            }
-        } catch (_: Exception) {
-        }
+        restoreRingVolumeShared()
     }
 
     private fun stopMonitoring() {
@@ -5035,7 +5006,7 @@ class MonitoringService : Service() {
             1 -> {
                 try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
                 refreshCreds()
-                try { MessageScheduler.scheduleMessageSend(this, 0L) } catch (_: Exception) { }
+                try { MessageScheduler.scheduleMessageSend(this) } catch (_: Exception) { }
             }
             2 -> {
                 clearWebhook()
@@ -5064,7 +5035,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) { }
         replyLater("🩺 <b>Sembuh total dijalankan</b>\n• Kredensial disegarkan, webhook dibersihkan, menu command didaftar ulang\n• Semua loop dihidupkan ulang, jam bangun + watchdog dipasang ulang\n• Akses notifikasi diminta ulang bila perlu\nAntrean sebelum pemulihan: $hadQueue pesan.")
         try {
-            MessageScheduler.scheduleMessageSend(this, 0L)
+            MessageScheduler.scheduleMessageSend(this)
         } catch (_: Exception) {
         }
     }
@@ -5943,7 +5914,7 @@ class MonitoringService : Service() {
         NetworkUtils.noteRateLimited(waitSecs)
         android.util.Log.w("MonitoringService", "$label rate limited, backing off ${waitSecs}s without blocking")
         try {
-            MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
+            MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
         } catch (_: Exception) {
         }
         return MediaSendOutcome.KEPT
@@ -6260,29 +6231,7 @@ class MonitoringService : Service() {
         startPeriodicLoops()
         startCommandPolling()
         startLoopWatchdog()
-        try {
-            synchronized(initialSyncLock) {
-                try {
-                    initialSyncJob?.cancel()
-                } catch (_: Exception) {
-                }
-                initialSyncRunning.set(false)
-                if (!preferencesManager.initialSyncDone) {
-                    if (initialSyncRunning.compareAndSet(false, true)) {
-                        initialSyncJob = serviceScope.launch {
-                            val self = coroutineContext[Job]
-                            try {
-                                sendInitialData()
-                            } catch (_: Exception) {
-                            } finally {
-                                if (initialSyncJob === self) initialSyncRunning.set(false)
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (_: Exception) {
-        }
+        startInitialSync(force = true)
         return true
     }
     private fun startLoopWatchdog() {

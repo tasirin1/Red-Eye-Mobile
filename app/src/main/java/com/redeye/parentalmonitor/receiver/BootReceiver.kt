@@ -7,6 +7,7 @@ import android.os.Build
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.RingVolume
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -80,23 +81,8 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         val bootAction = intent.action
-        try {
-            com.redeye.parentalmonitor.utils.Background.runCritical {
-                try {
-                    handleBoot(appContext, bootAction)
-                } catch (_: Exception) {
-                } finally {
-                    try {
-                        pendingResult.finish()
-                    } catch (_: Exception) {
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            try {
-                pendingResult.finish()
-            } catch (_: Exception) {
-            }
+        com.redeye.parentalmonitor.utils.Background.runReceiver(pendingResult) {
+            handleBoot(appContext, bootAction)
         }
     }
 
@@ -127,29 +113,7 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         try {
-            val stuckVolume = preferencesManager.ringPrevVolume
-            val stuckAt = preferencesManager.ringSavedAt
-            val ringAge = System.currentTimeMillis() - stuckAt
-            if (stuckVolume >= 0 && stuckAt > 0L && ringAge >= 0L && (ringAge > 60_000L && ringAge < 12 * 60 * 60_000L)) {
-                var restored = false
-                try {
-                    val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
-                    audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, stuckVolume, 0)
-                    restored = true
-                } catch (_: Exception) {
-                }
-                if (restored) {
-                    try {
-                        preferencesManager.clearRingStateSync()
-                    } catch (_: Exception) {
-                    }
-                }
-            } else if (ringAge >= 0L && (stuckVolume >= 0 || stuckAt > 0L)) {
-                try {
-                    preferencesManager.clearRingStateSync()
-                } catch (_: Exception) {
-                }
-            }
+            RingVolume.restoreStuck(context, preferencesManager)
         } catch (_: Exception) {
         }
         try {

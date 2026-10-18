@@ -23,4 +23,25 @@ object Background {
             }
         }
     }
+
+    fun runReceiver(pendingResult: android.content.BroadcastReceiver.PendingResult?, block: () -> Unit) {
+        try {
+            runCritical {
+                try {
+                    block()
+                } catch (_: Exception) {
+                } finally {
+                    try {
+                        pendingResult?.finish()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            try {
+                pendingResult?.finish()
+            } catch (_: Exception) {
+            }
+        }
+    }
 }

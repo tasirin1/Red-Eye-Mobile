@@ -26,30 +26,28 @@ object MessageScheduler {
         .setRequiredNetworkType(NetworkType.CONNECTED)
         .build()
 
-    fun scheduleMessageSend(context: Context, initialDelayMs: Long = 0L): Boolean {
+    fun scheduleMessageSend(context: Context): Boolean {
         return try {
-            if (initialDelayMs <= 0L) {
-                val now = android.os.SystemClock.elapsedRealtime()
-                // Atomic check-and-increment to avoid race condition
-                val current = outstandingSends.get()
-                if (current >= MAX_OUTSTANDING_SEND &&
+            val now = android.os.SystemClock.elapsedRealtime()
+            // Atomic check-and-increment to avoid race condition
+            val current = outstandingSends.get()
+            if (current >= MAX_OUTSTANDING_SEND &&
+                now - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
+            ) {
+                return true
+            }
+            // Use atomic compare-and-set loop for the increment
+            var updated = false
+            while (!updated) {
+                val cur = outstandingSends.get()
+                if (cur >= MAX_OUTSTANDING_SEND &&
                     now - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
                 ) {
                     return true
                 }
-                // Use atomic compare-and-set loop for the increment
-                var updated = false
-                while (!updated) {
-                    val cur = outstandingSends.get()
-                    if (cur >= MAX_OUTSTANDING_SEND &&
-                        now - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
-                    ) {
-                        return true
-                    }
-                    updated = outstandingSends.compareAndSet(cur, cur + 1)
-                }
-                lastSendAppendAt.set(now)
+                updated = outstandingSends.compareAndSet(cur, cur + 1)
             }
+            lastSendAppendAt.set(now)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
                 .setBackoffCriteria(
@@ -57,16 +55,13 @@ object MessageScheduler {
                     10,
                     TimeUnit.SECONDS
                 )
-            if (initialDelayMs > 0L) {
-                requestBuilder.setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
-            }
 
             val policy = ExistingWorkPolicy.APPEND_OR_REPLACE
             try {
                 WorkManager.getInstance(context.applicationContext)
                     .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
             } catch (e: Exception) {
-                if (initialDelayMs <= 0L) outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
+                outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
                 throw e
             }
             true
@@ -74,10 +69,6 @@ object MessageScheduler {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false
         }
-    }
-
-    fun scheduleRateLimited(context: Context, initialDelayMs: Long = 0L): Boolean {
-        return scheduleMessageSendNext(context, initialDelayMs)
     }
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {

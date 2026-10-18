@@ -33,3 +33,6 @@ historyAllowed
 isFreshLocation
 notifyPhotoSendFailure
 todayCountFor
+saveCoreConfig
+saveTestCredentials
+scheduleRateLimited

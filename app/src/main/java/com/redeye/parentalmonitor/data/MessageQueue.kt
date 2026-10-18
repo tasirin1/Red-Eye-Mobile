@@ -186,6 +186,7 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun persistDropCountsLocked() {
+        if (volatileOnly) return
         try {
             val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())
             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) editor?.apply() else editor?.commit()
@@ -200,7 +201,7 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
         }
         dropsDirty = true
-        if (!volatileOnly) persistDropCountsLocked()
+        persistDropCountsLocked()
     }
 
     private fun noteExpiredLocked(by: Long = 1L) {
@@ -209,7 +210,7 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
         }
         dropsDirty = true
-        if (!volatileOnly) persistDropCountsLocked()
+        persistDropCountsLocked()
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>) {
@@ -476,7 +477,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             val n = overflowDrops.getAndSet(0L)
             dropsDirty = true
-            if (!volatileOnly) persistDropCountsLocked()
+            persistDropCountsLocked()
             return n
         }
     }
@@ -485,7 +486,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             val n = priorityDrops.getAndSet(0L)
             dropsDirty = true
-            if (!volatileOnly) persistDropCountsLocked()
+            persistDropCountsLocked()
             return n
         }
     }
@@ -494,7 +495,7 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             val n = expiredDrops.getAndSet(0L)
             dropsDirty = true
-            if (!volatileOnly) persistDropCountsLocked()
+            persistDropCountsLocked()
             return n
         }
     }

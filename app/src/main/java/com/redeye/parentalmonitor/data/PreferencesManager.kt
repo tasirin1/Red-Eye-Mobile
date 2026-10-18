@@ -878,14 +878,6 @@ class PreferencesManager(context: Context) {
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
     }
 
-    fun saveCoreConfig(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
-        return saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
-    }
-
-    fun saveTestCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
-        return saveCredentials(newToken, newChatId, newSyncInterval, newCameraInterval)
-    }
-
     fun setChatIdSync(newChatId: String) {
         try {
             sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
@@ -893,7 +885,7 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    private fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
+    fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
         try { upgradeToPersistent() } catch (_: Exception) { }
         if (!storageEncrypted) return false
         val editor = sharedPreferences.edit()

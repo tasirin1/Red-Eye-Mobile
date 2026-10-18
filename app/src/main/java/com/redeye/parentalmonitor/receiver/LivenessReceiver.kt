@@ -16,27 +16,8 @@ class LivenessReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             null
         }
-        try {
-            Background.runCritical {
-                try {
-                    Liveness.handleWakeUp(appContext)
-                } catch (_: Exception) {
-                } finally {
-                    try {
-                        pendingResult?.finish()
-                    } catch (_: Exception) {
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            try {
-                pendingResult?.finish()
-            } catch (_: Exception) {
-            }
-            try {
-                Liveness.handleWakeUp(appContext)
-            } catch (_: Exception) {
-            }
+        Background.runReceiver(pendingResult) {
+            Liveness.handleWakeUp(appContext)
         }
     }
 }

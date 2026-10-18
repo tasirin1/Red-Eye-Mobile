@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.354] - 2026-10-18
+### Changed
+- Dua pembungkus identik `saveCoreConfig()` dan `saveTestCredentials()` dibuang — keduanya hanya meneruskan ke `saveCredentials()`, yang kini publik dan dipanggil langsung oleh Setup.
+- `MessageScheduler.scheduleMessageSend()` kehilangan parameter `initialDelayMs` yang selalu diisi `0` (dan dua pemanggil yang menulisnya eksplisit kini tak lagi), sedangkan alias `scheduleRateLimited()` dihapus karena isinya hanya memanggil `scheduleMessageSendNext()` — para pemanggilnya memakai nama itu langsung.
+- `MonitoringService`: pemulihan volume dering disatukan di satu fungsi (`RingVolume.restoreStuck()`, kini dipakai juga oleh `BootReceiver`) dan startup `initialSync` disatukan di `startInitialSync(force)` — sebelumnya daftar langkah yang sama disalin di dua tempat.
+- `Background.runReceiver()` menggantikan tarian `goAsync()` + `runCritical` + `finish()` yang disalin di empat penerima (`PackageChange`, `Boot`, `TimeChange`, `Liveness`, plus `AdminReceiver.onDisabled`). Tiap salinan menghabiskan belasan baris untuk hal yang sama, dan cabang fallback-nya sebenarnya tak pernah terpakai karena `runCritical()` sudah menjalankan blok secara langsung bila antreannya penuh.
+- `MessageQueue.persistDropCountsLocked()` memeriksa sendiri mode volatil, jadi lima pemanggilnya tak lagi menulis penjaga `if (!volatileOnly)`.
+### Fixed
+- Pemulihan volume alarm yang tertinggal maksimal setelah aplikasi mati mendadak kini memakai satu aturan di semua jalur (bootstrap layanan, penerima boot, dan pembongkaran tugas): dipulihkan bila catatan dering belum lebih dari 12 jam. Sebelumnya `BootReceiver` menghapus catatan tanpa memulihkan volume bila catatan itu berumur kurang dari 60 detik, sehingga alarm bisa tetap maksimal setelah reboot saat dering baru dimulai.
+### Removed
+- `saveCoreConfig()`, `saveTestCredentials()`, dan `scheduleRateLimited()` — dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.353] - 2026-10-18
 ### Changed
 - `SendMessageWorker.adoptMigratedChat()` tak lagi salinan keempat dari logika yang sama — kini memanggil `NetworkUtils.adoptMigratedChat()` (satu-satunya sumber yang sudah dipakai layanan pemantau dan penerus notifikasi), dan teks pengumuman grup ditingkatkan dipakai dari `NetworkUtils.MIGRATED_CHAT_NOTICE` yang tadinya disalin ulang di sana.

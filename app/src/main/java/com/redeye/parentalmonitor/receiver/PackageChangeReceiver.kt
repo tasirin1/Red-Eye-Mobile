@@ -23,23 +23,8 @@ class PackageChangeReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             null
         }
-        try {
-            Background.runCritical {
-                try {
-                    handle(appContext, action, pkg)
-                } catch (_: Exception) {
-                } finally {
-                    try {
-                        pendingResult?.finish()
-                    } catch (_: Exception) {
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            try {
-                pendingResult?.finish()
-            } catch (_: Exception) {
-            }
+        Background.runReceiver(pendingResult) {
+            handle(appContext, action, pkg)
         }
     }
 
