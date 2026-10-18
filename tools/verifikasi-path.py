@@ -179,7 +179,7 @@ def himpun_definisi():
     return definisi, acuan
 
 
-def cek_xml(gagal, basis_desc):
+def cek_xml(gagal):
     buruk = []
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
         try:
@@ -719,7 +719,7 @@ def cek_uji_baru(peringatan, diff):
                         "(aturan: uji logika murni baru)" % nama)
 
 
-def cek_pola_berisiko(peringatan, diff, berubah):
+def cek_pola_berisiko(peringatan, diff):
     for _, isi in tambah_kode(diff):
         if "System.out.println" in isi:
             peringatan.append("System.out.println di diff (pakai Log/Toast): " + isi.strip()[:80])
@@ -775,7 +775,7 @@ def utama():
         berubah = [p for p in jalan_repo("app")]
 
     ada_uji = os.path.isdir(UJI)
-    cek_xml(gagal, "")
+    cek_xml(gagal)
     cek_acuan_yatim(gagal)
     cek_manifest(gagal)
     cek_duplikat_definisi(gagal)
@@ -801,7 +801,7 @@ def utama():
         if ada_uji:
             cek_uji_baru(peringatan, diff)
             cek_uji_ubah(peringatan, diff)
-        cek_pola_berisiko(peringatan, diff, berubah)
+        cek_pola_berisiko(peringatan, diff)
         cek_pola_boros(peringatan, diff)
         cek_izin_baru(peringatan, diff)
         cek_definisi_baru(peringatan, diff)

@@ -48,7 +48,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var dropNoticeJob: Job? = null
-    private var dropRestored = false
     private val dropNoticeLock = Any()
     private var rebindAttempt = 0
     private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -131,9 +130,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
                 try {
-                    val pending = if (dropRestored) 0 else prefsRef?.pendingNotifDrops ?: 0
-                    dropRestored = true
+                    val pending = prefsRef?.pendingNotifDrops ?: 0
                     if (pending > 0) {
+                        try {
+                            prefsRef?.setPendingNotifDropsSync(0)
+                        } catch (_: Exception) {
+                        }
                         dropNoticeCount.addAndGet(pending)
                         synchronized(dropNoticeLock) {
                             if (dropNoticeJob?.isActive != true) {
@@ -409,7 +411,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     dropNoticeAt.entries.removeIf { it.value < cutoff }
                 }
                 dropNoticeAt[pkg] = now
-                forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotif.", "")
+                forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotif.")
             }
             record(label, title, text)
             return
@@ -424,7 +426,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         try {
-            forwardToTelegram(message, pkg)
+            forwardToTelegram(message)
         } catch (_: Exception) {
         }
     }
@@ -609,7 +611,7 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (leftover.isNotEmpty()) {
                 try {
-                    queue().addMessages(leftover.map { it.first })
+                    queue().addMessages(leftover)
                     queue().flushSync()
                 } catch (_: Exception) {
                 }
@@ -729,7 +731,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
 
     private val batchLock = Any()
-    private val batchBuf = ArrayDeque<Pair<String, String>>()
+    private val batchBuf = ArrayDeque<String>()
     private var batchJob: Job? = null
 
     private fun scheduleBatchLocked() {
@@ -752,13 +754,13 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardToTelegram(message: String, pkg: String = "") {
+    private suspend fun forwardToTelegram(message: String) {
         var overflowed = false
         synchronized(batchLock) {
             if (batchBuf.size >= MAX_BATCH) {
                 overflowed = true
             } else {
-                batchBuf.addLast(message to pkg)
+                batchBuf.addLast(message)
                 scheduleBatchLocked()
             }
         }
@@ -774,7 +776,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun flushBatch() {
-        val items: List<Pair<String, String>>
+        val items: List<String>
         synchronized(batchLock) {
             if (batchBuf.isEmpty()) return
             items = batchBuf.toList()
@@ -782,18 +784,16 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         var cur = StringBuilder()
         var curCount = 0
-        var curPkg = ""
         var index = 0
         suspend fun flushCur() {
             if (curCount <= 0) return
             forwardLocked(cur.toString(), curCount)
             cur = StringBuilder()
             curCount = 0
-            curPkg = ""
         }
         try {
             while (index < items.size) {
-                val (msg, pkg) = items[index]
+                val msg = items[index]
                 index++
                 if (msg.length > 4000) {
                     flushCur()
@@ -810,24 +810,19 @@ class NotificationForwarderService : NotificationListenerService() {
                     continue
                 }
                 if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
-                if (curCount > 0) {
-                    cur.append("\n\n")
-                    if (curPkg != pkg) curPkg = ""
-                } else {
-                    curPkg = pkg
-                }
+                if (curCount > 0) cur.append("\n\n")
                 cur.append(msg)
                 curCount++
             }
             flushCur()
         } catch (t: Throwable) {
-            val leftover = ArrayList<Pair<String, String>>()
-            if (curCount > 0) leftover.add(cur.toString() to curPkg)
+            val leftover = ArrayList<String>()
+            if (curCount > 0) leftover.add(cur.toString())
             while (index < items.size) leftover.add(items[index++])
             if (leftover.isNotEmpty()) {
                 if (t is kotlinx.coroutines.CancellationException) {
                     try {
-                        queue().addMessages(leftover.map { it.first })
+                        queue().addMessages(leftover)
                         queue().flushSync()
                     } catch (_: Exception) {
                     }

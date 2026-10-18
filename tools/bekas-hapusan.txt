@@ -5,7 +5,6 @@
 clearOwnerMenuScope
 Background.run
 workerRunning
-run
 onSupportNavigateUp
 scheduleShotSessionRelease
 saveScreenshotConsentSync

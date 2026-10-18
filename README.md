@@ -154,7 +154,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 app/src/main/java/com/redeye/parentalmonitor/
   data/         preferensi terenkripsi, antrean
   network/      client Telegram API
-  receiver/     boot, network, admin
+  receiver/     boot, admin, liveness, time-change, package-change
   repository/   SMS & call log
   service/      monitoring & kamera
   ui/           MainActivity kalkulator, SetupActivity

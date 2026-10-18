@@ -214,7 +214,7 @@ class SendMessageWorker(
         }
 
         var authDropped = 0
-        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && !credsChanged && credsSame()) {
+        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && credsSame()) {
             try {
                 if (NetworkUtils.isNetworkAvailable(applicationContext)) {
                     authDropped = messageQueue.registerTransientFailures(failedIds).first.size
@@ -285,7 +285,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!queueCleared && failedIds.isNotEmpty() && !credsChanged && credsSame()) {
+        if (!queueCleared && failedIds.isNotEmpty() && credsSame()) {
             val online = try {
                 NetworkUtils.isNetworkAvailable(applicationContext)
             } catch (_: Exception) {

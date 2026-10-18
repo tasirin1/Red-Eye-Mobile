@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [1.6.349] - 2026-10-18
+### Changed
+- `NotificationForwarderService`: pipa `pkg` yang mati di jalur batch notifikasi dibuang seluruhnya. Nilainya hanya disimpan lalu diteruskan ke `forwardLocked()` yang memang tak menerimanya, jadi `batchBuf` kini berisi `String` biasa (dulu `Pair<String, String>`) dan sisa `curPkg`/`leftover` yang mengikutinya ikut hilang.
+- `SendMessageWorker`: syarat `!credsChanged` dibuang dari dua pemeriksaan karena selalu bernilai benar — `credsChanged` sudah `return Result.success()` lebih dulu.
+- `MonitoringService`: `foregroundTypes` jadi `val` (tak pernah ditulis ulang) dan `baseForegroundType()` dipanggil sekali di jalur cadangan `startForeground()`. Pembungkus `try/catch` di sekitar penugasan `commandsRegFailAt` (tiga tempat) dan `commandsTokenHash` dibuang karena penugasan biasa tak bisa melempar.
+- `PreferencesManager.putCredentialState()`: kondisi kembar disatukan — `changed` yang sebenarnya `tokenChanged || chatChanged` dulu dihitung terpisah lalu dibandingkan lagi dengan urutan terbalik.
+- `BootReceiver`: penulisan `last_handle_elapsed` ganda dihapus; `markHandled()` sudah menulis nilai yang sama di kedua jalur yang menambahkannya lagi.
+- `MainActivity`: pemakaian `BuildConfig` disamakan (15 tempat masih memakai nama panjang padahal sudah diimpor), dan log `"DEBUG mode"` yang tak berisi apa-apa dibuang.
+- `README.md`: daftar isi `receiver/` diperbaiki menjadi `boot, admin, liveness, time-change, package-change` — dulu tertulis `network`, padahal receiver itu tak pernah ada.
+### Fixed
+- `NotificationForwarderService`: `dropRestored` yang selalu `false` saat dibaca dibuang; sisa penghitung "notifikasi dibuang" yang tersimpan di preferensi kini langsung dinolkan begitu dibaca, sehingga restart layanan dalam 30 detik tak menghitungnya dua kali.
+- Indentasi sisa refactor dirapikan: badan `else` "SMS belum terkonfirmasi" (menjorok 8 spasi), cabang `413` di `sendAudioFile()` beserta `return` di bawahnya, dan baris `if (...) {                try {` yang menyatu di `registerBotCommands()`.
+### Removed
+- Entri `run` (tanpa nama kelas) di `tools/bekas-hapusan.txt` — entri itu akan menggagalkan push untuk baris baru mana pun yang memanggil sesuatu bernama `run(`, padahal aslinya cuma `Background.run` yang sudah tercatat lebih spesifik.
+- Parameter mati di `tools/verifikasi-path.py`: `basis_desc` pada `cek_xml()` dan `berubah` pada `cek_pola_berisiko()`.
+
 ## [1.6.348] - 2026-10-18
 ### Fixed
 - Penjaga lima loop layar utama (`monitoring`, kamera, patroli, polling perintah, watchdog loop) tak lagi bisa menilai dirinya sebelum penugasannya selesai. Sebelumnya kondisi `while` membaca field job yang baru ditulis sesudah `launch`; karena scope loop memakai `Dispatchers.IO`, badan korutin bisa berjalan di thread lain lebih dulu, melihat nilai lama/kosong, lalu keluar tanpa jejak — seluruh pemantauan berhenti senyap sampai watchdog. Tiap loop kini menyimpan job-nya sendiri (`val self = coroutineContext[Job]`).

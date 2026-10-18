@@ -862,14 +862,9 @@ class PreferencesManager(context: Context) {
     }
 
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
-        val changed = try {
-            newToken != botToken || newChatId != chatId
-        } catch (_: Exception) {
-            true
-        }
         val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
-        if (changed) {
+        if (tokenChanged || chatChanged) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
             editor.putString(KEY_OWNER_PAIR_CODE, "")
             editor.remove(KEY_LAST_UPDATE_ID)
@@ -877,8 +872,6 @@ class PreferencesManager(context: Context) {
             editor.putLong(KEY_LAST_SMS_ID, 0L)
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_ID, 0L)
-        }
-        if (chatChanged || tokenChanged) {
             editor.putLong(KEY_OWNER_ID, 0L)
         }
         editor.putString(KEY_CRED_ERROR, "")

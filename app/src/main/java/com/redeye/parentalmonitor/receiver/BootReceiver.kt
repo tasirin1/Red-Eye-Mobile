@@ -158,10 +158,6 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             markHandled(context, nowBoot)
-            try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
-            } catch (_: Exception) {
-            }
             return
         }
         if (!preferencesManager.isConfigured()) {
@@ -184,10 +180,6 @@ class BootReceiver : BroadcastReceiver() {
             }
         } else {
             markHandled(context, nowBoot)
-            try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE).edit().putLong("last_handle_elapsed", nowBoot).apply()
-            } catch (_: Exception) {
-            }
         }
     }
 

