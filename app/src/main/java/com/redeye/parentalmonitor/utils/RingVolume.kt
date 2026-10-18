@@ -11,7 +11,8 @@ object RingVolume {
         val savedAt = try { prefs.ringSavedAt } catch (_: Exception) { 0L }
         val age = System.currentTimeMillis() - savedAt
         var restored = false
-        if (previous >= 0 && savedAt > 0L && age < MAX_AGE_MS) {
+        val usable = previous >= 0 && savedAt > 0L && age < MAX_AGE_MS
+        if (usable) {
             try {
                 val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
@@ -19,9 +20,11 @@ object RingVolume {
             } catch (_: Exception) {
             }
         }
-        try {
-            prefs.clearRingStateSync()
-        } catch (_: Exception) {
+        if (restored || !usable) {
+            try {
+                prefs.clearRingStateSync()
+            } catch (_: Exception) {
+            }
         }
         return restored
     }

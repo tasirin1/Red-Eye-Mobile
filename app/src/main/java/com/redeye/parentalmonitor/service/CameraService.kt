@@ -325,7 +325,7 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
-                        if (done.get()) {
+                        if (done.get() || sessionSeq.get() != mySeq) {
                             try { camera.close() } catch (_: Exception) { }
                             return
                         }
@@ -535,6 +535,10 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             rec.setVideoEncodingBitRate(if (videoSize.first * videoSize.second >= 1280 * 720) 2_000_000 else 1_000_000)
+            try {
+                if (durationMs > 0L) rec.setMaxDuration((durationMs + 30_000L).coerceAtMost(10 * 60_000L).toInt())
+            } catch (_: Exception) {
+            }
             rec.setOutputFile(tmpFile.absolutePath)
             rec.prepare()
             videoSurface = rec.surface
@@ -542,7 +546,7 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
-                        if (done.get()) {
+                        if (done.get() || sessionSeq.get() != mySeq) {
                             try { camera.close() } catch (_: Exception) { }
                             return
                         }

@@ -70,7 +70,6 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
         val appContext = context.applicationContext
-        MessageScheduler.scheduleWatchdog(appContext)
         try {
             com.redeye.parentalmonitor.utils.Liveness.schedule(appContext)
         } catch (_: Exception) {
@@ -122,6 +121,10 @@ class BootReceiver : BroadcastReceiver() {
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             markHandled(context, nowBoot)
+            try {
+                MessageScheduler.cancelWatchdog(context)
+            } catch (_: Exception) {
+            }
             return
         }
         if (!preferencesManager.isConfigured()) {

@@ -54,6 +54,7 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var watchKeywordsList: List<String> = emptyList()
     private var rebindAttempt = 0
+    private var rebindNoticeSent = false
     private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val rebindRunnable = Runnable { runRebind() }
     @Volatile
@@ -459,6 +460,7 @@ class NotificationForwarderService : NotificationListenerService() {
         reviveMonitoringIfNeeded()
         try {
             rebindAttempt = 0
+            rebindNoticeSent = false
             rebindHandler.removeCallbacks(rebindRunnable)
         } catch (_: Exception) {
         }
@@ -483,11 +485,21 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun scheduleRebind() {
         try {
-            if (rebindAttempt >= REBIND_DELAYS_MS.size) return
+            val exhausted = rebindAttempt >= REBIND_DELAYS_MS.size
             val delayMs = REBIND_DELAYS_MS[rebindAttempt.coerceIn(0, REBIND_DELAYS_MS.size - 1)]
             rebindAttempt++
             rebindHandler.removeCallbacks(rebindRunnable)
             rebindHandler.postDelayed(rebindRunnable, delayMs)
+            if (exhausted && !rebindNoticeSent) {
+                rebindNoticeSent = true
+                scope.launch {
+                    try {
+                        queue().addMessage("⚠️ Akses notifikasi terputus dan belum pulih walau sudah dicoba berulang. Buka aplikasi → Setup → izinkan akses notifikasi, atau kirim /sembuh. Aplikasi tetap mencoba menyambung tiap 30 menit.")
+                        MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
         } catch (_: Exception) {
         }
     }
