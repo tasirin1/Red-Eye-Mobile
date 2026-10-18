@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.355] - 2026-10-18
+### Fixed
+- Indentasi tiga blok `drain@ while` di `flushPendingPhotos()`, `flushPendingVideos()`, dan `flushPendingAudio()` dibetulkan — badannya satu tingkat terlalu dangkal sehingga kurung penutupnya tampak menutup lebih awal (di `flushPendingPhotos()` bahkan tampak menutup blok `try`). Tak ada perubahan perilaku, hanya struktur yang kini terbaca sesuai kenyataan. Baris kosong yang hilang di antara `restartAllLoops()` dan `startLoopWatchdog()` juga dikembalikan.
+
 ## [1.6.354] - 2026-10-18
 ### Changed
 - Dua pembungkus identik `saveCoreConfig()` dan `saveTestCredentials()` dibuang — keduanya hanya meneruskan ke `saveCredentials()`, yang kini publik dan dipanggil langsung oleh Setup.

