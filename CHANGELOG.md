@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.339] - 2026-10-18
+### Fixed
+- Loop kamera tak lagi me-restart dirinya sendiri tanpa henti saat kamera diblokir kebijakan perangkat (device admin). Cabang jeda menulis `photoPausedUntil` dengan stempel waktu baru setiap 2 menit, dan tulis itu memicu listener preferensi yang memanggil `restartCameraLoop()` — job kamera dibatalkan tepat saat sedang menunggu, lalu iterasi berikutnya menulis lagi. Kini nilai ditulis sekali saja saat jeda dimulai; selama masih terjeda cache disinkronkan tanpa menulis preferensi, sehingga badai cancel/launch, tulis SharedPreferences, dan panggilan binder `DevicePolicyManager` berhenti.
+
 ## [1.6.338] - 2026-10-17
 ### Fixed
 - Ikon bulat `@mipmap/ic_launcher_round` juga mendapat cadangan untuk Android 7.0–7.1: rilis sebelumnya hanya `@mipmap/ic_launcher` yang diberi padanan non-v26, sedangkan `android:roundIcon` tetap menunjuk berkas yang hanya ada di `mipmap-anydpi-v26`. Kini ada `mipmap-anydpi/ic_launcher_round.xml` dengan isi sama.

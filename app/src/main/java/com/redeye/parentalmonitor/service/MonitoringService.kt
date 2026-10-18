@@ -800,9 +800,13 @@ class MonitoringService : Service() {
                         val adminPaused = photoPauseSource() == PHOTO_PAUSE_ADMIN
                         if (adminPaused) {
                             if (isCameraDisabledByPolicy()) {
-                                val until = System.currentTimeMillis() + 120 * 60_000L
-                                cachedPhotoPausedUntil = until
-                                try { preferencesManager.photoPausedUntil = until } catch (_: Exception) { }
+                                if (isPhotoPaused()) {
+                                    cachedPhotoPausedUntil = photoPausedElapsed()
+                                } else {
+                                    val until = System.currentTimeMillis() + 120 * 60_000L
+                                    cachedPhotoPausedUntil = until
+                                    try { preferencesManager.photoPausedUntil = until } catch (_: Exception) { }
+                                }
                                 cameraCycleMs = 2 * 60_000L
                                 delayMs(2 * 60_000L)
                             } else {
