@@ -209,6 +209,26 @@ class MonitoringService : Service() {
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
     private val handledCallbackIds = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
 
+    private fun <T> markSeen(set: MutableSet<T>, id: T): Boolean {
+        return synchronized(set) {
+            val seen = !set.add(id)
+            while (set.size > 500) {
+                try {
+                    val it = set.iterator()
+                    if (it.hasNext()) {
+                        it.next()
+                        it.remove()
+                    } else {
+                        break
+                    }
+                } catch (_: Exception) {
+                    break
+                }
+            }
+            seen
+        }
+    }
+
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
@@ -1250,23 +1270,7 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
-            val seen = synchronized(handledUpdateIds) {
-                val s = !handledUpdateIds.add(update.updateId)
-                while (handledUpdateIds.size > 500) {
-                    try {
-                        val it = handledUpdateIds.iterator()
-                        if (it.hasNext()) {
-                            it.next()
-                            it.remove()
-                        } else {
-                            break
-                        }
-                    } catch (_: Exception) {
-                        break
-                    }
-                }
-                s
-            }
+            val seen = markSeen(handledUpdateIds, update.updateId)
             if (seen) continue
             try {
                 val callback = update.callbackQuery
@@ -1376,23 +1380,7 @@ class MonitoringService : Service() {
             answerCallback(query.id)
             return
         }
-        val dupCallback = synchronized(handledCallbackIds) {
-            val seen = !handledCallbackIds.add(query.id)
-            while (handledCallbackIds.size > 500) {
-                try {
-                    val it = handledCallbackIds.iterator()
-                    if (it.hasNext()) {
-                        it.next()
-                        it.remove()
-                    } else {
-                        break
-                    }
-                } catch (_: Exception) {
-                    break
-                }
-            }
-            seen
-        }
+        val dupCallback = markSeen(handledCallbackIds, query.id)
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
@@ -1649,8 +1637,6 @@ class MonitoringService : Service() {
                 sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
             }
-        }
-        if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             if (!senderOk) {
                 if (privateChat) sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
                 return

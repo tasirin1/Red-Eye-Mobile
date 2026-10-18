@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.359] - 2026-10-18
+### Changed
+- `MonitoringService`: blok kembar "tandai id sudah dilihat lalu batasi 500 id" untuk `handledUpdateIds` (`Long`) dan `handledCallbackIds` (`String`) disatukan menjadi `markSeen(set, id)` generik. Tak ada perubahan perilaku.
+- `handleTelegramCommandInner()`: dua kondisi kembar `command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS` disatukan menjadi satu gerbang, sehingga pemeriksaan umur perintah dan pemeriksaan pengirim berada di blok yang sama.
+
 ## [1.6.358] - 2026-10-18
 ### Fixed
 - `Liveness.handleWakeUp()`: `noteKillDetected()` kini dipanggil sebelum `schedule()` sehingga alarm berikutnya dijadwalkan memakai interval "mode waspada" (`intervalMs()` membaca `urgentUntilElapsed`). Sebelumnya alarm berikutnya memakai interval panjang meski servis baru saja terdeteksi mati.
