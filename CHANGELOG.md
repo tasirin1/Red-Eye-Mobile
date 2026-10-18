@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.377] - 2026-10-18
+### Fixed
+- Kartu status Setup tak lagi bisa menampilkan data lama: `updateStatus()` memuat data di `Dispatchers.IO` lalu menulis ke UI, dan tiga pemanggilan beruntun (buka halaman/`onResume`/hasil launcher) bisa selesai tak berurutan sehingga hasil yang lebih lama menimpa yang lebih baru. Kini tiap pemanggilan bernomor urut (`statusSeq`) dan hasil yang sudah kedaluwarsa dibuang.
+- Pembacaan preferensi terenkripsi tak lagi di thread UI saat halaman Setup kembali aktif: `reviveMonitoringIfNeeded()` dulu membaca 6 nilai + status izin tepat di `onResume`; kini pembacaan dan `startForegroundService`-nya berjalan di `Dispatchers.IO`.
+### Changed
+- Efisiensi & kerapian kode: `PreferencesManager` kini punya `setCredentialError(code, at)` sehingga penulisan kode+waktu galat kredensial memakai satu `apply()` (dulu dua); setter `isMonitoringEnabled`/`lastSmsId`/`lastCallTimestamp`/`lastCallId` yang tak pernah dipakai dihapus (`val` saja); `commitGuarded()` mengembalikan `Unit` (nilai kembaliannya selalu diabaikan) dan catch ganda di pemanggilnya dibuang; blok pembersih galat kredensial basi yang kembar di `refreshInstance` dijadikan `clearStaleCredentialError()`; `readSmsPendingSync()` mengembalikan `SmsPendingSync` bertipe benar (dulu `Array<String?>` dengan waktu sebagai teks yang harus di-`toLongOrNull`).
+- `Liveness.clockText()` memakai `TimeFmt.short` (ThreadLocal, zona waktu kawa) alih-alih membuat `SimpleDateFormat` baru tiap panggilan, dan lokasinya kini konsisten dengan sisa app.
+- `watchdogJob` diganti nama `photoWatchdog` (memang khusus pemotretan, sejajar `videoWatchdog`/`shotWatchdog`); angka ajaib video jadi `VIDEO_BYTES_PER_SEC`/`MAX_VIDEO_BYTES`; tombol Setup memakai field yang sudah ada, bukan `findViewById` ulang.
+- Cek `if (lastError != null)` yang selalu benar di jalur `startForeground` dan `try/catch` mati di sekitar `serviceScope.launch` (4 tempat) dibuang.
+
 ## [1.6.376] - 2026-10-18
 ### Fixed
 - `tools/pasang-hook.sh` kini tahu di mana Git mencari kait: dulu skrip memasang `.git/hooks/pre-push` lalu mengumumkan "terpasang" walaupun `core.hooksPath` menunjuk direktori lain — Git mengabaikan `.git/hooks` dalam keadaan itu, jadi pemasangan bisa "sukses" tanpa satu pun kait yang jalan. Sekarang tujuan mengikuti `core.hooksPath` (absolut, relatif ke root repo, atau `~/…`); direktori yang belum ada dibuat disertai peringatan tegas (selama tak ada, Git melewati semua kait); kait lama yang bukan milik skrip ini disalin ke `pre-push.bak-<tanggal>`; dan bila kait tetap tak bisa dieksekusi, skrip keluar dengan status gagal alih-alih mengaku sukses.

@@ -89,16 +89,14 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    private fun commitGuarded(editor: android.content.SharedPreferences.Editor): Boolean {
-        return try {
+    private fun commitGuarded(editor: android.content.SharedPreferences.Editor) {
+        try {
             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                 editor.apply()
-                true
             } else {
                 editor.commit()
             }
         } catch (_: Exception) {
-            false
         }
     }
 
@@ -254,6 +252,17 @@ class PreferencesManager(context: Context) {
         private const val KEY_DATA_SAVER_ENABLED = "data_saver_enabled"
         private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
 
+        private fun clearStaleCredentialError(target: PreferencesManager) {
+            try {
+                val now = System.currentTimeMillis()
+                val errAt = target.credentialErrorAt
+                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                    target.setCredentialError("", 0L)
+                }
+            } catch (_: Exception) {
+            }
+        }
+
         fun refreshInstance(context: Context): Boolean {
             synchronized(this) {
                 val current = instance
@@ -261,15 +270,7 @@ class PreferencesManager(context: Context) {
                     if (current.isStorageEncrypted) return true
                     return try {
                         if (current.upgradeToPersistent()) {
-                            try {
-                                val now = System.currentTimeMillis()
-                                val errAt = current.credentialErrorAt
-                                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
-                                    current.credentialError = ""
-                                    current.credentialErrorAt = 0L
-                                }
-                            } catch (_: Exception) {
-                            }
+                            clearStaleCredentialError(current)
                             true
                         } else {
                             false
@@ -285,15 +286,7 @@ class PreferencesManager(context: Context) {
                         return false
                     }
                     instance = created
-                    try {
-                        val now = System.currentTimeMillis()
-                        val errAt = created.credentialErrorAt
-                        if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
-                            created.credentialError = ""
-                            created.credentialErrorAt = 0L
-                        }
-                    } catch (_: Exception) {
-                    }
+                    clearStaleCredentialError(created)
                     true
                 } catch (_: Exception) {
                     false
@@ -310,9 +303,8 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getString(KEY_CHAT_ID, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_CHAT_ID, value).apply()
 
-    var isMonitoringEnabled: Boolean
+    val isMonitoringEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_MONITORING_ENABLED, false) } catch (_: Exception) { false }
-        set(value) = sharedPreferences.edit().putBoolean(KEY_MONITORING_ENABLED, value).apply()
 
     var lastSyncTime: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SYNC, 0L) } catch (_: Exception) { 0L }
@@ -322,17 +314,14 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getInt(KEY_SYNC_INTERVAL, com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL) } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL }
         set(value) = sharedPreferences.edit().putInt(KEY_SYNC_INTERVAL, value).apply()
 
-    var lastSmsId: Long
+    val lastSmsId: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SMS_ID, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, value).apply()
 
-    var lastCallTimestamp: Long
+    val lastCallTimestamp: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_CALL_TIMESTAMP, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, value).apply()
 
-    var lastCallId: Long
+    val lastCallId: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_CALL_ID, 0L) } catch (_: Exception) { 0L }
-        set(value) = sharedPreferences.edit().putLong(KEY_LAST_CALL_ID, value).apply()
 
     var userDisabledMonitoring: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_USER_DISABLED, false) } catch (_: Exception) { false }
@@ -446,6 +435,13 @@ class PreferencesManager(context: Context) {
     var credentialErrorAt: Long
         get() = try { sharedPreferences.getLong(KEY_CRED_ERROR_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_CRED_ERROR_AT, value).apply()
+
+    fun setCredentialError(code: String, at: Long) {
+        try {
+            sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var commandsTokenHash: String
         get() = try { sharedPreferences.getString(KEY_COMMANDS_TOKEN_HASH, "") ?: "" } catch (_: Exception) { "" }
@@ -823,12 +819,14 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun readSmsPendingSync(): Array<String?> {
+    data class SmsPendingSync(val number: String?, val text: String?, val at: Long, val owner: String?)
+
+    fun readSmsPendingSync(): SmsPendingSync {
         synchronized(smsPendingLock) {
-            return arrayOf(
+            return SmsPendingSync(
                 try { sharedPreferences.getString(KEY_PENDING_SMS_NUMBER, "") } catch (_: Exception) { null },
                 try { sharedPreferences.getString(KEY_PENDING_SMS_TEXT, "") } catch (_: Exception) { null },
-                try { sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L).toString() } catch (_: Exception) { "0" },
+                try { sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L) } catch (_: Exception) { 0L },
                 try { sharedPreferences.getString(KEY_PENDING_SMS_OWNER, "") } catch (_: Exception) { null }
             )
         }
@@ -903,7 +901,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        try { commitGuarded(editor) } catch (_: Exception) { try { editor.apply() } catch (_: Exception) { } }
+        commitGuarded(editor)
     }
 
 private class MemoryPrefs : SharedPreferences {

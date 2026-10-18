@@ -101,7 +101,7 @@ class MonitoringService : Service() {
     @Volatile
     private var smsJob: Job? = null
     @Volatile
-    private var watchdogJob: Job? = null
+    private var photoWatchdog: Job? = null
     @Volatile
     private var loopWatchdogJob: Job? = null
     @Volatile
@@ -256,6 +256,8 @@ class MonitoringService : Service() {
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
+        private const val VIDEO_BYTES_PER_SEC = 300_000L
+        private const val MAX_VIDEO_BYTES = 48L * 1024L * 1024L
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -325,10 +327,7 @@ class MonitoringService : Service() {
                         synchronized(handledCallbackIds) { handledCallbackIds.clear() }
                     } catch (_: Exception) {
                     }
-                    try {
-                        serviceScope.launch { registerBotCommands() }
-                    } catch (_: Exception) {
-                    }
+                    serviceScope.launch { registerBotCommands() }
                 }
             }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
@@ -505,10 +504,7 @@ class MonitoringService : Service() {
                     startMonitoring()
                 }
                 if (isRunning) {
-                    try {
-                        serviceScope.launch { handleAdminAlert() }
-                    } catch (_: Exception) {
-                    }
+                    serviceScope.launch { handleAdminAlert() }
                 }
                 return START_STICKY
             }
@@ -643,10 +639,7 @@ class MonitoringService : Service() {
             Liveness.noteServiceStart(this, preferencesManager)
         } catch (_: Exception) {
         }
-        try {
-            serviceScope.launch { reportLivenessSelfTest() }
-        } catch (_: Exception) {
-        }
+        serviceScope.launch { reportLivenessSelfTest() }
         try {
             seedSendOkMarker()
         } catch (_: Exception) {
@@ -2095,9 +2088,9 @@ class MonitoringService : Service() {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..180) {
                     sendToTelegram("Cara pakai: /recordvideo &lt;5-180&gt; (seconds)")
-                } else if (seconds * 300_000L > 48L * 1024L * 1024L) {
-                    val maxSecs = ((48L * 1024L * 1024L) / 300_000L).toInt().coerceIn(5, 180)
-                    sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * 300_000L) / (1024L * 1024L)} MB, melebihi batas 48 MB. Coba ≤$maxSecs dtk.")
+                } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
+                    val maxSecs = (MAX_VIDEO_BYTES / VIDEO_BYTES_PER_SEC).toInt().coerceIn(5, 180)
+                    sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * VIDEO_BYTES_PER_SEC) / (1024L * 1024L)} MB, melebihi batas ${MAX_VIDEO_BYTES / (1024L * 1024L)} MB. Coba ≤$maxSecs dtk.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
                 } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -2170,10 +2163,10 @@ class MonitoringService : Service() {
             }
             "/smsconfirm" -> {
                 val pending = try { preferencesManager.readSmsPendingSync() } catch (_: Exception) { null }
-                val number = pending?.getOrNull(0) ?: ""
-                val smsText = pending?.getOrNull(1) ?: ""
-                val stagedAt = pending?.getOrNull(2)?.toLongOrNull() ?: 0L
-                val stagedBy = pending?.getOrNull(3) ?: ""
+                val number = pending?.number ?: ""
+                val smsText = pending?.text ?: ""
+                val stagedAt = pending?.at ?: 0L
+                val stagedBy = pending?.owner ?: ""
                 val nowConfirm = System.currentTimeMillis()
                 if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
                     if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
@@ -3634,14 +3627,11 @@ class MonitoringService : Service() {
     }
 
     private fun replyLater(message: String) {
-        try {
-            serviceScope.launch {
-                try {
-                    sendToTelegram(message)
-                } catch (_: Exception) {
-                }
+        serviceScope.launch {
+            try {
+                sendToTelegram(message)
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
     }
 
@@ -4864,7 +4854,7 @@ class MonitoringService : Service() {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
         }
-        watchdogJob?.cancel()
+        photoWatchdog?.cancel()
         videoWatchdog?.cancel()
         shotWatchdog?.cancel()
         cameraAttempt.set(0)
@@ -5312,7 +5302,7 @@ class MonitoringService : Service() {
             }
             return
         }
-        watchdogJob?.cancel()
+        photoWatchdog?.cancel()
         val attempt = cameraAttempt.incrementAndGet()
         val wd = serviceScope.launch {
             delay(45_000)
@@ -5328,7 +5318,7 @@ class MonitoringService : Service() {
                 }
             }
         }
-        watchdogJob = wd
+        photoWatchdog = wd
         try {
             ensureForegroundTypes()
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "📸 Starting camera capture...")
@@ -6036,9 +6026,7 @@ class MonitoringService : Service() {
                 lastError = e
             }
         }
-        if (lastError != null) {
-            android.util.Log.w("MonitoringService", "startForeground gagal: " + redactToken(lastError.message))
-        }
+        android.util.Log.w("MonitoringService", "startForeground gagal: " + redactToken(lastError?.message))
         return false
     }
 
@@ -6729,9 +6717,9 @@ class MonitoringService : Service() {
                     markMediaActive(videoFile)
                     serviceScope.launch {
                         try {
-                            if (videoFile.length() > 48L * 1024L * 1024L) {
+                            if (videoFile.length() > MAX_VIDEO_BYTES) {
                                 deleteQuietly(videoFile)
-                                sendToTelegram("⚠️ Video terlalu besar (>48 MB). Coba /recordvideo dengan detik lebih sedikit.")
+                                sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
                                 when (sendVideoFile(videoFile)) {
                                     MediaSendOutcome.SENT -> {

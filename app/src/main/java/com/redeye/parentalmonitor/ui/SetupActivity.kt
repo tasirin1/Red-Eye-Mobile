@@ -49,6 +49,7 @@ class SetupActivity : AppCompatActivity() {
     private var lastNotifToggleAt = 0L
     private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    private val statusSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
@@ -377,18 +378,18 @@ class SetupActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
-        findViewById<MaterialButton>(R.id.setupPermissionButton).setOnClickListener {
+        permissionButton.setOnClickListener {
             requestLocationPermissions()
         }
         findViewById<MaterialButton>(R.id.setupAdminButton).setOnClickListener { activateDeviceAdmin() }
-        findViewById<MaterialButton>(R.id.setupToggleButton).setOnClickListener { toggleMonitoring() }
+        toggleButton.setOnClickListener { toggleMonitoring() }
         findViewById<MaterialButton>(R.id.setupBatteryButton).setOnClickListener { requestBatteryExemption() }
         findViewById<MaterialButton>(R.id.setupAntiKillButton).setOnClickListener { showAntiKillWizard() }
         findViewById<MaterialButton>(R.id.setupSelfCheckButton).setOnClickListener { startSelfCheck() }
         findViewById<MaterialButton>(R.id.setupUsageButton).setOnClickListener { com.redeye.parentalmonitor.utils.UsageAccess.openSettings(this) }
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
-        findViewById<MaterialButton>(R.id.setupNotifButton).setOnClickListener { toggleNotifForwarding() }
-        findViewById<MaterialButton>(R.id.setupShotButton).setOnClickListener { requestScreenCapture() }
+        notifButton.setOnClickListener { toggleNotifForwarding() }
+        shotButton.setOnClickListener { requestScreenCapture() }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -412,24 +413,30 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun reviveMonitoringIfNeeded() {
-        try {
-            if (prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()) {
-                val intent = Intent(this, MonitoringService::class.java).apply {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val shouldRevive = try {
+                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()
+            } catch (_: Exception) {
+                false
+            }
+            if (!shouldRevive) return@launch
+            try {
+                val intent = Intent(this@SetupActivity, MonitoringService::class.java).apply {
                     action = MonitoringService.ACTION_START_MONITORING
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     try {
                         startForegroundService(intent)
                     } catch (e: Exception) {
-                        try { com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(this) } catch (_: Exception) { }
+                        try { com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(this@SetupActivity) } catch (_: Exception) { }
                         throw e
                     }
                 } else {
                     startService(intent)
                 }
+            } catch (_: Exception) {
+                android.util.Log.w("SetupActivity", "Revive monitoring failed")
             }
-        } catch (_: Exception) {
-            android.util.Log.w("SetupActivity", "Revive monitoring failed")
         }
     }
 
@@ -1407,6 +1414,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun updateStatus() {
+        val myStatus = statusSeq.incrementAndGet()
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
             fun s(key: String): String = snap[key] as? String ?: ""
@@ -1459,6 +1467,7 @@ class SetupActivity : AppCompatActivity() {
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
+                if (myStatus != statusSeq.get()) return@withContext
                 statusText.text = body
                 toggleButton.text = if (enabled) getString(R.string.disable_monitoring) else getString(R.string.enable_monitoring)
                 toggleButton.isEnabled = configured || enabled

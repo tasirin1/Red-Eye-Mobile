@@ -212,11 +212,7 @@ class SendMessageWorker(
             }
         }
         if (authCode != 0) {
-            try {
-                preferencesManager.credentialError = authCode.toString()
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialError(authCode.toString(), System.currentTimeMillis())
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && credsSame()) {
                 try {
@@ -249,11 +245,7 @@ class SendMessageWorker(
             false
         }
         if (sentIds.isNotEmpty() && credsSameNow) {
-            try {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialError("", 0L)
         }
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
@@ -467,8 +459,7 @@ class SendMessageWorker(
                         try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
                             MessageScheduler.scheduleMessageSend(applicationContext)
-                            preferencesManager.credentialError = outcome.code.toString()
-                            preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                            preferencesManager.setCredentialError(outcome.code.toString(), System.currentTimeMillis())
                             remainderQueued = true
                         } catch (_: Exception) {
                         }

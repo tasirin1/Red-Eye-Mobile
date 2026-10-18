@@ -11,9 +11,6 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.receiver.LivenessReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object Liveness {
     const val ACTION_ALARM = "com.redeye.parentalmonitor.action.LIVENESS_ALARM"
@@ -208,11 +205,7 @@ object Liveness {
     }
 
     fun clockText(ms: Long): String {
-        return try {
-            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ms))
-        } catch (_: Exception) {
-            "-"
-        }
+        return TimeFmt.short(ms)
     }
 
     private fun resurrectionText(previousWall: Long, downMs: Long, kills: Int): String {
