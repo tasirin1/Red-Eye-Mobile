@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.360] - 2026-10-18
+### Changed
+- `SendMessageWorker`: tiga blok penanganan HTTP 400 yang hampir identik (di `sendMessage()`, `sendSingleChunk()`, dan jalur pesan panjang) disatukan menjadi helper `classify400(response, chatId)`. Pesan panjang yang ditolak 400 tetap dipotong lewat `sendChunked()`, sisanya lewat `sendPlainFallback()`. Tak ada perubahan perilaku.
+- `TimeChangeReceiver`: jalur `catch` luar yang tak terjangkau dihapus. `Background.runCritical()` tak pernah melempar (bloknya sudah tertutup `try/catch` internal, termasuk jalur fallback), sehingga `pendingResult?.finish()` selalu dijalankan di `finally`.
+
 ## [1.6.359] - 2026-10-18
 ### Changed
 - `MonitoringService`: blok kembar "tandai id sudah dilihat lalu batasi 500 id" untuk `handledUpdateIds` (`Long`) dan `handledCallbackIds` (`String`) disatukan menjadi `markSeen(set, id)` generik. Tak ada perubahan perilaku.

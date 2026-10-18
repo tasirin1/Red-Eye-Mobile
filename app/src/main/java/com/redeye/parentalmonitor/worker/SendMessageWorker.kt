@@ -367,13 +367,7 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else if (response.code() == 400) {
-                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) {
-                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
-                }
-                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else SendOutcome.Rejected
+                classify400(response, chatId) ?: SendOutcome.Rejected
             } else {
                 SendOutcome.Rejected
             }
@@ -399,13 +393,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) {
-                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
-                }
-                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else sendPlainFallback(chunk, botToken, chatId)
+                classify400(response, chatId) ?: sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
                 val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {
@@ -574,6 +562,16 @@ class SendMessageWorker(
         )
     }
 
+    private fun classify400(response: retrofit2.Response<*>, chatId: String): SendOutcome? {
+        val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
+        val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
+        if (chatGone) {
+            return if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
+        }
+        if (NetworkUtils.isRightsLimited(body400)) return SendOutcome.Failed
+        return null
+    }
+
     private fun noteSendOk() {
         try {
             preferencesManager.setLastSendOkMarker(android.os.SystemClock.elapsedRealtime())
@@ -595,22 +593,8 @@ class SendMessageWorker(
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
-            } else if (response.code() == 400 && message.length > 4000) {
-                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) {
-                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
-                }
-                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else sendChunked(message, botToken, chatId, retryCount, origId)
             } else if (response.code() == 400) {
-                val body400 = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val chatGone = try { NetworkUtils.isChatMissing(body400) } catch (_: Exception) { false }
-                if (chatGone) {
-                    if (adoptMigratedChat(body400, chatId)) SendOutcome.Failed else SendOutcome.AuthFailed(response.code())
-                }
-                else if (NetworkUtils.isRightsLimited(body400)) SendOutcome.Failed
-                else sendPlainFallback(message, botToken, chatId)
+                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {
