@@ -5440,6 +5440,20 @@ class MonitoringService : Service() {
         return try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
     }
 
+    private fun screenshotTypeActive(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+        return (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0
+    }
+
+    private fun screenshotFailureHint(): String {
+        val types = fgsTypesText(appliedFgsTypes)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !screenshotTypeActive()) {
+            "Tipe latar 'screen' belum aktif (kini: $types). Buka aplikasi sekali agar layanan memulihkan tipe latar di depan, lalu kirim /screenshot lagi. Bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
+        } else {
+            "Tipe latar 'screen' aktif ($types), jadi izinnya kemungkinan sudah tak berlaku (Android mengizinkan satu sesi per izin). Berikan sekali lagi: buka Setup → Capture Screen."
+        }
+    }
+
     private fun captureAndSendScreenshot() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             serviceScope.launch {
@@ -5454,8 +5468,12 @@ class MonitoringService : Service() {
             return
         }
         if (!hasScreenshotConsent()) {
+            val ended = try { com.redeye.parentalmonitor.utils.ScreenCapture.sessionEnded() } catch (_: Exception) { false }
             serviceScope.launch {
-                sendToTelegram("⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali.")
+                sendToTelegram(
+                    if (ended) "⚠️ Sesi izin tangkap layar sudah berakhir — Android hanya mengizinkan satu sesi per izin, dan sesinya ditutup saat layanan monitoring berhenti. Berikan sekali lagi: buka Setup, tekan Capture Screen."
+                    else "⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali."
+                )
             }
             return
         }
@@ -5482,11 +5500,11 @@ class MonitoringService : Service() {
                 val shotFile = try {
                     takeScreenshotFrame()
                 } catch (e: SecurityException) {
-                    try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
-                    try { releaseShotSession() } catch (_: Exception) { }
+                    try { releaseShotSurface() } catch (_: Exception) { }
                     try { wd.cancel() } catch (_: Exception) { }
                     shotBusy.set(false)
-                    sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
+                    android.util.Log.w("MonitoringService", "Tangkap layar ditolak sistem: " + redactToken(e.message))
+                    sendToTelegram("⚠️ Tangkap layar ditolak sistem. " + screenshotFailureHint())
                     return@launch
                 }
                 if (shotAttempt.get() != shotSeq) {
@@ -5497,7 +5515,7 @@ class MonitoringService : Service() {
                 try { wd.cancel() } catch (_: Exception) { }
                 if (shotFile == null) {
                     shotBusy.set(false)
-                    sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
+                    sendToTelegram("⚠️ Tangkap layar gagal. " + screenshotFailureHint())
                     return@launch
                 }
                 markMediaActive(shotFile)
@@ -5565,7 +5583,7 @@ class MonitoringService : Service() {
         val acquired = try {
             mpm.getMediaProjection(request.first, request.second)
         } catch (e: SecurityException) {
-            com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
+            android.util.Log.w("MonitoringService", "getMediaProjection ditolak (izin disimpan): " + redactToken(e.message))
             return null
         }
         if (acquired == null) {
@@ -5574,8 +5592,8 @@ class MonitoringService : Service() {
         }
         try {
             acquired.registerCallback(shotStopCallback, android.os.Handler(android.os.Looper.getMainLooper()))
-        } catch (_: Exception) {
-            com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
+        } catch (e: Exception) {
+            android.util.Log.w("MonitoringService", "registerCallback tangkap layar gagal: " + redactToken(e.message))
             return null
         }
         com.redeye.parentalmonitor.utils.ScreenCapture.adopt(acquired)
@@ -5930,7 +5948,7 @@ class MonitoringService : Service() {
     }
 
     private fun foregroundTypeLadder(): List<Int> {
-        val ladder = ArrayList<Int>(3)
+        val ladder = ArrayList<Int>(4)
         val full = try {
             computeForegroundTypes()
         } catch (_: Exception) {
@@ -5939,6 +5957,13 @@ class MonitoringService : Service() {
         ladder.add(full)
         if ((full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) {
             ladder.add(full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION.inv())
+        }
+        val whileInUse = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val withoutWhileInUse = full and whileInUse.inv()
+        if (withoutWhileInUse != full && withoutWhileInUse != ladder[ladder.size - 1]) {
+            ladder.add(withoutWhileInUse)
         }
         val base = baseForegroundType()
         if (base != full && base != ladder[ladder.size - 1]) ladder.add(base)

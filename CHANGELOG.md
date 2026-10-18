@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.367] - 2026-10-18
+### Fixed
+- Izin tangkap layar yang masih sah tak lagi dicabut sendiri oleh aplikasi saat pengambilan gagal. Bila `getMediaProjection()` ditolak sistem atau `registerCallback` gagal, `utils/ScreenCapture` tidak lagi di-`revoke()` dan sesi tidak dilepas — permintaan `/screenshot` berikutnya masih bisa mencoba selagi sesinya hidup; izin kini hanya lepas saat sistem memanggil `onStop`, layanan monitoring berhenti, atau pemilik meminta izin baru dari Setup.
+- Tangkap layar dari latar kembali bisa walau service diluncurkan dari latar: tangga tipe FGS kini menyisipkan rung "tipe lengkap tanpa `camera`/`microphone`/`location`" sebelum tipe dasar. Di Android 14+ yang ditolak saat `startForeground` dari latar adalah tiga tipe while-in-use itu (kebijakan `foregroundOnlyPermission`), sedangkan `mediaProjection` tidak (gerbangnya token izin, bukan izin while-in-use) — sebelumnya tangga melepas `mediaProjection` lebih dulu, sehingga `/screenshot` dari latar selalu ditolak padahal izinnya masih hidup.
+### Changed
+- Diagnosa `/screenshot` memakai `screenshotFailureHint()`: bila tipe latar `screen` belum aktif, petunjuknya "buka aplikasi sekali lalu kirim `/screenshot` lagi" (mekanisme yang sama dengan pemulihan tipe kamera `ACTION_REFRESH_FGS`), bukan langsung menyuruh memberi izin baru; bila tipe `screen` sudah aktif, barulah diarahkan ke Setup → Capture Screen.
+- Pesan izin kosong dibedakan lewat `ScreenCapture.sessionEnded()`: "belum pernah diberi" berbeda dari "sesi izin sudah berakhir karena layanan monitoring berhenti", sehingga pemilik tahu kenapa izin harus diberikan sekali lagi (Android hanya mengizinkan satu sesi per izin; sesi itu ditutup sistem begitu layanan pemegangnya berhenti).
+
 ## [1.6.366] - 2026-10-18
 ### Changed
 - Tiga salinan logika `startForeground` ber-tipe (`startForegroundImmediate()`, `startMonitoring()`, `ensureForegroundTypes()`) disatukan menjadi `applyForegroundTypes()` + `foregroundTypeLadder()`, jadi urutan tipe dan penanganan gagalnya tak lagi bisa menyimpang antar jalur.

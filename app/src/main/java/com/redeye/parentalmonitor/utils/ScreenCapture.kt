@@ -13,11 +13,15 @@ object ScreenCapture {
     @Volatile
     private var projection: MediaProjection? = null
 
+    @Volatile
+    private var ended = false
+
     @Synchronized
     fun grant(code: Int, data: Intent?) {
         if (code == android.app.Activity.RESULT_OK && data != null) {
             resultCode = code
             resultData = data
+            ended = false
         } else {
             revoke()
         }
@@ -39,11 +43,15 @@ object ScreenCapture {
     @Synchronized
     fun revoke() {
         val dead = projection
+        val hadSession = dead != null || resultData != null
         projection = null
         resultCode = 0
         resultData = null
+        ended = ended || hadSession
         try { dead?.stop() } catch (_: Exception) { }
     }
 
     fun granted(): Boolean = resultData != null || projection != null
+
+    fun sessionEnded(): Boolean = ended && !granted()
 }
