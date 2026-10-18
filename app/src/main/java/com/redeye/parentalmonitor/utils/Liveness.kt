@@ -41,13 +41,13 @@ object Liveness {
     }
 
     fun intervalText(context: Context): String {
-        return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
-            "3 mnt (mode waspada)"
-        } else if (isScreenInteractive(context)) {
-            "15 mnt (layar nyala)"
-        } else {
-            "10 mnt (layar mati)"
+        val ms = intervalMs(context)
+        val label = when (ms) {
+            URGENT_INTERVAL_MS -> "mode waspada"
+            SCREEN_ON_INTERVAL_MS -> "layar nyala"
+            else -> "layar mati"
         }
+        return (ms / 60_000L).toString() + " mnt (" + label + ")"
     }
 
     fun noteKillDetected() {

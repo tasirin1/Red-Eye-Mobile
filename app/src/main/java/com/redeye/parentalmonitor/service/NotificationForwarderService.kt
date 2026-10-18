@@ -210,36 +210,38 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun refreshCfgCache(prefs: PreferencesManager, now: Long) {
+        cfgCacheEnabled = try {
+            prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+        cfgCacheForward = try {
+            prefs.notifForwardEnabled
+        } catch (_: Exception) {
+            true
+        }
+        cfgCacheConfigured = try {
+            prefs.isConfigured()
+        } catch (_: Exception) {
+            false
+        }
+        cfgCacheAt = now
+    }
+
+    private fun ensureCfgCache(prefs: PreferencesManager) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - cfgCacheAt >= 10_000L) refreshCfgCache(prefs, now)
+    }
+
     private fun forwardingAllowed(): Boolean {
         val prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
             return false
         }
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - cfgCacheAt < 10_000L) {
-            return cfgCacheEnabled && cfgCacheForward && cfgCacheConfigured
-        }
-        val enabled = try {
-            prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
-        } catch (_: Exception) {
-            false
-        }
-        val forward = try {
-            prefs.notifForwardEnabled
-        } catch (_: Exception) {
-            true
-        }
-        val configured = try {
-            prefs.isConfigured()
-        } catch (_: Exception) {
-            false
-        }
-        cfgCacheEnabled = enabled
-        cfgCacheForward = forward
-        cfgCacheConfigured = configured
-        cfgCacheAt = now
-        return enabled && forward && configured
+        ensureCfgCache(prefs)
+        return cfgCacheEnabled && cfgCacheForward && cfgCacheConfigured
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -332,23 +334,10 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
             }
         }
-        val nowCfg = android.os.SystemClock.elapsedRealtime()
-        val cfgEnabled: Boolean
-        val cfgForward: Boolean
-        val cfgConfigured: Boolean
-        if (nowCfg - cfgCacheAt < 10_000L) {
-            cfgEnabled = cfgCacheEnabled
-            cfgForward = cfgCacheForward
-            cfgConfigured = cfgCacheConfigured
-        } else {
-            cfgEnabled = try { prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring } catch (_: Exception) { false }
-            cfgForward = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
-            cfgConfigured = try { prefs.isConfigured() } catch (_: Exception) { false }
-            cfgCacheEnabled = cfgEnabled
-            cfgCacheForward = cfgForward
-            cfgCacheConfigured = cfgConfigured
-            cfgCacheAt = nowCfg
-        }
+        ensureCfgCache(prefs)
+        val cfgEnabled = cfgCacheEnabled
+        val cfgForward = cfgCacheForward
+        val cfgConfigured = cfgCacheConfigured
         if (!cfgEnabled) {
             return
         }

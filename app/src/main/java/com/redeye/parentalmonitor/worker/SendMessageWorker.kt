@@ -559,30 +559,19 @@ class SendMessageWorker(
     }
 
     private fun adoptMigratedChat(body: String?, currentChatId: String): Boolean {
-        val migrated = NetworkUtils.extractMigratedChatId(body) ?: return false
-        val stored = try { preferencesManager.chatId } catch (_: Exception) { currentChatId }
-        if (migrated == stored) {
-            try {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
-            } catch (_: Exception) {
+        return NetworkUtils.adoptMigratedChat(
+            preferencesManager,
+            body,
+            currentChatId,
+            refresh = { },
+            announce = {
+                try {
+                    messageQueue.addMessage(NetworkUtils.MIGRATED_CHAT_NOTICE, true)
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
             }
-            return true
-        }
-        if (migrated == currentChatId) return false
-        return try {
-            preferencesManager.setChatIdSync(migrated)
-            preferencesManager.credentialError = ""
-            preferencesManager.credentialErrorAt = 0L
-            try {
-                messageQueue.addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
-                MessageScheduler.scheduleMessageSend(applicationContext)
-            } catch (_: Exception) {
-            }
-            true
-        } catch (_: Exception) {
-            false
-        }
+        )
     }
 
     private fun noteSendOk() {

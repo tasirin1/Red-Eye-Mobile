@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.353] - 2026-10-18
+### Changed
+- `SendMessageWorker.adoptMigratedChat()` tak lagi salinan keempat dari logika yang sama — kini memanggil `NetworkUtils.adoptMigratedChat()` (satu-satunya sumber yang sudah dipakai layanan pemantau dan penerus notifikasi), dan teks pengumuman grup ditingkatkan dipakai dari `NetworkUtils.MIGRATED_CHAT_NOTICE` yang tadinya disalin ulang di sana.
+- `NotificationForwarderService`: dua gerbang konfigurasi yang identik (batas cache 10 detik di `forwardingAllowed()` dan di `handlePosted()`) disatukan ke `ensureCfgCache()`/`refreshCfgCache()`.
+- `Liveness.intervalText()` tak lagi menyalin ulang tiga cabang `intervalMs()` beserta angka "3/15/10 mnt" yang ditulis manual — teksnya kini diturunkan dari nilai yang sama, jadi tak bisa lagi menyimpang dari konstanta sebenarnya. Bunyi pesannya tetap sama.
+- `MonitoringService`: URL `getUpdates` yang ditulis dua kali identik (poll biasa + ulang setelah token disegarkan) kini dibuat lewat `updatesUrl()`; `selfConflict` dan `quietRestart` di blok `409` yang ekspresinya sama persis kini satu nilai.
+### Fixed
+- `/jejak` tak lagi memotong jejak 24 jam di 24 titik tanpa alasan — pemotongan itu membuat jumlah titik di judul menyesatkan. Kini semua titik dalam 24 jam (maks 300 sesuai batas penyimpanan) dihitung, sedangkan 10 terakhir tetap yang ditampilkan; judulnya berbunyi "👣 Jejak (N titik tersimpan, M terakhir)" dan daftar 10 terakhir dihitung sekali (dulu dua kali).
+
 ## [1.6.352] - 2026-10-18
 ### Changed
 - `formatSmsMessage()` tak lagi memicu satu kueri per nomor. Bila nomor pengirim tak ada di peta frekuensi 24 jam, tiap nomor dulu memanggil `todayCountFor()` yang memindai ulang 200 SMS + 200 panggilan; kini seluruh nomor di pesan itu dipindai sekali lewat `freqForNumbers()` dengan kunci 10 digit terakhir yang sama seperti peta utama (`batchFreqMap()`). Sekitar 4000 pembacaan baris untuk 10 SMS tanpa nomor yang cocok jadi 400.

