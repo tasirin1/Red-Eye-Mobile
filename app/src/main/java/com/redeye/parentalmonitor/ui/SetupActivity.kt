@@ -75,37 +75,47 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@registerForActivityResult
-        val text = try {
-            contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
-        } catch (_: Exception) {
-            null
-        }
-        if (text.isNullOrBlank()) {
-            Toast.makeText(this, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
-            return@registerForActivityResult
-        }
-        askPin(getString(R.string.restore_pin_title), false) { pin ->
-            if (pin == null) return@askPin
-            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-                val data = try {
-                    com.redeye.parentalmonitor.utils.SettingsBackup.import(text, pin)
-                } catch (_: Exception) {
-                    null
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val size = try {
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+            } catch (_: Exception) {
+                -1L
+            }
+            val text = if (size > MAX_BACKUP_BYTES) null else try {
+                contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            } catch (_: Exception) {
+                null
+            }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                if (text.isNullOrBlank()) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
+                    return@withContext
                 }
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    if (data == null) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
-                        return@withContext
+                askPin(getString(R.string.restore_pin_title), false) { pin ->
+                    if (pin == null) return@askPin
+                    lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                        val data = try {
+                            com.redeye.parentalmonitor.utils.SettingsBackup.import(text, pin)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            if (isFinishing || isDestroyed) return@withContext
+                            if (data == null) {
+                                Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
+                                return@withContext
+                            }
+                            try {
+                                botTokenInput.setText(data.token)
+                                chatIdInput.setText(data.chatId)
+                                syncIntervalInput.setText(data.syncInterval.toString())
+                                cameraIntervalInput.setText(data.cameraInterval.toString())
+                            } catch (_: Exception) {
+                            }
+                            Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
+                        }
                     }
-                    try {
-                        botTokenInput.setText(data.token)
-                        chatIdInput.setText(data.chatId)
-                        syncIntervalInput.setText(data.syncInterval.toString())
-                        cameraIntervalInput.setText(data.cameraInterval.toString())
-                    } catch (_: Exception) {
-                    }
-                    Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -200,6 +210,7 @@ class SetupActivity : AppCompatActivity() {
         private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
         private const val MIN_BACKUP_PIN = 6
         private const val MIN_RESTORE_PIN = 4
+        private const val MAX_BACKUP_BYTES = 1_000_000L
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
@@ -585,7 +596,7 @@ class SetupActivity : AppCompatActivity() {
                         }
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -602,7 +613,7 @@ class SetupActivity : AppCompatActivity() {
                         }
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -628,13 +639,13 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (mySave != saveSeq.get()) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_test_fail, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_save_failed, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
                         try { updateStatus() } catch (_: Exception) { }
                     }
                     return@launch
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
                 }
                 return@launch
             }
@@ -653,7 +664,7 @@ class SetupActivity : AppCompatActivity() {
                 if (mySave != saveSeq.get()) return@withContext
                 if (!persisted) {
                     val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
-                    val msg = if (storageOk) getString(R.string.setup_test_fail, "persist") else getString(R.string.setup_save_no_storage)
+                    val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
                     Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
                     return@withContext
                 }
@@ -702,7 +713,7 @@ class SetupActivity : AppCompatActivity() {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val pin = first.text.toString()
                 if (pin.length < minLen) {
-                    if (confirm) Toast.makeText(this, getString(R.string.backup_pin_short), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(if (confirm) R.string.backup_pin_short else R.string.restore_pin_short), Toast.LENGTH_LONG).show()
                     done(null)
                     return@setPositiveButton
                 }
@@ -827,7 +838,9 @@ class SetupActivity : AppCompatActivity() {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
                         if (!testPersisted) {
-                            Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, "persist"), Toast.LENGTH_LONG).show()
+                            val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
+                            val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
+                            Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
                             return@withContext
                         }
                         botTokenInput.setText(STORED_MASK)
@@ -966,6 +979,17 @@ class SetupActivity : AppCompatActivity() {
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
+                        if (!isFgsStartBlocked(e)) {
+                            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                                try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+                                try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
+                                try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    if (isFinishing || isDestroyed) return@withContext
+                                    try { updateStatus() } catch (_: Exception) { }
+                                }
+                            }
+                        }
                     }
                     updateStatus()
                     try {
@@ -979,6 +1003,11 @@ class SetupActivity : AppCompatActivity() {
                 synchronized(startGuard) { startingMonitoring = false }
             }
         }
+    }
+
+    private fun isFgsStartBlocked(e: Exception): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+        return e is android.app.ForegroundServiceStartNotAllowedException
     }
 
     private fun isBatteryExempt(): Boolean {
@@ -1105,7 +1134,7 @@ class SetupActivity : AppCompatActivity() {
         try {
             NetworkUtils.sweepAuthBlock(prefs)
             if (prefs.credentialError.isNotEmpty()) {
-                Toast.makeText(this, getString(R.string.setup_test_fail, prefs.credentialError), Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.setup_status_failed, prefs.credentialError), Toast.LENGTH_LONG).show()
                 return
             }
         } catch (_: Exception) {
@@ -1214,7 +1243,7 @@ class SetupActivity : AppCompatActivity() {
                             MessageScheduler.scheduleMessageSend(applicationContext)
                         } catch (_: Exception) {
                         }
-                        val toastRetry = getString(R.string.setup_test_fail, failCode)
+                        val toastRetry = getString(R.string.setup_status_failed, failCode)
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             Toast.makeText(this@SetupActivity, toastRetry, Toast.LENGTH_LONG).show()
                         }
@@ -1319,7 +1348,7 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 }
-                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_test_fail, failCode)
+                val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_status_failed, failCode)
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
@@ -1334,7 +1363,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } catch (_: Exception) {
                 }
-                val failure = getString(R.string.setup_test_fail, redactToken(e.message))
+                val failure = getString(R.string.setup_status_failed, redactToken(e.message))
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, failure, Toast.LENGTH_LONG).show()
                 }
