@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.369] - 2026-10-18
+### Fixed
+- Kamera tak lagi dihidupkan ulang oleh sesi basi: `CameraService.forceReset()` (dipakai `teardownJobs()` saat loop macet/`/sembuh`) memang menaikkan `sessionSeq` dan menghapus watchdog, tetapi callback `openCamera` yang sedang terbang tetap menulis `cameraDevice` dan melewatkan `teardownDevice()` karena seq berubah — kamera + `ImageReader` tertinggal terbuka (panas/baterai, kamera terkunci untuk aplikasi lain) dan `/photo` berikutnya bisa jalan bersamaan. Kini `onOpened` (jalur foto dan video) menutup kamera dan berhenti bila `sessionSeq` sudah berubah.
+- Akses notifikasi tak lagi mati permanen tanpa kabar: rantai `scheduleRebind()` dulu berhenti total setelah 5 percobaan (±53 menit) dan hanya `onListenerConnected` yang mereset penghitungnya. Kini percobaan berlanjut dengan jeda terpanjang (30 menit) dan pemilik dikirimi satu pesan agar bisa mengizinkan ulang atau memakai `/sembuh`.
+- Volume alarm tak lagi macet di maksimum: `RingVolume.restoreStuck()` selalu menghapus catatan volume (`clearRingStateSync()`) walau `setStreamVolume()` gagal atau catatan sudah kedaluwarsa, sehingga tak ada percobaan pemulihan berikutnya. Kini catatan hanya dibuang bila pemulihan berhasil atau catatannya memang tak layak dipakai lagi.
+- Alarm watchdog tak lagi di-arm ulang setiap reboot/unlock saat monitoring dimatikan: `BootReceiver.onReceive()` menjadwalkan watchdog untuk semua aksi boot sebelum gate konfigurasi, sementara `BootRestartWorker` keluar lebih awal tanpa membatalkannya — jadi worker periodik 15 menit hidup terus tanpa guna. Penjadwalan dipindah ke jalur yang benar-benar menyalakan monitoring (service sudah menjadwalkannya sendiri) dan watchdog lama dibatalkan saat gate "monitoring dimatikan" terpenuhi.
+- Rekaman video punya pengaman di sisi `MediaRecorder`: `setMaxDuration(durasi + 30 dtk)` mencegah berkas `.tmp` tumbuh tanpa batas bila `Runnable` penghenti hilang/tertunda (sebelumnya hanya bergantung watchdog 120 dtk dan pemangkasan setelah rekaman selesai).
+
 ## [1.6.368] - 2026-10-18
 ### Fixed
 - Batch SMS/panggilan tak lagi diantrekan ulang tiap siklus saat perangkat offline. Dulu `checkAndSendNewData()` tetap membaca riwayat dan `sendFitted()` menyimpan salinan ke antrean lalu mengembalikan `false` (kursor tak maju), sehingga SMS/panggilan yang sama disalin berulang sampai antrean 100 slot penuh, pesan lain tergusur, dan saat online pemilik menerima batch yang sama berkali-kali. Kini siklus data berhenti lebih awal bila tak ada jaringan atau API sedang membatasi (`rateLimitedRemainMs()`), dan pengiriman dari jalur data memakai `queueOnFail = false` sehingga kegagalan berarti "coba lagi siklus berikutnya dari kursor", bukan salinan antrean.
