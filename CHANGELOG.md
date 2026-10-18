@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+## [1.6.348] - 2026-10-18
+### Fixed
+- Penjaga lima loop layar utama (`monitoring`, kamera, patroli, polling perintah, watchdog loop) tak lagi bisa menilai dirinya sebelum penugasannya selesai. Sebelumnya kondisi `while` membaca field job yang baru ditulis sesudah `launch`; karena scope loop memakai `Dispatchers.IO`, badan korutin bisa berjalan di thread lain lebih dulu, melihat nilai lama/kosong, lalu keluar tanpa jejak — seluruh pemantauan berhenti senyap sampai watchdog. Tiap loop kini menyimpan job-nya sendiri (`val self = coroutineContext[Job]`).
+- Jejak lokasi 24 jam kembali ditulis di dalam kunci `prefsRmwLock`. Sejak jejak dipusatkan ke `recordSentLocation()` (v1.6.345), penulisan berada di luar kunci sehingga dua pengirim lokasi bersamaan (patroli vs perintah) bisa saling menimpa: satu titik jejak hilang dan "lokasi terakhir" jadi milik penulis terakhir.
+- Watchdog pemotretan kamera yang gagal tak lagi membatalkan watchdog milik pemotretan berikutnya. `cameraBusy` dilepas lebih dulu, jadi pemotretan baru bisa masuk dan menugaskan `watchdogJob` baru; `catch` lama membatalkannya lewat field bersama. Kini yang dibatalkan job sesi itu sendiri.
+- Teardown kamera (`CameraService`) diikat ke sesinya. Callback basi dari sesi yang sudah di-reset paksa (watchdog 45 detik timeout) tak lagi menutup kamera/thread latar milik sesi baru — baik di jalur sukses foto, jalur gagal foto, maupun jalur gagal video. Saat sesi sudah tak berlaku, pembersihan perangkat dilewati karena `forceReset()` sudah melakukannya.
+- Penghitung "pesan dibuang" tak lagi hilang saat antrean pulih dari mode volatil. `loadDropCountsLocked()` dulu menimpa penghitung di memori dengan nilai dari disk, padahal selama mode volatil (keystore gagal sesaat) drop dihitung di memori tanpa ditulis. Kini nilainya digabung, bukan diganti.
+- Pemangkasan antrean saat pemulihan dari mode volatil memakai aturan yang sama dengan jalur normal: pesan prioritas dipertahankan bila masih ada pesan biasa, dan pem- buangan pesan prioritas ikut tercatat di penghitung `priorityDrops`.
+- Pengingat kredensial lewat notifikasi tak lagi menghabiskan jatah 6 jamnya saat izin `POST_NOTIFICATIONS` belum ada (notifikasi tak akan tampil, jadi percobaan itu tak dihitung).
+- Pesan gagal lokasi kini juga mencoba perbaikan terakhir (sampai 24 jam) ketika seluruh provider (`GPS`/jaringan) sama-sama dilaporkan nonaktif, bukan langsung menyerah.
+- Log pesan yang ditolak permanen oleh Telegram pada jalur cadangan (HTML dilepas) tak lagi selalu tertulis "(400)". Kode aslinya ikut dicatat, dan laporan ke pemilik berbunyi "(permanen)" karena kodenya bisa 404/409/413 — bukan hanya 400.
+### Changed
+- `MessageQueue.flushSync()` hanya menulis penghitung pesan terbuang bila memang berubah (dulu selalu menulis tiga nilai ke penyimpanan terenkripsi setiap kali dipanggil).
+
 ## [1.6.347] - 2026-10-18
 ### Fixed
 - Perintah `/location` (juga `/darurat`, `/hilang`, dan peringatan percobaan mematikan Device Admin) tak lagi gagal total hanya karena HP tak kunjung mendapat perbaikan GPS baru dalam batas tunggu dan tak ada perbaikan tersimpan yang masih segar (≤2 menit). Bila perbaikan langsung gagal, kini dipakai perbaikan terakhir dari provider GPS/jaringan/pasif sampai umur 24 jam, disertai keterangan "⚠️ Data lama: N menit/jam lalu". Titik lama itu tidak dicatat ke jejak 24 jam dan tidak dipakai cek geofence, supaya tak memicu alarm palsu.

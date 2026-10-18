@@ -173,25 +173,30 @@ class CameraService(private val context: Context) {
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
-                if (sessionSeq.get() == mySeq) capturing.set(false)
-                try {
-                    timeoutRunnable?.let { r ->
-                        try {
-                            backgroundHandler?.removeCallbacks(r)
-                        } catch (_: Exception) {
+                if (sessionSeq.get() == mySeq) {
+                    try {
+                        timeoutRunnable?.let { r ->
+                            try {
+                                backgroundHandler?.removeCallbacks(r)
+                            } catch (_: Exception) {
+                            }
+                            try {
+                                watchdogHandler?.removeCallbacks(r)
+                            } catch (_: Exception) {
+                            }
+                            try {
+                                mainHandler()?.removeCallbacks(r)
+                            } catch (_: Exception) {
+                            }
                         }
-                        try {
-                            watchdogHandler?.removeCallbacks(r)
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            mainHandler()?.removeCallbacks(r)
-                        } catch (_: Exception) {
-                        }
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
+                    try {
+                        cleanup()
+                    } finally {
+                        capturing.set(false)
+                    }
                 }
-                cleanup()
                 onError(e)
             }
         }
@@ -239,12 +244,14 @@ class CameraService(private val context: Context) {
             val cameraId = getCameraId(cameraManager, lensFacing)
 
             if (cameraId == null) {
-                try {
-                    imageReader?.close()
-                } catch (_: Exception) {
+                if (sessionSeq.get() == mySeq) {
+                    try {
+                        imageReader?.close()
+                    } catch (_: Exception) {
+                    }
+                    imageReader = null
+                    stopBackgroundThread()
                 }
-                imageReader = null
-                stopBackgroundThread()
                 finishWithError(Exception("Kamera yang dipilih tak ditemukan"))
                 return
             }
@@ -314,23 +321,25 @@ class CameraService(private val context: Context) {
                                 }
                             }
 
-                            try { captureSession?.close() } catch (_: Exception) { }
-                            captureSession = null
-                            try { cameraDevice?.close() } catch (_: Exception) { }
-                            cameraDevice = null
-                            try { imageReader?.close() } catch (_: Exception) { }
-                            imageReader = null
-                            try {
-                                meteringSurface?.release()
-                            } catch (_: Exception) {
+                            if (sessionSeq.get() == mySeq) {
+                                try { captureSession?.close() } catch (_: Exception) { }
+                                captureSession = null
+                                try { cameraDevice?.close() } catch (_: Exception) { }
+                                cameraDevice = null
+                                try { imageReader?.close() } catch (_: Exception) { }
+                                imageReader = null
+                                try {
+                                    meteringSurface?.release()
+                                } catch (_: Exception) {
+                                }
+                                meteringSurface = null
+                                try {
+                                    meteringTexture?.release()
+                                } catch (_: Exception) {
+                                }
+                                meteringTexture = null
+                                stopBackgroundThread()
                             }
-                            meteringSurface = null
-                            try {
-                                meteringTexture?.release()
-                            } catch (_: Exception) {
-                            }
-                            meteringTexture = null
-                            stopBackgroundThread()
 
                             finishWithPhoto(file)
                         }
@@ -447,38 +456,43 @@ class CameraService(private val context: Context) {
 
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
-                if (sessionSeq.get() == mySeq) capturing.set(false)
-                try {
-                    timeoutRunnable?.let { r ->
-                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                if (sessionSeq.get() == mySeq) {
+                    try {
+                        timeoutRunnable?.let { r ->
+                            try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                            try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                            try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                        }
+                        stopRunnable?.let { r ->
+                            try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                            try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+                            try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                        }
+                    } catch (_: Exception) {
                     }
-                    stopRunnable?.let { r ->
-                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+                    try {
+                        if (recording) {
+                            try { recorder?.stop() } catch (_: Exception) { }
+                        }
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
-                }
-                try {
-                    if (recording) {
-                        try { recorder?.stop() } catch (_: Exception) { }
+                    recording = false
+                    releaseRecorder()
+                    releaseSurface()
+                    try {
+                        val stale = pendingOut
+                        pendingOut = null
+                        activeVideoFile = null
+                        activeRecorder = null
+                        if (stale != null && stale.exists()) stale.delete()
+                    } catch (_: Exception) {
                     }
-                } catch (_: Exception) {
+                    try {
+                        cleanup()
+                    } finally {
+                        capturing.set(false)
+                    }
                 }
-                recording = false
-                releaseRecorder()
-                releaseSurface()
-                try {
-                    val stale = pendingOut
-                    pendingOut = null
-                    activeVideoFile = null
-                    activeRecorder = null
-                    if (stale != null && stale.exists()) stale.delete()
-                } catch (_: Exception) {
-                }
-                cleanup()
                 onError(e)
             }
         }
@@ -525,7 +539,7 @@ class CameraService(private val context: Context) {
             val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             val cameraId = getCameraId(cameraManager, lensFacing)
             if (cameraId == null) {
-                stopBackgroundThread()
+                if (sessionSeq.get() == mySeq) stopBackgroundThread()
                 finishWithError(Exception("Kamera yang dipilih tak ditemukan"))
                 return
             }

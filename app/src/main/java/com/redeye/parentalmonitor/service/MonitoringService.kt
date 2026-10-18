@@ -702,7 +702,8 @@ class MonitoringService : Service() {
 
     private fun startPeriodicLoops() {
         monitoringJob = serviceScope.launch {
-            while (isActive && monitoringJob === coroutineContext[Job]) {
+            val self = coroutineContext[Job]
+            while (isActive && monitoringJob === self) {
                 try {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
@@ -767,7 +768,8 @@ class MonitoringService : Service() {
 
     private fun startCameraLoop() {
         cameraJob = serviceScope.launch {
-            while (isActive && cameraJob === coroutineContext[Job]) {
+            val self = coroutineContext[Job]
+            while (isActive && cameraJob === self) {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     cameraBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -835,7 +837,8 @@ class MonitoringService : Service() {
 
     private fun startPatrolLoop() {
         patrolJob = serviceScope.launch {
-            while (isActive && patrolJob === coroutineContext[Job]) {
+            val self = coroutineContext[Job]
+            while (isActive && patrolJob === self) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
                 try {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
@@ -1080,7 +1083,8 @@ class MonitoringService : Service() {
 
     private fun startCommandPolling() {
         commandJob = serviceScope.launch {
-            while (isActive && commandJob === coroutineContext[Job]) {
+            val self = coroutineContext[Job]
+            while (isActive && commandJob === self) {
                 commandBeatAt = android.os.SystemClock.elapsedRealtime()
                 commandCycleMs = if (cachedMonitoringPaused) 60_000L else 15_000L
                 if (cachedMonitoringPaused) {
@@ -1444,11 +1448,11 @@ class MonitoringService : Service() {
     private fun postAuthFailureReminder(code: Int) {
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - authReminderAt.get() < 6 * 60 * 60_000L) return
-        authReminderAt.set(now)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) return
+            authReminderAt.set(now)
             val tap = android.app.PendingIntent.getActivity(
                 this,
                 1,
@@ -2875,7 +2879,9 @@ class MonitoringService : Service() {
                         false
                     }
                 }
-                if (providers.isEmpty()) return@withContext null
+                if (providers.isEmpty()) {
+                    return@withContext if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
+                }
                 lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }
                 val fix = try {
                     coroutineScope {
@@ -3635,8 +3641,8 @@ class MonitoringService : Service() {
         }
         if (count <= 0) return
         try {
-            val text = if (count == 1) "1 pesan dibuang karena ditolak Telegram (400) — kosong atau permanen tak valid."
-                else "$count pesan dibuang karena ditolak Telegram (400) — kosong atau permanen tak valid."
+            val text = if (count == 1) "1 pesan dibuang karena ditolak Telegram (permanen) — kosong atau tak valid."
+                else "$count pesan dibuang karena ditolak Telegram (permanen) — kosong atau tak valid."
             messageQueue.addMessage(text, true)
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
@@ -3853,7 +3859,7 @@ class MonitoringService : Service() {
                             }
                             return false
                         } else {
-                            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+                            android.util.Log.w("MonitoringService", "Message permanently rejected (${fallbackResp.code()}), not queued")
                             try {
                                 noteDroppedMessage()
                             } catch (_: Exception) {
@@ -4208,7 +4214,7 @@ class MonitoringService : Service() {
     }
 
     private fun rememberSentLatLon(lat: Double, lon: Double) {
-        val trail: String? = try {
+        try {
             synchronized(prefsRmwLock) {
                 val now = System.currentTimeMillis()
                 val cutoff = now - 24 * 60 * 60_000L
@@ -4216,13 +4222,8 @@ class MonitoringService : Service() {
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
                 if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
-                (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
+                preferencesManager.recordSentLocation(lat, lon, (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";"))
             }
-        } catch (_: Exception) {
-            null
-        }
-        try {
-            preferencesManager.recordSentLocation(lat, lon, trail)
         } catch (_: Exception) {
         }
     }
@@ -5486,7 +5487,10 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             cameraAttempt.incrementAndGet()
             cameraBusy.set(false)
-            watchdogJob?.cancel()
+            try {
+                wd.cancel()
+            } catch (_: Exception) {
+            }
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto: ${redactToken(e.message)}")
             val policyBlocked = isCameraPolicyError(e.message)
             if (policyBlocked) autoPausePhotosOnPolicyBlock()
@@ -6224,7 +6228,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         loopWatchdogJob = serviceScope.launch {
-            while (isActive && loopWatchdogJob === coroutineContext[Job]) {
+            val self = coroutineContext[Job]
+            while (isActive && loopWatchdogJob === self) {
                 try {
                     delay(300_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
