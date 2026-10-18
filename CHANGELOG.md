@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.371] - 2026-10-18
+### Fixed
+- Gerbang \"menu kedaluwarsa\" untuk tombol kembali bekerja pada perintah beraugumen: tombol `/camera depan`, `/camera belakang`, dan `/pause 60` dulu lolos tanpa cek kedaluwarsa karena `MUTATING_COMMANDS`/`SENSITIVE_COMMANDS` hanya memuat bentuk telanjang (`/camera`, `/pause`), sehingga perintah lama dari menu basi tetap dijalankan. Pemeriksaan kini memakai token pertama perintah.
+- `/kendara status` tak lagi menjanjikan hal yang tak dipenuhi: peringatan \"interval >30 mnt\" dihitung dari interval **efektif** (`effectiveSyncMillis()`, termasuk peregangan adaptif `idleDataCycles`), bukan dari setingan mentah, sehingga angka di pesan sama dengan irama loop yang sebenarnya.
+- `ACTION_LIVENESS_TEST` tak lagi diam-diam tidak menjalankan uji anti-mati: bila service belum jalan, `startMonitoring()` dulu dipanggil lalu `return START_NOT_STICKY` tanpa `runLivenessSelfTest()`. Kini uji tetap dijalankan setelah monitoring siap.
+- FGS tak lagi hidup tanpa loop saat kredensial belum lengkap: jalur `needsCredsRetry()` hanya menjadwalkan boot-restart, sementara `startForegroundImmediate()` sudah menaikkan notifikasi foreground. Kini service menghentikan dirinya (`stopSelfResult`) setelah menjadwalkan percobaan ulang, jadi tak ada notifikasi \"monitoring aktif\" yang palsu.
+- Label tipe panggilan `6` dikoreksi dari \"Menolak\" menjadi \"Diblokir\" (`CallLog.Calls.BLOCKED_TYPE = 6`), agar tak tertukar dengan tipe `5` \"Ditolak\"; komentar model ikut diperbaiki.
+
 ## [1.6.370] - 2026-10-18
 ### Fixed
 - Pemulihan setingan tak lagi membaca berkas di thread UI: `restoreLauncher` dulu memanggil `openInputStream()?.readText()` langsung di callback (thread utama) untuk berkas apa pun ukurannya, sehingga berkas besar/folder awan bisa memblokir UI atau kehabisan memori. Kini pembacaan (plus pengecekan ukuran) berjalan di `Dispatchers.IO` dan berkas di atas 1 MB ditolak dengan pesan yang sama seperti berkas rusak.

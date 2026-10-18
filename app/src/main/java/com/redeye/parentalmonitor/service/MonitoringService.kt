@@ -486,6 +486,10 @@ class MonitoringService : Service() {
                 }
                 if (shouldAutoResume()) {
                     startMonitoring()
+                    if (isRunning) {
+                        runLivenessSelfTest()
+                        return START_STICKY
+                    }
                 }
                 return START_NOT_STICKY
             }
@@ -523,9 +527,12 @@ class MonitoringService : Service() {
                         } catch (_: Exception) {
                         }
                         try {
-                            if (shouldAutoResume() || needsCredsRetry()) {
+                            if (shouldAutoResume()) {
                                 MessageScheduler.scheduleBootRestart(this@MonitoringService)
                             } else {
+                                if (needsCredsRetry()) {
+                                    MessageScheduler.scheduleBootRestart(this@MonitoringService)
+                                }
                                 stopSelfResult(startId)
                             }
                         } catch (_: Exception) {
@@ -1379,13 +1386,14 @@ class MonitoringService : Service() {
         }
         val originOk = originChat.isNotEmpty() && originChat == chatId
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
-        if (pressedAt > 0L && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
+        val gateCommand = command.substringBefore(" ")
+        if (pressedAt > 0L && (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS)) {
             val menuAge = System.currentTimeMillis() / 1000L - pressedAt
             if (menuAge > MUTATING_MAX_AGE_SEC) {
                 if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
-        } else if (pressedAt <= 0L && (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS)) {
+        } else if (pressedAt <= 0L && (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS)) {
             if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
             return
         }
@@ -2261,8 +2269,8 @@ class MonitoringService : Service() {
                     }
                     "status" -> {
                         val on = preferencesManager.vehicleAlertEnabled
-                        val interval = try { preferencesManager.syncInterval } catch (_: Exception) { 0 }
-                        val note = if (on && interval > 30) " (catatan: interval lokasi $interval mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
+                        val effMin = try { effectiveSyncMillis() / 60_000L } catch (_: Exception) { 0L }
+                        val note = if (on && effMin > 30) " (catatan: interval lokasi efektif $effMin mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
                         sendToTelegram("🚗 Kabar berkendara: " + (if (on) "nyala" else "mati") + note)
                     }
                     else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
