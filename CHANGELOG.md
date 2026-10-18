@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.343] - 2026-10-18
+### Fixed
+- Kode `403` Telegram tak lagi diperlakukan sama dengan `401`. `403` berarti bot diblokir/dikeluarkan dari chat (token tetap benar), jadi pesannya kini jujur: notifikasi menjadi "Bot diblokir/dikeluarkan dari chat (403)", dan `/flush` berbunyi "bot diblokir atau dikeluarkan dari chat — buka Telegram lalu buka blokir/undang ulang bot". Sebelumnya keduanya menyuruh "Perbaiki token di Setup", menyesatkan karena tokennya memang benar.
+- Saat hanya `403` yang terjadi, polling perintah tak lagi ditahan 30 menit (`NetworkUtils.isPollBlocked` kini khusus `401`), sehingga setelah bot dibuka blokirnya perintah langsung terbaca lagi. Pengiriman tetap mundur 30 menit (backoff) seperti semula.
+- Notifikasi peringatan kredensial memakai ID `5` (dulu `4`) supaya tak bentrok dengan peringatan "penyimpanan aman tak tersedia" dari `BootRestartWorker` yang memakai ID `4` — dulu keduanya saling menimpa.
+
 ## [1.6.342] - 2026-10-18
 ### Changed
 - Notifikasi foreground layanan disatukan: tiga tempat (`startForegroundImmediate`, `startMonitoring`, dan `ensureForegroundTypes`) membangun builder notifikasi yang nyaris kembar; kini semuanya memakai satu helper `buildForegroundNotification()`. Perilaku tak berubah — kanal tetap senyap (`setSilent`), dan `setContentIntent` tetap aman bila `setupTapIntent()` gagal.

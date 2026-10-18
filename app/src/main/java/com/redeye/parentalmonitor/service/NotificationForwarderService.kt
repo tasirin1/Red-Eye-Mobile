@@ -1019,7 +1019,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 return true
             }
             if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("NotifForwarder", "Auth rejected, queuing notification until credentials are fixed")
+                android.util.Log.e("NotifForwarder", "Send rejected (${response.code()}), queuing notification")
                 try {
                     prefs.credentialError = response.code().toString()
                     prefs.credentialErrorAt = System.currentTimeMillis()

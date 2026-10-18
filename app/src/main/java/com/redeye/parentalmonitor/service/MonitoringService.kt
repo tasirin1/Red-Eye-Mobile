@@ -250,7 +250,7 @@ class MonitoringService : Service() {
         private val authReminderAt = java.util.concurrent.atomic.AtomicLong(0L)
         @Volatile
         private var commandsRegFailAt = 0L
-        private const val AUTH_NOTIF_ID = 4
+        private const val AUTH_NOTIF_ID = 5
         @Volatile
         var isRunning = false
 
@@ -1476,8 +1476,16 @@ class MonitoringService : Service() {
                 Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
-            val title = if (code == 400) "Chat tak ditemukan (400)" else "Token bot ditolak ($code)"
-            val text = if (code == 400) "Buka Setup dan perbaiki Chat ID agar pesan jalan lagi." else "Buka Setup dan perbaiki token agar perintah jalan lagi."
+            val title = when (code) {
+                400 -> "Chat tak ditemukan (400)"
+                403 -> "Bot diblokir/dikeluarkan dari chat (403)"
+                else -> "Token bot ditolak ($code)"
+            }
+            val text = when (code) {
+                400 -> "Buka Setup dan perbaiki Chat ID agar pesan jalan lagi."
+                403 -> "Buka Telegram: buka blokir bot atau undang lagi bot ke chat, lalu kirim /status."
+                else -> "Buka Setup dan perbaiki token agar perintah jalan lagi."
+            }
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
@@ -2001,7 +2009,13 @@ class MonitoringService : Service() {
             "/flush" -> {
                 val queued = messageQueue.getQueueSize()
                 if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-                    sendToTelegram("⚠️ Flush ditunda: kredensial bot ditolak (${preferencesManager.credentialError}). Perbaiki token di Setup.")
+                    val code = try { preferencesManager.credentialError } catch (_: Exception) { "" }
+                    val hint = when (code) {
+                        "403" -> "bot diblokir atau dikeluarkan dari chat — buka Telegram lalu buka blokir/undang ulang bot"
+                        "401" -> "token bot ditolak — perbaiki token di Setup"
+                        else -> "pengiriman ditolak Telegram"
+                    }
+                    sendToTelegram("⚠️ Flush ditunda: $hint (kode $code).")
                     return
                 }
                 serviceScope.launch {
@@ -3693,7 +3707,7 @@ class MonitoringService : Service() {
                 }
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("MonitoringService", "Auth rejected (${response.code()}), queuing until credentials are fixed")
+                android.util.Log.e("MonitoringService", "Send rejected (${response.code()}), queuing")
                 try {
                     preferencesManager.credentialError = response.code().toString()
                     preferencesManager.credentialErrorAt = System.currentTimeMillis()

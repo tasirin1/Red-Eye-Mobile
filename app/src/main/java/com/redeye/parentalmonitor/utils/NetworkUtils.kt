@@ -63,7 +63,13 @@ object NetworkUtils {
         }
     }
 
-    fun isPollBlocked(prefs: PreferencesManager): Boolean = isAuthBlocked(prefs)
+    fun isPollBlocked(prefs: PreferencesManager): Boolean {
+        return try {
+            prefs.credentialError == "401" && isAuthBlocked(prefs)
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     fun sweepAuthBlock(prefs: PreferencesManager) {
         try {
