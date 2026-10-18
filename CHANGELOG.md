@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.351] - 2026-10-18
+### Fixed
+- Audio dan video yang ditolak Telegram dengan kode selain `400`/`413` kini melaporkan kegagalannya seperti foto — "⚠️ Unggah audio/video gagal (HTTP …). Akan dicoba otomatis." Sebelumnya kedua jalur itu diam saja: berkas terus dicoba berulang tanpa pemberitahuan apa pun. Kegagalan tak terduga saat mengirim audio juga kini tercatat di log (dulu hanya foto dan video yang dicatat).
+### Changed
+- Tiga jalur kirim media (`sendPhotoFile()`, `sendAudioFile()`, `sendVideoFile()`) kini berbagi satu penilai penolakan (`classifyMediaRejection()`) dan satu pengatur jeda `429` (`mediaRateLimitBackoff()`) — sebelumnya tiga salinan hampir identik yang sudah saling menyimpang (mis. audio membaca `errorBody()` dua kali, penandaan `401`/`403` dan `400` berbeda urutan log). Sekitar 120 baris terpangkas.
+- `notifyPhotoSendFailure()` digeneralisasi jadi `notifyMediaSendFailure(jenis, detail)`; pesan untuk foto tetap sama.
+- `CameraService`: `getCameraCharacteristics()` tak lagi dipanggil 3-6 kali per sesi potret/rekam — hasilnya di-cache per ID kamera lewat `characteristicsOf()` (nilai ini tak berubah selama aplikasi hidup).
+- `CameraService`: pembongkaran perangkat kamera disatukan di `teardownDevice()` — dipakai jalur sukses foto, `cleanup()`, dan lewat itu `forceReset()`; sebelumnya daftar yang sama disalin di dua tempat. Pembersihan callback yang ditulis tiga kali berulang di lima tempat kini memakai `removeEverywhere()`.
+### Removed
+- Metode `notifyPhotoSendFailure()` (digantikan `notifyMediaSendFailure()`), dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.350] - 2026-10-18
 ### Fixed
 - Di Android 11+, permintaan izin "Lokasi sepanjang waktu" dari halaman Setup tak lagi dijalankan lewat dialog izin biasa yang diabaikan sistem. Dua jalur yang masih memakainya (tombol "Berikan semua izin" dan tombol mulai monitoring) kini diarahkan ke halaman Setelan aplikasi seperti jalur yang sudah benar di berkas yang sama, jadi pengguna tidak lagi berputar-putar tanpa bisa memberi izin. Kedua jalur itu disatukan ke satu fungsi `requestBackgroundLocation()`.

@@ -31,3 +31,4 @@ photoHash
 photoLuma
 historyAllowed
 isFreshLocation
+notifyPhotoSendFailure

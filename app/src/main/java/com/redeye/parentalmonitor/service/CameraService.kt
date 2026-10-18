@@ -38,7 +38,26 @@ class CameraService(private val context: Context) {
     var lastLensFacing = -1
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
+    private val characteristicsCache = java.util.concurrent.ConcurrentHashMap<String, CameraCharacteristics>()
     private var watchdogHandler: Handler? = null
+
+    private fun characteristicsOf(cameraManager: CameraManager, cameraId: String): CameraCharacteristics? {
+        characteristicsCache[cameraId]?.let { return it }
+        return try {
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            characteristicsCache[cameraId] = characteristics
+            characteristics
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun removeEverywhere(r: Runnable?) {
+        if (r == null) return
+        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
+        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
+    }
 
     private fun mainHandler(): Handler? {
         if (watchdogHandler == null) {
@@ -174,23 +193,7 @@ class CameraService(private val context: Context) {
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
                 if (sessionSeq.get() == mySeq) {
-                    try {
-                        timeoutRunnable?.let { r ->
-                            try {
-                                backgroundHandler?.removeCallbacks(r)
-                            } catch (_: Exception) {
-                            }
-                            try {
-                                watchdogHandler?.removeCallbacks(r)
-                            } catch (_: Exception) {
-                            }
-                            try {
-                                mainHandler()?.removeCallbacks(r)
-                            } catch (_: Exception) {
-                            }
-                        }
-                    } catch (_: Exception) {
-                    }
+                    removeEverywhere(timeoutRunnable)
                     try {
                         cleanup()
                     } finally {
@@ -204,23 +207,7 @@ class CameraService(private val context: Context) {
         fun finishWithPhoto(file: File) {
             if (done.compareAndSet(false, true)) {
                 if (sessionSeq.get() == mySeq) capturing.set(false)
-                try {
-                    timeoutRunnable?.let { r ->
-                        try {
-                            backgroundHandler?.removeCallbacks(r)
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            watchdogHandler?.removeCallbacks(r)
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            mainHandler()?.removeCallbacks(r)
-                        } catch (_: Exception) {
-                        }
-                    }
-                } catch (_: Exception) {
-                }
+                removeEverywhere(timeoutRunnable)
                 onPhotoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Photo saved")
             } else {
@@ -322,23 +309,7 @@ class CameraService(private val context: Context) {
                             }
 
                             if (sessionSeq.get() == mySeq) {
-                                try { captureSession?.close() } catch (_: Exception) { }
-                                captureSession = null
-                                try { cameraDevice?.close() } catch (_: Exception) { }
-                                cameraDevice = null
-                                try { imageReader?.close() } catch (_: Exception) { }
-                                imageReader = null
-                                try {
-                                    meteringSurface?.release()
-                                } catch (_: Exception) {
-                                }
-                                meteringSurface = null
-                                try {
-                                    meteringTexture?.release()
-                                } catch (_: Exception) {
-                                }
-                                meteringTexture = null
-                                stopBackgroundThread()
+                                teardownDevice()
                             }
 
                             finishWithPhoto(file)
@@ -457,19 +428,8 @@ class CameraService(private val context: Context) {
         fun finishWithError(e: Exception) {
             if (done.compareAndSet(false, true)) {
                 if (sessionSeq.get() == mySeq) {
-                    try {
-                        timeoutRunnable?.let { r ->
-                            try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                            try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                            try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
-                        }
-                        stopRunnable?.let { r ->
-                            try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                            try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                            try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
-                        }
-                    } catch (_: Exception) {
-                    }
+                    removeEverywhere(timeoutRunnable)
+                    removeEverywhere(stopRunnable)
                     try {
                         if (recording) {
                             try { recorder?.stop() } catch (_: Exception) { }
@@ -500,19 +460,8 @@ class CameraService(private val context: Context) {
         fun finishWithVideo(file: File) {
             if (done.compareAndSet(false, true)) {
                 if (sessionSeq.get() == mySeq) capturing.set(false)
-                try {
-                    timeoutRunnable?.let { r ->
-                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
-                    }
-                    stopRunnable?.let { r ->
-                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
-                    }
-                } catch (_: Exception) {
-                }
+                removeEverywhere(timeoutRunnable)
+                removeEverywhere(stopRunnable)
                 releaseRecorder()
                 releaseSurface()
                 pendingOut = null
@@ -581,7 +530,7 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             try {
-                val ranges = cameraManager.getCameraCharacteristics(cameraId).get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
+                val ranges = characteristicsOf(cameraManager, cameraId)?.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
                 if (ranges?.any { it.lower <= 24 && 24 <= it.upper } == true) rec.setVideoFrameRate(24)
             } catch (_: Exception) {
             }
@@ -717,7 +666,7 @@ class CameraService(private val context: Context) {
 
     private fun chooseVideoSize(cameraManager: CameraManager, cameraId: String): Pair<Int, Int> {
         return try {
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val characteristics = characteristicsOf(cameraManager, cameraId) ?: return 640 to 480
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             val sizes = map?.getOutputSizes(android.media.MediaRecorder::class.java)
             if (sizes.isNullOrEmpty()) {
@@ -748,14 +697,7 @@ class CameraService(private val context: Context) {
         fun fireStill() {
             if (settled.compareAndSet(false, true)) {
                 stillArmed.set(true)
-                try {
-                    fallback?.let { r ->
-                        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
-                        try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
-                    }
-                } catch (_: Exception) {
-                }
+                removeEverywhere(fallback)
                 try {
                     try {
                         session.stopRepeating()
@@ -822,7 +764,7 @@ class CameraService(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun getJpegOrientation(cameraManager: CameraManager, cameraId: String, lensFacing: Int): Int {
         return try {
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val characteristics = characteristicsOf(cameraManager, cameraId) ?: return 0
             val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
             val rotation = try {
@@ -850,9 +792,7 @@ class CameraService(private val context: Context) {
 
     private fun getCameraId(cameraManager: CameraManager, lensFacing: Int): String? {
         fun facingOf(id: String): Int? {
-            return try {
-                cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)
-            } catch (_: Exception) { null }
+            return characteristicsOf(cameraManager, id)?.get(CameraCharacteristics.LENS_FACING)
         }
         return try {
             val ids = try { cameraManager.cameraIdList } catch (_: Exception) { emptyArray() }
@@ -915,7 +855,7 @@ class CameraService(private val context: Context) {
 
     private fun choosePreviewSize(cameraManager: CameraManager, cameraId: String, fallback: Pair<Int, Int>): Pair<Int, Int> {
         return try {
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val characteristics = characteristicsOf(cameraManager, cameraId) ?: return fallback
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             val sizes = map?.getOutputSizes(android.graphics.SurfaceTexture::class.java)
             if (sizes.isNullOrEmpty()) fallback
@@ -933,7 +873,7 @@ class CameraService(private val context: Context) {
     private fun choosePhotoSize(cameraManager: CameraManager, cameraId: String): Pair<Int, Int> {
         photoSizeCache[cameraId]?.let { return it }
         return try {
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val characteristics = characteristicsOf(cameraManager, cameraId) ?: return IMAGE_WIDTH to IMAGE_HEIGHT
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             val sizes = map?.getOutputSizes(ImageFormat.JPEG)
             if (sizes.isNullOrEmpty()) {
@@ -986,25 +926,23 @@ class CameraService(private val context: Context) {
         return file
     }
 
+    private fun teardownDevice() {
+        try { captureSession?.close() } catch (_: Exception) { }
+        captureSession = null
+        try { cameraDevice?.close() } catch (_: Exception) { }
+        cameraDevice = null
+        try { imageReader?.close() } catch (_: Exception) { }
+        imageReader = null
+        try { meteringSurface?.release() } catch (_: Exception) { }
+        meteringSurface = null
+        try { meteringTexture?.release() } catch (_: Exception) { }
+        meteringTexture = null
+        stopBackgroundThread()
+    }
+
     private fun cleanup() {
         try {
-            captureSession?.close()
-            captureSession = null
-            cameraDevice?.close()
-            cameraDevice = null
-            imageReader?.close()
-            imageReader = null
-            try {
-                meteringSurface?.release()
-            } catch (_: Exception) {
-            }
-            meteringSurface = null
-            try {
-                meteringTexture?.release()
-            } catch (_: Exception) {
-            }
-            meteringTexture = null
-            stopBackgroundThread()
+            teardownDevice()
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup", e)
         }

