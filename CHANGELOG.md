@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.345] - 2026-10-18
+### Changed
+- Foto kamera tak lagi di-decode empat kali. `photoLuma()` dan `photoHash()` (masing-masing membaca dimensi + men-decode bitmap) disatukan jadi `photoStats()` yang men-decode sekali lalu mengembalikan (kecerahan, sidik) sekaligus — dipakai untuk cek gelap dan cek duplikat pada berkas yang sama.
+- Jejak lokasi 24 jam ditulis ke penyimpanan sekali saja per titik: `lastLocLatE6`/`lastLocLonE6`/`lastLocAt`/`trail24` kini satu transaksi lewat `PreferencesManager.recordSentLocation()` (dulu empat tulis terpisah ke preferensi terenkripsi), dan pemangkasan ke 300 titik memakai salinan `subList` sekali jalan (dulu `removeAt(0)` berulang).
+
 ## [1.6.344] - 2026-10-18
 ### Fixed
 - Rekaman video kini ditulis ke berkas sementara `video_*.mp4.tmp` lalu diganti nama menjadi `video_*.mp4` hanya setelah perekaman berhenti dengan benar. Sebelumnya `MediaRecorder` menulis langsung ke berkas akhir, sehingga rekaman yang terpotong (proses aplikasi mati/force-stop di tengah rekaman) meninggalkan berkas `.mp4` yang tetap dianggap sah dan ikut diunggah antrean video. Berkas sementara sudah disapu otomatis saat `CameraService` dibuat.

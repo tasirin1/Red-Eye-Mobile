@@ -3381,15 +3381,15 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, max)
     }
 
-    private fun photoLuma(photoFile: File): Int {
+    private fun photoStats(photoFile: File): Pair<Int, Long> {
         return try {
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 255
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 255 to 0L
             var sample = 1
-            while (bounds.outWidth / sample > 48 || bounds.outHeight / sample > 48) sample *= 2
+            while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
             val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 255
+            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 255 to 0L
             try {
                 var sum = 0L
                 var n = 0
@@ -3406,49 +3406,32 @@ class MonitoringService : Service() {
                     }
                     y += stepY
                 }
-                if (n == 0) 255 else (sum / n).toInt().coerceIn(0, 255)
-            } finally {
-                try { bmp.recycle() } catch (_: Exception) { }
-            }
-        } catch (_: Exception) {
-            255
-        }
-    }
+                val luma = if (n == 0) 255 else (sum / n).toInt().coerceIn(0, 255)
 
-    private fun photoHash(photoFile: File): Long {
-        return try {
-            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return 0L
-            var sample = 1
-            while (bounds.outWidth / sample > 16 || bounds.outHeight / sample > 16) sample *= 2
-            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 0L
-            try {
                 val cell = IntArray(64)
-                var sum = 0L
+                var cellSum = 0L
                 for (cy in 0 until 8) {
                     for (cx in 0 until 8) {
                         val x = (((cx + 0.5) * bmp.width) / 8).toInt().coerceIn(0, bmp.width - 1)
-                        val y = (((cy + 0.5) * bmp.height) / 8).toInt().coerceIn(0, bmp.height - 1)
-                        val p = bmp.getPixel(x, y)
-                        val luma = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
-                        cell[cy * 8 + cx] = luma
-                        sum += luma
+                        val y2 = (((cy + 0.5) * bmp.height) / 8).toInt().coerceIn(0, bmp.height - 1)
+                        val p = bmp.getPixel(x, y2)
+                        val l = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
+                        cell[cy * 8 + cx] = l
+                        cellSum += l
                     }
                 }
-                val avg = (sum / 64).toInt()
+                val avg = (cellSum / 64).toInt()
                 var bits = 0L
                 for (i in 0 until 64) {
                     if (cell[i] > avg) bits = bits or (1L shl i)
                 }
                 if (bits == 0L) bits = 1L
-                bits
+                luma to bits
             } finally {
                 try { bmp.recycle() } catch (_: Exception) { }
             }
         } catch (_: Exception) {
-            0L
+            255 to 0L
         }
     }
 
@@ -4178,22 +4161,21 @@ class MonitoringService : Service() {
     }
 
     private fun rememberSentLatLon(lat: Double, lon: Double) {
-        try {
-            preferencesManager.lastLocLatE6 = (lat * 1_000_000).toLong()
-            preferencesManager.lastLocLonE6 = (lon * 1_000_000).toLong()
-            preferencesManager.lastLocAt = System.currentTimeMillis()
-        } catch (_: Exception) {
-        }
-        try {
+        val trail: String? = try {
             synchronized(prefsRmwLock) {
                 val now = System.currentTimeMillis()
                 val cutoff = now - 24 * 60 * 60_000L
                 val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
-                val fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }.toMutableList()
-                while (fresh.size > 300) fresh.removeAt(0)
-                preferencesManager.trail24 = (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
+                var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
+                if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
+                (if (fresh.isEmpty()) pts.takeLast(1) else fresh).joinToString(";")
             }
+        } catch (_: Exception) {
+            null
+        }
+        try {
+            preferencesManager.recordSentLocation(lat, lon, trail)
         } catch (_: Exception) {
         }
     }
@@ -5351,7 +5333,8 @@ class MonitoringService : Service() {
                         }
                         return@capturePhoto
                     }
-                    if (photoLuma(photoFile) < 12) {
+                    val (photoLumaNow, photoHashNow) = photoStats(photoFile)
+                    if (photoLumaNow < 12) {
                         cameraAttempt.incrementAndGet()
                         cameraBusy.set(false)
                         try {
@@ -5366,7 +5349,6 @@ class MonitoringService : Service() {
                         }
                         return@capturePhoto
                     }
-                    val photoHashNow = photoHash(photoFile)
                     val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
                     if (photoHashNow != 0L && prevPhotoHash != 0L && hammingDistance(photoHashNow, prevPhotoHash) <= 6) {
                         cameraAttempt.incrementAndGet()
