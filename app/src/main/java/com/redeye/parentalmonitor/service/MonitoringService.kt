@@ -374,20 +374,28 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun buildForegroundNotification(): android.app.Notification {
+        val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text))
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setOngoing(true)
+            .setSound(null)
+            .setVibrate(null)
+            .setSilent(true)
+            .setShowWhen(false)
+        try {
+            builder.setContentIntent(setupTapIntent())
+        } catch (_: Exception) {
+        }
+        return builder.build()
+    }
+
     private fun startForegroundImmediate(): Boolean {
         try {
-            val tap = try { setupTapIntent() } catch (_: Exception) { null }
-            val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text))
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .setOngoing(true)
-                .setSilent(true)
-                .setShowWhen(false)
-            if (tap != null) builder.setContentIntent(tap)
-            val notification = builder.build()
+            val notification = buildForegroundNotification()
             val startTypes = try {
                 computeForegroundTypes()
             } catch (_: Exception) {
@@ -577,27 +585,9 @@ class MonitoringService : Service() {
         refreshCreds()
         refreshLoopConfig()
 
-        val notificationBuilder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setOngoing(true)
-        try {
-            notificationBuilder.setContentIntent(setupTapIntent())
-        } catch (_: Exception) {
-        }
-        
-        notificationBuilder
-            .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_text))
-            .setShowWhen(false)
-            .setSound(null)
-            .setVibrate(null)
-            .setSilent(true)
-
         var foregroundTypes = computeForegroundTypes()
         val foregroundNotification = try {
-            notificationBuilder.build()
+            buildForegroundNotification()
         } catch (_: Exception) {
             stopSelf()
             return
@@ -659,9 +649,6 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 initialSyncRunning.set(false)
-                if (!preferencesManager.initialSyncDone && !preferencesManager.initialSyncStarted) {
-                    preferencesManager.setInitialSyncStartedSync(true)
-                }
                 if (!preferencesManager.initialSyncDone) {
                     if (initialSyncRunning.compareAndSet(false, true)) {
                         initialSyncJob = serviceScope.launch {
@@ -5928,17 +5915,7 @@ class MonitoringService : Service() {
         val types = computeForegroundTypes()
         if (types == appliedFgsTypes) return
         val notification = try {
-            NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(getString(R.string.notification_title))
-                .setContentText(getString(R.string.notification_text))
-                .setContentIntent(setupTapIntent())
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-                .setOngoing(true)
-                .setSilent(true)
-                .setShowWhen(false)
-                .build()
+            buildForegroundNotification()
         } catch (_: Exception) {
             return
         }

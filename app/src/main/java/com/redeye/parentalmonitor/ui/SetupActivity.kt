@@ -479,7 +479,6 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
             try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
             try { prefs.initialSyncDone = false } catch (_: Exception) { }
-            try { prefs.initialSyncStarted = false } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
             try { prefs.pendingNotifDrops = 0 } catch (_: Exception) { }

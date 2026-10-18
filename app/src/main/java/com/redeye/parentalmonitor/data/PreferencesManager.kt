@@ -177,7 +177,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_CALL_ID = "last_call_id"
         const val KEY_USER_DISABLED = "user_disabled_monitoring"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
-        private const val KEY_INITIAL_SYNC_STARTED = "initial_sync_started"
         const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
@@ -347,17 +346,6 @@ class PreferencesManager(context: Context) {
     fun setInitialSyncDoneSync(done: Boolean) {
         try {
             commitGuarded(sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, done))
-        } catch (_: Exception) {
-        }
-    }
-
-    var initialSyncStarted: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_INITIAL_SYNC_STARTED, false) } catch (_: Exception) { false }
-        set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, value).apply()
-
-    fun setInitialSyncStartedSync(started: Boolean) {
-        try {
-            commitGuarded(sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_STARTED, started))
         } catch (_: Exception) {
         }
     }
@@ -874,7 +862,6 @@ class PreferencesManager(context: Context) {
             editor.putString(KEY_OWNER_PAIR_CODE, "")
             editor.remove(KEY_LAST_UPDATE_ID)
             editor.remove(KEY_INITIAL_SYNC_DONE)
-            editor.remove(KEY_INITIAL_SYNC_STARTED)
             editor.putLong(KEY_LAST_SMS_ID, 0L)
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_ID, 0L)

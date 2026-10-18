@@ -27,3 +27,4 @@ applyLauncherIconHidden
 launcherAlias
 onHideIconPressed
 syncLauncherIconState
+setInitialSyncStartedSync

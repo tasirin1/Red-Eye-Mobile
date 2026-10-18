@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.342] - 2026-10-18
+### Changed
+- Notifikasi foreground layanan disatukan: tiga tempat (`startForegroundImmediate`, `startMonitoring`, dan `ensureForegroundTypes`) membangun builder notifikasi yang nyaris kembar; kini semuanya memakai satu helper `buildForegroundNotification()`. Perilaku tak berubah — kanal tetap senyap (`setSilent`), dan `setContentIntent` tetap aman bila `setupTapIntent()` gagal.
+### Removed
+- Penanda preferensi `initial_sync_started` beserta properti `initialSyncStarted` dan `setInitialSyncStartedSync()`: nilainya ditulis sekali lalu hanya dipakai untuk memutuskan menulis dirinya sendiri, sedangkan gerbang sinkronisasi awal selama ini hanya memakai `initial_sync_done`. Nama fungsinya dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.341] - 2026-10-18
 ### Removed
 - Parameter `pkg` pada `NotificationForwarderService.forwardLocked()` — tak pernah dipakai di badan fungsi (yang dipakai hanya `msgCount`); keempat pemanggil disesuaikan.
