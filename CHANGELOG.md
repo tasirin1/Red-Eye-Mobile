@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.370] - 2026-10-18
+### Fixed
+- Pemulihan setingan tak lagi membaca berkas di thread UI: `restoreLauncher` dulu memanggil `openInputStream()?.readText()` langsung di callback (thread utama) untuk berkas apa pun ukurannya, sehingga berkas besar/folder awan bisa memblokir UI atau kehabisan memori. Kini pembacaan (plus pengecekan ukuran) berjalan di `Dispatchers.IO` dan berkas di atas 1 MB ditolak dengan pesan yang sama seperti berkas rusak.
+- PIN pemulihan yang terlalu pendek kini dijelaskan: `askPin()` hanya menampilkan pesan saat mode backup (min 6), sedangkan mode pemulihan (min 4) menutup dialog dalam diam seolah PIN salah. Ditambah string `restore_pin_short`.
+- Pesan toast tak lagi memakai kata \"Tes gagal\" di luar Tes Koneksi: kegagalan pada alur Simpan (getMe/getChat 401/403, verifikasi gagal, gagal persist) dan alur Kirim Status dulu memakai `setup_test_fail`, sehingga pemilik membaca \"Tes gagal\" padahal tidak ada tes yang dijalankan. Ditambah string `setup_save_failed`, `setup_save_failed_keystore`, dan `setup_status_failed`; alur Simpan offline kini ikut menampilkan alasan gagalnya (`setup_saved_offline` memakai `%1$s`). Token teknis \"persist\" yang bocor ke layar diganti pesan yang jelas.
+- Bila layanan monitoring gagal diluncurkan dari Setup, status tak lagi berbohong: dulu `setMonitoringActive(true)` sudah tersimpan sehingga tombol berubah jadi \"Matikan monitoring\" padahal kartu status menampilkan \"Monitoring mati\". Kini penanda dibatalkan (plus watchdog/liveness dibatalkan) untuk kegagalan permanen seperti `SecurityException`/`IllegalStateException`, sedangkan `ForegroundServiceStartNotAllowedException` (pembatasan sementara Android 12+) tetap membiarkan pemulihan otomatis bekerja.
+- Teks chat ID tak lagi menyesatkan: pesan lama berbunyi \"harus angka\" padahal `@username` diterima (dan divalidasi terpisah).
+- Pesan setelah backup tak lagi berbunyi \"Backup siap, pilih lokasi simpan\" yang muncul setelah berkas benar-benar tersimpan; teksnya kini \"Backup tersimpan\".
+- Watchdog juga dibatalkan dari `BootRestartWorker` saat gate \"monitoring dimatikan\" terpenuhi, agar periodic worker 15 menit tak terus berjalan tanpa guna.
+
 ## [1.6.369] - 2026-10-18
 ### Fixed
 - Kamera tak lagi dihidupkan ulang oleh sesi basi: `CameraService.forceReset()` (dipakai `teardownJobs()` saat loop macet/`/sembuh`) memang menaikkan `sessionSeq` dan menghapus watchdog, tetapi callback `openCamera` yang sedang terbang tetap menulis `cameraDevice` dan melewatkan `teardownDevice()` karena seq berubah — kamera + `ImageReader` tertinggal terbuka (panas/baterai, kamera terkunci untuk aplikasi lain) dan `/photo` berikutnya bisa jalan bersamaan. Kini `onOpened` (jalur foto dan video) menutup kamera dan berhenti bila `sessionSeq` sudah berubah.
