@@ -171,12 +171,12 @@ object Liveness {
             schedule(context)
             return
         }
+        noteKillDetected()
         schedule(context)
         try {
             if (manager.liveTestPending) manager.liveTestByAlarm = true
         } catch (_: Exception) {
         }
-        noteKillDetected()
         val started = try {
             val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING

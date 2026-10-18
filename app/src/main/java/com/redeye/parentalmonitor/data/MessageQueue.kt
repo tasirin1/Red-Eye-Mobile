@@ -20,6 +20,12 @@ class MessageQueue private constructor(context: Context) {
 
     @Volatile
     private var dropsDirty = false
+    private var lastPersistAt = 0L
+    private var persistDirty = false
+    private val lock = Any()
+    private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
+    private var cached: MutableList<QueuedMessage>? = null
+    private val arrayType = Array<QueuedMessage>::class.java
 
     init {
         // Always try encrypted prefs first; fall back to volatile only if unavailable
@@ -45,13 +51,6 @@ class MessageQueue private constructor(context: Context) {
             }
         }
     }
-    private var lastPersistAt = 0L
-    private var persistDirty = false
-    private val lock = Any()
-    private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
-    private var cached: MutableList<QueuedMessage>? = null
-    private val arrayType = Array<QueuedMessage>::class.java
-
     companion object {
         private const val QUEUE_PREFS_NAME = "encrypted_queue"
         private const val KEY_QUEUE = "queued_messages"
@@ -77,10 +76,9 @@ class MessageQueue private constructor(context: Context) {
     fun tryRestorePersistent(): Boolean {
         synchronized(lock) {
             if (!volatileOnly) return true
+            val pending = volatileQueue.toList()
             return try {
                 val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
-                val pending = volatileQueue.toList()
-                volatileQueue.clear()
                 sharedPreferences = restored
                 volatileOnly = false
                 cached = null
@@ -101,8 +99,14 @@ class MessageQueue private constructor(context: Context) {
                     }
                     persistLocked(queue)
                 }
+                volatileQueue.clear()
                 true
             } catch (_: Exception) {
+                volatileQueue.clear()
+                volatileQueue.addAll(pending)
+                sharedPreferences = null
+                volatileOnly = true
+                cached = null
                 false
             }
         }

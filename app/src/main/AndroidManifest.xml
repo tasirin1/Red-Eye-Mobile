@@ -81,7 +81,11 @@
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync|specialUse"
-            tools:node="merge" />
+            tools:node="merge">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="parental monitoring: periodic status sync of the child device" />
+        </service>
 
         <!-- Monitoring service -->
         <service

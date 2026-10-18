@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.358] - 2026-10-18
+### Fixed
+- `Liveness.handleWakeUp()`: `noteKillDetected()` kini dipanggil sebelum `schedule()` sehingga alarm berikutnya dijadwalkan memakai interval "mode waspada" (`intervalMs()` membaca `urgentUntilElapsed`). Sebelumnya alarm berikutnya memakai interval panjang meski servis baru saja terdeteksi mati.
+- `MessageQueue.tryRestorePersistent()`: antrean volatil tak lagi dikosongkan sebelum data berhasil dipersist. `volatileQueue.clear()` dipindah ke akhir jalur sukses, dan jalur `catch` mengembalikan isi antrean lalu kembali ke mode volatil sehingga pesan tak hilang bila pemulihan gagal di tengah jalan.
+- `MessageQueue`: deklarasi `lock`, `cached`, `lastPersistAt`, `persistDirty`, `generationCounter`, dan `arrayType` dipindah ke atas blok `init {}`. Sebelumnya `init` memicu `tryRestorePersistent()` di thread lain sebelum `lock` terinisialisasi, berisiko `NullPointerException` pada `synchronized(lock)`.
+- `AndroidManifest.xml`: layanan WorkManager `SystemForegroundService` yang memakai tipe `specialUse` kini diberi properti `android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE`. Tanpa itu, `startForeground` bertipe `SPECIAL_USE` (dipakai `BootRestartWorker` pada Android 14+) ditolak sistem.
+
 ## [1.6.357] - 2026-10-18
 ### Removed
 - Parameter `reportResult` pada `captureAndSendScreenshot()` dihapus — satu-satunya pemanggilnya (`/screenshot`) selalu mengirim `true`, jadi semua cabang `if (reportResult)` dan cabang `else`-nya (yang menyembunyikan kegagalan izin) adalah kode mati. Perilaku laporan tak berubah.
