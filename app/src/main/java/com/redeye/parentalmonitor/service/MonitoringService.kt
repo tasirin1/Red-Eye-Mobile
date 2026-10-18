@@ -86,6 +86,7 @@ class MonitoringService : Service() {
     private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
+    private val recorderActive = AtomicBoolean(false)
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2073,7 +2074,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
                 } else if (!ringBusy.compareAndSet(false, true)) {
                     sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
-                } else if (recordBusy.get()) {
+                } else if (recorderActive.get()) {
                     ringBusy.set(false)
                     sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
                 } else {
@@ -2594,7 +2595,7 @@ class MonitoringService : Service() {
                     sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
                     return
                 }
-                if (recordBusy.get()) {
+                if (recorderActive.get()) {
                     ringBusy.set(false)
                     sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
                 } else {
@@ -4859,6 +4860,7 @@ class MonitoringService : Service() {
         smsBusy.set(false)
         ringBusy.set(false)
         recordBusy.set(false)
+        recorderActive.set(false)
         audioFlushBusy.set(false)
         photoFlushBusy.set(false)
         videoFlushBusy.set(false)
@@ -6430,6 +6432,7 @@ class MonitoringService : Service() {
             recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
             recorder.setOutputFile(audioFile.absolutePath)
             recorder.prepare()
+            recorderActive.set(true)
             recorder.start()
             kotlinx.coroutines.delay(seconds * 1000L)
             try {
@@ -6444,6 +6447,7 @@ class MonitoringService : Service() {
                 sendToTelegram("Gagal merekam (audio kosong). Coba lagi.")
                 return
             }
+            recorderActive.set(false)
             audioOutcome = sendAudioFile(audioFile)
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
@@ -6496,6 +6500,7 @@ class MonitoringService : Service() {
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Gagal merekam.")
         } finally {
+            recorderActive.set(false)
             releaseOpWakeLock(audioLock)
             try {
                 recorder?.release()
@@ -6641,6 +6646,7 @@ class MonitoringService : Service() {
         val wd = serviceScope.launch {
             delay(seconds * 1000L + 120_000L)
             if (videoAttempt.get() == attempt && recordBusy.compareAndSet(true, false)) {
+                recorderActive.set(false)
                 videoAttempt.incrementAndGet()
                 try { cameraService.forceReset() } catch (_: Exception) { }
                 releaseOpWakeLock(videoLock)
@@ -6649,6 +6655,7 @@ class MonitoringService : Service() {
             }
         }
         videoWatchdog = wd
+        recorderActive.set(true)
         try {
             cameraService.captureVideo(
                 durationMs = seconds * 1000L,
@@ -6660,6 +6667,7 @@ class MonitoringService : Service() {
                     }
                     videoAttempt.incrementAndGet()
                     try { wd.cancel() } catch (_: Exception) { }
+                    recorderActive.set(false)
                     markMediaActive(videoFile)
                     serviceScope.launch {
                         try {
@@ -6695,6 +6703,7 @@ class MonitoringService : Service() {
                     try { wd.cancel() } catch (_: Exception) { }
                     releaseOpWakeLock(videoLock)
                     recordBusy.set(false)
+                    recorderActive.set(false)
                     serviceScope.launch {
                         sendToTelegram("⚠️ Gagal merekam video: " + sanitizedCameraError(e.message))
                     }
@@ -6706,6 +6715,7 @@ class MonitoringService : Service() {
             try { wd.cancel() } catch (_: Exception) { }
             releaseOpWakeLock(videoLock)
             recordBusy.set(false)
+            recorderActive.set(false)
             android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
             serviceScope.launch {
                 sendToTelegram("⚠️ Gagal merekam video.")

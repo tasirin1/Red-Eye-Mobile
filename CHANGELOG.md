@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.340] - 2026-10-18
+### Fixed
+- Perintah darurat `/hilang` (dan `/ring`) tak lagi diam-diam melewati dering saat perekaman sedang **diunggah**: pemeriksaan "sedang merekam" kini memakai penanda `recorderActive` yang menyala hanya selama perekaman benar-benar berjalan (audio: `recorder.start()` sampai `recorder.stop()`; video: selama `captureVideo` berjalan), bukan `recordBusy` yang tetap ditahan sampai unggahan selesai (bisa menit-an di koneksi lambat). Gating rekaman baru tak berubah: `/record` dan `/recordvideo` tetap ditolak selama unggahan berlangsung.
+- Ganti token/chat ID lewat Setup kini ikut me-reset kursor riwayat SMS (`last_sms_id`) dan panggilan (`last_call_timestamp`/`last_call_id`), selaras dengan reset penuh di `SetupActivity`. Sebelumnya hanya `initial_sync_done` yang dihapus, sehingga sinkronisasi awal berjalan ulang dari kursor lama dan mengirim pesan keliru "Belum ada riwayat SMS/panggilan di HP ini" ke chat baru padahal riwayatnya penuh.
+
 ## [1.6.339] - 2026-10-18
 ### Fixed
 - Loop kamera tak lagi me-restart dirinya sendiri tanpa henti saat kamera diblokir kebijakan perangkat (device admin). Cabang jeda menulis `photoPausedUntil` dengan stempel waktu baru setiap 2 menit, dan tulis itu memicu listener preferensi yang memanggil `restartCameraLoop()` — job kamera dibatalkan tepat saat sedang menunggu, lalu iterasi berikutnya menulis lagi. Kini nilai ditulis sekali saja saat jeda dimulai; selama masih terjeda cache disinkronkan tanpa menulis preferensi, sehingga badai cancel/launch, tulis SharedPreferences, dan panggilan binder `DevicePolicyManager` berhenti.

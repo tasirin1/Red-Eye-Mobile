@@ -875,6 +875,9 @@ class PreferencesManager(context: Context) {
             editor.remove(KEY_LAST_UPDATE_ID)
             editor.remove(KEY_INITIAL_SYNC_DONE)
             editor.remove(KEY_INITIAL_SYNC_STARTED)
+            editor.putLong(KEY_LAST_SMS_ID, 0L)
+            editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
+            editor.putLong(KEY_LAST_CALL_ID, 0L)
         }
         if (chatChanged || tokenChanged) {
             editor.putLong(KEY_OWNER_ID, 0L)
