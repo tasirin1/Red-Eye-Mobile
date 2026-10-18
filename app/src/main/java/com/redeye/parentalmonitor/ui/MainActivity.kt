@@ -66,6 +66,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshForegroundTypes()
+    }
+
+    private fun refreshForegroundTypes() {
+        try {
+            if (!MonitoringService.isRunning) return
+            val intent = Intent(this, MonitoringService::class.java).apply {
+                action = MonitoringService.ACTION_REFRESH_FGS
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════
     // CALCULATOR FUNCTIONS (RELEASE MODE - STEALTH)
     // ═══════════════════════════════════════════════════════════

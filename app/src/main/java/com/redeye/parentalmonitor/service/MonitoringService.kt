@@ -232,6 +232,7 @@ class MonitoringService : Service() {
     companion object {
         const val ACTION_START_MONITORING = "START_MONITORING"
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
+        const val ACTION_REFRESH_FGS = "REFRESH_FGS"
         const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
@@ -439,29 +440,7 @@ class MonitoringService : Service() {
     private fun startForegroundImmediate(): Boolean {
         try {
             val notification = buildForegroundNotification()
-            val startTypes = try {
-                computeForegroundTypes()
-            } catch (_: Exception) {
-                baseForegroundType()
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                try {
-                    startForeground(NOTIFICATION_ID, notification, startTypes)
-                    appliedFgsTypes = startTypes
-                    return true
-                } catch (_: Exception) {
-                    val fallback = baseForegroundType()
-                    try {
-                        startForeground(NOTIFICATION_ID, notification, fallback)
-                        appliedFgsTypes = fallback
-                        return true
-                    } catch (_: Exception) {
-                    }
-                }
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-                return true
-            }
+            if (applyForegroundTypes(notification)) return true
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Immediate foreground start failed: ${redactToken(e.message)}")
         }
@@ -507,6 +486,12 @@ class MonitoringService : Service() {
                     startMonitoring()
                 }
                 return START_NOT_STICKY
+            }
+            ACTION_REFRESH_FGS -> {
+                if (!isRunning && shouldAutoResume()) {
+                    startMonitoring()
+                }
+                return if (isRunning) START_STICKY else START_NOT_STICKY
             }
             ACTION_ADMIN_ALERT -> {
                 if (!isRunning && shouldAutoResume()) {
@@ -628,38 +613,15 @@ class MonitoringService : Service() {
         refreshCreds()
         refreshLoopConfig()
 
-        val foregroundTypes = computeForegroundTypes()
         val foregroundNotification = try {
             buildForegroundNotification()
         } catch (_: Exception) {
             stopSelf()
             return
         }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, foregroundNotification, foregroundTypes)
-                appliedFgsTypes = foregroundTypes
-            } else {
-                startForeground(NOTIFICATION_ID, foregroundNotification)
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("MonitoringService", "Foreground start failed, retrying minimal: ${redactToken(e.message)}")
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val baseTypes = baseForegroundType()
-                    startForeground(
-                        NOTIFICATION_ID,
-                        foregroundNotification,
-                        baseTypes
-                    )
-                    appliedFgsTypes = baseTypes
-                } else {
-                    startForeground(NOTIFICATION_ID, foregroundNotification)
-                }
-            } catch (_: Exception) {
-                stopSelf()
-                return
-            }
+        if (!applyForegroundTypes(foregroundNotification)) {
+            stopSelf()
+            return
         }
         isRunning = true
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started")
@@ -5776,7 +5738,10 @@ class MonitoringService : Service() {
     }
 
     private fun sanitizedCameraError(reason: String?): String {
-        if (isCameraPolicyError(reason)) return "kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"
+        if (isCameraPolicyError(reason)) {
+            return if (isCameraDisabledByPolicy()) "kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"
+            else "kamera menolak akses latar (CAMERA_DISABLED)"
+        }
         val known = when ((reason ?: "").trim()) {
             "photo backlog full" -> "antrean foto penuh"
             "camera permission missing" -> "izin kamera belum diberikan"
@@ -5848,7 +5813,8 @@ class MonitoringService : Service() {
                 " Periksa Setelan > Keamanan > Aplikasi admin perangkat, atau jeda foto dengan /pause." +
                 " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
-        return "Kamera melaporkan terblokir, tapi tak ada admin perangkat yang mematikannya — kemungkinan saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
+        return "Kamera menolak akses walau tak ada admin perangkat yang mematikannya — biasanya izin kamera latar hilang: Android 14+ hanya memasang tipe latar \"camera\" saat aplikasi dibuka, dan tipe latar aktif sekarang \"" +
+            fgsTypesText(appliedFgsTypes) + "\". Buka aplikasi sekali saja supaya izin latar dipasang ulang; kemungkinan lain saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
             " Dicoba lagi tiap 15 menit; kirim /photointerval 0 untuk mematikan foto otomatis."
     }
 
@@ -5963,6 +5929,47 @@ class MonitoringService : Service() {
         return types
     }
 
+    private fun foregroundTypeLadder(): List<Int> {
+        val ladder = ArrayList<Int>(3)
+        val full = try {
+            computeForegroundTypes()
+        } catch (_: Exception) {
+            baseForegroundType()
+        }
+        ladder.add(full)
+        if ((full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) {
+            ladder.add(full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION.inv())
+        }
+        val base = baseForegroundType()
+        if (base != full && base != ladder[ladder.size - 1]) ladder.add(base)
+        return ladder
+    }
+
+    private fun applyForegroundTypes(notification: android.app.Notification): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return try {
+                startForeground(NOTIFICATION_ID, notification)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+        var lastError: Exception? = null
+        for (types in foregroundTypeLadder()) {
+            try {
+                startForeground(NOTIFICATION_ID, notification, types)
+                appliedFgsTypes = types
+                return true
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+        if (lastError != null) {
+            android.util.Log.w("MonitoringService", "startForeground gagal: " + redactToken(lastError.message))
+        }
+        return false
+    }
+
     private fun ensureForegroundTypes() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val types = computeForegroundTypes()
@@ -5972,16 +5979,10 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             return
         }
-        try {
-            startForeground(NOTIFICATION_ID, notification, types)
-            appliedFgsTypes = types
-        } catch (_: Exception) {
-            val fallback = baseForegroundType()
-            try {
-                startForeground(NOTIFICATION_ID, notification, fallback)
-                appliedFgsTypes = fallback
-            } catch (_: Exception) {
-            }
+        val before = appliedFgsTypes
+        if (!applyForegroundTypes(notification)) return
+        if (appliedFgsTypes != types && appliedFgsTypes != before) {
+            android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + fgsTypesText(appliedFgsTypes) + " (diminta " + fgsTypesText(types) + ")")
         }
     }
 

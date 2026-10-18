@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.366] - 2026-10-18
+### Changed
+- Tiga salinan logika `startForeground` ber-tipe (`startForegroundImmediate()`, `startMonitoring()`, `ensureForegroundTypes()`) disatukan menjadi `applyForegroundTypes()` + `foregroundTypeLadder()`, jadi urutan tipe dan penanganan gagalnya tak lagi bisa menyimpang antar jalur.
+### Fixed
+- Foto otomatis mati sampai aplikasi dibuka: bila `startForeground` ber-tipe lengkap ditolak (di Android 14+ tipe `camera`/`microphone`/`location` memang ditolak saat service diluncurkan dari latar), aplikasi dulu langsung jatuh ke tipe dasar sehingga tipe `camera` hilang dan kamera dari latar selalu dijawab `CAMERA_DISABLED` sampai monitoring di-toggle manual. Kini tangga tipe mencoba tipe lengkap, lalu tipe lengkap tanpa `mediaProjection` (satu tipe opsional tak lagi mencabut tipe berguna), baru tipe dasar.
+- Izin kamera latar dipasang ulang begitu aplikasi dibuka: aksi baru `MonitoringService.ACTION_REFRESH_FGS` dikirim `MainActivity.onResume()` saat monitoring berjalan — Android 14+ mengecek ulang syarat while-in-use pada panggilan `startForeground` berikutnya selagi aplikasi terlihat, jadi membuka aplikasi sekali sudah cukup untuk memulihkan foto latar tanpa toggle monitoring.
+- Diagnosa kamera tak lagi menuduh kebijakan perangkat saat tak ada admin yang memblokir: `sanitizedCameraError()` memakai sebutan "kebijakan perangkat" hanya bila `isCameraDisabledByPolicy()` benar (selain itu "kamera menolak akses latar"), dan hint kegagalan menyebut sebab yang paling mungkin (izin kamera latar hilang di Android 14+) berikut tipe latar yang aktif, supaya bisa dibedakan dari saklar privasi kamera bawaan HP.
+- `ensureForegroundTypes()` mencatat penurunan tipe FGS hanya saat tipe aktif benar-benar berubah (bukan tiap percobaan) dan `applyForegroundTypes()` mencatat galat `startForeground` terakhir, sehingga sebab kamera bisu bisa ditelusuri dari logcat.
+
 ## [1.6.365] - 2026-10-18
 ### Changed
 - `AppPermissions.hasAll(context)` menggantikan dua salinan `hasAllPermissions()` yang identik (`SetupActivity`, `MainActivity`), dan `permsLegacy` kini diturunkan dari `permsTiramisuPlus` tanpa `POST_NOTIFICATIONS` sehingga daftar izin tak lagi ditulis dua kali.
