@@ -4858,6 +4858,8 @@ class MonitoringService : Service() {
         }
         initialSyncRunning.set(false)
         idlePolls = 0
+        commandBackoffUntil = 0L
+        mediaBackoffUntil = 0L
         try {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
@@ -5784,15 +5786,14 @@ class MonitoringService : Service() {
                 try { bmp.recycle() } catch (_: Exception) { }
                 return null
             }
-            val cropped = bmp
             val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
             try {
-                java.io.FileOutputStream(out).use { cropped.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+                java.io.FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
             } catch (_: Exception) {
                 deleteQuietly(out)
                 return null
             } finally {
-                try { cropped.recycle() } catch (_: Exception) { }
+                try { bmp.recycle() } catch (_: Exception) { }
             }
             if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
             return out

@@ -15,8 +15,8 @@ android {
         ]
         minSdk 24
         targetSdk 35
-        versionCode 401
-        versionName "1.6.374"
+        versionCode 402
+        versionName "1.6.375"
 
         // Interval sync default: hanya dari CI via -PSYNC_INTERVAL / env SYNC_INTERVAL.
         // Kredensial bot TIDAK pernah dibake ke APK; satu-satunya sumber adalah
@@ -97,7 +97,6 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'

@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.375] - 2026-10-18
+### Fixed
+- Status "tampil di atas aplikasi lain" tak lagi bisa diklaim hijau saat pemeriksaannya gagal: `AutoStart.canDrawOverlays()` menelan exception lalu mengembalikan `true` (fail-open), sehingga kartu anti-mati bisa menampilkan "izin overlay ada" padahal `Settings.canDrawOverlays()` tak berhasil dipanggil; pemilik juga tak diminta mengizinkan. Kini gagal baca = `false` (fail-closed, arah aman: pemilik hanya diminta mengizinkan sekali lagi).
+- Backoff perintah/media kini benar-benar direset saat bongkar sesi: `CHANGELOG` rilis 1.6.103 menyatakan `handleFgsTimeout()` → `teardownJobs()` ikut mereset `commandBackoffUntil`/`mediaBackoffUntil`/`idlePolls`, tetapi kodenya hanya mereset `idlePolls` — sisa backoff `429` (sampai 5 menit) terbawa ke sesi berikutnya sehingga kirim media/polling perintah tertahan tanpa sebab. Kini `teardownJobs()` mereset keduanya.
+### Changed
+- Display kalkulator diberi `android:accessibilityLiveRegion="polite"`, supaya TalkBack membacakan hasil/hitungan (sebelumnya perubahan teks tak diumumkan).
+- Alias menyesatkan `val cropped = bmp` (tidak ada pemotongan) di jalur screenshot dihapus; `bmp` dipakai langsung.
+### Removed
+- Dependency `androidx.constraintlayout` yang tak dirujuk layout/kelas mana pun.
+- `android:dataExtractionRules` + `android:fullBackupContent` beserta `res/xml/data_extraction_rules.xml` dan `res/xml/backup_rules.xml`: keduanya tak berefek karena `allowBackup="false"`.
+- Drawable `calc_btn_accent.xml` yang identik byte-per-byte dengan `calc_btn_function.xml`; `CalculatorButton.Accent` kini memakai `calc_btn_function` (tampilan sama persis).
+
 ## [1.6.374] - 2026-10-18
 ### Changed
 - Penanda kirim sukses tak lagi ditulis per pesan: `noteSendOk()` dulu menulis `lastSendOkElapsed` prefs terenkripsi untuk **setiap** pesan dan **setiap** potongan (satu run bisa belasan tulisan), padahal pemulihan jalur bisu membacanya dalam satuan menit. Kini penulisan dijaga jeda 30 detik per instance worker, sedangkan pembersihan `silentHealStage` tetap dilakukan sekali per run.

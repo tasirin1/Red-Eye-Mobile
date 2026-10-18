@@ -92,7 +92,7 @@ object AutoStart {
         return try {
             Settings.canDrawOverlays(context)
         } catch (_: Exception) {
-            true
+            false
         }
     }
 
