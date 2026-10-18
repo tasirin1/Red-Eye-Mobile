@@ -5958,9 +5958,10 @@ class MonitoringService : Service() {
         if ((full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) {
             ladder.add(full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION.inv())
         }
-        val whileInUse = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val camType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        val micType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        val locType = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val whileInUse = camType or micType or locType
         val withoutWhileInUse = full and whileInUse.inv()
         if (withoutWhileInUse != full && withoutWhileInUse != ladder[ladder.size - 1]) {
             ladder.add(withoutWhileInUse)
