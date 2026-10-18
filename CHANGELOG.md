@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.374] - 2026-10-18
+### Changed
+- Penanda kirim sukses tak lagi ditulis per pesan: `noteSendOk()` dulu menulis `lastSendOkElapsed` prefs terenkripsi untuk **setiap** pesan dan **setiap** potongan (satu run bisa belasan tulisan), padahal pemulihan jalur bisu membacanya dalam satuan menit. Kini penulisan dijaga jeda 30 detik per instance worker, sedangkan pembersihan `silentHealStage` tetap dilakukan sekali per run.
+- Penghitung drop tak lagi ditulis saat tak ada yang dibuang: `takeDropsLocked()` selalu `commit()` walau `n = 0`, dipanggil rutin 2–3× per run worker; kini keluar lebih awal bila nilainya nol.
+- `/clearqueue` memakai satu instance prefs: cabang `volatileOnly` dulu membuka instance `EncryptedSharedPreferences` kedua (dan tetap menjalankan `commit()` kedua) — kini instance yang sama dipakai, hanya dibuka bila memang belum ada.
+- `MAX_TRANSIENT_RETRIES` di `MessageQueue` dijadikan `private` (hanya dipakai internal).
+### Removed
+- Cabang `"photo backlog full" -> "antrean foto penuh"` di `sanitizedCameraError()`: tak ada kode mana pun yang pernah menghasilkan pesan itu (hanya definisinya yang ada).
+- Percobaan kedua `removeMessages(rejectedIds)` yang identik tanpa perubahan state di `SendMessageWorker`.
+
 ## [1.6.373] - 2026-10-18
 ### Fixed
 - Kabar pasang/hapus aplikasi tak lagi dikirim saat monitoring tak berjalan: `PackageChangeReceiver` hanya memeriksa `isConfigured()` + `userDisabledMonitoring`, sehingga saat monitoring mati/jeda (`isMonitoringEnabled`, `monitoringPaused`) pesan tetap masuk; kini memakai gerbang yang sama dengan penerus notifikasi (`isConfigured() && isMonitoringEnabled && !monitoringPaused && !userDisabledMonitoring && userConsentedMonitoring`).

@@ -193,17 +193,9 @@ class SendMessageWorker(
         } catch (_: Exception) {
         }
         if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
-            var rejectedRemoved = false
             try {
                 messageQueue.removeMessages(rejectedIds)
-                rejectedRemoved = true
             } catch (_: Exception) {
-            }
-            if (!rejectedRemoved) {
-                try {
-                    messageQueue.removeMessages(rejectedIds)
-                } catch (_: Exception) {
-                }
             }
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
         } else if (rejectedIds.isNotEmpty()) {
@@ -573,14 +565,25 @@ class SendMessageWorker(
         return null
     }
 
+    @Volatile
+    private var lastSendOkNoteAt = 0L
+    private var healStageCleared = false
+
     private fun noteSendOk() {
-        try {
-            preferencesManager.setLastSendOkMarker(android.os.SystemClock.elapsedRealtime())
-        } catch (_: Exception) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastSendOkNoteAt >= 30_000L) {
+            lastSendOkNoteAt = now
+            try {
+                preferencesManager.setLastSendOkMarker(now)
+            } catch (_: Exception) {
+            }
         }
-        try {
-            if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
-        } catch (_: Exception) {
+        if (!healStageCleared) {
+            try {
+                if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
+                healStageCleared = true
+            } catch (_: Exception) {
+            }
         }
     }
 

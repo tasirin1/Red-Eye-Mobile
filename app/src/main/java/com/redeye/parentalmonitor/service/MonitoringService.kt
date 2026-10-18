@@ -5807,7 +5807,6 @@ class MonitoringService : Service() {
             else "kamera menolak akses latar (CAMERA_DISABLED)"
         }
         val known = when ((reason ?: "").trim()) {
-            "photo backlog full" -> "antrean foto penuh"
             "camera permission missing" -> "izin kamera belum diberikan"
             else -> null
         }
