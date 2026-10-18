@@ -248,6 +248,7 @@ class MonitoringService : Service() {
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
+        private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
@@ -985,6 +986,7 @@ class MonitoringService : Service() {
     private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pairGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val pairGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
+    private val pairNoticeAt = java.util.concurrent.atomic.AtomicLong(0L)
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -1322,7 +1324,11 @@ class MonitoringService : Service() {
                                 }
                             }
                         } else if (cachedOwnerId != 0L && senderId != cachedOwnerId.toString()) {
-                            sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
+                            val nowNotice = android.os.SystemClock.elapsedRealtime()
+                            if (nowNotice >= pairNoticeAt.get()) {
+                                pairNoticeAt.set(nowNotice + PAIR_NOTICE_COOLDOWN_MS)
+                                sendToTelegram("\u26A0\uFE0F Pemasangan diabaikan: pemilik sudah tertaut.")
+                            }
                         }
                     }
                     val ownerOk = isOwner(senderId)

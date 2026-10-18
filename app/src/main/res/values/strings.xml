@@ -73,8 +73,8 @@
     <string name="restore_done">Backup loaded, check then tap Save</string>
     <string name="restore_bad">Cannot open backup (wrong PIN or corrupt file)</string>
     <string name="setup_open_settings">Permission denied permanently, opening Settings to enable manually</string>
-    <string name="setup_testing">Sending test message…</string>
-    <string name="setup_test_success">✅ Test successful! Check your Telegram.</string>
+    <string name="setup_testing">Checking bot token &amp; chat…</string>
+    <string name="setup_test_success">✅ Test successful! Bot token &amp; chat ID are valid.</string>
     <string name="setup_test_fail">❌ Test failed: %1$s</string>
     <string name="setup_saved_offline">Saved offline (interval only, credentials unchanged)</string>
     <string name="setup_admin_on">✅ Protection already enabled</string>

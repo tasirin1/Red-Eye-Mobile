@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.363] - 2026-10-18
+### Fixed
+- Notifikasi "Pemasangan diabaikan: pemilik sudah tertaut" tak lagi bisa dibanjirkan oleh pengirim asing. Sebelumnya setiap `/start` dari nomor tak dikenal langsung memicu pesan Telegram; kini dibatasi satu notifikasi per 10 menit (`PAIR_NOTICE_COOLDOWN_MS`).
+### Changed
+- Teks Tes Koneksi diselaraskan dengan perilaku nyatanya (memeriksa token bot + chat ID lewat `getMe`/`getChat`, tanpa mengirim pesan): `setup_testing` kini "Checking bot token & chat…" / "Memeriksa token bot & chat…" dan `setup_test_success` "Test successful! Bot token & chat ID are valid." / "Tes berhasil! Token bot & chat ID valid." — sebelumnya menjanjikan pesan tes dan "Cek Telegram" padahal tak ada pesan yang dikirim.
+
 ## [1.6.362] - 2026-10-18
 ### Fixed
 - Penjaga lima loop inti `MonitoringService` (`monitoringJob`, `cameraJob`, `patrolJob`, `commandJob`, `loopWatchdogJob`) tak lagi bisa langsung keluar saat baru dijalankan. Sebelumnya syarat `X === self` dievaluasi sebelum field job terisi (field baru diisi setelah `launch` kembali), sehingga loop bisa berhenti tanpa jejak bila badan korutin berjalan lebih dulu; kini kondisi memperlakukan field yang belum terisi (`null`) sebagai "belum digantikan".

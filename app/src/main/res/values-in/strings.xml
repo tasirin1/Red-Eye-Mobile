@@ -73,8 +73,8 @@
     <string name="restore_done">Backup dimuat, periksa lalu tap Simpan</string>
     <string name="restore_bad">Backup tak bisa dibuka (PIN salah atau file rusak)</string>
     <string name="setup_open_settings">Izin ditolak permanen, buka Pengaturan untuk mengaktifkan manual</string>
-    <string name="setup_testing">Mengirim pesan tes…</string>
-    <string name="setup_test_success">✅ Tes berhasil! Cek Telegram.</string>
+    <string name="setup_testing">Memeriksa token bot &amp; chat…</string>
+    <string name="setup_test_success">✅ Tes berhasil! Token bot &amp; chat ID valid.</string>
     <string name="setup_test_fail">❌ Tes gagal: %1$s</string>
     <string name="setup_saved_offline">Tersimpan offline (interval saja, kredensial tak berubah)</string>
     <string name="setup_admin_on">✅ Proteksi sudah aktif</string>
