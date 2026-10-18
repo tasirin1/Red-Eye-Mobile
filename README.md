@@ -50,7 +50,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 4. Buka aplikasi kalkulatornya.
 5. Ketik `1234` lalu tekan `=`, halaman Setup kebuka.
 6. Isi token bot, Chat ID, interval sync, tap Save.
-7. Tap Test Connection, pastikan pesan masuk ke Telegram.
+7. Tap Test Connection: token dan Chat ID dicek ke Telegram (`getMe` + `getChat`) sekaligus setingannya disimpan. Tombol ini tidak mengirim pesan apa pun — pesan sungguhan datang dari Send Status atau perintah bot.
 8. Tap Grant permissions sampai semua hijau, lalu grant background location Allow all the time.
 9. Nyalakan akses notifikasi kalau mau forward notifikasi.
 10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`.

@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.376] - 2026-10-18
+### Fixed
+- `tools/pasang-hook.sh` kini tahu di mana Git mencari kait: dulu skrip memasang `.git/hooks/pre-push` lalu mengumumkan "terpasang" walaupun `core.hooksPath` menunjuk direktori lain — Git mengabaikan `.git/hooks` dalam keadaan itu, jadi pemasangan bisa "sukses" tanpa satu pun kait yang jalan. Sekarang tujuan mengikuti `core.hooksPath` (absolut, relatif ke root repo, atau `~/…`); direktori yang belum ada dibuat disertai peringatan tegas (selama tak ada, Git melewati semua kait); kait lama yang bukan milik skrip ini disalin ke `pre-push.bak-<tanggal>`; dan bila kait tetap tak bisa dieksekusi, skrip keluar dengan status gagal alih-alih mengaku sukses.
+### Changed
+- `README.md` langkah Test Connection kini sesuai kenyataan: tombol itu memanggil `getMe` + `getChat` dan menyimpan setingan, bukan mengirim pesan — pesan sungguhan datang dari Send Status atau perintah bot.
+
 ## [1.6.375] - 2026-10-18
 ### Fixed
 - Status "tampil di atas aplikasi lain" tak lagi bisa diklaim hijau saat pemeriksaannya gagal: `AutoStart.canDrawOverlays()` menelan exception lalu mengembalikan `true` (fail-open), sehingga kartu anti-mati bisa menampilkan "izin overlay ada" padahal `Settings.canDrawOverlays()` tak berhasil dipanggil; pemilik juga tak diminta mengizinkan. Kini gagal baca = `false` (fail-closed, arah aman: pemilik hanya diminta mengizinkan sekali lagi).
