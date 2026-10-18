@@ -10,7 +10,6 @@ class ParentalMonitorApp : Application() {
 
     companion object {
         const val CHANNEL_ID = "monitoring_channel"
-        const val CHANNEL_NAME = "Monitoring"
         const val RESUME_CHANNEL_ID = "resume_channel"
     }
 
@@ -49,13 +48,12 @@ class ParentalMonitorApp : Application() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_MIN
-            val channelName = CHANNEL_NAME
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                channelName,
+                getString(R.string.channel_name),
                 importance
             ).apply {
-                description = "Monitoring status"
+                description = getString(R.string.channel_desc)
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)
@@ -71,7 +69,7 @@ class ParentalMonitorApp : Application() {
             } catch (_: Exception) {
             }
             try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, "Monitoring Alerts", NotificationManager.IMPORTANCE_MIN).apply {
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, getString(R.string.channel_name_alerts), NotificationManager.IMPORTANCE_MIN).apply {
                     setShowBadge(false)
                     setSound(null, null)
                     enableVibration(false)

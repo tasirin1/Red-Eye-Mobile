@@ -12,6 +12,9 @@
     <string name="grant_permissions">Berikan semua izin</string>
     <string name="notification_title">Kalkulator</string>
     <string name="notification_text">Layanan berjalan</string>
+    <string name="channel_name">Kalkulator</string>
+    <string name="channel_name_alerts">Pemberitahuan kalkulator</string>
+    <string name="channel_desc">Status layanan kalkulator</string>
     <string name="never">Tidak pernah</string>
     <string name="settings_saved">Setingan tersimpan</string>
     <string name="setup_save_no_storage">Tidak tersimpan permanen — penyimpanan aman (keystore) tak tersedia di HP ini, kredensial tak bisa disimpan</string>

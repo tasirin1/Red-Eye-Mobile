@@ -268,16 +268,23 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         if (!hasBackgroundLocation()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                try {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } catch (e: Exception) {
-                    openAppSettings()
-                }
-            }
+            requestBackgroundLocation()
             return
         }
         Toast.makeText(this, getString(R.string.setup_bg_granted), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun requestBackgroundLocation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
+            openAppSettings()
+            return
+        }
+        try {
+            backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } catch (_: Exception) {
+            openAppSettings()
+        }
     }
 
     private fun openAppSettings() {
@@ -888,14 +895,7 @@ class SetupActivity : AppCompatActivity() {
         }
         if (!hasBackgroundLocation()) {
             Toast.makeText(this, getString(R.string.setup_bg_request), Toast.LENGTH_LONG).show()
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                } else {
-                    requestLocationPermissions()
-                }
-            } catch (_: Exception) {
-            }
+            requestBackgroundLocation()
             return
         }
         try {

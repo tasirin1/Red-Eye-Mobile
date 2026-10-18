@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.350] - 2026-10-18
+### Fixed
+- Di Android 11+, permintaan izin "Lokasi sepanjang waktu" dari halaman Setup tak lagi dijalankan lewat dialog izin biasa yang diabaikan sistem. Dua jalur yang masih memakainya (tombol "Berikan semua izin" dan tombol mulai monitoring) kini diarahkan ke halaman Setelan aplikasi seperti jalur yang sudah benar di berkas yang sama, jadi pengguna tidak lagi berputar-putar tanpa bisa memberi izin. Kedua jalur itu disatukan ke satu fungsi `requestBackgroundLocation()`.
+- Nama kanal notifikasi tak lagi bocorkan penyamaran kalkulator. Sebelumnya kanal tampil sebagai "Monitoring" dan "Monitoring Alerts" berbahasa Inggris di Setelan > Notifikasi, padahal aplikasinya bernama "Kalkulator" dan seluruh teks lain sudah ikut bahasa perangkat. Kini memakai string `channel_name`, `channel_name_alerts`, dan `channel_desc` (Inggris + Indonesia).
+- Judul notifikasi cadangan `BootRestartWorker` tak lagi "Monitoring"; mengikuti `notification_title` yang sama dengan notifikasi utama.
+
 ## [1.6.349] - 2026-10-18
 ### Changed
 - `NotificationForwarderService`: pipa `pkg` yang mati di jalur batch notifikasi dibuang seluruhnya. Nilainya hanya disimpan lalu diteruskan ke `forwardLocked()` yang memang tak menerimanya, jadi `batchBuf` kini berisi `String` biasa (dulu `Pair<String, String>`) dan sisa `curPkg`/`leftover` yang mengikutinya ikut hilang.

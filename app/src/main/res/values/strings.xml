@@ -12,6 +12,9 @@
     <string name="grant_permissions">Grant all permissions</string>
     <string name="notification_title">Calculator</string>
     <string name="notification_text">Service running</string>
+    <string name="channel_name">Calculator</string>
+    <string name="channel_name_alerts">Calculator alerts</string>
+    <string name="channel_desc">Calculator service status</string>
     <string name="never">Never</string>
     <string name="settings_saved">Settings saved</string>
     <string name="setup_save_no_storage">Not saved permanently — secure storage (keystore) is unavailable on this device, so credentials cannot be stored</string>

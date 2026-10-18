@@ -27,7 +27,7 @@ class BootRestartWorker(
         } catch (_: Exception) {
             val fallback = NotificationCompat.Builder(applicationContext, ParentalMonitorApp.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Monitoring")
+                .setContentTitle(applicationContext.getString(R.string.notification_title))
                 .setOngoing(true)
                 .setSilent(true)
                 .build()
