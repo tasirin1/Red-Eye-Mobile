@@ -3271,7 +3271,7 @@ class MonitoringService : Service() {
                             android.app.PendingIntent.getBroadcast(
                                 this,
                                 baseCode + it * 7919,
-                                android.content.Intent(sentAction).putExtra("part", it).putExtra("of", parts.size),
+                                android.content.Intent(sentAction).putExtra("part", it),
                                 android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
                             )
                         )

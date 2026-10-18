@@ -261,7 +261,6 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             pkg
         }
-        val notifId = sbn.id
         if (pendingPosts.get() > MAX_QUEUED) {
             val (fbTitle, fbText) = notifTitleText(notification)
             if (fbTitle.isEmpty() && fbText.isEmpty()) return
@@ -329,7 +328,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         scope.launch(fwdSerial) {
             try {
-                handlePosted(pkg, notifId, notification, groupKey, isSummary)
+                handlePosted(pkg, notification, groupKey, isSummary)
             } finally {
                 pendingPosts.decrementAndGet()
             }
@@ -360,7 +359,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun handlePosted(pkg: String, notifId: Int, notification: Notification, groupKey: String = "", isSummary: Boolean = false) {
+    private suspend fun handlePosted(pkg: String, notification: Notification, groupKey: String = "", isSummary: Boolean = false) {
         var prefs = prefsRef ?: try {
             PreferencesManager.getInstance(this).also { prefsRef = it }
         } catch (_: Exception) {
@@ -469,7 +468,7 @@ class NotificationForwarderService : NotificationListenerService() {
         record(label, title, text)
         if (priority) {
             try {
-                forwardLocked("❗ " + message, pkg, 1)
+                forwardLocked("❗ " + message, 1)
             } catch (_: Exception) {
             }
             return
@@ -837,7 +836,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var index = 0
         suspend fun flushCur() {
             if (curCount <= 0) return
-            forwardLocked(cur.toString(), curPkg, curCount)
+            forwardLocked(cur.toString(), curCount)
             cur = StringBuilder()
             curCount = 0
             curPkg = ""
@@ -853,11 +852,11 @@ class NotificationForwarderService : NotificationListenerService() {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
                         cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                        forwardLocked(rest.substring(0, cut), pkg, 1)
+                        forwardLocked(rest.substring(0, cut), 1)
                         rest = rest.substring(cut).trimStart('\n')
                         if (rest.isEmpty()) break
                     }
-                    if (rest.isNotEmpty()) forwardLocked(rest, pkg, 1)
+                    if (rest.isNotEmpty()) forwardLocked(rest, 1)
                     continue
                 }
                 if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
@@ -969,7 +968,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardLocked(message: String, pkg: String, msgCount: Int = 1): Boolean {
+    private suspend fun forwardLocked(message: String, msgCount: Int = 1): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { prefsRef = it }

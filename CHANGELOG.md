@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.341] - 2026-10-18
+### Removed
+- Parameter `pkg` pada `NotificationForwarderService.forwardLocked()` — tak pernah dipakai di badan fungsi (yang dipakai hanya `msgCount`); keempat pemanggil disesuaikan.
+- Parameter `notifId` pada `NotificationForwarderService.handlePosted()` beserta variabel lokal `val notifId = sbn.id` — nilainya tak pernah dibaca.
+- `putExtra("of", parts.size)` pada `PendingIntent` SMS bertahap — hanya `"part"` yang dibaca penerima, `"of"` tak pernah dipakai.
+- Instal paket CI `platforms;android-34` dan `build-tools;34.0.0` — proyek memakai `compileSdk`/`targetSdk` 35, jadi keduanya tak terpakai dan hanya memperlambat unduhan.
+### Changed
+- `app/src/test/` tak lagi diabaikan `.gitignore`: `app/build.gradle` sudah lama mendeklarasikan `testImplementation` (JUnit dll.), tetapi direktori ujinya diabaikan sehingga penjaga "cakupan uji" di `tools/verifikasi-path.py` tak pernah bisa berjalan. Kini berkas uji bisa dilacak dan penjaga aktif begitu uji ada.
+- Guard token di `scripts/cek-cepat.sh` dipersempit pengecualiannya: dulu **semua** baris yang memuat kata `Regex`/`Pattern` dilewati sehingga token asli di baris semacam itu lolos tanpa diperiksa; kini hanya definisi pola (`Regex(` / `Pattern.compile`) yang dikecualikan.
+
 ## [1.6.340] - 2026-10-18
 ### Fixed
 - Perintah darurat `/hilang` (dan `/ring`) tak lagi diam-diam melewati dering saat perekaman sedang **diunggah**: pemeriksaan "sedang merekam" kini memakai penanda `recorderActive` yang menyala hanya selama perekaman benar-benar berjalan (audio: `recorder.start()` sampai `recorder.stop()`; video: selama `captureVideo` berjalan), bukan `recordBusy` yang tetap ditahan sampai unggahan selesai (bisa menit-an di koneksi lambat). Gating rekaman baru tak berubah: `/record` dan `/recordvideo` tetap ditolak selama unggahan berlangsung.

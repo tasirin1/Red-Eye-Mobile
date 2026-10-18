@@ -43,9 +43,6 @@ apks/
 crash_log.txt
 logcat.txt
 
-# Test files
-app/src/test/
-
 # Kotlin and Java
 *.class
 *.jar
