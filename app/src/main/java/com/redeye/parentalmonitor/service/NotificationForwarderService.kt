@@ -49,6 +49,10 @@ class NotificationForwarderService : NotificationListenerService() {
     private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var dropNoticeJob: Job? = null
     private val dropNoticeLock = Any()
+    @Volatile
+    private var watchKeywordsRaw = ""
+    @Volatile
+    private var watchKeywordsList: List<String> = emptyList()
     private var rebindAttempt = 0
     private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val rebindRunnable = Runnable { runRebind() }
@@ -431,6 +435,30 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun watchKeywordList(raw: String): List<String> {
+        if (raw == watchKeywordsRaw) return watchKeywordsList
+        val parsed = ArrayList<String>()
+        val token = StringBuilder()
+        for (ch in raw) {
+            if (ch == ',' || ch == ' ' || ch == ';') {
+                if (token.isNotEmpty()) {
+                    val t = token.toString().trim().lowercase(java.util.Locale.ROOT)
+                    if (t.length >= 3) parsed.add(t)
+                    token.setLength(0)
+                }
+            } else {
+                token.append(ch)
+            }
+        }
+        if (token.isNotEmpty()) {
+            val t = token.toString().trim().lowercase(java.util.Locale.ROOT)
+            if (t.length >= 3) parsed.add(t)
+        }
+        watchKeywordsRaw = raw
+        watchKeywordsList = parsed
+        return parsed
+    }
+
     private fun buildNotifMessage(label: String, title: String, text: String): String {
         return buildString {
             appendLine("🔔 <b>Notifikasi</b>")
@@ -438,7 +466,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).watchKeywords
                 if (raw.isNotEmpty()) {
                     val low = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
-                    val hit = raw.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.firstOrNull { it.length >= 3 && low.contains(it) }
+                    val hit = watchKeywordList(raw).firstOrNull { low.contains(it) }
                     if (hit != null) appendLine("⚠️ Watch: " + Html.escape(hit))
                 }
             } catch (_: Exception) {
@@ -715,7 +743,7 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this)).watchKeywords
                 if (raw.isNotEmpty()) {
-                    val hit = raw.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.firstOrNull { it.length >= 3 && lowText.contains(it) }
+                    val hit = watchKeywordList(raw).firstOrNull { lowText.contains(it) }
                     if (hit != null) return true
                 }
             } catch (_: Exception) {

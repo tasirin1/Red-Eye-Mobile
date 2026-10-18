@@ -62,10 +62,18 @@ jobs:
           yes | "$SDKMGR" --licenses > /dev/null
           "$SDKMGR" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Cache Gradle 8.7
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: /opt/gradle-8.7
+          key: gradle-8.7-bin
+
       - name: Setup Gradle 8.7
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /opt
+          if [ ! -x /opt/gradle-8.7/bin/gradle ]; then
+            wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /opt
+          fi
           echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
 
       - name: Decode release keystore

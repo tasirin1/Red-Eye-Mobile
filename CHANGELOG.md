@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.352] - 2026-10-18
+### Changed
+- `formatSmsMessage()` tak lagi memicu satu kueri per nomor. Bila nomor pengirim tak ada di peta frekuensi 24 jam, tiap nomor dulu memanggil `todayCountFor()` yang memindai ulang 200 SMS + 200 panggilan; kini seluruh nomor di pesan itu dipindai sekali lewat `freqForNumbers()` dengan kunci 10 digit terakhir yang sama seperti peta utama (`batchFreqMap()`). Sekitar 4000 pembacaan baris untuk 10 SMS tanpa nomor yang cocok jadi 400.
+- `NotificationForwarderService`: daftar kata kunci pantau diparsing sekali per nilai (`watchKeywordList()`) tanpa `Pattern`/regex. Sebelumnya string yang sama dipecah, di-trim, dan di-lowercase ulang untuk setiap notifikasi — bahkan dua kali per notifikasi (`isPriorityNotif()` lalu `buildNotifMessage()`).
+- Workflow `Build APK`: direktori Gradle 8.7 disimpan di cache `actions/cache` (kunci tetap `gradle-8.7-bin`), jadi distribusi ±130 MB itu tak lagi diunduh dan diekstrak setiap run. Unduhan hanya terjadi saat cache kosong.
+### Removed
+- `todayCountFor()`, digantikan `freqForNumbers()`; dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.351] - 2026-10-18
 ### Fixed
 - Audio dan video yang ditolak Telegram dengan kode selain `400`/`413` kini melaporkan kegagalannya seperti foto — "⚠️ Unggah audio/video gagal (HTTP …). Akan dicoba otomatis." Sebelumnya kedua jalur itu diam saja: berkas terus dicoba berulang tanpa pemberitahuan apa pun. Kegagalan tak terduga saat mengirim audio juga kini tercatat di log (dulu hanya foto dan video yang dicatat).

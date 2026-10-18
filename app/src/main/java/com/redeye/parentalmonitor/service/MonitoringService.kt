@@ -3370,6 +3370,7 @@ class MonitoringService : Service() {
     private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: Map<String, Int>? = null, knownMap: Map<String, Boolean>? = null): String {
         val watchNums = watchNumbers()
         val todayCounts = HashMap<String, Int>()
+        var freqFallback: Map<String, Int>? = null
         return buildString {
             appendLine("💬 <b>SMS baru (${smsList.size})</b>")
             appendLine()
@@ -3384,7 +3385,10 @@ class MonitoringService : Service() {
                 }
                 try {
                     val key = sms.address.filter { it.isDigit() }.takeLast(10)
-                    val freq = freqMap?.get(key) ?: todayCounts.getOrPut(key) { todayCountFor(sms.address) }
+                    val freq = freqMap?.get(key) ?: run {
+                        val exact = freqFallback ?: freqForNumbers(smsList.map { it.address }).also { freqFallback = it }
+                        todayCounts.getOrPut(key) { exact[key] ?: 0 }
+                    }
                     if (freq >= 3) appendLine("🔁 $freq x hari ini")
                     val known = knownMap?.get(sms.address) ?: isKnownContact(sms.address)
                     if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
@@ -4470,31 +4474,33 @@ class MonitoringService : Service() {
         return m
     }
 
-    private fun todayCountFor(number: String): Int {
-        return try {
+    private fun freqForNumbers(numbers: Collection<String>): Map<String, Int> {
+        val m = HashMap<String, Int>()
+        try {
+            val keys = HashSet<String>()
+            for (n in numbers) {
+                val d = n.filter { it.isDigit() }.takeLast(10)
+                if (d.length >= 7) keys.add(d)
+            }
+            if (keys.isEmpty()) return m
             val since = System.currentTimeMillis() - 24 * 60 * 60_000L
-            val digits = number.filter { it.isDigit() }
-            if (digits.length < 7) return 0
-            var n = 0
-            val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(digits)
             try {
                 for (s in smsRepository.getRecentSmsSince(since, 200)) {
-                    val have = s.address.filter { it.isDigit() }
-                    if (have.isNotEmpty() && com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(have, digits, wantAlt)) n++
+                    val d = s.address.filter { it.isDigit() }.takeLast(10)
+                    if (d in keys) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
             try {
                 for (c in callLogRepository.getCallsSince(since, 200)) {
-                    val have = c.number.filter { it.isDigit() }
-                    if (have.isNotEmpty() && com.redeye.parentalmonitor.utils.PhoneNumbers.numbersEqualFast(have, digits, wantAlt)) n++
+                    val d = c.number.filter { it.isDigit() }.takeLast(10)
+                    if (d in keys) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
-            n
         } catch (_: Exception) {
-            0
         }
+        return m
     }
 
     private suspend fun checkQuietHealth() {

@@ -32,3 +32,4 @@ photoLuma
 historyAllowed
 isFreshLocation
 notifyPhotoSendFailure
+todayCountFor
