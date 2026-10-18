@@ -242,6 +242,9 @@ class MonitoringService : Service() {
         private const val VEHICLE_MAX_SPEED_MPS = 55f
         private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
         private const val LOCATION_GOOD_ACCURACY_M = 50f
+        private const val LOCATION_LASTKNOWN_FRESH_MS = 120_000L
+        private const val LOCATION_LASTKNOWN_MAX_MS = 24 * 60 * 60_000L
+        private const val LOCATION_STALE_MS = 5 * 60_000L
         private const val SILENT_LINK_MS = 90 * 60_000L
         private const val SILENT_HEAL_SPACING_MS = 45 * 60_000L
         private const val SILENT_MAX_STAGE = 3
@@ -894,7 +897,7 @@ class MonitoringService : Service() {
                 appendLine("Akurasi: ±${location.accuracy.toInt()} m")
             } else {
                 bumpLocFailCount()
-                appendLine("Lokasi: tak didapat")
+                appendLine("Lokasi: tak didapat — " + locationFailureHint())
             }
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")
         }
@@ -1009,14 +1012,6 @@ class MonitoringService : Service() {
             val url = "https://api.telegram.org/bot${token}/sendMessage"
             TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> <pairing code> shown in Setup status.", parseMode = null))
         } catch (_: Exception) {
-        }
-    }
-
-    private fun isFreshLocation(last: android.location.Location): Boolean {
-        return try {
-            android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos < 120_000_000_000L
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -1733,6 +1728,7 @@ class MonitoringService : Service() {
                         appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
                         appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                         appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
+                        appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
                         appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
                         appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
                         appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
@@ -1880,16 +1876,19 @@ class MonitoringService : Service() {
                     sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
                 } else {
                     sendToTelegram("📍 Mencari lokasi…")
-                    val location = fetchLocation()
+                    val location = fetchLocation(allowStale = true)
                     if (location == null) {
-                        sendToTelegram("⚠️ Lokasi tak didapat. Nyalakan Lokasi/GPS.")
+                        sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
                     } else {
-                        val prev = lastSentLatLon()
+                        val stale = isStaleFix(location)
+                        val prev = if (stale) null else lastSentLatLon()
                         val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
-                        rememberSentLatLon(location.latitude, location.longitude)
-                        try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
+                        if (!stale) {
+                            rememberSentLatLon(location.latitude, location.longitude)
+                            try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
+                        }
                         val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
-                        sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near")
+                        sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near" + fixAgeNote(location))
                     }
                 }
             }
@@ -2501,20 +2500,25 @@ class MonitoringService : Service() {
             "/darurat" -> {
                 val level = batteryLevel()
                 sendToTelegram("🚨 <b>Darurat</b>: ambil lokasi + foto…")
-                val loc = try { fetchLocation() } catch (_: Exception) { null }
+                val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
                 if (loc != null) {
-                    try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
-                    try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+                    val stale = isStaleFix(loc)
+                    if (!stale) {
+                        try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                        try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+                    }
                     sendToTelegram(buildString {
                         appendLine("📍 <b>Lokasi darurat</b>")
                         appendLine("https://maps.google.com/?q=${loc.latitude},${loc.longitude}")
                         appendLine("Akurasi: ±${loc.accuracy.toInt()} m")
+                        val ageNote = fixAgeNote(loc)
+                        if (ageNote.isNotEmpty()) appendLine(ageNote.trim())
                         appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
                         appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                     })
                 } else {
                     bumpLocFailCount()
-                    sendToTelegram("📍 Lokasi tak didapat (GPS mati?). Baterai: ${if (level in 0..100) "$level%" else "?"}")
+                    sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
                 }
                 try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
             }
@@ -2594,13 +2598,16 @@ class MonitoringService : Service() {
                         }
                     }
                 }
-                val loc = try { fetchLocation() } catch (_: Exception) { null }
+                val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
                 if (loc != null) {
-                    try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
-                    try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
-                    sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
+                    val stale = isStaleFix(loc)
+                    if (!stale) {
+                        try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                        try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+                    }
+                    sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
                 } else {
-                    sendToTelegram("📍 Lokasi tak didapat. Baterai: ${if (level in 0..100) "$level%" else "?"}")
+                    sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
                 }
                 try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
             }
@@ -2786,17 +2793,82 @@ class MonitoringService : Service() {
         return fine || coarse
     }
 
+    private fun hasFineLocation(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     @Suppress("DEPRECATION")
-    private suspend fun fetchLocation(): android.location.Location? {
+    private fun lastKnownFix(maxAgeMs: Long): android.location.Location? {
+        if (!hasLocationPermission()) return null
+        return try {
+            val manager = locationManagerSvc ?: return null
+            val now = System.currentTimeMillis()
+            val found = ArrayList<android.location.Location>(3)
+            for (provider in listOf(
+                android.location.LocationManager.GPS_PROVIDER,
+                android.location.LocationManager.NETWORK_PROVIDER,
+                android.location.LocationManager.PASSIVE_PROVIDER
+            )) {
+                val loc = try { manager.getLastKnownLocation(provider) } catch (_: Exception) { null } ?: continue
+                if (loc.latitude == 0.0 && loc.longitude == 0.0) continue
+                val age = now - loc.time
+                if (age < -60_000L || age > maxAgeMs) continue
+                found.add(loc)
+            }
+            val usable = found.filter { it.accuracy > 0f && it.accuracy <= 1_000f }
+            if (usable.isNotEmpty()) usable.maxByOrNull { it.time } else found.maxByOrNull { it.time }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun isStaleFix(location: android.location.Location): Boolean {
+        return System.currentTimeMillis() - location.time > LOCATION_STALE_MS
+    }
+
+    private fun fixAgeNote(location: android.location.Location): String {
+        val age = System.currentTimeMillis() - location.time
+        if (age <= LOCATION_STALE_MS) return ""
+        val mins = age / 60_000L
+        return if (mins < 60L) "\n\u26a0\ufe0f Data lama: ${mins} menit lalu" else "\n\u26a0\ufe0f Data lama: ${mins / 60L} jam lalu"
+    }
+
+    private fun locationFailureHint(): String {
+        val manager = locationManagerSvc
+        val providersOn = try {
+            manager != null && listOf(
+                android.location.LocationManager.GPS_PROVIDER,
+                android.location.LocationManager.NETWORK_PROVIDER
+            ).any { manager.isProviderEnabled(it) }
+        } catch (_: Exception) {
+            false
+        }
+        return when {
+            !hasLocationPermission() -> "izin lokasi belum diberikan."
+            !providersOn -> "Lokasi/GPS di HP sedang mati."
+            !hasFineLocation() -> "izin lokasi hanya \"Perkiraan\" \u2014 setel ke \"Presisi\"."
+            !hasBackgroundLocation() -> "izin \"Lokasi sepanjang waktu\" belum ada \u2014 buka Setup."
+            else -> "GPS belum dapat perbaikan \u2014 coba lagi di tempat terbuka."
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private suspend fun fetchLocation(allowStale: Boolean = false): android.location.Location? {
         if (!hasLocationPermission()) return null
         ensureForegroundTypes()
         return withContext(Dispatchers.IO) {
             try {
                 val locationManager = locationManagerSvc ?: return@withContext null
-                val providers = listOf(
+                val wanted = if (hasFineLocation()) listOf(
                     android.location.LocationManager.GPS_PROVIDER,
                     android.location.LocationManager.NETWORK_PROVIDER
-                ).filter {
+                ) else listOf(
+                    android.location.LocationManager.NETWORK_PROVIDER
+                )
+                val providers = wanted.filter {
                     try {
                         locationManager.isProviderEnabled(it)
                     } catch (_: Exception) {
@@ -2804,17 +2876,7 @@ class MonitoringService : Service() {
                     }
                 }
                 if (providers.isEmpty()) return@withContext null
-                val lastKnown = mutableListOf<android.location.Location>()
-                for (provider in providers) {
-                    try {
-                        val last = locationManager.getLastKnownLocation(provider)
-                        if (last != null && isFreshLocation(last)) {
-                            lastKnown.add(last)
-                        }
-                    } catch (_: Exception) {
-                    }
-                }
-                bestFix(lastKnown)?.let { return@withContext it }
+                lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }
                 val fix = try {
                     coroutineScope {
                         val collected = java.util.concurrent.ConcurrentLinkedQueue<android.location.Location>()
@@ -2877,7 +2939,7 @@ class MonitoringService : Service() {
                             }
                         }
                         try {
-                            kotlinx.coroutines.withTimeoutOrNull(15_000L) { settled.await() }
+                            kotlinx.coroutines.withTimeoutOrNull(20_000L) { settled.await() }
                         } catch (_: Exception) {
                         }
                         for (task in pending) {
@@ -2891,7 +2953,8 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     null
                 }
-                fix
+                if (fix != null) return@withContext fix
+                if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
             } catch (_: Exception) {
                 null
             }
@@ -4867,13 +4930,13 @@ class MonitoringService : Service() {
 
     private suspend fun handleAdminAlert() {
         try {
-            val loc = try { fetchLocation() } catch (_: Exception) { null }
+            val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
             if (loc != null) {
-                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\n📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m$battery")
+                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\n📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m$battery" + fixAgeNote(loc))
             } else {
-                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat (GPS mati?).$battery")
+                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat: " + locationFailureHint() + battery)
             }
             try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
         } catch (_: Exception) {

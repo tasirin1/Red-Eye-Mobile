@@ -31,3 +31,4 @@ setInitialSyncStartedSync
 photoHash
 photoLuma
 historyAllowed
+isFreshLocation

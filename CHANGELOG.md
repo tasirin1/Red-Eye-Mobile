@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.347] - 2026-10-18
+### Fixed
+- Perintah `/location` (juga `/darurat`, `/hilang`, dan peringatan percobaan mematikan Device Admin) tak lagi gagal total hanya karena HP tak kunjung mendapat perbaikan GPS baru dalam batas tunggu dan tak ada perbaikan tersimpan yang masih segar (≤2 menit). Bila perbaikan langsung gagal, kini dipakai perbaikan terakhir dari provider GPS/jaringan/pasif sampai umur 24 jam, disertai keterangan "⚠️ Data lama: N menit/jam lalu". Titik lama itu tidak dicatat ke jejak 24 jam dan tidak dipakai cek geofence, supaya tak memicu alarm palsu.
+- Pesan gagal lokasi tak lagi menuduh "Nyalakan Lokasi/GPS" padahal GPS menyala. Pesannya kini menyebut sebab yang benar-benar terdeteksi: "Lokasi/GPS di HP sedang mati", izin lokasi hanya "Perkiraan" (bukan "Presisi"), izin "Lokasi sepanjang waktu" belum ada, atau "GPS belum dapat perbaikan — coba lagi di tempat terbuka".
+### Changed
+- Saat izin lokasi hanya "Perkiraan" (tanpa `ACCESS_FINE_LOCATION`), permintaan lokasi tidak lagi memaksa provider GPS yang pasti ditolak sistem; provider jaringan saja yang dipakai.
+- Batas tunggu perbaikan GPS baru dinaikkan dari 15 ke 20 detik.
+- `/status` menampilkan baris "Lokasi presisi" untuk membedakan izin "Presisi" dari "Perkiraan".
+### Removed
+- `isFreshLocation()` — mati setelah pembacaan cache lokasi dipusatkan di `lastKnownFix()`; namanya dicatat di `tools/bekas-hapusan.txt`.
+
 ## [1.6.346] - 2026-10-18
 ### Changed
 - Logika "chat pindah ke supergrup" disatukan jadi `NetworkUtils.adoptMigratedChat()`; sebelumnya isinya (±30 baris) diduplikasi hampir persis di `MonitoringService` dan `NotificationForwarderService`, rawan berbeda diam-diam saat salah satu diperbaiki. Teks pemberitahuannya kini bersumber tunggal di `NetworkUtils.MIGRATED_CHAT_NOTICE`.
