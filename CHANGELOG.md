@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.387] - 2026-10-19
+### Changed
+- R8 (langkah 4, batch 2): sepuluh cabang `when` berikutnya di `handleTelegramCommandInner()` jadi fungsi bernama: `handleLocationCommand()` (19 baris), `handleCameraCommand(arg)` (13), `handleNotifCommand(arg)` (21), `handleLogCommand()` (37), `handleSyncIntervalCommand(arg)` (11), `handleFlushCommand()` (31), `handleClearQueueCommand()` (12), `handleLockCommand()` (14), `handleRingCommand(arg)` (18), dan `handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)` (38). Fungsi induk kini 689 baris (dari 1070 sebelum langkah ini).
+- Bukti (skrip terpisah dari skrip transformasi): pembalikan berkas baru menghasilkan teks **identik karakter demi karakter** dengan `handleTelegramCommandInner` lama (54.176 karakter, 913 baris), dan badan ke-10 fungsi baru sama persis dengan badan cabang lama setelah dedent 8 spasi (19/13/21/37/11/31/12/14/18/38 baris).
 ## [1.6.386] - 2026-10-19
 ### Changed
 - R8 (langkah 4, batch 1): `MonitoringService.handleTelegramCommandInner()` yang 1070 baris mulai dipecah. Sepuluh cabang `when` yang gemuk kini jadi fungsi bernama sendiri: `handlePhotoCommand(arg)` (17 baris), `handleStatusCommand()` (34), `handleRingkasCommand()` (14), `handleLastCallsCommand()` (11), `handleLastSmsCommand()` (12), `handlePhotoIntervalCommand(arg)` (10), `handlePatrolCommand(arg)` (14), `handleNightCommand(arg)` (18), `handlePauseCommand(arg)` (8), dan `handleResumeCommand()` (9). Sisanya masih di tempatnya; tabel dispatch kini `"/photo" -> handlePhotoCommand(arg)`, jadi panjang fungsi induk turun ke 913 baris tanpa memindahkan teks perintah yang kecil.
