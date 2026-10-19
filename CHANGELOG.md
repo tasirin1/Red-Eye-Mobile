@@ -1,5 +1,33 @@
 ## [Unreleased]
 
+## [1.6.395] - 2026-10-19
+### Fixed
+- `/recordvideo` tidak lagi "kehilangan" video saat diminta berturut-turut: pengunci `recordBusy` kini bertahan sampai rekaman benar-benar selesai (sebelumnya dilepas dalam milidetik karena `cameraService.captureVideo()` asinkron), sehingga permintaan kedua ditolak dengan pesan "Sedang merekam" alih-alih menaikkan nomor percobaan dan membuat rekaman pertama dihapus + permintaan kedua gagal "Kamera sedang dipakai". `/record` (audio) saat video sedang merekam juga ikut ditolak, dan watchdog timeout video (`videoWatchdog`) akhirnya bisa berjalan (sebelumnya cabangnya mustahil tercapai).
+- `NotificationForwarderService`: kegagalan saat kiriman ulang sebagai teks polos (mis. koneksi putus sesaat) tidak lagi ditelan `catch` lalu menjatuhkan notifikasi ke jalur buang; kini naik ke penangan luar sehingga notifikasi masuk antrean, dan tidak lagi dilaporkan "ditolak/antrean penuh" tanpa sebab.
+- `NotificationForwarderService`: `OnSharedPreferenceChangeListener` didaftarkan sinkron di `onCreate` (bukan di dalam coroutine), sehingga `onDestroy` tidak bisa lagi kalah balapan dan meninggalkan listener yang tak pernah dilepas.
+- `NotificationForwarderService`: `onTrimMemory()` baru menyelamatkan buffer batch notifikasi ke antrean persisten saat memori kritis, sehingga notifikasi yang menunggu jendela batch 5 detik tidak hilang bila proses dibunuh.
+- `CrashReporter.clearPending()` hanya menghapus laporan yang benar-benar terkirim (memakai `keepRemainder()`), bukan seluruh berkas; crash yang tercatat saat `/log` sedang mengirim tidak lagi ikut hilang.
+- `SetupActivity`: *Clear credentials* membatalkan proses simpan/tes yang masih berjalan dan menaikkan `saveSeq`/`testSeq`, sehingga token/Chat ID tidak bisa ditulis ulang (dan monitoring ikut hidup lagi) bila pengguna menghapus saat jaringan lambat.
+- 403 (bot diblokir/dikeluarkan) kini ikut menghentikan polling cepat: `NetworkUtils.isPollBlocked()` memakai `isAuthBlocked()` (401 + 403), tidak lagi hanya 401.
+- `consumePendingInput()` hanya dikonsumsi oleh owner, sehingga anggota grup pada chat terkonfigurasi tidak lagi bisa menghapus status "menunggu masukan" milik pemilik.
+- Teks tombol menu tidak lagi menampilkan `&amp;` mentah: "Foto &amp; rekam" → "Foto & rekam" (Telegram tidak mem-`parse_mode` teks tombol inline).
+- Tangkap layar: bila `registerCallback` gagal, objek `MediaProjection` dihentikan dan izin sekali-pakai di-`revoke()`, sehingga tidak meninggalkan kebocoran/token izin hangus.
+- `/hilang` dan `/location` ikut menaikkan penghitung gagal lokasi (`bumpLocFailCount()`), sehingga peringatan dini "GPS gagal beruntun" (`checkQuietHealth`) bisa muncul dari dua perintah itu — sebelumnya hanya `/darurat` dan patroli.
+- Penulisan `lastPhotoTime` di jalur sukses `sendPhotoFile()` dibungkus `try`, sehingga foto yang sudah terkirim tidak dikirim ulang bila setter melempar.
+- Jalur auth-blocked di `sendToTelegram()` memakai `queueForRetry()`, jadi worker pengiriman ikut dijadwalkan seperti jalur gagal lainnya.
+- Validasi nomor `/sms` disederhanakan ke bentuk setara (`badChar || plusCount > 1`); dua disjungsi lamanya tak terjangkau.
+
+### Changed
+- `MainActivity`: pembuatan `EncryptedSharedPreferences` (`PreferencesManager.getInstance`) tidak lagi di main thread saat cold start — baris di `onCreate` dihapus karena blok `Background.runCritical` yang sudah ada melakukannya di thread latar (tidak ada pemakaian lain sebelum assignment itu).
+- `MonitoringService`: satu instance `Gson` dipakai ulang untuk `menuBarBody()` (dulu objek baru tiap kirim foto/audio/video), dan persist offset `update_id` ganda setelah eksekusi perintah mutating dihapus (blok `finally` sudah menulis nilai yang sama, dengan getter yang membaca langsung dari preferensi sehingga tidak ada commit ganda).
+- `NotificationForwarderService`: penghitung notifikasi dibuang di jalur panas memakai setter async `pendingNotifDrops` (`apply()`); penulisan sinkron tetap dipakai di `flushDropNotice()`/`onDestroy`.
+- `PRIVACY.md`: menyebut **video dan screenshot** sebagai data yang dikirim sesuai permintaan, dan penyebutan `BOT_TOKEN`/`CHAT_ID` diganti "diisi di halaman Setup aplikasi" (kredensial memang hanya lewat `SetupActivity`).
+
+### Removed
+- `EditMessageRequest.disable_web_page_preview` (`TelegramApi.kt`) — tidak pernah dipakai.
+- Dua pemanggilan `isConfigured()` tanpa efek di `NotificationForwarderService` (sisa refactor).
+
+
 ## [1.6.394] - 2026-10-19
 ### Added
 - Menu Telegram berjenjang (interaktif): `/help` (dan `/start`) kini membuka **menu utama** berisi tombol cepat (Foto, Layar, Lokasi, Status, Baterai, Darurat) plus pintu kategori — **📷 Foto & rekam**, **📞 Komunikasi**, **🗺️ Lokasi & jejak**, **📊 Info & data**, **🛡️ Pengawasan**, **⚙️ Alat & kontrol**, dan **🔢 Atur angka**. Tiap kategori punya tombol **⬅️ Kembali** ke menu utama (`m:main`), termasuk panel "🔢 Atur angka" (permintaan langsung pemilik).
