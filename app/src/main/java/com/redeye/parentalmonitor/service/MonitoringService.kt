@@ -1692,187 +1692,13 @@ class MonitoringService : Service() {
             "/lock" -> handleLockCommand()
             "/ring" -> handleRingCommand(arg)
             "/ping" -> handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)
-            "/record" -> {
-                val seconds = arg.toIntOrNull()
-                if (seconds == null || seconds !in 5..600) {
-                    sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
-                } else if (!recordBusy.compareAndSet(false, true)) {
-                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
-                } else if (ringBusy.get()) {
-                    recordBusy.set(false)
-                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
-                } else {
-                    sendToTelegram("\uD83C\uDF99\uFE0F Merekam $seconds dtk\u2026")
-                    try { recordJob?.cancel() } catch (_: Exception) { }
-                    recordJob = serviceScope.launch {
-                        try {
-                            recordAndSendAudio(seconds)
-                        } finally {
-                            recordBusy.set(false)
-                        }
-                    }
-                }
-            }
-            "/recordvideo" -> {
-                val seconds = arg.toIntOrNull()
-                if (seconds == null || seconds !in 5..180) {
-                    sendToTelegram("Cara pakai: /recordvideo &lt;5-180&gt; (seconds)")
-                } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
-                    val maxSecs = (MAX_VIDEO_BYTES / VIDEO_BYTES_PER_SEC).toInt().coerceIn(5, 180)
-                    sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * VIDEO_BYTES_PER_SEC) / (1024L * 1024L)} MB, melebihi batas ${MAX_VIDEO_BYTES / (1024L * 1024L)} MB. Coba ≤$maxSecs dtk.")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
-                } else if (!recordBusy.compareAndSet(false, true)) {
-                    sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
-                } else if (ringBusy.get()) {
-                    recordBusy.set(false)
-                    sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
-                } else {
-                    sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
-                    try { recordJob?.cancel() } catch (_: Exception) { }
-                    recordJob = serviceScope.launch {
-                        try {
-                            recordAndSendVideo(seconds)
-                        } finally {
-                            recordBusy.set(false)
-                        }
-                    }
-                }
-            }
-            "/sms" -> {
-                val numberArg = arg.split(CMD_SPLIT_REGEX, limit = 2)
-                val number = numberArg.getOrNull(0)?.trim().orEmpty()
-                val smsText = numberArg.getOrNull(1)?.trim().orEmpty()
-                var badChar = false
-                var plusCount = 0
-                val digits = StringBuilder(number.length + 1)
-                if (number.startsWith("+")) digits.append('+')
-                for (c in number) {
-                    when {
-                        c.isDigit() -> digits.append(c)
-                        c == '+' -> { plusCount++; if (!number.startsWith("+") || plusCount > 1) badChar = true }
-                        c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
-                        else -> badChar = true
-                    }
-                }
-                val normalized = digits.toString()
-                if (number.isEmpty() || smsText.isEmpty()) {
-                    sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-                } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
-                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-                } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
-                    sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-                } else if (isPremiumSmsNumber(normalized)) {
-                    sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
-                } else if (isEmergencySmsNumber(normalized)) {
-                    sendToTelegram("\uD83D\uDEAB Nomor darurat tidak boleh dipakai /sms. Hubungi langsung dari HP.")
-                } else if (smsText.length > 500) {
-                    sendToTelegram("⚠️ Pesan terlalu panjang (maks 500 karakter).")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("⚠️ Izin SMS belum diberikan. Buka Setup dan berikan izin SMS.")
-                } else {
-                    val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
-                    val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
-                    val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
-                    val nowSms = System.currentTimeMillis()
-                    val lastSentAt = try { preferencesManager.lastSmsSendAt } catch (_: Exception) { 0L }
-                    if (lastSentAt <= nowSms && nowSms - lastSentAt < 60_000L) {
-                        sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
-                    } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
-                        sendToTelegram("⛔ Hanya peminta yang bisa mengganti SMS tertunda ini. Balas /smsconfirm untuk mengonfirmasi dulu, atau tunggu sampai kedaluwarsa.")
-                    } else {
-                        val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
-                        val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
-                        preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
-                        sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
-                    }
-                }
-            }
-            "/smsconfirm" -> {
-                val pending = try { preferencesManager.readSmsPendingSync() } catch (_: Exception) { null }
-                val number = pending?.number ?: ""
-                val smsText = pending?.text ?: ""
-                val stagedAt = pending?.at ?: 0L
-                val stagedBy = pending?.owner ?: ""
-                val nowConfirm = System.currentTimeMillis()
-                if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
-                    if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
-                    sendToTelegram("⏱️ Tak ada SMS tertunda. Kirim /sms &lt;nomor&gt; &lt;pesan&gt; dulu.")
-                } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
-                    sendToTelegram("⛔ Hanya peminta yang bisa mengonfirmasi SMS ini.")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
-                } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
-                    preferencesManager.clearSmsPendingIf(stagedAt)
-                    sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
-                } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
-                    sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
-                } else if (!smsBusy.compareAndSet(false, true)) {
-                    sendToTelegram("⏱️ SMS masih dikirim, tunggu sebentar.")
-                } else {
-                    sendToTelegram("\uD83D\uDCE9 Mengirim SMS\u2026")
-                    try { smsJob?.cancel() } catch (_: Exception) { }
-                    smsJob = serviceScope.launch {
-                        try {
-                            sendSmsPending(number, smsText, stagedAt)
-                        } finally {
-                            smsBusy.set(false)
-                        }
-                    }
-                }
-            }
-            "/lastnotif" -> {
-                val items = try {
-                    NotificationForwarderService.history()
-                } catch (_: Exception) {
-                    emptyList()
-                }
-                if (items.isEmpty()) {
-                    sendToTelegram("\uD83D\uDD14 Belum ada notifikasi tercatat.")
-                } else {
-                    sendToTelegram(
-                        buildString {
-                            appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
-                            for (item in items.takeLast(10)) {
-                                appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
-                            }
-                        }
-                    )
-                }
-            }
-            "/version" -> {
-                sendToTelegram(
-                    buildString {
-                        appendLine("\u2139\uFE0F <b>Versi</b>")
-                        appendLine("Aplikasi: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
-                        appendLine("Android: " + Html.escape(Build.VERSION.SDK_INT.toString()) + " (" + Html.escape(Build.VERSION.RELEASE) + ")")
-                        appendLine("HP: " + Html.escape(Build.MANUFACTURER) + " " + Html.escape(Build.MODEL))
-                    }
-                )
-            }
-            "/uptime" -> {
-                val started = serviceStartAt
-                if (started <= 0) {
-                    sendToTelegram("\u23F1\uFE0F Uptime: tak tahu.")
-                } else {
-                    val elapsed = android.os.SystemClock.elapsedRealtime() - serviceStartElapsed
-                    val wall = System.currentTimeMillis() - started
-                    val millis = if (serviceStartElapsed > 0L && elapsed >= 0L) elapsed else wall
-                    val minutes = (millis / 60_000L).coerceAtLeast(0L)
-                    val hours = minutes / 60
-                    val days = hours / 24
-                    val span = when {
-                        days > 0 -> "$days d ${hours % 24} h"
-                        hours > 0 -> "$hours h ${minutes % 60} m"
-                        else -> "$minutes m"
-                    }
-                    sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started))
-                }
-            }
+            "/record" -> handleRecordCommand(arg)
+            "/recordvideo" -> handleRecordVideoCommand(arg)
+            "/sms" -> handleSmsCommand(arg, senderId)
+            "/smsconfirm" -> handleSmsConfirmCommand(senderId)
+            "/lastnotif" -> handleLastNotifCommand()
+            "/version" -> handleVersionCommand()
+            "/uptime" -> handleUptimeCommand()
             "/alive" -> {
                 sendToTelegram(aliveReportText(), mainMenu())
             }
@@ -1886,56 +1712,9 @@ class MonitoringService : Service() {
                 val hours = arg.trim().toIntOrNull()?.coerceIn(1, 24) ?: 24
                 sendToTelegram(screenTimeFull(hours))
             }
-            "/kendara" -> {
-                when (arg.lowercase(java.util.Locale.ROOT).trim()) {
-                    "on", "nyala" -> {
-                        preferencesManager.vehicleAlertEnabled = true
-                        sendToTelegram("🚗 Kabar berkendara: nyala.")
-                    }
-                    "off", "mati" -> {
-                        preferencesManager.vehicleAlertEnabled = false
-                        sendToTelegram("🚗 Kabar berkendara: mati.")
-                    }
-                    "status" -> {
-                        val on = preferencesManager.vehicleAlertEnabled
-                        val effMin = try { effectiveSyncMillis() / 60_000L } catch (_: Exception) { 0L }
-                        val note = if (on && effMin > 30) " (catatan: interval lokasi efektif $effMin mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
-                        sendToTelegram("🚗 Kabar berkendara: " + (if (on) "nyala" else "mati") + note)
-                    }
-                    else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
-                }
-                try { refreshLoopConfig() } catch (_: Exception) { }
-            }
-            "/hematdata" -> {
-                when (arg.lowercase(java.util.Locale.ROOT).trim()) {
-                    "on", "nyala" -> {
-                        preferencesManager.dataSaverEnabled = true
-                        sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi.")
-                    }
-                    "off", "mati" -> {
-                        preferencesManager.dataSaverEnabled = false
-                        sendToTelegram("📶 Hemat kuota: mati (semua media dikirim kapan saja).")
-                    }
-                    "status" -> sendToTelegram("📶 Hemat kuota: " + if (preferencesManager.dataSaverEnabled) "nyala" else "mati")
-                    else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman hanya dikirim saat tidak pakai kuota (Wi-Fi); SMS/lokasi/notifikasi tetap jalan seperti biasa.")
-                }
-                try { refreshLoopConfig() } catch (_: Exception) { }
-            }
-            "/heartbeat" -> {
-                if (arg.isBlank()) {
-                    val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
-                    sendToTelegram("💚 Heartbeat: " + if (hours <= 0) "mati. Pakai /heartbeat &lt;1-48&gt; untuk menyalakan." else "tiap $hours jam.")
-                } else {
-                    val hours = arg.trim().toIntOrNull()
-                    if (hours == null || hours < 0 || hours > 48) {
-                        sendToTelegram("Cara pakai: /heartbeat &lt;1-48&gt; (0 = matikan).")
-                    } else {
-                        try { preferencesManager.heartbeatHours = hours } catch (_: Exception) { }
-                        try { preferencesManager.heartbeatAt = System.currentTimeMillis() } catch (_: Exception) { }
-                        sendToTelegram(if (hours <= 0) "💚 Heartbeat dimatikan." else "💚 Heartbeat menyala: laporan tiap $hours jam.")
-                    }
-                }
-            }
+            "/kendara" -> handleKendaraCommand(arg)
+            "/hematdata" -> handleHematDataCommand(arg)
+            "/heartbeat" -> handleHeartbeatCommand(arg)
             "/contacts" -> {
                 if (arg.isEmpty()) {
                     sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
@@ -2309,6 +2088,248 @@ class MonitoringService : Service() {
             }
         }
     }
+    private suspend fun handleRecordCommand(arg: String) {
+        val seconds = arg.toIntOrNull()
+        if (seconds == null || seconds !in 5..600) {
+            sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
+        } else if (!recordBusy.compareAndSet(false, true)) {
+            sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
+        } else if (ringBusy.get()) {
+            recordBusy.set(false)
+            sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
+        } else {
+            sendToTelegram("\uD83C\uDF99\uFE0F Merekam $seconds dtk\u2026")
+            try { recordJob?.cancel() } catch (_: Exception) { }
+            recordJob = serviceScope.launch {
+                try {
+                    recordAndSendAudio(seconds)
+                } finally {
+                    recordBusy.set(false)
+                }
+            }
+        }
+    }
+
+    private suspend fun handleRecordVideoCommand(arg: String) {
+        val seconds = arg.toIntOrNull()
+        if (seconds == null || seconds !in 5..180) {
+            sendToTelegram("Cara pakai: /recordvideo &lt;5-180&gt; (seconds)")
+        } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
+            val maxSecs = (MAX_VIDEO_BYTES / VIDEO_BYTES_PER_SEC).toInt().coerceIn(5, 180)
+            sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * VIDEO_BYTES_PER_SEC) / (1024L * 1024L)} MB, melebihi batas ${MAX_VIDEO_BYTES / (1024L * 1024L)} MB. Coba ≤$maxSecs dtk.")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("\u26A0\uFE0F Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
+        } else if (!recordBusy.compareAndSet(false, true)) {
+            sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
+        } else if (ringBusy.get()) {
+            recordBusy.set(false)
+            sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
+        } else {
+            sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
+            try { recordJob?.cancel() } catch (_: Exception) { }
+            recordJob = serviceScope.launch {
+                try {
+                    recordAndSendVideo(seconds)
+                } finally {
+                    recordBusy.set(false)
+                }
+            }
+        }
+    }
+
+    private suspend fun handleSmsCommand(arg: String, senderId: String) {
+        val numberArg = arg.split(CMD_SPLIT_REGEX, limit = 2)
+        val number = numberArg.getOrNull(0)?.trim().orEmpty()
+        val smsText = numberArg.getOrNull(1)?.trim().orEmpty()
+        var badChar = false
+        var plusCount = 0
+        val digits = StringBuilder(number.length + 1)
+        if (number.startsWith("+")) digits.append('+')
+        for (c in number) {
+            when {
+                c.isDigit() -> digits.append(c)
+                c == '+' -> { plusCount++; if (!number.startsWith("+") || plusCount > 1) badChar = true }
+                c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
+                else -> badChar = true
+            }
+        }
+        val normalized = digits.toString()
+        if (number.isEmpty() || smsText.isEmpty()) {
+            sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
+        } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
+            sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
+        } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
+            sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
+        } else if (isPremiumSmsNumber(normalized)) {
+            sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
+        } else if (isEmergencySmsNumber(normalized)) {
+            sendToTelegram("\uD83D\uDEAB Nomor darurat tidak boleh dipakai /sms. Hubungi langsung dari HP.")
+        } else if (smsText.length > 500) {
+            sendToTelegram("⚠️ Pesan terlalu panjang (maks 500 karakter).")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("⚠️ Izin SMS belum diberikan. Buka Setup dan berikan izin SMS.")
+        } else {
+            val stagedNumber = try { preferencesManager.pendingSmsNumber } catch (_: Exception) { "" }
+            val stagedAt = try { preferencesManager.pendingSmsAt } catch (_: Exception) { 0L }
+            val stagedBy = try { preferencesManager.pendingSmsOwner } catch (_: Exception) { "" }
+            val nowSms = System.currentTimeMillis()
+            val lastSentAt = try { preferencesManager.lastSmsSendAt } catch (_: Exception) { 0L }
+            if (lastSentAt <= nowSms && nowSms - lastSentAt < 60_000L) {
+                sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
+            } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
+                sendToTelegram("⛔ Hanya peminta yang bisa mengganti SMS tertunda ini. Balas /smsconfirm untuk mengonfirmasi dulu, atau tunggu sampai kedaluwarsa.")
+            } else {
+                val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
+                val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
+                preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
+                sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
+            }
+        }
+    }
+
+    private suspend fun handleSmsConfirmCommand(senderId: String) {
+        val pending = try { preferencesManager.readSmsPendingSync() } catch (_: Exception) { null }
+        val number = pending?.number ?: ""
+        val smsText = pending?.text ?: ""
+        val stagedAt = pending?.at ?: 0L
+        val stagedBy = pending?.owner ?: ""
+        val nowConfirm = System.currentTimeMillis()
+        if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
+            if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
+            sendToTelegram("⏱️ Tak ada SMS tertunda. Kirim /sms &lt;nomor&gt; &lt;pesan&gt; dulu.")
+        } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
+            sendToTelegram("⛔ Hanya peminta yang bisa mengonfirmasi SMS ini.")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
+        } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
+            preferencesManager.clearSmsPendingIf(stagedAt)
+            sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
+        } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
+            sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
+        } else if (!smsBusy.compareAndSet(false, true)) {
+            sendToTelegram("⏱️ SMS masih dikirim, tunggu sebentar.")
+        } else {
+            sendToTelegram("\uD83D\uDCE9 Mengirim SMS\u2026")
+            try { smsJob?.cancel() } catch (_: Exception) { }
+            smsJob = serviceScope.launch {
+                try {
+                    sendSmsPending(number, smsText, stagedAt)
+                } finally {
+                    smsBusy.set(false)
+                }
+            }
+        }
+    }
+
+    private suspend fun handleLastNotifCommand() {
+        val items = try {
+            NotificationForwarderService.history()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (items.isEmpty()) {
+            sendToTelegram("\uD83D\uDD14 Belum ada notifikasi tercatat.")
+        } else {
+            sendToTelegram(
+                buildString {
+                    appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
+                    for (item in items.takeLast(10)) {
+                        appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
+                    }
+                }
+            )
+        }
+    }
+
+    private suspend fun handleVersionCommand() {
+        sendToTelegram(
+            buildString {
+                appendLine("\u2139\uFE0F <b>Versi</b>")
+                appendLine("Aplikasi: " + com.redeye.parentalmonitor.BuildConfig.VERSION_NAME + " (" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE + ")")
+                appendLine("Android: " + Html.escape(Build.VERSION.SDK_INT.toString()) + " (" + Html.escape(Build.VERSION.RELEASE) + ")")
+                appendLine("HP: " + Html.escape(Build.MANUFACTURER) + " " + Html.escape(Build.MODEL))
+            }
+        )
+    }
+
+    private suspend fun handleUptimeCommand() {
+        val started = serviceStartAt
+        if (started <= 0) {
+            sendToTelegram("\u23F1\uFE0F Uptime: tak tahu.")
+        } else {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - serviceStartElapsed
+            val wall = System.currentTimeMillis() - started
+            val millis = if (serviceStartElapsed > 0L && elapsed >= 0L) elapsed else wall
+            val minutes = (millis / 60_000L).coerceAtLeast(0L)
+            val hours = minutes / 60
+            val days = hours / 24
+            val span = when {
+                days > 0 -> "$days d ${hours % 24} h"
+                hours > 0 -> "$hours h ${minutes % 60} m"
+                else -> "$minutes m"
+            }
+            sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started))
+        }
+    }
+
+    private suspend fun handleKendaraCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT).trim()) {
+            "on", "nyala" -> {
+                preferencesManager.vehicleAlertEnabled = true
+                sendToTelegram("🚗 Kabar berkendara: nyala.")
+            }
+            "off", "mati" -> {
+                preferencesManager.vehicleAlertEnabled = false
+                sendToTelegram("🚗 Kabar berkendara: mati.")
+            }
+            "status" -> {
+                val on = preferencesManager.vehicleAlertEnabled
+                val effMin = try { effectiveSyncMillis() / 60_000L } catch (_: Exception) { 0L }
+                val note = if (on && effMin > 30) " (catatan: interval lokasi efektif $effMin mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
+                sendToTelegram("🚗 Kabar berkendara: " + (if (on) "nyala" else "mati") + note)
+            }
+            else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
+        }
+        try { refreshLoopConfig() } catch (_: Exception) { }
+    }
+
+    private suspend fun handleHematDataCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT).trim()) {
+            "on", "nyala" -> {
+                preferencesManager.dataSaverEnabled = true
+                sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi.")
+            }
+            "off", "mati" -> {
+                preferencesManager.dataSaverEnabled = false
+                sendToTelegram("📶 Hemat kuota: mati (semua media dikirim kapan saja).")
+            }
+            "status" -> sendToTelegram("📶 Hemat kuota: " + if (preferencesManager.dataSaverEnabled) "nyala" else "mati")
+            else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman hanya dikirim saat tidak pakai kuota (Wi-Fi); SMS/lokasi/notifikasi tetap jalan seperti biasa.")
+        }
+        try { refreshLoopConfig() } catch (_: Exception) { }
+    }
+
+    private suspend fun handleHeartbeatCommand(arg: String) {
+        if (arg.isBlank()) {
+            val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
+            sendToTelegram("💚 Heartbeat: " + if (hours <= 0) "mati. Pakai /heartbeat &lt;1-48&gt; untuk menyalakan." else "tiap $hours jam.")
+        } else {
+            val hours = arg.trim().toIntOrNull()
+            if (hours == null || hours < 0 || hours > 48) {
+                sendToTelegram("Cara pakai: /heartbeat &lt;1-48&gt; (0 = matikan).")
+            } else {
+                try { preferencesManager.heartbeatHours = hours } catch (_: Exception) { }
+                try { preferencesManager.heartbeatAt = System.currentTimeMillis() } catch (_: Exception) { }
+                sendToTelegram(if (hours <= 0) "💚 Heartbeat dimatikan." else "💚 Heartbeat menyala: laporan tiap $hours jam.")
+            }
+        }
+    }
+
+
     private suspend fun handleLocationCommand() {
         if (!hasLocationPermission()) {
             sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
