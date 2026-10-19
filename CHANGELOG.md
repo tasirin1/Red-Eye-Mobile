@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.399] - 2026-10-19
+### Fixed
+- Menutup dialog izin tangkap layar dengan "Batal" dari tombol Telegram "🖥️ Beri izin sekali" (`ui/ShotConsentActivity`) tidak lagi mencabut sesi izin yang sedang aktif — sejalan dengan perbaikan yang sama di halaman Setup.
+
 ## [1.6.398] - 2026-10-19
 ### Fixed
 - Loop latar (`monitoring`, kamera, patroli, polling perintah, watchdog) kini dibuat dengan `CoroutineStart.LAZY` lalu `start()` dipanggil setelah field job ditetapkan. Sebelumnya coroutine baru bisa membaca field job lama yang belum ditimpa dan langsung berhenti sendiri, sehingga satu loop mati tanpa pesan sampai watchdog berikutnya merestart.

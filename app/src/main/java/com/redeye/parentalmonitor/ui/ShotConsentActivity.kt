@@ -32,7 +32,7 @@ class ShotConsentActivity : Activity() {
         }
         val granted = resultCode == RESULT_OK && data != null
         try {
-            if (granted) ScreenCapture.grant(resultCode, data) else ScreenCapture.revoke()
+            if (granted) ScreenCapture.grant(resultCode, data)
         } catch (_: Exception) {
         }
         try {
