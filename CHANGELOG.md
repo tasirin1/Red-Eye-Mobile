@@ -1,4 +1,15 @@
 ## [Unreleased]
+### Added
+- Menu Telegram berjenjang (interaktif): `/help` (dan `/start`) kini membuka **menu utama** berisi tombol cepat (Foto, Layar, Lokasi, Status, Baterai, Darurat) plus pintu kategori — **📷 Foto & rekam**, **📞 Komunikasi**, **🗺️ Lokasi & jejak**, **📊 Info & data**, **🛡️ Pengawasan**, **⚙️ Alat & kontrol**, dan **🔢 Atur angka**. Tiap kategori punya tombol **⬅️ Kembali** ke menu utama (`m:main`), termasuk panel "🔢 Atur angka" (permintaan langsung pemilik).
+- Aksi tiap tombol dikirim lewat `callback_data` baru yang diurai fungsi murni `utils/MenuCallback.kt` (diuji JVM di `MenuCallbackTest`): `m:<view>` = pindah tampilan (pesan menu yang sama **diedit di tempat** lewat `editMessageText`, tidak menumpuk pesan baru), `x:<perintah>` = jalankan perintah langsung (mis. `x:patrol on`, `x:hilang`), `i:<view>:<cmd>`/`num:<view>:<cmd>` = tanya nilai dulu, lalu balasan pengguna dipakai sebagai argumen lewat mekanisme pending-input yang sudah ada (kini `pendingInputCommand`/`armInput()`/`consumePendingInput()` dan tak lagi khusus angka — perintah teks seperti `/sms`, `/home`, `/watch`, `/jampulang`, `/contacts`, `/history`, `/layar` punya prompt + keterangan `help` sendiri).
+- Baris tombol ringkas **🏠 Menu utama** + **🔢 Atur angka** menempel di setiap kiriman bot (teks, foto, video, audio) sehingga menu selalu ada di pesan paling baru — menu tak lagi "tenggelam ke atas" saat ada output. Navigasi tetap bisa lewat panel penuh; tombol baris ringkas sengaja mengirim panel baru (`menu:open`, `menu:angka`), bukan mengedit pesan berisi hasil.
+
+### Changed
+- `network/TelegramApi.kt`: `TelegramIncomingMessage` menambah `message_id` (perlu untuk mengedit pesan), `EditMessageRequest` + `editMessageText()` baru, dan `sendPhoto`/`sendAudio`/`sendVideo` menerima bagian multipart `reply_markup` agar media ikut membawa tombol menu.
+- Panel lama tetap kompatibel: `callback_data` versi `v1.6.391`–`v1.6.393` (`photo`, `shot`, `camfront`, `pause60`, `num:menu`, `num:record`, …) masih dikenali lewat tabel `LEGACY` di `MenuCallback.parse()`, jadi tombol pada pesan lama tetap berfungsi.
+- Tombol papan angka yang diminta nilai kini membalas panel kategori asalnya (mis. **🎙️ Rekam audio** di kategori Foto & rekam membalas panel kategori itu, bukan panel angka), dan balasan yang bukan angka tidak lagi hangus diam-diam: bot mengingatkan "Kirim angkanya saja" + contoh, sambil tetap menyimpan status tombol selama 5 menit.
+- `handleHelpCommand()` mengirim teks menu utama + panel (`menuScreen("main")`); `/tombol`/`/angka` mengirim layar `angka` yang sama seperti panel kategori.
+
 
 ## [1.6.393] - 2026-10-19
 ### Changed

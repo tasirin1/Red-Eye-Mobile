@@ -40,12 +40,22 @@ data class TelegramResponse(
     @SerializedName("result") val result: JsonElement?
 )
 
+data class EditMessageRequest(
+    @SerializedName("chat_id") val chatId: String,
+    @SerializedName("message_id") val messageId: Long,
+    @SerializedName("text") val text: String,
+    @SerializedName("parse_mode") val parseMode: String? = "HTML",
+    @SerializedName("reply_markup") val replyMarkup: InlineKeyboardMarkup? = null,
+    @SerializedName("disable_web_page_preview") val disableWebPagePreview: Boolean? = null
+)
+
 data class TelegramChat(
     @SerializedName("id") val id: Long
 )
 
 data class TelegramIncomingMessage(
     @SerializedName("chat") val chat: TelegramChat,
+    @SerializedName("message_id") val messageId: Long = 0,
     @SerializedName("from") val from: TelegramUser? = null,
     @SerializedName("text") val text: String?,
     @SerializedName("caption") val caption: String? = null,
@@ -125,6 +135,12 @@ interface TelegramApi {
     ): Response<TelegramResponse>
 
     @POST
+    suspend fun editMessageText(
+        @Url url: String,
+        @Body body: EditMessageRequest
+    ): Response<TelegramResponse>
+
+    @POST
     suspend fun setMyCommands(
         @Url url: String,
         @Body body: SetMyCommandsRequest
@@ -148,7 +164,8 @@ interface TelegramApi {
         @Url url: String,
         @Part("chat_id") chatId: RequestBody,
         @Part("caption") caption: RequestBody?,
-        @Part audio: MultipartBody.Part
+        @Part audio: MultipartBody.Part,
+        @Part("reply_markup") replyMarkup: RequestBody?
     ): Response<TelegramResponse>
 
     @Multipart
@@ -157,7 +174,8 @@ interface TelegramApi {
         @Url url: String,
         @Part("chat_id") chatId: RequestBody,
         @Part("caption") caption: RequestBody?,
-        @Part photo: MultipartBody.Part
+        @Part photo: MultipartBody.Part,
+        @Part("reply_markup") replyMarkup: RequestBody?
     ): Response<TelegramResponse>
 
     @Multipart
@@ -166,7 +184,8 @@ interface TelegramApi {
         @Url url: String,
         @Part("chat_id") chatId: RequestBody,
         @Part("caption") caption: RequestBody?,
-        @Part video: MultipartBody.Part
+        @Part video: MultipartBody.Part,
+        @Part("reply_markup") replyMarkup: RequestBody?
     ): Response<TelegramResponse>
 }
 

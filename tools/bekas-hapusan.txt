@@ -38,3 +38,6 @@ saveTestCredentials
 scheduleRateLimited
 appLabel
 isSystemApp
+numberInputMenu
+armNumberInput
+consumeNumberInput
