@@ -27,6 +27,7 @@ object Liveness {
     private const val ALIVE_WRITE_MIN_GAP_MS = 60_000L
     private val lastWriteAt = java.util.concurrent.atomic.AtomicLong(0L)
     private val urgentUntilElapsed = java.util.concurrent.atomic.AtomicLong(0L)
+    private val scheduledAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
 
     fun intervalMs(context: Context): Long {
         return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
@@ -88,10 +89,15 @@ object Liveness {
 
     fun scheduleSoon(context: Context, delayMs: Long) {
         try {
+            val now = SystemClock.elapsedRealtime()
+            val target = now + delayMs.coerceAtLeast(5_000L)
+            val existing = scheduledAtElapsed.get()
+            if (existing > now && existing <= target) return
+            if (!scheduledAtElapsed.compareAndSet(existing, target)) return
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + delayMs.coerceAtLeast(5_000L),
+                target,
                 pending(context)
             )
         } catch (_: Exception) {
@@ -99,6 +105,7 @@ object Liveness {
     }
 
     fun cancel(context: Context) {
+        scheduledAtElapsed.set(0L)
         try {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.cancel(pending(context))

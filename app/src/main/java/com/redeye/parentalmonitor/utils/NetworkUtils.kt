@@ -78,8 +78,7 @@ object NetworkUtils {
             val now = System.currentTimeMillis()
             val at = prefs.credentialErrorAt
             if (now < at || now - at >= 30 * 60_000L) {
-                prefs.credentialError = ""
-                prefs.credentialErrorAt = 0L
+                prefs.setCredentialError("", 0L)
             }
         } catch (_: Exception) {
         }
@@ -124,8 +123,7 @@ object NetworkUtils {
         val stored = try { prefs.chatId } catch (_: Exception) { currentChatId }
         if (migrated == stored) {
             try {
-                prefs.credentialError = ""
-                prefs.credentialErrorAt = 0L
+                prefs.setCredentialError("", 0L)
                 refresh()
             } catch (_: Exception) {
             }
@@ -134,8 +132,7 @@ object NetworkUtils {
         if (migrated == currentChatId) return false
         return try {
             prefs.setChatIdSync(migrated)
-            prefs.credentialError = ""
-            prefs.credentialErrorAt = 0L
+            prefs.setCredentialError("", 0L)
             refresh()
             try { announce() } catch (_: Exception) { }
             true

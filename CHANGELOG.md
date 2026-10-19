@@ -1,5 +1,40 @@
 ## [Unreleased]
 
+## [1.6.400] - 2026-10-19
+### Fixed
+- Izin tangkap layar: sesi izin yang baru diberikan tidak lagi dibuang saat sesi lama berakhir (`ScreenCapture.dropProjection()` + `releaseShotSession()`), sehingga pengguna tidak dipaksa memberi izin ulang padahal baru saja mengizinkan.
+- Tangkap layar jalur Aksesibilitas: timeout 20 detik kini benar-benar membatalkan penunggu (`withTimeout` + `cancel()`), jadi bitmap yang tiba setelah timeout benar-benar didaur ulang; perbaikan 1.6.398 sebelumnya tidak pernah aktif.
+- SMS multi-bagian: hasil diputuskan berapa pun urutan laporan bagiannya; sebelumnya urutan "gagal dulu, sukses terakhir" membuat proses menggantung 45–75 detik dan menahan `smsBusy`.
+- Pengingat "token/chat ID ditolak" (401/403/400) dan notifikasi watchdog loop tidak lagi dibungkam selama jam pertama sampai enam jam pertama setelah HP menyala (sentinel waktu dimulai dari 0).
+- Peringatan jam malam tidak lagi terkirim dua kali untuk malam yang sama saat curfew melintasi tengah malam.
+- Cooldown notifikasi kendaraan dan notifikasi "hemat kuota" tidak lagi macet berjam-jam bila jam perangkat mundur (pola penjaga disamakan dengan `maybeSendHeartbeat`).
+- Laporan harian malam tidak lagi hilang sehari penuh bila penyusunannya gagal: tanggal baru ditandai setelah laporan terkirim; perbaikan sama untuk laporan begadang.
+- `/home` dan `/school` menolak koordinat/radius yang salah ketik (mis. `300m` atau token ekstra) alih-alih diam-diam memakai radius bawaan 200 m.
+- `/layar` menampilkan cara pakai bila argumen di luar 1–24, tidak lagi memotong diam-diam.
+- `/photo <lensa>` saat monitoring dijeda tidak lagi menyimpan setelan lensa tanpa mengambil foto.
+- Pesan gagal kamera dan gagal unggah berkas yang memuat teks dinamis kini di-escape sebelum dikirim, sehingga tidak lagi berisiko gagal parse (`parse_mode=HTML`).
+- `/smsconfirm` membersihkan SMS tertunda yang rusak (nomor/teks kosong) sehingga tidak lagi terkunci tanpa jalan keluar.
+- Laporan 7 hari tidak lagi menampilkan "Jam tersibuk: 0:00 (0 aktivitas)" saat tak ada aktivitas.
+- `credentialError` dan `credentialErrorAt` ditulis atomik lewat `setCredentialError()`, tidak lagi dua tulis terpisah yang bisa membuat blokir auth terlewat saat proses mati di antara keduanya.
+- Kuota berkas media: hitungan rekaman menyaring berkas yang sedang dikirim, hitungan foto/video mengabaikan berkas 0 byte, sisa `video_*.mp4.tmp` yatim dibersihkan, dan `/recordvideo` tidak lagi melaporkan "antrean penuh" saat pembersihan sedang dilewati karena pengiriman berjalan.
+- Alarm liveness tidak lagi terus ditunda oleh pemanggil `scheduleSoon()` berikutnya (tenggat terdekat yang menang), sehingga penghidup layanan bisa tak pernah dijalankan saat alarm sering dijadwalkan ulang.
+- `CrashReporter` mengunci penulisan berkas laporan (termasuk berkas `.tmp`), sehingga crash yang terjadi bersamaan dengan pengiriman laporan lama tidak lagi menghilangkan laporan baru.
+- Antrean pesan: `flushSync()` kini bisa menuntaskan penulisan yang sebelumnya lewat `apply()` (ditandai perlu commit) dan `persistDropCountsLocked()` dipanggil di dalam kunci.
+- Rotasi perangkat saat dialog izin tangkap layar tampil tidak lagi memunculkan dialog kedua dan membuang hasil izinnya.
+- Setup: "Simpan Setingan" tidak lagi menolak dengan "interval salah" bila isian belum sempat dimuat (memakai nilai tersimpan), dan "Kirim Status Sekarang" tidak lagi mengantre ganda saat dibatalkan.
+- `FgsWakeActivity` melepas `postDelayed` saat pause/destroy sehingga penjadwalan tidak menumpuk.
+- Kalkulator (peluncur stealth): pembacaan preferensi terenkripsi dan pemeriksaan izin dipindah ke thread latar, tidak lagi membebani main thread saat aplikasi dibuka.
+
+### Changed
+- `/night`, `/patrol`, dan `/notif` menerima `nyala`/`mati` seperti `/kendara` dan `/hematdata`.
+- Tema memakai `NoActionBar` agar label aplikasi tidak sempat tampil saat peluncuran (mode stealth).
+- Teks bantuan Indonesia menyebut tombol "Ambil Layar" (sebelumnya "Capture Screen" yang tak ada di UI Indonesia).
+- `todayKey()` memakai `TimeFmt.dayKey()` (pola `ThreadLocal`) sehingga tidak lagi mengalokasikan `SimpleDateFormat` baru setiap siklus.
+
+### Removed
+- `CameraService.currentVideoFile()` beserta cabang pemeriksaannya di `isMediaActive()` yang tak pernah cocok (berkas `.tmp` tak pernah diperiksa pembersih).
+- Plugin Gradle `com.android.library` yang tidak pernah diterapkan; task `clean` memakai `layout.buildDirectory`.
+
 ## [1.6.399] - 2026-10-19
 ### Fixed
 - Menutup dialog izin tangkap layar dengan "Batal" dari tombol Telegram "🖥️ Beri izin sekali" (`ui/ShotConsentActivity`) tidak lagi mencabut sesi izin yang sedang aktif — sejalan dengan perbaikan yang sama di halaman Setup.

@@ -75,8 +75,6 @@ class CameraService(private val context: Context) {
     @Volatile
     private var activeVideoFile: java.io.File? = null
 
-    fun currentVideoFile(): java.io.File? = activeVideoFile
-
     init {
         try {
             context.cacheDir?.listFiles { f -> f.isFile && f.name.endsWith(".tmp") }?.forEach {

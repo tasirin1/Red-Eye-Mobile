@@ -975,8 +975,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("NotifForwarder", "Send rejected (${response.code()}), queuing notification")
                 try {
-                    prefs.credentialError = response.code().toString()
-                    prefs.credentialErrorAt = System.currentTimeMillis()
+                    prefs.setCredentialError(response.code().toString(), System.currentTimeMillis())
                 } catch (_: Exception) {
                 }
                 queue().addMessage(message)
@@ -1007,8 +1006,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 if (NetworkUtils.isChatMissing(body)) {
                     try {
-                        prefs.credentialError = response.code().toString()
-                        prefs.credentialErrorAt = System.currentTimeMillis()
+                        prefs.setCredentialError(response.code().toString(), System.currentTimeMillis())
                     } catch (_: Exception) {
                     }
                     queue().addMessage(message)
@@ -1028,8 +1026,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                     if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
                         try {
-                            prefs.credentialError = fallbackResp.code().toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                         queue().addMessage(message)
@@ -1065,8 +1062,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         }
                         if (NetworkUtils.isChatMissing(fallbackBody)) {
                             try {
-                                prefs.credentialError = fallbackResp.code().toString()
-                                prefs.credentialErrorAt = System.currentTimeMillis()
+                                prefs.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
                             } catch (_: Exception) {
                             }
                             queue().addMessage(message)

@@ -13,6 +13,9 @@ import com.redeye.parentalmonitor.service.MonitoringService
 // dipakai agar tipe itu bisa dipasang sendiri setelah reboot.
 class FgsWakeActivity : Activity() {
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val finishRunnable = Runnable { finishQuietly() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestTypeRefresh()
@@ -21,7 +24,18 @@ class FgsWakeActivity : Activity() {
     override fun onResume() {
         super.onResume()
         requestTypeRefresh()
-        Handler(Looper.getMainLooper()).postDelayed({ finishQuietly() }, VISIBLE_MS)
+        mainHandler.removeCallbacks(finishRunnable)
+        mainHandler.postDelayed(finishRunnable, VISIBLE_MS)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mainHandler.removeCallbacks(finishRunnable)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacks(finishRunnable)
     }
 
     override fun onNewIntent(intent: Intent) {

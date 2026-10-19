@@ -41,3 +41,4 @@ isSystemApp
 numberInputMenu
 armNumberInput
 consumeNumberInput
+currentVideoFile

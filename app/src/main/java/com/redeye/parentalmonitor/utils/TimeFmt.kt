@@ -21,6 +21,11 @@ object TimeFmt {
             return SimpleDateFormat("HH:mm", Locale.US)
         }
     }
+    private val dayHolder = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat {
+            return SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
+        }
+    }
 
     @Volatile
     private var cachedTz: TimeZone? = null
@@ -60,6 +65,16 @@ object TimeFmt {
             f.format(Date(timestamp))
         } catch (_: Exception) {
             "?"
+        }
+    }
+
+    fun dayKey(timestamp: Long): String {
+        return try {
+            val f = dayHolder.get()
+            f.timeZone = currentTz()
+            f.format(Date(timestamp))
+        } catch (_: Exception) {
+            ""
         }
     }
 }

@@ -98,6 +98,7 @@
         <!-- Jendela transparan sekali jalan untuk meminta izin tangkap layar dari tombol Telegram -->
         <activity
             android:name=".ui.ShotConsentActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleInstance"

@@ -390,9 +390,9 @@ class MessageQueue private constructor(context: Context) {
                     persistDirty = false
                     lastPersistAt = android.os.SystemClock.elapsedRealtime()
                 }
-            }
-            if (dropsDirty) {
-                persistDropCountsLocked()
+                if (dropsDirty) {
+                    persistDropCountsLocked()
+                }
             }
         } catch (_: Exception) {
         }
@@ -474,8 +474,12 @@ class MessageQueue private constructor(context: Context) {
         persistDirty = false
         try {
             val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
-            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
-            else editor?.apply()
+            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                editor?.commit()
+            } else {
+                editor?.apply()
+                persistDirty = editor != null
+            }
         } catch (_: Exception) {
         }
     }

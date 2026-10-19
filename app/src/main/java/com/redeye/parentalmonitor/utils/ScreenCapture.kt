@@ -51,6 +51,14 @@ object ScreenCapture {
         try { dead?.stop() } catch (_: Exception) { }
     }
 
+    @Synchronized
+    fun dropProjection() {
+        val dead = projection
+        projection = null
+        ended = true
+        try { dead?.stop() } catch (_: Exception) { }
+    }
+
     fun granted(): Boolean = resultData != null || projection != null
 
     fun sessionEnded(): Boolean = ended && !granted()

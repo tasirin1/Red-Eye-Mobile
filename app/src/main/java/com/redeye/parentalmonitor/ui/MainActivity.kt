@@ -53,11 +53,9 @@ class MainActivity : AppCompatActivity() {
                     preferencesManager = PreferencesManager.getInstance(appCtx)
                 } catch (_: Exception) {
                 }
-                runOnUiThread {
-                    try {
-                        if (!isFinishing && !isDestroyed) startMonitoringInBackground()
-                    } catch (_: Exception) {
-                    }
+                try {
+                    startMonitoringInBackground()
+                } catch (_: Exception) {
                 }
             }
         } catch (_: Exception) {

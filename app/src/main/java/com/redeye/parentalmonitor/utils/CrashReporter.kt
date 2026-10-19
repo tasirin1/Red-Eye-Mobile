@@ -123,9 +123,11 @@ object CrashReporter {
     private fun writeReportFile(file: File, text: String) {
         val tmp = File(file.parent, file.name + ".tmp")
         try {
-            tmp.writeText(text)
-            if (tmp.renameTo(file)) return
-            tmp.copyTo(file, overwrite = true)
+            synchronized(saveLock) {
+                tmp.writeText(text)
+                if (tmp.renameTo(file)) return
+                tmp.copyTo(file, overwrite = true)
+            }
         } catch (_: Exception) {
         } finally {
             try {
@@ -144,26 +146,28 @@ object CrashReporter {
 
     private fun keepRemainder(file: File, raw: String, rest: String, elapsed0: Long) {
         try {
-            val cur = try { if (file.exists()) file.readText() else null } catch (_: Exception) { null }
-            if (cur == null || cur == raw) {
-                if (rest.isBlank()) {
-                    try { if (cur != null) file.delete() } catch (_: Exception) { }
-                } else writePendingRest(file, elapsed0, rest)
-                return
-            }
-            val appended = if (cur.startsWith(raw)) cur.substring(raw.length).removePrefix("\n---\n") else null
-            if (appended != null) {
-                val combined = when {
-                    rest.isBlank() -> appended
-                    appended.isBlank() -> rest
-                    else -> rest + "\n---\n" + appended
+            synchronized(saveLock) {
+                val cur = try { if (file.exists()) file.readText() else null } catch (_: Exception) { null }
+                if (cur == null || cur == raw) {
+                    if (rest.isBlank()) {
+                        try { if (cur != null) file.delete() } catch (_: Exception) { }
+                    } else writePendingRest(file, elapsed0, rest)
+                    return
                 }
+                val appended = if (cur.startsWith(raw)) cur.substring(raw.length).removePrefix("\n---\n") else null
+                if (appended != null) {
+                    val combined = when {
+                        rest.isBlank() -> appended
+                        appended.isBlank() -> rest
+                        else -> rest + "\n---\n" + appended
+                    }
+                    writePendingRest(file, elapsed0, combined)
+                    return
+                }
+                val curReport = stripElapsed(cur)
+                val combined = if (rest.isBlank()) curReport else (curReport + "\n---\n" + rest)
                 writePendingRest(file, elapsed0, combined)
-                return
             }
-            val curReport = stripElapsed(cur)
-            val combined = if (rest.isBlank()) curReport else (curReport + "\n---\n" + rest)
-            writePendingRest(file, elapsed0, combined)
         } catch (_: Exception) {
         }
     }
@@ -242,8 +246,7 @@ object CrashReporter {
                     }
                 } else if (response.code() == 401 || response.code() == 403) {
                     try {
-                        prefs.credentialError = response.code().toString()
-                        prefs.credentialErrorAt = System.currentTimeMillis()
+                        prefs.setCredentialError(response.code().toString(), System.currentTimeMillis())
                     } catch (_: Exception) {
                     }
                 } else if (response.code() == 400) {
@@ -254,8 +257,7 @@ object CrashReporter {
                     }
                     if (NetworkUtils.isChatMissing(body)) {
                         try {
-                            prefs.credentialError = "400"
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError("400", System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                     }
@@ -271,12 +273,12 @@ object CrashReporter {
                                 } catch (_: Exception) { }
                                 false
                             } else if (plainResp.code() == 401 || plainResp.code() == 403) {
-                                try { prefs.credentialError = "401"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }
+                                try { prefs.setCredentialError("401", System.currentTimeMillis()) } catch (_: Exception) { }
                                 false
                             } else if (plainResp.code() == 400) {
                                 val fbBody = try { plainResp.errorBody()?.string() } catch (_: Exception) { null }
                                 if (NetworkUtils.isChatMissing(fbBody)) {
-                                    try { prefs.credentialError = "400"; prefs.credentialErrorAt = System.currentTimeMillis() } catch (_: Exception) { }
+                                    try { prefs.setCredentialError("400", System.currentTimeMillis()) } catch (_: Exception) { }
                                 }
                                 false
                             } else {

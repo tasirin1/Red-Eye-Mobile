@@ -487,8 +487,7 @@ class SetupActivity : AppCompatActivity() {
                 } catch (_: Exception) {
                 }
             }
-            try { prefs.credentialError = "" } catch (_: Exception) { }
-            try { prefs.credentialErrorAt = 0L } catch (_: Exception) { }
+            try { prefs.setCredentialError("", 0L) } catch (_: Exception) { }
             try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
             try { prefs.pendingSmsText = "" } catch (_: Exception) { }
             try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
@@ -538,9 +537,9 @@ class SetupActivity : AppCompatActivity() {
         val rawChat = chatIdInput.text.toString().trim()
         val intervalRaw = syncIntervalInput.text.toString().trim()
         val cameraRaw = cameraIntervalInput.text.toString().trim()
-        val intervalParsed = intervalRaw.toIntOrNull()
-        val cameraParsed = cameraRaw.toIntOrNull()
-        if (intervalParsed == null || cameraParsed == null || intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
+        val intervalParsed = intervalRaw.toIntOrNull() ?: try { prefs.syncInterval } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL }
+        val cameraParsed = cameraRaw.toIntOrNull() ?: try { prefs.cameraInterval } catch (_: Exception) { 1 }
+        if (intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
             return
         }
@@ -606,8 +605,7 @@ class SetupActivity : AppCompatActivity() {
                     val code = meResp.code()
                     if (code == 401 || code == 403) {
                         try {
-                            prefs.credentialError = code.toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                     }
@@ -623,8 +621,7 @@ class SetupActivity : AppCompatActivity() {
                     val code = chatResp.code()
                     if (code == 401 || code == 403) {
                         try {
-                            prefs.credentialError = code.toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                     }
@@ -829,8 +826,7 @@ class SetupActivity : AppCompatActivity() {
                     val code = meResp.code()
                     if (code == 401 || code == 403) {
                         try {
-                            prefs.credentialError = code.toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                     }
@@ -868,8 +864,7 @@ class SetupActivity : AppCompatActivity() {
                     val code = chatResp.code()
                     if (code == 401 || code == 403) {
                         try {
-                            prefs.credentialError = code.toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
+                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
                         } catch (_: Exception) {
                         }
                     }
@@ -1174,8 +1169,7 @@ class SetupActivity : AppCompatActivity() {
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 var failCode = resp.code()
                 if (ok) {
-                    prefs.credentialError = ""
-                    prefs.credentialErrorAt = 0L
+                    prefs.setCredentialError("", 0L)
                 } else if (resp.code() == 429) {
                     val retryAfter = try {
                         NetworkUtils.parseRetryAfter(resp.errorBody()?.string())
@@ -1200,8 +1194,7 @@ class SetupActivity : AppCompatActivity() {
                             val retryResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedDirect, text = text))
                             if (retryResp.isSuccessful && retryResp.body()?.ok == true) {
                                 try {
-                                    prefs.credentialError = ""
-                                    prefs.credentialErrorAt = 0L
+                                    prefs.setCredentialError("", 0L)
                                 } catch (_: Exception) {
                                 }
                                 toastStatusSent()
@@ -1283,6 +1276,8 @@ class SetupActivity : AppCompatActivity() {
                     Toast.makeText(this@SetupActivity, toastRes, toastLen).show()
                     if (ok) reviveMonitoringIfNeeded()
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 try {
                     if (pending.isNotEmpty()) {
@@ -1293,6 +1288,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val failure = getString(R.string.setup_status_failed, redactToken(e.message))
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
                     Toast.makeText(this@SetupActivity, failure, Toast.LENGTH_LONG).show()
                 }
             }
@@ -1302,8 +1298,7 @@ class SetupActivity : AppCompatActivity() {
 
     private fun markCredentialError(code: Int) {
         try {
-            prefs.credentialError = code.toString()
-            prefs.credentialErrorAt = System.currentTimeMillis()
+            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
         } catch (_: Exception) {
         }
     }
@@ -1327,8 +1322,7 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun applyMigratedChatId(newChatId: String) {
         try {
             prefs.chatId = newChatId
-            prefs.credentialError = ""
-            prefs.credentialErrorAt = 0L
+            prefs.setCredentialError("", 0L)
         } catch (_: Exception) {
         }
         try {
