@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.392] - 2026-10-19
+### Changed
+- Perintah angka tidak lagi ditampilkan sebagai perintah teks: `/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, dan `/jemput` dihapus dari daftar perintah Telegram (menu `/`) dan dari teks `/help` — jalan resminya lewat tombol di `/tombol` (atau tombol "🔢 Atur angka" di menu utama). Mengetiknya langsung tetap berfungsi (`/photointerval 15`, `/jemput off`, `/heartbeat 0`, `/ring 20`), jadi tidak ada kemampuan yang hilang, hanya tampilannya yang dipindah ke tombol.
+- Deskripsi perintah `tombol` di daftar perintah Telegram kini menyebut cakupannya (`Atur angka: interval, jeda, rekam, bunyi, denyut, jemput`) dan baris `/help` untuk `/tombol` merinci perintah yang ada di papan tombol.
+- Keterangan tombol "🏠 Jemput" menyebut varian yang tidak ada di papan tombol (`/jemput off` untuk mematikan, `/jemput` untuk status), karena baris `/help`-nya kini disembunyikan.
+- `README.md` menegaskan perintah angka sengaja tidak lagi muncul di menu `/` maupun di `/help`, dan bahwa pengetikan langsungnya masih sah.
+
 ## [1.6.391] - 2026-10-19
 ### Added
 - Perintah angka kini bisa dipakai lewat tombol Telegram. Kirim `/tombol` (alias `tombol`/`angka`), atau ketuk tombol "🔢 Atur angka" di menu utama: bot menampilkan papan tombol berisi perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`). Ketuk satu tombol, bot membalas "Kirim angkanya (rentang)" beserta nilai yang sedang berlaku, lalu balasan angka berikutnya langsung menjalankan perintah itu — balas `15` setelah menekan **Interval foto** sama dengan `/photointerval 15`.

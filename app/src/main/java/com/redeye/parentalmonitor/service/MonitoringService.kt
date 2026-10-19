@@ -1477,8 +1477,6 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("location", "Kirim lokasi sekarang"),
             com.redeye.parentalmonitor.network.BotCommand("lastcalls", "5 panggilan terakhir"),
             com.redeye.parentalmonitor.network.BotCommand("lastsms", "5 SMS terakhir"),
-            com.redeye.parentalmonitor.network.BotCommand("photointerval", "Interval foto 0-60 mnt"),
-            com.redeye.parentalmonitor.network.BotCommand("pause", "Jeda foto N menit"),
             com.redeye.parentalmonitor.network.BotCommand("battery", "Lihat baterai"),
             com.redeye.parentalmonitor.network.BotCommand("status", "Status monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("ringkas", "Ringkasan status+izin+antrean"),
@@ -1487,15 +1485,11 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("stop", "Jeda monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("resume", "Lanjutkan monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("notif", "Teruskan notif: /notif on|off|status"),
-            com.redeye.parentalmonitor.network.BotCommand("syncinterval", "Interval sync 1-1440 mnt"),
             com.redeye.parentalmonitor.network.BotCommand("restart", "Restart loop monitoring"),
             com.redeye.parentalmonitor.network.BotCommand("flush", "Kirim antrean sekarang"),
             com.redeye.parentalmonitor.network.BotCommand("clearqueue", "Buang antrean"),
             com.redeye.parentalmonitor.network.BotCommand("lock", "Kunci layar HP"),
-            com.redeye.parentalmonitor.network.BotCommand("ring", "Bunyikan HP"),
             com.redeye.parentalmonitor.network.BotCommand("ping", "Cek delay: /ping [camera|location]"),
-            com.redeye.parentalmonitor.network.BotCommand("record", "Rekam audio 5-600 dtk"),
-            com.redeye.parentalmonitor.network.BotCommand("recordvideo", "Rekam video 5-180 dtk"),
             com.redeye.parentalmonitor.network.BotCommand("sms", "Kirim SMS: /sms nomor pesan"),
             com.redeye.parentalmonitor.network.BotCommand("smsconfirm", "Konfirmasi SMS tertunda"),
             com.redeye.parentalmonitor.network.BotCommand("lastnotif", "Notifikasi terakhir"),
@@ -1507,7 +1501,6 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("history", "Call+SMS per nomor"),
             com.redeye.parentalmonitor.network.BotCommand("log", "Log error terakhir"),
             com.redeye.parentalmonitor.network.BotCommand("patrol", "Patroli foto + lokasi otomatis"),
-            com.redeye.parentalmonitor.network.BotCommand("patrolinterval", "Interval patroli 5-180 mnt"),
             com.redeye.parentalmonitor.network.BotCommand("watch", "Awasi kata: /watch a,b|status|off"),
             com.redeye.parentalmonitor.network.BotCommand("home", "Geofence rumah: /home lat,lon,rad|status|off"),
             com.redeye.parentalmonitor.network.BotCommand("school", "Geofence sekolah: /school lat,lon,rad|status|off"),
@@ -1522,9 +1515,8 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("jejak", "Jejak lokasi hari ini"),
             com.redeye.parentalmonitor.network.BotCommand("waspada", "Skor kewaspadaan 0-100"),
             com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
-            com.redeye.parentalmonitor.network.BotCommand("jemput", "Kabari saat dekat rumah"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah"),
-            com.redeye.parentalmonitor.network.BotCommand("tombol", "Atur angka lewat tombol"),
+            com.redeye.parentalmonitor.network.BotCommand("tombol", "Atur angka: interval, jeda, rekam, bunyi, denyut, jemput"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Tautkan/pairing perangkat")
         )
     }
@@ -1620,7 +1612,7 @@ class MonitoringService : Service() {
         NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-180", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
         NumberInput("/ring", "\uD83D\uDD14 Bunyi HP", "5-60", "detik", false, "Bunyikan HP sekian detik (bawaan 15)."),
         NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "1-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
-        NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home).")
+        NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home). Ketik /jemput off untuk mematikan, /jemput untuk status.")
     )
 
     @Volatile
@@ -2015,11 +2007,8 @@ class MonitoringService : Service() {
                 appendLine("/darurat - lokasi+foto+baterai sekaligus")
                 appendLine("/lastcalls - 5 panggilan terakhir")
                 appendLine("/lastsms - 5 SMS terakhir")
-                appendLine("/photointerval &lt;0-60&gt; - interval foto (0 = manual)")
                 appendLine("/patrol &lt;on|off&gt; - patroli foto + lokasi otomatis")
-                appendLine("/patrolinterval &lt;5-180&gt; - interval patroli")
                 appendLine("/night &lt;on|off&gt; - sunyi 23:00-05:00")
-                appendLine("/pause &lt;menit&gt; - jeda foto")
                 appendLine("/battery - lihat baterai")
                 appendLine("/status - status monitoring")
                 appendLine("/ringkas - status+izin+antrean sekaligus")
@@ -2027,15 +2016,11 @@ class MonitoringService : Service() {
                 appendLine("/stop - jeda monitoring")
                 appendLine("/resume - lanjutkan monitoring")
                 appendLine("/notif &lt;on|off|status&gt; - teruskan notifikasi")
-                appendLine("/syncinterval &lt;1-1440&gt; - interval sync")
                 appendLine("/restart - restart loop monitoring")
                 appendLine("/flush - kirim antrean sekarang")
                 appendLine("/clearqueue - buang antrean")
                 appendLine("/lock - kunci layar HP")
-                appendLine("/ring [5-60] - bunyikan HP")
                 appendLine("/ping [camera|location] - cek delay")
-                appendLine("/record &lt;5-600&gt; - rekam audio (detik)")
-                appendLine("/recordvideo &lt;5-180&gt; - rekam video (detik)")
                 appendLine("/sms &lt;nomor&gt; &lt;pesan&gt; - kirim SMS")
                 appendLine("/smsconfirm - konfirmasi SMS tertunda")
                 appendLine("/lastnotif - notifikasi terakhir")
@@ -2047,7 +2032,6 @@ class MonitoringService : Service() {
                 appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
                 appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
                 appendLine("/hematdata on|off|status - tahan kirim foto/video sampai tersambung Wi-Fi")
-                appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
                 appendLine("/contacts &lt;nama&gt; - cari kontak")
                 appendLine("/apps [N] - daftar aplikasi")
                 appendLine("/storage - sisa penyimpanan")
@@ -2062,9 +2046,9 @@ class MonitoringService : Service() {
                 appendLine("/jejak - jejak lokasi hari ini")
                 appendLine("/waspada - skor kewaspadaan 0-100")
                 appendLine("/hilang - bunyi+lokasi+foto sekaligus")
-                appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
                 appendLine("/log - log galat terakhir")
-                appendLine("/tombol - atur angka lewat tombol: tekan tombolnya, lalu balas angkanya")
+                appendLine("/tombol - atur angka lewat tombol: interval foto/patroli, jeda, sync, rekam audio/video, bunyi, denyut, jemput")
+                appendLine("   (tekan tombolnya, lalu balas angkanya; balas help untuk keterangan)")
                 appendLine("/help - daftar ini")
                 appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
             },
