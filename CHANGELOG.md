@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.6.380] - 2026-10-19
+### Fixed
+- Foto otomatis tak lagi gagal setelah HP di-restart (`⚠️ Gagal memotret: kamera menolak akses latar (CAMERA_DISABLED)` sampai aplikasi dibuka manual). Penyebabnya aturan Android 14+: tipe latar `camera` (juga `microphone`/`location`) hanya boleh dipasang saat aplikasi punya activity terlihat, sedangkan setelah reboot layanan hidup di latar dengan tipe `specialUse`. Kini `ensureForegroundTypes()` mendeteksi tipe `camera` diminta tapi belum terpasang, lalu membuka jendela transparan sekali jalan (`ui/FgsWakeActivity`: tanpa tampilan, `excludeFromRecents`, `noHistory`, ~2,5 dtk) yang memicu layanan memasang ulang tipe lengkap — jalur yang sama dengan "buka aplikasi sekali" yang dulu harus dilakukan manual. Satu kali ini sekaligus memperbaiki rekam video/audio latar dan lokasi latar setelah reboot.
+- Percobaan pemulihan dibatasi agar tak jadi kebiasaan buruk: butuh izin "tampilkan di atas aplikasi lain" (`SYSTEM_ALERT_WINDOW`, sudah diminta di Setup — tanpa izin itu Android memblokir activity dari latar), jeda 30 menit antar percobaan, mundur ke 6 jam setelah 3 kali gagal, dan berhenti sama sekali setelah tipe terpasang.
+### Changed
+- Pesan kegagalan kamera bukan lagi menyuruh membuka aplikasi manual sebagai jalan utama: kini menyebut aplikasi mencoba memasang sendiri lewat jendela transparan, dan menyebut syarat izin "tampilkan di atas aplikasi lain" bila masih gagal. Setelah pemulihan berhasil, dikirim kabar `✅ Izin latar kamera dipasang ulang otomatis` (maks 1× per 6 jam).
+### Added
+- `ui/FgsWakeActivity` + entri manifest (`exported="false"`, theme `Theme.Translucent.NoTitleBar`, `taskAffinity="com.redeye.parentalmonitor.wake"` agar tak menumpang tugas kalkulator).
+
 ## [1.6.379] - 2026-10-19
 ### Security
 - `builder.sh` / `builder.bat` kini berhenti sendiri (`exit 1`) sebelum menyentuh berkas apa pun. Alur LEGACY keduanya menulis token bot ke `app/build.gradle` yang di-track Git — risiko kredensial bocor ke repositori. Sekarang henti total, bukan cuma banner.

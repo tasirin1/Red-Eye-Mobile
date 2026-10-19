@@ -76,6 +76,16 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false" />
 
+        <!-- Jendela transparan sekali jalan untuk memasang tipe FGS camera di latar -->
+        <activity
+            android:name=".ui.FgsWakeActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity="com.redeye.parentalmonitor.wake"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync|specialUse"
