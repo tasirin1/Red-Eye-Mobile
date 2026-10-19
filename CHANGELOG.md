@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.390] - 2026-10-19
+### Changed
+- R8 (langkah 4, batch 5 / penutup): empat cabang terakhir yang gemuk jadi fungsi bernama: `handleJejakCommand()` (13 baris), `handleHilangCommand()` (31), `handleJemputCommand(arg)` (25), dan `handleHelpCommand(senderOk)` (75; dipakai bersama `/help` dan `/start`). Ditambah satu baris kosong antar-fungsi yang ikut terhapus saat penyisipan helper.
+- Hasil akhir langkah 4: `handleTelegramCommandInner()` **1070 → 126 baris**. Isinya kini tabel dispatch (`"/photo" -> handlePhotoCommand(arg)`, …) untuk 45 perintah yang ditangani fungsi bernama, ditambah 13 perintah kecil (≤9 baris, mis. `/stop`, `/battery`, `/alive`, `/cekmati`, `/sembuh`, `/layar`, `/digest`, `/minggu`, `/waspada`) yang sengaja dibiarkan di tempatnya karena lebih mudah dibaca begitu, serta cabang `else` untuk perintah tak dikenal.
+- Bukti (skrip terpisah dari skrip transformasi): pembalikan berkas baru **identik karakter demi karakter** dengan fungsi lama (15.400 karakter, 274 baris), dan badan ke-4 fungsi baru sama persis dengan badan cabang lama setelah dedent 8 spasi (13/31/25/75 baris). Tidak ada perilaku yang berubah: semua badan cabang dipindah apa adanya, dan `return` tanpa label tetap sah karena `when` adalah pernyataan terakhir fungsi induk.
+
 ## [1.6.389] - 2026-10-19
 ### Changed
 - R8 (langkah 4, batch 4): sembilan cabang berikutnya jadi fungsi bernama: `handleContactsCommand(arg)` (19 baris), `handleAppsCommand(arg)` (18), `handleStorageCommand()` (8), `handleHistoryCommand(arg)` (27), `handleWatchCommand(arg, privateChat)` (18), `handleFenceCommand(command, arg, privateChat)` (40; dipakai bersama oleh `/home` dan `/school`), `handleDaruratCommand()` (23), `handleJampulangCommand(arg, privateChat)` (15), dan `handleWatchNomorCommand(arg, privateChat)` (17). Fungsi induk kini 274 baris (dari 1070 sebelum langkah 4 dimulai).

