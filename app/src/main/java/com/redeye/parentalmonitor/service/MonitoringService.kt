@@ -1635,25 +1635,7 @@ class MonitoringService : Service() {
             return
         }
         when (command) {
-            "/photo" -> {
-                val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
-                if (lens.isNotEmpty()) {
-                    when (lens) {
-                        "belakang", "back" -> preferencesManager.cameraFacing = "back"
-                        "depan", "front" -> preferencesManager.cameraFacing = "front"
-                        else -> {
-                            sendToTelegram("Cara pakai: /photo [front|back]")
-                            return
-                        }
-                    }
-                }
-                if (preferencesManager.monitoringPaused) {
-                    sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
-                } else {
-                    sendToTelegram("📸 Ambil foto sekarang…")
-                    captureAndSendPhoto(reportResult = true)
-                }
-            }
+            "/photo" -> handlePhotoCommand(arg)
             "/screenshot" -> {
                 if (preferencesManager.monitoringPaused) {
                     sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
@@ -1662,117 +1644,16 @@ class MonitoringService : Service() {
                     captureAndSendScreenshot()
                 }
             }
-            "/status" -> {
-                val lastSync = preferencesManager.lastSyncTime
-                val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "belum pernah"
-                val photoState = if (isPhotoPaused()) {
-                    val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
-                    "jeda ($leftMin mnt lagi)"
-                } else if (preferencesManager.cameraInterval <= 0) {
-                    "manual saja (/photo)"
-                } else {
-                    "tiap ${preferencesManager.cameraInterval} mnt"
-                }
-                sendToTelegram(
-                    buildString {
-                        appendLine("📊 <b>Status</b>")
-                        appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
-                        appendLine("Sync terakhir: $lastSyncStr")
-                        appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                        val effMin = effectiveSyncMillis() / 60_000L
-                        appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0 && effMin > preferencesManager.syncInterval) " (sepi adaptif, kini tiap $effMin mnt)" else "")
-                        appendLine("Foto: $photoState")
-                        appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
-                        appendLine("Kamera: ${preferencesManager.cameraFacing}")
-                        appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
-                        appendLine("Pantau: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
-                        appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
-                        appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
-                        appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
-                        appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
-                        appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
-                        appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
-                        appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
-                        appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
-                    },
-                    mainMenu()
-                )
-            }
+            "/status" -> handleStatusCommand()
             "/perms" -> {
                 val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
                 sendToTelegram(permInventoryText(permissionRawStates(), notifOn))
             }
-            "/ringkas" -> {
-                val level = batteryLevel()
-                val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
-                val snap = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }
-                val missing = try { missingPermLabels(permissionMask(permissionRawStates(), notifOn, snap)) } catch (_: Exception) { ArrayList() }
-                sendToTelegram(buildString {
-                    appendLine("🧾 <b>Ringkas</b>")
-                    appendLine("Pemantauan: ${if (preferencesManager.monitoringPaused) "DIJEDA" else "JALAN"}")
-                    appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
-                    appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
-                    appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
-                    appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
-                },
-                    mainMenu()
-                )
-            }
-            "/lastcalls" -> {
-                if (!hasCallLogPermission()) {
-                    sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
-                    return
-                }
-                val calls = callLogRepository.getAllCalls(5)
-                if (calls.isEmpty()) {
-                    sendToTelegram("📞 Tak ada riwayat panggilan.")
-                } else {
-                    val knownCalls = try { calls.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-                    sendToTelegram(formatCallMessage(calls, knownCalls))
-                }
-            }
-            "/lastsms" -> {
-                if (!hasSmsPermission()) {
-                    sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
-                    return
-                }
-                val sms = smsRepository.getRecentSms(5)
-                if (sms.isEmpty()) {
-                    sendToTelegram("💬 Tak ada SMS.")
-                } else {
-                    val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-                    val freqSms = try { batchFreqMap() } catch (_: Exception) { null }
-                    sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
-                }
-            }
-            "/photointerval" -> {
-                val minutes = arg.toIntOrNull()
-                if (minutes == null || minutes !in 0..60) {
-                    sendToTelegram("Cara pakai: /photointerval &lt;0-60&gt; (0 = manual saja)")
-                } else if (minutes == 0) {
-                    preferencesManager.cameraInterval = 0
-                    sendToTelegram("📸 Foto otomatis MATI. Pakai /photo untuk manual.")
-                } else {
-                    preferencesManager.cameraInterval = minutes
-                    sendToTelegram("📸 Interval foto: $minutes mnt.")
-                }
-            }
-            "/patrol" -> {
-                when (arg.lowercase(java.util.Locale.ROOT)) {
-                    "on" -> {
-                        preferencesManager.patrolEnabled = true
-                        sendToTelegram("\uD83D\uDEF0 Patroli NYALA \u2014 foto + lokasi tiap ${preferencesManager.patrolInterval} mnt.")
-                    }
-                    "off" -> {
-                        preferencesManager.patrolEnabled = false
-                        sendToTelegram("\uD83D\uDEF0 Patroli MATI.")
-                    }
-                    else -> {
-                        val state = if (preferencesManager.patrolEnabled) "NYALA tiap ${preferencesManager.patrolInterval} mnt" else "MATI"
-                        sendToTelegram("Cara pakai: /patrol &lt;on|off&gt; (kini $state)")
-                    }
-                }
-            }
+            "/ringkas" -> handleRingkasCommand()
+            "/lastcalls" -> handleLastCallsCommand()
+            "/lastsms" -> handleLastSmsCommand()
+            "/photointerval" -> handlePhotoIntervalCommand(arg)
+            "/patrol" -> handlePatrolCommand(arg)
             "/patrolinterval" -> {
                 val minutes = arg.toIntOrNull()
                 if (minutes == null || minutes !in 5..180) {
@@ -1782,36 +1663,8 @@ class MonitoringService : Service() {
                     sendToTelegram("\uD83D\uDEF0 Interval patroli diatur $minutes mnt.")
                 }
             }
-            "/night" -> {
-                when (arg.lowercase(java.util.Locale.ROOT)) {
-                    "on" -> {
-                        preferencesManager.nightMode = true
-                        try { restartCameraLoop() } catch (_: Exception) { }
-                        try { restartPatrolLoop() } catch (_: Exception) { }
-                        sendToTelegram("🌙 Mode malam NYALA — foto/lokasi otomatis dijeda 23:00–05:00.")
-                    }
-                    "off" -> {
-                        preferencesManager.nightMode = false
-                        try { restartCameraLoop() } catch (_: Exception) { }
-                        try { restartPatrolLoop() } catch (_: Exception) { }
-                        sendToTelegram("🌙 Mode malam MATI.")
-                    }
-                    else -> {
-                        val state = if (preferencesManager.nightMode) "NYALA 23:00–05:00" else "MATI"
-                        sendToTelegram("Cara pakai: /night &lt;on|off&gt; (kini $state)")
-                    }
-                }
-            }
-            "/pause" -> {
-                val minutes = arg.toIntOrNull()
-                if (minutes == null || minutes !in 1..480) {
-                    sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
-                } else {
-                    preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
-                    preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
-                    sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
-                }
-            }
+            "/night" -> handleNightCommand(arg)
+            "/pause" -> handlePauseCommand(arg)
             "/battery" -> {
                 val level = batteryLevel()
                 val levelText = if (level in 0..100) "$level%" else "tak tahu"
@@ -1821,17 +1674,7 @@ class MonitoringService : Service() {
                 preferencesManager.monitoringPaused = true
                 sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Kirim /resume untuk lanjut.")
             }
-            "/resume" -> {
-                preferencesManager.monitoringPaused = false
-                val photoPaused = isPhotoPaused()
-                try {
-                    preferencesManager.photoPausedUntil = 0L
-                    preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
-                } catch (_: Exception) {
-                }
-                cachedPhotoPausedUntil = 0L
-                sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
-            }
+            "/resume" -> handleResumeCommand()
             "/location" -> {
                 if (!hasLocationPermission()) {
                     sendToTelegram("⚠️ Izin lokasi hilang. Buka Setup dan berikan izin Lokasi.")
@@ -2690,6 +2533,184 @@ class MonitoringService : Service() {
             }
         }
     }
+    private suspend fun handlePhotoCommand(arg: String) {
+        val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
+        if (lens.isNotEmpty()) {
+            when (lens) {
+                "belakang", "back" -> preferencesManager.cameraFacing = "back"
+                "depan", "front" -> preferencesManager.cameraFacing = "front"
+                else -> {
+                    sendToTelegram("Cara pakai: /photo [front|back]")
+                    return
+                }
+            }
+        }
+        if (preferencesManager.monitoringPaused) {
+            sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
+        } else {
+            sendToTelegram("📸 Ambil foto sekarang…")
+            captureAndSendPhoto(reportResult = true)
+        }
+    }
+
+    private suspend fun handleStatusCommand() {
+        val lastSync = preferencesManager.lastSyncTime
+        val lastSyncStr = if (lastSync > 0) formatDate(lastSync) else "belum pernah"
+        val photoState = if (isPhotoPaused()) {
+            val leftMin = ((photoPausedElapsed() - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1L)
+            "jeda ($leftMin mnt lagi)"
+        } else if (preferencesManager.cameraInterval <= 0) {
+            "manual saja (/photo)"
+        } else {
+            "tiap ${preferencesManager.cameraInterval} mnt"
+        }
+        sendToTelegram(
+            buildString {
+                appendLine("📊 <b>Status</b>")
+                appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
+                appendLine("Sync terakhir: $lastSyncStr")
+                appendLine("Antrean: ${messageQueue.getQueueSize()}")
+                val effMin = effectiveSyncMillis() / 60_000L
+                appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0 && effMin > preferencesManager.syncInterval) " (sepi adaptif, kini tiap $effMin mnt)" else "")
+                appendLine("Foto: $photoState")
+                appendLine("Patroli: ${if (preferencesManager.patrolEnabled) "JALAN tiap ${preferencesManager.patrolInterval} mnt" else "mati"}")
+                appendLine("Kamera: ${preferencesManager.cameraFacing}")
+                appendLine("Malam: " + if (preferencesManager.nightMode) "JALAN 23–05" + if (isNightPaused()) " (sunyi sekarang)" else "" else "mati")
+                appendLine("Pantau: " + (watchList().takeIf { it.isNotEmpty() }?.joinToString(",") { Html.escape(it) } ?: "mati"))
+                appendLine("Rumah: " + fenceStatusText(true) + " · Sekolah: " + fenceStatusText(false))
+                appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
+                appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
+                appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
+                appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
+                appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
+                appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
+                appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
+            },
+            mainMenu()
+        )
+    }
+
+    private suspend fun handleRingkasCommand() {
+        val level = batteryLevel()
+        val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
+        val snap = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }
+        val missing = try { missingPermLabels(permissionMask(permissionRawStates(), notifOn, snap)) } catch (_: Exception) { ArrayList() }
+        sendToTelegram(buildString {
+            appendLine("🧾 <b>Ringkas</b>")
+            appendLine("Pemantauan: ${if (preferencesManager.monitoringPaused) "DIJEDA" else "JALAN"}")
+            appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
+            appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
+            appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
+            appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
+        },
+            mainMenu()
+        )
+    }
+
+    private suspend fun handleLastCallsCommand() {
+        if (!hasCallLogPermission()) {
+            sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
+            return
+        }
+        val calls = callLogRepository.getAllCalls(5)
+        if (calls.isEmpty()) {
+            sendToTelegram("📞 Tak ada riwayat panggilan.")
+        } else {
+            val knownCalls = try { calls.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+            sendToTelegram(formatCallMessage(calls, knownCalls))
+        }
+    }
+
+    private suspend fun handleLastSmsCommand() {
+        if (!hasSmsPermission()) {
+            sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
+            return
+        }
+        val sms = smsRepository.getRecentSms(5)
+        if (sms.isEmpty()) {
+            sendToTelegram("💬 Tak ada SMS.")
+        } else {
+            val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+            val freqSms = try { batchFreqMap() } catch (_: Exception) { null }
+            sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
+        }
+    }
+
+    private suspend fun handlePhotoIntervalCommand(arg: String) {
+        val minutes = arg.toIntOrNull()
+        if (minutes == null || minutes !in 0..60) {
+            sendToTelegram("Cara pakai: /photointerval &lt;0-60&gt; (0 = manual saja)")
+        } else if (minutes == 0) {
+            preferencesManager.cameraInterval = 0
+            sendToTelegram("📸 Foto otomatis MATI. Pakai /photo untuk manual.")
+        } else {
+            preferencesManager.cameraInterval = minutes
+            sendToTelegram("📸 Interval foto: $minutes mnt.")
+        }
+    }
+
+    private suspend fun handlePatrolCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT)) {
+            "on" -> {
+                preferencesManager.patrolEnabled = true
+                sendToTelegram("\uD83D\uDEF0 Patroli NYALA \u2014 foto + lokasi tiap ${preferencesManager.patrolInterval} mnt.")
+            }
+            "off" -> {
+                preferencesManager.patrolEnabled = false
+                sendToTelegram("\uD83D\uDEF0 Patroli MATI.")
+            }
+            else -> {
+                val state = if (preferencesManager.patrolEnabled) "NYALA tiap ${preferencesManager.patrolInterval} mnt" else "MATI"
+                sendToTelegram("Cara pakai: /patrol &lt;on|off&gt; (kini $state)")
+            }
+        }
+    }
+
+    private suspend fun handleNightCommand(arg: String) {
+        when (arg.lowercase(java.util.Locale.ROOT)) {
+            "on" -> {
+                preferencesManager.nightMode = true
+                try { restartCameraLoop() } catch (_: Exception) { }
+                try { restartPatrolLoop() } catch (_: Exception) { }
+                sendToTelegram("🌙 Mode malam NYALA — foto/lokasi otomatis dijeda 23:00–05:00.")
+            }
+            "off" -> {
+                preferencesManager.nightMode = false
+                try { restartCameraLoop() } catch (_: Exception) { }
+                try { restartPatrolLoop() } catch (_: Exception) { }
+                sendToTelegram("🌙 Mode malam MATI.")
+            }
+            else -> {
+                val state = if (preferencesManager.nightMode) "NYALA 23:00–05:00" else "MATI"
+                sendToTelegram("Cara pakai: /night &lt;on|off&gt; (kini $state)")
+            }
+        }
+    }
+
+    private suspend fun handlePauseCommand(arg: String) {
+        val minutes = arg.toIntOrNull()
+        if (minutes == null || minutes !in 1..480) {
+            sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
+        } else {
+            preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
+            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+            sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
+        }
+    }
+
+    private suspend fun handleResumeCommand() {
+        preferencesManager.monitoringPaused = false
+        val photoPaused = isPhotoPaused()
+        try {
+            preferencesManager.photoPausedUntil = 0L
+            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+        } catch (_: Exception) {
+        }
+        cachedPhotoPausedUntil = 0L
+        sendToTelegram(if (photoPaused) "▶️ Monitoring jalan lagi. Jeda foto otomatis dibatalkan." else "▶️ Monitoring jalan lagi.")
+    }
+
+
 
     private fun selectedLensFacing(): Int {
         return if (preferencesManager.cameraFacing == "back") {
