@@ -1179,38 +1179,14 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 } else if (resp.code() == 401 || resp.code() == 403) {
-                    try {
-                        prefs.credentialError = resp.code().toString()
-                        prefs.credentialErrorAt = System.currentTimeMillis()
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
+                    markCredentialError(resp.code())
+                    queueStatusMessage(text)
                 } else if (resp.code() == 400) {
                     val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
                     val migratedDirect = NetworkUtils.extractMigratedChatId(goneBody)
                     val storedChatNow = try { prefs.chatId } catch (_: Exception) { chatId }
                     if (migratedDirect != null && migratedDirect != chatId && storedChatNow == chatId) {
-                        try {
-                            prefs.chatId = migratedDirect
-                            prefs.credentialError = ""
-                            prefs.credentialErrorAt = 0L
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                chatIdInput.setText(STORED_MASK)
-                            }
-                        } catch (_: Exception) {
-                        }
-                        try {
-                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                        } catch (_: Exception) {
-                        }
+                        applyMigratedChatId(migratedDirect)
                         try {
                             val retryResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedDirect, text = text))
                             if (retryResp.isSuccessful && retryResp.body()?.ok == true) {
@@ -1219,37 +1195,21 @@ class SetupActivity : AppCompatActivity() {
                                     prefs.credentialErrorAt = 0L
                                 } catch (_: Exception) {
                                 }
-                                val toastOk = getString(R.string.setup_status_sent)
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
-                                    reviveMonitoringIfNeeded()
-                                }
+                                toastStatusSent()
                                 return@launch
                             }
                             failCode = retryResp.code()
                             if (retryResp.code() == 401 || retryResp.code() == 403) {
-                                try {
-                                    prefs.credentialError = retryResp.code().toString()
-                                    prefs.credentialErrorAt = System.currentTimeMillis()
-                                } catch (_: Exception) {
-                                }
+                                markCredentialError(retryResp.code())
                             } else if (retryResp.code() == 400) {
                                 val retryBody = try { retryResp.errorBody()?.string() } catch (_: Exception) { null }
                                 if (NetworkUtils.isChatMissing(retryBody) && NetworkUtils.extractMigratedChatId(retryBody) == null) {
-                                    try {
-                                        prefs.credentialError = retryResp.code().toString()
-                                        prefs.credentialErrorAt = System.currentTimeMillis()
-                                    } catch (_: Exception) {
-                                    }
+                                    markCredentialError(retryResp.code())
                                 }
                             }
                         } catch (_: Exception) {
                         }
-                        try {
-                            MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                        } catch (_: Exception) {
-                        }
+                        queueStatusMessage(text)
                         val toastRetry = getString(R.string.setup_status_failed, failCode)
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             Toast.makeText(this@SetupActivity, toastRetry, Toast.LENGTH_LONG).show()
@@ -1257,31 +1217,19 @@ class SetupActivity : AppCompatActivity() {
                         return@launch
                     }
                     if (NetworkUtils.isChatMissing(goneBody)) {
-                        try {
-                            prefs.credentialError = resp.code().toString()
-                            prefs.credentialErrorAt = System.currentTimeMillis()
-                        } catch (_: Exception) {
-                        }
+                        markCredentialError(resp.code())
                     } else {
                         val plain = Html.unescape(text)
                         if (plain != text) {
                             try {
                                 val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
                                 if (plainResp.isSuccessful && plainResp.body()?.ok == true) {
-                                    val toastOk = getString(R.string.setup_status_sent)
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
-                                        reviveMonitoringIfNeeded()
-                                    }
+                                    toastStatusSent()
                                     return@launch
                                 }
                                 failCode = plainResp.code()
                                 if (plainResp.code() == 401 || plainResp.code() == 403) {
-                                    try {
-                                        prefs.credentialError = plainResp.code().toString()
-                                        prefs.credentialErrorAt = System.currentTimeMillis()
-                                    } catch (_: Exception) {
-                                    }
+                                    markCredentialError(plainResp.code())
                                 } else if (plainResp.code() == 400) {
                                     val plainBody = try {
                                         plainResp.errorBody()?.string()
@@ -1291,69 +1239,33 @@ class SetupActivity : AppCompatActivity() {
                                     val migratedPlain = NetworkUtils.extractMigratedChatId(plainBody)
                                     val storedChatPlain = try { prefs.chatId } catch (_: Exception) { chatId }
                                     if (migratedPlain != null && migratedPlain != chatId && storedChatPlain == chatId) {
-                                        try {
-                                            prefs.chatId = migratedPlain
-                                            prefs.credentialError = ""
-                                            prefs.credentialErrorAt = 0L
-                                        } catch (_: Exception) {
-                                        }
-                                        try {
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                chatIdInput.setText(STORED_MASK)
-                                            }
-                                        } catch (_: Exception) {
-                                        }
-                                        try {
-                                            MessageQueue.getInstance(applicationContext).addMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.", true)
-                                            MessageScheduler.scheduleMessageSend(applicationContext)
-                                        } catch (_: Exception) {
-                                        }
+                                        applyMigratedChatId(migratedPlain)
                                         try {
                                             val retryPlain = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedPlain, text = plain, parseMode = null))
                                             if (retryPlain.isSuccessful && retryPlain.body()?.ok == true) {
-                                                val toastOk = getString(R.string.setup_status_sent)
-                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                    Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
-                                                    reviveMonitoringIfNeeded()
-                                                }
+                                                toastStatusSent()
                                                 return@launch
                                             }
                                             failCode = retryPlain.code()
                                             if (retryPlain.code() == 400) {
                                                 val retryPlainBody = try { retryPlain.errorBody()?.string() } catch (_: Exception) { null }
                                                 if (NetworkUtils.isChatMissing(retryPlainBody) && NetworkUtils.extractMigratedChatId(retryPlainBody) == null) {
-                                                    try {
-                                                        prefs.credentialError = retryPlain.code().toString()
-                                                        prefs.credentialErrorAt = System.currentTimeMillis()
-                                                    } catch (_: Exception) {
-                                                    }
+                                                    markCredentialError(retryPlain.code())
                                                 }
                                             }
                                         } catch (_: Exception) {
                                         }
                                     } else if (NetworkUtils.isChatMissing(plainBody)) {
-                                        try {
-                                            prefs.credentialError = plainResp.code().toString()
-                                            prefs.credentialErrorAt = System.currentTimeMillis()
-                                        } catch (_: Exception) {
-                                        }
+                                        markCredentialError(plainResp.code())
                                     }
                                 }
                             } catch (_: Exception) {
                             }
                         }
                     }
-                    try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
+                    queueStatusMessage(text)
                 } else {
-                    try {
-                        MessageQueue.getInstance(applicationContext).addMessage(text, true)
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
+                    queueStatusMessage(text)
                 }
                 val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_status_failed, failCode)
                 val toastLen = if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
@@ -1378,6 +1290,46 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun markCredentialError(code: Int) {
+        try {
+            prefs.credentialError = code.toString()
+            prefs.credentialErrorAt = System.currentTimeMillis()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun queueStatusMessage(text: String) {
+        try {
+            MessageQueue.getInstance(applicationContext).addMessage(text, true)
+            MessageScheduler.scheduleMessageSend(applicationContext)
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun toastStatusSent() {
+        val toastOk = getString(R.string.setup_status_sent)
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
+            reviveMonitoringIfNeeded()
+        }
+    }
+
+    private suspend fun applyMigratedChatId(newChatId: String) {
+        try {
+            prefs.chatId = newChatId
+            prefs.credentialError = ""
+            prefs.credentialErrorAt = 0L
+        } catch (_: Exception) {
+        }
+        try {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                chatIdInput.setText(STORED_MASK)
+            }
+        } catch (_: Exception) {
+        }
+        queueStatusMessage("\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis.")
+    }
 
     private fun requestScreenCapture() {
         try {

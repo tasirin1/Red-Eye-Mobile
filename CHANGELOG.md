@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.382] - 2026-10-19
+### Changed
+- E16: `SetupActivity.sendStatusNow()` (244 baris) tak lagi menyimpan blok penanganan 400/migrasi/retry yang nyaris identik berulang-ulang. Empat helper baru: `markCredentialError(code)`, `queueStatusMessage(text)`, `toastStatusSent()`, dan `applyMigratedChatId(newChatId)` (migrasi grup→supergrup: simpan chat ID baru, perbarui kolom bertopeng, antre pemberitahuan). Fungsi menyusut 48 baris tanpa perubahan perilaku.
+- Sengaja TIDAK disatukan: alur "retry setelah migrasi" versi HTML vs versi teks-polos. Keduanya mirip tapi beda penanganan error — versi teks-polos hanya menangani 400 pada retry-nya (tidak menandai 401/403), jadi menyatukannya akan mengubah perilaku. Perbedaan itu dicatat sebagai temuan terpisah, bukan diubah di rilis ini.
+- Bukti (inventaris pernyataan `sendStatusNow` lama vs baru+helper, dihitung skrip terpisah dari skrip transformasi): alur kendali utuh (`if (` 30→30, `else if (` 6→6, `} else {` 2→2, `return@launch` 4→4, `TelegramClient.api.sendMessage` 4→4, `NetworkUtils.` 10→10, `Html.unescape` 1→1) dan tiap primitif efek berkurang tepat sebanyak blok yang dipindah (`try`/`catch` −13, `MessageQueue` −5, `MessageScheduler` −5, penanda kredensial −7, `Toast.makeText` −2, `reviveMonitoringIfNeeded()` −2, `chatIdInput.setText` −1) — nol pernyataan hilang atau terduplikasi, 7 blok penanda kredensial mentah menjadi 1 definisi helper.
+
 ## [1.6.381] - 2026-10-19
 ### Changed
 - Kartu status di halaman Setup tak lagi menyimpan teks Indonesia di dalam kode (`SetupActivity.updateStatus()`): baris Pemilik, Kelangsungan (uji mandiri/pengawas/denyut), Baterai, Penyimpanan, Auth, Waktu layar, Notifikasi, Tangkap layar, Admin perangkat, Notifikasi sistem, Patroli, dan Lokasi kini dibaca dari resource. `values-in` tetap Indonesia persis seperti sebelumnya; `values` menyediakan versi Inggris untuk HP berbahasa Inggris (dulu kartu ini selalu Indonesia walau bahasa HP Inggris).
