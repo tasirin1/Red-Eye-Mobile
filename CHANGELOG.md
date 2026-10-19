@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.397] - 2026-10-19
 ### Added
 - Panduan blokir "Setelan terbatas" (Android 13+) di halaman Setup: tombol **Aktifkan Aksesibilitas** kini membuka dialog berisi langkah `Info aplikasi` → menu tiga titik → **Izinkan setelan terbatas** → baru nyalakan layanannya, lengkap dengan tombol pintas ke Info aplikasi dan ke setelan Aksesibilitas. Sebelumnya tombol itu langsung membuka setelan Aksesibilitas, sehingga tombol yang abu-abu tampak "diblokir" tanpa penjelasan.
 
