@@ -1354,11 +1354,35 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun openAccessibilitySettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.setup_a11y_restricted_title))
+                .setMessage(getString(R.string.setup_a11y_restricted_body))
+                .setPositiveButton(getString(R.string.setup_a11y_app_info)) { _, _ -> openAppInfo() }
+                .setNeutralButton(getString(R.string.setup_a11y_open_settings)) { _, _ -> launchAccessibilitySettings() }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            return
+        }
+        launchAccessibilitySettings()
+    }
+
+    private fun launchAccessibilitySettings() {
         try {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             queueStatusMessage(getString(R.string.setup_a11y_how))
         } catch (_: Exception) {
             Toast.makeText(this, getString(R.string.setup_a11y_how), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openAppInfo() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.fromParts("package", packageName, null))
+            )
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
