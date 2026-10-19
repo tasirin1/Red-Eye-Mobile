@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.383] - 2026-10-19
+### Changed
+- R8 (langkah 1): `MonitoringService.sendToTelegram()` yang 235 baris dipecah tanpa perubahan perilaku. Cabang `400` menjadi `sendStatus400(code, goneBody, message, botToken, chatId, queueOnFail)` (47 baris), dan blok fallback teks-polos menjadi `sendPlainFallback(botToken, chatId, plain, queueOnFail)` (66 baris); fungsi induk kini 89 baris.
+- R8 (langkah 1): blok antre berulang `if (queueOnFail) { addMessage(...); schedule... }` (14 antre segera + 3 antre tunda) menjadi `queueForRetry(text, queueOnFail)` dan `queueForRetryLater(text, queueOnFail, delayMs)`. Blok tanpa `schedule` pada jalur "auth diblokir" sengaja dibiarkan karena perilakunya berbeda.
+- Bukti (skrip terpisah dari skrip transformasi): isi helper baru direkonstruksi ulang dan dibandingkan karakter-per-karakter dengan teks lama — cabang `400` 126 baris lama menjadi 38 baris helper (setelah blok antre dinormalkan) dan blok fallback 77 menjadi 59, keduanya identik; kedua helper antre identik dengan blok aslinya. Inventaris `sendToTelegram`+helper juga sama: `return false` 21→21, `return true` 2→2, `try`/`catch` 15/14, `TelegramClient.api.sendMessage` 2, `NetworkUtils.` 10, `preferencesManager.credentialError` 12, `noteDroppedMessage()` 3, `adoptMigratedChat(` 2, `Html.unescape` 1, `if (fallbackResp.code()` 4; yang berkurang hanya blok antre yang didedupe (`messageQueue.addMessage(` −15, `if (queueOnFail) {` −15, `scheduleMessageSend` −13, `scheduleMessageSendNext` −2). Nol pernyataan hilang atau bertambah.
+
 ## [1.6.382] - 2026-10-19
 ### Changed
 - E16: `SetupActivity.sendStatusNow()` (244 baris) tak lagi menyimpan blok penanganan 400/migrasi/retry yang nyaris identik berulang-ulang. Empat helper baru: `markCredentialError(code)`, `queueStatusMessage(text)`, `toastStatusSent()`, dan `applyMigratedChatId(newChatId)` (migrasi grup→supergrup: simpan chat ID baru, perbarui kolom bertopeng, antre pemberitahuan). Fungsi menyusut 48 baris tanpa perubahan perilaku.

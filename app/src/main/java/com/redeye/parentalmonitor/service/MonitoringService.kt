@@ -3661,10 +3661,7 @@ class MonitoringService : Service() {
             }
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
             if (rateRemain > 0L) {
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSendNext(this, rateRemain)
-                }
+                queueForRetryLater(message, queueOnFail, rateRemain)
                 return false
             }
             if (message.length > 4000) {
@@ -3676,10 +3673,7 @@ class MonitoringService : Service() {
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.w("MonitoringService", "Bot credentials unavailable, queuing message for later")
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
-                }
+                queueForRetry(message, queueOnFail)
                 return false
             }
 
@@ -3688,10 +3682,7 @@ class MonitoringService : Service() {
 
             if (!hasNetwork) {
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
-                }
+                queueForRetry(message, queueOnFail)
                 return false
             }
 
@@ -3718,10 +3709,7 @@ class MonitoringService : Service() {
                 val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
                 NetworkUtils.noteRateLimited(retryAfter)
                 android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                }
+                queueForRetryLater(message, queueOnFail, retryAfter * 1000L)
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Send rejected (${response.code()}), queuing")
@@ -3730,156 +3718,151 @@ class MonitoringService : Service() {
                     preferencesManager.credentialErrorAt = System.currentTimeMillis()
                 } catch (_: Exception) {
                 }
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
-                }
+                queueForRetry(message, queueOnFail)
                 return false
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                if (adoptMigratedChat(goneBody, chatId)) {
-                    if (queueOnFail) {
-                        messageQueue.addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                    }
-                    return false
-                }
-                if (NetworkUtils.isChatMissing(goneBody)) {
-                    try {
-                        preferencesManager.credentialError = response.code().toString()
-                        preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        postAuthFailureReminder(400)
-                    } catch (_: Exception) {
-                    }
-                    if (queueOnFail) {
-                        messageQueue.addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                    }
-                    return false
-                }
-                if (NetworkUtils.isRightsLimited(goneBody)) {
-                    android.util.Log.w("MonitoringService", "Insufficient rights (400), queuing without auth block")
-                    if (queueOnFail) {
-                        messageQueue.addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                    }
-                    return false
-                }
-                val plain = Html.unescape(message)
-                if (plain != message) {
-                    try {
-                        val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
-                        val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
-                        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-                            try {
-                                preferencesManager.credentialError = ""
-                                preferencesManager.credentialErrorAt = 0L
-                            } catch (_: Exception) {
-                            }
-                            noteSendOk()
-                            return true
-                        } else if (fallbackResp.code() == 429) {
-                            val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
-                            NetworkUtils.noteRateLimited(retryAfter)
-                            if (queueOnFail) {
-                                messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                            }
-                            return false
-                        } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
-                            try {
-                                preferencesManager.credentialError = fallbackResp.code().toString()
-                                preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                            } catch (_: Exception) {
-                            }
-                            if (queueOnFail) {
-                                messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSend(this)
-                            }
-                            return false
-                        } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
-                            if (queueOnFail) {
-                                messageQueue.addMessage(plain)
-                                MessageScheduler.scheduleMessageSend(this)
-                            }
-                            return false
-                        } else if (fallbackResp.code() == 400) {
-                            val fbBody = try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null }
-                            if (adoptMigratedChat(fbBody, chatId)) {
-                                if (queueOnFail) {
-                                    messageQueue.addMessage(plain)
-                                    MessageScheduler.scheduleMessageSend(this)
-                                }
-                                return false
-                            }
-                            if (NetworkUtils.isChatMissing(fbBody)) {
-                                try {
-                                    preferencesManager.credentialError = fallbackResp.code().toString()
-                                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
-                                } catch (_: Exception) {
-                                }
-                                if (queueOnFail) {
-                                    messageQueue.addMessage(plain)
-                                    MessageScheduler.scheduleMessageSend(this)
-                                }
-                                return false
-                            }
-                            if (NetworkUtils.isRightsLimited(fbBody)) {
-                                if (queueOnFail) {
-                                    messageQueue.addMessage(plain)
-                                    MessageScheduler.scheduleMessageSend(this)
-                                }
-                                return false
-                            }
-                            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
-                            try {
-                                noteDroppedMessage()
-                            } catch (_: Exception) {
-                            }
-                            return false
-                        } else {
-                            android.util.Log.w("MonitoringService", "Message permanently rejected (${fallbackResp.code()}), not queued")
-                            try {
-                                noteDroppedMessage()
-                            } catch (_: Exception) {
-                            }
-                            return false
-                        }
-                    } catch (_: Exception) {
-                        if (queueOnFail) {
-                            messageQueue.addMessage(plain)
-                            MessageScheduler.scheduleMessageSend(this)
-                        }
-                        return false
-                    }
-                } else {
-                    android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
-                    try {
-                        noteDroppedMessage()
-                    } catch (_: Exception) {
-                    }
-                    return false
-                }
+                return sendStatus400(response.code(), goneBody, message, botToken, chatId, queueOnFail)
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
-                }
+                queueForRetry(message, queueOnFail)
                 return false
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Exception sending message: ${redactToken(e.message)}")
-            if (queueOnFail) {
-                messageQueue.addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
+            queueForRetry(message, queueOnFail)
+            return false
+        }
+    }
+
+    private suspend fun sendStatus400(
+        code: Int,
+        goneBody: String?,
+        message: String,
+        botToken: String,
+        chatId: String,
+        queueOnFail: Boolean
+    ): Boolean {
+        if (adoptMigratedChat(goneBody, chatId)) {
+            queueForRetry(message, queueOnFail)
+            return false
+        }
+        if (NetworkUtils.isChatMissing(goneBody)) {
+            try {
+                preferencesManager.credentialError = code.toString()
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            try {
+                postAuthFailureReminder(400)
+            } catch (_: Exception) {
+            }
+            queueForRetry(message, queueOnFail)
+            return false
+        }
+        if (NetworkUtils.isRightsLimited(goneBody)) {
+            android.util.Log.w("MonitoringService", "Insufficient rights (400), queuing without auth block")
+            queueForRetry(message, queueOnFail)
+            return false
+        }
+        val plain = Html.unescape(message)
+        if (plain != message) {
+            try {
+                return sendPlainFallback(botToken, chatId, plain, queueOnFail)
+            } catch (_: Exception) {
+                queueForRetry(plain, queueOnFail)
+                return false
+            }
+        } else {
+            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+            try {
+                noteDroppedMessage()
+            } catch (_: Exception) {
             }
             return false
+        }
+    }
+
+    private suspend fun sendPlainFallback(
+        botToken: String,
+        chatId: String,
+        plain: String,
+        queueOnFail: Boolean
+    ): Boolean {
+        val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
+        val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
+            try {
+                preferencesManager.credentialError = ""
+                preferencesManager.credentialErrorAt = 0L
+            } catch (_: Exception) {
+            }
+            noteSendOk()
+            return true
+        } else if (fallbackResp.code() == 429) {
+            val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
+            NetworkUtils.noteRateLimited(retryAfter)
+            queueForRetryLater(plain, queueOnFail, retryAfter * 1000L)
+            return false
+        } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
+            try {
+                preferencesManager.credentialError = fallbackResp.code().toString()
+                preferencesManager.credentialErrorAt = System.currentTimeMillis()
+            } catch (_: Exception) {
+            }
+            queueForRetry(plain, queueOnFail)
+            return false
+        } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
+            queueForRetry(plain, queueOnFail)
+            return false
+        } else if (fallbackResp.code() == 400) {
+            val fbBody = try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null }
+            if (adoptMigratedChat(fbBody, chatId)) {
+                queueForRetry(plain, queueOnFail)
+                return false
+            }
+            if (NetworkUtils.isChatMissing(fbBody)) {
+                try {
+                    preferencesManager.credentialError = fallbackResp.code().toString()
+                    preferencesManager.credentialErrorAt = System.currentTimeMillis()
+                } catch (_: Exception) {
+                }
+                queueForRetry(plain, queueOnFail)
+                return false
+            }
+            if (NetworkUtils.isRightsLimited(fbBody)) {
+                queueForRetry(plain, queueOnFail)
+                return false
+            }
+            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
+            try {
+                noteDroppedMessage()
+            } catch (_: Exception) {
+            }
+            return false
+        } else {
+            android.util.Log.w("MonitoringService", "Message permanently rejected (${fallbackResp.code()}), not queued")
+            try {
+                noteDroppedMessage()
+            } catch (_: Exception) {
+            }
+            return false
+        }
+    }
+
+    private fun queueForRetry(text: String, queueOnFail: Boolean) {
+        if (queueOnFail) {
+            messageQueue.addMessage(text)
+            MessageScheduler.scheduleMessageSend(this)
+        }
+    }
+
+    private fun queueForRetryLater(text: String, queueOnFail: Boolean, delayMs: Long) {
+        if (queueOnFail) {
+            messageQueue.addMessage(text)
+            MessageScheduler.scheduleMessageSendNext(this, delayMs)
         }
     }
 
