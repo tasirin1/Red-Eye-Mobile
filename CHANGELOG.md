@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.396] - 2026-10-19
 ### Added
 - Jalur tangkap layar kedua lewat layanan Aksesibilitas (`service/ShotAccessibilityService.kt`, Android 11+): setelah diaktifkan **sekali** dari Setup (tombol "Aktifkan Aksesibilitas"), `/screenshot` memakai `takeScreenshot()` sistem sehingga izinnya **tahan HP restart**; bila jalur ini belum aktif, aplikasi tetap memakai MediaProjection seperti sebelumnya.
 - Tombol inline "🖥️ Beri izin sekali" pada pesan gagal `/screenshot` tanpa izin: sekali tekan membuka dialog izin sistem dari jendela transparan (`ui/ShotConsentActivity.kt`) lalu layar langsung diambil; bila izin "tampil di atas aplikasi lain" belum ada, bot menjelaskan cara mengaktifkannya.
@@ -9,7 +11,7 @@
 - Pesan gagal tangkap layar kini menyebut jalur Aksesibilitas dan tombol izin; kegagalan saat jalur Aksesibilitas aktif punya keterangan tersendiri.
 - Penulisan JPEG tangkapan layar dipusatkan di `writeScreenshotJpeg()` (dipakai jalur Aksesibilitas maupun MediaProjection).
 - `README.md` + `PRIVACY.md`: menjelaskan layanan Aksesibilitas dan pengaktifannya.
-
+- `tools/verifikasi-path.py`: `<bool>` ikut dikenali sebagai definisi resource, jadi `@bool/...` yang sah tidak lagi selalu dituduh "acuan yatim".
 
 ## [1.6.395] - 2026-10-19
 ### Fixed
