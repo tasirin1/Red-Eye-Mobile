@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.389] - 2026-10-19
+### Changed
+- R8 (langkah 4, batch 4): sembilan cabang berikutnya jadi fungsi bernama: `handleContactsCommand(arg)` (19 baris), `handleAppsCommand(arg)` (18), `handleStorageCommand()` (8), `handleHistoryCommand(arg)` (27), `handleWatchCommand(arg, privateChat)` (18), `handleFenceCommand(command, arg, privateChat)` (40; dipakai bersama oleh `/home` dan `/school`), `handleDaruratCommand()` (23), `handleJampulangCommand(arg, privateChat)` (15), dan `handleWatchNomorCommand(arg, privateChat)` (17). Fungsi induk kini 274 baris (dari 1070 sebelum langkah 4 dimulai).
+- Bukti (skrip terpisah dari skrip transformasi): pembalikan berkas baru **identik karakter demi karakter** dengan `handleTelegramCommandInner` lama (27.130 karakter, 468 baris), dan badan ke-9 fungsi baru sama persis dengan badan cabang lama setelah dedent 8 spasi (19/18/8/27/18/40/23/15/17 baris).
+
 ## [1.6.388] - 2026-10-19
 ### Changed
 - R8 (langkah 4, batch 3): sepuluh cabang berikutnya jadi fungsi bernama: `handleRecordCommand(arg)` (21 baris), `handleRecordVideoCommand(arg)` (26), `handleSmsCommand(arg, senderId)` (47), `handleSmsConfirmCommand(senderId)` (31), `handleLastNotifCommand()` (17), `handleVersionCommand()` (8), `handleUptimeCommand()` (17), `handleKendaraCommand(arg)` (18), `handleHematDataCommand(arg)` (13), dan `handleHeartbeatCommand(arg)` (13). Fungsi induk kini 468 baris (dari 1070 sebelum langkah 4 dimulai).

