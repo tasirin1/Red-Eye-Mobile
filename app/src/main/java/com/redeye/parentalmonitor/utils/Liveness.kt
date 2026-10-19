@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
+import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.receiver.LivenessReceiver
@@ -45,6 +46,16 @@ object Liveness {
             else -> "layar mati"
         }
         return (ms / 60_000L).toString() + " mnt (" + label + ")"
+    }
+
+    fun intervalTextLocalized(context: Context): String {
+        val ms = intervalMs(context)
+        val label = when (ms) {
+            URGENT_INTERVAL_MS -> context.getString(R.string.liveness_watchdog_urgent)
+            SCREEN_ON_INTERVAL_MS -> context.getString(R.string.liveness_watchdog_screen_on)
+            else -> context.getString(R.string.liveness_watchdog_screen_off)
+        }
+        return context.getString(R.string.liveness_watchdog_fmt, ms / 60_000L, label)
     }
 
     fun noteKillDetected() {

@@ -1431,7 +1431,9 @@ class SetupActivity : AppCompatActivity() {
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
             val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
-            val ownerLine = if (ownerKnown) "\nPemilik: dikenali" else if (pairCode.isNotEmpty()) "\nPemilik: belum dikenal - DM bot /start <chat ID> $pairCode secara pribadi untuk membuka perintah pemilik" else "\nPemilik: belum dikenal - DM bot /start <chat ID> secara pribadi untuk membuka perintah pemilik"
+            val ownerLine = if (ownerKnown) "\n" + getString(R.string.setup_status_owner_known)
+            else if (pairCode.isNotEmpty()) "\n" + getString(R.string.setup_status_owner_unknown_code, pairCode)
+            else "\n" + getString(R.string.setup_status_owner_unknown)
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
@@ -1445,26 +1447,39 @@ class SetupActivity : AppCompatActivity() {
             else if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
             val testSec = try { prefs.liveTestLastSec } catch (_: Exception) { -1 }
             val testPending = try { prefs.liveTestPending } catch (_: Exception) { false }
-            val testLine = if (testPending) "uji mandiri berjalan" else if (testSec >= 0) "uji mandiri ${testSec} dtk" else "uji mandiri belum dijalankan"
-            val livenessLine = "\nKelangsungan: " + (if (running) "hidup" else "tidak berjalan") +
-                (if (aliveAgoMin >= 0L) " (denyut terakhir ${aliveAgoMin} mnt lalu)" else "") +
-                (if (kills > 0) " · pulih ${kills}x" else "") +
-                " · pengawas " + com.redeye.parentalmonitor.utils.Liveness.intervalText(this@SetupActivity) +
-                " · $testLine" +
-                " · denyut " + (if (heartHours > 0) "${heartHours} jam" else "mati")
-            val authLine = if (credErr.isNotEmpty()) "\nAuth: GAGAL ($credErr) - periksa token bot" else ""
+            val testLine = if (testPending) getString(R.string.setup_status_selfcheck_running)
+            else if (testSec >= 0) getString(R.string.setup_status_selfcheck_sec, testSec)
+            else getString(R.string.setup_status_selfcheck_none)
+            val livenessLine = "\n" + getString(
+                R.string.setup_status_liveness_fmt,
+                getString(if (running) R.string.setup_status_alive else R.string.setup_status_dead),
+                if (aliveAgoMin >= 0L) getString(R.string.setup_status_alive_ago, aliveAgoMin) else "",
+                if (kills > 0) getString(R.string.setup_status_recovered, kills) else "",
+                com.redeye.parentalmonitor.utils.Liveness.intervalTextLocalized(this@SetupActivity),
+                testLine,
+                if (heartHours > 0) getString(R.string.setup_status_heartbeat_hours, heartHours) else getString(R.string.setup_status_heartbeat_off)
+            )
+            val authLine = if (credErr.isNotEmpty()) "\n" + getString(R.string.setup_status_auth_failed, credErr) else ""
             val usageOn = try { com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity) } catch (_: Exception) { false }
-            val usageLine = "\nWaktu layar: " + (if (usageOn) "siap" else "belum diizinkan (tekan tombolnya)")
+            val usageLine = "\n" + getString(R.string.setup_status_usage_fmt, getString(if (usageOn) R.string.setup_status_ready else R.string.setup_status_usage_off))
             val body = getString(
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
-            ) + "\nBaterai: " + (if (exempt) "tanpa batas" else "dibatasi") + "\nPenyimpanan: " + (if (encrypted) "terenkripsi" else "sementara (keystore tak tersedia)") + authLine + ownerLine + livenessLine + usageLine + "\nNotifikasi: " + (if (listener && notifOn) "diteruskan" else "mati") + "\nTangkap layar: " + (if (shotOn) "diizinkan" else "mati") + "\nAdmin perangkat: " + (if (adminOn) "nyala" else "mati") + "\nNotifikasi sistem: " + (if (postOn) "diizinkan" else "diblokir") + "\nPatroli: " + (try { if (prefs.patrolEnabled) "nyala tiap ${prefs.patrolInterval} mnt" else "mati" } catch (_: Exception) { "-" }) + "\n" + getString(
-                R.string.setup_location_fmt,
-                if (fg) "OK" else "-",
-                if (bg) "OK" else "-"
-            )
+            ) + "\n" + getString(R.string.setup_status_battery_fmt, getString(if (exempt) R.string.setup_status_battery_free else R.string.setup_status_battery_limited)) +
+                "\n" + getString(R.string.setup_status_storage_fmt, getString(if (encrypted) R.string.setup_status_storage_enc else R.string.setup_status_storage_plain)) +
+                authLine + ownerLine + livenessLine + usageLine +
+                "\n" + getString(R.string.setup_status_notif_fmt, getString(if (listener && notifOn) R.string.setup_status_forwarded else R.string.setup_status_off)) +
+                "\n" + getString(R.string.setup_status_shot_fmt, getString(if (shotOn) R.string.setup_status_allowed else R.string.setup_status_off)) +
+                "\n" + getString(R.string.setup_status_admin_fmt, getString(if (adminOn) R.string.setup_status_on else R.string.setup_status_off)) +
+                "\n" + getString(R.string.setup_status_post_fmt, getString(if (postOn) R.string.setup_status_allowed else R.string.setup_status_blocked)) +
+                "\n" + getString(R.string.setup_status_patrol_fmt, try { if (prefs.patrolEnabled) getString(R.string.setup_status_patrol_on, prefs.patrolInterval) else getString(R.string.setup_status_off) } catch (_: Exception) { "-" }) +
+                "\n" + getString(
+                    R.string.setup_location_fmt,
+                    if (fg) "OK" else "-",
+                    if (bg) "OK" else "-"
+                )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (myStatus != statusSeq.get()) return@withContext

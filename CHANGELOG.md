@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.6.381] - 2026-10-19
+### Changed
+- Kartu status di halaman Setup tak lagi menyimpan teks Indonesia di dalam kode (`SetupActivity.updateStatus()`): baris Pemilik, Kelangsungan (uji mandiri/pengawas/denyut), Baterai, Penyimpanan, Auth, Waktu layar, Notifikasi, Tangkap layar, Admin perangkat, Notifikasi sistem, Patroli, dan Lokasi kini dibaca dari resource. `values-in` tetap Indonesia persis seperti sebelumnya; `values` menyediakan versi Inggris untuk HP berbahasa Inggris (dulu kartu ini selalu Indonesia walau bahasa HP Inggris).
+- `Liveness.intervalTextLocalized()` baru untuk label pengawas di kartu status; `Liveness.intervalText()` tetap Indonesia karena dipakai pesan Telegram (isi Telegram memang sengaja Indonesia).
+- Diverifikasi dengan simulasi `getString` atas kedua berkas resource: 15.552 kombinasi output kartu lama vs baru, **0 beda** pada locale Indonesia (refactor tak mengubah apa yang dilihat pemakai HP Indonesia).
+
 ## [1.6.380] - 2026-10-19
 ### Fixed
 - Foto otomatis tak lagi gagal setelah HP di-restart (`⚠️ Gagal memotret: kamera menolak akses latar (CAMERA_DISABLED)` sampai aplikasi dibuka manual). Penyebabnya aturan Android 14+: tipe latar `camera` (juga `microphone`/`location`) hanya boleh dipasang saat aplikasi punya activity terlihat, sedangkan setelah reboot layanan hidup di latar dengan tipe `specialUse`. Kini `ensureForegroundTypes()` mendeteksi tipe `camera` diminta tapi belum terpasang, lalu membuka jendela transparan sekali jalan (`ui/FgsWakeActivity`: tanpa tampilan, `excludeFromRecents`, `noHistory`, ~2,5 dtk) yang memicu layanan memasang ulang tipe lengkap — jalur yang sama dengan "buka aplikasi sekali" yang dulu harus dilakukan manual. Satu kali ini sekaligus memperbaiki rekam video/audio latar dan lokasi latar setelah reboot.
