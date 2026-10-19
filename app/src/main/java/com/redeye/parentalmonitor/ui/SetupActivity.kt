@@ -441,6 +441,10 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun clearCredentials() {
+        try { saveSeq.incrementAndGet() } catch (_: Exception) { }
+        try { testSeq.incrementAndGet() } catch (_: Exception) { }
+        try { saveJob?.cancel() } catch (_: Exception) { }
+        try { testJob?.cancel() } catch (_: Exception) { }
         try { stopService(Intent(this, MonitoringService::class.java)) } catch (_: Exception) { }
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
         try { MessageScheduler.cancelWatchdog(this) } catch (_: Exception) { }

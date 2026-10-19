@@ -45,8 +45,7 @@ data class EditMessageRequest(
     @SerializedName("message_id") val messageId: Long,
     @SerializedName("text") val text: String,
     @SerializedName("parse_mode") val parseMode: String? = "HTML",
-    @SerializedName("reply_markup") val replyMarkup: InlineKeyboardMarkup? = null,
-    @SerializedName("disable_web_page_preview") val disableWebPagePreview: Boolean? = null
+    @SerializedName("reply_markup") val replyMarkup: InlineKeyboardMarkup? = null
 )
 
 data class TelegramChat(

@@ -58,10 +58,29 @@ object CrashReporter {
         return if (raw.substring(0, nl).toLongOrNull() != null) raw.substring(nl + 1) else raw
     }
 
-    fun clearPending(context: Context) {
-        try {
-            pendingFile(context.applicationContext).delete()
-        } catch (_: Exception) {
+    fun clearPending(context: Context, sent: String? = null) {
+        if (sent == null) {
+            try {
+                pendingFile(context.applicationContext).delete()
+            } catch (_: Exception) {
+            }
+            return
+        }
+        synchronized(saveLock) {
+            try {
+                val file = pendingFile(context.applicationContext)
+                if (!file.exists()) return
+                val raw = file.readText()
+                val elapsed0 = raw.substringBefore('\n').toLongOrNull() ?: 0L
+                val cur = stripElapsed(raw)
+                val rest = if (cur.startsWith(sent)) cur.substring(sent.length).removePrefix("\n---\n") else cur
+                if (rest.isBlank()) {
+                    file.delete()
+                    return
+                }
+                keepRemainder(file, raw, rest, elapsed0)
+            } catch (_: Exception) {
+            }
         }
     }
 

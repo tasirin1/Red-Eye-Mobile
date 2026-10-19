@@ -31,8 +31,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "MainActivity onCreate")
 
-        preferencesManager = PreferencesManager.getInstance(this)
-
         setContentView(R.layout.activity_calculator)
         supportActionBar?.hide()
         initCalculator()

@@ -125,14 +125,14 @@ class NotificationForwarderService : NotificationListenerService() {
         // Initialize synchronously to avoid race with onNotificationPosted
         prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
         queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
+        fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
+            if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
+        }
+        try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
         scope.launch {
             try {
                 refreshFwdCreds()
-                fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-                    if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
-                    if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
-                }
-                try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
                 try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
                 try {
                     val pending = prefsRef?.pendingNotifDrops ?: 0
@@ -161,7 +161,6 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                 } catch (_: Exception) {
                 }
-                prefsRef?.isConfigured()
                 queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -468,10 +467,9 @@ class NotificationForwarderService : NotificationListenerService() {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("NotifForwarder", "Notification listener connected")
         scope.launch {
             try {
-                val prefs = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService).also { prefsRef = it }
-                val queue = queueRef ?: MessageQueue.getInstance(this@NotificationForwarderService).also { queueRef = it }
-                prefs.isConfigured()
-                queue.hasMessages()
+                prefsRef = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
+                queueRef = queueRef ?: MessageQueue.getInstance(this@NotificationForwarderService)
+                queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -641,6 +639,14 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         } catch (_: Exception) {
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        try {
+            if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) salvageBatch()
+        } catch (_: Exception) {
+        }
+        try { super.onTrimMemory(level) } catch (_: Exception) { }
     }
 
     override fun onTaskRemoved(rootIntent: android.content.Intent?) {
@@ -862,7 +868,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun noteDroppedNotification(count: Int = 1) {
         dropNoticeCount.addAndGet(count.coerceAtLeast(0))
         try {
-            prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+            prefsRef?.let { it.pendingNotifDrops = dropNoticeCount.get() }
         } catch (_: Exception) {
         }
         synchronized(dropNoticeLock) {
@@ -1016,12 +1022,48 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val plain = Html.unescape(message)
                 if (plain != message) {
-                    try {
-                        val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
-                        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
+                    val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+                    if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
+                        return
+                    }
+                    if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
+                        try {
+                            prefs.credentialError = fallbackResp.code().toString()
+                            prefs.credentialErrorAt = System.currentTimeMillis()
+                        } catch (_: Exception) {
+                        }
+                        queue().addMessage(message)
+                        MessageScheduler.scheduleMessageSend(this)
+                        return
+                    }
+                    if (fallbackResp.code() == 429) {
+                        val retryAfter = try {
+                            NetworkUtils.parseRetryAfter(fallbackResp.errorBody()?.string())
+                        } catch (_: Exception) {
+                            5L
+                        }
+                        NetworkUtils.noteRateLimited(retryAfter)
+                        queue().addMessage(message)
+                        MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
+                        return
+                    }
+                    if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
+                        queue().addMessage(message)
+                        MessageScheduler.scheduleMessageSend(this)
+                        return
+                    }
+                    if (fallbackResp.code() == 400) {
+                        val fallbackBody = try {
+                            fallbackResp.errorBody()?.string()
+                        } catch (_: Exception) {
+                            null
+                        }
+                        if (adoptMigratedChat(prefs, fallbackBody, chatId)) {
+                            queue().addMessage(message)
+                            MessageScheduler.scheduleMessageSend(this)
                             return
                         }
-                        if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
+                        if (NetworkUtils.isChatMissing(fallbackBody)) {
                             try {
                                 prefs.credentialError = fallbackResp.code().toString()
                                 prefs.credentialErrorAt = System.currentTimeMillis()
@@ -1031,50 +1073,11 @@ class NotificationForwarderService : NotificationListenerService() {
                             MessageScheduler.scheduleMessageSend(this)
                             return
                         }
-                        if (fallbackResp.code() == 429) {
-                            val retryAfter = try {
-                                NetworkUtils.parseRetryAfter(fallbackResp.errorBody()?.string())
-                            } catch (_: Exception) {
-                                5L
-                            }
-                            NetworkUtils.noteRateLimited(retryAfter)
-                            queue().addMessage(message)
-                            MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                            return
-                        }
-                        if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
+                        if (NetworkUtils.isRightsLimited(fallbackBody)) {
                             queue().addMessage(message)
                             MessageScheduler.scheduleMessageSend(this)
                             return
                         }
-                        if (fallbackResp.code() == 400) {
-                            val fallbackBody = try {
-                                fallbackResp.errorBody()?.string()
-                            } catch (_: Exception) {
-                                null
-                            }
-                            if (adoptMigratedChat(prefs, fallbackBody, chatId)) {
-                                queue().addMessage(message)
-                                MessageScheduler.scheduleMessageSend(this)
-                                return
-                            }
-                            if (NetworkUtils.isChatMissing(fallbackBody)) {
-                                try {
-                                    prefs.credentialError = fallbackResp.code().toString()
-                                    prefs.credentialErrorAt = System.currentTimeMillis()
-                                } catch (_: Exception) {
-                                }
-                                queue().addMessage(message)
-                                MessageScheduler.scheduleMessageSend(this)
-                                return
-                            }
-                            if (NetworkUtils.isRightsLimited(fallbackBody)) {
-                                queue().addMessage(message)
-                                MessageScheduler.scheduleMessageSend(this)
-                                return
-                            }
-                        }
-                    } catch (_: Exception) {
                     }
                 }
                 android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
