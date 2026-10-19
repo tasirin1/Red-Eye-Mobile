@@ -126,6 +126,26 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
             return
         }
+        if (intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT) {
+            try {
+                val a11yOn = com.redeye.parentalmonitor.utils.AccessibilityProbe.isEnabled(
+                    context,
+                    com.redeye.parentalmonitor.service.ShotAccessibilityService::class.java
+                )
+                if (!a11yOn) {
+                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    val lastShotNotice = meta.getLong("shot_notice_elapsed", 0L)
+                    if (lastShotNotice == 0L || nowBoot < lastShotNotice || nowBoot - lastShotNotice >= 3_600_000L) {
+                        meta.edit().putLong("shot_notice_elapsed", nowBoot).apply()
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage(
+                            "\uD83D\uDD01 HP baru restart. Izin tangkap layar dari sistem hangus (aturan Android). Kirim /screenshot lalu tekan tombol \"\uD83D\uDDA5\uFE0F Beri izin sekali\" \u2014 atau aktifkan jalur Aksesibilitas di Setup agar tak perlu izin lagi walau restart."
+                        )
+                        MessageScheduler.scheduleMessageSend(context)
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
         if (!tryStartService(context)) {
             markHandled(context, 0L)
             MessageScheduler.scheduleBootRestart(context)

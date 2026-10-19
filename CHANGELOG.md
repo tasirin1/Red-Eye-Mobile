@@ -1,4 +1,15 @@
 ## [Unreleased]
+### Added
+- Jalur tangkap layar kedua lewat layanan Aksesibilitas (`service/ShotAccessibilityService.kt`, Android 11+): setelah diaktifkan **sekali** dari Setup (tombol "Aktifkan Aksesibilitas"), `/screenshot` memakai `takeScreenshot()` sistem sehingga izinnya **tahan HP restart**; bila jalur ini belum aktif, aplikasi tetap memakai MediaProjection seperti sebelumnya.
+- Tombol inline "🖥️ Beri izin sekali" pada pesan gagal `/screenshot` tanpa izin: sekali tekan membuka dialog izin sistem dari jendela transparan (`ui/ShotConsentActivity.kt`) lalu layar langsung diambil; bila izin "tampil di atas aplikasi lain" belum ada, bot menjelaskan cara mengaktifkannya.
+- Kabar otomatis sekali tiap boot nyata (`BootReceiver`) bahwa izin tangkap layar hangus karena restart + dua cara mengatasinya; hanya dikirim bila jalur Aksesibilitas belum aktif.
+- Baris status "Aksesibilitas: ..." di halaman Setup dan tombol "Aktifkan Aksesibilitas" yang membuka setelan Aksesibilitas.
+
+### Changed
+- Pesan gagal tangkap layar kini menyebut jalur Aksesibilitas dan tombol izin; kegagalan saat jalur Aksesibilitas aktif punya keterangan tersendiri.
+- Penulisan JPEG tangkapan layar dipusatkan di `writeScreenshotJpeg()` (dipakai jalur Aksesibilitas maupun MediaProjection).
+- `README.md` + `PRIVACY.md`: menjelaskan layanan Aksesibilitas dan pengaktifannya.
+
 
 ## [1.6.395] - 2026-10-19
 ### Fixed

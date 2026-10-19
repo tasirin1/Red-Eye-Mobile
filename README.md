@@ -12,7 +12,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Log panggilan masuk/keluar
 - SMS masuk/keluar
 - Foto otomatis tiap interval, atau manual via `/photo`
-- Screenshot layar HP anak via `/screenshot` (izin diberikan di Setup, hangus tiap reboot; sejak Android 14 satu izin dipakai berulang selama sesinya hidup — sesi berakhir bila layar dikunci atau dihentikan dari chip status bar, lalu izinnya perlu diberikan lagi di Setup)
+- Screenshot layar HP anak via `/screenshot` (butuh izin: pilih **Aktifkan Aksesibilitas** di Setup sekali saja — setelah itu tahan restart dan tak perlu izin ulang; bila jalur itu tidak dipakai, izin Capture Screen hangus tiap reboot, dan pesan gagal menyediakan tombol "Beri izin sekali" yang membuka dialog izin dari Telegram)
 - Rekam video kamera via `/recordvideo`
 - Watch kata/nomor, geofence rumah-sekolah, jam malam, digest harian/mingguan, skor waspada
 - Teruskan notifikasi HP anak ke Telegram
@@ -53,7 +53,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 7. Tap Test Connection: token dan Chat ID dicek ke Telegram (`getMe` + `getChat`) sekaligus setingannya disimpan. Tombol ini tidak mengirim pesan apa pun — pesan sungguhan datang dari Send Status atau perintah bot.
 8. Tap Grant permissions sampai semua hijau, lalu grant background location Allow all the time.
 9. Nyalakan akses notifikasi kalau mau forward notifikasi.
-10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`.
+10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`. Lebih tahan lama: tap Aktifkan Aksesibilitas, lalu di daftar layanan Aksesibilitas pilih aplikasi ini dan nyalakan — sekali itu saja, tangkap layar tetap jalan walau HP restart (jalan ini juga yang dipakai bila izin Capture Screen belum diberikan). Kalau tombolnya tak mau nyala di Android 13+, buka Info aplikasi > menu tiga titik > Izinkan setelan terbatas (sama seperti saat menyalakan akses notifikasi).
 11. Tap Anti-kill &amp; Autostart: izinkan autostart merek HP (Xiaomi/Oppo/Vivo/Huawei/Samsung/dll), matikan batasan baterai, dan izinkan "tampil di atas aplikasi lain". Nyalakan Device Admin kalau perlu. Setelah itu tap Tes anti-mati untuk membuktikan service bisa hidup lagi sendiri di HP ini.
 12. Kalau mau ringkasan pemakaian layar (perintah `/layar`), tap Screen time access lalu aktifkan untuk app ini.
 13. Tap Enable monitoring, selesai. Cek via Send Status.

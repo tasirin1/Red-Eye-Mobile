@@ -42,6 +42,7 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var permissionButton: MaterialButton
     private lateinit var notifButton: MaterialButton
     private lateinit var shotButton: MaterialButton
+    private lateinit var a11yButton: MaterialButton
     private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
     private val startGuard = Any()
@@ -329,6 +330,7 @@ class SetupActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.setupPermissionButton)
         notifButton = findViewById(R.id.setupNotifButton)
         shotButton = findViewById(R.id.setupShotButton)
+        a11yButton = findViewById(R.id.setupA11yButton)
 
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -390,6 +392,10 @@ class SetupActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.setupSendStatusButton).setOnClickListener { sendStatusNow() }
         notifButton.setOnClickListener { toggleNotifForwarding() }
         shotButton.setOnClickListener { requestScreenCapture() }
+        a11yButton.setOnClickListener { openAccessibilitySettings() }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            a11yButton.visibility = android.view.View.GONE
+        }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -1347,6 +1353,15 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
+    private fun openAccessibilitySettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            queueStatusMessage(getString(R.string.setup_a11y_how))
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.setup_a11y_how), Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun activateDeviceAdmin() {
         val admin = ComponentName(this, AdminReceiver::class.java)
         try {
@@ -1392,6 +1407,7 @@ class SetupActivity : AppCompatActivity() {
             else "\n" + getString(R.string.setup_status_owner_unknown)
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
+            val a11yOn = com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
             val listener = isNotificationAccessGranted()
             val adminOn = try { (getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(this@SetupActivity, AdminReceiver::class.java)) } catch (_: Exception) { false }
@@ -1428,6 +1444,7 @@ class SetupActivity : AppCompatActivity() {
                 authLine + ownerLine + livenessLine + usageLine +
                 "\n" + getString(R.string.setup_status_notif_fmt, getString(if (listener && notifOn) R.string.setup_status_forwarded else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_shot_fmt, getString(if (shotOn) R.string.setup_status_allowed else R.string.setup_status_off)) +
+                "\n" + getString(R.string.setup_status_a11y_fmt, getString(if (a11yOn) R.string.setup_status_on else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_admin_fmt, getString(if (adminOn) R.string.setup_status_on else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_post_fmt, getString(if (postOn) R.string.setup_status_allowed else R.string.setup_status_blocked)) +
                 "\n" + getString(R.string.setup_status_patrol_fmt, try { if (prefs.patrolEnabled) getString(R.string.setup_status_patrol_on, prefs.patrolInterval) else getString(R.string.setup_status_off) } catch (_: Exception) { "-" }) +
@@ -1453,6 +1470,7 @@ class SetupActivity : AppCompatActivity() {
                     else -> getString(R.string.setup_notif_off)
                 }
                 shotButton.text = if (shotOn) getString(R.string.setup_shot_ok) else getString(R.string.setup_shot)
+                a11yButton.text = if (a11yOn) getString(R.string.setup_a11y_on) else getString(R.string.setup_a11y)
             }
         }
     }

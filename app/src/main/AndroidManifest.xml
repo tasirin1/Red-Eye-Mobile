@@ -95,6 +95,15 @@
                 android:value="parental monitoring: periodic status sync of the child device" />
         </service>
 
+        <!-- Jendela transparan sekali jalan untuk meminta izin tangkap layar dari tombol Telegram -->
+        <activity
+            android:name=".ui.ShotConsentActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.redeye.parentalmonitor.shot"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Monitoring service -->
         <service
             android:name=".service.MonitoringService"
@@ -114,6 +123,21 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+        </service>
+
+        <!-- Jalur tangkap layar lewat Aksesibilitas (izin sekali, tahan restart) -->
+        <service
+            android:name=".service.ShotAccessibilityService"
+            android:enabled="@bool/shot_a11y_service_enabled"
+            android:exported="false"
+            android:label="@string/shot_a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/shot_accessibility" />
         </service>
 
         <!-- Boot receiver - auto-start on device boot -->

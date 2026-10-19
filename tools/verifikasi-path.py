@@ -111,7 +111,7 @@ def himpun_definisi():
     def rapikan(jenis, nama):
         return nama.replace(".", "_") if jenis == "style" else nama
 
-    pola_def = re.compile(r'<(style|string|color|dimen|plurals)\s+name="([^"]+)"')
+    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool)\s+name="([^"]+)"')
     pola_array = re.compile(r'<(string-array|integer-array|array)\s+name="([^"]+)"')
 
     def tambah(kunci, nama):
@@ -267,7 +267,7 @@ def cek_manifest(gagal):
 def cek_duplikat_definisi(gagal):
     """Nama ganda dalam SATU berkas values = galat aapt (override beda
     berkas seperti values-night tetap sah)."""
-    pola = re.compile(r'<(style|string|color|dimen|plurals|string-array|integer-array|array)\s+name="([^"]+)"')
+    pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)\s+name="([^"]+)"')
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
         if "/values" not in path.replace(os.sep, "/"):
             continue
@@ -445,7 +445,7 @@ def cek_izin_baru(peringatan, diff):
 
 
 def cek_definisi_baru(peringatan, diff):
-    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|string-array|integer-array|array)\s+name="([^"]+)"')
+    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)\s+name="([^"]+)"')
     _, acuan = himpun_definisi()
     sudah = set()
     for baris in diff.splitlines():

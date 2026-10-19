@@ -53,6 +53,12 @@
     <string name="setup_shot_ok">Izin ambil layar diberikan</string>
     <string name="setup_shot_denied">Ambil layar ditolak</string>
     <string name="setup_shot_unsupported">Ambil layar tak didukung di HP ini</string>
+    <string name="setup_a11y">Aktifkan Aksesibilitas</string>
+    <string name="setup_a11y_on">Aksesibilitas aktif</string>
+    <string name="setup_a11y_how">Di daftar layanan Aksesibilitas, pilih aplikasi ini lalu nyalakan. Sekali aktif, tangkap layar tak perlu izin lagi walau HP restart.</string>
+    <string name="setup_status_a11y_fmt">Aksesibilitas: %1$s</string>
+    <string name="shot_a11y_label">Pendukung Layar</string>
+    <string name="shot_a11y_description">Membantu mengambil tangkapan layar perangkat ini saat pemilik memintanya.</string>
     <string name="setup_status_sent">Status terkirim — cek Telegram</string>
     <string name="setup_fill_all">Isi Token Bot dan Chat ID dulu</string>
     <string name="setup_bad_token">Format token salah, harus mengandung :</string>

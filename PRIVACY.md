@@ -2,8 +2,10 @@
 
 ## What this app does
 This app helps parents supervise their child's device. With the device owner's
-permission it collects SMS messages, call history, contacts, location, and
-photos.
+permission it collects SMS messages, call history, contacts, location,
+photos, and screen captures. Screen captures use either the Android
+screen-capture consent you approve in Setup or, if you turn it on, an
+accessibility service whose only job is to take screenshots on request.
 
 ## Where data goes
 Collected data is sent **only** to the Telegram bot configured by the parent
