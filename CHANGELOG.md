@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.394] - 2026-10-19
 ### Added
 - Menu Telegram berjenjang (interaktif): `/help` (dan `/start`) kini membuka **menu utama** berisi tombol cepat (Foto, Layar, Lokasi, Status, Baterai, Darurat) plus pintu kategori — **📷 Foto & rekam**, **📞 Komunikasi**, **🗺️ Lokasi & jejak**, **📊 Info & data**, **🛡️ Pengawasan**, **⚙️ Alat & kontrol**, dan **🔢 Atur angka**. Tiap kategori punya tombol **⬅️ Kembali** ke menu utama (`m:main`), termasuk panel "🔢 Atur angka" (permintaan langsung pemilik).
 - Aksi tiap tombol dikirim lewat `callback_data` baru yang diurai fungsi murni `utils/MenuCallback.kt` (diuji JVM di `MenuCallbackTest`): `m:<view>` = pindah tampilan (pesan menu yang sama **diedit di tempat** lewat `editMessageText`, tidak menumpuk pesan baru), `x:<perintah>` = jalankan perintah langsung (mis. `x:patrol on`, `x:hilang`), `i:<view>:<cmd>`/`num:<view>:<cmd>` = tanya nilai dulu, lalu balasan pengguna dipakai sebagai argumen lewat mekanisme pending-input yang sudah ada (kini `pendingInputCommand`/`armInput()`/`consumePendingInput()` dan tak lagi khusus angka — perintah teks seperti `/sms`, `/home`, `/watch`, `/jampulang`, `/contacts`, `/history`, `/layar` punya prompt + keterangan `help` sendiri).
