@@ -5232,64 +5232,7 @@ class MonitoringService : Service() {
     // ═══════════════════════════════════════════════════════════
 
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("Token ditolak — foto ditahan sampai token diperbaiki di Setup.")
-                }
-            }
-            return
-        }
-        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("Dibatasi Telegram (rate limit) — foto ditahan lalu dicoba lagi.")
-                }
-            }
-            return
-        }
-        val photosBefore = pendingPhotoCount()
-        if (photosBefore >= MAX_PHOTO_KEPT) {
-            val pruned = try {
-                prunePhotoCache(MAX_PHOTO_KEPT - 1)
-            } catch (_: Exception) {
-                -1
-            }
-            val photosAfter = if (pruned >= 0) pruned else pendingPhotoCount()
-            if (photosAfter >= MAX_PHOTO_KEPT) {
-                serviceScope.launch {
-                    if (reportResult) {
-                        sendToTelegram(
-                            if (photosAfter < photosBefore) "⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati."
-                            else "⚠️ Antrean foto penuh (offline). Foto baru dilewati sampai antrean terkirim."
-                        )
-                    }
-                }
-                return
-            }
-        }
-        if (!hasCameraPermission()) {
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Gagal memotret: izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
-                } else {
-                    notifyCameraFailure("camera permission missing")
-                }
-            }
-            return
-        }
-        if (isCameraDisabledByPolicy()) {
-            autoPausePhotosOnPolicyBlock()
-            val blockers = cameraBlockingAdmins()
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError("CAMERA_DISABLED") + " " + policyFailureHint(blockers))
-                } else {
-                    notifyCameraFailure("camera disabled by device policy (CAMERA_DISABLED)")
-                }
-            }
-            return
-        }
+        if (!photoPreconditions(reportResult)) return
         if (!cameraBusy.compareAndSet(false, true)) {
             if (reportResult) {
                 serviceScope.launch {
@@ -5321,147 +5264,177 @@ class MonitoringService : Service() {
             cameraService.capturePhoto(
                 lensFacing = selectedLensFacing(),
                 onPhotoTaken = { photoFile ->
-                    if (cameraAttempt.get() != attempt) {
-                        try {
-                            photoFile.delete()
-                        } catch (_: Exception) {
-                        }
-                        return@capturePhoto
-                    }
-                    if (!photoFile.exists() || photoFile.length() == 0L) {
-                        cameraAttempt.incrementAndGet()
-                        cameraBusy.set(false)
-                        try {
-                            wd.cancel()
-                        } catch (_: Exception) {
-                        }
-                        deleteQuietly(photoFile)
-                        if (reportResult) {
-                            serviceScope.launch {
-                                sendToTelegram("⚠️ Foto yang dihasilkan kosong. Coba /photo lagi.")
-                            }
-                        }
-                        return@capturePhoto
-                    }
-                    val (photoLumaNow, photoHashNow) = photoStats(photoFile)
-                    if (photoLumaNow < 12) {
-                        cameraAttempt.incrementAndGet()
-                        cameraBusy.set(false)
-                        try {
-                            wd.cancel()
-                        } catch (_: Exception) {
-                        }
-                        deleteQuietly(photoFile)
-                        if (reportResult) {
-                            serviceScope.launch {
-                                sendToTelegram("🌑 Foto terlalu gelap, dilewati. Nyalakan lampu atau coba /photo lagi.")
-                            }
-                        }
-                        return@capturePhoto
-                    }
-                    val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
-                    if (photoHashNow != 0L && prevPhotoHash != 0L && hammingDistance(photoHashNow, prevPhotoHash) <= 6) {
-                        cameraAttempt.incrementAndGet()
-                        cameraBusy.set(false)
-                        try {
-                            wd.cancel()
-                        } catch (_: Exception) {
-                        }
-                        deleteQuietly(photoFile)
-                        if (reportResult) {
-                            serviceScope.launch {
-                                sendToTelegram("♻️ Foto sama dengan yang terakhir, dilewati.")
-                            }
-                        }
-                        return@capturePhoto
-                    }
-                    cameraAttempt.incrementAndGet()
-                    cameraBusy.set(false)
-                    try {
-                        wd.cancel()
-                    } catch (_: Exception) {
-                    }
-                    markMediaActive(photoFile)
-                    serviceScope.launch {
-                        try {
-                            if (!reportResult && dataSaverHoldNow(1)) {
-                                try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
-                                android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
-                                return@launch
-                            }
-                            when (sendPhotoFile(photoFile)) {
-                                MediaSendOutcome.SENT -> {
-                                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
-                                    try {
-                                        val used = cameraService.lastLensFacing
-                                        val asked = selectedLensFacing()
-                                        if (used != -1 && used != asked) {
-                                            val name = when (used) {
-                                                android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
-                                                android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"
-                                                else -> "lain"
-                                            }
-                                            sendToTelegram("📷 Lensa yang diminta tak ada, dipakai kamera $name.")
-                                        }
-                                    } catch (_: Exception) {
-                                    }
-                                    flushPendingPhotos()
-                                }
-                                MediaSendOutcome.DROPPED -> {
-                                    prunePhotoCache()
-                                    if (reportResult) {
-                                        sendToTelegram("⚠️ Foto ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
-                                    }
-                                }
-                                MediaSendOutcome.KEPT -> {
-                                    prunePhotoCache()
-                                    if (reportResult) {
-                                        sendToTelegram("⚠️ Foto berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
-                                    }
-                                }
-                            }
-                        } finally {
-                            clearMediaActive(photoFile)
-                        }
-                    }
+                    handleCapturedPhoto(photoFile, attempt, wd, reportResult)
                 },
                 onError = { exception ->
-                    if (cameraAttempt.get() != attempt) return@capturePhoto
-                    cameraAttempt.incrementAndGet()
-                    cameraBusy.set(false)
-                    try {
-                        wd.cancel()
-                    } catch (_: Exception) {
-                    }
-                    android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
-                    val policyBlocked = isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
-                    if (policyBlocked) autoPausePhotosOnPolicyBlock()
-                    serviceScope.launch {
-                        if (reportResult) {
-                            val hint = if (policyBlocked) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(exception.message)
-                            sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(exception.message) + " " + hint)
-                        } else {
-                            notifyCameraFailure(sanitizedCameraError(exception.message))
-                        }
-                    }
+                    handleCaptureError(exception, attempt, wd, reportResult)
                 }
             )
         } catch (e: Exception) {
-            cameraAttempt.incrementAndGet()
-            cameraBusy.set(false)
-            try {
-                wd.cancel()
-            } catch (_: Exception) {
-            }
+            finishCaptureAttempt(wd)
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto: ${redactToken(e.message)}")
             val policyBlocked = isCameraPolicyError(e.message)
             if (policyBlocked) autoPausePhotosOnPolicyBlock()
-            serviceScope.launch {
-                if (reportResult) {
-                    sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(e.message) + ".")
-                } else {
-                    notifyCameraFailure(sanitizedCameraError(e.message))
+            reportPhotoResult(reportResult, "⚠️ Gagal memotret: " + sanitizedCameraError(e.message) + ".", sanitizedCameraError(e.message))
+        }
+    }
+
+    private fun photoPreconditions(reportResult: Boolean): Boolean {
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            reportPhotoResult(reportResult, "Token ditolak — foto ditahan sampai token diperbaiki di Setup.")
+            return false
+        }
+        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
+            reportPhotoResult(reportResult, "Dibatasi Telegram (rate limit) — foto ditahan lalu dicoba lagi.")
+            return false
+        }
+        val photosBefore = pendingPhotoCount()
+        if (photosBefore >= MAX_PHOTO_KEPT) {
+            val pruned = try {
+                prunePhotoCache(MAX_PHOTO_KEPT - 1)
+            } catch (_: Exception) {
+                -1
+            }
+            val photosAfter = if (pruned >= 0) pruned else pendingPhotoCount()
+            if (photosAfter >= MAX_PHOTO_KEPT) {
+                reportPhotoResult(reportResult, if (photosAfter < photosBefore) "⚠️ Antrean foto penuh (offline). Yang paling lama yang belum terkirim dibuang; foto baru dilewati." else "⚠️ Antrean foto penuh (offline). Foto baru dilewati sampai antrean terkirim.")
+                return false
+            }
+        }
+        if (!hasCameraPermission()) {
+            reportPhotoResult(reportResult, "⚠️ Gagal memotret: izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.", "camera permission missing")
+            return false
+        }
+        if (isCameraDisabledByPolicy()) {
+            autoPausePhotosOnPolicyBlock()
+            val blockers = cameraBlockingAdmins()
+            reportPhotoResult(reportResult, "⚠️ Gagal memotret: " + sanitizedCameraError("CAMERA_DISABLED") + " " + policyFailureHint(blockers), "camera disabled by device policy (CAMERA_DISABLED)")
+            return false
+        }
+        return true
+    }
+
+    private fun handleCapturedPhoto(photoFile: File, attempt: Int, wd: Job, reportResult: Boolean) {
+        if (cameraAttempt.get() != attempt) {
+            try {
+                photoFile.delete()
+            } catch (_: Exception) {
+            }
+            return
+        }
+        if (!photoFile.exists() || photoFile.length() == 0L) {
+            finishCaptureAttempt(wd)
+            deleteQuietly(photoFile)
+            if (reportResult) {
+                serviceScope.launch {
+                    sendToTelegram("⚠️ Foto yang dihasilkan kosong. Coba /photo lagi.")
                 }
+            }
+            return
+        }
+        val (photoLumaNow, photoHashNow) = photoStats(photoFile)
+        if (photoLumaNow < 12) {
+            finishCaptureAttempt(wd)
+            deleteQuietly(photoFile)
+            if (reportResult) {
+                serviceScope.launch {
+                    sendToTelegram("🌑 Foto terlalu gelap, dilewati. Nyalakan lampu atau coba /photo lagi.")
+                }
+            }
+            return
+        }
+        val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
+        if (photoHashNow != 0L && prevPhotoHash != 0L && hammingDistance(photoHashNow, prevPhotoHash) <= 6) {
+            finishCaptureAttempt(wd)
+            deleteQuietly(photoFile)
+            if (reportResult) {
+                serviceScope.launch {
+                    sendToTelegram("♻️ Foto sama dengan yang terakhir, dilewati.")
+                }
+            }
+            return
+        }
+        finishCaptureAttempt(wd)
+        markMediaActive(photoFile)
+        sendCapturedPhoto(photoFile, reportResult, photoHashNow)
+    }
+
+    private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
+        if (cameraAttempt.get() != attempt) return
+        finishCaptureAttempt(wd)
+        android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
+        val policyBlocked = isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
+        if (policyBlocked) autoPausePhotosOnPolicyBlock()
+        serviceScope.launch {
+            if (reportResult) {
+                val hint = if (policyBlocked) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(exception.message)
+                sendToTelegram("⚠️ Gagal memotret: " + sanitizedCameraError(exception.message) + " " + hint)
+            } else {
+                notifyCameraFailure(sanitizedCameraError(exception.message))
+            }
+        }
+    }
+
+    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long) {
+        serviceScope.launch {
+            try {
+                if (!reportResult && dataSaverHoldNow(1)) {
+                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                    android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
+                    return@launch
+                }
+                when (sendPhotoFile(photoFile)) {
+                    MediaSendOutcome.SENT -> {
+                        try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                        try {
+                            val used = cameraService.lastLensFacing
+                            val asked = selectedLensFacing()
+                            if (used != -1 && used != asked) {
+                                val name = when (used) {
+                                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
+                                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"
+                                    else -> "lain"
+                                }
+                                sendToTelegram("📷 Lensa yang diminta tak ada, dipakai kamera $name.")
+                            }
+                        } catch (_: Exception) {
+                        }
+                        flushPendingPhotos()
+                    }
+                    MediaSendOutcome.DROPPED -> {
+                        prunePhotoCache()
+                        if (reportResult) {
+                            sendToTelegram("⚠️ Foto ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
+                        }
+                    }
+                    MediaSendOutcome.KEPT -> {
+                        prunePhotoCache()
+                        if (reportResult) {
+                            sendToTelegram("⚠️ Foto berhasil diambil tapi gagal diunggah. Berkas disimpan untuk dicoba lagi.")
+                        }
+                    }
+                }
+            } finally {
+                clearMediaActive(photoFile)
+            }
+        }
+    }
+
+    private fun finishCaptureAttempt(wd: Job) {
+        cameraAttempt.incrementAndGet()
+        cameraBusy.set(false)
+        try {
+            wd.cancel()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun reportPhotoResult(reportResult: Boolean, message: String, notifyMessage: String? = null) {
+        serviceScope.launch {
+            if (reportResult) {
+                sendToTelegram(message)
+            } else if (notifyMessage != null) {
+                notifyCameraFailure(notifyMessage)
             }
         }
     }
