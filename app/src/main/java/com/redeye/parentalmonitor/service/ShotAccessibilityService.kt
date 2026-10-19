@@ -58,6 +58,9 @@ class ShotAccessibilityService : AccessibilityService() {
 object ShotA11yCapture {
 
     private val main = Handler(Looper.getMainLooper())
+    private val callbackExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "redeye-shot-a11y").apply { isDaemon = true }
+    }
 
     @RequiresApi(Build.VERSION_CODES.R)
     fun run(service: AccessibilityService, onResult: (Bitmap?) -> Unit) {
@@ -66,7 +69,7 @@ object ShotA11yCapture {
                 try {
                     service.takeScreenshot(
                         Display.DEFAULT_DISPLAY,
-                        service.mainExecutor,
+                        callbackExecutor,
                         object : AccessibilityService.TakeScreenshotCallback {
                             override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
                                 onResult(toBitmap(result))

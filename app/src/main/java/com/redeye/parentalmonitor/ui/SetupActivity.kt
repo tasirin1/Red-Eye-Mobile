@@ -198,7 +198,6 @@ class SetupActivity : AppCompatActivity() {
             try { com.redeye.parentalmonitor.utils.ScreenCapture.grant(res.resultCode, data) } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_ok), Toast.LENGTH_SHORT).show()
         } else {
-            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             Toast.makeText(this, getString(R.string.setup_shot_denied), Toast.LENGTH_SHORT).show()
         }
         try { updateStatus() } catch (_: Exception) { }
@@ -1344,7 +1343,6 @@ class SetupActivity : AppCompatActivity() {
     private fun requestScreenCapture() {
         try {
             if (!shotRequestBusy.compareAndSet(false, true)) return
-            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
             screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
         } catch (e: Exception) {

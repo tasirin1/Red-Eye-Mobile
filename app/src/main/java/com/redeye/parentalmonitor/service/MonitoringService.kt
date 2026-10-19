@@ -310,6 +310,14 @@ class MonitoringService : Service() {
             preferencesManager = PreferencesManager.getInstance(this)
         } catch (_: Exception) {
             try {
+                Liveness.schedule(this)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
+            try {
                 stopSelf()
             } catch (_: Exception) {
             }
@@ -504,6 +512,7 @@ class MonitoringService : Service() {
                         return START_STICKY
                     }
                 }
+                stopSelfResult(startId)
                 return START_NOT_STICKY
             }
             ACTION_REFRESH_FGS -> {
@@ -511,6 +520,7 @@ class MonitoringService : Service() {
                     startMonitoring()
                 }
                 confirmCameraWakeRestored()
+                if (!isRunning) stopSelfResult(startId)
                 return if (isRunning) START_STICKY else START_NOT_STICKY
             }
             ACTION_ADMIN_ALERT -> {
@@ -519,17 +529,28 @@ class MonitoringService : Service() {
                 }
                 if (isRunning) {
                     serviceScope.launch { handleAdminAlert() }
+                    return START_STICKY
                 }
-                return START_STICKY
+                serviceScope.launch {
+                    try {
+                        handleAdminAlert()
+                    } catch (_: Exception) {
+                    } finally {
+                        stopSelfResult(startId)
+                    }
+                }
+                return START_NOT_STICKY
             }
             ACTION_AFTER_SHOT_GRANT -> {
                 if (!isRunning && shouldAutoResume()) {
                     startMonitoring()
                 }
-                if (isRunning) {
-                    serviceScope.launch { sendToTelegram("\u2705 Izin tangkap layar diterima \u2014 mengambil layar\u2026") }
-                    captureAndSendScreenshot()
+                if (!isRunning) {
+                    stopSelfResult(startId)
+                    return START_NOT_STICKY
                 }
+                serviceScope.launch { sendToTelegram("\u2705 Izin tangkap layar diterima \u2014 mengambil layar\u2026") }
+                captureAndSendScreenshot()
                 return START_STICKY
             }
             else -> {
@@ -697,7 +718,7 @@ class MonitoringService : Service() {
     }
 
     private fun startPeriodicLoops() {
-        monitoringJob = serviceScope.launch {
+        val monitoring = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
             while (isActive && (monitoringJob == null || monitoringJob === self)) {
                 try {
@@ -755,6 +776,8 @@ class MonitoringService : Service() {
                 }
             }
         }
+        monitoringJob = monitoring
+        monitoring.start()
         startCameraLoop()
         startPatrolLoop()
     }
@@ -768,7 +791,7 @@ class MonitoringService : Service() {
     }
 
     private fun startCameraLoop() {
-        cameraJob = serviceScope.launch {
+        val camera = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
             while (isActive && (cameraJob == null || cameraJob === self)) {
                 try {
@@ -826,6 +849,8 @@ class MonitoringService : Service() {
                 }
             }
         }
+        cameraJob = camera
+        camera.start()
     }
 
     private fun restartPatrolLoop() {
@@ -837,7 +862,7 @@ class MonitoringService : Service() {
     }
 
     private fun startPatrolLoop() {
-        patrolJob = serviceScope.launch {
+        val patrol = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
             while (isActive && (patrolJob == null || patrolJob === self)) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -872,6 +897,8 @@ class MonitoringService : Service() {
                 }
             }
         }
+        patrolJob = patrol
+        patrol.start()
     }
 
     private suspend fun patrolRound() {
@@ -920,16 +947,20 @@ class MonitoringService : Service() {
 
     private suspend fun pauseAwareDelay(totalMs: Long) {
         val pausedAtStart = cachedMonitoringPaused
+        val genAtStart = loopConfigGen
         var remaining = totalMs.coerceAtLeast(0L)
         while (remaining > 0L) {
             val slice = remaining.coerceAtMost(30_000L)
             delay(slice)
             remaining -= slice
-            if (cachedMonitoringPaused != pausedAtStart) return
+            if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
         }
     }
 
     private val credsLock = Any()
+    private val fenceLock = Any()
+    @Volatile
+    private var loopConfigGen = 0
     private fun refreshCreds() {
         synchronized(credsLock) {
             try {
@@ -1001,21 +1032,21 @@ class MonitoringService : Service() {
     private suspend fun sendPairHint(senderId: String) {
         try {
             if (cachedOwnerId != 0L) return
-            val now = android.os.SystemClock.elapsedRealtime()
-            try {
-                val last = pairHintAt[senderId] ?: 0L
-                if (now >= last && now - last < 3_600_000L) return
-                if (pairHintAt.size > 200) pairHintAt.clear()
-                pairHintAt[senderId] = now
-            } catch (_: Exception) {
-            }
             val token = try {
                 preferencesManager.botToken
             } catch (_: Exception) {
                 ""
             }.ifEmpty { return }
+            val now = android.os.SystemClock.elapsedRealtime()
+            try {
+                val last = pairHintAt[senderId] ?: 0L
+                if (last > 0L && now - last < 3_600_000L) return
+                if (pairHintAt.size > 200) pairHintAt.clear()
+                pairHintAt[senderId] = now
+            } catch (_: Exception) {
+            }
             val url = "https://api.telegram.org/bot${token}/sendMessage"
-            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: send /start <chat ID> <pairing code> shown in Setup status.", parseMode = null))
+            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: kirim /start <chat ID> <kode pairing> yang tampil di status Setup.", parseMode = null))
         } catch (_: Exception) {
         }
     }
@@ -1025,7 +1056,7 @@ class MonitoringService : Service() {
         var bestScore = Float.MAX_VALUE
         for (candidate in candidates) {
             val score = if (candidate.accuracy > 0f) candidate.accuracy else Float.MAX_VALUE
-            if (score < bestScore) {
+            if (best == null || score < bestScore) {
                 bestScore = score
                 best = candidate
             }
@@ -1043,6 +1074,7 @@ class MonitoringService : Service() {
             cachedPatrolInterval = preferencesManager.patrolInterval
             cachedVehicleEnabled = preferencesManager.vehicleAlertEnabled
             cachedDataSaver = preferencesManager.dataSaverEnabled
+            loopConfigGen++
         } catch (_: Exception) {
         }
     }
@@ -1084,7 +1116,7 @@ class MonitoringService : Service() {
     private val msgDropLock = Any()
 
     private fun startCommandPolling() {
-        commandJob = serviceScope.launch {
+        val command = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
             while (isActive && (commandJob == null || commandJob === self)) {
                 commandBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -1145,6 +1177,8 @@ class MonitoringService : Service() {
                 }
             }
         }
+        commandJob = command
+        command.start()
     }
 
 
@@ -1857,14 +1891,14 @@ class MonitoringService : Service() {
         val angka = numberInputFor(command)
         if (angka != null) {
             pendingInputCommand = angka.command
-            pendingInputAt = System.currentTimeMillis()
+            pendingInputAt = android.os.SystemClock.elapsedRealtime()
             val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { "angka" })
             sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
             return
         }
         val teks = textInputFor(command) ?: return
         pendingInputCommand = teks.command
-        pendingInputAt = System.currentTimeMillis()
+        pendingInputAt = android.os.SystemClock.elapsedRealtime()
         val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { teks.view })
         sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
@@ -1873,7 +1907,7 @@ class MonitoringService : Service() {
         if (!ownerOk) return false
         val pending = pendingInputCommand
         if (pending.isEmpty()) return false
-        if (System.currentTimeMillis() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
+        if (android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
             pendingInputCommand = ""
             return false
         }
@@ -2270,13 +2304,15 @@ class MonitoringService : Service() {
             preferencesManager.watchKeywords = ""
             sendToTelegram("👁️ Watch dimatikan.")
         } else {
-            val words = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct().take(10)
+            val wordPool = sub.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct()
+            val words = wordPool.take(10)
             val dropped = sub.split(",", " ", ";").map { it.trim() }.filter { it.isNotEmpty() && it.length < 3 }.distinct()
             if (words.isEmpty()) {
                 sendToTelegram("Cara pakai: /watch &lt;kata1,kata2&gt; (min 3 huruf, maks 10) atau /watch off")
             } else {
                 preferencesManager.watchKeywords = words.joinToString(",")
-                sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + if (dropped.isNotEmpty()) "\nDiabaikan (&lt;3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "")
+                val over = if (wordPool.size > words.size) "\nDiabaikan (>10 kata): " + wordPool.drop(10).joinToString(", ") { Html.escape(it) } else ""
+                sendToTelegram("👁️ Watch aktif: " + words.joinToString(", ") { Html.escape(it) } + (if (dropped.isNotEmpty()) "\nDiabaikan (&lt;3 huruf): " + dropped.joinToString(", ") { Html.escape(it) } else "") + over)
             }
         }
     }
@@ -3646,7 +3682,7 @@ class MonitoringService : Service() {
                     if (resultCode == android.app.Activity.RESULT_OK) {
                         if (okCount.incrementAndGet() >= expected && failCount.get() == 0) delivered.complete(true)
                     } else {
-                        if (failCount.incrementAndGet() == 1) delivered.complete(false)
+                        if (failCount.incrementAndGet() + okCount.get() >= expected) delivered.complete(false)
                     }
                 } catch (_: Exception) {
                 }
@@ -4132,8 +4168,9 @@ class MonitoringService : Service() {
             queueForRetry(message, queueOnFail)
             return false
         }
+        val parseRetry = goneBody?.contains("can't parse entities", ignoreCase = true) == true
         val plain = Html.unescape(message)
-        if (plain != message) {
+        if (plain != message || parseRetry) {
             try {
                 return sendPlainFallback(botToken, chatId, plain, queueOnFail)
             } catch (_: Exception) {
@@ -4657,23 +4694,39 @@ class MonitoringService : Service() {
                 if (dist < 0f) continue
                 val inside = dist <= rad
                 if (isHome) {
-                    try {
-                        val jemput = preferencesManager.jemputRadiusM
-                        if (jemput > 0 && dist <= jemput && (accuracyM < 0f || accuracyM <= jemput.toFloat())) {
-                            preferencesManager.jemputRadiusM = 0
-                            sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
+                    val jemputHit = try {
+                        synchronized(fenceLock) {
+                            val jemput = preferencesManager.jemputRadiusM
+                            if (jemput > 0 && dist <= jemput && (accuracyM < 0f || accuracyM <= jemput.toFloat())) {
+                                preferencesManager.jemputRadiusM = 0
+                                true
+                            } else {
+                                false
+                            }
                         }
                     } catch (_: Exception) {
+                        false
                     }
+                    if (jemputHit) sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
                 }
-                val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
                 val now = if (inside) 1 else 2
-                if (state !in 1..2) {
-                    if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
-                    continue
+                val transition = try {
+                    synchronized(fenceLock) {
+                        val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
+                        if (state !in 1..2) {
+                            if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
+                            false
+                        } else if (state != now && (accuracyM < 0f || accuracyM <= rad.toFloat())) {
+                            if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                } catch (_: Exception) {
+                    false
                 }
-                if (state != now && (accuracyM < 0f || accuracyM <= rad.toFloat())) {
-                    if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
+                if (transition) {
                     val name = if (isHome) "Rumah" else "Sekolah"
                     val verb = if (inside) "masuk" else "keluar"
                     sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
@@ -5924,7 +5977,10 @@ class MonitoringService : Service() {
                 try { wd.cancel() } catch (_: Exception) { }
                 if (shotFile == null) {
                     clearShotBusy(shotSeq)
-                    sendToTelegram("⚠️ Tangkap layar gagal. " + screenshotFailureHint())
+                    sendToTelegram(
+                        "⚠️ Tangkap layar gagal. " + screenshotFailureHint(),
+                        if (!hasScreenshotConsent()) shotGrantMarkup() else null
+                    )
                     return@launch
                 }
                 markMediaActive(shotFile)
@@ -5953,7 +6009,10 @@ class MonitoringService : Service() {
                 try { wd.cancel() } catch (_: Exception) { }
                 android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
                 serviceScope.launch {
-                    sendToTelegram("⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).")
+                    sendToTelegram(
+                        "⚠️ Tangkap layar gagal. Bila sistem mencabut izinnya, berikan lagi di Setup (Capture Screen).",
+                        if (!hasScreenshotConsent()) shotGrantMarkup() else null
+                    )
                 }
             }
         }
@@ -5975,8 +6034,8 @@ class MonitoringService : Service() {
             shotWidth = 0
             shotHeight = 0
         }
-        try { reader?.close() } catch (_: Exception) { }
         try { display?.release() } catch (_: Exception) { }
+        try { reader?.close() } catch (_: Exception) { }
     }
 
     private fun releaseShotSession() {
@@ -5997,6 +6056,7 @@ class MonitoringService : Service() {
             mpm.getMediaProjection(request.first, request.second)
         } catch (e: SecurityException) {
             android.util.Log.w("MonitoringService", "getMediaProjection ditolak (izin disimpan): " + redactToken(e.message))
+            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
             return null
         }
         if (acquired == null) {
@@ -6127,12 +6187,18 @@ class MonitoringService : Service() {
         if (!shotViaAccessibility()) return null
         val result = kotlinx.coroutines.CompletableDeferred<Bitmap?>()
         try {
-            com.redeye.parentalmonitor.service.ShotAccessibilityService.capture { shot -> result.complete(shot) }
+            com.redeye.parentalmonitor.service.ShotAccessibilityService.capture { shot ->
+                if (!result.complete(shot) && shot != null) {
+                    try { shot.recycle() } catch (_: Exception) { }
+                }
+            }
         } catch (_: Exception) {
             result.complete(null)
         }
         val bmp = try {
             kotlinx.coroutines.withTimeoutOrNull(20_000L) { result.await() }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         } ?: return null
@@ -6729,7 +6795,7 @@ class MonitoringService : Service() {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
         }
-        loopWatchdogJob = serviceScope.launch {
+        val watchdog = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
             while (isActive && (loopWatchdogJob == null || loopWatchdogJob === self)) {
                 try {
@@ -6765,6 +6831,8 @@ class MonitoringService : Service() {
                 }
             }
         }
+        loopWatchdogJob = watchdog
+        watchdog.start()
     }
 
     private fun finishedRingText(): String {

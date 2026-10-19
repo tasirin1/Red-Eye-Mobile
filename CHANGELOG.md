@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [1.6.398] - 2026-10-19
+### Fixed
+- Loop latar (`monitoring`, kamera, patroli, polling perintah, watchdog) kini dibuat dengan `CoroutineStart.LAZY` lalu `start()` dipanggil setelah field job ditetapkan. Sebelumnya coroutine baru bisa membaca field job lama yang belum ditimpa dan langsung berhenti sendiri, sehingga satu loop mati tanpa pesan sampai watchdog berikutnya merestart.
+- Perubahan konfigurasi loop (mis. `/syncinterval`) kini langsung memotong jeda siklus yang sedang berjalan; sebelumnya interval baru baru dipakai setelah siklus lama habis (bisa berjam-jam).
+- Layanan foreground tidak lagi tersisa tanpa monitoring: aksi `ACTION_LIVENESS_TEST`, `ACTION_REFRESH_FGS`, `ACTION_AFTER_SHOT_GRANT`, dan `ACTION_ADMIN_ALERT` (saat auto-resume mati) kini memanggil `stopSelfResult()`, dan peringatan admin tetap dikirim lebih dulu.
+- Tangkap layar jalur Aksesibilitas: bitmap yang tiba setelah timeout 20 detik didaur ulang (sebelumnya bocor ±10–18 MB per kegagalan) dan konversi ARGB dipindah ke thread latar sehingga tak lagi membebani main thread.
+- `getMediaProjection()` yang ditolak `SecurityException` kini mencabut izin tersimpan, sehingga tombol "Beri izin sekali" muncul kembali (sebelumnya `/screenshot` gagal terus tanpa tawaran izin baru).
+- Pesan gagal tangkap layar tanpa izin kini ikut menyertakan tombol "🖥️ Beri izin sekali" pada jalur kegagalan umum, bukan hanya pada pesan khusus.
+- Pesan 400 `can't parse entities` dari Telegram kini dicoba ulang sebagai teks biasa; sebelumnya laporan crash/diagnosa yang memuat `<` atau `&` dibuang permanen tanpa terkirim.
+- SMS multi-bagian: hasil hanya diputuskan setelah semua bagian melapor, sehingga tidak lagi menyatakan "belum terkonfirmasi" padahal sebagian bagian masih terkirim (risiko SMS dobel saat pengguna mengirim ulang).
+- Respons Telegram 4xx tak dikenal (mis. 404/409/451 dari halaman blokir/captive portal) tidak lagi dianggap penolakan permanen: antrean pesan dipertahankan, bukan dihapus.
+- Geofence rumah/sekolah dan notifikasi "siap dijemput" diputuskan secara atomik, sehingga dua pengambilan lokasi bersamaan tidak lagi mengirim peringatan ganda.
+- Menutup dialog izin tangkap layar dengan "Batal" di Setup tidak lagi mencabut sesi izin yang sedang aktif.
+- `bestFix()` tetap memilih kandidat lokasi walau akurasi semua kandidat tak diketahui (sebelumnya mengembalikan `null` sehingga lokasi dianggap gagal).
+- Kegagalan membuka penyimpanan terenkripsi saat layanan dibuat kini menjadwalkan liveness + boot restart sebelum berhenti, tidak lagi mematikan diri tanpa jejak.
+- Penanda input tertunda (`/angka`, `/tombol`) memakai jam monotonic, sehingga perubahan jam perangkat tidak lagi membatalkan input yang masih menunggu.
+- Tema memakai `windowOptOutEdgeToEdgeEnforcement` agar kalkulator dan Setup tidak tertutup status bar di Android 15.
+
+### Changed
+- Hint pairing bot berbahasa Indonesia dan tidak lagi menghabiskan kuota hint ketika token bot belum terisi.
+- `/watch` melaporkan kata yang diabaikan karena melebihi 10 kata (sebelumnya hilang diam-diam).
+
 ## [1.6.397] - 2026-10-19
 ### Added
 - Panduan blokir "Setelan terbatas" (Android 13+) di halaman Setup: tombol **Aktifkan Aksesibilitas** kini membuka dialog berisi langkah `Info aplikasi` → menu tiga titik → **Izinkan setelan terbatas** → baru nyalakan layanannya, lengkap dengan tombol pintas ke Info aplikasi dan ke setelan Aksesibilitas. Sebelumnya tombol itu langsung membuka setelan Aksesibilitas, sehingga tombol yang abu-abu tampak "diblokir" tanpa penjelasan.
