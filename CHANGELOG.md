@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.391] - 2026-10-19
+### Added
+- Perintah angka kini bisa dipakai lewat tombol Telegram. Kirim `/tombol` (alias `tombol`/`angka`), atau ketuk tombol "🔢 Atur angka" di menu utama: bot menampilkan papan tombol berisi perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`). Ketuk satu tombol, bot membalas "Kirim angkanya (rentang)" beserta nilai yang sedang berlaku, lalu balasan angka berikutnya langsung menjalankan perintah itu — balas `15` setelah menekan **Interval foto** sama dengan `/photointerval 15`.
+- Keterangan tombol: setelah menekan tombol, balas `help` (atau `bantuan`/`cara`/`?`) untuk dapat penjelasan tombol itu — guna, cara pakai, rentang, dan nilai sekarang. Status tombol bertahan 5 menit (`NUMBER_INPUT_TTL_MS = 300_000`) dan batal sendiri bila kamu mengirim perintah lain (`/...`) atau balasan yang bukan angka.
+
+### Changed
+- Perintah angka yang wajib diisi (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`) tanpa argumen kini membalas prompt + papan tombol, bukan hanya teks "Cara pakai".
+- `app/src/main/java/com/redeye/parentalmonitor/utils/NumberReply.kt` (baru) mengurai balasan angka murni (bulat, maks 6 digit) dan diuji di JVM lewat `NumberReplyTest`.
+- `/help` menyebut `/tombol`, daftar perintah bot Telegram menambah `tombol`, `mainMenu()` menambah baris "🔢 Atur angka" (`num:menu`), dan `MUTATING_COMMANDS`/`KNOWN_COMMANDS` menambah `/tombol` + `/angka` (khusus owner).
+- `README.md` mencatat alur tombol angka di tabel perintah.
+
 ## [1.6.390] - 2026-10-19
 ### Changed
 - R8 (langkah 4, batch 5 / penutup): empat cabang terakhir yang gemuk jadi fungsi bernama: `handleJejakCommand()` (13 baris), `handleHilangCommand()` (31), `handleJemputCommand(arg)` (25), dan `handleHelpCommand(senderOk)` (75; dipakai bersama `/help` dan `/start`). Ditambah satu baris kosong antar-fungsi yang ikut terhapus saat penyisipan helper.

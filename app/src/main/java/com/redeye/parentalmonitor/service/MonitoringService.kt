@@ -254,14 +254,15 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
-        private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val MUTATING_MAX_AGE_SEC = 300L
+        private const val NUMBER_INPUT_TTL_MS = 300_000L
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val VIDEO_BYTES_PER_SEC = 300_000L
@@ -1316,7 +1317,8 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk) {
-                        if (command.startsWith("/")) {
+                        val balasAngka = consumeNumberInput(rawText, message?.date ?: 0L, ownerOk, chatOk, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
+                        if (!balasAngka && command.startsWith("/")) {
                             val aliasInput = resolveAliasInput(command, arg)
                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
                             val effCommand = input.substringBefore(" ")
@@ -1324,7 +1326,7 @@ class MonitoringService : Service() {
                             if (effCommand in MUTATING_COMMANDS) {
                                 try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
                             }
-                        } else {
+                        } else if (!balasAngka) {
                             val aliasInput = resolveAliasInput(command, arg)
                             val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
                             if (aliasInput != null && privateOwner) {
@@ -1373,6 +1375,16 @@ class MonitoringService : Service() {
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        val numTarget = query.data.orEmpty().removePrefix("num:")
+        if (numTarget != query.data.orEmpty()) {
+            if (!ownerOk) return
+            if (numTarget == "menu") {
+                sendToTelegram("\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.", numberInputMenu())
+            } else {
+                armNumberInput("/" + numTarget)
+            }
+            return
+        }
         val command = when (query.data) {
             "photo" -> "/photo"
             "location" -> "/location"
@@ -1512,6 +1524,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
             com.redeye.parentalmonitor.network.BotCommand("jemput", "Kabari saat dekat rumah"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah"),
+            com.redeye.parentalmonitor.network.BotCommand("tombol", "Atur angka lewat tombol"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Tautkan/pairing perangkat")
         )
     }
@@ -1583,9 +1596,156 @@ class MonitoringService : Service() {
                 listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
                 listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDCCA Status", "status")),
                 listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83D\uDC9A Hidup", "alive")),
-                listOf(button("\uD83D\uDDA5 Tangkap layar", "shot"), button("⏹️ Hentikan", "stop"))
+                listOf(button("\uD83D\uDDA5 Tangkap layar", "shot"), button("⏹️ Hentikan", "stop")),
+                listOf(button("\uD83D\uDD22 Atur angka", "num:menu"))
             )
         )
+    }
+
+    private data class NumberInput(
+        val command: String,
+        val button: String,
+        val range: String,
+        val unit: String,
+        val required: Boolean,
+        val note: String
+    )
+
+    private val numberInputs = listOf(
+        NumberInput("/photointerval", "\uD83D\uDCF8 Interval foto", "0-60", "menit", true, "Atur jeda foto otomatis. 0 = foto hanya lewat /photo."),
+        NumberInput("/patrolinterval", "\uD83D\uDEB6 Interval patroli", "5-180", "menit", true, "Atur jeda patroli otomatis (foto + lokasi)."),
+        NumberInput("/pause", "⏸️ Jeda foto", "1-480", "menit", true, "Jeda foto otomatis sekian menit; foto manual /photo tetap bisa."),
+        NumberInput("/syncinterval", "\uD83D\uDD04 Interval sinkron", "1-1440", "menit", true, "Atur jeda putaran sinkronisasi data ke Telegram."),
+        NumberInput("/record", "\uD83C\uDF99 Rekam audio", "5-600", "detik", true, "Rekam suara sekitar HP sekian detik lalu kirim ke sini."),
+        NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-180", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
+        NumberInput("/ring", "\uD83D\uDD14 Bunyi HP", "5-60", "detik", false, "Bunyikan HP sekian detik (bawaan 15)."),
+        NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "1-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
+        NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home).")
+    )
+
+    @Volatile
+    private var pendingNumberCommand = ""
+
+    @Volatile
+    private var pendingNumberAt = 0L
+
+    private fun numberInputFor(command: String): NumberInput? {
+        val head = command.trim().substringBefore(" ").lowercase(java.util.Locale.ROOT)
+        return numberInputs.firstOrNull { it.command == head }
+    }
+
+    private fun numberInputMenu(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
+        return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+            numberInputs.chunked(2).map { baris ->
+                baris.map { com.redeye.parentalmonitor.network.InlineButton(it.button, "num:" + it.command.removePrefix("/")) }
+            }
+        )
+    }
+
+    private fun numberInputCurrent(input: NumberInput): String {
+        return try {
+            when (input.command) {
+                "/photointerval" -> {
+                    val menit = preferencesManager.cameraInterval
+                    if (menit <= 0) "mati (manual)" else "$menit mnt"
+                }
+                "/patrolinterval" -> {
+                    val menit = preferencesManager.patrolInterval
+                    "$menit mnt" + (if (preferencesManager.patrolEnabled) "" else " (patroli mati)")
+                }
+                "/pause" -> {
+                    val sisa = preferencesManager.photoPausedUntil - System.currentTimeMillis()
+                    if (sisa > 0L) "jeda " + (sisa / 60_000L + 1L) + " mnt lagi" else "sedang tidak dijeda"
+                }
+                "/syncinterval" -> preferencesManager.syncInterval.toString() + " mnt"
+                "/heartbeat" -> {
+                    val jam = preferencesManager.heartbeatHours
+                    if (jam <= 0) "mati" else "tiap $jam jam"
+                }
+                "/jemput" -> {
+                    val meter = preferencesManager.jemputRadiusM
+                    if (meter <= 0) "mati" else "±$meter m"
+                }
+                else -> ""
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private fun numberInputPrompt(input: NumberInput): String {
+        val kini = numberInputCurrent(input)
+        return buildString {
+            appendLine("\uD83D\uDD22 <b>" + input.button + "</b>")
+            appendLine("Kirim angkanya (" + input.range + " " + input.unit + ").")
+            appendLine("Balas <code>help</code> untuk keterangan tombol ini.")
+            if (kini.isNotEmpty()) appendLine("Sekarang: " + kini)
+        }.trim()
+    }
+
+    private fun numberInputHelp(input: NumberInput): String {
+        val kini = numberInputCurrent(input)
+        return buildString {
+            appendLine("\u2139\uFE0F <b>" + input.button + "</b>")
+            appendLine(input.note)
+            appendLine("Pakai: <code>" + input.command + " &lt;" + input.range + "&gt;</code> (" + input.unit + ")")
+            if (kini.isNotEmpty()) appendLine("Sekarang: " + kini)
+            appendLine("Cara cepat: tekan tombolnya, lalu balas angkanya (contoh <code>" + numberInputExample(input) + "</code>).")
+        }.trim()
+    }
+
+    private fun numberInputExample(input: NumberInput): String {
+        return when (input.command) {
+            "/photointerval" -> "15"
+            "/patrolinterval" -> "30"
+            "/pause" -> "60"
+            "/syncinterval" -> "5"
+            "/record" -> "30"
+            "/recordvideo" -> "10"
+            "/ring" -> "15"
+            "/heartbeat" -> "6"
+            "/jemput" -> "500"
+            else -> "10"
+        }
+    }
+
+    private suspend fun armNumberInput(command: String) {
+        val input = numberInputFor(command) ?: return
+        pendingNumberCommand = input.command
+        pendingNumberAt = System.currentTimeMillis()
+        sendToTelegram(numberInputPrompt(input), numberInputMenu())
+    }
+
+    private suspend fun consumeNumberInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
+        val pending = pendingNumberCommand
+        if (pending.isEmpty()) return false
+        if (System.currentTimeMillis() - pendingNumberAt > NUMBER_INPUT_TTL_MS) {
+            pendingNumberCommand = ""
+            return false
+        }
+        val bersih = text.trim()
+        if (bersih.isEmpty()) return false
+        if (bersih.startsWith("/")) {
+            pendingNumberCommand = ""
+            return false
+        }
+        val input = numberInputFor(pending)
+        if (input == null) {
+            pendingNumberCommand = ""
+            return false
+        }
+        if (bersih.equals("help", ignoreCase = true) || bersih.equals("bantuan", ignoreCase = true) || bersih == "?" || bersih.equals("cara", ignoreCase = true)) {
+            sendToTelegram(numberInputHelp(input))
+            return true
+        }
+        val angka = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
+        if (angka == null) {
+            pendingNumberCommand = ""
+            return false
+        }
+        pendingNumberCommand = ""
+        handleTelegramCommand(input.command + " " + angka, sentAtSec, ownerOk, chatOk, senderId, privateChat)
+        return true
     }
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
@@ -1634,7 +1794,15 @@ class MonitoringService : Service() {
         } else if (!senderOk && !chatOk) {
             return
         }
+        val numberInput = numberInputFor(command)
+        if (numberInput != null && numberInput.required && arg.isBlank()) {
+            armNumberInput(numberInput.command)
+            return
+        }
         when (command) {
+            "/tombol", "/angka" -> {
+                sendToTelegram("\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.", numberInputMenu())
+            }
             "/photo" -> handlePhotoCommand(arg)
             "/screenshot" -> {
                 if (preferencesManager.monitoringPaused) {
@@ -1896,6 +2064,7 @@ class MonitoringService : Service() {
                 appendLine("/hilang - bunyi+lokasi+foto sekaligus")
                 appendLine("/jemput &lt;meter|off&gt; - kabari saat dekat rumah")
                 appendLine("/log - log galat terakhir")
+                appendLine("/tombol - atur angka lewat tombol: tekan tombolnya, lalu balas angkanya")
                 appendLine("/help - daftar ini")
                 appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
             },

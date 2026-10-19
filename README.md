@@ -134,7 +134,10 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/storage` | Sisa penyimpanan |
 | `/log` | Log error terakhir |
 | `/ping` | Cek delay bot |
+| `/tombol` | Atur angka lewat tombol: tekan tombolnya, lalu balas angkanya |
 | `/help` | Semua perintah |
+
+Perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`) bisa dipakai tanpa mengetik perintahnya: kirim `/tombol` (atau ketuk tombol **Atur angka** di menu `mainMenu()` yang muncul di bawah `/help`), lalu ketuk tombol perintahnya dan balas angka — mis. ketuk **Interval foto** lalu balas `15` sama dengan `/photointerval 15`. Setelah tombol ditekan, balas `help` (`bantuan`/`cara`/`?`) untuk keterangan tombol itu: gunanya, rentangnya, dan nilai yang sedang dipakai. Balasan angka hanya berlaku 5 menit sejak tombol ditekan, dan batal sendiri kalau kamu kirim perintah lain.
 
 ## Kalau Error
 
