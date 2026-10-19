@@ -45,35 +45,7 @@ class SendMessageWorker(
     }
 
     private suspend fun doWorkInternal(): Result {
-        try {
-            messageQueue.tryRestorePersistent()
-        } catch (_: Exception) {
-        }
-        if (!preferencesManager.isConfigured()) {
-            try {
-                if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
-            return Result.success()
-        }
-        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
-            return Result.success()
-        }
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-            try {
-                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
-            return Result.success()
-        }
-        val rateRemain = NetworkUtils.rateLimitedRemainMs()
-        if (rateRemain > 0L) {
-            try {
-                MessageScheduler.scheduleMessageSendNext(applicationContext, rateRemain)
-            } catch (_: Exception) {
-            }
-            return Result.success()
-        }
+        guardPreconditions()?.let { return it }
 
         val runGen = messageQueue.queueGeneration()
         val queue = messageQueue.getQueue()
@@ -82,7 +54,6 @@ class SendMessageWorker(
         }
 
         val sentIds = mutableListOf<String>()
-        var transientMaxRetry = 0
         val failedIds = mutableListOf<String>()
         val rejectedIds = mutableListOf<String>()
         var authCode = 0
@@ -175,13 +146,6 @@ class SendMessageWorker(
             }
             return Result.success()
         }
-        fun credsSame(): Boolean {
-            return try {
-                preferencesManager.botToken == runToken && preferencesManager.chatId == runChatId
-            } catch (_: Exception) {
-                false
-            }
-        }
         if (!queueCleared && sentIds.size > flushedSent) {
             try {
                 messageQueue.removeMessages(sentIds)
@@ -192,7 +156,7 @@ class SendMessageWorker(
             messageQueue.flushSync()
         } catch (_: Exception) {
         }
-        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
+        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
             try {
                 messageQueue.removeMessages(rejectedIds)
             } catch (_: Exception) {
@@ -202,8 +166,66 @@ class SendMessageWorker(
             android.util.Log.w("SendMessageWorker", "Keeping ${rejectedIds.size} rejected message(s) for retry under fresh credentials")
         }
 
+        handleAuthOrRate(authCode, rateLimitedSecs, failedIds, queueCleared, runToken, runChatId)?.let { return it }
+        val credsSameNow = credsSame(runToken, runChatId)
+        if (sentIds.isNotEmpty() && credsSameNow) {
+            preferencesManager.setCredentialError("", 0L)
+        }
+        val transientMaxRetry = reportDrops(failedIds, rejectedIds, queueCleared, queue, runToken, runChatId)
+        if (messageQueue.getQueueSize() > 0) {
+            try {
+                val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
+                MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        return Result.success()
+    }
+
+    private fun guardPreconditions(): Result? {
+        try {
+            messageQueue.tryRestorePersistent()
+        } catch (_: Exception) {
+        }
+        if (!preferencesManager.isConfigured()) {
+            try {
+                if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
+            return Result.success()
+        }
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        val rateRemain = NetworkUtils.rateLimitedRemainMs()
+        if (rateRemain > 0L) {
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, rateRemain)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        return null
+    }
+
+    private fun handleAuthOrRate(
+        authCode: Int,
+        rateLimitedSecs: Long,
+        failedIds: List<String>,
+        queueCleared: Boolean,
+        runToken: String,
+        runChatId: String
+    ): Result? {
         var authDropped = 0
-        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && credsSame()) {
+        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
             try {
                 if (NetworkUtils.isNetworkAvailable(applicationContext)) {
                     authDropped = messageQueue.registerTransientFailures(failedIds).first.size
@@ -214,7 +236,7 @@ class SendMessageWorker(
         if (authCode != 0) {
             preferencesManager.setCredentialError(authCode.toString(), System.currentTimeMillis())
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
-            if (authDropped > 0 && !queueCleared && credsSame()) {
+            if (authDropped > 0 && !queueCleared && credsSame(runToken, runChatId)) {
                 try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
@@ -230,7 +252,7 @@ class SendMessageWorker(
                 MessageScheduler.scheduleMessageSendNext(applicationContext, rateLimitedSecs * 1000L)
             } catch (_: Exception) {
             }
-            if (authDropped > 0 && !queueCleared && credsSame()) {
+            if (authDropped > 0 && !queueCleared && credsSame(runToken, runChatId)) {
                 try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
@@ -239,18 +261,22 @@ class SendMessageWorker(
             }
             return Result.success()
         }
-        val credsSameNow = try {
-            preferencesManager.botToken == runToken && preferencesManager.chatId == runChatId
-        } catch (_: Exception) {
-            false
-        }
-        if (sentIds.isNotEmpty() && credsSameNow) {
-            preferencesManager.setCredentialError("", 0L)
-        }
+        return null
+    }
+
+    private suspend fun reportDrops(
+        failedIds: List<String>,
+        rejectedIds: List<String>,
+        queueCleared: Boolean,
+        queue: List<com.redeye.parentalmonitor.data.models.QueuedMessage>,
+        runToken: String,
+        runChatId: String
+    ): Int {
+        var transientMaxRetry = 0
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
         var dropSample = ""
-        if (!queueCleared && credsSame()) {
+        if (!queueCleared && credsSame(runToken, runChatId)) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
@@ -266,7 +292,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!queueCleared && failedIds.isNotEmpty() && credsSame()) {
+        if (!queueCleared && failedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
             val online = try {
                 NetworkUtils.isNetworkAvailable(applicationContext)
             } catch (_: Exception) {
@@ -277,7 +303,7 @@ class SendMessageWorker(
                     val droppedT = messageQueue.registerTransientFailures(failedIds)
                     val dropped = droppedT.first
                     transientMaxRetry = maxOf(transientMaxRetry, droppedT.second)
-                    if (dropped.isNotEmpty() && credsSame()) {
+                    if (dropped.isNotEmpty() && credsSame(runToken, runChatId)) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
                         dropTotal += dropped.size
                         dropParts.add("${dropped.size} setelah percobaan maksimal")
@@ -287,7 +313,7 @@ class SendMessageWorker(
             }
         }
 
-        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame()) {
+        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
             try {
                 dropSample = try {
                     queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
@@ -299,21 +325,21 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!queueCleared && dropTotal > 0 && credsSame()) {
+        if (!queueCleared && dropTotal > 0 && credsSame(runToken, runChatId)) {
             try {
                 sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
             } catch (_: Exception) {
             }
         }
-        if (messageQueue.getQueueSize() > 0) {
-            try {
-                val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
-                MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
-            } catch (_: Exception) {
-            }
-            return Result.success()
+        return transientMaxRetry
+    }
+
+    private fun credsSame(token: String, chatId: String): Boolean {
+        return try {
+            preferencesManager.botToken == token && preferencesManager.chatId == chatId
+        } catch (_: Exception) {
+            false
         }
-        return Result.success()
     }
 
     private sealed interface SendOutcome {

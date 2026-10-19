@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.6.384] - 2026-10-19
+### Changed
+- R8 (langkah 2): `SendMessageWorker.doWorkInternal()` yang 271 baris dipecah tanpa perubahan perilaku menjadi 138 baris ditambah tiga helper: `guardPreconditions()` (32 baris, lima penjaga awal), `handleAuthOrRate(...)` (47 baris, penanganan auth/rate-limit), dan `reportDrops(...)` (69 baris, hitungan pesan yang dibuang beserta notifikasinya). Fungsi lokal `credsSame()` diangkat menjadi anggota kelas `credsSame(token, chatId)`, dan blok `credsSameNow` yang isinya sama kini memakai helper itu, bukan salinan baru.
+- Bukti (skrip terpisah dari skrip transformasi): isi helper direkonstruksi ulang lalu dibandingkan baris demi baris dengan `doWorkInternal` lama — 255 baris vs 255 baris, identik (setelah definisi lokal `credsSame()` yang memang dipindah ke anggota kelas dikeluarkan). Setiap helper juga terbukti masih berupa potongan verbatim yang utuh di fungsi lama: `guardPreconditions` 29 baris, `handleAuthOrRate` 36 baris, `reportDrops` 57 baris. Tidak ada pernyataan yang hilang atau berpindah urutan.
+
 ## [1.6.383] - 2026-10-19
 ### Changed
 - R8 (langkah 1): `MonitoringService.sendToTelegram()` yang 235 baris dipecah tanpa perubahan perilaku. Cabang `400` menjadi `sendStatus400(code, goneBody, message, botToken, chatId, queueOnFail)` (47 baris), dan blok fallback teks-polos menjadi `sendPlainFallback(botToken, chatId, plain, queueOnFail)` (66 baris); fungsi induk kini 89 baris.
