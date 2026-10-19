@@ -1515,7 +1515,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("jejak", "Jejak lokasi hari ini"),
             com.redeye.parentalmonitor.network.BotCommand("waspada", "Skor kewaspadaan 0-100"),
             com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
-            com.redeye.parentalmonitor.network.BotCommand("help", "Daftar semua perintah"),
+            com.redeye.parentalmonitor.network.BotCommand("help", "Tombol aksi cepat"),
             com.redeye.parentalmonitor.network.BotCommand("tombol", "Atur angka: interval, jeda, rekam, bunyi, denyut, jemput"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Tautkan/pairing perangkat")
         )
@@ -1525,7 +1525,7 @@ class MonitoringService : Service() {
         return listOf(
             com.redeye.parentalmonitor.network.BotCommand("ping", "Cek delay"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Mulai / tautkan HP ini"),
-            com.redeye.parentalmonitor.network.BotCommand("help", "Daftar perintah")
+            com.redeye.parentalmonitor.network.BotCommand("help", "Bantuan")
         )
     }
 
@@ -1995,65 +1995,7 @@ class MonitoringService : Service() {
             )
             return
         }
-        sendToTelegram(
-            buildString {
-                appendLine("👆 <b>Ketuk tombol di bawah</b>")
-                appendLine()
-                appendLine("🤖 <b>Perintah</b>")
-                appendLine("/photo - ambil foto sekarang")
-                appendLine("/screenshot - ambil layar HP")
-                appendLine("/camera &lt;depan|belakang&gt; - ganti kamera")
-                appendLine("/location - kirim lokasi sekarang")
-                appendLine("/darurat - lokasi+foto+baterai sekaligus")
-                appendLine("/lastcalls - 5 panggilan terakhir")
-                appendLine("/lastsms - 5 SMS terakhir")
-                appendLine("/patrol &lt;on|off&gt; - patroli foto + lokasi otomatis")
-                appendLine("/night &lt;on|off&gt; - sunyi 23:00-05:00")
-                appendLine("/battery - lihat baterai")
-                appendLine("/status - status monitoring")
-                appendLine("/ringkas - status+izin+antrean sekaligus")
-                appendLine("/perms - daftar izin aplikasi")
-                appendLine("/stop - jeda monitoring")
-                appendLine("/resume - lanjutkan monitoring")
-                appendLine("/notif &lt;on|off|status&gt; - teruskan notifikasi")
-                appendLine("/restart - restart loop monitoring")
-                appendLine("/flush - kirim antrean sekarang")
-                appendLine("/clearqueue - buang antrean")
-                appendLine("/lock - kunci layar HP")
-                appendLine("/ping [camera|location] - cek delay")
-                appendLine("/sms &lt;nomor&gt; &lt;pesan&gt; - kirim SMS")
-                appendLine("/smsconfirm - konfirmasi SMS tertunda")
-                appendLine("/lastnotif - notifikasi terakhir")
-                appendLine("/version - versi app + HP")
-                appendLine("/uptime - lama service jalan")
-                appendLine("/alive - denyut terakhir + berapa kali dipulihkan")
-                appendLine("/cekmati - uji anti-mati: servis dihentikan lalu lapor hasilnya")
-                appendLine("/sembuh - pemulihan penuh: kredensial, webhook, menu, semua loop")
-                appendLine("/layar [jam 1-24] - ringkasan pemakaian layar per aplikasi")
-                appendLine("/kendara on|off|status - kabar kalau anak sedang berkendara (kecepatan tinggi)")
-                appendLine("/hematdata on|off|status - tahan kirim foto/video sampai tersambung Wi-Fi")
-                appendLine("/contacts &lt;nama&gt; - cari kontak")
-                appendLine("/apps [N] - daftar aplikasi")
-                appendLine("/storage - sisa penyimpanan")
-                appendLine("/history &lt;nomor&gt; - call+SMS per nomor")
-                appendLine("/watch &lt;a,b|status|off&gt; - awasi kata berbahaya")
-                appendLine("/watchnomor &lt;nomor|status|off&gt; - awasi nomor")
-                appendLine("/home &lt;lat,lon,rad|status|off&gt; - geofence rumah")
-                appendLine("/school &lt;lat,lon,rad|status|off&gt; - geofence sekolah")
-                appendLine("/jampulang &lt;HH:MM|off&gt; - jam malam + cek sekolah 08–15")
-                appendLine("/digest - ringkasan harian")
-                appendLine("/minggu - laporan 7 hari")
-                appendLine("/jejak - jejak lokasi hari ini")
-                appendLine("/waspada - skor kewaspadaan 0-100")
-                appendLine("/hilang - bunyi+lokasi+foto sekaligus")
-                appendLine("/log - log galat terakhir")
-                appendLine("/tombol - atur angka lewat tombol: interval foto/patroli, jeda, sync, rekam audio/video, bunyi, denyut, jemput")
-                appendLine("   (tekan tombolnya, lalu balas angkanya; balas help untuk keterangan)")
-                appendLine("/help - daftar ini")
-                appendLine("Tanpa / juga bisa: dimana, foto, ding, kunci, baterai, bantu")
-            },
-            mainMenu()
-        )
+        sendToTelegram("\uD83D\uDC46 <b>Ketuk tombol di bawah</b>", mainMenu())
     }
 
 

@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.6.393] - 2026-10-19
+### Changed
+- Teks `/help` tidak lagi memuat daftar perintah: isinya kini hanya judul "👆 Ketuk tombol di bawah" + tombol aksi (`mainMenu()`). Blok daftar perintah (49 baris, termasuk penutup "Tanpa / juga bisa: …") dihapus dari pesan; `handleHelpCommand()` menyusut dari 59 baris isi pesan menjadi satu kali `sendToTelegram(judul, mainMenu())`.
+- Deskripsi perintah `help` di daftar perintah Telegram disesuaikan: `Daftar semua perintah` → `Tombol aksi cepat`, dan versi publik (non-owner) `Daftar perintah` → `Bantuan`, supaya cocok dengan isi barunya. Daftar perintah Telegram (menu `/`) sendiri belum disentuh — rujukan singkat tiap perintah (mis. `/home lat,lon,rad|status|off`) tetap ada di sana.
+- Perilaku perintah tidak berubah: `/help` dan `/start` tetap membalas tombol, dan pengirim non-owner tetap menerima pesan pendek yang lama.
+- `README.md` menyesuaikan baris `/help` serta catatan alur tombol.
+
 ## [1.6.392] - 2026-10-19
 ### Changed
 - Perintah angka tidak lagi ditampilkan sebagai perintah teks: `/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, dan `/jemput` dihapus dari daftar perintah Telegram (menu `/`) dan dari teks `/help` — jalan resminya lewat tombol di `/tombol` (atau tombol "🔢 Atur angka" di menu utama). Mengetiknya langsung tetap berfungsi (`/photointerval 15`, `/jemput off`, `/heartbeat 0`, `/ring 20`), jadi tidak ada kemampuan yang hilang, hanya tampilannya yang dipindah ke tombol.
