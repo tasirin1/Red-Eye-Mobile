@@ -76,6 +76,16 @@ jobs:
           fi
           echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
 
+      - name: Unit test (logika murni)
+        run: |
+          for i in 1 2 3; do
+            gradle testDebugUnitTest --stacktrace && break || s=$?
+            if [ "$i" -eq 3 ]; then exit "$s"; fi
+            sleep $((i * 60))
+          done
+        env:
+          SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
+
       - name: Decode release keystore
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then

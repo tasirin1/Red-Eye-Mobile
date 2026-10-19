@@ -3,7 +3,7 @@
 Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat orang tua, bukan buat iseng.
 
 > Build JANGAN lokal. Semua APK dibangun di GitHub Actions.
-> `builder.sh` / `builder.bat` itu LEGACY, jangan dipakai lagi.
+> `builder.sh` / `builder.bat` itu LEGACY dan sudah dihentikan — kalau dijalankan, keduanya berhenti sendiri tanpa mengubah berkas apa pun.
 
 ---
 

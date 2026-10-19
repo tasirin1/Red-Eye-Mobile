@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.379] - 2026-10-19
+### Security
+- `builder.sh` / `builder.bat` kini berhenti sendiri (`exit 1`) sebelum menyentuh berkas apa pun. Alur LEGACY keduanya menulis token bot ke `app/build.gradle` yang di-track Git — risiko kredensial bocor ke repositori. Sekarang henti total, bukan cuma banner.
+### Added
+- Uji JVM pertama untuk logika murni di `app/src/test/java/com/redeye/parentalmonitor/utils/` (dependency baru `junit:junit:4.13.2`): `TextChunk.safeCut` (batas potongan, pasangan surrogate, entitas/tag HTML, jaminan kemajuan, batas aman), `PhoneNumbers` (varian `62`/`08`, kesamaan lewat sufiks, nomor pendek harus persis, pembersihan pemisah), `Redact.token` (rahasia angka pendek dibatasi digit, pola token Telegram, nilai kosong), dan `Html` (`escape`/`unescape`, pembuangan tag, entitas asing dibiarkan).
+### Changed
+- CI menjalankan `gradle testDebugUnitTest` sebelum membangun APK, jadi uji murni menjadi gerbang mutu: build gagal bila ujinya gagal.
+
 ## [1.6.378] - 2026-10-18
 ### Changed
 - Tipe FGS yang sudah ditolak sistem tak dicoba ulang tiap tangkapan: `ensureForegroundTypes()` dulu mengulang `startForeground` dengan tipe lengkap yang sama pada setiap lokasi/foto/screenshot/audio/video (dan itu memang gagal terus bila penyebabnya konfigurasi manifest). Penolakan kini diingat di `rejectedFgsTypes`, dan bila izin berubah sehingga tipe yang dihitung berbeda, percobaan otomatis jalan lagi.

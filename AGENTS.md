@@ -22,7 +22,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 ## 3. Alur Konfigurasi Bot (Wajib)
 
 - Sumber kebenaran: input manual dari halaman Setup di aplikasi (`SetupActivity`, dibuka via kalkulator `1234` + `=`).
-- `builder.sh` / `builder.bat` adalah LEGACY — jangan dipakai untuk alur baru, jangan dikembangkan, jangan dijadikan acuan. Biarkan apa adanya kecuali memberi banner deprecasi.
+- `builder.sh` / `builder.bat` adalah LEGACY — jangan dipakai untuk alur baru, jangan dikembangkan, jangan dijadikan acuan. Keduanya kini berhenti sendiri (banner + `exit`) sebelum menulis apa pun, karena alur lamanya menulis token bot ke `app/build.gradle` yang di-track; jangan diaktifkan ulang.
 - `app/build.gradle` hanya membaca token dari Gradle property / env saat CI, tidak pernah hardcode.
 
 ## 4. Struktur Kode yang Berlaku
