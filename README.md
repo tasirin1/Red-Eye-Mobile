@@ -178,5 +178,6 @@ app/src/main/res/          layout, drawable, strings
 ## Lisensi & Legal
 
 Lisensi MIT, lihat `LICENSE`.
+Berdasarkan Red Eye Mobile karya Akhatkulov (MIT); modifikasi © 2026 Julius rudy tasirin.
 
 Khusus monitoring legal orang tua ke HP anak sendiri. Jangan buat mata-matain orang lain. Patuhi hukum setempat. Salah pakai tanggung jawab sendiri.
