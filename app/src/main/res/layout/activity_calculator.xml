@@ -3,32 +3,36 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:padding="16dp"
+    android:clipToPadding="false"
+    android:clipChildren="false"
     android:background="@color/calc_background">
 
     <!-- Display card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginBottom="12dp"
+        android:layout_weight="1.05"
+        android:layout_marginBottom="16dp"
         android:background="@drawable/calc_display_bg"
-        android:elevation="6dp"
+        android:elevation="10dp"
         android:gravity="end|bottom"
         android:orientation="vertical"
-        android:padding="18dp">
+        android:padding="24dp">
 
         <TextView
             android:id="@+id/calculatorHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="end"
-            android:minHeight="24dp"
+            android:minHeight="26dp"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:text=""
             android:textColor="@color/calc_history_text"
-            android:textSize="16sp"
-            android:fontFamily="sans-serif-light"
-            android:singleLine="true" />
+            android:textSize="18sp"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false" />
 
         <TextView
             android:id="@+id/calculatorDisplay"
@@ -36,11 +40,13 @@
             android:layout_height="wrap_content"
             android:accessibilityLiveRegion="polite"
             android:gravity="end"
+            android:maxLines="1"
             android:text="0"
             android:textColor="@color/calc_display_text"
-            android:textSize="44sp"
-            android:fontFamily="sans-serif-light"
-            android:singleLine="true" />
+            android:textSize="56sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-black"
+            android:includeFontPadding="false" />
 
     </LinearLayout>
 
@@ -48,37 +54,44 @@
     <GridLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_weight="2.15"
         android:columnCount="4"
-        android:rowCount="5">
+        android:rowCount="5"
+        android:clipToPadding="false"
+        android:clipChildren="false">
 
-        <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="C" />
-        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton" android:text="÷" />
-        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton" android:text="×" />
-        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton" android:text="−" />
+        <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="AC" />
+        <Button android:id="@+id/btnToggleSign" style="@style/CalculatorButton.Utility" android:text="±" />
+        <Button android:id="@+id/btnPercent" style="@style/CalculatorButton.Utility" android:text="%" />
+        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.OperationBlue" android:text="÷" />
 
         <Button android:id="@+id/btn7" style="@style/CalculatorButton.Number" android:text="7" />
         <Button android:id="@+id/btn8" style="@style/CalculatorButton.Number" android:text="8" />
         <Button android:id="@+id/btn9" style="@style/CalculatorButton.Number" android:text="9" />
-        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton" android:text="+" />
+        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.OperationOrange" android:text="×" />
 
         <Button android:id="@+id/btn4" style="@style/CalculatorButton.Number" android:text="4" />
         <Button android:id="@+id/btn5" style="@style/CalculatorButton.Number" android:text="5" />
         <Button android:id="@+id/btn6" style="@style/CalculatorButton.Number" android:text="6" />
-        <Button android:id="@+id/btnEquals" style="@style/CalculatorButton.Accent"
-            android:text="="
-            android:layout_rowSpan="3"
-            android:layout_gravity="fill_vertical" />
+        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.OperationBlue" android:text="−" />
 
         <Button android:id="@+id/btn1" style="@style/CalculatorButton.Number" android:text="1" />
         <Button android:id="@+id/btn2" style="@style/CalculatorButton.Number" android:text="2" />
         <Button android:id="@+id/btn3" style="@style/CalculatorButton.Number" android:text="3" />
+        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton.OperationOrange" android:text="+" />
 
         <Button android:id="@+id/btn0" style="@style/CalculatorButton.Number"
             android:text="0"
             android:layout_columnSpan="2"
+            android:layout_rowWeight="1.15"
             android:layout_gravity="fill_horizontal" />
-        <Button android:id="@+id/btnDot" style="@style/CalculatorButton.Number" android:text="." />
+        <Button android:id="@+id/btnDot" style="@style/CalculatorButton.Number"
+            android:text="."
+            android:layout_rowWeight="1.15" />
+        <Button android:id="@+id/btnEquals" style="@style/CalculatorButton.Accent"
+            android:text="="
+            android:layout_rowWeight="1.15"
+            android:layout_gravity="fill" />
 
     </GridLayout>
 

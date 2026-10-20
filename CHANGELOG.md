@@ -1,3 +1,12 @@
+## [Unreleased]
+### Added
+- Tombol `±` (ubah tanda) dan `%` (persen) pada kalkulator stealth; kode rahasia `1234=` dan aturan hitung tetap sama.
+- Unit test `CalculatorFormat` untuk pemisah ribuan, bilangan negatif, notasi ilmiah, dan riwayat ekspresi.
+
+### Changed
+- Tampilan kalkulator memakai gaya Material 3 Expressive: kartu layar gelap, tombol pil pastel, operasi biru/oranye, tombol `=` teal, dan bayangan lembut.
+- Angka pada layar dan riwayat memakai pemisah ribuan; angka setelah `=` tetap memulai entri baru dan dibatasi 12 digit.
+
 ## [1.6.408] - 2026-10-20
 ### Fixed
 - Worker pengirim antrean tidak lagi menjadwalkan ulang dengan `REPLACE` dari dalam dirinya sendiri; jadwal lanjutan memakai `APPEND_OR_REPLACE` agar worker yang sedang berjalan tidak dibatalkan.

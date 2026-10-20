@@ -70,7 +70,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 15. Opsional: tap **Kode restore ketat** dan nyalakan switch kalau `/pulihkan` mau mewajibkan kode 6 digit dari perangkat.
 16. Tap Enable monitoring, selesai. Cek via Send Status.
 
-Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit.
+Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit. Tombol `±` dan `%` juga aktif, dan angka besar ditampilkan dengan pemisah ribuan.
 
 ## Dipakai Harian
 
