@@ -4,10 +4,14 @@ object RestoreRules {
     const val MAX_BACKUP_BYTES = 64 * 1024
     private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
     private val CHAT_REGEX = Regex("^-?[0-9]{4,}$")
+    private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
 
     fun isValidToken(value: String): Boolean = TOKEN_REGEX.matches(value.trim())
 
-    fun isValidChatId(value: String): Boolean = CHAT_REGEX.matches(value.trim())
+    fun isValidChatId(value: String): Boolean {
+        val chat = value.trim()
+        return CHAT_REGEX.matches(chat) || USERNAME_REGEX.matches(chat)
+    }
 
     fun isBackupFileName(name: String): Boolean = name.trim().endsWith(".redeyebak", ignoreCase = true)
 

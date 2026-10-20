@@ -1,3 +1,8 @@
+## [1.6.417] - 2026-10-20
+### Fixed
+- Tombol Simpan/Tes tidak lagi menandai kredensial tersimpan sebagai error saat token atau Chat ID yang diuji berbeda dari yang tersimpan; status error hanya diperbarui untuk kredensial yang benar-benar aktif.
+- `/pulihkan` menerima Chat ID berbentuk `@username` seperti yang sudah diterima halaman Setup, sehingga backup dari Setup tidak lagi ditolak karena bentuk Chat ID.
+
 ## [1.6.416] - 2026-10-20
 ### Fixed
 - Deteksi OTP memakai batas kata, sehingga `shopping` tidak lagi dianggap OTP dan kode berbahasa Inggris seperti `code`/`verify` ikut dikenali.

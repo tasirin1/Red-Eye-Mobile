@@ -19,7 +19,9 @@ class RestoreRulesTest {
         assertTrue(RestoreRules.isValidChatId("123456789"))
         assertTrue(RestoreRules.isValidChatId("-1001234567890"))
         assertFalse(RestoreRules.isValidChatId("123"))
-        assertFalse(RestoreRules.isValidChatId("@channel"))
+        assertTrue(RestoreRules.isValidChatId("@channel"))
+        assertTrue(RestoreRules.isValidChatId("@channel_name"))
+        assertFalse(RestoreRules.isValidChatId("@abc"))
     }
 
     @Test

@@ -592,8 +592,9 @@ class SetupActivity : AppCompatActivity() {
         try { testJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val currentToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
             val token = resolveStored(rawToken, currentToken)
-            var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            var chatId = resolveStored(rawChat, storedChatId)
             val accessPin = if (token != currentToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -636,12 +637,7 @@ class SetupActivity : AppCompatActivity() {
                 if (mySave != saveSeq.get()) return@launch
                 if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                     val code = meResp.code()
-                    if (code == 401 || code == 403) {
-                        try {
-                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
-                        } catch (_: Exception) {
-                        }
-                    }
+                    markCredentialErrorIfStored(code, token, chatId, currentToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
                     }
@@ -652,12 +648,7 @@ class SetupActivity : AppCompatActivity() {
                 if (mySave != saveSeq.get()) return@launch
                 if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
                     val code = chatResp.code()
-                    if (code == 401 || code == 403) {
-                        try {
-                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
-                        } catch (_: Exception) {
-                        }
-                    }
+                    markCredentialErrorIfStored(code, token, chatId, currentToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
                     }
@@ -999,8 +990,9 @@ class SetupActivity : AppCompatActivity() {
         try { saveJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
             val token = resolveStored(rawToken, storedToken)
-            var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            var chatId = resolveStored(rawChat, storedChatId)
             val accessPin = if (token != storedToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1028,12 +1020,7 @@ class SetupActivity : AppCompatActivity() {
                 if (myTest != testSeq.get()) return@launch
                 if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                     val code = meResp.code()
-                    if (code == 401 || code == 403) {
-                        try {
-                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
-                        } catch (_: Exception) {
-                        }
-                    }
+                    markCredentialErrorIfStored(code, token, chatId, storedToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
@@ -1067,12 +1054,7 @@ class SetupActivity : AppCompatActivity() {
                     }
                 } else {
                     val code = chatResp.code()
-                    if (code == 401 || code == 403) {
-                        try {
-                            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
-                        } catch (_: Exception) {
-                        }
-                    }
+                    markCredentialErrorIfStored(code, token, chatId, storedToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
@@ -1091,6 +1073,15 @@ class SetupActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@withContext
                 updateStatus()
             }
+        }
+    }
+
+    private fun markCredentialErrorIfStored(code: Int, token: String, chatId: String, storedToken: String, storedChatId: String) {
+        if (code != 401 && code != 403) return
+        if (token != storedToken || chatId != storedChatId) return
+        try {
+            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
+        } catch (_: Exception) {
         }
     }
 
