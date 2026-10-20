@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.407] - 2026-10-20
 ### Added
 - `/logout` dari private owner untuk mencabut sesi owner; tombol **🚪 Logout owner** juga tersedia di menu **⚙️ Alat & kontrol**.
 - Unit test `OwnerAccess` untuk aturan owner ID, PIN aktif, dan fallback Chat ID.
