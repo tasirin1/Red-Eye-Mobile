@@ -8,7 +8,7 @@
     <color name="calc_display_stroke">#26FFFFFF</color>
     <color name="calc_display_text">#FFFFF8EF</color>
     <color name="calc_history_text">#FFC9BFB4</color>
-    <color name="calc_btn_number">#FFFFF9F0</color>
+    <color name="calc_btn_number">#FFFFFFFF</color>
     <color name="calc_btn_function">#FFE8A27A</color>
     <color name="calc_btn_text">#FF3A2A21</color>
     <color name="calc_accent">#FF1B4D3E</color>
