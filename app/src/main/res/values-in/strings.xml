@@ -65,6 +65,7 @@
     <string name="shot_a11y_description">Membantu mengambil tangkapan layar perangkat ini saat pemilik memintanya.</string>
     <string name="setup_status_sent">Status terkirim — cek Telegram</string>
     <string name="setup_fill_all">Isi Token Bot dan Chat ID dulu</string>
+    <string name="setup_loading">Pengaturan masih dimuat, coba lagi sebentar</string>
     <string name="setup_bad_token">Format token salah, harus mengandung :</string>
     <string name="setup_bad_chat">Format chat ID salah: angka (contoh -1001234567890) atau @username</string>
     <string name="setup_bad_interval">Interval salah, harus 1-1440 mnt (kamera 0-60 mnt)</string>
@@ -102,9 +103,9 @@
     <string name="msg_action_failed">Aksi gagal, coba lagi</string>
     <string name="msg_open_setup_failed">Tak bisa buka setup: %1$s</string>
     <string name="resume_title">Layanan dijeda</string>
-    <string name="resume_text">Ketuk untuk buka setingan</string>
+    <string name="resume_text">Buka aplikasi untuk memulihkan pemantauan</string>
     <string name="storage_fallback_title">Penyimpanan aman tak tersedia</string>
-    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Ketuk untuk buka Setup dan simpan ulang.</string>
+    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Buka aplikasi, lalu simpan ulang dari Setup.</string>
     <string name="admin_disabled">⚠️ Proteksi dimatikan!</string>
     <string name="admin_disable_warning">⚠️ Hati-hati! Admin Perangkat harus dimatikan sebelum uninstall aplikasi ini!</string>
     <string name="setup_status_owner_known">Pemilik: dikenali</string>

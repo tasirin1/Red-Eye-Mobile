@@ -58,7 +58,8 @@ data class TelegramIncomingMessage(
     @SerializedName("from") val from: TelegramUser? = null,
     @SerializedName("text") val text: String?,
     @SerializedName("caption") val caption: String? = null,
-    @SerializedName("date") val date: Long = 0
+    @SerializedName("date") val date: Long = 0,
+    @SerializedName("edit_date") val editDate: Long = 0
 )
 
 data class TelegramUpdate(

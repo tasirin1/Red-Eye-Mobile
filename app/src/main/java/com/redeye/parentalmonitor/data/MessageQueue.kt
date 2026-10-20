@@ -202,9 +202,15 @@ class MessageQueue private constructor(context: Context) {
         if (volatileOnly) return
         try {
             val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())
-            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) editor?.apply() else editor?.commit()
-            dropsDirty = false
+            val saved = if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                editor?.apply()
+                editor != null
+            } else {
+                editor?.commit() == true
+            }
+            dropsDirty = !saved
         } catch (_: Exception) {
+            dropsDirty = true
         }
     }
 
@@ -382,13 +388,19 @@ class MessageQueue private constructor(context: Context) {
             synchronized(lock) {
                 val pending = cached
                 if (pending != null && persistDirty) {
+                    var saved = false
                     try {
                         val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(pending))
-                        if (onMain) editor?.apply() else editor?.commit()
+                        if (onMain) {
+                            editor?.apply()
+                            saved = editor != null
+                        } else {
+                            saved = editor?.commit() == true
+                        }
                     } catch (_: Exception) {
                     }
-                    persistDirty = false
-                    lastPersistAt = android.os.SystemClock.elapsedRealtime()
+                    persistDirty = !saved
+                    if (saved) lastPersistAt = android.os.SystemClock.elapsedRealtime()
                 }
                 if (dropsDirty) {
                     persistDropCountsLocked()
@@ -475,12 +487,14 @@ class MessageQueue private constructor(context: Context) {
         try {
             val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
             if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
-                editor?.commit()
+                val saved = editor?.commit() == true
+                persistDirty = !saved
             } else {
                 editor?.apply()
                 persistDirty = editor != null
             }
         } catch (_: Exception) {
+            persistDirty = true
         }
     }
 

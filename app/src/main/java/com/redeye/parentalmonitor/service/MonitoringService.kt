@@ -282,6 +282,8 @@ class MonitoringService : Service() {
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
         private const val MAX_PHOTO_KEPT = 10
+        private const val DATA_QUEUE_SOFT_LIMIT = 90
+        private const val MEDIA_UPLOAD_GRACE_MS = 600_000L
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
@@ -1478,7 +1480,12 @@ class MonitoringService : Service() {
         }
         val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
         val originOk = originChat.isNotEmpty() && originChat == chatId
-        val pressedAt = try { query.message?.date ?: 0L } catch (_: Exception) { 0L }
+        val pressedAt = try {
+            val msg = query.message
+            if (msg == null) 0L else if (msg.editDate > msg.date) msg.editDate else msg.date
+        } catch (_: Exception) {
+            0L
+        }
         val gateCommand = command.substringBefore(" ")
         if (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS) {
             if (pressedAt <= 0L || System.currentTimeMillis() / 1000L - pressedAt > MUTATING_MAX_AGE_SEC) {
@@ -1521,21 +1528,16 @@ class MonitoringService : Service() {
                 androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) return
             authReminderAt.set(now)
-            val tap = android.app.PendingIntent.getActivity(
-                this,
-                1,
-                Intent(this, com.redeye.parentalmonitor.ui.SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-            )
+            val tap = setupTapIntent()
             val title = when (code) {
                 400 -> "Chat tak ditemukan (400)"
                 403 -> "Bot diblokir/dikeluarkan dari chat (403)"
                 else -> "Token bot ditolak ($code)"
             }
             val text = when (code) {
-                400 -> "Buka Setup dan perbaiki Chat ID agar pesan jalan lagi."
+                400 -> "Buka aplikasi, lalu perbaiki Chat ID di halaman Setup."
                 403 -> "Buka Telegram: buka blokir bot atau undang lagi bot ke chat, lalu kirim /status (perintah dibaca lagi dalam ±5 menit)."
-                else -> "Buka Setup dan perbaiki token agar perintah jalan lagi."
+                else -> "Buka aplikasi, lalu perbaiki token di halaman Setup."
             }
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -3391,6 +3393,14 @@ class MonitoringService : Service() {
 
     private suspend fun sendInitialData() {
         try {
+            if (!hasNetwork()) {
+                initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 5 * 60_000L
+                return
+            }
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+                initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
+                return
+            }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
             val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
@@ -3454,8 +3464,9 @@ class MonitoringService : Service() {
                     return
                 }
                 val wasDone = try { preferencesManager.initialSyncDone } catch (_: Exception) { true }
+                val queuedNow = try { messageQueue.getQueueSize() } catch (_: Exception) { 0 }
                 preferencesManager.setInitialSyncDoneSync(true)
-                if (!wasDone) sendToTelegram("Monitoring jalan. Belum ada riwayat SMS/panggilan di HP ini.")
+                if (!wasDone && queuedNow == 0) sendToTelegram("Monitoring jalan. Belum ada riwayat SMS/panggilan di HP ini.")
                 return
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending start message...")
@@ -3480,6 +3491,10 @@ class MonitoringService : Service() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingSms.size} SMS...")
                 val smsTotal = pendingSms.size
                 for ((index, part) in pendingSms.chunked(10).withIndex()) {
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
+                        initialOk = false
+                        break
+                    }
                     val message = buildString {
                         appendLine("💬 <b>Riwayat SMS (${index * 10 + 1}-${index * 10 + part.size} dari $smsTotal)</b>")
                         appendLine()
@@ -3508,6 +3523,10 @@ class MonitoringService : Service() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingCalls.size} calls...")
                 val callTotal = pendingCalls.size
                 for ((index, part) in pendingCalls.chunked(10).withIndex()) {
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
+                        initialOk = false
+                        break
+                    }
                     val message = buildString {
                         appendLine("📞 <b>Riwayat Panggilan (${index * 10 + 1}-${index * 10 + part.size} dari $callTotal)</b>")
                         appendLine()
@@ -3607,6 +3626,7 @@ class MonitoringService : Service() {
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in smsPage.chunked(10)) {
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
                     smsCursor = maxOf(smsCursor, part.maxOf { it.id })
                     try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
@@ -3635,6 +3655,7 @@ class MonitoringService : Service() {
                 var callSentAny = false
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in callPage.chunked(10)) {
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
                     try {
                         val latest = part.maxWith(compareBy({ it.date }, { it.id }))
@@ -5196,8 +5217,16 @@ class MonitoringService : Service() {
                     nowMin >= startMin && nowMin < morningEnd
                 }
             }
-            val inSchool = day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15
-            if (!inCurfew && !inSchool) return
+            val homeLat = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val homeLon = try { preferencesManager.homeLonE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val homeRad = try { preferencesManager.homeRadiusM } catch (_: Exception) { 0 }
+            val homeFence = homeLat != Long.MIN_VALUE && homeLon != Long.MIN_VALUE && homeRad > 0
+            val schoolLat = try { preferencesManager.schoolLatE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val schoolLon = try { preferencesManager.schoolLonE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val schoolRad = try { preferencesManager.schoolRadiusM } catch (_: Exception) { 0 }
+            val schoolFence = schoolLat != Long.MIN_VALUE && schoolLon != Long.MIN_VALUE && schoolRad > 0
+            val inSchool = schoolFence && day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15
+            if (!(inCurfew && homeFence) && !inSchool) return
             val key = todayKey(if (h < 5) now - 24 * 60 * 60_000L else now)
             if (key.isEmpty()) return
             var pos = lastSentLatLon()
@@ -5213,30 +5242,20 @@ class MonitoringService : Service() {
                 pos = Pair(fix.latitude, fix.longitude)
             }
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
-            if (inCurfew && curfewDone != key) {
-                val la = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
-                val lo = try { preferencesManager.homeLonE6 } catch (_: Exception) { Long.MIN_VALUE }
-                val rad = try { preferencesManager.homeRadiusM } catch (_: Exception) { 0 }
-                if (la != Long.MIN_VALUE && lo != Long.MIN_VALUE && rad > 0) {
-                    val dist = distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second)
-                    if (dist >= 0f && dist > rad) {
-                        try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
-                        sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")
-                        return
-                    }
+            if (inCurfew && homeFence && curfewDone != key) {
+                val dist = distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
+                if (dist >= 0f && dist > homeRad) {
+                    try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
+                    sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")
+                    return
                 }
             }
             val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
             if (inSchool && schoolDone != key) {
-                val la = try { preferencesManager.schoolLatE6 } catch (_: Exception) { Long.MIN_VALUE }
-                val lo = try { preferencesManager.schoolLonE6 } catch (_: Exception) { Long.MIN_VALUE }
-                val rad = try { preferencesManager.schoolRadiusM } catch (_: Exception) { 0 }
-                if (la != Long.MIN_VALUE && lo != Long.MIN_VALUE && rad > 0) {
-                    val dist = distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second)
-                    if (dist >= 0f && dist > rad) {
-                        try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
-                        sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
-                    }
+                val dist = distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
+                if (dist >= 0f && dist > schoolRad) {
+                    try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
+                    sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
                 }
             }
         } catch (_: Exception) {
@@ -5402,11 +5421,6 @@ class MonitoringService : Service() {
         }
         try {
             if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
-        } catch (_: Exception) {
-        }
-        try {
-            val now = System.currentTimeMillis()
-            if (now - preferencesManager.lastDataAt > 10 * 60_000L) preferencesManager.lastDataAt = now
         } catch (_: Exception) {
         }
     }
@@ -7133,8 +7147,9 @@ class MonitoringService : Service() {
             }
         }
         ensureForegroundTypes()
-        val audioLock = acquireOpWakeLock("record", seconds * 1000L + 180_000L)
+        val audioLock = acquireOpWakeLock("record", seconds * 1000L + MEDIA_UPLOAD_GRACE_MS + 60_000L)
         val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
+        val audioTmp = File(cacheDir, audioFile.name + ".tmp")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null
@@ -7148,7 +7163,7 @@ class MonitoringService : Service() {
             recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
             recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
             recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
-            recorder.setOutputFile(audioFile.absolutePath)
+            recorder.setOutputFile(audioTmp.absolutePath)
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
@@ -7161,18 +7176,32 @@ class MonitoringService : Service() {
             }
             if (!stopOk) {
                 try {
-                    deleteQuietly(audioFile)
+                    deleteQuietly(audioTmp)
                 } catch (_: Exception) {
                 }
                 sendToTelegram("Gagal merekam (rekaman tidak final). Coba lagi.")
                 return
             }
-            if (!audioFile.exists() || audioFile.length() == 0L) {
+            if (!audioTmp.exists() || audioTmp.length() == 0L) {
                 try {
-                    deleteQuietly(audioFile)
+                    deleteQuietly(audioTmp)
                 } catch (_: Exception) {
                 }
                 sendToTelegram("Gagal merekam (audio kosong). Coba lagi.")
+                return
+            }
+            val finalized = try {
+                deleteQuietly(audioFile)
+                audioTmp.renameTo(audioFile)
+            } catch (_: Exception) {
+                false
+            }
+            if (!finalized) {
+                try {
+                    deleteQuietly(audioTmp)
+                } catch (_: Exception) {
+                }
+                sendToTelegram("Gagal menyiapkan rekaman. Coba lagi.")
                 return
             }
             recorderActive.set(false)
@@ -7211,8 +7240,10 @@ class MonitoringService : Service() {
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
+            var stopped = false
             try {
                 recorder?.stop()
+                stopped = true
             } catch (_: Exception) {
             }
             if (audioOutcome == MediaSendOutcome.SENT) {
@@ -7229,13 +7260,31 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             } else {
-                keepForRetry = try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
+                val ready = try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
+                val finalized = if (ready) {
+                    true
+                } else if (stopped) {
+                    try {
+                        deleteQuietly(audioFile)
+                        audioTmp.renameTo(audioFile)
+                    } catch (_: Exception) {
+                        false
+                    }
+                } else {
+                    false
+                }
+                keepForRetry = finalized && try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
+                if (!keepForRetry) {
+                    try { deleteQuietly(audioTmp) } catch (_: Exception) { }
+                }
             }
             throw e
         } catch (e: SecurityException) {
+            try { deleteQuietly(audioTmp) } catch (_: Exception) { }
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
         } catch (e: Exception) {
+            try { deleteQuietly(audioTmp) } catch (_: Exception) { }
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
             sendToTelegram("\u26A0\uFE0F Gagal merekam.")
         } finally {
@@ -7247,6 +7296,7 @@ class MonitoringService : Service() {
             }
             clearMediaActive(audioFile)
             if (!keepForRetry) {
+                try { deleteQuietly(audioTmp) } catch (_: Exception) { }
                 try { if (audioFile.exists() && audioFile.length() == 0L) deleteQuietly(audioFile) } catch (_: Exception) { }
             }
             pruneAudioCache(MAX_AUDIO_KEPT)
@@ -7348,7 +7398,7 @@ class MonitoringService : Service() {
             }
         }
         val attempt = videoAttempt.incrementAndGet()
-        val videoLock = acquireOpWakeLock("recordvideo", seconds * 1000L + 120_000L)
+        val videoLock = acquireOpWakeLock("recordvideo", seconds * 1000L + MEDIA_UPLOAD_GRACE_MS + 60_000L)
         videoWatchdog?.cancel()
         val wd = serviceScope.launch {
             delay(seconds * 1000L + 120_000L)
@@ -7608,6 +7658,10 @@ class MonitoringService : Service() {
     private fun pruneAudioCache(maxKept: Int) {
         if (audioFlushBusy.get()) return
         try {
+            val staleTmpCutoff = System.currentTimeMillis() - 6 * 60 * 60_000L
+            cacheDir.listFiles { file ->
+                file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".tmp") && file.lastModified() < staleTmpCutoff
+            }?.forEach { deleteQuietly(it) }
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return

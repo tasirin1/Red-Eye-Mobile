@@ -54,6 +54,7 @@ class SetupActivity : AppCompatActivity() {
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
+    private var fieldsLoaded = false
 
     private val backupLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -345,6 +346,7 @@ class SetupActivity : AppCompatActivity() {
                     if (cameraIntervalInput.text.toString().isEmpty()) cameraIntervalInput.setText(camVal)
                 } catch (_: Exception) {
                 }
+                fieldsLoaded = true
                 try {
                     updateStatus()
                 } catch (_: Exception) {
@@ -538,6 +540,10 @@ class SetupActivity : AppCompatActivity() {
         val interval = intervalParsed
         val cameraInterval = cameraParsed
         val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        if (!fieldsLoaded && hasStored) {
+            Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
+            return
+        }
         if ((rawToken.isEmpty() || rawChat.isEmpty()) && hasStored) {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(getString(R.string.setup_clear_title))

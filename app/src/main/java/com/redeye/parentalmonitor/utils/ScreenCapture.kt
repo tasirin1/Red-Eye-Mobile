@@ -38,6 +38,10 @@ object ScreenCapture {
     @Synchronized
     fun adopt(value: MediaProjection?) {
         projection = value
+        if (value != null) {
+            resultCode = 0
+            resultData = null
+        }
     }
 
     @Synchronized

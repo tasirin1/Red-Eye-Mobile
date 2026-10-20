@@ -65,6 +65,7 @@
     <string name="shot_a11y_description">Helps take screen captures of this device when the owner asks for them.</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
+    <string name="setup_loading">Still loading settings, try again in a moment</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
     <string name="setup_bad_chat">Invalid chat ID: numeric (e.g. -1001234567890) or @username</string>
     <string name="setup_bad_interval">Invalid interval, must be 1-1440 min (camera 0-60 min)</string>
@@ -102,9 +103,9 @@
     <string name="msg_action_failed">Action failed, please try again</string>
     <string name="msg_open_setup_failed">Could not open setup: %1$s</string>
     <string name="resume_title">Service paused</string>
-    <string name="resume_text">Tap to open settings</string>
+    <string name="resume_text">Open the app to restore monitoring</string>
     <string name="storage_fallback_title">Secure storage unavailable</string>
-    <string name="storage_fallback_text">Credentials cannot be stored, so monitoring is stopped. Tap to open Setup and save them again.</string>
+    <string name="storage_fallback_text">Credentials cannot be stored, so monitoring is stopped. Open the app, then save them again from Setup.</string>
     <string name="admin_disabled">⚠️ Protection disabled!</string>
     <string name="admin_disable_warning">⚠️ Caution! Device Admin must be disabled before uninstalling this app!</string>
     <string name="setup_status_owner_known">Owner: recognized</string>

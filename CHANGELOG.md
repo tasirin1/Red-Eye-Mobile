@@ -1,4 +1,15 @@
 ## [Unreleased]
+### Fixed
+- Sinkron riwayat awal tidak lagi berjalan saat offline atau token diblokir, sehingga riwayat tidak lagi membanjiri antrean 100 pesan lalu terbuang permanen; antrean data dibatasi 90 dan sisanya menyusul otomatis. Pesan "Belum ada riwayat" tidak lagi muncul saat antrean masih berisi data.
+- Notifikasi masalah token/chat (401/403/400) dan notifikasi pemulihan layanan kini membuka kalkulator (kode rahasia), bukan halaman Setup langsung, sehingga pemantauan tidak bisa dimatikan orang lain tanpa kode.
+- Rekaman audio ditulis ke berkas `.tmp` dan baru memakai nama `.m4a` setelah `stop()` berhasil; pembatalan tidak lagi menyimpan atau mengunggah rekaman parsial, dan sisa `.tmp` lama dibersihkan.
+- Izin tangkap layar yang sudah dipakai tidak lagi tersimpan sebagai "masih aktif"; status izin di Setup sesuai kenyataan dan tidak lagi memakai token sekali pakai yang sudah hangus.
+- Peringatan "sepi >48 jam" kembali hanya direset oleh data SMS/panggilan baru, tidak lagi oleh heartbeat atau laporan berkala.
+- Wake lock rekaman audio/video kini bertahan selama masa unggah media (hingga 10 menit), tidak lagi habis di tengah unggahan video besar.
+- Kegagalan `commit()` antrean pesan tidak lagi dianggap sukses; penulisan diulang pada `flushSync()` berikutnya, termasuk penghitung pesan yang dibuang.
+- Pengecekan GPS jam sekolah tidak lagi berjalan tanpa geofence sekolah; jam malam tanpa geofence rumah juga tidak lagi memicu pengambilan lokasi.
+- Menu Telegram yang diedit tidak lagi dianggap kedaluwarsa 5 menit setelah pesan aslinya; batas waktu memakai `edit_date`.
+- Menekan Simpan sebelum pengaturan selesai dimuat tidak lagi memunculkan dialog hapus kredensial; muncul pemberitahuan bahwa pengaturan masih dimuat.
 
 ## [1.6.401] - 2026-10-20
 ### Fixed
