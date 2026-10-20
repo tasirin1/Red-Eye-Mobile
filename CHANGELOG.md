@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- Tombol inline Telegram dirapikan: navigasi seragam `🏠 Menu utama`, label kamera menjelaskan fungsi (`Pakai kamera depan/belakang`), `Notifikasi terakhir` dan `Sinyal hidup` lebih jelas, `Aplikasi` dipindah ke Info & data, tombol antrean/restart dikelompokkan, serta emoji kategori konsisten.
 
 ## [1.6.402] - 2026-10-20
 ### Fixed
