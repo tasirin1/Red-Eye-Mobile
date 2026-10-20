@@ -4227,10 +4227,13 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentSmsPart = sendFitted(message, queueOnFail = true)
-                    if (!sentSmsPart) initialOk = false
-                    try {
-                        preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
-                    } catch (_: Exception) {
+                    if (sentSmsPart) {
+                        try {
+                            preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
+                        } catch (_: Exception) {
+                        }
+                    } else {
+                        initialOk = false
                     }
                     delay(500)
                 }
@@ -4260,15 +4263,18 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentCallPart = sendFitted(message, queueOnFail = true)
-                    if (!sentCallPart) initialOk = false
-                    try {
-                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                        if (latest.date > preferencesManager.lastCallTimestamp ||
-                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                        ) {
-                            preferencesManager.setCallCursorSync(latest.date, latest.id)
+                    if (sentCallPart) {
+                        try {
+                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                            if (latest.date > preferencesManager.lastCallTimestamp ||
+                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                            ) {
+                                preferencesManager.setCallCursorSync(latest.date, latest.id)
+                            }
+                        } catch (_: Exception) {
                         }
-                    } catch (_: Exception) {
+                    } else {
+                        initialOk = false
                     }
                     delay(500)
                 }
@@ -4346,9 +4352,9 @@ class MonitoringService : Service() {
                 for (part in smsPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
-                    smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                    try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                     if (sentSms) {
+                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
+                        try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
                     }
@@ -4375,16 +4381,16 @@ class MonitoringService : Service() {
                 for (part in callPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
-                    try {
-                        val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                        if (latest.date > preferencesManager.lastCallTimestamp ||
-                            (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                        ) {
-                            preferencesManager.setCallCursorSync(latest.date, latest.id)
-                        }
-                    } catch (_: Exception) {
-                    }
                     if (sentCall) {
+                        try {
+                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
+                            if (latest.date > preferencesManager.lastCallTimestamp ||
+                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
+                            ) {
+                                preferencesManager.setCallCursorSync(latest.date, latest.id)
+                            }
+                        } catch (_: Exception) {
+                        }
                         callSentAny = true
                         found = true
                     }
@@ -4725,16 +4731,19 @@ class MonitoringService : Service() {
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
-                messageQueue.addMessage(message)
+                val queued = messageQueue.addMessage(message)
+                if (queued) MessageScheduler.scheduleMessageSend(this)
+                return queued
             }
             return false
         }
         if (message.length <= 4000) {
             if (sendToTelegram(message, replyMarkup, false)) return true
             if (queueOnFail) {
-                messageQueue.addMessage(message)
+                val queued = messageQueue.addMessage(message)
                 if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
-                MessageScheduler.scheduleMessageSend(this)
+                if (queued) MessageScheduler.scheduleMessageSend(this)
+                return queued
             }
             return false
         }
@@ -4779,9 +4788,10 @@ class MonitoringService : Service() {
         }
         if (!ok) {
             if (queueOnFail) {
-                messageQueue.addMessages(failed)
+                val queued = messageQueue.addMessages(failed)
                 if (replyMarkup != null && failed.isNotEmpty() && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
-                MessageScheduler.scheduleMessageSend(this)
+                if (queued) MessageScheduler.scheduleMessageSend(this)
+                return queued
             }
             return false
         }
@@ -8308,7 +8318,7 @@ class MonitoringService : Service() {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.dropLast(maxKept)
+            val dropped = files.drop(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
@@ -8383,7 +8393,7 @@ class MonitoringService : Service() {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.dropLast(maxKept)
+            val dropped = files.drop(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
@@ -8672,7 +8682,7 @@ class MonitoringService : Service() {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
-            val dropped = photos.dropLast(maxKept)
+            val dropped = photos.drop(maxKept)
             val remaining = photos.size - dropped.size
             if (dropped.isEmpty()) return remaining
             dropped.forEach { deleteQuietly(it) }

@@ -129,7 +129,7 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun addMessage(message: String, priority: Boolean = false, retryCount: Int = 0) {
+    fun addMessage(message: String, priority: Boolean = false, retryCount: Int = 0): Boolean {
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
@@ -139,19 +139,19 @@ class MessageQueue private constructor(context: Context) {
                 while (volatileQueue.size > cap) {
                     evictOldestLocked(volatileQueue)
                 }
-                return
+                return false
             }
             val queue = readLocked().toMutableList()
             queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority))
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            persistLocked(queue, force = true)
+            return persistLocked(queue, force = true)
         }
     }
 
-    fun addMessages(messages: Collection<String>, priority: Boolean = false) {
-        if (messages.isEmpty()) return
+    fun addMessages(messages: Collection<String>, priority: Boolean = false): Boolean {
+        if (messages.isEmpty()) return true
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
@@ -164,7 +164,7 @@ class MessageQueue private constructor(context: Context) {
                     evictedVolatile++
                 }
                 if (evictedVolatile > 0) persistDropCountsLocked()
-                return
+                return false
             }
             val queue = readLocked().toMutableList()
             for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
@@ -174,7 +174,7 @@ class MessageQueue private constructor(context: Context) {
                 evictedBatch++
             }
             if (evictedBatch > 0) persistDropCountsLocked()
-            persistLocked(queue, force = true)
+            return persistLocked(queue, force = true)
         }
     }
 
@@ -474,27 +474,30 @@ class MessageQueue private constructor(context: Context) {
         return loaded
     }
 
-    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false) {
+    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false): Boolean {
         cached = queue
-        val prefs = sharedPreferences ?: return
+        val prefs = sharedPreferences ?: return false
         val now = android.os.SystemClock.elapsedRealtime()
         if (!force && now - lastPersistAt < 2000L) {
             persistDirty = true
-            return
+            return false
         }
         lastPersistAt = now
         persistDirty = false
-        try {
+        return try {
             val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
             if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
                 val saved = editor?.commit() == true
                 persistDirty = !saved
+                saved
             } else {
                 editor?.apply()
                 persistDirty = editor != null
+                false
             }
         } catch (_: Exception) {
             persistDirty = true
+            false
         }
     }
 

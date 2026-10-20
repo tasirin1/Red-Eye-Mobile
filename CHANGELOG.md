@@ -1,3 +1,8 @@
+## [1.6.415] - 2026-10-20
+### Fixed
+- Kursor SMS dan panggilan hanya maju setelah pesan benar-benar terkirim atau tersimpan di antrean persisten; antrean memori atau kegagalan `commit()` tidak lagi dianggap sebagai pengiriman yang aman.
+- Pruning cache foto, video, dan audio kini membuang berkas paling lama lebih dulu, sesuai pesan "yang paling lama yang belum terkirim dibuang".
+
 ## [1.6.414] - 2026-10-20
 ### Changed
 - Tombol angka kalkulator menjadi putih murni `#FFFFFFFF`; tombol `=` tetap forest green dan tombol fungsi/operasi tetap peach.
