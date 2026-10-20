@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.410] - 2026-10-20
 ### Changed
 - Kalkulator disesuaikan dengan mockup final: latar krem `#F7F4EB`, layar charcoal, semua operasi biru pastel, titik peach, dan tombol `=` teal memanjang vertikal.
 - Riwayat setelah `=` tidak lagi menampilkan tanda `=` agar tampil sebagai ekspresi samar di atas hasil.
