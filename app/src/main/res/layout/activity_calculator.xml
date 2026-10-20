@@ -63,22 +63,22 @@
         <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="AC" />
         <Button android:id="@+id/btnToggleSign" style="@style/CalculatorButton.Utility" android:text="±" />
         <Button android:id="@+id/btnPercent" style="@style/CalculatorButton.Utility" android:text="%" />
-        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.OperationBlue" android:text="÷" />
+        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.Operation" android:text="÷" />
 
         <Button android:id="@+id/btn7" style="@style/CalculatorButton.Number" android:text="7" />
         <Button android:id="@+id/btn8" style="@style/CalculatorButton.Number" android:text="8" />
         <Button android:id="@+id/btn9" style="@style/CalculatorButton.Number" android:text="9" />
-        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.OperationBlue" android:text="×" />
+        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.Operation" android:text="×" />
 
         <Button android:id="@+id/btn4" style="@style/CalculatorButton.Number" android:text="4" />
         <Button android:id="@+id/btn5" style="@style/CalculatorButton.Number" android:text="5" />
         <Button android:id="@+id/btn6" style="@style/CalculatorButton.Number" android:text="6" />
-        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.OperationBlue" android:text="−" />
+        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.Operation" android:text="−" />
 
         <Button android:id="@+id/btn1" style="@style/CalculatorButton.Number" android:text="1" />
         <Button android:id="@+id/btn2" style="@style/CalculatorButton.Number" android:text="2" />
         <Button android:id="@+id/btn3" style="@style/CalculatorButton.Number" android:text="3" />
-        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton.OperationBlue" android:text="+" />
+        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton.Operation" android:text="+" />
 
         <Button android:id="@+id/btn0" style="@style/CalculatorButton.Number"
             android:text="0"

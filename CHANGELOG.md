@@ -1,3 +1,10 @@
+## [Unreleased]
+### Changed
+- Kalkulator memakai palet earthy tanpa biru: tombol fungsi, operasi, dan titik menjadi peach `#E8A27A` dengan teks espresso, sedangkan `=` menjadi forest green `#1B4D3E`; tombol angka tetap cream.
+
+### Removed
+- Drawable dan warna utility peach lama serta warna teks operasi putih yang tidak lagi dipakai.
+
 ## [1.6.410] - 2026-10-20
 ### Changed
 - Kalkulator disesuaikan dengan mockup final: latar krem `#F7F4EB`, layar charcoal, semua operasi biru pastel, titik peach, dan tombol `=` teal memanjang vertikal.

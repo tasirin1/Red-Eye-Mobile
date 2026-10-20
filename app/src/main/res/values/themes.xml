@@ -45,14 +45,14 @@
     </style>
 
     <style name="CalculatorButton.Utility">
-        <item name="android:background">@drawable/calc_btn_utility</item>
+        <item name="android:background">@drawable/calc_btn_function</item>
         <item name="android:textColor">@color/calc_btn_text</item>
         <item name="android:textSize">21sp</item>
     </style>
 
-    <style name="CalculatorButton.OperationBlue">
+    <style name="CalculatorButton.Operation">
         <item name="android:background">@drawable/calc_btn_function</item>
-        <item name="android:textColor">@color/calc_op_text</item>
+        <item name="android:textColor">@color/calc_btn_text</item>
         <item name="android:textSize">29sp</item>
         <item name="android:elevation">6dp</item>
         <item name="android:layout_columnWeight">1.12</item>
