@@ -2,13 +2,13 @@
     <!-- Base application theme. -->
     <style name="Theme.ParentalMonitor" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">#FF2196F3</item>
-        <item name="colorPrimaryVariant">#FF1976D2</item>
+        <item name="colorPrimary">@color/calc_accent</item>
+        <item name="colorPrimaryVariant">@color/calc_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <!-- Secondary brand color. -->
-        <item name="colorSecondary">#FFFF9800</item>
-        <item name="colorSecondaryVariant">#FFEF6C00</item>
-        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorSecondary">@color/calc_btn_function</item>
+        <item name="colorSecondaryVariant">@color/calc_btn_function_dark</item>
+        <item name="colorOnSecondary">@color/calc_btn_text</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>

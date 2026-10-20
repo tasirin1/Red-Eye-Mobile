@@ -1,3 +1,7 @@
+## [Unreleased]
+### Changed
+- Tema global dan ikon launcher kini memakai palet earthy yang sama dengan kalkulator: primary forest green `#1B4D3E`, secondary peach `#E8A27A`, dan latar ikon cream; warna biru/oranye lama di Setup dan ikon dihapus.
+
 ## [1.6.411] - 2026-10-20
 ### Changed
 - Kalkulator memakai palet earthy tanpa biru: tombol fungsi, operasi, dan titik menjadi peach `#E8A27A` dengan teks espresso, sedangkan `=` menjadi forest green `#1B4D3E`; tombol angka tetap cream.
