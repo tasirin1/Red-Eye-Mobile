@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.414] - 2026-10-20
 ### Changed
 - Tombol angka kalkulator menjadi putih murni `#FFFFFFFF`; tombol `=` tetap forest green dan tombol fungsi/operasi tetap peach.
 
