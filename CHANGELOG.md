@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.401] - 2026-10-20
 ### Fixed
 - Halaman Setup (dibuka dari kode rahasia kalkulator) tidak lagi tampil di Recents dan tidak bisa di-screenshot/dijadikan thumbnail (`excludeFromRecents` + task terpisah + `FLAG_SECURE`), sehingga penyamaran aplikasi tidak bocor.
 - Konflik polling `409` akibat webhook tertinggal kini dipulihkan otomatis lewat `deleteWebhook` (dijeda 10 menit), tidak lagi mematikan perintah Telegram secara permanen tanpa jalan keluar.
