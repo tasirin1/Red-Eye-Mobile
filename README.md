@@ -20,6 +20,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Teruskan notifikasi HP anak ke Telegram, plus kabar saat ada aplikasi dipasang/dihapus
 - Ringkasan pemakaian layar per aplikasi via `/layar` (butuh izin Usage access)
 - Antrean offline, kirim lagi pas online (penjadwal dibatasi biar hemat baterai)
+- Pulihkan token bot/Chat ID/owner lewat file `.redeyebak` yang dikirim ke bot (`/pulihkan`), dengan validasi token, chat, dan tes kirim
 - Auto-jalan lagi habis reboot
 - Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
 
@@ -68,7 +69,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Data baru masuk ke bot tiap interval yang kamu set.
 - Foto ngikutin interval kamera, `0` berarti manual via `/photo` aja.
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
-- Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; restore hanya mengisi form, tetap tap Save.
+- Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; backup kini menyertakan owner ID, dan restore hanya mengisi form — tetap tap Save.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
 - Anti-mati: service dipantau jam bangun adaptif (3 menit sesaat setelah dipulihkan, 10 menit saat layar mati, 15 menit saat layar nyala) — kalau sistem menghentikannya (Doze/hemat baterai), service dihidupkan lagi otomatis dan kamu dapat pesan Telegram berisi perkiraan jam berhentinya (maksimal sekali per 6 jam; kalau berhenti berkali-kali, jumlah kematiannya disebut). Tombol Anti-kill &amp; Autostart membantu mengizinkan autostart merek HP + "tampil di atas aplikasi lain" supaya makin jarang mati, dan tombol Tes anti-mati (atau perintah `/cekmati`) membuktikan pemulihan ini benar-benar jalan di HP-mu.
 - Hemat daya: saat baterai ≤15% dan tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) supaya HP tidak mati kehabisan daya; kamu diberi kabar saat mode ini mulai dan saat kembali normal.
@@ -138,11 +139,23 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/log` | Log error terakhir |
 | `/ping` | Cek delay bot |
 | `/tombol` | Buka panel **🔢 Atur angka** (tombol yang butuh angka: interval, jeda, rekam, bunyi, denyut, jemput) |
+| `/pulihkan` | Pulihkan token bot, Chat ID, owner, dan interval dari file `.redeyebak` (private chat owner) |
 | `/help` | Menu tombol interaktif (kategori + tombol **🏠 Menu utama**) |
 
 Perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`) dipakai lewat tombol, tanpa mengetik perintahnya: kirim `/tombol` (atau ketuk tombol **🔢 Atur angka** di menu utama), lalu ketuk tombol perintahnya dan balas angka — mis. ketuk **Interval foto** lalu balas `15` sama dengan `/photointerval 15`. Setelah tombol ditekan, balas `help` (`bantuan`/`cara`/`?`) untuk keterangan tombol itu: gunanya, rentangnya, dan nilai yang sedang dipakai. Balasan angka hanya berlaku 5 menit sejak tombol ditekan, dan batal sendiri kalau kamu kirim perintah lain. Karena itu perintah angka sengaja **tidak dimunculkan** lagi di daftar perintah Telegram (menu `/`) maupun di teks `/help` — jalan resminya lewat tombol; mengetiknya langsung (mis. `/photointerval 15`, `/jemput off`, `/heartbeat 0`) tetap berfungsi. Sejak `v1.6.393`, teks `/help` tidak lagi memuat daftar perintah sama sekali: isinya hanya judul dan tombol aksi; rujukan singkat tiap perintah tetap tersedia di menu `/` Telegram (deskripsi perintah di daftar autocomplete).
 
 Sejak `v1.6.403` tampilan menunya dirapikan: menu utama berisi tombol cepat (Foto, Layar, Lokasi, Status, Baterai, Darurat) plus pintu kategori — **📷 Media**, **📱 Komunikasi**, **🗺️ Lokasi & jejak**, **ℹ️ Info & data**, **🛡️ Pengawasan**, **⚙️ Alat & kontrol**, **🔢 Atur angka**. Ketuk kategori untuk membuka isinya; tiap kategori diakhiri tombol **🏠 Menu utama**, dan perpindahan tampilan **mengedit pesan menu yang sama** (tidak menumpuk pesan baru di riwayat). Di **Media**, tombol **🤳 Pakai kamera depan** / **📷 Pakai kamera belakang** hanya memilih lensa untuk foto berikutnya, bukan mengambil foto. Tombol yang butuh isian (mis. **✉️ Kirim SMS**, **🗺️ Rumah**, **🔤 Awasi kata**, **🕘 Jam pulang**) membalas prompt; balas nilainya (mis. `08123456789 Halo` atau `-6.2,106.8,200`), dan balas `help` untuk keterangan tombol itu. Supaya menu tak "tenggelam ke atas" saat ada hasil, **setiap kiriman bot** — teks, foto, video, maupun rekaman suara — membawa baris tombol **🏠 Menu utama** + **🔢 Atur angka** di bawahnya, jadi menu selalu bisa dibuka dari pesan paling baru; tombol itu membuka panel baru (bukan mengedit pesan hasil). Tombol pada pesan lama (dari versi sebelumnya) tetap berfungsi.
+
+### Pulihkan lewat bot
+
+Kirim `/pulihkan` dari **private chat owner**, lalu ikuti urutannya:
+
+1. Bot meminta file backup `.redeyebak`; kirim sebagai dokumen (bukan foto/teks).
+2. Balas PIN backup. PIN dipakai untuk mendekripsi file, lalu pesan PIN dan file dihapus dari chat.
+3. Bot mengecek token baru (`getMe`), Chat ID baru (`getChat`), dan mengirim **tes pesan** ke chat baru. Setelan baru hanya disimpan kalau ketiganya lolos; kalau gagal, setelan lama tetap dipakai dan bot lama masih bisa dipakai.
+4. Setelah berhasil, token, Chat ID, owner, interval sync, dan interval foto langsung diganti. Bot lama mengirim pemberitahuan terakhir ke chat lama (kalau masih bisa), lalu tidak dipakai lagi.
+
+Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token (terenkripsi PIN): pakai PIN minimal 8 digit dan jangan sebarkan file backup.
 
 ## Kalau Error
 
