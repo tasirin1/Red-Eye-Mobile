@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.406] - 2026-10-20
 ### Added
 - PIN akses bot di Setup: saat owner belum tertaut, user lain bisa login lewat `/login <PIN>` dan langsung menjadi owner + Chat ID tujuan.
 - Batas percobaan PIN (5 kali per akun, 20 kali total) dan penghapusan pesan `/login` dari chat setelah diproses.
