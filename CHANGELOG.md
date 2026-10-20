@@ -1,3 +1,10 @@
+## [1.6.418] - 2026-10-20
+### Fixed
+- Notifikasi prioritas yang datang saat antrean penuh kini melewati dedupe dan batas laju yang sama seperti jalur normal, tidak lagi dikirim langsung tanpa penyaring.
+- Pesan yang ditolak Telegram secara permanen (`400` setelah fallback teks polos) tidak lagi dimasukkan ke antrean; `sendFitted()` melewati antrean untuk kegagalan permanen.
+- `MessageQueue.clearQueue()` mempertahankan status `persistDirty` bila `commit()` gagal, sehingga flush berikutnya tetap menghapus antrean dari penyimpanan.
+- `RingVolume.restoreStuck()` hanya memulihkan catatan berumur lebih dari 12 jam bila volume alarm masih maksimum; catatan basi yang volumenya sudah diubah pengguna tetap dibuang tanpa menimpa setelan.
+
 ## [1.6.417] - 2026-10-20
 ### Fixed
 - Tombol Simpan/Tes tidak lagi menandai kredensial tersimpan sebagai error saat token atau Chat ID yang diuji berbeda dari yang tersimpan; status error hanya diperbarui untuk kredensial yang benar-benar aktif.

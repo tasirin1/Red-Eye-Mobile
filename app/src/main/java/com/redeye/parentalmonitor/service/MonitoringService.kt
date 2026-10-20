@@ -4738,8 +4738,9 @@ class MonitoringService : Service() {
             return false
         }
         if (message.length <= 4000) {
-            if (sendToTelegram(message, replyMarkup, false)) return true
-            if (queueOnFail) {
+            var permanent = false
+            if (sendToTelegram(message, replyMarkup, false) { permanent = true }) return true
+            if (queueOnFail && !permanent) {
                 val queued = messageQueue.addMessage(message)
                 if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
@@ -4761,9 +4762,10 @@ class MonitoringService : Service() {
         try {
             for ((idx, chunk) in chunks.withIndex()) {
                 val markup = if (idx == chunks.lastIndex) replyMarkup else NO_MARKUP
-                if (!sendToTelegram(chunk, markup, false)) {
+                var permanent = false
+                if (!sendToTelegram(chunk, markup, false) { permanent = true }) {
                     ok = false
-                    failed.add(chunk)
+                    if (!permanent) failed.add(chunk)
                 } else {
                     lastSentIdx = idx
                 }
@@ -4787,9 +4789,10 @@ class MonitoringService : Service() {
             throw e
         }
         if (!ok) {
+            if (failed.isEmpty()) return true
             if (queueOnFail) {
                 val queued = messageQueue.addMessages(failed)
-                if (replyMarkup != null && failed.isNotEmpty() && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
+                if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
@@ -4854,7 +4857,8 @@ class MonitoringService : Service() {
     private suspend fun sendToTelegram(
         message: String,
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
-        queueOnFail: Boolean = true
+        queueOnFail: Boolean = true,
+        onPermanent: (() -> Unit)? = null
     ): Boolean {
         try {
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
@@ -4922,7 +4926,7 @@ class MonitoringService : Service() {
                 return false
             } else if (response.code() == 400) {
                 val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                return sendStatus400(response.code(), goneBody, message, botToken, chatId, queueOnFail)
+                return sendStatus400(response.code(), goneBody, message, botToken, chatId, queueOnFail, onPermanent)
             } else {
                 android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
                 queueForRetry(message, queueOnFail)
@@ -4943,7 +4947,8 @@ class MonitoringService : Service() {
         message: String,
         botToken: String,
         chatId: String,
-        queueOnFail: Boolean
+        queueOnFail: Boolean,
+        onPermanent: (() -> Unit)? = null
     ): Boolean {
         if (adoptMigratedChat(goneBody, chatId)) {
             queueForRetry(message, queueOnFail)
@@ -4970,7 +4975,7 @@ class MonitoringService : Service() {
         val plain = Html.unescape(message)
         if (plain != message || parseRetry) {
             try {
-                return sendPlainFallback(botToken, chatId, plain, queueOnFail)
+                return sendPlainFallback(botToken, chatId, plain, queueOnFail, onPermanent)
             } catch (_: Exception) {
                 queueForRetry(plain, queueOnFail)
                 return false
@@ -4981,6 +4986,7 @@ class MonitoringService : Service() {
                 noteDroppedMessage()
             } catch (_: Exception) {
             }
+            try { onPermanent?.invoke() } catch (_: Exception) { }
             return false
         }
     }
@@ -4989,7 +4995,8 @@ class MonitoringService : Service() {
         botToken: String,
         chatId: String,
         plain: String,
-        queueOnFail: Boolean
+        queueOnFail: Boolean,
+        onPermanent: (() -> Unit)? = null
     ): Boolean {
         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
@@ -5038,6 +5045,7 @@ class MonitoringService : Service() {
                 noteDroppedMessage()
             } catch (_: Exception) {
             }
+            try { onPermanent?.invoke() } catch (_: Exception) { }
             return false
         } else {
             android.util.Log.w("MonitoringService", "Message permanently rejected (${fallbackResp.code()}), not queued")
@@ -5045,6 +5053,7 @@ class MonitoringService : Service() {
                 noteDroppedMessage()
             } catch (_: Exception) {
             }
+            try { onPermanent?.invoke() } catch (_: Exception) { }
             return false
         }
     }

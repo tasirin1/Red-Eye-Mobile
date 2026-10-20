@@ -371,7 +371,12 @@ class MessageQueue private constructor(context: Context) {
             } else {
                 sharedPreferences
             }
-            wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit()
+            val cleared = try {
+                wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit() == true
+            } catch (_: Exception) {
+                false
+            }
+            if (!cleared) persistDirty = true
         }
     }
 

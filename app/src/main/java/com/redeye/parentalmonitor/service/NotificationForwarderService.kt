@@ -264,14 +264,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
                         if (squeezedPriority && forwardingAllowed()) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
-                            try { record(squeezedLabel, t, x) } catch (_: Exception) { }
-                            val squeezedMsg = try { buildNotifMessage(squeezedLabel, t, x) } catch (_: Exception) { "" }
-                            try {
-                                if (squeezedMsg.isNotEmpty()) queue().addMessage(squeezedMsg)
-                                queue().flushSync()
-                                MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
-                            } catch (_: Exception) {
-                            }
+                            emitPost(pkg, "", squeezedLabel, t, x, android.os.SystemClock.elapsedRealtime(), false)
                         } else recordOverflow(pkg, t, x)
                     }
                 } catch (_: Exception) {
