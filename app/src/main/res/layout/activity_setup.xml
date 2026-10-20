@@ -123,7 +123,28 @@
                     android:id="@+id/setupRestoreButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
                     android:text="@string/restore_settings" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupHealthButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/setup_health" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupPairLinkButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/setup_pair_link" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/setupRestoreCodeButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/setup_restore_code" />
 
             </LinearLayout>
 

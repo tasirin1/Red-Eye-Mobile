@@ -86,6 +86,9 @@ jobs:
         env:
           SYNC_INTERVAL: ${{ secrets.SYNC_INTERVAL }}
 
+      - name: Detekt (gaya Kotlin)
+        run: gradle detekt --stacktrace
+
       - name: Decode release keystore
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then

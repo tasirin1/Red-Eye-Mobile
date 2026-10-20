@@ -20,7 +20,7 @@ data class CallData(
             else -> "Tak tahu"
         }
     }
-    
+
     fun getDurationString(): String {
         if (duration == 0) return "0s"
         val minutes = duration / 60

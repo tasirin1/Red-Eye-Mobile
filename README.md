@@ -20,7 +20,10 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Teruskan notifikasi HP anak ke Telegram, plus kabar saat ada aplikasi dipasang/dihapus
 - Ringkasan pemakaian layar per aplikasi via `/layar` (butuh izin Usage access)
 - Antrean offline, kirim lagi pas online (penjadwal dibatasi biar hemat baterai)
-- Pulihkan token bot/Chat ID/owner lewat file `.redeyebak` yang dikirim ke bot (`/pulihkan`), dengan validasi token, chat, dan tes kirim
+- Pulihkan token bot/Chat ID/owner lewat file `.redeyebak` yang dikirim ke bot (`/pulihkan`), dengan validasi token, chat, tes kirim, dan jeda batal 60 detik
+- Mode restore ketat opsional: `/pulihkan <kode>` memakai kode 6 digit berputar yang hanya tampil di Setup
+- Masking OTP/bank otomatis (angka 4–8 digit disamarkan), audit perintah sensitif (`/audit`), dan pembersihan media lokal (`/bersihkan media 30`)
+- Link pairing `https://t.me/<bot>?start=<chat>_<kode>` bisa disalin dari Setup, plus ringkasan kesehatan perangkat
 - Auto-jalan lagi habis reboot
 - Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
 
@@ -60,7 +63,10 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 10. Tap Capture Screen dan izinkan sekali kalau mau pakai `/screenshot`. Lebih tahan lama: tap Aktifkan Aksesibilitas, lalu di daftar layanan Aksesibilitas pilih aplikasi ini dan nyalakan — sekali itu saja, tangkap layar tetap jalan walau HP restart (jalan ini juga yang dipakai bila izin Capture Screen belum diberikan). Di Android 13+ aplikasi sideload diblokir dulu: dialog yang muncul memandu buka **Info aplikasi → menu tiga titik → Izinkan setelan terbatas** (sama seperti saat menyalakan akses notifikasi). Di sebagian HP (Oppo/Realme/OnePlus/ColorOS, sebagian Xiaomi/HyperOS) masih ada pemblokir kedua: **Opsi pengembang → Nonaktifkan pemantauan izin**.
 11. Tap Anti-kill &amp; Autostart: izinkan autostart merek HP (Xiaomi/Oppo/Vivo/Huawei/Samsung/dll), matikan batasan baterai, dan izinkan "tampil di atas aplikasi lain". Nyalakan Device Admin kalau perlu. Setelah itu tap Tes anti-mati untuk membuktikan service bisa hidup lagi sendiri di HP ini.
 12. Kalau mau ringkasan pemakaian layar (perintah `/layar`), tap Screen time access lalu aktifkan untuk app ini.
-13. Tap Enable monitoring, selesai. Cek via Send Status.
+13. Tap **Cek kesehatan perangkat** untuk ringkasan izin/status; tombol di dialog membuka perbaikan izin atau anti-mati.
+14. Tap **Salin link pairing** untuk mendapatkan `https://t.me/<bot>?start=<chat>_<kode>`; buka link itu dari akun Telegram owner. Link ini pengganti mengetik `/start <chat ID> <kode>`.
+15. Opsional: tap **Kode restore ketat** dan nyalakan switch kalau `/pulihkan` mau mewajibkan kode 6 digit dari perangkat.
+16. Tap Enable monitoring, selesai. Cek via Send Status.
 
 Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitungan baru, maksimal 12 digit.
 
@@ -125,6 +131,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/version` | Versi app + device |
 | `/stop` / `/resume` | Jeda/lanjut monitoring (`/resume` sekaligus membatalkan jeda foto otomatis) |
 | `/notif on\|off\|status` | Forward notifikasi |
+| `/notif otp on\|off\|status` | Masking angka OTP/bank di notifikasi yang diteruskan |
 | `/restart` | Restart loop monitoring |
 | `/flush` | Kirim antrean sekarang |
 | `/clearqueue` | Buang antrean |
@@ -140,6 +147,8 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/ping` | Cek delay bot |
 | `/tombol` | Buka panel **🔢 Atur angka** (tombol yang butuh angka: interval, jeda, rekam, bunyi, denyut, jemput) |
 | `/pulihkan` | Pulihkan token bot, Chat ID, owner, dan interval dari file `.redeyebak` (private chat owner) |
+| `/audit` | 30 catatan audit perintah sensitif terakhir (private chat owner) |
+| `/bersihkan media 30` | Hapus cache foto/video/rekaman lokal yang lebih lama dari 30 hari |
 | `/help` | Menu tombol interaktif (kategori + tombol **🏠 Menu utama**) |
 
 Perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`) dipakai lewat tombol, tanpa mengetik perintahnya: kirim `/tombol` (atau ketuk tombol **🔢 Atur angka** di menu utama), lalu ketuk tombol perintahnya dan balas angka — mis. ketuk **Interval foto** lalu balas `15` sama dengan `/photointerval 15`. Setelah tombol ditekan, balas `help` (`bantuan`/`cara`/`?`) untuk keterangan tombol itu: gunanya, rentangnya, dan nilai yang sedang dipakai. Balasan angka hanya berlaku 5 menit sejak tombol ditekan, dan batal sendiri kalau kamu kirim perintah lain. Karena itu perintah angka sengaja **tidak dimunculkan** lagi di daftar perintah Telegram (menu `/`) maupun di teks `/help` — jalan resminya lewat tombol; mengetiknya langsung (mis. `/photointerval 15`, `/jemput off`, `/heartbeat 0`) tetap berfungsi. Sejak `v1.6.393`, teks `/help` tidak lagi memuat daftar perintah sama sekali: isinya hanya judul dan tombol aksi; rujukan singkat tiap perintah tetap tersedia di menu `/` Telegram (deskripsi perintah di daftar autocomplete).
@@ -152,10 +161,12 @@ Kirim `/pulihkan` dari **private chat owner**, lalu ikuti urutannya:
 
 1. Bot meminta file backup `.redeyebak`; kirim sebagai dokumen (bukan foto/teks).
 2. Balas PIN backup. PIN dipakai untuk mendekripsi file, lalu pesan PIN dan file dihapus dari chat.
-3. Bot mengecek token baru (`getMe`), Chat ID baru (`getChat`), dan mengirim **tes pesan** ke chat baru. Setelan baru hanya disimpan kalau ketiganya lolos; kalau gagal, setelan lama tetap dipakai dan bot lama masih bisa dipakai.
-4. Setelah berhasil, token, Chat ID, owner, interval sync, dan interval foto langsung diganti. Bot lama mengirim pemberitahuan terakhir ke chat lama (kalau masih bisa), lalu tidak dipakai lagi.
+3. Bot mengecek token baru (`getMe`), Chat ID baru (`getChat`), dan mengirim **tes pesan** ke chat baru. Kalau gagal, setelan lama tetap dipakai dan bot lama masih bisa dipakai.
+4. Kalau lolos, bot memberi jeda **60 detik** sebelum menerapkan. Kirim `/pulihkan batal` selama jeda itu untuk membatalkan. Setelah jatuh tempo, token/chat dicek ulang; bila masih valid, token, Chat ID, owner, interval sync, dan interval foto diganti. Bot lama mengirim pemberitahuan terakhir ke chat lama (kalau masih bisa), lalu tidak dipakai lagi.
 
 Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token (terenkripsi PIN): pakai PIN minimal 8 digit dan jangan sebarkan file backup.
+
+**Mode ketat (opsional).** Buka Setup → **Kode restore ketat**, nyalakan switch, lalu kirim `/pulihkan <kode 6 digit>` (bukan `/pulihkan` saja). Kode berputar tiap 10 menit dan hanya ditampilkan di Setup; kode lama satu jendela masih diterima. Mode ini menambah syarat akses fisik saat restore. Default mati agar restore dari jauh tetap bisa.
 
 ## Kalau Error
 
@@ -183,6 +194,8 @@ app/src/main/java/com/redeye/parentalmonitor/
   ui/           MainActivity kalkulator, SetupActivity
   utils/        helper
   worker/       tugas WorkManager
+app/src/test/               unit test logika murni
+config/detekt/              aturan gaya Kotlin minimal
 app/src/main/res/          layout, drawable, strings
 .github/workflows/build.yml   satu-satunya cara build
 ```

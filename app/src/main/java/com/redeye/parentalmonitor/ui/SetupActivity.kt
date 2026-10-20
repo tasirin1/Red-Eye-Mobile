@@ -375,6 +375,9 @@ class SetupActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
         }
+        findViewById<MaterialButton>(R.id.setupHealthButton).setOnClickListener { showHealthDialog() }
+        findViewById<MaterialButton>(R.id.setupPairLinkButton).setOnClickListener { copyPairingLink() }
+        findViewById<MaterialButton>(R.id.setupRestoreCodeButton).setOnClickListener { showRestoreCodeDialog() }
         permissionButton.setOnClickListener {
             requestLocationPermissions()
         }
@@ -711,6 +714,122 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         pendingRestoreOwnerId = 0L
+    }
+
+    private fun showHealthDialog() {
+        val body = statusText.text?.toString().orEmpty().ifBlank { getString(R.string.setup_loading) }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_health_title))
+            .setMessage(body + "\n\n" + getString(R.string.setup_health_footer))
+            .setPositiveButton(getString(R.string.grant_permissions)) { _, _ ->
+                try { permissionButton.performClick() } catch (_: Exception) { }
+            }
+            .setNeutralButton(getString(R.string.setup_antikill)) { _, _ ->
+                try { showAntiKillWizard() } catch (_: Exception) { }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun copyToClipboard(label: String, value: String) {
+        try {
+            val manager = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            manager.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun copyPairingLink() {
+        val rawToken = botTokenInput.text?.toString()?.trim().orEmpty()
+        val token = if (rawToken == STORED_MASK) {
+            try { prefs.botToken } catch (_: Exception) { "" }
+        } else rawToken
+        val rawChat = chatIdInput.text?.toString()?.trim().orEmpty()
+        val chat = if (rawChat == STORED_MASK) {
+            try { prefs.chatId } catch (_: Exception) { "" }
+        } else rawChat
+        val chatNumber = chat.toLongOrNull()
+        if (!token.matches(TOKEN_REGEX) || chatNumber == null || chatNumber <= 0L) {
+            Toast.makeText(this, getString(R.string.setup_pair_link_fail), Toast.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val username = try {
+                val resp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
+                if (!resp.isSuccessful || resp.body()?.ok != true) ""
+                else resp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val code = try { prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
+            if (username.isEmpty() || code.isEmpty()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_pair_link_fail), Toast.LENGTH_LONG).show()
+                }
+            } else {
+                val link = "https://t.me/$username?start=${chatNumber}_$code"
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    copyToClipboard("pairing", link)
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_pair_link_copied), Toast.LENGTH_SHORT).show()
+                    androidx.appcompat.app.AlertDialog.Builder(this@SetupActivity)
+                        .setTitle(getString(R.string.setup_pair_link_title))
+                        .setMessage(getString(R.string.setup_pair_link_body, link))
+                        .setPositiveButton(getString(R.string.setup_pair_link_share)) { _, _ ->
+                            try {
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, link)
+                                }
+                                startActivity(Intent.createChooser(send, getString(R.string.setup_pair_link_share)))
+                            } catch (_: Exception) {
+                            }
+                        }
+                        .setNegativeButton(android.R.string.ok, null)
+                        .show()
+                }
+            }
+        }
+    }
+
+    private fun showRestoreCodeDialog() {
+        val secret = try { prefs.ensureRestoreCodeSecret() } catch (_: Exception) { "" }
+        if (secret.isEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_restore_code_fail), Toast.LENGTH_LONG).show()
+            return
+        }
+        val now = System.currentTimeMillis()
+        val code = com.redeye.parentalmonitor.utils.RestoreCode.current(secret, now)
+        val until = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date(com.redeye.parentalmonitor.utils.RestoreCode.windowEnd(now)))
+        val info = TextView(this).apply {
+            text = getString(R.string.setup_restore_code_fmt, code, until) + "\n\n" + getString(R.string.setup_restore_code_need_setup)
+            setPadding(32, 9, 32, 9)
+        }
+        val toggle = android.widget.Switch(this).apply {
+            isChecked = try { prefs.restoreStrict } catch (_: Exception) { false }
+            text = getString(R.string.setup_restore_switch)
+            setPadding(32, 9, 32, 9)
+        }
+        val box = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(info)
+            addView(toggle)
+        }
+        toggle.setOnCheckedChangeListener { _, checked ->
+            try { prefs.restoreStrict = checked } catch (_: Exception) { }
+            Toast.makeText(
+                this@SetupActivity,
+                getString(if (checked) R.string.setup_restore_switch_on else R.string.setup_restore_switch_off),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_restore_code_title))
+            .setView(box)
+            .setPositiveButton(getString(R.string.setup_restore_copy)) { _, _ -> copyToClipboard("restore-code", code) }
+            .setNegativeButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {

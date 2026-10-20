@@ -26,6 +26,7 @@ class PreferencesManager(context: Context) {
     private val upgradeLock = Any()
     private val pairCodeLock = Any()
     private val smsPendingLock = Any()
+    private val auditLock = Any()
 
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
@@ -189,6 +190,10 @@ class PreferencesManager(context: Context) {
         private const val KEY_CAMERA_FACING = "camera_facing"
         const val KEY_USER_CONSENTED = "user_consented_monitoring"
         const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
+        private const val KEY_OTP_MASK = "otp_mask_enabled"
+        private const val KEY_RESTORE_STRICT = "restore_strict_enabled"
+        private const val KEY_RESTORE_SECRET = "restore_code_secret"
+        private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
@@ -427,6 +432,56 @@ class PreferencesManager(context: Context) {
     var notifForwardEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true) } catch (_: Exception) { true }
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIF_FORWARD, value).apply()
+
+    var otpMaskEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_OTP_MASK, true) } catch (_: Exception) { true }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_OTP_MASK, value).apply()
+
+    var restoreStrict: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_RESTORE_STRICT, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_RESTORE_STRICT, value).apply()
+
+    fun ensureRestoreCodeSecret(): String {
+        synchronized(auditLock) {
+            try {
+                val cur = sharedPreferences.getString(KEY_RESTORE_SECRET, "") ?: ""
+                if (cur.length == 64 && cur.all { it in '0'..'9' || it in 'a'..'f' }) return cur
+                val fresh = com.redeye.parentalmonitor.utils.RestoreCode.generateSecret()
+                sharedPreferences.edit().putString(KEY_RESTORE_SECRET, fresh).commit()
+                return fresh
+            } catch (_: Exception) {
+                return ""
+            }
+        }
+    }
+
+    val auditLog: String
+        get() = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
+
+    fun appendAudit(event: String, source: String) {
+        synchronized(auditLock) {
+            try {
+                val safeEvent = event.replace('\t', ' ').replace('\n', ' ').take(80)
+                val safeSource = source.replace('\t', ' ').replace('\n', ' ').take(40)
+                val line = System.currentTimeMillis().toString() + "\t" + safeEvent + "\t" + safeSource
+                val current = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
+                val lines = if (current.isEmpty()) mutableListOf<String>() else current.split('\n').toMutableList()
+                lines.add(line)
+                while (lines.size > 50) lines.removeAt(0)
+                sharedPreferences.edit().putString(KEY_AUDIT_LOG, lines.joinToString("\n")).commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun clearAudit() {
+        synchronized(auditLock) {
+            try {
+                sharedPreferences.edit().remove(KEY_AUDIT_LOG).commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     var credentialError: String
         get() = try { sharedPreferences.getString(KEY_CRED_ERROR, "") ?: "" } catch (_: Exception) { "" }

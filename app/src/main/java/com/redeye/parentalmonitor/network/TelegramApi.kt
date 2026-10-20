@@ -192,7 +192,7 @@ interface TelegramApi {
         @Url url: String,
         @Body body: Map<String, String>
     ): Response<TelegramResponse>
-    
+
     @Multipart
     @POST
     suspend fun sendAudio(

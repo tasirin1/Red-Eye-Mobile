@@ -1,3 +1,25 @@
+## [1.6.405] - 2026-10-20
+### Added
+- `/pulihkan` kini memberi alarm saat dimulai dan jeda batal **60 detik** setelah token/chat/tes kirim lolos; kirim `/pulihkan batal` selama jeda untuk mempertahankan setelan lama. Token/chat dicek ulang tepat sebelum diterapkan.
+- Mode restore ketat opsional lewat Setup → **Kode restore ketat**: kode 6 digit berputar tiap 10 menit, wajib dikirim sebagai `/pulihkan <kode>`. Default mati agar restore jarak jauh tetap bisa.
+- Audit perintah sensitif (`/audit`, 50 entri terakhir) untuk `/pulihkan`, `/stop`, `/sms`, `/lock`, `/hilang`, `/sembuh`, `/restart`, dan `/clearqueue`, termasuk percobaan yang ditolak.
+- Tombol **Salin link pairing** di Setup yang membuat `https://t.me/<bot>?start=<chat>_<kode>`; handler `/start` menerima payload deep link selain format lama.
+- Tombol **Cek kesehatan perangkat** di Setup: ringkasan status/izin dengan jalan pintas ke perbaikan izin dan anti-mati.
+- Masking OTP/bank: angka 4–8 digit disamarkan saat notifikasi mengandung kata OTP/kode/verifikasi; bisa diatur lewat `/notif otp on|off|status` (default nyala).
+- `/bersihkan media <1-365>` untuk menghapus cache foto/video/rekaman lokal yang lebih lama dari jumlah hari; default 30 hari.
+- Unit test untuk aturan restore (`RestoreRules`), kode restore berputar, dan masking notifikasi.
+- Detekt di CI dengan aturan gaya minimal (`config/detekt/detekt.yml`).
+
+### Changed
+- `/notif status` kini juga menampilkan status masking OTP.
+- Menu **Alat & kontrol** mendapat tombol **🧹 Bersihkan media 30h**; menu **Info & data** mendapat tombol **🧾 Audit**.
+- Pesan bantuan pairing menyebut link dari Setup, bukan hanya `/start <chat ID> <kode>`.
+
+### Security
+- Restore tidak lagi langsung menerapkan setelan setelah validasi; ada jendela batal 60 detik dan validasi ulang token/chat saat jatuh tempo.
+- Mode ketat menambah faktor perangkat fisik untuk `/pulihkan`; kode hanya tampil di Setup dan tidak dikirim ke Telegram.
+- Notifikasi OTP/bank tidak lagi meneruskan angka sensitif dalam bentuk asli secara default.
+
 ## [1.6.404] - 2026-10-20
 ### Added
 - `/pulihkan`: memulihkan token bot, Chat ID, owner ID, interval sync, dan interval foto dari file `.redeyebak` yang dikirim ke bot. Bot meminta PIN, memvalidasi token (`getMe`), chat (`getChat`), dan tes kirim sebelum mengganti setelan; bila salah satu gagal, setelan lama tetap dipakai. Sesi 10 menit, PIN maksimal 3 percobaan, pesan file/PIN dihapus setelah diproses.

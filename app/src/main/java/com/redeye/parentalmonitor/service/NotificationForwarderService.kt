@@ -11,6 +11,7 @@ import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.NotificationPrivacy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -303,7 +304,18 @@ class NotificationForwarderService : NotificationListenerService() {
             if (body.isEmpty()) {
                 body = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
             }
-            Pair(title, body)
+            var safeTitle = title
+            var safeBody = body
+            val mask = try {
+                (prefsRef ?: PreferencesManager.getInstance(this)).otpMaskEnabled
+            } catch (_: Exception) {
+                true
+            }
+            if (mask && NotificationPrivacy.isOtp(title + "\n" + body)) {
+                safeTitle = NotificationPrivacy.mask(title)
+                safeBody = NotificationPrivacy.mask(body)
+            }
+            Pair(safeTitle, safeBody)
         } catch (_: Exception) {
             Pair("", "")
         }
