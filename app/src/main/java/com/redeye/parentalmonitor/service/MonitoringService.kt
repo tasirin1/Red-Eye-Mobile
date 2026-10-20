@@ -27,6 +27,7 @@ import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.OwnerAccess
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
@@ -195,6 +196,8 @@ class MonitoringService : Service() {
     private var cachedChatId = ""
     @Volatile
     private var cachedOwnerId = 0L
+    @Volatile
+    private var cachedAccessPinActive = false
     private class PendingRestore(
         var stage: Int,
         var blob: String? = null,
@@ -282,10 +285,10 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_DOC = 1
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
-        private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan")
+        private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -386,7 +389,10 @@ class MonitoringService : Service() {
                     serviceScope.launch { registerBotCommands() }
                 }
             }
-            if (key == PreferencesManager.KEY_ACCESS_PIN) serviceScope.launch { registerBotCommands(force = true) }
+            if (key == PreferencesManager.KEY_ACCESS_PIN) serviceScope.launch {
+                refreshCreds()
+                registerBotCommands(force = true)
+            }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
             if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) restartPatrolLoop()
@@ -1004,6 +1010,7 @@ class MonitoringService : Service() {
                 cachedBotToken = preferencesManager.botToken
                 cachedChatId = preferencesManager.chatId
                 cachedOwnerId = preferencesManager.ownerUserId
+                cachedAccessPinActive = preferencesManager.accessPin.isNotEmpty()
             } catch (_: Exception) {
             }
         }
@@ -1024,9 +1031,7 @@ class MonitoringService : Service() {
     }
 
     private fun isOwner(senderId: String): Boolean {
-        if (senderId.isEmpty()) return false
-        if (senderId == cachedChatId) return true
-        return cachedOwnerId != 0L && senderId == cachedOwnerId.toString()
+        return OwnerAccess.isOwner(senderId, cachedChatId, cachedOwnerId, cachedAccessPinActive)
     }
 
     private val ownerLock = Any()
@@ -1241,6 +1246,44 @@ class MonitoringService : Service() {
         try { handleHelpCommand(true) } catch (_: Exception) {
         }
         return true
+    }
+
+    private suspend fun handleLogoutCommand(privateChat: Boolean) {
+        if (!privateChat) {
+            sendToTelegram("🔐 /logout hanya bisa dipakai dari private chat owner.")
+            return
+        }
+        val pinActive = try { preferencesManager.accessPin.isNotEmpty() } catch (_: Exception) { false }
+        if (!pinActive) {
+            sendToTelegram("🔐 Atur PIN akses bot di Setup dulu supaya bisa login lagi setelah logout.")
+            return
+        }
+        val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
+        if (ownerId == 0L) {
+            sendToTelegram("ℹ️ Tidak ada sesi owner yang aktif. Kirim /login <PIN> untuk masuk.")
+            return
+        }
+        val cleared = try { preferencesManager.clearOwnerSync() } catch (_: Exception) { false }
+        if (!cleared) {
+            sendToTelegram("⚠️ Logout gagal. Coba lagi.")
+            return
+        }
+        pendingRestore = null
+        try {
+            loginAttemptAt.clear()
+            loginFails.clear()
+            loginLockUntil.clear()
+            loginGlobalFails.set(0)
+            loginGlobalLockoutUntil.set(0L)
+        } catch (_: Exception) {
+        }
+        refreshCreds()
+        try { clearChatCommands(ownerId) } catch (_: Exception) {
+        }
+        try { registerBotCommands(force = true) } catch (_: Exception) {
+        }
+        val message = "🚪 Logout berhasil. Sesi owner dihapus; kirim /login <PIN> untuk masuk lagi."
+        if (!sendToTelegram(message, queueOnFail = false)) sendDirect(cachedChatId, message)
     }
 
     private fun bestFix(candidates: List<android.location.Location>): android.location.Location? {
@@ -1655,6 +1698,10 @@ class MonitoringService : Service() {
         val chatId = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val originChat = try { query.message?.chat?.id?.toString().orEmpty() } catch (_: Exception) { "" }
         val ownerOk = isOwner(sender)
+        if (cachedAccessPinActive && cachedOwnerId == 0L && !ownerOk) {
+            answerCallback(query.id)
+            return
+        }
         if (sender != chatId && originChat != chatId && !ownerOk) {
             answerCallback(query.id)
             return
@@ -1804,6 +1851,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("history", "Call+SMS per nomor"),
             com.redeye.parentalmonitor.network.BotCommand("log", "Log error terakhir"),
             com.redeye.parentalmonitor.network.BotCommand("audit", "Audit perintah sensitif terakhir"),
+            com.redeye.parentalmonitor.network.BotCommand("logout", "Logout owner; login lagi dengan /login <PIN>"),
             com.redeye.parentalmonitor.network.BotCommand("bersihkan", "Bersihkan media lokal: /bersihkan media 30"),
             com.redeye.parentalmonitor.network.BotCommand("patrol", "Patroli foto + lokasi otomatis"),
             com.redeye.parentalmonitor.network.BotCommand("watch", "Awasi kata: /watch a,b|status|off"),
@@ -1837,6 +1885,21 @@ class MonitoringService : Service() {
             commands.add(0, com.redeye.parentalmonitor.network.BotCommand("login", "Login PIN saat owner belum tertaut"))
         }
         return commands
+    }
+
+    private suspend fun clearChatCommands(chatId: Long) {
+        if (chatId == 0L) return
+        try {
+            val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            if (botToken.isEmpty()) return
+            TelegramClient.api.deleteMyCommands(
+                "https://api.telegram.org/bot$botToken/deleteMyCommands",
+                com.redeye.parentalmonitor.network.DeleteCommandsRequest(
+                    com.redeye.parentalmonitor.network.BotCommandScope("chat", chatId)
+                )
+            )
+        } catch (_: Exception) {
+        }
     }
 
     private suspend fun registerBotCommands(force: Boolean = false) {
@@ -1982,6 +2045,7 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDD22 Atur angka", "m:angka")),
                     listOf(button("\uD83E\uDDF9 Bersihkan media 30h", "x:bersihkan media 30")),
                     listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan")),
+                    listOf(button("\uD83D\uDEAA Logout owner", "x:logout")),
                     listOf(menuUtama)
                 )
             )
@@ -2377,6 +2441,7 @@ class MonitoringService : Service() {
             "/hilang" -> handleHilangCommand()
             "/jemput" -> handleJemputCommand(arg)
             "/audit" -> handleAuditCommand(privateChat)
+            "/logout" -> handleLogoutCommand(privateChat)
             "/bersihkan" -> handleCleanMediaCommand(arg)
             "/pulihkan" -> handleRestoreCommand(arg, privateChat)
             "/help", "/start" -> handleHelpCommand(senderOk)
@@ -2894,6 +2959,9 @@ class MonitoringService : Service() {
                 buildString {
                     appendLine("🤖 <b>Perintah</b>")
                     appendLine("/help - daftar ini")
+                    if (cachedOwnerId == 0L && cachedAccessPinActive) {
+                        appendLine("/login &lt;PIN&gt; - masuk sebagai owner")
+                    }
                 }
             )
             return

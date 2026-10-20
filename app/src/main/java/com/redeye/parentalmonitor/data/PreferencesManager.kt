@@ -669,6 +669,19 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearOwnerSync(): Boolean {
+        return try {
+            sharedPreferences.edit()
+                .putLong(KEY_OWNER_ID, 0L)
+                .putString(KEY_OWNER_PAIR_CODE, "")
+                .putLong(KEY_OWNER_PAIR_AT, 0L)
+                .putString(KEY_COMMANDS_TOKEN_HASH, "")
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     var ownerPairCode: String
         get() = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()

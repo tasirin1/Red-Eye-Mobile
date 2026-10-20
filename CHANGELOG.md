@@ -1,3 +1,15 @@
+## [Unreleased]
+### Added
+- `/logout` dari private owner untuk mencabut sesi owner; tombol **🚪 Logout owner** juga tersedia di menu **⚙️ Alat & kontrol**.
+- Unit test `OwnerAccess` untuk aturan owner ID, PIN aktif, dan fallback Chat ID.
+
+### Changed
+- Saat PIN akses aktif dan owner ID kosong, Chat ID lama tidak lagi otomatis dianggap owner; login PIN tetap wajib. Ini membuat `/logout` benar-benar mencabut akses perintah owner.
+- Logout membersihkan kode pairing, hash menu, dan sesi restore yang tertunda; Chat ID tetap dipakai untuk pengiriman sampai owner baru login.
+
+### Security
+- `/logout` hanya bisa dipakai dari private chat owner dan hanya bila PIN akses sudah diisi, sehingga tidak bisa mengunci akses tanpa jalan masuk kembali.
+
 ## [1.6.406] - 2026-10-20
 ### Added
 - PIN akses bot di Setup: saat owner belum tertaut, user lain bisa login lewat `/login <PIN>` dan langsung menjadi owner + Chat ID tujuan.

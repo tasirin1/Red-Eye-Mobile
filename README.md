@@ -25,6 +25,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Masking OTP/bank otomatis (angka 4–8 digit disamarkan), audit perintah sensitif (`/audit`), dan pembersihan media lokal (`/bersihkan media 30`)
 - Link pairing `https://t.me/<bot>?start=<chat>_<kode>` bisa disalin dari Setup, plus ringkasan kesehatan perangkat
 - PIN akses bot opsional: bila owner belum tertaut, user lain bisa login lewat `/login <PIN>` (PIN diatur di Setup) dan langsung menjadi owner + tujuan pemantauan
+- `/logout` mencabut sesi owner dari private chat; owner harus `/login <PIN>` lagi untuk memakai perintah owner
 - Auto-jalan lagi habis reboot
 - Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
 
@@ -148,6 +149,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/ping` | Cek delay bot |
 | `/tombol` | Buka panel **🔢 Atur angka** (tombol yang butuh angka: interval, jeda, rekam, bunyi, denyut, jemput) |
 | `/login <PIN>` | Login saat owner belum tertaut; PIN dari Setup. Setelah benar, chat pengirim menjadi owner + tujuan pemantauan |
+| `/logout` | Cabut sesi owner (private chat owner + PIN aktif); perintah owner terkunci sampai `/login <PIN>` lagi |
 | `/pulihkan` | Pulihkan token bot, Chat ID, owner, dan interval dari file `.redeyebak` (private chat owner) |
 | `/audit` | 30 catatan audit perintah sensitif terakhir (private chat owner) |
 | `/bersihkan media 30` | Hapus cache foto/video/rekaman lokal yang lebih lama dari 30 hari |
@@ -166,6 +168,8 @@ Kalau status Setup masih **Pemilik: belum dikenal**, isi **PIN akses bot** (6-12
 ```
 
 PIN yang benar membuat akun itu menjadi owner dan **Chat ID tujuan ikut diganti ke private chat tersebut**, jadi balasan serta laporan monitoring langsung sampai ke akun itu. PIN salah dibatasi 5 kali per akun (kunci 15 menit) dan 20 kali total (kunci 1 jam); pesan `/login` dihapus dari chat setelah diproses. Bila PIN dikosongkan, cara lama (link pairing / `/start <chat ID> <kode>`) aktif kembali. PIN tidak ikut tersimpan di file backup.
+
+Saat sudah login, kirim `/logout` dari private chat owner untuk mencabut sesi. Owner ID dihapus dan semua perintah owner langsung terkunci sampai kamu mengirim `/login <PIN>` lagi; tombol **🚪 Logout owner** juga ada di menu **⚙️ Alat & kontrol**. Logout hanya mencabut akses perintah, bukan menghentikan monitoring: Chat ID tetap dipakai untuk pengiriman sampai ada owner baru yang login. `/logout` hanya tersedia bila PIN akses sudah diisi, supaya kamu tidak terkunci di luar.
 
 ### Pulihkan lewat bot
 
