@@ -1,3 +1,11 @@
+## [Unreleased]
+### Changed
+- Kalkulator disesuaikan dengan mockup final: latar krem `#F7F4EB`, layar charcoal, semua operasi biru pastel, titik peach, dan tombol `=` teal memanjang vertikal.
+- Riwayat setelah `=` tidak lagi menampilkan tanda `=` agar tampil sebagai ekspresi samar di atas hasil.
+
+### Removed
+- Resource warna dan drawable oranye operasi yang tidak lagi dipakai.
+
 ## [1.6.409] - 2026-10-20
 ### Added
 - Tombol `±` (ubah tanda) dan `%` (persen) pada kalkulator stealth; kode rahasia `1234=` dan aturan hitung tetap sama.

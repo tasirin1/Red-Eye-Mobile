@@ -23,8 +23,8 @@ class CalculatorFormatTest {
 
     @Test
     fun formatsHistoryTokens() {
-        assertEquals("12,500 + 450 =", CalculatorFormat.history("12500 + 450 ="))
-        assertEquals("−5 × 2 =", CalculatorFormat.history("-5 × 2 ="))
+        assertEquals("12,500 + 450", CalculatorFormat.history("12500 + 450"))
+        assertEquals("−5 × 2", CalculatorFormat.history("-5 × 2"))
         assertEquals("", CalculatorFormat.history(""))
     }
 }

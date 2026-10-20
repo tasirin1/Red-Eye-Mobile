@@ -58,14 +58,6 @@
         <item name="android:layout_columnWeight">1.12</item>
     </style>
 
-    <style name="CalculatorButton.OperationOrange">
-        <item name="android:background">@drawable/calc_btn_op_orange</item>
-        <item name="android:textColor">@color/calc_op_text</item>
-        <item name="android:textSize">29sp</item>
-        <item name="android:elevation">6dp</item>
-        <item name="android:layout_columnWeight">1.12</item>
-    </style>
-
     <style name="CalculatorButton.Accent">
         <item name="android:background">@drawable/calc_btn_accent</item>
         <item name="android:textColor">@color/calc_accent_text</item>

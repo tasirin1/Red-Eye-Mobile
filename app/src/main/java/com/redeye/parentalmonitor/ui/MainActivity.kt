@@ -222,7 +222,7 @@ class MainActivity : AppCompatActivity() {
 
         currentNumber = formatResult(result)
 
-        lastExpression = "$previousNumber $operator $currentStr ="
+        lastExpression = "$previousNumber $operator $currentStr"
         justCalculated = true
         previousNumber = ""
         operator = ""
