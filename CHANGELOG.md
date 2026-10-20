@@ -1,3 +1,8 @@
+## [1.6.416] - 2026-10-20
+### Fixed
+- Deteksi OTP memakai batas kata, sehingga `shopping` tidak lagi dianggap OTP dan kode berbahasa Inggris seperti `code`/`verify` ikut dikenali.
+- `PreferencesManager.refreshInstance()` tidak lagi memegang monitor kelas saat mencoba upgrade penyimpanan, menghindari lock-order inversion dengan `upgradeToPersistent()` pada jalur kegagalan enkripsi.
+
 ## [1.6.415] - 2026-10-20
 ### Fixed
 - Kursor SMS dan panggilan hanya maju setelah pesan benar-benar terkirim atau tersimpan di antrean persisten; antrean memori atau kegagalan `commit()` tidak lagi dianggap sebagai pengiriman yang aman.

@@ -270,33 +270,25 @@ class PreferencesManager(context: Context) {
         }
 
         fun refreshInstance(context: Context): Boolean {
-            synchronized(this) {
-                val current = instance
-                if (current != null) {
-                    if (current.isStorageEncrypted) return true
-                    return try {
-                        if (current.upgradeToPersistent()) {
-                            clearStaleCredentialError(current)
-                            true
-                        } else {
-                            false
-                        }
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-                return try {
+            val current = synchronized(this) {
+                instance ?: try {
                     val created = PreferencesManager(context.applicationContext)
-                    if (!created.isStorageEncrypted) {
-                        if (instance == null) instance = created
-                        return false
-                    }
-                    instance = created
-                    clearStaleCredentialError(created)
-                    true
+                    if (instance == null) instance = created
+                    instance
                 } catch (_: Exception) {
+                    null
+                }
+            } ?: return false
+            if (current.isStorageEncrypted) return true
+            return try {
+                if (current.upgradeToPersistent()) {
+                    clearStaleCredentialError(current)
+                    true
+                } else {
                     false
                 }
+            } catch (_: Exception) {
+                false
             }
         }
     }

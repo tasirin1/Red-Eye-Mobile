@@ -11,7 +11,10 @@ class NotificationPrivacyTest {
         assertTrue(NotificationPrivacy.isOtp("Kode OTP Anda 123456"))
         assertTrue(NotificationPrivacy.isOtp("Verification code: 998877"))
         assertTrue(NotificationPrivacy.isOtp("Token akses baru"))
+        assertTrue(NotificationPrivacy.isOtp("Your code is 123456"))
+        assertTrue(NotificationPrivacy.isOtp("Please verify 998877"))
         assertFalse(NotificationPrivacy.isOtp("Promo belanja hari ini"))
+        assertFalse(NotificationPrivacy.isOtp("Shopping promo 12345"))
     }
 
     @Test
