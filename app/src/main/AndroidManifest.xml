@@ -74,7 +74,9 @@
         <activity
             android:name=".ui.SetupActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:exported="false" />
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity="com.redeye.parentalmonitor.setup" />
 
         <!-- Jendela transparan sekali jalan untuk memasang tipe FGS camera di latar -->
         <activity

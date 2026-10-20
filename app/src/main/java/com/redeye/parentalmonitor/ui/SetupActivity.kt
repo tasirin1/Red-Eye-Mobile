@@ -312,6 +312,7 @@ class SetupActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_setup)
 
         prefs = PreferencesManager.getInstance(this)

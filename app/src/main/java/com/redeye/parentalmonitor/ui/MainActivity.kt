@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun openSetupPage() {
         try {
-            startActivity(Intent(this, SetupActivity::class.java))
+            startActivity(Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to open setup", e)
             try {

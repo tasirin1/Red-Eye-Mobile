@@ -1,4 +1,11 @@
 ## [Unreleased]
+### Fixed
+- Halaman Setup (dibuka dari kode rahasia kalkulator) tidak lagi tampil di Recents dan tidak bisa di-screenshot/dijadikan thumbnail (`excludeFromRecents` + task terpisah + `FLAG_SECURE`), sehingga penyamaran aplikasi tidak bocor.
+- Konflik polling `409` akibat webhook tertinggal kini dipulihkan otomatis lewat `deleteWebhook` (dijeda 10 menit), tidak lagi mematikan perintah Telegram secara permanen tanpa jalan keluar.
+- Cursor SMS/panggilan tidak lagi macet saat satu potongan gagal permanen: potongan yang gagal masuk antrean dan cursor tetap maju, sehingga data setelahnya tidak berhenti dan tidak terkirim ganda.
+- Jam malam `00:00`–`04:59` tidak lagi dianggap aktif hampir sepanjang hari; rentang dihitung dalam menit.
+- Callback `MediaProjection` lama tidak lagi membongkar sesi tangkap layar yang baru (callback terikat ke projection pemiliknya).
+- Rekaman audio yang sudah selesai tidak lagi dihapus saat pengiriman dibatalkan; berkas disimpan untuk dicoba otomatis. Rekaman yang `stop()`-nya gagal tidak lagi diunggah sebagai berkas rusak.
 
 ## [1.6.400] - 2026-10-19
 ### Fixed
