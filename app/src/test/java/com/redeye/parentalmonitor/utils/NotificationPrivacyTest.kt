@@ -17,10 +17,7 @@ class NotificationPrivacyTest {
     @Test
     fun masksFourToEightDigitGroups() {
         val out = NotificationPrivacy.mask("Kode 123456, pin 4321, rekening 1234567890")
-        assertTrue(out.contains("••••••"))
-        assertTrue(out.contains("••••"))
-        assertTrue(out.contains("1234567890"))
-        assertFalse(out.contains("123456"))
+        assertEquals("Kode ••••••, pin ••••, rekening 1234567890", out)
     }
 
     @Test
