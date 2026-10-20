@@ -5,7 +5,7 @@ object NotificationPrivacy {
         "otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi",
         "token", "password", "kata sandi", "pin", "kode akses", "one time", "one-time"
     )
-    private val DIGIT_GROUPS = Regex("\\b\\d{4,8}\\b")
+    private val DIGIT_GROUPS = Regex("(?<!\\d)(?:\\d[ .-]?){3,11}\\d(?![ .-]?\\d)")
 
     fun isOtp(text: String): Boolean {
         val low = text.lowercase()
@@ -13,6 +13,8 @@ object NotificationPrivacy {
     }
 
     fun mask(text: String): String {
-        return DIGIT_GROUPS.replace(text) { match -> "•".repeat(match.value.length) }
+        return DIGIT_GROUPS.replace(text) { match ->
+            match.value.map { if (it.isDigit()) '•' else it }.joinToString("")
+        }
     }
 }

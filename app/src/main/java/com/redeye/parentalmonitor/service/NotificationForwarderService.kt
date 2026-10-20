@@ -92,9 +92,11 @@ class NotificationForwarderService : NotificationListenerService() {
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_BATCH = 32
+        private const val NORMAL_RATE_LIMIT = 10
+        private const val PRIORITY_RATE_LIMIT = 20
         private val REBIND_DELAYS_MS = longArrayOf(30_000L, 120_000L, 300_000L, 900_000L, 1_800_000L)
         private const val WAKE_PING_COOLDOWN_MS = 120_000L
-        private val PRIORITY_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
+        private val PRIORITY_CODE_REGEX = Regex("(?<!\\d)(?:\\d[ .-]?){3,11}\\d(?![ .-]?\\d)")
         private val history = ArrayDeque<NotifRecord>()
         private val historyLock = Any()
 
@@ -379,7 +381,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val priority = try { isPriorityNotif(pkg, title, text) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
-            if (!priority && now - prev < 10_000L) true else {
+            if (now - prev < 10_000L) true else {
                 lastSent[key] = now
                 false
             }
@@ -388,11 +390,11 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
-        if (pkgTryAcquire(pkg, now)) {
+        if (pkgTryAcquire(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
                 try {
-                    queue().addMessage(buildNotifMessage(label, title, text))
+                    queue().addMessage("❗ " + buildNotifMessage(label, title, text))
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -710,12 +712,12 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private fun pkgTryAcquire(pkg: String, now: Long): Boolean {
+    private fun pkgTryAcquire(pkg: String, now: Long, limit: Int): Boolean {
         if (pkg.isEmpty()) return false
         synchronized(pkgHitsLock) {
             val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
             while (q.isNotEmpty() && now - q.first() > 120_000L) q.removeFirst()
-            if (q.size >= 10) {
+            if (q.size >= limit) {
                 q.addLast(now)
                 while (q.size > 30) q.removeFirst()
                 return true

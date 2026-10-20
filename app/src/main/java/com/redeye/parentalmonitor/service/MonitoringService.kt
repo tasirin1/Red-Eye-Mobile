@@ -295,8 +295,8 @@ class MonitoringService : Service() {
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val LOGIN_MAX_FAILS = 5
         private const val LOGIN_LOCK_MS = 15 * 60_000L
-        private const val LOGIN_GLOBAL_MAX_FAILS = 20
-        private const val LOGIN_GLOBAL_LOCK_MS = 60 * 60_000L
+        private const val LOGIN_GLOBAL_MAX_FAILS = 50
+        private const val LOGIN_GLOBAL_LOCK_MS = 10 * 60_000L
         private const val LOGIN_ATTEMPT_THROTTLE_MS = 1_500L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val NUMBER_INPUT_TTL_MS = 300_000L
@@ -1183,11 +1183,6 @@ class MonitoringService : Service() {
             if (globalFails >= LOGIN_GLOBAL_MAX_FAILS) {
                 loginGlobalFails.set(0)
                 loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
-                try {
-                    loginFails.clear()
-                    loginLockUntil.clear()
-                } catch (_: Exception) {
-                }
                 audit("login pin terkunci global", "private")
                 sendDirect(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
                 return true

@@ -1,3 +1,19 @@
+## [Unreleased]
+### Fixed
+- Worker pengirim antrean tidak lagi menjadwalkan ulang dengan `REPLACE` dari dalam dirinya sendiri; jadwal lanjutan memakai `APPEND_OR_REPLACE` agar worker yang sedang berjalan tidak dibatalkan.
+- Status monitoring kembali nonaktif bila layanan gagal dimulai, termasuk saat Android memblokir start foreground service; watchdog dan liveness ikut dibatalkan agar status Setup tidak menyesatkan.
+- Tombol **Tes** kini menyimpan PIN akses dan owner restore tertunda seperti tombol **Simpan**, sehingga kredensial yang lolos tes tidak tertinggal tanpa PIN.
+- Notifikasi prioritas tetap melewati dedupe 10 detik dan batas laju per aplikasi (20/2 menit); kelebihan prioritas masuk antrean, bukan dikirim langsung tanpa batas.
+- Masking OTP mencakup kode 4–12 digit, termasuk pemisah spasi/titik/strip; angka 13 digit atau lebih dibiarkan agar nomor rekening panjang tidak terpotong salah.
+- Pemeriksaan jaringan kini memakai `NET_CAPABILITY_VALIDATED`, sehingga captive portal tidak dianggap koneksi siap kirim.
+- Respons `400` chat hilang ikut memblokir kirim/poll sementara, bukan disimpan sebagai kode yang tidak pernah dicek.
+- Worker boot tetap mem-flush laporan crash walau layanan sudah berjalan dan early-return.
+- Kolom interval sync/kamera di form dikembalikan ke nilai default saat kredensial dibersihkan.
+
+### Security
+- Build `pull_request` tidak lagi menerima keystore rilis atau kata sandinya; job build hanya punya `contents: read`, sedangkan `contents: write` dipindah ke job rilis khusus tag.
+- Lockout login global dilonggarkan dari 20 percobaan/1 jam menjadi 50 percobaan/10 menit dan tidak lagi menghapus lockout per-pengirim saat lockout global aktif.
+
 ## [1.6.407] - 2026-10-20
 ### Added
 - `/logout` dari private owner untuk mencabut sesi owner; tombol **🚪 Logout owner** juga tersedia di menu **⚙️ Alat & kontrol**.

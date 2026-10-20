@@ -471,6 +471,8 @@ class SetupActivity : AppCompatActivity() {
             botTokenInput.setText("")
             chatIdInput.setText("")
             accessPinInput.setText("")
+            syncIntervalInput.setText(com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString())
+            cameraIntervalInput.setText("1")
             pendingRestoreOwnerId = 0L
         } catch (_: Exception) {
         }
@@ -976,6 +978,16 @@ class SetupActivity : AppCompatActivity() {
     private fun testConnection() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
+        val rawAccessPin = accessPinInput.text.toString().trim()
+        val accessPinCheck = if (rawAccessPin == STORED_MASK) {
+            try { prefs.accessPin } catch (_: Exception) { "" }
+        } else {
+            rawAccessPin
+        }
+        if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
+            Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+            return
+        }
         val intervalParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
         val cameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
         val syncInterval = if (intervalParsed != null && intervalParsed in 1..1440) intervalParsed else try { prefs.syncInterval } catch (_: Exception) { 5 }
@@ -986,8 +998,10 @@ class SetupActivity : AppCompatActivity() {
         try { testJob?.cancel() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
+            val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val token = resolveStored(rawToken, storedToken)
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            val accessPin = if (token != storedToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
@@ -1035,7 +1049,7 @@ class SetupActivity : AppCompatActivity() {
                         val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                         if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
                     }
-                    val testPersisted = persistTestSettings(token, effectiveChat, myTest, syncInterval, cameraInterval)
+                    val testPersisted = persistTestSettings(token, effectiveChat, myTest, syncInterval, cameraInterval, accessPin)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
@@ -1047,6 +1061,7 @@ class SetupActivity : AppCompatActivity() {
                         }
                         botTokenInput.setText(STORED_MASK)
                         chatIdInput.setText(STORED_MASK)
+                        accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
                         Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
                         if (myTest == testSeq.get()) reviveMonitoringIfNeeded()
                     }
@@ -1079,10 +1094,15 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int): Boolean {
+    private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+            if (saved) {
+                try { prefs.accessPin = accessPin } catch (_: Exception) { }
+                applyPendingRestoreOwner()
+            }
+            saved
         }
         return outcome ?: false
     }
@@ -1178,17 +1198,15 @@ class SetupActivity : AppCompatActivity() {
                             startService(intent)
                         }
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
-                        if (!isFgsStartBlocked(e)) {
-                            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-                                try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
-                                try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
-                                try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    if (isFinishing || isDestroyed) return@withContext
-                                    try { updateStatus() } catch (_: Exception) { }
-                                }
+                        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                            try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+                            try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
+                            try { com.redeye.parentalmonitor.utils.Liveness.cancel(this@SetupActivity) } catch (_: Exception) { }
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                if (isFinishing || isDestroyed) return@withContext
+                                try { updateStatus() } catch (_: Exception) { }
                             }
                         }
                     }
@@ -1204,11 +1222,6 @@ class SetupActivity : AppCompatActivity() {
                 synchronized(startGuard) { startingMonitoring = false }
             }
         }
-    }
-
-    private fun isFgsStartBlocked(e: Exception): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
-        return e is android.app.ForegroundServiceStartNotAllowedException
     }
 
     private fun isBatteryExempt(): Boolean {

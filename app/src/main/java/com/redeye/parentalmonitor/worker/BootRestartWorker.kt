@@ -83,6 +83,12 @@ class BootRestartWorker(
     private suspend fun doWorkInternal(): Result {
         val appContext = applicationContext
         try {
+            CrashReporter.flushPending(appContext)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+        try {
             Liveness.schedule(appContext)
         } catch (_: Exception) {
         }
@@ -150,12 +156,6 @@ class BootRestartWorker(
             MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
             if (runAttemptCount < 5) Result.retry() else Result.failure()
-        }
-        try {
-            CrashReporter.flushPending(appContext)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
         }
         return startResult
     }

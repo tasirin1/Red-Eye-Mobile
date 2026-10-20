@@ -15,9 +15,15 @@ class NotificationPrivacyTest {
     }
 
     @Test
-    fun masksFourToEightDigitGroups() {
+    fun masksFourToTwelveDigitGroups() {
         val out = NotificationPrivacy.mask("Kode 123456, pin 4321, rekening 1234567890")
-        assertEquals("Kode ••••••, pin ••••, rekening 1234567890", out)
+        assertEquals("Kode ••••••, pin ••••, rekening ••••••••••", out)
+    }
+
+    @Test
+    fun masksSeparatedCodesAndKeepsLongNumbers() {
+        val out = NotificationPrivacy.mask("OTP 123 456, kode 123-456, nomor 123456789, panjang 1234567890123")
+        assertEquals("OTP ••• •••, kode •••-•••, nomor •••••••••, panjang 1234567890123", out)
     }
 
     @Test
