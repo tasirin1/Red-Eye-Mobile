@@ -4236,6 +4236,7 @@ class MonitoringService : Service() {
                         }
                     } else {
                         initialOk = false
+                        break
                     }
                     delay(500)
                 }
@@ -4277,6 +4278,7 @@ class MonitoringService : Service() {
                         }
                     } else {
                         initialOk = false
+                        break
                     }
                     delay(500)
                 }
@@ -4359,6 +4361,8 @@ class MonitoringService : Service() {
                         try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
+                    } else {
+                        break
                     }
                 }
                 if (smsSentAny) {
@@ -4395,6 +4399,8 @@ class MonitoringService : Service() {
                         }
                         callSentAny = true
                         found = true
+                    } else {
+                        break
                     }
                 }
                 if (callSentAny) {
@@ -4748,7 +4754,7 @@ class MonitoringService : Service() {
                 if (queued) MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
-            return false
+            return permanent
         }
         var ok = true
         val failed = mutableListOf<String>()

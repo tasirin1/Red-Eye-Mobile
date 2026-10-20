@@ -1,3 +1,8 @@
+## [1.6.420] - 2026-10-20
+### Fixed
+- Kursor SMS dan panggilan tidak lagi melompati bagian yang gagal: pengiriman riwayat berhenti di bagian pertama yang gagal, sehingga bagian berikutnya tidak maju mendahului data yang belum terkirim.
+- Pesan pendek yang ditolak Telegram secara permanen kini diperlakukan sama dengan pesan panjang yang ditolak permanen: dicatat sebagai pesan dibuang, tidak diulang setiap siklus.
+
 ## [1.6.419] - 2026-10-20
 ### Fixed
 - `/logout` mengosongkan perintah input tertunda, sehingga input lama tidak bisa dieksekusi oleh sesi owner berikutnya.
