@@ -22,6 +22,7 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
@@ -284,11 +285,16 @@ class MonitoringService : Service() {
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue")
         private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
+        private const val LOGIN_MAX_FAILS = 5
+        private const val LOGIN_LOCK_MS = 15 * 60_000L
+        private const val LOGIN_GLOBAL_MAX_FAILS = 20
+        private const val LOGIN_GLOBAL_LOCK_MS = 60 * 60_000L
+        private const val LOGIN_ATTEMPT_THROTTLE_MS = 1_500L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val NUMBER_INPUT_TTL_MS = 300_000L
         private val NO_MARKUP = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(emptyList())
@@ -380,6 +386,7 @@ class MonitoringService : Service() {
                     serviceScope.launch { registerBotCommands() }
                 }
             }
+            if (key == PreferencesManager.KEY_ACCESS_PIN) serviceScope.launch { registerBotCommands(force = true) }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
             if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) restartPatrolLoop()
@@ -1044,6 +1051,11 @@ class MonitoringService : Service() {
     private val pairGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val pairGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
     private val pairNoticeAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val loginAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val loginFails = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
+    private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -1079,6 +1091,156 @@ class MonitoringService : Service() {
             TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: buka link pairing dari Setup, atau kirim /start <chat ID> <kode pairing>.", parseMode = null))
         } catch (_: Exception) {
         }
+    }
+
+    private suspend fun sendDirect(targetChatId: String, text: String): Boolean {
+        if (targetChatId.isEmpty()) return false
+        return try {
+            val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+            if (token.isEmpty()) return false
+            val response = TelegramClient.api.sendMessage(
+                "https://api.telegram.org/bot${token}/sendMessage",
+                TelegramMessage(chatId = targetChatId, text = text, parseMode = null)
+            )
+            response.isSuccessful && response.body()?.ok == true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private suspend fun handleOwnerLogin(
+        command: String,
+        arg: String,
+        senderId: String,
+        msgChatId: String,
+        messageId: Long,
+        accessPin: String
+    ): Boolean {
+        val isStartHint = command == "/start" && arg.isEmpty()
+        if (command != "/login" && !isStartHint) return false
+        val privateChat = senderId.isNotEmpty() && msgChatId == senderId
+        if (!privateChat) {
+            if (command == "/login") sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat.")
+            return true
+        }
+        if (cachedOwnerId != 0L) {
+            if (command == "/login") {
+                if (senderId == cachedOwnerId.toString()) {
+                    sendDirect(senderId, "\u2705 Sudah login sebagai owner.")
+                } else {
+                    sendDirect(senderId, "\uD83D\uDD12 Owner sudah tertaut; login PIN ditutup.")
+                }
+            }
+            return true
+        }
+        if (accessPin.isEmpty()) {
+            if (command == "/login") {
+                sendDirect(senderId, "\uD83D\uDD11 PIN akses belum diatur. Buka Setup dan isi PIN akses bot.")
+            } else {
+                sendPairHint(senderId)
+            }
+            return true
+        }
+        if (isStartHint || arg.isEmpty()) {
+            sendDirect(senderId, "\uD83D\uDD11 Kirim /login <PIN> (6-12 digit) untuk masuk.")
+            return true
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (now < loginGlobalLockoutUntil.get()) {
+            sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
+            return true
+        }
+        val lockedUntil = try { loginLockUntil[senderId] ?: 0L } catch (_: Exception) { 0L }
+        if (now < lockedUntil) {
+            val minutes = ((lockedUntil - now + 59_999L) / 60_000L).coerceAtLeast(1L)
+            sendDirect(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
+            return true
+        }
+        val lastAttempt = try { loginAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
+        if (lastAttempt > 0L && now - lastAttempt < LOGIN_ATTEMPT_THROTTLE_MS) return true
+        try {
+            if (loginAttemptAt.size > 200) loginAttemptAt.clear()
+            loginAttemptAt[senderId] = now
+        } catch (_: Exception) {
+        }
+        val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        if (messageId > 0L) deleteIncomingMessage(senderId, messageId, token)
+        if (!AccessPin.verify(accessPin, arg)) {
+            val fails = try { (loginFails[senderId] ?: 0) + 1 } catch (_: Exception) { 1 }
+            try {
+                if (loginFails.size > 200) loginFails.clear()
+                loginFails[senderId] = fails
+            } catch (_: Exception) {
+            }
+            val globalFails = loginGlobalFails.incrementAndGet()
+            if (globalFails >= LOGIN_GLOBAL_MAX_FAILS) {
+                loginGlobalFails.set(0)
+                loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
+                try {
+                    loginFails.clear()
+                    loginLockUntil.clear()
+                } catch (_: Exception) {
+                }
+                audit("login pin terkunci global", "private")
+                sendDirect(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
+                return true
+            }
+            if (fails >= LOGIN_MAX_FAILS) {
+                try {
+                    loginFails.remove(senderId)
+                    loginAttemptAt.remove(senderId)
+                    loginLockUntil[senderId] = now + LOGIN_LOCK_MS
+                } catch (_: Exception) {
+                }
+                audit("login pin terkunci", "private")
+                sendDirect(senderId, "\u23F3 PIN salah ${LOGIN_MAX_FAILS} kali. Coba lagi 15 menit.")
+                return true
+            }
+            audit("login pin salah", "private")
+            sendDirect(senderId, "\u274C PIN salah. Sisa ${LOGIN_MAX_FAILS - fails} percobaan.")
+            return true
+        }
+        val ownerId = senderId.toLongOrNull() ?: return true
+        val adopted = synchronized(ownerLock) {
+            if (cachedOwnerId != 0L) {
+                false
+            } else {
+                val stored = try {
+                    preferencesManager.adoptOwnerChatSync(ownerId, senderId)
+                } catch (_: Exception) {
+                    false
+                }
+                if (stored) {
+                    cachedChatId = senderId
+                    cachedOwnerId = ownerId
+                }
+                stored
+            }
+        }
+        if (!adopted) {
+            audit("login pin simpan gagal", "private")
+            sendDirect(senderId, "\u26A0\uFE0F PIN benar, tetapi akses gagal disimpan. Coba lagi.")
+            return true
+        }
+        try {
+            loginAttemptAt.remove(senderId)
+            loginFails.remove(senderId)
+            loginLockUntil.remove(senderId)
+            loginGlobalFails.set(0)
+            loginGlobalLockoutUntil.set(0L)
+        } catch (_: Exception) {
+        }
+        refreshCreds()
+        audit("login pin ok", "private")
+        try { registerBotCommands(force = true) } catch (_: Exception) {
+        }
+        val hello = "\u2705 Login berhasil. Chat ini sekarang menjadi owner dan tujuan pemantauan.\n\nGunakan /help untuk membuka menu."
+        if (!sendToTelegram(hello, queueOnFail = false)) sendDirect(senderId, hello)
+        try { handleHelpCommand(true) } catch (_: Exception) {
+        }
+        return true
     }
 
     private fun bestFix(candidates: List<android.location.Location>): android.location.Location? {
@@ -1381,6 +1543,14 @@ class MonitoringService : Service() {
                     val head = headArg.getOrNull(0).orEmpty()
                     val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val arg = headArg.getOrNull(1)?.trim().orEmpty()
+                    if (command == "/login" || command == "/start") {
+                        val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
+                        if (handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)) continue
+                        if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && command == "/start" && arg.isNotEmpty() && accessPin.isNotEmpty()) {
+                            sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
+                            continue
+                        }
+                    }
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
                         if (cachedOwnerId == 0L && android.os.SystemClock.elapsedRealtime() >= pairGlobalLockoutUntil.get()) {
                             val nowPair = android.os.SystemClock.elapsedRealtime()
@@ -1657,12 +1827,16 @@ class MonitoringService : Service() {
         )
     }
 
-    private fun publicCommandList(): List<com.redeye.parentalmonitor.network.BotCommand> {
-        return listOf(
+    private fun publicCommandList(includeLogin: Boolean = false): List<com.redeye.parentalmonitor.network.BotCommand> {
+        val commands = mutableListOf(
             com.redeye.parentalmonitor.network.BotCommand("ping", "Cek delay"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Mulai / tautkan HP ini"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Bantuan")
         )
+        if (includeLogin) {
+            commands.add(0, com.redeye.parentalmonitor.network.BotCommand("login", "Login PIN saat owner belum tertaut"))
+        }
+        return commands
     }
 
     private suspend fun registerBotCommands(force: Boolean = false) {
@@ -1670,7 +1844,8 @@ class MonitoringService : Service() {
             val botToken = preferencesManager.botToken
             if (botToken.isEmpty()) return
             val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
-            val tokenHash = sha256Hex(botToken + ":" + ownerId + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
+            val accessPinActive = try { preferencesManager.accessPin.isNotEmpty() } catch (_: Exception) { false }
+            val tokenHash = sha256Hex(botToken + ":" + ownerId + ":" + accessPinActive + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
             if (!force) {
                 try {
                     if (preferencesManager.commandsTokenHash == tokenHash) return
@@ -1678,7 +1853,7 @@ class MonitoringService : Service() {
                 }
             }
             val url = "https://api.telegram.org/bot$botToken/setMyCommands"
-            val publicResp = TelegramClient.api.setMyCommands(url, com.redeye.parentalmonitor.network.SetMyCommandsRequest(publicCommandList()))
+            val publicResp = TelegramClient.api.setMyCommands(url, com.redeye.parentalmonitor.network.SetMyCommandsRequest(publicCommandList(ownerId == 0L && accessPinActive)))
             var ownerOk = true
             if (ownerId != 0L) {
                 val ownerBody = com.redeye.parentalmonitor.network.SetMyCommandsRequest(

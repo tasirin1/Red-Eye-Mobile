@@ -8,6 +8,8 @@
     <string name="disable_monitoring">Matikan monitoring</string>
     <string name="telegram_bot_token">Token Bot Telegram</string>
     <string name="telegram_chat_id">Chat ID Telegram</string>
+    <string name="access_pin">PIN akses bot (saat owner kosong)</string>
+    <string name="access_pin_helper">6-12 digit. Dipakai lewat /login saat owner belum tertaut. Kosongkan untuk memakai kode pairing.</string>
     <string name="save_settings">Simpan setingan</string>
     <string name="grant_permissions">Berikan semua izin</string>
     <string name="notification_title">Kalkulator</string>
@@ -68,6 +70,7 @@
     <string name="setup_loading">Pengaturan masih dimuat, coba lagi sebentar</string>
     <string name="setup_bad_token">Format token salah, harus mengandung :</string>
     <string name="setup_bad_chat">Format chat ID salah: angka (contoh -1001234567890) atau @username</string>
+    <string name="setup_bad_access_pin">PIN akses harus 6-12 digit</string>
     <string name="setup_bad_interval">Interval salah, harus 1-1440 mnt (kamera 0-60 mnt)</string>
     <string name="backup_settings">Backup setingan</string>
     <string name="restore_settings">Pulihkan setingan</string>
@@ -80,6 +83,7 @@
     <string name="setup_pair_link_fail">Gagal membuat link pairing. Cek token/chat dan internet.</string>
     <string name="setup_pair_link_copied">Link pairing disalin.</string>
     <string name="setup_pair_link_share">Bagikan</string>
+    <string name="setup_pair_link_pin_active">Link pairing dimatikan selama PIN akses aktif. Pakai /login &lt;PIN&gt; dari Telegram.</string>
     <string name="setup_restore_code">Kode restore ketat</string>
     <string name="setup_restore_code_title">Restore ketat</string>
     <string name="setup_restore_code_fmt">Kode: %1$s\nBerlaku sampai %2$s (berputar tiap 10 menit).\n\nSaat mode ketat nyala, kirim /pulihkan &lt;kode&gt; sebelum mengunggah file backup.</string>
@@ -129,6 +133,7 @@
     <string name="setup_status_owner_known">Pemilik: dikenali</string>
     <string name="setup_status_owner_unknown_code">Pemilik: belum dikenal - DM bot /start &lt;chat ID&gt; %1$s secara pribadi untuk membuka perintah pemilik</string>
     <string name="setup_status_owner_unknown">Pemilik: belum dikenal - DM bot /start &lt;chat ID&gt; secara pribadi untuk membuka perintah pemilik</string>
+    <string name="setup_status_owner_unknown_pin">Pemilik: belum dikenal - DM bot /login &lt;PIN&gt; secara pribadi untuk login dan menjadi pemilik</string>
     <string name="setup_status_selfcheck_running">uji mandiri berjalan</string>
     <string name="setup_status_selfcheck_sec">uji mandiri %1$d dtk</string>
     <string name="setup_status_selfcheck_none">uji mandiri belum dijalankan</string>

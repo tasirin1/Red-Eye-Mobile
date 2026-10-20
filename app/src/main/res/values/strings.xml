@@ -8,6 +8,8 @@
     <string name="disable_monitoring">Disable monitoring</string>
     <string name="telegram_bot_token">Telegram Bot Token</string>
     <string name="telegram_chat_id">Telegram Chat ID</string>
+    <string name="access_pin">Bot access PIN (when owner is empty)</string>
+    <string name="access_pin_helper">6-12 digits. Used with /login when the owner is not linked. Leave empty to use the pairing code.</string>
     <string name="save_settings">Save settings</string>
     <string name="grant_permissions">Grant all permissions</string>
     <string name="notification_title">Calculator</string>
@@ -68,6 +70,7 @@
     <string name="setup_loading">Still loading settings, try again in a moment</string>
     <string name="setup_bad_token">Invalid token format, must contain :</string>
     <string name="setup_bad_chat">Invalid chat ID: numeric (e.g. -1001234567890) or @username</string>
+    <string name="setup_bad_access_pin">Access PIN must be 6-12 digits</string>
     <string name="setup_bad_interval">Invalid interval, must be 1-1440 min (camera 0-60 min)</string>
     <string name="backup_settings">Backup settings</string>
     <string name="restore_settings">Restore settings</string>
@@ -80,6 +83,7 @@
     <string name="setup_pair_link_fail">Could not create the pairing link. Check token/chat and internet.</string>
     <string name="setup_pair_link_copied">Pairing link copied.</string>
     <string name="setup_pair_link_share">Share</string>
+    <string name="setup_pair_link_pin_active">Pairing link is disabled while the access PIN is active. Use /login &lt;PIN&gt; from Telegram.</string>
     <string name="setup_restore_code">Strict restore code</string>
     <string name="setup_restore_code_title">Strict restore</string>
     <string name="setup_restore_code_fmt">Code: %1$s\nValid until %2$s (rotates every 10 minutes).\n\nIn strict mode, send /pulihkan &lt;code&gt; before uploading the backup file.</string>
@@ -129,6 +133,7 @@
     <string name="setup_status_owner_known">Owner: recognized</string>
     <string name="setup_status_owner_unknown_code">Owner: not yet recognized — DM the bot /start &lt;chat ID&gt; %1$s privately to unlock owner commands</string>
     <string name="setup_status_owner_unknown">Owner: not yet recognized — DM the bot /start &lt;chat ID&gt; privately to unlock owner commands</string>
+    <string name="setup_status_owner_unknown_pin">Owner: not yet recognized — DM the bot /login &lt;PIN&gt; privately to log in and become owner</string>
     <string name="setup_status_selfcheck_running">self-test running</string>
     <string name="setup_status_selfcheck_sec">self-test %1$d sec</string>
     <string name="setup_status_selfcheck_none">self-test not run yet</string>

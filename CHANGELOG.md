@@ -1,3 +1,16 @@
+## [Unreleased]
+### Added
+- PIN akses bot di Setup: saat owner belum tertaut, user lain bisa login lewat `/login <PIN>` dan langsung menjadi owner + Chat ID tujuan.
+- Batas percobaan PIN (5 kali per akun, 20 kali total) dan penghapusan pesan `/login` dari chat setelah diproses.
+- Unit test untuk validasi dan pencocokan PIN akses.
+
+### Changed
+- Link pairing dan `/start <chat ID> <kode>` otomatis dimatikan selama PIN akses aktif; status Setup menampilkan petunjuk `/login <PIN>`.
+- `/login` muncul di menu perintah publik hanya saat owner kosong dan PIN aktif.
+
+### Security
+- PIN akses disimpan di penyimpanan terenkripsi, tidak ikut file backup, dan dihapus saat token bot diganti atau kredensial dibersihkan.
+
 ## [1.6.405] - 2026-10-20
 ### Added
 - `/pulihkan` kini memberi alarm saat dimulai dan jeda batal **60 detik** setelah token/chat/tes kirim lolos; kirim `/pulihkan batal` selama jeda untuk mempertahankan setelan lama. Token/chat dicek ulang tepat sebelum diterapkan.

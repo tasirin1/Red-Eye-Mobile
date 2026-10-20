@@ -205,6 +205,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         private const val KEY_OWNER_ID = "owner_user_id"
+        const val KEY_ACCESS_PIN = "access_pin"
         private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
         private const val KEY_OWNER_PAIR_AT = "owner_pair_at"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
@@ -641,10 +642,30 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
 
+    var accessPin: String
+        get() = try { sharedPreferences.getString(KEY_ACCESS_PIN, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_ACCESS_PIN, value).apply()
+
     fun setOwnerIdSync(id: Long) {
         try {
             sharedPreferences.edit().putLong(KEY_OWNER_ID, id).commit()
         } catch (_: Exception) {
+        }
+    }
+
+    fun adoptOwnerChatSync(ownerId: Long, newChatId: String): Boolean {
+        if (ownerId == 0L || newChatId.isEmpty()) return false
+        return try {
+            sharedPreferences.edit()
+                .putLong(KEY_OWNER_ID, ownerId)
+                .putString(KEY_CHAT_ID, newChatId)
+                .putString(KEY_OWNER_PAIR_CODE, "")
+                .putString(KEY_COMMANDS_TOKEN_HASH, "")
+                .putString(KEY_CRED_ERROR, "")
+                .putLong(KEY_CRED_ERROR_AT, 0L)
+                .commit()
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -911,6 +932,7 @@ class PreferencesManager(context: Context) {
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
         val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
+        if (tokenChanged) editor.remove(KEY_ACCESS_PIN)
         if (tokenChanged || chatChanged) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
             editor.putString(KEY_OWNER_PAIR_CODE, "")

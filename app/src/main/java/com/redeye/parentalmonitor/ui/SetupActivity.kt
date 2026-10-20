@@ -21,6 +21,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
+import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
@@ -35,6 +36,7 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var prefs: PreferencesManager
     private lateinit var botTokenInput: TextInputEditText
     private lateinit var chatIdInput: TextInputEditText
+    private lateinit var accessPinInput: TextInputEditText
     private lateinit var syncIntervalInput: TextInputEditText
     private lateinit var cameraIntervalInput: TextInputEditText
     private lateinit var statusText: TextView
@@ -244,6 +246,10 @@ class SetupActivity : AppCompatActivity() {
             prefs.chatId.takeIf { it.isNotEmpty() }?.let { secrets.add(it) }
         } catch (_: Exception) {
         }
+        try {
+            prefs.accessPin.takeIf { it.isNotEmpty() }?.let { secrets.add(it) }
+        } catch (_: Exception) {
+        }
         if (::botTokenInput.isInitialized) {
             val typed = botTokenInput.text?.toString()?.trim().orEmpty()
             if (typed.isNotEmpty() && typed != STORED_MASK) secrets.add(typed)
@@ -251,6 +257,10 @@ class SetupActivity : AppCompatActivity() {
         if (::chatIdInput.isInitialized) {
             val typedChat = chatIdInput.text?.toString()?.trim().orEmpty()
             if (typedChat.isNotEmpty() && typedChat != STORED_MASK) secrets.add(typedChat)
+        }
+        if (::accessPinInput.isInitialized) {
+            val typedPin = accessPinInput.text?.toString()?.trim().orEmpty()
+            if (typedPin.isNotEmpty() && typedPin != STORED_MASK) secrets.add(typedPin)
         }
         return com.redeye.parentalmonitor.utils.Redact.token(raw, *secrets.toTypedArray())
     }
@@ -317,6 +327,7 @@ class SetupActivity : AppCompatActivity() {
 
         botTokenInput = findViewById(R.id.setupBotTokenInput)
         chatIdInput = findViewById(R.id.setupChatIdInput)
+        accessPinInput = findViewById(R.id.setupAccessPinInput)
         syncIntervalInput = findViewById(R.id.setupSyncIntervalInput)
         cameraIntervalInput = findViewById(R.id.setupCameraIntervalInput)
         statusText = findViewById(R.id.setupStatusText)
@@ -337,6 +348,7 @@ class SetupActivity : AppCompatActivity() {
             }
             val tokenMasked = try { prefs.botToken.isNotEmpty() } catch (_: Exception) { false }
             val chatMasked = try { prefs.chatId.isNotEmpty() } catch (_: Exception) { false }
+            val accessPinMasked = try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false }
             val syncVal = try { prefs.syncInterval.toString() } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString() }
             val camVal = try { prefs.cameraInterval.toString() } catch (_: Exception) { "1" }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -344,6 +356,7 @@ class SetupActivity : AppCompatActivity() {
                 try {
                     if (botTokenInput.text.toString().isEmpty() && tokenMasked) botTokenInput.setText(STORED_MASK)
                     if (chatIdInput.text.toString().isEmpty() && chatMasked) chatIdInput.setText(STORED_MASK)
+                    if (accessPinInput.text.toString().isEmpty() && accessPinMasked) accessPinInput.setText(STORED_MASK)
                     if (syncIntervalInput.text.toString().isEmpty()) syncIntervalInput.setText(syncVal)
                     if (cameraIntervalInput.text.toString().isEmpty()) cameraIntervalInput.setText(camVal)
                 } catch (_: Exception) {
@@ -457,6 +470,7 @@ class SetupActivity : AppCompatActivity() {
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")
+            accessPinInput.setText("")
             pendingRestoreOwnerId = 0L
         } catch (_: Exception) {
         }
@@ -496,6 +510,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
             try { prefs.ownerPairCode = "" } catch (_: Exception) { }
+            try { prefs.accessPin = "" } catch (_: Exception) { }
             try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
             try { prefs.cameraInterval = 1 } catch (_: Exception) { }
             try { prefs.patrolInterval = 30 } catch (_: Exception) { }
@@ -535,12 +550,22 @@ class SetupActivity : AppCompatActivity() {
     private fun saveSettings() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
+        val rawAccessPin = accessPinInput.text.toString().trim()
         val intervalRaw = syncIntervalInput.text.toString().trim()
         val cameraRaw = cameraIntervalInput.text.toString().trim()
         val intervalParsed = intervalRaw.toIntOrNull() ?: try { prefs.syncInterval } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL }
         val cameraParsed = cameraRaw.toIntOrNull() ?: try { prefs.cameraInterval } catch (_: Exception) { 1 }
         if (intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return
+        }
+        val accessPinCheck = if (rawAccessPin == STORED_MASK) {
+            try { prefs.accessPin } catch (_: Exception) { "" }
+        } else {
+            rawAccessPin
+        }
+        if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
+            Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
             return
         }
         val interval = intervalParsed
@@ -564,8 +589,10 @@ class SetupActivity : AppCompatActivity() {
         try { saveJob?.cancel() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val token = resolveStored(rawToken, try { prefs.botToken } catch (_: Exception) { "" })
+            val currentToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val token = resolveStored(rawToken, currentToken)
             var chatId = resolveStored(rawChat, try { prefs.chatId } catch (_: Exception) { "" })
+            val accessPin = if (token != currentToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
@@ -653,7 +680,10 @@ class SetupActivity : AppCompatActivity() {
                             false
                         }
                     }
-                    if (offSaved == true) applyPendingRestoreOwner()
+                    if (offSaved == true) {
+                        try { prefs.accessPin = accessPin } catch (_: Exception) { }
+                        applyPendingRestoreOwner()
+                    }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (mySave != saveSeq.get()) return@withContext
@@ -677,7 +707,10 @@ class SetupActivity : AppCompatActivity() {
             }
             if (persistOutcome == null) return@launch
             val persisted = persistOutcome
-            if (persisted) applyPendingRestoreOwner()
+            if (persisted) {
+                try { prefs.accessPin = accessPin } catch (_: Exception) { }
+                applyPendingRestoreOwner()
+            }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (mySave != saveSeq.get()) return@withContext
@@ -690,6 +723,7 @@ class SetupActivity : AppCompatActivity() {
                 try {
                     botTokenInput.setText(STORED_MASK)
                     chatIdInput.setText(STORED_MASK)
+                    accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
                 } catch (_: Exception) {
                 }
                 try {
@@ -748,6 +782,14 @@ class SetupActivity : AppCompatActivity() {
         val chat = if (rawChat == STORED_MASK) {
             try { prefs.chatId } catch (_: Exception) { "" }
         } else rawChat
+        val rawAccessPin = accessPinInput.text?.toString()?.trim().orEmpty()
+        val accessPin = if (rawAccessPin == STORED_MASK) {
+            try { prefs.accessPin } catch (_: Exception) { "" }
+        } else rawAccessPin
+        if (accessPin.isNotEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_pair_link_pin_active), Toast.LENGTH_LONG).show()
+            return
+        }
         val chatNumber = chat.toLongOrNull()
         if (!token.matches(TOKEN_REGEX) || chatNumber == null || chatNumber <= 0L) {
             Toast.makeText(this, getString(R.string.setup_pair_link_fail), Toast.LENGTH_LONG).show()
@@ -1565,8 +1607,15 @@ class SetupActivity : AppCompatActivity() {
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
             val credErr = s(PreferencesManager.KEY_CRED_ERROR)
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
-            val pairCode = try { if (!configured || ownerKnown) prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) }.orEmpty() else prefs.ownerPairCode.takeIf { it.matches(PAIR_CODE_REGEX) } ?: prefs.ensureOwnerPairCode() } catch (_: Exception) { "" }
+            val accessPinActive = try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false }
+            val pairCode = try {
+                val storedPairCode = prefs.ownerPairCode.takeIf { PAIR_CODE_REGEX.matchEntire(it) != null }.orEmpty()
+                if (!configured || ownerKnown || accessPinActive) storedPairCode else storedPairCode.ifEmpty { prefs.ensureOwnerPairCode() }
+            } catch (_: Exception) {
+                ""
+            }
             val ownerLine = if (ownerKnown) "\n" + getString(R.string.setup_status_owner_known)
+            else if (accessPinActive) "\n" + getString(R.string.setup_status_owner_unknown_pin)
             else if (pairCode.isNotEmpty()) "\n" + getString(R.string.setup_status_owner_unknown_code, pairCode)
             else "\n" + getString(R.string.setup_status_owner_unknown)
             val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
