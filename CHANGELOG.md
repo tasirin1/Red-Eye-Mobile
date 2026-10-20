@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Tema global tidak lagi didominasi hijau: tombol Setup kembali peach `#E8A27A` dengan teks espresso, hijau hanya menjadi aksen; status bar Setup memakai charcoal.
+
 ## [1.6.412] - 2026-10-20
 ### Changed
 - Tema global dan ikon launcher kini memakai palet earthy yang sama dengan kalkulator: primary forest green `#1B4D3E`, secondary peach `#E8A27A`, dan latar ikon cream; warna biru/oranye lama di Setup dan ikon dihapus.
