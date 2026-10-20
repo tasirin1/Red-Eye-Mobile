@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.413] - 2026-10-20
 ### Fixed
 - Tema global tidak lagi didominasi hijau: tombol Setup kembali peach `#E8A27A` dengan teks espresso, hijau hanya menjadi aksen; status bar Setup memakai charcoal.
 
