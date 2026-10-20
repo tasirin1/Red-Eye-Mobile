@@ -2,5 +2,5 @@ build:
   maxIssues: 0
 
 style:
-  NoTrailingSpaces:
+  NewLineAtEndOfFile:
     active: true
