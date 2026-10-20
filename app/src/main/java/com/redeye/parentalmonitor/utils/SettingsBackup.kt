@@ -9,9 +9,9 @@ object SettingsBackup {
     private const val MIN_PIN = 6
     private const val MIN_PIN_LEGACY = 4
 
-    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int)
+    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L)
 
-    fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, pin: String): String {
+    fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, ownerId: Long, pin: String): String {
         require(token.isNotEmpty() && chatId.isNotEmpty())
         require(pin.length >= MIN_PIN)
         val random = java.security.SecureRandom()
@@ -23,6 +23,7 @@ object SettingsBackup {
             .put("chat", chatId)
             .put("interval", syncInterval)
             .put("camera", cameraInterval)
+            .put("owner", ownerId)
             .toString().toByteArray(Charsets.UTF_8)
         val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, deriveKey(pin, salt, true), javax.crypto.spec.GCMParameterSpec(128, iv))
@@ -41,11 +42,13 @@ object SettingsBackup {
         val cipherText = all.copyOfRange(28, all.size)
         val plain = decrypt(cipherText, pin, salt, iv).toString(Charsets.UTF_8)
         val o = org.json.JSONObject(plain)
-        require(o.optInt("v", 0) == 1)
+        require(o.optInt("v", 0) in 1..2)
         val token = o.optString("token", "")
         val chat = o.optString("chat", "")
         require(token.isNotEmpty() && chat.isNotEmpty())
-        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60))
+        val owner = o.optLong("owner", 0L)
+        require(owner >= 0L)
+        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner)
     }
 
     private fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray): ByteArray {

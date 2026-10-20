@@ -30,6 +30,7 @@ import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.RingVolume
+import com.redeye.parentalmonitor.utils.SettingsBackup
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import android.os.BatteryManager
@@ -37,7 +38,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MonitoringService : Service() {
@@ -189,6 +192,16 @@ class MonitoringService : Service() {
     private var cachedChatId = ""
     @Volatile
     private var cachedOwnerId = 0L
+    private class PendingRestore(
+        var stage: Int,
+        var blob: String? = null,
+        var at: Long = SystemClock.elapsedRealtime(),
+        var attempts: Int = 0
+    )
+    @Volatile
+    private var pendingRestore: PendingRestore? = null
+    @Volatile
+    private var skipUpdateOffsetOnce = false
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
     private var credsCheckAt = 0L
@@ -259,10 +272,17 @@ class MonitoringService : Service() {
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot")
+        private val RESTORE_TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
+        private val RESTORE_CHAT_REGEX = Regex("^-?[0-9]{4,}$")
+        private const val RESTORE_MAX_BYTES = 64 * 1024
+        private const val RESTORE_TTL_MS = 10 * 60_000L
+        private const val RESTORE_MAX_PIN_TRIES = 3
+        private const val RESTORE_STAGE_DOC = 1
+        private const val RESTORE_STAGE_PIN = 2
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
@@ -1402,7 +1422,9 @@ class MonitoringService : Service() {
                         }
                     }
                     val ownerOk = isOwner(senderId)
-                    if (chatOk || ownerOk) {
+                    val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
+                    val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
+                    if ((chatOk || ownerOk) && !restoreHandled) {
                         val balasAngka = consumePendingInput(rawText, message?.date ?: 0L, ownerOk, chatOk, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
                         if (!balasAngka && command.startsWith("/")) {
                             val aliasInput = resolveAliasInput(command, arg)
@@ -1422,7 +1444,9 @@ class MonitoringService : Service() {
                 }
             } finally {
                 try {
-                    if (update.updateId > preferencesManager.lastUpdateId) {
+                    if (skipUpdateOffsetOnce) {
+                        skipUpdateOffsetOnce = false
+                    } else if (update.updateId > preferencesManager.lastUpdateId) {
                         preferencesManager.setLastUpdateIdSync(update.updateId)
                         if (preferencesManager.lastUpdateId < update.updateId) {
                             commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
@@ -1614,6 +1638,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("hilang", "HP hilang: bunyi+lokasi+foto"),
             com.redeye.parentalmonitor.network.BotCommand("help", "Tombol aksi cepat"),
             com.redeye.parentalmonitor.network.BotCommand("tombol", "Atur angka: interval, jeda, rekam, bunyi, denyut, jemput"),
+            com.redeye.parentalmonitor.network.BotCommand("pulihkan", "Pulihkan token/chat/owner dari file backup"),
             com.redeye.parentalmonitor.network.BotCommand("start", "Tautkan/pairing perangkat")
         )
     }
@@ -1766,6 +1791,7 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
                     listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
                     listOf(button("\uD83D\uDD22 Atur angka", "m:angka")),
+                    listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan")),
                     listOf(menuUtama)
                 )
             )
@@ -2157,6 +2183,7 @@ class MonitoringService : Service() {
             }
             "/hilang" -> handleHilangCommand()
             "/jemput" -> handleJemputCommand(arg)
+            "/pulihkan" -> handleRestoreCommand(arg, privateChat)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
@@ -2244,6 +2271,278 @@ class MonitoringService : Service() {
                 preferencesManager.jemputRadiusM = rad
                 sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
             }
+        }
+    }
+
+    private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean) {
+        if (!privateChat) {
+            sendToTelegram("🔐 /pulihkan hanya bisa dipakai dari private chat owner.")
+            return
+        }
+        val mode = arg.trim().lowercase(java.util.Locale.ROOT)
+        if (mode == "batal" || mode == "cancel" || mode == "off") {
+            pendingRestore = null
+            sendToTelegram("Pemulihan dibatalkan.")
+            return
+        }
+        if (mode.isNotEmpty()) {
+            sendToTelegram("Cara pakai: /pulihkan lalu kirim file <code>.redeyebak</code>, atau /pulihkan batal.")
+            return
+        }
+        pendingRestore = PendingRestore(RESTORE_STAGE_DOC)
+        sendToTelegram(
+            "📥 <b>Pulihkan setelan</b>\n" +
+                "Kirim file backup <code>.redeyebak</code> sebagai dokumen di chat ini, lalu balas PIN backup-nya.\n\n" +
+                "File berisi token bot, Chat ID, owner ID, interval sync, dan interval foto. " +
+                "Sebelum restore, buka bot baru dan kirim /start sekali dari chat tujuan agar bot baru boleh mengirim ke sana. " +
+                "Setelan baru hanya dipakai setelah token, chat, dan tes kirim lolos; kalau gagal, setelan lama tetap. " +
+                "Sesi berlaku 10 menit.\n\n" +
+                "Ketik /pulihkan batal untuk membatalkan."
+        )
+    }
+
+    private suspend fun handleRestoreIncoming(
+        message: com.redeye.parentalmonitor.network.TelegramIncomingMessage,
+        chatId: String
+    ): Boolean {
+        val pending = pendingRestore ?: return false
+        if (SystemClock.elapsedRealtime() - pending.at > RESTORE_TTL_MS) {
+            pendingRestore = null
+            sendToTelegram("⏳ Sesi pulihkan kedaluwarsa. Kirim /pulihkan lagi.")
+            return true
+        }
+        if (pending.stage == RESTORE_STAGE_DOC) {
+            val document = message.document
+            if (document == null) {
+                val text = message.text?.trim().orEmpty()
+                if (text.startsWith("/")) return false
+                if (text.isNotEmpty()) {
+                    sendToTelegram("Kirim file <code>.redeyebak</code> sebagai dokumen, atau /pulihkan batal.")
+                    return true
+                }
+                return false
+            }
+            handleRestoreDocument(pending, document, message, chatId)
+            return true
+        }
+        if (pending.stage == RESTORE_STAGE_PIN) {
+            if (message.document != null) {
+                sendToTelegram("Balas PIN backup sebagai teks, atau /pulihkan batal.")
+                return true
+            }
+            val pin = message.text?.trim().orEmpty()
+            if (pin.isEmpty() || pin.startsWith("/")) return false
+            handleRestorePin(pending, pin, message, chatId)
+            return true
+        }
+        return false
+    }
+
+    private suspend fun handleRestoreDocument(
+        pending: PendingRestore,
+        document: com.redeye.parentalmonitor.network.TelegramDocument,
+        message: com.redeye.parentalmonitor.network.TelegramIncomingMessage,
+        chatId: String
+    ) {
+        val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        if (token.isEmpty()) {
+            pendingRestore = null
+            sendToTelegram("Token bot saat ini kosong; buka Setup untuk memulihkan.")
+            return
+        }
+        if (document.fileSize > RESTORE_MAX_BYTES) {
+            pendingRestore = null
+            sendToTelegram("File terlalu besar (maks 64 KB).")
+            return
+        }
+        val name = document.fileName.orEmpty()
+        if (!name.endsWith(".redeyebak", ignoreCase = true)) {
+            sendToTelegram("File harus berekstensi <code>.redeyebak</code>.")
+            return
+        }
+        var blob: String? = null
+        try {
+            val fileId = try { URLEncoder.encode(document.fileId, "UTF-8") } catch (_: Exception) { document.fileId }
+            val fileResp = TelegramClient.api.getFile("https://api.telegram.org/bot$token/getFile?file_id=$fileId")
+            val filePath = fileResp.body()?.result?.filePath
+            if (!fileResp.isSuccessful || filePath.isNullOrBlank()) {
+                sendToTelegram("Gagal mengambil file dari Telegram. Coba kirim ulang.")
+                return
+            }
+            val safePath = filePath.replace(" ", "%20")
+            val download = TelegramMediaClient.api.downloadFile("https://api.telegram.org/file/bot$token/$safePath")
+            val body = download.body()
+            if (!download.isSuccessful || body == null) {
+                sendToTelegram("Gagal mengunduh file backup. Coba kirim ulang.")
+                return
+            }
+            val contentLength = body.contentLength()
+            if (contentLength > RESTORE_MAX_BYTES) {
+                body.close()
+                sendToTelegram("File terlalu besar (maks 64 KB).")
+                return
+            }
+            val out = ByteArrayOutputStream()
+            var tooBig = false
+            try {
+                body.byteStream().use { input ->
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (out.size() + read > RESTORE_MAX_BYTES) {
+                            tooBig = true
+                            break
+                        }
+                        out.write(buffer, 0, read)
+                    }
+                }
+            } finally {
+                body.close()
+            }
+            if (tooBig) {
+                pendingRestore = null
+                sendToTelegram("File terlalu besar (maks 64 KB).")
+                return
+            }
+            blob = out.toByteArray().toString(Charsets.UTF_8).trim()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            sendToTelegram("Gagal memproses file backup. Coba lagi.")
+            return
+        } finally {
+            try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
+        }
+        val text = blob ?: return
+        if (!text.startsWith(SettingsBackup.MAGIC)) {
+            pendingRestore = null
+            sendToTelegram("File bukan backup Red Eye yang valid.")
+            return
+        }
+        pending.blob = text
+        pending.stage = RESTORE_STAGE_PIN
+        pending.at = SystemClock.elapsedRealtime()
+        pending.attempts = 0
+        sendToTelegram("🔐 File diterima. Balas PIN backup (minimal 6 digit), atau /pulihkan batal.")
+    }
+
+    private suspend fun handleRestorePin(
+        pending: PendingRestore,
+        pin: String,
+        message: com.redeye.parentalmonitor.network.TelegramIncomingMessage,
+        chatId: String
+    ) {
+        val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        val data = try {
+            pending.blob?.let { SettingsBackup.import(it, pin) }
+        } catch (_: Exception) {
+            null
+        }
+        try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
+        if (data == null) {
+            pending.attempts++
+            if (pending.attempts >= RESTORE_MAX_PIN_TRIES) {
+                pendingRestore = null
+                sendToTelegram("❌ PIN salah 3 kali. Sesi pulihkan ditutup; kirim /pulihkan lagi.")
+            } else {
+                sendToTelegram("❌ PIN salah. Sisa ${RESTORE_MAX_PIN_TRIES - pending.attempts} percobaan.")
+            }
+            return
+        }
+        pendingRestore = null
+        applyRestoredSettings(data)
+    }
+
+    private suspend fun applyRestoredSettings(data: SettingsBackup.BackupData) {
+        val oldToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        val oldChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+        val oldOwner = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
+        val newToken = data.token.trim()
+        val newChat = data.chatId.trim()
+        if (!RESTORE_TOKEN_REGEX.matches(newToken) || !RESTORE_CHAT_REGEX.matches(newChat)) {
+            sendToTelegram("⚠️ File berisi token atau Chat ID yang tidak valid. Setelan lama tidak diubah.")
+            return
+        }
+        try {
+            val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$newToken/getMe")
+            if (!meResp.isSuccessful || meResp.body()?.ok != true) {
+                val code = meResp.code()
+                sendToTelegram("⚠️ Token bot baru ditolak Telegram (kode $code). Setelan lama tidak diubah.")
+                return
+            }
+            val encodedChat = try { URLEncoder.encode(newChat, "UTF-8") } catch (_: Exception) { newChat }
+            val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$newToken/getChat?chat_id=$encodedChat")
+            if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
+                val code = chatResp.code()
+                sendToTelegram("⚠️ Chat ID baru tidak bisa diakses bot baru (kode $code). Setelan lama tidak diubah.")
+                return
+            }
+            val testResp = TelegramClient.api.sendMessage(
+                "https://api.telegram.org/bot$newToken/sendMessage",
+                TelegramMessage(chatId = newChat, text = "🔐 Tes koneksi restore Red Eye.", parseMode = null)
+            )
+            if (!testResp.isSuccessful || testResp.body()?.ok != true) {
+                val code = testResp.code()
+                sendToTelegram("⚠️ Tes kirim ke chat baru gagal (kode $code). Setelan lama tidak diubah.")
+                return
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            sendToTelegram("⚠️ Validasi token/chat baru gagal (jaringan?). Setelan lama tidak diubah.")
+            return
+        }
+        val saved = try {
+            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval)
+        } catch (_: Exception) {
+            false
+        }
+        if (!saved) {
+            sendToTelegram("⚠️ Gagal menyimpan setelan baru. Setelan lama tetap dipakai.")
+            return
+        }
+        if (oldToken != newToken || oldChat != newChat) skipUpdateOffsetOnce = true
+        var targetOwner = data.ownerId
+        if (targetOwner <= 0L) {
+            val chatNumber = newChat.toLongOrNull()
+            targetOwner = if (chatNumber != null && chatNumber > 0L) chatNumber else oldOwner
+        }
+        if (targetOwner > 0L) {
+            try { preferencesManager.setOwnerIdSync(targetOwner) } catch (_: Exception) { }
+        }
+        refreshCreds()
+        serviceScope.launch {
+            try { registerBotCommands(force = true) } catch (_: Exception) { }
+        }
+        sendToTelegram(
+            "✅ <b>Setelan dipulihkan</b>\n" +
+                "Token bot, Chat ID, owner ID, interval sync, dan interval foto sudah diganti.\n" +
+                "Bot lama tidak dipakai lagi. Kirim /status untuk memastikan."
+        )
+        if (oldToken.isNotEmpty() && oldChat.isNotEmpty() && (oldToken != newToken || oldChat != newChat)) {
+            try {
+                TelegramClient.api.sendMessage(
+                    "https://api.telegram.org/bot$oldToken/sendMessage",
+                    TelegramMessage(
+                        chatId = oldChat,
+                        text = "⚠️ Token/Chat ID perangkat diganti lewat /pulihkan. Bot ini tidak lagi memantau perangkat.",
+                        parseMode = null
+                    )
+                )
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun deleteIncomingMessage(chatId: String, messageId: Long, token: String) {
+        if (chatId.isEmpty() || messageId <= 0L || token.isEmpty()) return
+        try {
+            TelegramClient.api.deleteMessage(
+                "https://api.telegram.org/bot$token/deleteMessage",
+                mapOf("chat_id" to chatId, "message_id" to messageId.toString())
+            )
+        } catch (_: Exception) {
         }
     }
 

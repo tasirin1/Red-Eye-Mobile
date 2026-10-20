@@ -54,6 +54,7 @@ class SetupActivity : AppCompatActivity() {
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
+    private var pendingRestoreOwnerId = 0L
     private var fieldsLoaded = false
 
     private val backupLauncher = registerForActivityResult(
@@ -105,6 +106,7 @@ class SetupActivity : AppCompatActivity() {
                                 chatIdInput.setText(data.chatId)
                                 syncIntervalInput.setText(data.syncInterval.toString())
                                 cameraIntervalInput.setText(data.cameraInterval.toString())
+                                pendingRestoreOwnerId = data.ownerId
                             } catch (_: Exception) {
                             }
                             Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
@@ -452,6 +454,7 @@ class SetupActivity : AppCompatActivity() {
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")
+            pendingRestoreOwnerId = 0L
         } catch (_: Exception) {
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
@@ -647,6 +650,7 @@ class SetupActivity : AppCompatActivity() {
                             false
                         }
                     }
+                    if (offSaved == true) applyPendingRestoreOwner()
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (mySave != saveSeq.get()) return@withContext
@@ -670,6 +674,7 @@ class SetupActivity : AppCompatActivity() {
             }
             if (persistOutcome == null) return@launch
             val persisted = persistOutcome
+            if (persisted) applyPendingRestoreOwner()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (mySave != saveSeq.get()) return@withContext
@@ -698,6 +703,14 @@ class SetupActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun applyPendingRestoreOwner() {
+        try {
+            if (pendingRestoreOwnerId > 0L) prefs.setOwnerIdSync(pendingRestoreOwnerId)
+        } catch (_: Exception) {
+        }
+        pendingRestoreOwnerId = 0L
     }
 
     private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {
@@ -777,7 +790,7 @@ class SetupActivity : AppCompatActivity() {
             lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                 val blob = try {
                     com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                        token, chatId, interval, camInterval, pin
+                        token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, pin
                     )
                 } catch (_: Exception) {
                     null

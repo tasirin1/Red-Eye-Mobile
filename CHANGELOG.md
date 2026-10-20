@@ -1,4 +1,10 @@
 ## [Unreleased]
+### Added
+- `/pulihkan`: memulihkan token bot, Chat ID, owner ID, interval sync, dan interval foto dari file `.redeyebak` yang dikirim ke bot. Bot meminta PIN, memvalidasi token (`getMe`), chat (`getChat`), dan tes kirim sebelum mengganti setelan; bila salah satu gagal, setelan lama tetap dipakai. Sesi 10 menit, PIN maksimal 3 percobaan, pesan file/PIN dihapus setelah diproses.
+- Tombol **📥 Pulihkan setelan** di menu **Alat & kontrol**.
+
+### Changed
+- File backup `.redeyebak` kini menyertakan owner ID; restore lewat Setup ikut menerapkan owner saat **Save**. Backup format lama tetap terbaca (owner dianggap 0).
 
 ## [1.6.403] - 2026-10-20
 ### Changed

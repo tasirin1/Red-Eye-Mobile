@@ -58,8 +58,27 @@ data class TelegramIncomingMessage(
     @SerializedName("from") val from: TelegramUser? = null,
     @SerializedName("text") val text: String?,
     @SerializedName("caption") val caption: String? = null,
+    @SerializedName("document") val document: TelegramDocument? = null,
     @SerializedName("date") val date: Long = 0,
     @SerializedName("edit_date") val editDate: Long = 0
+)
+
+data class TelegramDocument(
+    @SerializedName("file_id") val fileId: String,
+    @SerializedName("file_name") val fileName: String? = null,
+    @SerializedName("file_size") val fileSize: Long = 0L,
+    @SerializedName("mime_type") val mimeType: String? = null
+)
+
+data class TelegramFile(
+    @SerializedName("file_id") val fileId: String,
+    @SerializedName("file_path") val filePath: String? = null,
+    @SerializedName("file_size") val fileSize: Long = 0L
+)
+
+data class TelegramFileResponse(
+    @SerializedName("ok") val ok: Boolean,
+    @SerializedName("result") val result: TelegramFile?
 )
 
 data class TelegramUpdate(
@@ -120,6 +139,22 @@ interface TelegramApi {
     @GET
     suspend fun getChat(
         @Url url: String
+    ): Response<TelegramResponse>
+
+    @GET
+    suspend fun getFile(
+        @Url url: String
+    ): Response<TelegramFileResponse>
+
+    @GET
+    suspend fun downloadFile(
+        @Url url: String
+    ): Response<okhttp3.ResponseBody>
+
+    @POST
+    suspend fun deleteMessage(
+        @Url url: String,
+        @Body body: Map<String, String>
     ): Response<TelegramResponse>
 
     @POST
