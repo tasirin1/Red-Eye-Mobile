@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.402] - 2026-10-20
 ### Fixed
 - Sinkron riwayat awal tidak lagi berjalan saat offline atau token diblokir, sehingga riwayat tidak lagi membanjiri antrean 100 pesan lalu terbuang permanen; antrean data dibatasi 90 dan sisanya menyusul otomatis. Pesan "Belum ada riwayat" tidak lagi muncul saat antrean masih berisi data.
 - Notifikasi masalah token/chat (401/403/400) dan notifikasi pemulihan layanan kini membuka kalkulator (kode rahasia), bukan halaman Setup langsung, sehingga pemantauan tidak bisa dimatikan orang lain tanpa kode.
