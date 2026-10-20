@@ -1264,6 +1264,8 @@ class MonitoringService : Service() {
             return
         }
         pendingRestore = null
+        pendingInputCommand = ""
+        pendingInputAt = 0L
         try {
             loginAttemptAt.clear()
             loginFails.clear()

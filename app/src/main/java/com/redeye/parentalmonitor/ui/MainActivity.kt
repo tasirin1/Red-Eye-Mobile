@@ -141,6 +141,8 @@ class MainActivity : AppCompatActivity() {
     private fun appendNumber(number: String) {
         if (justCalculated) {
             currentNumber = ""
+            previousNumber = ""
+            operator = ""
             lastExpression = ""
             justCalculated = false
         }

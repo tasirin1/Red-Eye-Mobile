@@ -1,3 +1,8 @@
+## [1.6.419] - 2026-10-20
+### Fixed
+- `/logout` mengosongkan perintah input tertunda, sehingga input lama tidak bisa dieksekusi oleh sesi owner berikutnya.
+- Setelah hasil `%` atau `=`, mengetik angka baru benar-benar memulai perhitungan baru tanpa membawa `previousNumber`/`operator` lama.
+
 ## [1.6.418] - 2026-10-20
 ### Fixed
 - Notifikasi prioritas yang datang saat antrean penuh kini melewati dedupe dan batas laju yang sama seperti jalur normal, tidak lagi dikirim langsung tanpa penyaring.
