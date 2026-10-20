@@ -6,6 +6,14 @@
 - Jam malam `00:00`–`04:59` tidak lagi dianggap aktif hampir sepanjang hari; rentang dihitung dalam menit.
 - Callback `MediaProjection` lama tidak lagi membongkar sesi tangkap layar yang baru (callback terikat ke projection pemiliknya).
 - Rekaman audio yang sudah selesai tidak lagi dihapus saat pengiriman dibatalkan; berkas disimpan untuk dicoba otomatis. Rekaman yang `stop()`-nya gagal tidak lagi diunggah sebagai berkas rusak.
+- Bot yang diblokir (`403`): perintah dibaca lagi dalam ±5 menit (sebelumnya 30 menit) dan teks notifikasi tidak lagi menyuruh `/status` yang mustahil diproses saat itu.
+- Geofence rumah/sekolah kini tetap dicek tiap 15 menit walau patroli mati (memakai posisi cache atau satu perbaikan lokasi), tidak lagi diam sampai `/patrol` dinyalakan.
+- `lastDataAt` diperbarui pada setiap pengiriman sukses, sehingga peringatan "sepi >48 jam" tidak lagi muncul palsu di perangkat yang rutin mengirim lokasi/foto tanpa SMS/panggilan baru.
+- Sinkronisasi awal tidak lagi mengulang pesan "Pemantauan dimulai" dan "terkirim sebagian" setiap 30 menit; percobaan ulang tetap dijadwalkan bila terjadi galat di tengah proses.
+- Unggah media memakai batas waktu 600 detik (tulis 300 detik) agar video hingga 48 MB punya kesempatan selesai di koneksi lambat, tidak lagi timeout lalu diulang terus.
+- Screenshot ditulis ke berkas `.tmp` dan hanya diganti nama setelah `compress()` berhasil, sehingga JPEG rusak/terpotong tidak lagi terkirim.
+- Pemulihan backup membaca berkas secara bertahap dengan batas 1 MB, tidak lagi memuat seluruh isi ke memori bila penyimpanan tidak melaporkan ukuran (berisiko `OutOfMemoryError`).
+- Chat tujuan berupa grup: bila owner sudah tertaut, anggota lain tidak lagi bisa menekan tombol navigasi atau menjalankan perintah lewat bot.
 
 ## [1.6.400] - 2026-10-19
 ### Fixed

@@ -78,16 +78,7 @@ class SetupActivity : AppCompatActivity() {
     ) { uri ->
         if (uri == null) return@registerForActivityResult
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val size = try {
-                contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
-            } catch (_: Exception) {
-                -1L
-            }
-            val text = if (size > MAX_BACKUP_BYTES) null else try {
-                contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-            } catch (_: Exception) {
-                null
-            }
+            val text = readBackupText(uri)
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 if (text.isNullOrBlank()) {
@@ -740,6 +731,24 @@ class SetupActivity : AppCompatActivity() {
             }
             .setOnCancelListener { done(null) }
             .show()
+    }
+
+    private fun readBackupText(uri: android.net.Uri): String? {
+        return try {
+            contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                val sb = StringBuilder()
+                val buf = CharArray(8192)
+                while (true) {
+                    val n = reader.read(buf)
+                    if (n < 0) break
+                    if (sb.length + n > MAX_BACKUP_BYTES) return null
+                    sb.append(buf, 0, n)
+                }
+                sb.toString()
+            }?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun backupSettings() {

