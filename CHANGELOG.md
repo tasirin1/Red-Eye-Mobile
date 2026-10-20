@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.408] - 2026-10-20
 ### Fixed
 - Worker pengirim antrean tidak lagi menjadwalkan ulang dengan `REPLACE` dari dalam dirinya sendiri; jadwal lanjutan memakai `APPEND_OR_REPLACE` agar worker yang sedang berjalan tidak dibatalkan.
 - Status monitoring kembali nonaktif bila layanan gagal dimulai, termasuk saat Android memblokir start foreground service; watchdog dan liveness ikut dibatalkan agar status Setup tidak menyesatkan.
