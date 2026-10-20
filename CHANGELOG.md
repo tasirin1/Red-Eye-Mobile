@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.409] - 2026-10-20
 ### Added
 - Tombol `±` (ubah tanda) dan `%` (persen) pada kalkulator stealth; kode rahasia `1234=` dan aturan hitung tetap sama.
 - Unit test `CalculatorFormat` untuk pemisah ribuan, bilangan negatif, notasi ilmiah, dan riwayat ekspresi.
