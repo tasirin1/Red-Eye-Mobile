@@ -57,6 +57,7 @@ class SetupActivity : AppCompatActivity() {
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
     private var pendingRestoreOwnerId = 0L
+    private var pendingRestoreAccessPin = ""
     private var fieldsLoaded = false
 
     private val backupLauncher = registerForActivityResult(
@@ -109,6 +110,7 @@ class SetupActivity : AppCompatActivity() {
                                 syncIntervalInput.setText(data.syncInterval.toString())
                                 cameraIntervalInput.setText(data.cameraInterval.toString())
                                 pendingRestoreOwnerId = data.ownerId
+                                pendingRestoreAccessPin = data.accessPin
                             } catch (_: Exception) {
                             }
                             Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
@@ -474,6 +476,7 @@ class SetupActivity : AppCompatActivity() {
             syncIntervalInput.setText(com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString())
             cameraIntervalInput.setText("1")
             pendingRestoreOwnerId = 0L
+            pendingRestoreAccessPin = ""
         } catch (_: Exception) {
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
@@ -538,9 +541,17 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
+            var recovered = false
+            val wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
+            if (wasVolatile) {
+                recovered = try { PreferencesManager.recoverEncryptedStorage(this@SetupActivity) } catch (_: Exception) { false }
+                if (recovered) {
+                    try { prefs = PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
+                }
+            }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
-                Toast.makeText(this@SetupActivity, getString(R.string.setup_credentials_cleared), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SetupActivity, getString(if (recovered) R.string.setup_storage_recovered else R.string.setup_credentials_cleared), Toast.LENGTH_SHORT).show()
                 try {
                     updateStatus()
                 } catch (_: Exception) {
@@ -595,7 +606,7 @@ class SetupActivity : AppCompatActivity() {
             val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
             val token = resolveStored(rawToken, currentToken)
             var chatId = resolveStored(rawChat, storedChatId)
-            val accessPin = if (token != currentToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
+            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" }).ifEmpty { pendingRestoreAccessPin }
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
@@ -741,6 +752,7 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         pendingRestoreOwnerId = 0L
+        pendingRestoreAccessPin = ""
     }
 
     private fun showHealthDialog() {
@@ -944,7 +956,7 @@ class SetupActivity : AppCompatActivity() {
             lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                 val blob = try {
                     com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                        token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, pin
+                        token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, try { prefs.accessPin } catch (_: Exception) { "" }, pin
                     )
                 } catch (_: Exception) {
                     null
@@ -993,7 +1005,7 @@ class SetupActivity : AppCompatActivity() {
             val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
             val token = resolveStored(rawToken, storedToken)
             var chatId = resolveStored(rawChat, storedChatId)
-            val accessPin = if (token != storedToken && rawAccessPin == STORED_MASK) "" else resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
+            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
             if (token.isEmpty() || chatId.isEmpty()) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext

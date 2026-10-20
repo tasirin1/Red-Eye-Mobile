@@ -244,34 +244,6 @@ class CameraService(private val context: Context) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Using camera ID: $cameraId")
             stillArmed.set(false)
 
-            val timeout = Runnable {
-                Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
-                onTrace("trace: TIMEOUT waiting for camera")
-                finishWithError(Exception("Pemotretan timeout: kamera terbuka tapi tak ada gambar"))
-            }
-            timeoutRunnable = timeout
-            val watchdogScheduled = try {
-                val bg = backgroundHandler
-                if (bg != null) {
-                    bg.postDelayed(timeout, timeoutMs)
-                    true
-                } else {
-                    val mh = mainHandler()
-                    if (mh != null) {
-                        mh.postDelayed(timeout, timeoutMs)
-                        true
-                    } else {
-                        false
-                    }
-                }
-            } catch (_: Exception) {
-                false
-            }
-            if (!watchdogScheduled) {
-                finishWithError(Exception("Kamera tak tersedia (pemantau timeout belum siap)"))
-                return
-            }
-
             // Setup ImageReader (still capture only) plus a dummy surface for AE metering,
             // so warmup preview frames can never be mistaken for the still photo.
             val photoSize = choosePhotoSize(cameraManager, cameraId)
@@ -318,6 +290,34 @@ class CameraService(private val context: Context) {
                     finishWithError(e)
                 }
             }, backgroundHandler)
+
+            val timeout = Runnable {
+                Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
+                onTrace("trace: TIMEOUT waiting for camera")
+                finishWithError(Exception("Pemotretan timeout: kamera terbuka tapi tak ada gambar"))
+            }
+            timeoutRunnable = timeout
+            val watchdogScheduled = try {
+                val bg = backgroundHandler
+                if (bg != null) {
+                    bg.postDelayed(timeout, timeoutMs)
+                    true
+                } else {
+                    val mh = mainHandler()
+                    if (mh != null) {
+                        mh.postDelayed(timeout, timeoutMs)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } catch (_: Exception) {
+                false
+            }
+            if (!watchdogScheduled) {
+                finishWithError(Exception("Kamera tak tersedia (pemantau timeout belum siap)"))
+                return
+            }
 
             // Open camera
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {

@@ -16,9 +16,17 @@ class CallLogRepository(private val context: Context) {
     )
 
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
+        if (afterId > 0L) {
+            return queryCalls(
+                selection = "${CallLog.Calls._ID} > ?",
+                args = arrayOf(afterId.toString()),
+                sortOrder = "${CallLog.Calls._ID} ASC",
+                limit = 100
+            )
+        }
         return queryCalls(
-            selection = "${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?)",
-            args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString()),
+            selection = "${CallLog.Calls.DATE} > ?",
+            args = arrayOf(afterTimestamp.toString()),
             sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
             limit = 100
         )

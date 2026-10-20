@@ -291,6 +291,32 @@ class PreferencesManager(context: Context) {
                 false
             }
         }
+
+        fun recoverEncryptedStorage(context: Context): Boolean {
+            synchronized(this) {
+                try {
+                    val app = context.applicationContext
+                    app.deleteSharedPreferences(PREFS_NAME)
+                    app.deleteSharedPreferences("encrypted_queue")
+                } catch (e: Exception) {
+                    android.util.Log.w("PreferencesManager", "Gagal menghapus prefs terenkripsi", e)
+                    return false
+                }
+                try {
+                    val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore")
+                    keyStore.load(null)
+                    keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                } catch (_: Exception) {
+                }
+                sharedMasterKey = null
+                instance = null
+            }
+            return try {
+                getInstance(context).isStorageEncrypted
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     var botToken: String
@@ -937,7 +963,6 @@ class PreferencesManager(context: Context) {
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
         val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
-        if (tokenChanged) editor.remove(KEY_ACCESS_PIN)
         if (tokenChanged || chatChanged) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
             editor.putString(KEY_OWNER_PAIR_CODE, "")

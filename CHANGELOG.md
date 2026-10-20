@@ -1,3 +1,14 @@
+## [1.6.421] - 2026-10-20
+### Fixed
+- Watchdog kamera dipasang setelah `ImageReader` dan `meteringSurface` siap, sehingga timeout saat penyiapan tidak lagi meninggalkan reader/surface tanpa pemilik.
+- Pemeriksaan geofence cadangan tetap berjalan walau patroli aktif tetapi sedang tidak berjalan (malam, jeda, atau mode hemat daya), sehingga alert rumah/sekolah tidak mati senyap.
+- Kursor panggilan memakai `_ID` yang naik monoton, bukan jam dinding; panggilan tidak lagi hilang saat jam perangkat mundur. Sinkron awal dan penomoran bagian memakai urutan `_ID` yang sama.
+- PIN akses tidak lagi dihapus diam-diam saat token atau Chat ID berubah. PIN ikut tersimpan di backup terenkripsi dan diterapkan lagi lewat restore Setup maupun `/pulihkan`.
+- Backup cloud dan transfer perangkat-ke-perangkat dikecualikan lewat `android:dataExtractionRules`, sehingga prefs terenkripsi tidak tersalin tanpa kunci Keystore.
+- "Hapus kredensial" kini mereset penyimpanan terenkripsi yang rusak (prefs + keyset) dan membuat ulang penyimpanan aman, tidak lagi tertahan di mode volatil.
+- Unggahan foto diserialkan dengan mutex, sehingga foto hasil pemotretan baru tidak lagi diunggah paralel dengan flush foto lama.
+- Polling perintah tidak lagi menunggu balasan perintah sebelumnya: command dan callback dijalankan di coroutine berurutan, sedangkan perintah kontrol (`/stop`, `/pause`, `/resume`, `/restart`, `/logout`, `/clearqueue`, `/lock`) diprioritaskan agar tetap responsif.
+
 ## [1.6.420] - 2026-10-20
 ### Fixed
 - Kursor SMS dan panggilan tidak lagi melompati bagian yang gagal: pengiriman riwayat berhenti di bagian pertama yang gagal, sehingga bagian berikutnya tidak maju mendahului data yang belum terkirim.

@@ -37,6 +37,7 @@ import com.redeye.parentalmonitor.utils.RestoreRules
 import com.redeye.parentalmonitor.utils.SettingsBackup
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.withLock
 import android.os.BatteryManager
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -90,6 +91,8 @@ class MonitoringService : Service() {
         android.util.Log.e("MonitoringService", "Background failure recorded: ${redactToken(error.message)}")
     }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
+    private val commandLock = kotlinx.coroutines.sync.Mutex()
+    private val controlLock = kotlinx.coroutines.sync.Mutex()
     private val cameraBusy = AtomicBoolean(false)
     private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
@@ -97,6 +100,7 @@ class MonitoringService : Service() {
     private val recorderActive = AtomicBoolean(false)
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val activeMediaFiles = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<File, Boolean>()
@@ -287,6 +291,7 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
         private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout")
+        private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
         private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
@@ -1572,7 +1577,17 @@ class MonitoringService : Service() {
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
-                    handleCallbackQuery(callback)
+                    serviceScope.launch {
+                        commandLock.withLock {
+                            try {
+                                handleCallbackQuery(callback)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
+                            }
+                        }
+                    }
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
@@ -1645,21 +1660,36 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
-                    val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
-                    if ((chatOk || ownerOk) && !restoreHandled) {
-                        val balasAngka = consumePendingInput(rawText, message?.date ?: 0L, ownerOk, chatOk, senderId, msgChatId.isNotEmpty() && msgChatId == senderId)
-                        if (!balasAngka && command.startsWith("/")) {
-                            val aliasInput = resolveAliasInput(command, arg)
-                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                            handleTelegramCommand(input, message?.date ?: 0, ownerOk, chatOk, senderId = senderId, privateChat = msgChatId.isNotEmpty() && msgChatId == senderId)
-                        } else if (!balasAngka) {
-                            val aliasInput = resolveAliasInput(command, arg)
-                            val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
-                            if (aliasInput != null && privateOwner) {
-                                if (aliasInput.substringBefore(" ") in MUTATING_COMMANDS) {
-                                    try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
+                    if (chatOk || ownerOk) {
+                        val aliasInput = resolveAliasInput(command, arg)
+                        val effective = aliasInput?.substringBefore(" ") ?: command
+                        val control = effective in CONTROL_COMMANDS
+                        val isPrivate = msgChatId.isNotEmpty() && msgChatId == senderId
+                        val messageDate = message?.date ?: 0L
+                        val lock = if (control) controlLock else commandLock
+                        serviceScope.launch {
+                            lock.withLock {
+                                try {
+                                    val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
+                                    if (!restoreHandled) {
+                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
+                                        if (!balasAngka && command.startsWith("/")) {
+                                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                            handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
+                                        } else if (!balasAngka) {
+                                            if (aliasInput != null && privateOwner) {
+                                                if (aliasInput.substringBefore(" ") in MUTATING_COMMANDS) {
+                                                    try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
+                                                }
+                                                handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
+                                            }
+                                        }
+                                    }
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                                 }
-                                handleTelegramCommand(aliasInput, message?.date ?: 0, ownerOk, chatOk, senderId, true)
                             }
                         }
                     }
@@ -2908,6 +2938,9 @@ class MonitoringService : Service() {
             audit("restore simpan gagal", "private")
             sendToTelegram("⚠️ Gagal menyimpan setelan baru. Setelan lama tetap dipakai.")
             return
+        }
+        if (data.accessPin.isNotEmpty()) {
+            try { preferencesManager.accessPin = data.accessPin } catch (_: Exception) { }
         }
         if (oldToken != newToken || oldChat != newChat) skipUpdateOffsetOnce = true
         audit("restore diterapkan", "private")
@@ -4164,7 +4197,7 @@ class MonitoringService : Service() {
                 }
                 if (page.isEmpty()) break
                 pendingCalls.addAll(page)
-                val latest = page.maxWith(compareBy({ it.date }, { it.id }))
+                val latest = page.maxWith(compareBy({ it.id }, { it.date }))
                 callTs = latest.date
                 callId = latest.id
                 callPages++
@@ -4176,7 +4209,7 @@ class MonitoringService : Service() {
                 val probe = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
                 callTruncated = probe.isNotEmpty()
             }
-            pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
+            pendingCalls.sortWith(compareBy({ it.id }, { it.date }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 if (smsReadFailed || callReadFailed) {
                     initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
@@ -4268,10 +4301,8 @@ class MonitoringService : Service() {
                     val sentCallPart = sendFitted(message, queueOnFail = true)
                     if (sentCallPart) {
                         try {
-                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                            if (latest.date > preferencesManager.lastCallTimestamp ||
-                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                            ) {
+                            val latest = part.maxWith(compareBy({ it.id }, { it.date }))
+                            if (latest.id > preferencesManager.lastCallId) {
                                 preferencesManager.setCallCursorSync(latest.date, latest.id)
                             }
                         } catch (_: Exception) {
@@ -4389,10 +4420,8 @@ class MonitoringService : Service() {
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
                     if (sentCall) {
                         try {
-                            val latest = part.maxWith(compareBy({ it.date }, { it.id }))
-                            if (latest.date > preferencesManager.lastCallTimestamp ||
-                                (latest.date == preferencesManager.lastCallTimestamp && latest.id > preferencesManager.lastCallId)
-                            ) {
+                            val latest = part.maxWith(compareBy({ it.id }, { it.date }))
+                            if (latest.id > preferencesManager.lastCallId) {
                                 preferencesManager.setCallCursorSync(latest.date, latest.id)
                             }
                         } catch (_: Exception) {
@@ -5545,7 +5574,6 @@ class MonitoringService : Service() {
 
     private suspend fun checkGeofenceFallback() {
         try {
-            if (preferencesManager.patrolEnabled) return
             if (preferencesManager.monitoringPaused) return
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             if (lastGeofenceCheckAt != 0L && nowElapsed - lastGeofenceCheckAt < 15 * 60_000L) return
@@ -8574,7 +8602,10 @@ class MonitoringService : Service() {
         return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
-    private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome {
+    private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome =
+        photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile) }
+
+    private suspend fun sendPhotoFileUnlocked(photoFile: File): MediaSendOutcome {
         try {
             if (!photoFile.exists() || photoFile.length() == 0L) {
                 deleteQuietly(photoFile)

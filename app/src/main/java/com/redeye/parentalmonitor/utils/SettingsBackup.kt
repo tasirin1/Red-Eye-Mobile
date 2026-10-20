@@ -9,9 +9,9 @@ object SettingsBackup {
     private const val MIN_PIN = 6
     private const val MIN_PIN_LEGACY = 4
 
-    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L)
+    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "")
 
-    fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, ownerId: Long, pin: String): String {
+    fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, ownerId: Long, accessPin: String, pin: String): String {
         require(token.isNotEmpty() && chatId.isNotEmpty())
         require(pin.length >= MIN_PIN)
         val random = java.security.SecureRandom()
@@ -24,6 +24,7 @@ object SettingsBackup {
             .put("interval", syncInterval)
             .put("camera", cameraInterval)
             .put("owner", ownerId)
+            .put("accessPin", accessPin)
             .toString().toByteArray(Charsets.UTF_8)
         val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, deriveKey(pin, salt, true), javax.crypto.spec.GCMParameterSpec(128, iv))
@@ -48,7 +49,8 @@ object SettingsBackup {
         require(token.isNotEmpty() && chat.isNotEmpty())
         val owner = o.optLong("owner", 0L)
         require(owner >= 0L)
-        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner)
+        val accessPin = o.optString("accessPin", "").takeIf { AccessPin.isValid(it) } ?: ""
+        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin)
     }
 
     private fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray): ByteArray {
