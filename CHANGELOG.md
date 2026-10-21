@@ -1,3 +1,7 @@
+## [1.6.439] - 2026-10-21
+### Fixed
+- `ShotConsentActivity`: jendela izin tangkap layar menutup sendiri setelah 5 menit (tidak menggantung di Recents/task sendiri) dan menerima permintaan baru lewat `onNewIntent`, sehingga tombol izin dari Telegram tetap bereaksi saat jendela lama masih ada.
+
 ## [1.6.438] - 2026-10-21
 ### Fixed
 - Notifikasi OTP: dedupe dan deteksi prioritas memakai teks asli, bukan teks yang sudah disamarkan; dua notifikasi berbeda dengan kode OTP berbeda tidak lagi saling membuang, dan prioritas tidak lagi terpengaruh masking. Kunci dedupe disimpan sebagai hash sehingga digit OTP tidak menetap di memori.

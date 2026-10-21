@@ -5,6 +5,8 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.service.MonitoringService
@@ -12,8 +14,24 @@ import com.redeye.parentalmonitor.utils.ScreenCapture
 
 class ShotConsentActivity : Activity() {
 
+    private val safetyHandler = Handler(Looper.getMainLooper())
+    private val safetyFinish = Runnable { finishQuietly() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            safetyHandler.postDelayed(safetyFinish, SAFETY_MS)
+        } catch (_: Exception) {
+        }
+        launchConsent()
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        launchConsent()
+    }
+
+    private fun launchConsent() {
         try {
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             @Suppress("DEPRECATION")
@@ -47,6 +65,12 @@ class ShotConsentActivity : Activity() {
         finishQuietly()
     }
 
+    override fun onDestroy() {
+        try { safetyHandler.removeCallbacks(safetyFinish) } catch (_: Exception) {
+        }
+        super.onDestroy()
+    }
+
     private fun continueScreenshot() {
         try {
             val intent = Intent(this, MonitoringService::class.java)
@@ -69,5 +93,6 @@ class ShotConsentActivity : Activity() {
 
     companion object {
         private const val REQ_CONSENT = 7041
+        private const val SAFETY_MS = 5 * 60_000L
     }
 }
