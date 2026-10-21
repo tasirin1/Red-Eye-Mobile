@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.424] - 2026-10-21
 ### Fixed
 - Pengiriman yang tertunda saat owner logout tidak lagi mengantrekan pesan lalu membuangnya setelah kursor data maju; `sendFitted` dan ringkasan harian berhenti sebelum mengirim selama menunggu login, sehingga data baru dikirim setelah login, bukan hilang.
 - `CrashReporter` mengenali perpindahan grup ke supergroup (400 `migrate_to_chat_id`) dan memakai Chat ID baru sebelum menandai kredensial error; jalur fallback teks biasa juga.
