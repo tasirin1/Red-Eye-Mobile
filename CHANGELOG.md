@@ -1,3 +1,17 @@
+## [Unreleased]
+### Fixed
+- Pengiriman yang tertunda saat owner logout tidak lagi mengantrekan pesan lalu membuangnya setelah kursor data maju; `sendFitted` dan ringkasan harian berhenti sebelum mengirim selama menunggu login, sehingga data baru dikirim setelah login, bukan hilang.
+- `CrashReporter` mengenali perpindahan grup ke supergroup (400 `migrate_to_chat_id`) dan memakai Chat ID baru sebelum menandai kredensial error; jalur fallback teks biasa juga.
+- `SendMessageWorker` mengenali perpindahan grup pada balasan 403, tidak lagi langsung menganggap kredensial ditolak.
+- Antrean pesan yang gagal dibaca dari penyimpanan terenkripsi beralih ke mode volatil dengan jadwal coba lagi, tidak lagi melempar pengecualian ke pemanggil.
+- Setelah "Hapus kredensial" membuat ulang penyimpanan terenkripsi, antrean pesan dibuka ulang ke penyimpanan baru sehingga pesan berikutnya tidak hilang.
+- Sisa kiriman yang diantrekan karena 429 memperbarui pembatas laju global agar jalur kirim lain ikut menunggu.
+
+### Changed
+- Pemindai token di `tools/verifikasi-path.py` dan `scripts/cek-cepat.sh` tidak lagi melewati baris berisi `Regex(`/`Pattern.compile`; mode `--semua` memindai seluruh pohon terlacak, dan rentang diff tak valid memakai diff commit teratas.
+- Pemeriksaan metode hilang hanya mencocokkan deklarasi `fun`, bukan pemanggilan.
+- `.gitignore` mengabaikan `__pycache__/` dan `*.pyc` hasil menjalankan verifikator.
+
 ## [1.6.423] - 2026-10-21
 ### Changed
 - Saat PIN akses aktif dan owner sudah logout, aplikasi berhenti mengirim laporan, foto, video, rekaman, notifikasi, dan pesan antrean; bot hanya membalas dengan pengarahan `/login <PIN>`.

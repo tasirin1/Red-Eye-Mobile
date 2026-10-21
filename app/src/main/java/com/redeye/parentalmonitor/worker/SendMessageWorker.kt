@@ -387,8 +387,10 @@ class SendMessageWorker(
                     5L
                 }
                 SendOutcome.RateLimited(retryAfterSecs)
-            } else if (response.code() == 401 || response.code() == 403) {
-                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 401) {
+                SendOutcome.AuthFailed(401)
+            } else if (response.code() == 403) {
+                classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else if (response.code() == 400) {
@@ -427,8 +429,10 @@ class SendMessageWorker(
                     5L
                 }
                 SendOutcome.RateLimited(retryAfterSecs)
-            } else if (response.code() == 401 || response.code() == 403) {
-                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 401) {
+                SendOutcome.AuthFailed(401)
+            } else if (response.code() == 403) {
+                classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else {
@@ -494,7 +498,13 @@ class SendMessageWorker(
                         } catch (_: Exception) {
                         }
                     }
-                    if (remainderQueued) break
+                    if (remainderQueued) {
+                        try {
+                            NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
+                        } catch (_: Exception) {
+                        }
+                        break
+                    }
                     rateAfter = outcome.retryAfterSecs
                     break
                 }
@@ -600,6 +610,16 @@ class SendMessageWorker(
         return null
     }
 
+    private fun classify403(response: retrofit2.Response<*>, chatId: String): SendOutcome {
+        val body = try { response.errorBody()?.string() } catch (_: Exception) { null }
+        val adopted = try {
+            NetworkUtils.isChatMissing(body) && adoptMigratedChat(body, chatId)
+        } catch (_: Exception) {
+            false
+        }
+        return if (adopted) SendOutcome.Failed else SendOutcome.AuthFailed(403)
+    }
+
     @Volatile
     private var lastSendOkNoteAt = 0L
     private var healStageCleared = false
@@ -643,8 +663,10 @@ class SendMessageWorker(
                 }
                 android.util.Log.w("SendMessageWorker", "Rate limited, retrying after ${retryAfterSecs}s")
                 SendOutcome.RateLimited(retryAfterSecs)
-            } else if (response.code() == 401 || response.code() == 403) {
-                SendOutcome.AuthFailed(response.code())
+            } else if (response.code() == 401) {
+                SendOutcome.AuthFailed(401)
+            } else if (response.code() == 403) {
+                classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else {

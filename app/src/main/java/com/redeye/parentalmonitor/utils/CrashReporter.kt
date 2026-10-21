@@ -259,9 +259,16 @@ object CrashReporter {
                         null
                     }
                     if (NetworkUtils.isChatMissing(body)) {
-                        try {
-                            prefs.setCredentialError("400", System.currentTimeMillis())
+                        val adopted = try {
+                            NetworkUtils.adoptMigratedChat(prefs, body, chatId, refresh = {}, announce = {})
                         } catch (_: Exception) {
+                            false
+                        }
+                        if (!adopted) {
+                            try {
+                                prefs.setCredentialError("400", System.currentTimeMillis())
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
@@ -281,7 +288,14 @@ object CrashReporter {
                             } else if (plainResp.code() == 400) {
                                 val fbBody = try { plainResp.errorBody()?.string() } catch (_: Exception) { null }
                                 if (NetworkUtils.isChatMissing(fbBody)) {
-                                    try { prefs.setCredentialError("400", System.currentTimeMillis()) } catch (_: Exception) { }
+                                    val adopted = try {
+                                        NetworkUtils.adoptMigratedChat(prefs, fbBody, chatId, refresh = {}, announce = {})
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    if (!adopted) {
+                                        try { prefs.setCredentialError("400", System.currentTimeMillis()) } catch (_: Exception) { }
+                                    }
                                 }
                                 false
                             } else {

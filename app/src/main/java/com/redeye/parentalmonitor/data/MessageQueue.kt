@@ -93,6 +93,7 @@ class MessageQueue private constructor(context: Context) {
                         android.util.Log.w("MessageQueue", "Dropped $expired expired restore message(s)")
                     }
                     val queue = readLocked().toMutableList()
+                    if (volatileOnly) throw IllegalStateException("queue read failed during restore")
                     queue.addAll(freshPending)
                     var evicted = 0
                     while (queue.size > MAX_QUEUE_SIZE) {
@@ -111,6 +112,23 @@ class MessageQueue private constructor(context: Context) {
                 volatileOnly = true
                 cached = null
                 false
+            }
+        }
+    }
+
+    fun reopenAfterStorageReset() {
+        synchronized(lock) {
+            cached = null
+            volatileQueue.clear()
+            dropsDirty = false
+            try {
+                sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
+                volatileOnly = false
+                loadDropCountsLocked(add = false)
+            } catch (e: Exception) {
+                sharedPreferences = null
+                volatileOnly = true
+                android.util.Log.w("MessageQueue", "Queue reopen failed, using volatile: ${e.message}")
             }
         }
     }
@@ -428,7 +446,18 @@ class MessageQueue private constructor(context: Context) {
             }
             return it
         }
-        val json = sharedPreferences?.getString(KEY_QUEUE, null)
+        val json = try {
+            sharedPreferences?.getString(KEY_QUEUE, null)
+        } catch (e: Exception) {
+            android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${e.message}")
+            volatileOnly = true
+            cached = null
+            try {
+                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)
+            } catch (_: Exception) {
+            }
+            return mutableListOf()
+        }
         var parsedOk = false
         val loaded: MutableList<QueuedMessage> = try {
             if (json == null) mutableListOf()

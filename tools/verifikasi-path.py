@@ -511,13 +511,20 @@ def cek_secret(gagal, diff):
         if not baris.startswith("+") or baris.startswith("+++"):
             continue
         isi = baris[1:]
-        if "Regex" in isi or "REGEX" in isi or "Pattern" in isi:
-            continue  # definisi regex seperti TOKEN_REGEX memakai pola khusus
         if POLA_TOKEN_ASLI.search(isi):
             gagal.append("Kemungkinan token bot asli ikut diff — kredensial "
                          "hanya via input manual SetupActivity: %s"
                          % isi.strip()[:60])
             break
+
+
+def cek_secret_pohon(gagal):
+    """Pindai token asli di seluruh berkas terlacak (mode --semua/audit penuh)."""
+    out = jalan("git", "grep", "-I", "-n", "-E",
+                r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", "--", ".") or ""
+    for baris in out.splitlines():
+        gagal.append("Kemungkinan token bot asli terlacak di repo — kredensial "
+                     "hanya via input manual SetupActivity: %s" % baris.strip()[:100])
 
 
 def nama_metode_hilang(diff, lewati_berkas=()):
@@ -541,7 +548,10 @@ def nama_metode_hilang(diff, lewati_berkas=()):
 
 
 def masih_didefinisikan(nama):
-    pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
+    pola = re.compile(
+        r"(?m)^[ \t]*(?:(?:public|private|protected|internal|override|suspend|inline|"
+        r"operator|open|final|abstract|sealed|tailrec|infix)\s+)*"
+        r"fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?%s\s*\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "main", "java")):
         if pola.search(baca(path)):
             return True
@@ -742,8 +752,12 @@ def utama():
     elif args.rentang:
         daftar = daftar_berkas_berubah(args.rentang)
         if daftar is None:
-            print("info: rentang tak valid (push pertama?) — cek keadaan penuh.")
+            ujung = args.rentang.split("...")[-1] or "HEAD"
+            if not ujung or set(ujung) == {"0"}:
+                ujung = "HEAD"
+            print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
             berubah = [p for p in jalan_repo("app") if not p.endswith(".md")]
+            diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
         else:
             berubah = daftar
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
@@ -780,7 +794,10 @@ def utama():
     cek_paritas_resource(gagal)
     cek_ikon_launcher(gagal)
     cek_aturan_repo(gagal, berubah)
-    cek_secret(gagal, diff)
+    if args.semua:
+        cek_secret_pohon(gagal)
+    else:
+        cek_secret(gagal, diff)
     cek_kurung_kode(gagal, berubah)
     hapus = berkas_dihapus(args.rentang, diff)
     if not args.rentang:

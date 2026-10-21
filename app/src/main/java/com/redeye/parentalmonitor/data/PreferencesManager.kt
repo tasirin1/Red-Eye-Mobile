@@ -312,7 +312,14 @@ class PreferencesManager(context: Context) {
                 instance = null
             }
             return try {
-                getInstance(context).isStorageEncrypted
+                val ok = getInstance(context).isStorageEncrypted
+                if (ok) {
+                    try {
+                        MessageQueue.getInstance(context).reopenAfterStorageReset()
+                    } catch (_: Exception) {
+                    }
+                }
+                ok
             } catch (_: Exception) {
                 false
             }

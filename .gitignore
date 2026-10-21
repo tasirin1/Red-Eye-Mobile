@@ -24,6 +24,8 @@ local.properties
 *.ap_
 *.dex
 *.class
+__pycache__/
+*.pyc
 
 # Keystore files (IMPORTANT: Keep secure!)
 *.keystore

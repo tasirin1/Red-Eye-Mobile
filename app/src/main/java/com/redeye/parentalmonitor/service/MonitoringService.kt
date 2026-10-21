@@ -4775,6 +4775,7 @@ class MonitoringService : Service() {
         return if (best != null && bestDist in 1..limit) best else null
     }
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
+        if (awaitingOwnerLogin()) return false
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
                 val queued = messageQueue.addMessage(message)
@@ -5618,6 +5619,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendDailyDigest(manual: Boolean = false): Boolean {
+        if (awaitingOwnerLogin()) return false
         try {
             val now = System.currentTimeMillis()
             val since = now - 24 * 60 * 60_000L
