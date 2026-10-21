@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.423] - 2026-10-21
 ### Changed
 - Saat PIN akses aktif dan owner sudah logout, aplikasi berhenti mengirim laporan, foto, video, rekaman, notifikasi, dan pesan antrean; bot hanya membalas dengan pengarahan `/login <PIN>`.
 - Antrean pesan dibuang saat logout dan selama menunggu login, sehingga laporan lama tidak ikut terkirim setelah owner masuk lagi.
