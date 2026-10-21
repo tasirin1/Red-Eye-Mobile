@@ -13,6 +13,29 @@ class AdminReceiver : DeviceAdminReceiver() {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("AdminReceiver", "Device Admin enabled")
     }
 
+    override fun onPasswordFailed(context: Context, intent: Intent) {
+        super.onPasswordFailed(context, intent)
+        val appContext = context.applicationContext
+        val attempts = try {
+            val dpm = appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+            dpm.currentFailedPasswordAttempts
+        } catch (_: Exception) {
+            0
+        }
+        try {
+            val alert = Intent(appContext, com.redeye.parentalmonitor.service.MonitoringService::class.java).apply {
+                action = com.redeye.parentalmonitor.service.MonitoringService.ACTION_UNLOCK_FAILED
+                putExtra(com.redeye.parentalmonitor.service.MonitoringService.EXTRA_UNLOCK_ATTEMPTS, attempts)
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                appContext.startForegroundService(alert)
+            } else {
+                appContext.startService(alert)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onDisabled(context: Context, intent: Intent) {
         super.onDisabled(context, intent)
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("AdminReceiver", "Device Admin disabled!")

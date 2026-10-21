@@ -1,12 +1,14 @@
-## [1.6.441] - 2026-10-21
+## [1.6.442] - 2026-10-21
 ### Added
 - Ringkasan harian memuat statistik perjalanan dari jejak 24 jam: jarak tempuh, lokasi diam terlama (bila ≥45 menit, disertai tautan peta), dan durasi di area sekolah bila geofence sekolah aktif.
 - Ringkasan harian memuat statistik pemakaian perangkat dari `UsageStatsManager.queryEvents`: jumlah HP dibuka + jam buka pertama, serta 3 aplikasi yang paling sering dibuka.
 - `/apps all` (atau `/apps semua`) mendaftar seluruh aplikasi terpasang, termasuk yang tidak punya ikon peluncur, lengkap dengan nama paket dan penanda `[nonaktif]`.
+- `AdminReceiver.onPasswordFailed`: laporan "Buka kunci gagal (#n)" berisi lokasi + foto, paling sering sekali per 2 menit dan hanya pada percobaan ke-1, ke-3, ke-6, dst.
 - `TrailStats` (haversine murni) dan `UsageEventsSummary` beserta uji unit `TrailStatsTest` dan `UsageEventsSummaryTest`.
 
 ### Changed
 - Manifest memakai `QUERY_ALL_PACKAGES` agar daftar paket lengkap terbaca di Android 11+; `/apps` tanpa argumen tetap hanya menampilkan aplikasi berikon peluncur.
+- Batas celah antar-sampel statistik jejak mengikuti `patrolInterval` + 10 menit (maks 190 menit), sehingga patroli 30–180 menit tetap menghasilkan durasi sekolah dan lokasi diam yang masuk akal.
 
 ## [1.6.439] - 2026-10-21
 ### Fixed

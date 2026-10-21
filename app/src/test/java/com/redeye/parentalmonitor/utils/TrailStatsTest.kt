@@ -51,12 +51,22 @@ class TrailStatsTest {
     fun durasiDiDalamRadius() {
         val pts = listOf(
             TrailStats.Point(base, -6.200000, 106.800000),
-            TrailStats.Point(base + 30 * 60_000L, -6.200500, 106.800000),
-            TrailStats.Point(base + 60 * 60_000L, -6.400000, 106.800000),
-            TrailStats.Point(base + 90 * 60_000L, -6.400100, 106.800000)
+            TrailStats.Point(base + 10 * 60_000L, -6.200500, 106.800000),
+            TrailStats.Point(base + 20 * 60_000L, -6.400000, 106.800000),
+            TrailStats.Point(base + 30 * 60_000L, -6.400100, 106.800000)
         )
         val inside = TrailStats.millisInside(pts, -6.200000, 106.800000, 200f)
-        assertEquals(30 * 60_000L, inside)
+        assertEquals(10 * 60_000L, inside)
+    }
+
+    @Test
+    fun batasCelahMenentukanHitunganDiDalam() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 30 * 60_000L, -6.200100, 106.800000)
+        )
+        assertEquals(0L, TrailStats.millisInside(pts, -6.200000, 106.800000, 200f, maxGapMs = 20 * 60_000L))
+        assertEquals(30 * 60_000L, TrailStats.millisInside(pts, -6.200000, 106.800000, 200f, maxGapMs = 40 * 60_000L))
     }
 
     @Test

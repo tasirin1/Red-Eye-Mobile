@@ -280,6 +280,8 @@ class MonitoringService : Service() {
         const val ACTION_LIVENESS_TEST = "LIVENESS_SELF_TEST"
         const val ACTION_REFRESH_FGS = "REFRESH_FGS"
         const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
+        const val ACTION_UNLOCK_FAILED = "UNLOCK_FAILED"
+        const val EXTRA_UNLOCK_ATTEMPTS = "unlock_attempts"
         const val ACTION_AFTER_SHOT_GRANT = "AFTER_SHOT_GRANT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
@@ -607,6 +609,25 @@ class MonitoringService : Service() {
                 serviceScope.launch {
                     try {
                         handleAdminAlert()
+                    } catch (_: Exception) {
+                    } finally {
+                        stopSelfResult(startId)
+                    }
+                }
+                return START_NOT_STICKY
+            }
+            ACTION_UNLOCK_FAILED -> {
+                if (!isRunning && shouldAutoResume()) {
+                    startMonitoring()
+                }
+                val attempts = intent?.getIntExtra(EXTRA_UNLOCK_ATTEMPTS, 0) ?: 0
+                if (isRunning) {
+                    serviceScope.launch { handleUnlockFailed(attempts) }
+                    return START_STICKY
+                }
+                serviceScope.launch {
+                    try {
+                        handleUnlockFailed(attempts)
                     } catch (_: Exception) {
                     } finally {
                         stopSelfResult(startId)
@@ -5878,13 +5899,15 @@ class MonitoringService : Service() {
     private fun trailDigestLines(): List<String> {
         val pts = trailList().map { com.redeye.parentalmonitor.utils.TrailStats.Point(it.first, it.second, it.third) }
         if (pts.size < 2) return emptyList()
+        val patrol = try { preferencesManager.patrolInterval } catch (_: Exception) { 30 }
+        val maxGap = patrol.coerceIn(5, 180) * 60_000L + 10 * 60_000L
         val out = mutableListOf<String>()
-        val dist = com.redeye.parentalmonitor.utils.TrailStats.distanceMeters(pts)
+        val dist = com.redeye.parentalmonitor.utils.TrailStats.distanceMeters(pts, maxGap)
         if (dist >= 200f) {
             val tenth = Math.round(com.redeye.parentalmonitor.utils.TrailStats.kilometers(dist) * 10f)
             out.add("Jarak 24 jam: ${tenth / 10}.${tenth % 10} km")
         }
-        val stay = com.redeye.parentalmonitor.utils.TrailStats.longestStay(pts)
+        val stay = com.redeye.parentalmonitor.utils.TrailStats.longestStay(pts, maxGapMs = maxGap)
         if (stay != null && stay.millis >= 45 * 60_000L) {
             out.add("Diam ${durationText(stay.millis)} di https://maps.google.com/?q=${stay.lat},${stay.lon}")
         }
@@ -5894,7 +5917,7 @@ class MonitoringService : Service() {
             val rad = preferencesManager.schoolRadiusM
             if (la != Long.MIN_VALUE && lo != Long.MIN_VALUE && rad > 0) {
                 val inside = com.redeye.parentalmonitor.utils.TrailStats.millisInside(
-                    pts, la / 1_000_000.0, lo / 1_000_000.0, rad.toFloat()
+                    pts, la / 1_000_000.0, lo / 1_000_000.0, rad.toFloat(), maxGap
                 )
                 if (inside >= 10 * 60_000L) out.add("Di sekolah: ${durationText(inside)}")
             }
@@ -6693,6 +6716,30 @@ class MonitoringService : Service() {
             } else {
                 sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat: " + locationFailureHint() + battery)
             }
+            try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
+    }
+
+    private var lastUnlockAlertAt = 0L
+
+    private suspend fun handleUnlockFailed(attempts: Int) {
+        try {
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
+            val streak = attempts.coerceAtLeast(1)
+            if (streak != 1 && streak % 3 != 0) return
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (lastUnlockAlertAt > 0L && now - lastUnlockAlertAt < 2 * 60_000L) return
+            lastUnlockAlertAt = now
+            val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+            val level = batteryLevel()
+            val battery = if (level in 0..100) "\nBaterai: $level%" else ""
+            val where = if (loc != null) {
+                "📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m" + fixAgeNote(loc)
+            } else {
+                "Lokasi tak didapat: " + locationFailureHint()
+            }
+            sendToTelegram("🔐 <b>Buka kunci gagal</b> (#$streak)\n$where$battery")
             try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
         } catch (_: Exception) {
         }
