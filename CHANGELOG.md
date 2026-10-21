@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.430] - 2026-10-21
 ### Added
 - Proteksi tamper: layar Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, dan opsi pengembang ditutup otomatis saat dicoba dibuka; pemilik mendapat kabar Telegram.
 - `/lindungi on|off|status` untuk menyalakan/mematikan proteksi tamper dan melihat status Aksesibilitas + admin perangkat.
