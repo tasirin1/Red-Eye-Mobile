@@ -1,3 +1,7 @@
+## [1.6.423] - 2026-10-21
+### Fixed
+- Detekt kembali hijau: aturan `RedundantSemicolon` dihapus karena tidak tersedia di Detekt 1.23.7.
+
 ## [1.6.422] - 2026-10-21
 ### Fixed
 - Laporan kebangkitan `Liveness` baru dianggap terkirim setelah pesan benar-benar tersimpan di antrean; penjadwalan pengiriman tetap dilakukan.
@@ -13,7 +17,7 @@
 
 ### Changed
 - Validasi awal form Simpan dan Tes disatukan lewat `resolveCredentialInput()`.
-- Detekt menambah aturan `UnusedImports`, `RedundantSemicolon`, dan `ForbiddenComment`.
+- Detekt menambah aturan `UnusedImports` dan `ForbiddenComment`.
 - Semikolon berlebih di `SendMessageWorker` dan `TelegramApi` dirapikan.
 
 ### Removed
