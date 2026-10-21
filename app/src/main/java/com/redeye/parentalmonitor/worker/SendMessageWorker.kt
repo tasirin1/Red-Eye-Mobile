@@ -203,6 +203,10 @@ class SendMessageWorker(
             return Result.success()
         }
         if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
+            try {
+                if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {

@@ -1075,6 +1075,20 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun resetSmsCursorSync() {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).commit()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun resetCallCursorSync() {
+        try {
+            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit()
+        } catch (_: Exception) {
+        }
+    }
+
     fun setLastSmsSendAtSync(now: Long) {
         try {
             sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit()

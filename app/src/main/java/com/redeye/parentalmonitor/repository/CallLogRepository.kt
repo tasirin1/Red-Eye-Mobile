@@ -32,6 +32,26 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
+    fun newestCallId(): Long {
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls._ID),
+            null,
+            null,
+            "${CallLog.Calls._ID} DESC",
+            1
+        ) ?: return -1L
+        return try {
+            if (cursor.moveToFirst()) cursor.getLong(cursor.getColumnIndexOrThrow(CallLog.Calls._ID)) else 0L
+        } catch (e: Exception) {
+            android.util.Log.e("CallLogRepository", "Error reading newest call id", e)
+            -1L
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
+    }
+
     fun getAllCalls(limit: Int = 200): List<CallData> {
         return queryCalls(
             selection = null,

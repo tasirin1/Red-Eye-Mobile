@@ -24,6 +24,26 @@ class SmsRepository(private val context: Context) {
         )
     }
 
+    fun newestSmsId(): Long {
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID),
+            null,
+            null,
+            "${Telephony.Sms._ID} DESC",
+            1
+        ) ?: return -1L
+        return try {
+            if (cursor.moveToFirst()) cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) else 0L
+        } catch (e: Exception) {
+            android.util.Log.e("SmsRepository", "Error reading newest SMS id", e)
+            -1L
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
+    }
+
     fun getSmsForNumber(digits: String, limit: Int = 50): List<SmsData> {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }

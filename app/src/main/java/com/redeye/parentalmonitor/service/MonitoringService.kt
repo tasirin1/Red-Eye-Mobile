@@ -1180,6 +1180,8 @@ class MonitoringService : Service() {
                 } else {
                     sendDirect(senderId, "\uD83D\uDD12 Owner sudah tertaut; login PIN ditutup.")
                 }
+            } else if (senderId == cachedOwnerId.toString()) {
+                sendDirect(senderId, "\u2705 Bot aktif. Ketuk /help untuk daftar perintah.")
             }
             return true
         }
@@ -2345,7 +2347,7 @@ class MonitoringService : Service() {
             return
         }
         if (command in AUDIT_COMMANDS && senderOk) {
-            audit(command.removePrefix("/") + " ok", if (privateChat) "private" else "chat")
+            audit(command.removePrefix("/") + " diterima", if (privateChat) "private" else "chat")
         }
         val numberInput = numberInputFor(command)
         if (numberInput != null && numberInput.required && arg.isBlank()) {
@@ -4505,6 +4507,7 @@ class MonitoringService : Service() {
                 return
             }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
+            repairCursorsAfterProviderReset()
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
             val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
             var smsReadFailed = false
@@ -4715,11 +4718,37 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun repairCursorsAfterProviderReset() {
+        try {
+            val smsCursor = preferencesManager.lastSmsId
+            if (smsCursor > 0L) {
+                val newest = smsRepository.newestSmsId()
+                if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(smsCursor, newest)) {
+                    preferencesManager.resetSmsCursorSync()
+                    android.util.Log.w("MonitoringService", "Kursor SMS direset: basis data pesan berganti (id $newest < $smsCursor)")
+                }
+            }
+        } catch (_: Exception) {
+        }
+        try {
+            val callCursor = preferencesManager.lastCallId
+            if (callCursor > 0L) {
+                val newest = callLogRepository.newestCallId()
+                if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(callCursor, newest)) {
+                    preferencesManager.resetCallCursorSync()
+                    android.util.Log.w("MonitoringService", "Kursor panggilan direset: basis data panggilan berganti (id $newest < $callCursor)")
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private suspend fun checkAndSendNewData(): Boolean {
         if (initialSyncRunning.get()) return false
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
         if (!hasNetwork()) return false
         if (NetworkUtils.rateLimitedRemainMs() > 0L) return false
+        repairCursorsAfterProviderReset()
         var found = false
         try {
             try { checkPermissionHealth() } catch (_: Exception) { }
@@ -9186,7 +9215,7 @@ class MonitoringService : Service() {
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
-            val dropped = photos.dropLast(maxKept)
+            val dropped = photos.drop(maxKept)
             val remaining = photos.size - dropped.size
             dropped.forEach { deleteQuietly(it) }
             try {

@@ -1153,8 +1153,7 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            if (!com.redeye.parentalmonitor.utils.AppPermissions.hasNotificationPermission(this)) {
                 try { notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) } catch (_: Exception) { }
             }
         } catch (_: Exception) {
