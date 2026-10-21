@@ -74,6 +74,13 @@ class SendMessageWorker(
                 }
             } catch (_: Exception) {
             }
+            if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
+                try {
+                    messageQueue.clearQueue()
+                } catch (_: Exception) {
+                }
+                return Result.success()
+            }
             if (processed >= 20) {
                 break
             }
@@ -195,6 +202,13 @@ class SendMessageWorker(
         if (!preferencesManager.isConfigured()) {
             try {
                 if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            } catch (_: Exception) {
+            }
+            return Result.success()
+        }
+        if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
+            try {
+                messageQueue.clearQueue()
             } catch (_: Exception) {
             }
             return Result.success()

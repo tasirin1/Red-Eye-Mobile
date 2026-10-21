@@ -208,6 +208,12 @@ object CrashReporter {
             } catch (_: Exception) {
                 ""
             }
+            val awaitingLogin = try {
+                prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L
+            } catch (_: Exception) {
+                false
+            }
+            if (awaitingLogin) return
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
                 val savedElapsed = savedElapsed0
@@ -219,8 +225,6 @@ object CrashReporter {
                 }
             } catch (_: Exception) {
             }
-            // Always allow crash reports through - they're critical for debugging
-            // Only skip if credentials are missing
             if (token.isEmpty() || chatId.isEmpty()) return
             try {
                 if (NetworkUtils.rateLimitedRemainMs() > 0L) return

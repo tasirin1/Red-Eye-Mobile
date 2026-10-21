@@ -1039,6 +1039,17 @@ class MonitoringService : Service() {
         return OwnerAccess.isOwner(senderId, cachedChatId, cachedOwnerId, cachedAccessPinActive)
     }
 
+    private fun awaitingOwnerLogin(): Boolean {
+        return try {
+            preferencesManager.ownerUserId == 0L && preferencesManager.accessPin.isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun loginHintText(): String =
+        "\uD83D\uDD10 Belum login. Kirim /login <PIN> dari private chat untuk mulai menerima laporan."
+
     private val ownerLock = Any()
     private fun rememberOwner(id: Long): Boolean {
         if (id == 0L) return false
@@ -1271,6 +1282,10 @@ class MonitoringService : Service() {
         pendingRestore = null
         pendingInputCommand = ""
         pendingInputAt = 0L
+        try { messageQueue.clearQueue() } catch (_: Exception) {
+        }
+        try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) {
+        }
         try {
             loginAttemptAt.clear()
             loginFails.clear()
@@ -1605,6 +1620,10 @@ class MonitoringService : Service() {
                             sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
                             continue
                         }
+                    }
+                    if (awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
+                        sendDirect(senderId.ifEmpty { msgChatId }, loginHintText())
+                        continue
                     }
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
                         if (cachedOwnerId == 0L && android.os.SystemClock.elapsedRealtime() >= pairGlobalLockoutUntil.get()) {
@@ -4888,6 +4907,7 @@ class MonitoringService : Service() {
         onPermanent: (() -> Unit)? = null
     ): Boolean {
         try {
+            if (awaitingOwnerLogin()) return false
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
                 queueForRetry(message, queueOnFail)
                 return false
@@ -8072,6 +8092,10 @@ class MonitoringService : Service() {
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
             }
+            if (awaitingOwnerLogin()) {
+                deleteQuietly(audioFile)
+                return MediaSendOutcome.DROPPED
+            }
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -8246,6 +8270,10 @@ class MonitoringService : Service() {
     private suspend fun sendVideoFile(videoFile: File): MediaSendOutcome {
         try {
             if (!videoFile.exists() || videoFile.length() == 0L) {
+                deleteQuietly(videoFile)
+                return MediaSendOutcome.DROPPED
+            }
+            if (awaitingOwnerLogin()) {
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.DROPPED
             }
@@ -8598,6 +8626,10 @@ class MonitoringService : Service() {
     private suspend fun sendPhotoFileUnlocked(photoFile: File): MediaSendOutcome {
         try {
             if (!photoFile.exists() || photoFile.length() == 0L) {
+                deleteQuietly(photoFile)
+                return MediaSendOutcome.DROPPED
+            }
+            if (awaitingOwnerLogin()) {
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.DROPPED
             }

@@ -941,6 +941,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 return
             }
+            if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
