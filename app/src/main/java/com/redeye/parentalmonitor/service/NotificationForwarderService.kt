@@ -259,13 +259,13 @@ class NotificationForwarderService : NotificationListenerService() {
             pendingPosts.decrementAndGet()
             scope.launch {
                 try {
-                    val (t, x) = notifTitleText(notification)
-                    if (t.isNotEmpty() || x.isNotEmpty()) {
-                        val squeezedPriority = try { isPriorityNotif(pkg, t, x) } catch (_: Exception) { false }
+                    val nf = notifTitleText(notification)
+                    if (nf.title.isNotEmpty() || nf.text.isNotEmpty()) {
+                        val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody) } catch (_: Exception) { false }
                         if (squeezedPriority && forwardingAllowed()) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
-                            emitPost(pkg, "", squeezedLabel, t, x, android.os.SystemClock.elapsedRealtime(), false)
-                        } else recordOverflow(pkg, t, x)
+                            emitPost(pkg, "", squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), false, nf.rawTitle, nf.rawBody)
+                        } else recordOverflow(pkg, nf.title, nf.text)
                     }
                 } catch (_: Exception) {
                 }
@@ -281,7 +281,9 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun notifTitleText(notification: Notification): Pair<String, String> {
+    private data class NotifText(val title: String, val text: String, val rawTitle: String, val rawBody: String)
+
+    private fun notifTitleText(notification: Notification): NotifText {
         return try {
             val extras = notification.extras
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
@@ -310,9 +312,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 safeTitle = NotificationPrivacy.mask(title)
                 safeBody = NotificationPrivacy.mask(body)
             }
-            Pair(safeTitle, safeBody)
+            NotifText(safeTitle, safeBody, title, body)
         } catch (_: Exception) {
-            Pair("", "")
+            NotifText("", "", "", "")
         }
     }
 
@@ -338,7 +340,9 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!cfgEnabled) {
             return
         }
-        val (title, text) = notifTitleText(notification)
+        val nf = notifTitleText(notification)
+        val title = nf.title
+        val text = nf.text
         if (title.isEmpty() && text.isEmpty()) return
         val appLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: try {
             val info = packageManager.getApplicationInfo(pkg, 0)
@@ -360,18 +364,30 @@ class NotificationForwarderService : NotificationListenerService() {
                 return
             }
         }
-        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty())
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), rawTitle = nf.rawTitle, rawBody = nf.rawBody)
     }
 
-    private suspend fun emitPost(pkg: String, groupKey: String, label: String, title: String, text: String, now: Long, trackGroup: Boolean) {
+    private suspend fun emitPost(
+        pkg: String,
+        groupKey: String,
+        label: String,
+        title: String,
+        text: String,
+        now: Long,
+        trackGroup: Boolean,
+        rawTitle: String = "",
+        rawBody: String = ""
+    ) {
+        val keyTitle = if (rawTitle.isEmpty() && rawBody.isEmpty()) title else rawTitle
+        val keyBody = if (rawTitle.isEmpty() && rawBody.isEmpty()) text else rawBody
         if (trackGroup && groupKey.isNotEmpty()) {
             try {
                 synchronized(groupSeen) { groupSeen[groupKey] = now }
             } catch (_: Exception) {
             }
         }
-        val key = pkg + "\n" + title + "\n" + text
-        val priority = try { isPriorityNotif(pkg, title, text) } catch (_: Exception) { false }
+        val key = pkg + "|" + keyTitle.hashCode() + "|" + keyBody.hashCode() + "|" + keyTitle.length + "|" + keyBody.length
+        val priority = try { isPriorityNotif(pkg, keyTitle, keyBody) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
             if (now - prev < 10_000L) true else {
