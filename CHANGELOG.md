@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.433] - 2026-10-21
 ### Fixed
 - Hook pre-push memakai rentang commit dari ref yang benar-benar didorong (termasuk tag anotasi dan cabang baru), bukan selalu membandingkan dengan `HEAD` lokal.
 
