@@ -1,3 +1,9 @@
+## [Unreleased]
+### Added
+- Proteksi tamper: layar Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, dan opsi pengembang ditutup otomatis saat dicoba dibuka; pemilik mendapat kabar Telegram.
+- `/lindungi on|off|status` untuk menyalakan/mematikan proteksi tamper dan melihat status Aksesibilitas + admin perangkat.
+- Pemeriksaan berkala Aksesibilitas: kalau layanan dimatikan, pemilik diberi kabar (maksimal sekali per 6 jam) dan status di `/status` + `/ringkas` menandai `MATI`.
+
 ## [1.6.429] - 2026-10-21
 ### Added
 - Pemakaian aplikasi lewat Aksesibilitas: durasi per aplikasi, jumlah buka, pemakaian malam, aplikasi yang sedang dibuka, dan cadangan `/layar` saat izin Usage access belum ada.

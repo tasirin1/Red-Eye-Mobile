@@ -52,6 +52,7 @@ class ShotAccessibilityService : AccessibilityService() {
         if (instance === this) instance = null
         try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
         A11yMonitor.flush(this)
+        A11yMonitor.unbind()
         return super.onUnbind(intent)
     }
 
@@ -59,6 +60,7 @@ class ShotAccessibilityService : AccessibilityService() {
         if (instance === this) instance = null
         try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
         A11yMonitor.flush(this)
+        A11yMonitor.unbind()
         super.onDestroy()
     }
 

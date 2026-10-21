@@ -291,10 +291,10 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi")
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -2027,9 +2027,10 @@ class MonitoringService : Service() {
                     listOf(button("\u25B6\uFE0F Patroli nyala", "x:patrol on"), button("\u23F9\uFE0F Patroli mati", "x:patrol off")),
                     listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF11 Malam mati", "x:night off")),
                     listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
-                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang")),
+                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDEE1\uFE0F Proteksi", "x:lindungi status")),
+                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDCF6 Hemat data", "x:hematdata status")),
                     listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
-                    listOf(button("\uD83D\uDCF6 Hemat data", "x:hematdata status"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
+                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
                     listOf(menuUtama)
                 )
             )
@@ -2423,6 +2424,7 @@ class MonitoringService : Service() {
             "/history" -> handleHistoryCommand(arg)
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg)
+            "/lindungi" -> handleProtectCommand(arg)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
@@ -3200,6 +3202,37 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun handleProtectCommand(arg: String) {
+        val sub = arg.trim().lowercase(java.util.Locale.ROOT)
+        if (sub.isEmpty() || sub == "status") {
+            val on = try { preferencesManager.a11yTamperEnabled } catch (_: Exception) { true }
+            sendToTelegram(buildString {
+                appendLine("\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>")
+                appendLine("Status: " + if (on) "nyala" else "mati")
+                appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
+                appendLine("Admin perangkat: " + if (isDeviceAdminActive()) "aktif" else "mati")
+                appendLine("Diblokir: Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang.")
+                appendLine("Atur: /lindungi on|off")
+            })
+        } else if (sub == "on" || sub == "off") {
+            val on = sub == "on"
+            preferencesManager.a11yTamperEnabled = on
+            sendToTelegram(if (on) "\uD83D\uDEE1\uFE0F Proteksi tamper nyala." else "\uD83D\uDEE1\uFE0F Proteksi tamper mati. Setelan HP bisa diubah sampai dinyalakan lagi.")
+        } else {
+            sendToTelegram("Cara pakai: /lindungi on|off|status")
+        }
+    }
+
+    private fun isDeviceAdminActive(): Boolean {
+        return try {
+            val dpm = devicePolicySvc ?: return false
+            val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
+            dpm.isAdminActive(admin)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private suspend fun handleFenceCommand(command: String, arg: String, privateChat: Boolean) {
         val name = if (command == "/home") "Rumah" else "Sekolah"
         val sub = arg.trim()
@@ -3859,7 +3892,8 @@ class MonitoringService : Service() {
                     ShotAccessibilityService.isEnabled(this@MonitoringService) -> "aktif"
                     preferencesManager.accessibilityEverEnabled -> "MATI"
                     else -> "belum diaktifkan"
-                } + " · alert app: " + if (preferencesManager.a11yAppAlert) "nyala" else "mati")
+                } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
+                    " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
                 appendLine("Sekarang: " + (A11yMonitor.currentAppLabel().ifEmpty { "-" }))
                 appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
                 appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
@@ -3879,7 +3913,7 @@ class MonitoringService : Service() {
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
-            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
+            appendLine("Aksesibilitas: " + (if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati") + " · proteksi " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
             appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
         },
             mainMenu()
@@ -7671,6 +7705,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkAccessibilityHealth() {
         try {
+            if (!preferencesManager.a11yTamperEnabled) return
             if (!preferencesManager.accessibilityEverEnabled) return
             if (ShotAccessibilityService.isEnabled(this)) {
                 if (preferencesManager.a11yDisabledAlertAt != 0L) preferencesManager.a11yDisabledAlertAt = 0L

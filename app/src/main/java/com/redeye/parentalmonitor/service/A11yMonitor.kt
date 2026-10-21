@@ -4,8 +4,11 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.MessageQueue
@@ -13,6 +16,7 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.utils.A11yUsageMath
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.TamperGuard
 import com.redeye.parentalmonitor.utils.TimeFmt
 import java.util.concurrent.Executors
 
@@ -30,11 +34,14 @@ object A11yMonitor {
     private const val MAX_SESSION_MS = 4 * 60 * 60_000L
     private const val PERSIST_INTERVAL_MS = 20_000L
     private const val NIGHT_ALERT_GAP_MS = 30 * 60_000L
+    private const val TAMPER_ALERT_GAP_MS = 5 * 60_000L
     private const val MAX_LABEL_CACHE = 160
 
     private val gson = Gson()
     private val usageType = object : TypeToken<MutableMap<String, AppUsage>>() {}.type
     private val gate = Any()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val lastTamperAlert = HashMap<String, Long>()
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "redeye-a11y").apply { isDaemon = true }
     }
@@ -51,6 +58,9 @@ object A11yMonitor {
 
     @Volatile
     private var prefs: PreferencesManager? = null
+
+    @Volatile
+    private var a11yService: AccessibilityService? = null
 
     @Volatile
     private var lastEventPackage = ""
@@ -73,7 +83,12 @@ object A11yMonitor {
         val app = context.applicationContext
         appContext = app
         prefs = try { PreferencesManager.getInstance(app) } catch (_: Exception) { null }
+        if (context is AccessibilityService) a11yService = context
         executor.execute { ensureLoaded(app) }
+    }
+
+    fun unbind() {
+        a11yService = null
     }
 
     fun noteEnabled(context: Context) {
@@ -89,8 +104,10 @@ object A11yMonitor {
         val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
         if (pkg.isEmpty() || pkg == lastEventPackage) return
         lastEventPackage = pkg
+        val cls = try { event.className?.toString().orEmpty() } catch (_: Exception) { "" }
+        val texts = if (TamperGuard.mayBeSensitive(pkg, cls)) collectTexts(service) else emptyList()
         val app = service.applicationContext
-        executor.execute { handleWindow(app, pkg) }
+        executor.execute { handleWindow(app, pkg, cls, texts) }
     }
 
     fun flush(context: Context) {
@@ -227,13 +244,22 @@ object A11yMonitor {
         }
     }
 
-    private fun handleWindow(context: Context, pkg: String) {
+    private fun handleWindow(context: Context, pkg: String, cls: String, texts: List<String>) {
         ensurePrefs(context)
         val manager = prefs ?: return
         val nowWall = System.currentTimeMillis()
         val nowElapsed = SystemClock.elapsedRealtime()
         synchronized(gate) {
             ensureLoadedLocked(context)
+            if (manager.a11yTamperEnabled && protectionActive(manager)) {
+                val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, labelFor(context, context.packageName))
+                if (reason != null) {
+                    blockTamper(context, reason)
+                    finishSessionLocked(nowWall, nowElapsed)
+                    persistLocked(context, true)
+                    return
+                }
+            }
             if (!monitoringActive(manager)) {
                 finishSessionLocked(nowWall, nowElapsed)
                 persistLocked(context, true)
@@ -264,6 +290,50 @@ object A11yMonitor {
             }
             persistLocked(context, false)
         }
+    }
+
+    private fun blockTamper(context: Context, reason: String) {
+        val now = SystemClock.elapsedRealtime()
+        val last = lastTamperAlert[reason] ?: 0L
+        mainHandler.post {
+            try { a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) } catch (_: Exception) { }
+        }
+        if (now - last < TAMPER_ALERT_GAP_MS) return
+        lastTamperAlert[reason] = now
+        sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + "\nTindakan: layar ditutup")
+    }
+
+    private fun protectionActive(manager: PreferencesManager): Boolean {
+        return try {
+            manager.isMonitoringEnabled && !manager.userDisabledMonitoring && manager.userConsentedMonitoring
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun collectTexts(service: AccessibilityService): List<String> {
+        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return emptyList()
+        val out = ArrayList<String>()
+        val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var nodes = 0
+        while (queue.isNotEmpty() && nodes < 160 && out.size < 80) {
+            val node = queue.removeFirst()
+            nodes++
+            val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
+            if (!text.isNullOrEmpty() && text.length <= 160) out.add(text)
+            val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
+            if (!desc.isNullOrEmpty() && desc != text && desc.length <= 160) out.add(desc)
+            val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
+            for (i in 0 until count) {
+                try {
+                    val child = node.getChild(i)
+                    if (child != null) queue.add(child)
+                } catch (_: Exception) {
+                }
+            }
+        }
+        return out
     }
 
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {

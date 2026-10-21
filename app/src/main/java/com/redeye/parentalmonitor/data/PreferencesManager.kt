@@ -262,6 +262,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_KNOWN_APPS = "a11y_known_apps"
         private const val KEY_A11Y_KNOWN_SEEDED = "a11y_known_seeded"
         private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
+        private const val KEY_A11Y_TAMPER = "a11y_tamper"
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
         private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
 
@@ -852,6 +853,10 @@ class PreferencesManager(context: Context) {
     var a11yAppAlert: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_A11Y_APP_ALERT, true) } catch (_: Exception) { true }
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_ALERT, value).apply()
+
+    var a11yTamperEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_A11Y_TAMPER, true) } catch (_: Exception) { true }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_TAMPER, value).apply()
 
     var accessibilityEverEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_A11Y_EVER_ENABLED, false) } catch (_: Exception) { false }
