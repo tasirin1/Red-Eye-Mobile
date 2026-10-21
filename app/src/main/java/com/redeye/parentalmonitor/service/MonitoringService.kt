@@ -282,6 +282,8 @@ class MonitoringService : Service() {
         const val ACTION_ADMIN_ALERT = "ADMIN_ALERT_ATTEMPT"
         const val ACTION_UNLOCK_FAILED = "UNLOCK_FAILED"
         const val EXTRA_UNLOCK_ATTEMPTS = "unlock_attempts"
+        const val ACTION_SMS_RECEIVED = "SMS_RECEIVED"
+        const val ACTION_CALL_STATE = "CALL_STATE_IDLE"
         const val ACTION_AFTER_SHOT_GRANT = "AFTER_SHOT_GRANT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private const val HEX_DIGITS = "0123456789abcdef"
@@ -628,6 +630,24 @@ class MonitoringService : Service() {
                 serviceScope.launch {
                     try {
                         handleUnlockFailed(attempts)
+                    } catch (_: Exception) {
+                    } finally {
+                        stopSelfResult(startId)
+                    }
+                }
+                return START_NOT_STICKY
+            }
+            ACTION_SMS_RECEIVED, ACTION_CALL_STATE -> {
+                if (!isRunning && shouldAutoResume()) {
+                    startMonitoring()
+                }
+                if (isRunning) {
+                    serviceScope.launch { triggerImmediateCheck() }
+                    return START_STICKY
+                }
+                serviceScope.launch {
+                    try {
+                        triggerImmediateCheck()
                     } catch (_: Exception) {
                     } finally {
                         stopSelfResult(startId)
@@ -4787,7 +4807,32 @@ class MonitoringService : Service() {
         }
     }
 
+    private val dataCheckLock = java.util.concurrent.Semaphore(1)
+
     private suspend fun checkAndSendNewData(): Boolean {
+        if (!dataCheckLock.tryAcquire()) return false
+        try {
+            return checkAndSendNewDataLocked()
+        } finally {
+            dataCheckLock.release()
+        }
+    }
+
+    private var lastImmediateCheckAt = 0L
+
+    private suspend fun triggerImmediateCheck() {
+        try {
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || preferencesManager.monitoringPaused) return
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (lastImmediateCheckAt > 0L && now - lastImmediateCheckAt < 15_000L) return
+            lastImmediateCheckAt = now
+            delay(1_500)
+            checkAndSendNewData()
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun checkAndSendNewDataLocked(): Boolean {
         if (initialSyncRunning.get()) return false
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
         if (!hasNetwork()) return false
@@ -4796,6 +4841,7 @@ class MonitoringService : Service() {
         var found = false
         try {
             try { checkPermissionHealth() } catch (_: Exception) { }
+            try { checkSimIdentity() } catch (_: Exception) { }
             val lastSms = try {
                 preferencesManager.lastSmsId
             } catch (_: Exception) {
@@ -6722,6 +6768,35 @@ class MonitoringService : Service() {
     }
 
     private var lastUnlockAlertAt = 0L
+
+    private fun currentSimIdentity(): String {
+        return try {
+            val tm = getSystemService(android.telephony.TelephonyManager::class.java) ?: return ""
+            if (tm.simState != android.telephony.TelephonyManager.SIM_STATE_READY) return ""
+            val op = tm.simOperator ?: ""
+            val country = tm.simCountryIso ?: ""
+            if (op.isEmpty() && country.isEmpty()) "" else "$op-$country"
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    private suspend fun checkSimIdentity() {
+        try {
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
+            val current = currentSimIdentity()
+            if (current.isEmpty()) return
+            val stored = try { preferencesManager.simIdentity } catch (_: Exception) { "" }
+            if (stored.isEmpty()) {
+                try { preferencesManager.simIdentity = current } catch (_: Exception) { }
+                return
+            }
+            if (stored == current) return
+            try { preferencesManager.simIdentity = current } catch (_: Exception) { }
+            sendToTelegram("📵 <b>Kartu SIM berubah</b>\nSebelum: $stored\nSekarang: $current\nCek apakah SIM dicabut atau diganti.")
+        } catch (_: Exception) {
+        }
+    }
 
     private suspend fun handleUnlockFailed(attempts: Int) {
         try {

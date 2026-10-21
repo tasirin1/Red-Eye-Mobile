@@ -16,8 +16,14 @@ object AppPermissions {
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.ACCESS_FINE_LOCATION
     )
+    private val optionalPerms = arrayOf(
+        Manifest.permission.RECEIVE_SMS,
+        Manifest.permission.READ_PHONE_STATE
+    )
     val requiredPermissions: Array<String>
-        get() = perms
+        get() = perms + optionalPerms
+
+    fun isOptional(permission: String): Boolean = permission in optionalPerms
 
     fun hasAll(context: Context): Boolean {
         return perms.all {

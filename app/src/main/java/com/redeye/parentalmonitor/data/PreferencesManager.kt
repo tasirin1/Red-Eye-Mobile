@@ -173,6 +173,7 @@ class PreferencesManager(context: Context) {
         const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
+        private const val KEY_SIM_IDENTITY = "sim_identity"
         private const val KEY_LAST_CALL_ID = "last_call_id"
         const val KEY_USER_DISABLED = "user_disabled_monitoring"
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
@@ -808,6 +809,10 @@ class PreferencesManager(context: Context) {
     var lastLocAccM: Float
         get() = try { sharedPreferences.getFloat(KEY_LAST_LOC_ACC, -1f) } catch (_: Exception) { -1f }
         set(value) = sharedPreferences.edit().putFloat(KEY_LAST_LOC_ACC, value).apply()
+
+    var simIdentity: String
+        get() = try { sharedPreferences.getString(KEY_SIM_IDENTITY, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_SIM_IDENTITY, value).apply()
 
     var trail24: String
         get() = try { sharedPreferences.getString(KEY_TRAIL, "") ?: "" } catch (_: Exception) { "" }

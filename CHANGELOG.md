@@ -1,3 +1,12 @@
+## [1.6.443] - 2026-10-21
+### Added
+- `InstantEventReceiver` menangkap `SMS_RECEIVED` dan `PHONE_STATE` (saat panggilan berakhir), lalu memicu pemeriksaan data langsung dengan jeda aman 15 detik — kabar SMS/panggilan tidak lagi menunggu `syncInterval`.
+- Deteksi kartu SIM berubah: identitas SIM (`simOperator` + negara) disimpan di preferensi `sim_identity` dan dibandingkan tiap siklus data; perubahan dikirim ke Telegram.
+- Izin opsional `RECEIVE_SMS` dan `READ_PHONE_STATE` diminta bersama izin lain di Setup, tetapi tidak memblokir monitoring bila ditolak.
+
+### Changed
+- `checkAndSendNewData()` dibungkus `Semaphore(1)` (`dataCheckLock`) supaya pemeriksaan dari siaran dan dari loop utama tidak berjalan bersamaan (mencegah kabar ganda).
+
 ## [1.6.442] - 2026-10-21
 ### Added
 - Ringkasan harian memuat statistik perjalanan dari jejak 24 jam: jarak tempuh, lokasi diam terlama (bila ≥45 menit, disertai tautan peta), dan durasi di area sekolah bila geofence sekolah aktif.

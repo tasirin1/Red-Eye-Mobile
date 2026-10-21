@@ -128,7 +128,7 @@ class SetupActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         try {
-            if (result.entries.any { !it.value && it.key != Manifest.permission.POST_NOTIFICATIONS && !shouldShowRequestPermissionRationale(it.key) }) {
+            if (result.entries.any { !it.value && it.key != Manifest.permission.POST_NOTIFICATIONS && !com.redeye.parentalmonitor.utils.AppPermissions.isOptional(it.key) && !shouldShowRequestPermissionRationale(it.key) }) {
                 Toast.makeText(this, getString(R.string.setup_open_settings), Toast.LENGTH_LONG).show()
                 openAppSettings()
             }
