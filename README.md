@@ -90,6 +90,8 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 
 Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private chat, kode ada di status Setup), atau login dulu dengan `/login <PIN>` bila owner belum tertaut:
 
+Menu ☰ di chat owner hanya menampilkan `/help` dan `/ping`; semua perintah lain tetap bisa diketik dan pintasan tombolnya ada di `/help`.
+
 | Perintah | Fungsi |
 |----------|--------|
 | `/photo` | Foto sekarang |
