@@ -65,9 +65,6 @@ object A11yMonitor {
     }
 
     @Volatile
-    private var appContext: Context? = null
-
-    @Volatile
     private var prefs: PreferencesManager? = null
 
     @Volatile
@@ -97,7 +94,6 @@ object A11yMonitor {
 
     fun attach(context: Context) {
         val app = context.applicationContext
-        appContext = app
         prefs = try { PreferencesManager.getInstance(app) } catch (_: Exception) { null }
         if (context is AccessibilityService) a11yService = context
         executor.execute { ensureLoaded(app) }
@@ -293,7 +289,6 @@ object A11yMonitor {
         if (prefs == null) {
             try { prefs = PreferencesManager.getInstance(context) } catch (_: Exception) { }
         }
-        if (appContext == null) appContext = context
     }
 
     private fun ensureLoaded(context: Context) {

@@ -288,6 +288,7 @@ class MonitoringService : Service() {
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
         private val CURFEW_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
+        private val WS_REGEX = Regex("\\s+")
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
@@ -318,7 +319,7 @@ class MonitoringService : Service() {
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi", "/pantauapp")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi", "/pantauapp")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -2115,7 +2116,7 @@ class MonitoringService : Service() {
         NumberInput("/record", "\uD83C\uDF99 Rekam audio", "5-600", "detik", true, "Rekam suara sekitar HP sekian detik lalu kirim ke sini."),
         NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-180", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
         NumberInput("/ring", "\uD83D\uDD14 Bunyi HP", "5-60", "detik", false, "Bunyikan HP sekian detik (bawaan 15)."),
-        NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "1-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
+        NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "0-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
         NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home). Ketik /jemput off untuk mematikan, /jemput untuk status.")
     )
 
@@ -3276,7 +3277,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleAppWatchCommand(arg: String, privateChat: Boolean) {
         val text = arg.trim()
-        val parts = text.split(Regex("\\s+"), limit = 2)
+        val parts = text.split(WS_REGEX, limit = 2)
         val action = parts.getOrNull(0)?.lowercase(java.util.Locale.ROOT).orEmpty()
         val rest = parts.getOrNull(1)?.trim().orEmpty()
         when (action) {
@@ -3798,7 +3799,7 @@ class MonitoringService : Service() {
         } else {
             val hours = arg.trim().toIntOrNull()
             if (hours == null || hours < 0 || hours > 48) {
-                sendToTelegram("Cara pakai: /heartbeat &lt;1-48&gt; (0 = matikan).")
+                sendToTelegram("Cara pakai: /heartbeat &lt;0-48&gt; (0 = matikan).")
             } else {
                 try { preferencesManager.heartbeatHours = hours } catch (_: Exception) { }
                 try { preferencesManager.heartbeatAt = System.currentTimeMillis() } catch (_: Exception) { }

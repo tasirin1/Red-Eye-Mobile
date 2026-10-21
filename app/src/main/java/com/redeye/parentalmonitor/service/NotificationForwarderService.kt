@@ -383,7 +383,7 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
-        if (pkgTryAcquire(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
+        if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
                 try {
@@ -705,7 +705,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private fun pkgTryAcquire(pkg: String, now: Long, limit: Int): Boolean {
+    private fun pkgShouldDrop(pkg: String, now: Long, limit: Int): Boolean {
         if (pkg.isEmpty()) return false
         synchronized(pkgHitsLock) {
             val q = pkgHits.getOrPut(pkg) { ArrayDeque() }
