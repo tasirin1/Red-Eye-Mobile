@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.427] - 2026-10-21
 ### Changed
 - Navigasi daftar kontak memakai tombol inline **⬅️ Sebelumnya** / **Berikutnya ➡️** (`x:contacts <halaman>`); perintah teks `/contacts <halaman>` tetap diterima.
 
