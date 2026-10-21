@@ -182,7 +182,7 @@ object A11yMonitor {
     }
 
     private fun ensureLoadedLocked(context: Context) {
-        val today = TimeFmt.dayKey()
+        val today = TimeFmt.dayKey(System.currentTimeMillis())
         if (loaded && today == loadedDay) return
         loadedDay = today
         loaded = true
@@ -287,7 +287,7 @@ object A11yMonitor {
         val now = SystemClock.elapsedRealtime()
         if (!force && now - lastPersistElapsed < PERSIST_INTERVAL_MS) return
         val manager = prefs ?: return
-        val day = TimeFmt.dayKey()
+        val day = TimeFmt.dayKey(System.currentTimeMillis())
         if (day != loadedDay) return
         manager.a11yUsageDate = day
         manager.a11yUsageJson = try { gson.toJson(usage) } catch (_: Exception) { "" }

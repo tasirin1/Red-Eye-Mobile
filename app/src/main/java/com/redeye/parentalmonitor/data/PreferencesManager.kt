@@ -861,7 +861,7 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_A11Y_DISABLED_ALERT_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_DISABLED_ALERT_AT, value).apply()
 
-    fun a11yKnownApps(): Set<String> {
+    fun a11yKnownApps(): MutableSet<String> {
         return try { sharedPreferences.getStringSet(KEY_A11Y_KNOWN_APPS, emptySet())?.toHashSet() ?: HashSet() } catch (_: Exception) { HashSet() }
     }
 

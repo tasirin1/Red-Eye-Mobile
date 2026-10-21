@@ -3856,7 +3856,7 @@ class MonitoringService : Service() {
                 appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
                 appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
                 appendLine("Aksesibilitas: " + when {
-                    ShotAccessibilityService.isEnabled(this) -> "aktif"
+                    ShotAccessibilityService.isEnabled(this@MonitoringService) -> "aktif"
                     preferencesManager.accessibilityEverEnabled -> "MATI"
                     else -> "belum diaktifkan"
                 } + " · alert app: " + if (preferencesManager.a11yAppAlert) "nyala" else "mati")
@@ -3879,7 +3879,7 @@ class MonitoringService : Service() {
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
-            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this)) "aktif" else "mati")
+            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
             appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
         },
             mainMenu()
