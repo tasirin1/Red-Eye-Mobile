@@ -35,7 +35,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     if [ -n "$awal" ]; then
         python3 tools/verifikasi-path.py --rentang "$awal..$ujung" || status=1
     else
-        python3 tools/verifikasi-path.py --rentang "$ujung~1..$ujung" || status=1
+        pangkal="$(git merge-base refs/remotes/origin/main "$ujung" 2>/dev/null || true)"
+        if [ -n "$pangkal" ]; then
+            python3 tools/verifikasi-path.py --rentang "$pangkal..$ujung" || status=1
+        else
+            python3 tools/verifikasi-path.py --rentang "$ujung~1..$ujung" || status=1
+        fi
     fi
 done
 if [ "$ada" -eq 0 ]; then

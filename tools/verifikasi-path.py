@@ -761,7 +761,8 @@ def utama():
         else:
             berubah = daftar
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
-            diff = jalan("git", "diff", a + "..." + b) or ""
+            pemisah = "..." if "..." in args.rentang else ".."
+            diff = jalan("git", "diff", a + pemisah + b) or ""
     else:
         hulu = jalan("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
         if hulu:

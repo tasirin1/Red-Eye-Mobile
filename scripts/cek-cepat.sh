@@ -9,14 +9,14 @@ if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
 # Tiga tingkat: rg PCRE2, grep -P, grep -E portabel — selalu memeriksa,
 # tak pernah gagal-tertutup karena perkakas hilang.
 if [ "$ADA_RG" = 1 ] && rg --pcre2 -n '' app/src/main/res/drawable >/dev/null 2>&1; then
-  if rg -n --pcre2 '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null | grep -q .; then
+  if rg -q --pcre2 '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
 elif grep -R -P '' . >/dev/null 2>&1; then
-  if grep -R -n -P '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null | grep -q .; then
+  if grep -R -q -P '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
-elif grep -R -E -n '(^|[^0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null | grep -q .; then
+elif grep -R -q -E '(^|[^0-9])\.-?[0-9]' app/src/main/res/drawable 2>/dev/null; then
   echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
 fi
 # 2. ID layout portrait vs landscape wajib sama persis (bila dir land ada).
@@ -42,15 +42,13 @@ fi
 if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -E -q '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
-# 5. Mode CI: tak ada staged (index bersih) → pindai tracked tree.
-# Menangkap secret yang terlanjur ter-commit via --no-verify.
-if [ -z "$(git diff --cached --name-only)" ]; then
-  if git ls-files | grep -E -q '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$'; then
-    echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
-  fi
-  if git grep -I -E -n '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null | grep -q .; then
-    echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
-  fi
+# 5. Pindai tracked tree selalu (bukan hanya saat index bersih).
+# Menangkap secret yang terlanjur ter-commit via --no-verify walau ada perubahan staged.
+if git ls-files -z | tr '\0' '\n' | grep -E -q '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$'; then
+  echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
+fi
+if git grep -q -I -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null; then
+  echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
 fi
 # 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
 loop_dup=""
