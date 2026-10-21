@@ -1,7 +1,3 @@
-## [1.6.423] - 2026-10-21
-### Fixed
-- Detekt kembali hijau: aturan `RedundantSemicolon` dihapus karena tidak tersedia di Detekt 1.23.7.
-
 ## [1.6.422] - 2026-10-21
 ### Fixed
 - Laporan kebangkitan `Liveness` baru dianggap terkirim setelah pesan benar-benar tersimpan di antrean; penjadwalan pengiriman tetap dilakukan.
@@ -14,6 +10,7 @@
 - Kolom token bot dan PIN akses dikecualikan dari Autofill.
 - `SendMessageWorker` tidak lagi membawa `setBackoffCriteria` WorkManager yang tidak pernah terpakai.
 - Pemeriksaan diff `verifikasi-path.py` di CI memakai pembanding yang valid pada push tag/ref baru.
+- Aturan Detekt `RedundantSemicolon` tidak dipakai karena tidak tersedia di Detekt 1.23.7; impor `NetworkUtils` yang berlebih di `CrashReporter` dihapus.
 
 ### Changed
 - Validasi awal form Simpan dan Tes disatukan lewat `resolveCredentialInput()`.
