@@ -288,7 +288,6 @@ class MonitoringService : Service() {
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
         private val CURFEW_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
-        private val WS_REGEX = Regex("\\s+")
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
@@ -3277,9 +3276,9 @@ class MonitoringService : Service() {
 
     private suspend fun handleAppWatchCommand(arg: String, privateChat: Boolean) {
         val text = arg.trim()
-        val parts = text.split(WS_REGEX, limit = 2)
-        val action = parts.getOrNull(0)?.lowercase(java.util.Locale.ROOT).orEmpty()
-        val rest = parts.getOrNull(1)?.trim().orEmpty()
+        val batas = text.indexOfFirst { it.isWhitespace() }
+        val action = (if (batas < 0) text else text.substring(0, batas)).lowercase(java.util.Locale.ROOT)
+        val rest = if (batas < 0) "" else text.substring(batas).trim()
         when (action) {
             "", "status" -> {
                 if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
@@ -5663,6 +5662,10 @@ class MonitoringService : Service() {
         if (!cachedVehicleEnabled) return
         val fix = lastCachedLocation() ?: return
         val now = System.currentTimeMillis()
+        if (now - fix.time > 10 * 60_000L) {
+            vehicleFastSamples = 0
+            return
+        }
         val prev = vehiclePrevFix
         if (fix.accuracy > 80f) {
             vehicleFastSamples = 0

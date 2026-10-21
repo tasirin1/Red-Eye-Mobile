@@ -43,9 +43,11 @@ object CrashReporter {
 
     fun pendingReport(context: Context): String? {
         return try {
-            val file = pendingFile(context.applicationContext)
-            if (!file.exists()) null
-            else stripElapsed(file.readText()).takeIf { it.isNotBlank() }
+            synchronized(saveLock) {
+                val file = pendingFile(context.applicationContext)
+                if (!file.exists()) null
+                else stripElapsed(file.readText()).takeIf { it.isNotBlank() }
+            }
         } catch (_: Exception) {
             null
         }

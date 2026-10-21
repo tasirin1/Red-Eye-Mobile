@@ -45,3 +45,4 @@ currentVideoFile
 isFgsStartBlocked
 masksFourToEightDigitGroups
 clearAudit
+pkgTryAcquire
