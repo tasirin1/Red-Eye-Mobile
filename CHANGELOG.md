@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.431] - 2026-10-21
 ### Added
 - `/pantauapp on|off|status|daftar|tambah <app>|hapus <app>`: pantau kata kunci dari `/watch` di dalam aplikasi terpilih dan kirim kabar Telegram berisi aplikasi + kata + waktu.
 - Pemantauan dalam aplikasi bersifat opt-in, hanya app terpilih, dan melewati layar password, banking, pembayaran, browser, serta aplikasi ini. Isi pesan tidak disimpan; kabar dibatasi 15 menit per app+kata dan maksimal 30 kabar per hari.
