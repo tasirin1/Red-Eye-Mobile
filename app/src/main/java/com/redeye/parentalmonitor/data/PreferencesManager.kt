@@ -263,6 +263,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_KNOWN_SEEDED = "a11y_known_seeded"
         private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
         private const val KEY_A11Y_TAMPER = "a11y_tamper"
+        private const val KEY_A11Y_APP_WATCH = "a11y_app_watch"
+        private const val KEY_A11Y_APP_WATCH_PACKAGES = "a11y_app_watch_packages"
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
         private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
 
@@ -857,6 +859,27 @@ class PreferencesManager(context: Context) {
     var a11yTamperEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_A11Y_TAMPER, true) } catch (_: Exception) { true }
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_TAMPER, value).apply()
+
+    var a11yAppWatchEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_A11Y_APP_WATCH, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_WATCH, value).apply()
+
+    var a11yAppWatchPackages: String
+        get() = try { sharedPreferences.getString(KEY_A11Y_APP_WATCH_PACKAGES, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_APP_WATCH_PACKAGES, value).apply()
+
+    fun a11yAppWatchPackageSet(): MutableSet<String> {
+        return try {
+            a11yAppWatchPackages.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toHashSet()
+        } catch (_: Exception) {
+            HashSet()
+        }
+    }
+
+    fun setA11yAppWatchPackageSet(packages: Collection<String>) {
+        val value = packages.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted().joinToString(",")
+        a11yAppWatchPackages = value
+    }
 
     var accessibilityEverEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_A11Y_EVER_ENABLED, false) } catch (_: Exception) { false }

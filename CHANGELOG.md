@@ -1,3 +1,9 @@
+## [Unreleased]
+### Added
+- `/pantauapp on|off|status|daftar|tambah <app>|hapus <app>`: pantau kata kunci dari `/watch` di dalam aplikasi terpilih dan kirim kabar Telegram berisi aplikasi + kata + waktu.
+- Pemantauan dalam aplikasi bersifat opt-in, hanya app terpilih, dan melewati layar password, banking, pembayaran, browser, serta aplikasi ini. Isi pesan tidak disimpan; kabar dibatasi 15 menit per app+kata dan maksimal 30 kabar per hari.
+- Layanan Aksesibilitas kini juga menerima event perubahan konten untuk mencocokkan kata pantau; teks layar hanya dipakai di memori saat mencocokkan.
+
 ## [1.6.430] - 2026-10-21
 ### Added
 - Proteksi tamper: layar Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, dan opsi pengembang ditutup otomatis saat dicoba dibuka; pemilik mendapat kabar Telegram.

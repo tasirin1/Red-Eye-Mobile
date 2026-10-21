@@ -85,6 +85,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Kabar aplikasi: begitu ada aplikasi dipasang (bukan bawaan sistem) atau dihapus di HP anak, kamu langsung dapat pesan Telegram berisi nama aplikasi + nama paketnya — jadi kelihatan kalau anak pasang/hapus aplikasi.
 - Pemakaian layar lewat Aksesibilitas: aplikasi yang dibuka dicatat (durasi, jumlah buka, pemakaian malam) dan masuk ke `/layar` + ringkasan harian, bahkan tanpa izin Usage access. `/appalert on` mengirim kabar saat aplikasi baru pertama kali dibuka dan saat ada aplikasi dibuka pada malam hari (maks 1 kabar per 30 menit).
 - Proteksi tamper: saat Aksesibilitas aktif, layar untuk mematikan Aksesibilitas, mencabut admin perangkat, menghapus aplikasi ini, membuka sumber tak dikenal, atau membuka opsi pengembang langsung ditutup dan pemilik dikabari. Matikan dulu dengan `/lindungi off` kalau memang mau mengubah setelan HP anak.
+- Pantau kata di aplikasi: `/pantauapp on` memakai daftar kata dari `/watch` dan memeriksa aplikasi chat/sosial terpilih. Kabar hanya berisi aplikasi + kata + waktu; layar password, banking, pembayaran, browser, dan aplikasi ini dilewati, isi pesan tidak disimpan, dan kabar dibatasi 15 menit per app+kata (maks 30/hari). Atur daftar app dengan `/pantauapp tambah WhatsApp`, `/pantauapp hapus WhatsApp`, atau `/pantauapp daftar`.
 - `SYSTEM_ALERT_WINDOW` (tampil di atas aplikasi lain) bersifat opsional; hanya dipakai agar layanan lebih mudah dihidupkan ulang dari latar di Android 12+, dan hanya aktif kalau kamu mengizinkannya lewat tombol Anti-kill.
 - Service monitoring memakai tipe foreground `specialUse` (`FOREGROUND_SERVICE_SPECIAL_USE`) di Android 14+, supaya tidak kena batas 6 jam/24 jam tipe `dataSync` di Android 15+; kalau percobaan `startForeground` dengan tipe lengkap ditolak (mis. saat diluncurkan dari boot di Android 15+), service mencoba ulang dengan `specialUse` saja.
 
@@ -133,6 +134,7 @@ Menu ☰ di chat owner hanya menampilkan `/help` dan `/ping`; semua perintah lai
 | `/layar [1-24]` | Ringkasan pemakaian layar per aplikasi (Usage access; cadangan lewat Aksesibilitas) |
 | `/appalert on\|off\|status` | Alert aplikasi baru dibuka + aplikasi dibuka malam; status pemakaian hari ini |
 | `/lindungi on\|off\|status` | Proteksi tamper: blokir layar Aksesibilitas/admin/hapus aplikasi/sumber tak dikenal/opsi pengembang |
+| `/pantauapp on\|off\|status\|daftar\|tambah\|hapus` | Pantau kata `/watch` di aplikasi terpilih; kabar app + kata + waktu, tanpa isi pesan |
 | `/kendara on\|off\|status` | Kabar kalau lokasi menunjukkan kecepatan tinggi (naik motor/mobil), maks 1× per 20 menit |
 | `/hematdata on\|off\|status` | Tahan kirim foto/video/rekaman (termasuk foto otomatis dari kamera & patroli) sampai tersambung Wi-Fi — hemat kuota; SMS/lokasi/notifikasi tetap jalan, dan permintaan langsung seperti `/photo`, `/screenshot`, `/recordvideo`, `/record` tetap dikirim segera |
 | `/heartbeat <1-48\|0>` | Laporan berkala "masih hidup" (`0` = mati) |

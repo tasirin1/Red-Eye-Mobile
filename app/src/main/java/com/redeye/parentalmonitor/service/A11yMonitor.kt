@@ -14,6 +14,7 @@ import com.google.gson.reflect.TypeToken
 import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.utils.A11yUsageMath
+import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.TamperGuard
@@ -35,13 +36,22 @@ object A11yMonitor {
     private const val PERSIST_INTERVAL_MS = 20_000L
     private const val NIGHT_ALERT_GAP_MS = 30 * 60_000L
     private const val TAMPER_ALERT_GAP_MS = 5 * 60_000L
+    private const val CONTENT_SCAN_GAP_MS = 3_000L
+    private const val KEYWORD_ALERT_GAP_MS = 15 * 60_000L
+    private const val MAX_KEYWORD_ALERTS_PER_DAY = 30
     private const val MAX_LABEL_CACHE = 160
+
+    private data class ScreenSnapshot(val texts: List<String>, val hasPassword: Boolean)
 
     private val gson = Gson()
     private val usageType = object : TypeToken<MutableMap<String, AppUsage>>() {}.type
     private val gate = Any()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val lastTamperAlert = HashMap<String, Long>()
+    private val lastContentScan = HashMap<String, Long>()
+    private val lastKeywordAlert = HashMap<String, Long>()
+    private var keywordAlertDay = ""
+    private var keywordAlertCount = 0
     private val executor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "redeye-a11y").apply { isDaemon = true }
     }
@@ -100,14 +110,68 @@ object A11yMonitor {
     }
 
     fun onEvent(service: AccessibilityService, event: AccessibilityEvent?) {
-        if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
-        if (pkg.isEmpty() || pkg == lastEventPackage) return
-        lastEventPackage = pkg
-        val cls = try { event.className?.toString().orEmpty() } catch (_: Exception) { "" }
-        val texts = if (TamperGuard.mayBeSensitive(pkg, cls)) collectTexts(service) else emptyList()
+        if (event == null) return
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+                if (pkg.isEmpty() || pkg == lastEventPackage) return
+                lastEventPackage = pkg
+                val cls = try { event.className?.toString().orEmpty() } catch (_: Exception) { "" }
+                val texts = if (TamperGuard.mayBeSensitive(pkg, cls)) collectSnapshot(service).texts else emptyList()
+                val app = service.applicationContext
+                executor.execute { handleWindow(app, pkg, cls, texts) }
+                scanWatchedContent(service, pkg)
+            }
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+                if (pkg.isNotEmpty()) scanWatchedContent(service, pkg)
+            }
+        }
+    }
+
+    private fun scanWatchedContent(service: AccessibilityService, pkg: String) {
+        if (pkg.isEmpty() || pkg == service.packageName || AppWatch.isSensitivePackage(pkg)) return
+        val manager = prefs ?: return
+        if (!manager.a11yAppWatchEnabled) return
+        val now = SystemClock.elapsedRealtime()
+        val last = lastContentScan[pkg] ?: 0L
+        if (last > 0L && now - last < CONTENT_SCAN_GAP_MS) return
+        if (lastContentScan.size > 120) lastContentScan.clear()
+        lastContentScan[pkg] = now
+        if (pkg !in manager.a11yAppWatchPackageSet()) return
+        val keywords = AppWatch.parseKeywords(manager.watchKeywords)
+        if (keywords.isEmpty()) return
+        val snapshot = collectSnapshot(service)
+        if (snapshot.hasPassword || snapshot.texts.isEmpty()) return
         val app = service.applicationContext
-        executor.execute { handleWindow(app, pkg, cls, texts) }
+        executor.execute { handleContent(app, pkg, snapshot.texts, keywords) }
+    }
+
+    private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>) {
+        val manager = prefs ?: return
+        if (!manager.a11yAppWatchEnabled || !monitoringActive(manager)) return
+        if (pkg !in manager.a11yAppWatchPackageSet() || AppWatch.isSensitivePackage(pkg)) return
+        val hit = AppWatch.hit(keywords, texts.joinToString(" ")) ?: return
+        val nowWall = System.currentTimeMillis()
+        val nowElapsed = SystemClock.elapsedRealtime()
+        val day = TimeFmt.dayKey(nowWall)
+        if (day != keywordAlertDay) {
+            keywordAlertDay = day
+            keywordAlertCount = 0
+        }
+        if (keywordAlertCount >= MAX_KEYWORD_ALERTS_PER_DAY) return
+        val key = pkg + "|" + hit
+        val last = lastKeywordAlert[key] ?: 0L
+        if (last > 0L && nowElapsed - last < KEYWORD_ALERT_GAP_MS) return
+        lastKeywordAlert[key] = nowElapsed
+        keywordAlertCount++
+        val label = labelFor(context, pkg)
+        sendAlert(
+            context,
+            "\uD83D\uDD0E <b>Kata pantau di aplikasi</b>\nApp: " + Html.escape(label) +
+                "\nKata: " + Html.escape(hit) + "\nWaktu: " + TimeFmt.short(nowWall) +
+                "\nMatikan: /pantauapp off"
+        )
     }
 
     fun flush(context: Context) {
@@ -311,15 +375,17 @@ object A11yMonitor {
         }
     }
 
-    private fun collectTexts(service: AccessibilityService): List<String> {
-        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return emptyList()
+    private fun collectSnapshot(service: AccessibilityService): ScreenSnapshot {
+        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false)
         val out = ArrayList<String>()
+        var hasPassword = false
         val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var nodes = 0
         while (queue.isNotEmpty() && nodes < 160 && out.size < 80) {
             val node = queue.removeFirst()
             nodes++
+            if (try { node.isPassword } catch (_: Exception) { false }) hasPassword = true
             val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
             if (!text.isNullOrEmpty() && text.length <= 160) out.add(text)
             val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
@@ -333,7 +399,7 @@ object A11yMonitor {
                 }
             }
         }
-        return out
+        return ScreenSnapshot(out, hasPassword)
     }
 
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {

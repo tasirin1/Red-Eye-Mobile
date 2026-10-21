@@ -23,6 +23,7 @@ import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.AccessPin
+import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
@@ -291,10 +292,27 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp")
+        private val DEFAULT_APP_WATCH_PACKAGES = listOf(
+            "com.whatsapp",
+            "org.telegram.messenger",
+            "com.instagram.android",
+            "com.facebook.katana",
+            "com.facebook.orca",
+            "com.zhiliaoapp.musically",
+            "com.snapchat.android",
+            "com.twitter.android",
+            "com.discord",
+            "jp.naver.line.android",
+            "com.viber.voip",
+            "org.thoughtcrime.securesms",
+            "com.google.android.apps.messaging",
+            "com.samsung.android.messaging",
+            "com.android.mms"
+        )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi", "/pantauapp")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -2027,10 +2045,10 @@ class MonitoringService : Service() {
                     listOf(button("\u25B6\uFE0F Patroli nyala", "x:patrol on"), button("\u23F9\uFE0F Patroli mati", "x:patrol off")),
                     listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF11 Malam mati", "x:night off")),
                     listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
-                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDEE1\uFE0F Proteksi", "x:lindungi status")),
-                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDCF6 Hemat data", "x:hematdata status")),
+                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDD75\uFE0F Pantau app", "x:pantauapp status")),
+                    listOf(button("\uD83D\uDEE1\uFE0F Proteksi", "x:lindungi status"), button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang")),
+                    listOf(button("\uD83D\uDCF6 Hemat data", "x:hematdata status"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
                     listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
-                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
                     listOf(menuUtama)
                 )
             )
@@ -2425,6 +2443,7 @@ class MonitoringService : Service() {
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg)
             "/lindungi" -> handleProtectCommand(arg)
+            "/pantauapp" -> handleAppWatchCommand(arg)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
@@ -3233,6 +3252,156 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun handleAppWatchCommand(arg: String) {
+        val text = arg.trim()
+        val parts = text.split(Regex("\\s+"), limit = 2)
+        val action = parts.getOrNull(0)?.lowercase(java.util.Locale.ROOT).orEmpty()
+        val rest = parts.getOrNull(1)?.trim().orEmpty()
+        when (action) {
+            "", "status" -> sendAppWatchStatus()
+            "on" -> enableAppWatch()
+            "off" -> {
+                preferencesManager.a11yAppWatchEnabled = false
+                sendToTelegram("\uD83D\uDD75\uFE0F Pantau app dimatikan. Pemakaian layar tetap tercatat.")
+            }
+            "daftar" -> sendAppWatchList()
+            "tambah" -> updateAppWatchPackages(rest, true)
+            "hapus" -> updateAppWatchPackages(rest, false)
+            else -> sendToTelegram("Cara pakai: /pantauapp on|off|status|daftar|tambah <app>|hapus <app>")
+        }
+    }
+
+    private suspend fun sendAppWatchStatus() {
+        val enabled = try { preferencesManager.a11yAppWatchEnabled } catch (_: Exception) { false }
+        val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
+        val keywords = AppWatch.parseKeywords(preferencesManager.watchKeywords)
+        sendToTelegram(buildString {
+            appendLine("\uD83D\uDD75\uFE0F <b>Pantau app</b>")
+            appendLine("Status: " + if (enabled) "nyala" else "mati")
+            appendLine("Aplikasi: ${packages.size}")
+            val shown = packages.take(8)
+            if (shown.isNotEmpty()) appendLine(shown.joinToString("\n") { "\u2022 " + Html.escape(appLabelFor(it)) })
+            if (packages.size > shown.size) appendLine("\u2026 dan ${packages.size - shown.size} lagi (/pantauapp daftar)")
+            appendLine("Kata pantau: " + if (keywords.isEmpty()) "belum ada" else keywords.joinToString(", ") { Html.escape(it) })
+            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
+            appendLine("Privasi: password, banking, pembayaran, browser, dan aplikasi ini dilewati. Isi pesan tidak disimpan.")
+            appendLine("Atur: /pantauapp on|off|daftar|tambah <app>|hapus <app>")
+        }.trimEnd())
+    }
+
+    private suspend fun enableAppWatch() {
+        val keywords = AppWatch.parseKeywords(preferencesManager.watchKeywords)
+        if (keywords.isEmpty()) {
+            sendToTelegram("\uD83D\uDD75\uFE0F Isi kata pantau dulu: /watch judi,pinjol,bully")
+            return
+        }
+        val packages = preferencesManager.a11yAppWatchPackageSet()
+        if (packages.isEmpty()) {
+            packages.addAll(DEFAULT_APP_WATCH_PACKAGES)
+            preferencesManager.setA11yAppWatchPackageSet(packages)
+        }
+        preferencesManager.a11yAppWatchEnabled = true
+        val a11y = ShotAccessibilityService.isEnabled(this)
+        sendToTelegram(buildString {
+            appendLine("\uD83D\uDD75\uFE0F <b>Pantau app nyala</b>")
+            appendLine("Aplikasi: ${packages.size}")
+            appendLine("Kata: " + keywords.joinToString(", ") { Html.escape(it) })
+            if (!a11y) appendLine("\u26A0\uFE0F Aksesibilitas belum aktif; nyalakan di Setup agar pemantauan jalan.")
+            appendLine("Privasi: password, banking, pembayaran, browser dilewati. Isi pesan tidak disimpan.")
+            appendLine("Matikan: /pantauapp off")
+        }.trimEnd())
+    }
+
+    private suspend fun sendAppWatchList() {
+        val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
+        if (packages.isEmpty()) {
+            sendToTelegram("\uD83D\uDD75\uFE0F Belum ada aplikasi dipantau. Nyalakan: /pantauapp on")
+            return
+        }
+        sendToTelegram(buildString {
+            appendLine("\uD83D\uDD75\uFE0F <b>Daftar pantau app (${packages.size})</b>")
+            for (pkg in packages.sorted()) appendLine("\u2022 " + Html.escape(appLabelFor(pkg)) + " <code>" + pkg + "</code>")
+        }.trimEnd())
+    }
+
+    private suspend fun updateAppWatchPackages(raw: String, add: Boolean) {
+        if (raw.isEmpty()) {
+            sendToTelegram("Cara pakai: /pantauapp " + (if (add) "tambah" else "hapus") + " <nama app|paket>")
+            return
+        }
+        val tokens = if (raw.contains(",")) raw.split(',').map { it.trim() }.filter { it.isNotEmpty() } else listOf(raw.trim())
+        val resolved = LinkedHashMap<String, String>()
+        val failed = ArrayList<String>()
+        for (token in tokens) {
+            val pkg = resolveAppPackage(token)
+            if (pkg == null) {
+                failed.add(token)
+            } else {
+                resolved[pkg] = appLabelFor(pkg)
+            }
+        }
+        val packages = preferencesManager.a11yAppWatchPackageSet()
+        if (add) packages.addAll(resolved.keys) else packages.removeAll(resolved.keys.toSet())
+        preferencesManager.setA11yAppWatchPackageSet(packages)
+        sendToTelegram(buildString {
+            appendLine("\uD83D\uDD75\uFE0F <b>Pantau app</b>")
+            if (resolved.isNotEmpty()) {
+                appendLine((if (add) "Ditambah: " else "Dihapus: ") + resolved.values.joinToString(", ") { Html.escape(it) })
+            }
+            if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
+            appendLine("Total: ${packages.size} app")
+            appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /pantauapp on")
+        }.trimEnd())
+    }
+
+    private fun resolveAppPackage(input: String): String? {
+        val value = input.trim()
+        if (value.isEmpty()) return null
+        if (value.contains(".")) {
+            return try {
+                packageManager.getApplicationInfo(value, 0)
+                value
+            } catch (_: Exception) {
+                null
+            }
+        }
+        val lower = value.lowercase(java.util.Locale.ROOT)
+        val apps = launchableAppPairs()
+        return apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT) == lower }?.second
+            ?: apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT).contains(lower) }?.second
+    }
+
+    private fun appLabelFor(pkg: String): String {
+        return try {
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+        } catch (_: Exception) {
+            pkg
+        }
+    }
+
+    private fun launchableAppPairs(): List<Pair<String, String>> {
+        return try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+            val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                packageManager.queryIntentActivities(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                packageManager.queryIntentActivities(intent, 0)
+            }
+            infos.mapNotNull { r ->
+                try {
+                    val label = r.loadLabel(packageManager)?.toString() ?: return@mapNotNull null
+                    val pkg = r.activityInfo?.packageName ?: return@mapNotNull null
+                    label to pkg
+                } catch (_: Exception) {
+                    null
+                }
+            }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     private suspend fun handleFenceCommand(command: String, arg: String, privateChat: Boolean) {
         val name = if (command == "/home") "Rumah" else "Sekolah"
         val sub = arg.trim()
@@ -3894,6 +4063,7 @@ class MonitoringService : Service() {
                     else -> "belum diaktifkan"
                 } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
                     " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
+                appendLine("Pantau app: " + (if (preferencesManager.a11yAppWatchEnabled) "nyala (" + preferencesManager.a11yAppWatchPackageSet().size + " app)" else "mati"))
                 appendLine("Sekarang: " + (A11yMonitor.currentAppLabel().ifEmpty { "-" }))
                 appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
                 appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
@@ -5653,7 +5823,7 @@ class MonitoringService : Service() {
 
     private fun watchList(): List<String> {
         return try {
-            preferencesManager.watchKeywords.split(",", " ", ";").map { it.trim().lowercase(java.util.Locale.ROOT) }.filter { it.length >= 3 }.distinct().take(10)
+            AppWatch.parseKeywords(preferencesManager.watchKeywords)
         } catch (_: Exception) {
             emptyList()
         }
@@ -5661,8 +5831,7 @@ class MonitoringService : Service() {
 
     private fun watchHit(text: String): String? {
         return try {
-            val lower = text.lowercase(java.util.Locale.ROOT)
-            watchList().firstOrNull { it.isNotEmpty() && lower.contains(it) }
+            AppWatch.hit(watchList(), text)
         } catch (_: Exception) {
             null
         }
