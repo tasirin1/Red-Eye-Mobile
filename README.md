@@ -119,14 +119,14 @@ Menu ☰ di chat owner hanya menampilkan `/help` dan `/ping`; semua perintah lai
 | `/hilang` | Bunyi + lokasi + foto |
 | `/jemput 500` | Kabari saat dekat rumah |
 | `/night on\|off` | Mode sunyi 23–05 |
-| `/ringkas` | Status + baterai + antrean + izin |
+| `/ringkas` | Status + baterai + antrean + izin + pemakaian 6 jam terakhir |
 | `/perms` | Daftar izin |
 | `/patrol on\|off` | Patroli foto + lokasi |
 | `/patrolinterval 5-180` | Interval patroli menit |
 | `/photointerval 0-60` | Interval foto menit, `0` manual |
 | `/pause menit` | Jeda foto sementara |
 | `/syncinterval 1-1440` | Interval sync menit |
-| `/status` | Status monitoring |
+| `/status` | Status monitoring, jaringan/VPN, baterai, SIM, izin, dan hitungan buka-kunci gagal |
 | `/battery` | Level baterai |
 | `/uptime` | Lama service jalan |
 | `/alive` | Denyut terakhir + berapa kali service dipulihkan |

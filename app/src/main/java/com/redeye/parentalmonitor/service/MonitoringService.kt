@@ -4177,6 +4177,16 @@ class MonitoringService : Service() {
                 appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
                 appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
                 appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
+                appendLine("Izin SMS masuk: ${if (hasReceiveSmsPermission()) "ada" else "tidak"}")
+                appendLine("Izin status telepon: ${if (hasPhoneStatePermission()) "ada" else "tidak"}")
+                appendLine("Jaringan: " + networkSummary())
+                appendLine("Baterai: " + batterySummary())
+                appendLine("SIM: " + (try { currentSimIdentity().ifEmpty { "tak terbaca" } } catch (_: Exception) { "?" }))
+                try {
+                    val gagal = adminFailedAttempts()
+                    if (gagal > 0) appendLine("Buka kunci gagal: $gagal× sejak buka terakhir")
+                } catch (_: Exception) {
+                }
                 appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
                 appendLine("Aksesibilitas: " + when {
                     ShotAccessibilityService.isEnabled(this@MonitoringService) -> "aktif"
@@ -4206,6 +4216,7 @@ class MonitoringService : Service() {
             appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
             appendLine("Aksesibilitas: " + (if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati") + " · proteksi " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
             appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
+            try { usageEventSummary(6).forEach { appendLine(it) } } catch (_: Exception) { }
         },
             mainMenu()
         )
@@ -6768,6 +6779,8 @@ class MonitoringService : Service() {
     }
 
     private var lastUnlockAlertAt = 0L
+    private var unlockAlertWindowStart = 0L
+    private var unlockAlertCount = 0
 
     private fun currentSimIdentity(): String {
         return try {
@@ -6805,6 +6818,12 @@ class MonitoringService : Service() {
             if (streak != 1 && streak % 3 != 0) return
             val now = android.os.SystemClock.elapsedRealtime()
             if (lastUnlockAlertAt > 0L && now - lastUnlockAlertAt < 2 * 60_000L) return
+            if (unlockAlertWindowStart == 0L || now - unlockAlertWindowStart > 3_600_000L) {
+                unlockAlertWindowStart = now
+                unlockAlertCount = 0
+            }
+            if (unlockAlertCount >= 3) return
+            unlockAlertCount++
             lastUnlockAlertAt = now
             val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
             val level = batteryLevel()
@@ -8264,6 +8283,60 @@ class MonitoringService : Service() {
             this,
             android.Manifest.permission.READ_CALL_LOG
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasReceiveSmsPermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECEIVE_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun hasPhoneStatePermission(): Boolean {
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.READ_PHONE_STATE
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun networkSummary(): String {
+        return try {
+            val cm = getSystemService(android.net.ConnectivityManager::class.java) ?: return "?"
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return "offline"
+            val parts = ArrayList<String>()
+            when {
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> parts.add("Wi-Fi")
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> parts.add("seluler")
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> parts.add("ethernet")
+                else -> parts.add("tersambung")
+            }
+            if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) parts.add("VPN")
+            if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)) parts.add("tanpa internet")
+            parts.joinToString(" · ")
+        } catch (_: Exception) {
+            "?"
+        }
+    }
+
+    private fun batterySummary(): String {
+        return try {
+            val bm = getSystemService(android.os.BatteryManager::class.java) ?: return "?"
+            val level = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            (if (level in 0..100) "$level%" else "?") + if (bm.isCharging) " · charging" else ""
+        } catch (_: Exception) {
+            "?"
+        }
+    }
+
+    private fun adminFailedAttempts(): Int {
+        return try {
+            val dpm = getSystemService(android.app.admin.DevicePolicyManager::class.java) ?: return 0
+            val admin = android.content.ComponentName(this, com.redeye.parentalmonitor.receiver.AdminReceiver::class.java)
+            if (!dpm.isAdminActive(admin)) return 0
+            dpm.currentFailedPasswordAttempts
+        } catch (_: Exception) {
+            0
+        }
     }
 
     private fun hasCameraPermission(): Boolean {

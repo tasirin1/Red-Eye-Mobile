@@ -1,3 +1,11 @@
+## [1.6.445] - 2026-10-21
+### Added
+- `/status` kini menampilkan jenis jaringan + penanda VPN, status baterai/charging, identitas SIM yang terpasang, jumlah buka-kunci gagal (bila admin perangkat aktif dan angkanya > 0), serta status izin `RECEIVE_SMS`/`READ_PHONE_STATE`.
+- `/ringkas` menyertakan statistik pemakaian 6 jam terakhir: jumlah HP dibuka, jam buka pertama, dan aplikasi yang paling sering dibuka.
+
+### Changed
+- Laporan buka-kunci gagal dibatasi maksimal 3 per jam (selain jeda 2 menit antar-laporan) supaya chat tidak dibanjiri.
+
 ## [1.6.444] - 2026-10-21
 ### Added
 - `InstantEventReceiver` menangkap `SMS_RECEIVED` dan `PHONE_STATE` (saat panggilan berakhir), lalu memicu pemeriksaan data langsung dengan jeda aman 15 detik — kabar SMS/panggilan tidak lagi menunggu `syncInterval`.
