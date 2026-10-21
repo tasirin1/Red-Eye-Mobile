@@ -22,14 +22,20 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 ZERO="0000000000000000000000000000000000000000"
 status=0
 ada=0
+ke_commit() {
+    git rev-parse --verify "$1^{commit}" 2>/dev/null
+}
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -n "$local_sha" ] || continue
     [ "$local_sha" = "$ZERO" ] && continue
+    ujung="$(ke_commit "$local_sha")"
+    [ -n "$ujung" ] || continue
     ada=1
-    if [ -z "$remote_sha" ] || [ "$remote_sha" = "$ZERO" ]; then
-        python3 tools/verifikasi-path.py --rentang "$local_sha~1..$local_sha" || status=1
+    awal="$(ke_commit "$remote_sha")"
+    if [ -n "$awal" ]; then
+        python3 tools/verifikasi-path.py --rentang "$awal..$ujung" || status=1
     else
-        python3 tools/verifikasi-path.py --rentang "$remote_sha..$local_sha" || status=1
+        python3 tools/verifikasi-path.py --rentang "$ujung~1..$ujung" || status=1
     fi
 done
 if [ "$ada" -eq 0 ]; then
