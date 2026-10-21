@@ -1,3 +1,12 @@
+## [1.6.434] - 2026-10-21
+### Fixed
+- Cache foto kini benar-benar membuang berkas **terlama**: `v1.6.432` memakai `dropLast()` pada daftar terurut naik sehingga yang terhapus justru foto terbaru, termasuk yang belum terkirim.
+- Penolakan izin notifikasi (Android 13+) tidak lagi memblokir tombol monitoring maupun mulai-otomatis saat aplikasi dibuka: `hasAll()` hanya memeriksa izin inti, sementara izin notifikasi tetap diminta terpisah dan statusnya tetap dilaporkan.
+- Kursor SMS/panggilan dipulihkan otomatis bila basis data provider berganti (mis. pabrik/hapus semua pesan): data baru yang ber-`_ID` lebih kecil dari kursor tidak lagi hilang permanen. Logika keputusan diuji lewat `CursorRepairTest`.
+- Pesan yang tertahan karena PIN aktif + owner belum login dijadwalkan ulang oleh `SendMessageWorker`, tidak menggantung sampai ada pemicu lain.
+- `/start` dari owner yang sudah tertaut dibalas petunjuk singkat (sebelumnya senyap).
+- `/audit` mencatat "`diterima`" untuk perintah kontrol, bukan "`ok`", karena handler belum tentu berhasil.
+
 ## [1.6.433] - 2026-10-21
 ### Fixed
 - Hook pre-push memakai rentang commit dari ref yang benar-benar didorong (termasuk tag anotasi dan cabang baru), bukan selalu membandingkan dengan `HEAD` lokal.
