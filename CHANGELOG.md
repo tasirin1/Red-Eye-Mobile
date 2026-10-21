@@ -1,3 +1,13 @@
+## [1.6.438] - 2026-10-21
+### Fixed
+- Notifikasi OTP: dedupe dan deteksi prioritas memakai teks asli, bukan teks yang sudah disamarkan; dua notifikasi berbeda dengan kode OTP berbeda tidak lagi saling membuang, dan prioritas tidak lagi terpengaruh masking. Kunci dedupe disimpan sebagai hash sehingga digit OTP tidak menetap di memori.
+- Deteksi berkendara hanya memakai fix lokasi berumur ≤10 menit; fix cache 30 menit tidak lagi memicu alarm "sedang berkendara" palsu.
+- `CrashReporter.pendingReport()` membaca berkas laporan di bawah kunci yang sama dengan penulisnya, sehingga tidak mungkin membaca laporan yang separuh tertulis.
+
+### Changed
+- Parser `/pantauapp` memakai `indexOfFirst` alih-alih mengompilasi regex tiap perintah.
+- `tools/bekas-hapusan.txt` mencatat `pkgTryAcquire` (nama lama yang sudah diganti `pkgShouldDrop`) agar tidak muncul kembali.
+
 ## [1.6.437] - 2026-10-21
 ### Changed
 - `/izinshot` masuk daftar perintah yang dikenal sehingga ikut muncul di bantuan/pencocokan perintah.
