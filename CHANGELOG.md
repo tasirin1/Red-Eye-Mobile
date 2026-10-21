@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.432] - 2026-10-21
 ### Changed
 - Aksesibilitas: event dedupe per paket+kelas sehingga layar sensitif tetap diperiksa, pemakaian dipersist tiap ~20 detik, sesi panjang tidak lagi dipotong 4 jam, pergantian hari menyimpan data hari sebelumnya, dan batas kabar kata kunci disimpan lintas restart.
 - Tamper: halaman dianggap sensitif "aksesibilitas" hanya bila kelas layar cocok atau nama aplikasi ikut terlihat, sehingga halaman Setelan lain tidak ikut ditutup.
