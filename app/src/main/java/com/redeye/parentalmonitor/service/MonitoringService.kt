@@ -3126,24 +3126,47 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleAppsCommand(arg: String) {
-        val parsed = arg.toIntOrNull()
-        if (arg.isNotEmpty() && parsed == null) {
-            sendToTelegram("Cara pakai: /apps [5-50] (bawaan 30)")
+        val tokens = arg.lowercase(java.util.Locale.ROOT).split(' ').filter { it.isNotEmpty() }
+        val includeAll = tokens.any { it == "all" || it == "semua" }
+        val parsed = tokens.firstOrNull { it.toIntOrNull() != null }?.toIntOrNull()
+        if (arg.isNotEmpty() && parsed == null && !includeAll) {
+            sendToTelegram("Cara pakai: /apps [5-50] atau /apps all [5-50] (bawaan 30)")
             return
         }
         val limit = parsed?.coerceIn(5, 50) ?: 30
-        val apps = listLaunchableApps(limit)
+        val apps = if (includeAll) allApps(limit) else listLaunchableApps(limit)
         if (apps.isEmpty()) {
             sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
         } else {
             sendToTelegram(
                 buildString {
-                    appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>")
+                    appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>" + if (includeAll) " · semua terpasang" else "")
                     for (label in apps) {
                         appendLine("\u2022 " + Html.escape(label))
                     }
                 }
             )
+        }
+    }
+
+    private fun allApps(limit: Int): List<String> {
+        return try {
+            val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                packageManager.getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getInstalledApplications(0)
+            }
+            infos.asSequence()
+                .filter { it.packageName != packageName }
+                .map { info ->
+                    val label = try { packageManager.getApplicationLabel(info).toString() } catch (_: Exception) { info.packageName }
+                    "$label (${info.packageName})" + if (info.enabled) "" else " [nonaktif]"
+                }
+                .sortedBy { it.lowercase(java.util.Locale.ROOT) }
+                .take(limit.coerceIn(1, 200))
+                .toList()
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 
@@ -5898,8 +5921,6 @@ class MonitoringService : Service() {
                 val pkg = try { event.packageName } catch (_: Exception) { null }
                 if (pkg == packageName) continue
                 events.add(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
-            }
-            try { cursor.close() } catch (_: Exception) {
             }
         } catch (_: Exception) {
             return emptyList()

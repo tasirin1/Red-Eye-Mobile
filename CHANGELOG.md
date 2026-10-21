@@ -1,8 +1,12 @@
-## [1.6.440] - 2026-10-21
+## [1.6.441] - 2026-10-21
 ### Added
 - Ringkasan harian memuat statistik perjalanan dari jejak 24 jam: jarak tempuh, lokasi diam terlama (bila ≥45 menit, disertai tautan peta), dan durasi di area sekolah bila geofence sekolah aktif.
 - Ringkasan harian memuat statistik pemakaian perangkat dari `UsageStatsManager.queryEvents`: jumlah HP dibuka + jam buka pertama, serta 3 aplikasi yang paling sering dibuka.
+- `/apps all` (atau `/apps semua`) mendaftar seluruh aplikasi terpasang, termasuk yang tidak punya ikon peluncur, lengkap dengan nama paket dan penanda `[nonaktif]`.
 - `TrailStats` (haversine murni) dan `UsageEventsSummary` beserta uji unit `TrailStatsTest` dan `UsageEventsSummaryTest`.
+
+### Changed
+- Manifest memakai `QUERY_ALL_PACKAGES` agar daftar paket lengkap terbaca di Android 11+; `/apps` tanpa argumen tetap hanya menampilkan aplikasi berikon peluncur.
 
 ## [1.6.439] - 2026-10-21
 ### Fixed
