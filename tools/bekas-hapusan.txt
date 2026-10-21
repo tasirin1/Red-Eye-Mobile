@@ -44,3 +44,4 @@ consumeNumberInput
 currentVideoFile
 isFgsStartBlocked
 masksFourToEightDigitGroups
+clearAudit

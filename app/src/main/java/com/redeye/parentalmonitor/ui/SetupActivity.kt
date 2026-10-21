@@ -224,6 +224,40 @@ class SetupActivity : AppCompatActivity() {
         return if (raw == STORED_MASK) stored else raw
     }
 
+    private data class CredentialInput(
+        val token: String,
+        val chatId: String,
+        val storedToken: String,
+        val storedChatId: String
+    )
+
+    private suspend fun resolveCredentialInput(rawToken: String, rawChat: String): CredentialInput? {
+        val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+        val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
+        val token = resolveStored(rawToken, storedToken)
+        val chatId = resolveStored(rawChat, storedChatId)
+        if (token.isEmpty() || chatId.isEmpty()) {
+            showToast(R.string.setup_fill_all, Toast.LENGTH_SHORT)
+            return null
+        }
+        if (!token.matches(TOKEN_REGEX)) {
+            showToast(R.string.setup_bad_token, Toast.LENGTH_SHORT)
+            return null
+        }
+        if (!isChatIdValid(chatId)) {
+            showToast(R.string.setup_bad_chat, Toast.LENGTH_SHORT)
+            return null
+        }
+        return CredentialInput(token, chatId, storedToken, storedChatId)
+    }
+
+    private suspend fun showToast(resId: Int, duration: Int) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            if (isFinishing || isDestroyed) return@withContext
+            Toast.makeText(this@SetupActivity, getString(resId), duration).show()
+        }
+    }
+
     private suspend fun resolveChatId(token: String, chatId: String): String {
         if (!chatId.startsWith("@")) return chatId
         return try {
@@ -602,32 +636,12 @@ class SetupActivity : AppCompatActivity() {
         try { saveJob?.cancel() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
         saveJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val currentToken = try { prefs.botToken } catch (_: Exception) { "" }
-            val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
-            val token = resolveStored(rawToken, currentToken)
-            var chatId = resolveStored(rawChat, storedChatId)
+            val input = resolveCredentialInput(rawToken, rawChat) ?: return@launch
+            val currentToken = input.storedToken
+            val storedChatId = input.storedChatId
+            val token = input.token
+            var chatId = input.chatId
             val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" }).ifEmpty { pendingRestoreAccessPin }
-            if (token.isEmpty() || chatId.isEmpty()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-            if (!token.matches(TOKEN_REGEX)) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-            if (!isChatIdValid(chatId)) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
@@ -779,6 +793,11 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun copyPairingLink() {
+        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        if (!fieldsLoaded && hasStored) {
+            Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
+            return
+        }
         val rawToken = botTokenInput.text?.toString()?.trim().orEmpty()
         val token = if (rawToken == STORED_MASK) {
             try { prefs.botToken } catch (_: Exception) { "" }
@@ -979,6 +998,11 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
+        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        if (!fieldsLoaded && hasStored) {
+            Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
+            return
+        }
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
         val rawAccessPin = accessPinInput.text.toString().trim()
@@ -1001,32 +1025,12 @@ class SetupActivity : AppCompatActivity() {
         try { testJob?.cancel() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
-            val storedChatId = try { prefs.chatId } catch (_: Exception) { "" }
-            val token = resolveStored(rawToken, storedToken)
-            var chatId = resolveStored(rawChat, storedChatId)
+            val input = resolveCredentialInput(rawToken, rawChat) ?: return@launch
+            val storedToken = input.storedToken
+            val storedChatId = input.storedChatId
+            val token = input.token
+            val chatId = input.chatId
             val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
-            if (token.isEmpty() || chatId.isEmpty()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_fill_all), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-            if (!token.matches(TOKEN_REGEX)) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_token), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-            if (!isChatIdValid(chatId)) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_bad_chat), Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
                 if (myTest != testSeq.get()) return@launch
@@ -1363,11 +1367,11 @@ class SetupActivity : AppCompatActivity() {
                 val chatId = prefs.chatId
                 val lastSync = prefs.lastSyncTime
                 val text = buildString {
-                    appendLine("📊 <b>Status</b> (langsung)")
-                    appendLine("Pemantauan: ${if (prefs.isMonitoringEnabled) "NYALA" else "MATI"}")
-                    appendLine("Sinkron terakhir: ${if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)}")
-                    appendLine("Foto terakhir: ${if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)}")
-                    appendLine("Pembatasan baterai: ${if (isBatteryExempt()) "bebas" else "NYALA — tekan tombol Disable Battery Restriction"}")
+                    appendLine(getString(R.string.setup_status_live_title))
+                    appendLine(getString(R.string.setup_status_live_monitoring, getString(if (prefs.isMonitoringEnabled) R.string.setup_status_on else R.string.setup_status_off)))
+                    appendLine(getString(R.string.setup_status_live_sync, if (lastSync > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(lastSync) else getString(R.string.never)))
+                    appendLine(getString(R.string.setup_status_live_photo, if (prefs.lastPhotoTime > 0) com.redeye.parentalmonitor.utils.TimeFmt.full(prefs.lastPhotoTime) else getString(R.string.never)))
+                    appendLine(getString(R.string.setup_status_battery_fmt, getString(if (isBatteryExempt()) R.string.setup_status_battery_free else R.string.setup_status_battery_limited)))
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 pending = text

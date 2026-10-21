@@ -4,3 +4,9 @@ build:
 style:
   NewLineAtEndOfFile:
     active: true
+  UnusedImports:
+    active: true
+  RedundantSemicolon:
+    active: true
+  ForbiddenComment:
+    active: true

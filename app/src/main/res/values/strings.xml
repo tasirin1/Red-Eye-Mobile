@@ -163,6 +163,10 @@
     <string name="setup_status_allowed">allowed</string>
     <string name="setup_status_admin_fmt">Device admin: %1$s</string>
     <string name="setup_status_on">on</string>
+    <string name="setup_status_live_title">📊 <b>Status</b> (live)</string>
+    <string name="setup_status_live_monitoring">Monitoring: %1$s</string>
+    <string name="setup_status_live_sync">Last sync: %1$s</string>
+    <string name="setup_status_live_photo">Last photo: %1$s</string>
     <string name="setup_status_post_fmt">System notifications: %1$s</string>
     <string name="setup_status_blocked">blocked</string>
     <string name="setup_status_patrol_fmt">Patrol: %1$s</string>

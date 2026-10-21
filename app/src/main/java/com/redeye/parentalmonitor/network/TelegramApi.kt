@@ -233,7 +233,10 @@ object TelegramClient {
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
-        .dispatcher(Dispatcher().apply { maxRequests = 6; maxRequestsPerHost = 4 })
+        .dispatcher(Dispatcher().apply {
+            maxRequests = 6
+            maxRequestsPerHost = 4
+        })
         .connectionPool(SharedNet.pool)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
@@ -255,7 +258,10 @@ object TelegramMediaClient {
 
     private val mediaOkHttp = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
-        .dispatcher(Dispatcher().apply { maxRequests = 4; maxRequestsPerHost = 2 })
+        .dispatcher(Dispatcher().apply {
+            maxRequests = 4
+            maxRequestsPerHost = 2
+        })
         .connectionPool(SharedNet.pool)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)

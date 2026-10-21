@@ -1678,9 +1678,6 @@ class MonitoringService : Service() {
                                             handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
                                         } else if (!balasAngka) {
                                             if (aliasInput != null && privateOwner) {
-                                                if (aliasInput.substringBefore(" ") in MUTATING_COMMANDS) {
-                                                    try { preferencesManager.setLastUpdateIdSync(update.updateId) } catch (_: Exception) { }
-                                                }
                                                 handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
                                             }
                                         }
@@ -2578,7 +2575,7 @@ class MonitoringService : Service() {
         val fmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault())
         val body = buildString {
             appendLine("🧾 <b>Audit perintah (max 50)</b>")
-            raw.split('\n').takeLast(30).forEach { line ->
+            raw.split('\n').takeLast(50).forEach { line ->
                 val cols = line.split('\t')
                 val at = cols.getOrNull(0)?.toLongOrNull() ?: 0L
                 val event = cols.getOrNull(1).orEmpty()
@@ -2803,10 +2800,9 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             sendToTelegram("Gagal memproses file backup. Coba lagi.")
             return
-        } finally {
-            try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
         }
         val text = blob ?: return
+        try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
         if (!text.startsWith(SettingsBackup.MAGIC)) {
             pendingRestore = null
             sendToTelegram("File bukan backup Red Eye yang valid.")
@@ -3628,17 +3624,11 @@ class MonitoringService : Service() {
 
     private suspend fun handleClearQueueCommand() {
         val queued = messageQueue.getQueueSize()
-        val overflowTaken = try { messageQueue.takeOverflowDrops() } catch (_: Exception) { 0L }
-        val expiredTaken = try { messageQueue.takeExpiredDrops() } catch (_: Exception) { 0L }
         try {
             messageQueue.clearQueue()
         } catch (_: Exception) {
         }
-        val dropExtra = buildString {
-            if (overflowTaken > 0L) append(" Ditambah $overflowTaken pesan penuh yang dibuang.")
-            if (expiredTaken > 0L) append(" Ditambah $expiredTaken pesan kedaluwarsa yang dibuang.")
-        }
-        sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.$dropExtra", null, true)
+        sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.", null, true)
     }
 
     private suspend fun handleLockCommand() {
@@ -8723,7 +8713,8 @@ class MonitoringService : Service() {
         try {
             try {
                 cacheDir.listFiles { file ->
-                    file.isFile && file.name.startsWith("camera_") && file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
+                    file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) &&
+                        file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }

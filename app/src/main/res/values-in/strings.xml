@@ -163,6 +163,10 @@
     <string name="setup_status_allowed">diizinkan</string>
     <string name="setup_status_admin_fmt">Admin perangkat: %1$s</string>
     <string name="setup_status_on">nyala</string>
+    <string name="setup_status_live_title">📊 <b>Status</b> (langsung)</string>
+    <string name="setup_status_live_monitoring">Pemantauan: %1$s</string>
+    <string name="setup_status_live_sync">Sinkron terakhir: %1$s</string>
+    <string name="setup_status_live_photo">Foto terakhir: %1$s</string>
     <string name="setup_status_post_fmt">Notifikasi sistem: %1$s</string>
     <string name="setup_status_blocked">diblokir</string>
     <string name="setup_status_patrol_fmt">Patroli: %1$s</string>

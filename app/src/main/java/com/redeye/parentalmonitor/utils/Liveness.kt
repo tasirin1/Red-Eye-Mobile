@@ -143,16 +143,20 @@ object Liveness {
                     val lastReport = try { manager.livenessReportAt } catch (_: Exception) { 0L }
                     val significant = downMs >= STALE_GAP_MS || unreported >= KILLS_PER_REPORT
                     if (significant && reportDue(lastReport, nowWall)) {
-                        val queued = try {
-                            MessageQueue.getInstance(context).addMessage(resurrectionText(prevWall, downMs, unreported))
-                            MessageScheduler.scheduleMessageSend(context)
-                            true
-                        } catch (_: Exception) {
-                            false
-                        }
-                        if (queued) {
-                            try { manager.livenessReportAt = nowWall } catch (_: Exception) { }
-                            try { manager.livenessKillsUnreported = 0 } catch (_: Exception) { }
+                        val reportPrevWall = prevWall
+                        val reportDownMs = downMs
+                        val reportUnreported = unreported
+                        Background.runCritical {
+                            try {
+                                val durable = MessageQueue.getInstance(context)
+                                    .addMessage(resurrectionText(reportPrevWall, reportDownMs, reportUnreported))
+                                try { MessageScheduler.scheduleMessageSend(context) } catch (_: Exception) { }
+                                if (durable) {
+                                    try { manager.livenessReportAt = nowWall } catch (_: Exception) { }
+                                    try { manager.livenessKillsUnreported = 0 } catch (_: Exception) { }
+                                }
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                 }

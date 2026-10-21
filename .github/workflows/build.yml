@@ -32,11 +32,30 @@ jobs:
         with:
           fetch-depth: 0
       - name: Verifikasi path (tanpa SDK Android)
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           # Skrip murni-Python: acuan yatim, XML, aturan repo, hapusan salah,
           # paritas resource, secret, cakupan uji metode diubah.
           # Gagal di sini = build APK tidak jalan.
-          python3 tools/verifikasi-path.py --rentang "${{ github.event.pull_request.base.sha || github.event.before || '' }}...${{ github.sha }}"
+          BASE="$PR_BASE"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="$EVENT_BEFORE"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            case "$GITHUB_REF" in
+              refs/tags/*) BASE=$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true) ;;
+            esac
+            if [ -z "$BASE" ]; then
+              BASE=$(git rev-parse "${GITHUB_SHA}^" 2>/dev/null || true)
+            fi
+          fi
+          if [ -n "$BASE" ]; then
+            python3 tools/verifikasi-path.py --rentang "$BASE...${{ github.sha }}"
+          else
+            python3 tools/verifikasi-path.py
+          fi
       - name: Cek cepat (vektor 0.x, secret, binary)
         run: bash scripts/cek-cepat.sh
 

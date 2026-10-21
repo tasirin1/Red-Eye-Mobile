@@ -126,7 +126,11 @@ class SendMessageWorker(
                 }
                 throw e
             } catch (e: Exception) {
-                val detail = (e.message ?: "").let { m -> var out = if (runToken.isNotEmpty()) m.replace(runToken, "***") else m; out = if (runChatId.isNotEmpty()) out.replace(runChatId, "***") else out; out }
+                val detail = (e.message ?: "").let { m ->
+                    var out = if (runToken.isNotEmpty()) m.replace(runToken, "***") else m
+                    out = if (runChatId.isNotEmpty()) out.replace(runChatId, "***") else out
+                    out
+                }
                 android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
                 failedIds.add(queuedMessage.id)
                 continue

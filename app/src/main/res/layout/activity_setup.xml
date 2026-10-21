@@ -43,6 +43,7 @@
                         android:id="@+id/setupBotTokenInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:importantForAutofill="no"
                         android:inputType="textPassword"
                         android:singleLine="true" />
 
@@ -76,6 +77,7 @@
                         android:id="@+id/setupAccessPinInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:importantForAutofill="no"
                         android:inputType="numberPassword"
                         android:maxLength="12"
                         android:singleLine="true" />

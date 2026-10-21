@@ -63,11 +63,6 @@ object MessageScheduler {
         return try {
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
-                .setBackoffCriteria(
-                    androidx.work.BackoffPolicy.EXPONENTIAL,
-                    10,
-                    TimeUnit.SECONDS
-                )
             if (initialDelayMs > 0L) {
                 requestBuilder.setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
             }

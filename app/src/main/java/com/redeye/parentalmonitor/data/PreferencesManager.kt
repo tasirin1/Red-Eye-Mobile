@@ -493,15 +493,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun clearAudit() {
-        synchronized(auditLock) {
-            try {
-                sharedPreferences.edit().remove(KEY_AUDIT_LOG).commit()
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     var credentialError: String
         get() = try { sharedPreferences.getString(KEY_CRED_ERROR, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_CRED_ERROR, value).apply()

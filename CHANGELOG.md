@@ -1,3 +1,24 @@
+## [1.6.422] - 2026-10-21
+### Fixed
+- Laporan kebangkitan `Liveness` baru dianggap terkirim setelah pesan benar-benar tersimpan di antrean; penjadwalan pengiriman tetap dilakukan.
+- `/audit` menampilkan 50 entri terakhir sesuai judulnya.
+- `/clearqueue` tidak lagi melaporkan drop lama seolah-olah akibat pembersihan antrean.
+- File backup `/pulihkan` hanya dihapus setelah berhasil diunduh; kegagalan unduhan tidak lagi menghilangkan file dari chat.
+- Cache sementara `screenshot_*.tmp` ikut dipangkas bersama `camera_*.tmp`.
+- Tombol Tes dan Salin tautan pairing menunggu field selesai dimuat, sehingga tidak membaca nilai kosong saat halaman baru dibuka.
+- Teks status langsung di Setup mengikuti bahasa aplikasi, tidak lagi hardcode "NYALA/MATI".
+- Kolom token bot dan PIN akses dikecualikan dari Autofill.
+- `SendMessageWorker` tidak lagi membawa `setBackoffCriteria` WorkManager yang tidak pernah terpakai.
+- Pemeriksaan diff `verifikasi-path.py` di CI memakai pembanding yang valid pada push tag/ref baru.
+
+### Changed
+- Validasi awal form Simpan dan Tes disatukan lewat `resolveCredentialInput()`.
+- Detekt menambah aturan `UnusedImports`, `RedundantSemicolon`, dan `ForbiddenComment`.
+- Semikolon berlebih di `SendMessageWorker` dan `TelegramApi` dirapikan.
+
+### Removed
+- `PreferencesManager.clearAudit()` dan `@color/black` yang tidak terpakai.
+
 ## [1.6.421] - 2026-10-20
 ### Fixed
 - Watchdog kamera dipasang setelah `ImageReader` dan `meteringSurface` siap, sehingga timeout saat penyiapan tidak lagi meninggalkan reader/surface tanpa pemilik.
