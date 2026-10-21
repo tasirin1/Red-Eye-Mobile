@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.428] - 2026-10-21
 ### Changed
 - Menu command Telegram (☰) di chat owner hanya memuat `/help` dan `/ping`; perintah lain tetap berfungsi lewat teks dan pintasan tombol di `/help`.
 
