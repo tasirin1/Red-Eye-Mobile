@@ -13,7 +13,7 @@ class InstantEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val target = when (intent.action) {
             "android.provider.Telephony.SMS_RECEIVED" -> MonitoringService.ACTION_SMS_RECEIVED
-            Intent.ACTION_PHONE_STATE_CHANGED -> {
+            TelephonyManager.ACTION_PHONE_STATE_CHANGED -> {
                 val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
                 if (state != TelephonyManager.EXTRA_STATE_IDLE) return
                 MonitoringService.ACTION_CALL_STATE

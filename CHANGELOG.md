@@ -1,4 +1,4 @@
-## [1.6.443] - 2026-10-21
+## [1.6.444] - 2026-10-21
 ### Added
 - `InstantEventReceiver` menangkap `SMS_RECEIVED` dan `PHONE_STATE` (saat panggilan berakhir), lalu memicu pemeriksaan data langsung dengan jeda aman 15 detik — kabar SMS/panggilan tidak lagi menunggu `syncInterval`.
 - Deteksi kartu SIM berubah: identitas SIM (`simOperator` + negara) disimpan di preferensi `sim_identity` dan dibandingkan tiap siklus data; perubahan dikirim ke Telegram.
