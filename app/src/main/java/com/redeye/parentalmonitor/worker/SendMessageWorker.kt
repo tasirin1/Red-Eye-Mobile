@@ -75,10 +75,6 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
-                try {
-                    messageQueue.clearQueue()
-                } catch (_: Exception) {
-                }
                 return Result.success()
             }
             if (processed >= 20) {
@@ -100,7 +96,7 @@ class SendMessageWorker(
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
                         noteSendOk()
-                        if (sentIds.size - flushedSent >= 5) {
+                        if (sentIds.size - flushedSent >= 1) {
                             try {
                                 messageQueue.removeMessages(sentIds)
                                 flushedSent = sentIds.size
@@ -207,10 +203,6 @@ class SendMessageWorker(
             return Result.success()
         }
         if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
-            try {
-                messageQueue.clearQueue()
-            } catch (_: Exception) {
-            }
             return Result.success()
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
@@ -491,11 +483,16 @@ class SendMessageWorker(
                 }
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
-                        try {
+                        remainderQueued = try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
-                            MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
-                            remainderQueued = true
                         } catch (_: Exception) {
+                            false
+                        }
+                        if (remainderQueued) {
+                            try {
+                                MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                     if (remainderQueued) {
@@ -510,12 +507,17 @@ class SendMessageWorker(
                 }
                 is SendOutcome.AuthFailed -> {
                     if (idx > 0 && !remainderQueued) {
-                        try {
+                        remainderQueued = try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                            preferencesManager.setCredentialError(outcome.code.toString(), System.currentTimeMillis())
-                            remainderQueued = true
                         } catch (_: Exception) {
+                            false
+                        }
+                        if (remainderQueued) {
+                            try {
+                                MessageScheduler.scheduleMessageSend(applicationContext)
+                                preferencesManager.setCredentialError(outcome.code.toString(), System.currentTimeMillis())
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                     if (remainderQueued) break
@@ -525,11 +527,16 @@ class SendMessageWorker(
                 SendOutcome.Failed -> {
                     failed++
                     if (idx > 0 && !failedKept) {
-                        try {
+                        failedKept = try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                            failedKept = true
                         } catch (_: Exception) {
+                            false
+                        }
+                        if (failedKept) {
+                            try {
+                                MessageScheduler.scheduleMessageSend(applicationContext)
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                     break
@@ -537,11 +544,16 @@ class SendMessageWorker(
                 SendOutcome.Rejected -> {
                     rejected++
                     if (idx > 0 && !failedKept) {
-                        try {
+                        failedKept = try {
                             messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
-                            MessageScheduler.scheduleMessageSend(applicationContext)
-                            failedKept = true
                         } catch (_: Exception) {
+                            false
+                        }
+                        if (failedKept) {
+                            try {
+                                MessageScheduler.scheduleMessageSend(applicationContext)
+                            } catch (_: Exception) {
+                            }
                         }
                     }
                     break

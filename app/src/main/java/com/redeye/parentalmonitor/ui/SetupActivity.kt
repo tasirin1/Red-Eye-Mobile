@@ -408,12 +408,7 @@ class SetupActivity : AppCompatActivity() {
         val saveButton = findViewById<MaterialButton>(R.id.setupSaveButton)
         saveButton.setOnClickListener { saveSettings() }
         saveButton.setOnLongClickListener {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(getString(R.string.setup_clear_title))
-                .setMessage(getString(R.string.setup_clear_text))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok) { _, _ -> clearCredentials() }
-                .show()
+            askClearCredentials()
             true
         }
         findViewById<MaterialButton>(R.id.setupTestButton).setOnClickListener { testConnection() }
@@ -488,6 +483,31 @@ class SetupActivity : AppCompatActivity() {
                 android.util.Log.w("SetupActivity", "Revive monitoring failed")
             }
         }
+    }
+
+    private fun askClearCredentials() {
+        val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
+        if (storedPin.isEmpty()) {
+            confirmClearCredentials()
+            return
+        }
+        askPin(getString(R.string.setup_clear_title), false) { pin ->
+            if (pin == null) return@askPin
+            if (pin != storedPin) {
+                Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+                return@askPin
+            }
+            confirmClearCredentials()
+        }
+    }
+
+    private fun confirmClearCredentials() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_clear_title))
+            .setMessage(getString(R.string.setup_clear_text))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> clearCredentials() }
+            .show()
     }
 
     private fun clearCredentials() {
@@ -620,12 +640,7 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         if ((rawToken.isEmpty() || rawChat.isEmpty()) && hasStored) {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(getString(R.string.setup_clear_title))
-                .setMessage(getString(R.string.setup_clear_text))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(android.R.string.ok) { _, _ -> clearCredentials() }
-                .show()
+            Toast.makeText(this, getString(R.string.setup_clear_hint), Toast.LENGTH_LONG).show()
             return
         }
         val mySave = saveSeq.incrementAndGet()
@@ -912,26 +927,29 @@ class SetupActivity : AppCompatActivity() {
             addView(first)
             if (confirm) addView(second)
         }
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(title)
             .setView(box)
             .setNegativeButton(android.R.string.cancel) { _, _ -> done(null) }
-            .setPositiveButton(android.R.string.ok) { _, _ ->
+            .setPositiveButton(android.R.string.ok, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val pin = first.text.toString()
                 if (pin.length < minLen) {
                     Toast.makeText(this, getString(if (confirm) R.string.backup_pin_short else R.string.restore_pin_short), Toast.LENGTH_LONG).show()
-                    done(null)
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
                 if (confirm && pin != second.text.toString()) {
                     Toast.makeText(this, getString(R.string.backup_pin_mismatch), Toast.LENGTH_LONG).show()
-                    done(null)
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
+                dialog.dismiss()
                 done(pin)
             }
-            .setOnCancelListener { done(null) }
-            .show()
+        }
+        dialog.setOnCancelListener { done(null) }
+        dialog.show()
     }
 
     private fun readBackupText(uri: android.net.Uri): String? {
@@ -1027,7 +1045,7 @@ class SetupActivity : AppCompatActivity() {
             val storedChatId = input.storedChatId
             val token = input.token
             val chatId = input.chatId
-            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" })
+            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" }).ifEmpty { pendingRestoreAccessPin }
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
                 if (myTest != testSeq.get()) return@launch

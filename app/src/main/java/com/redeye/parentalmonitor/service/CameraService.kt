@@ -77,7 +77,11 @@ class CameraService(private val context: Context) {
 
     init {
         try {
-            context.cacheDir?.listFiles { f -> f.isFile && f.name.endsWith(".tmp") }?.forEach {
+            context.cacheDir?.listFiles { f ->
+                f.isFile && f.name.endsWith(".tmp") &&
+                    (f.name.startsWith("camera_") || f.name.startsWith("screenshot_") ||
+                        f.name.startsWith("video_") || f.name.startsWith("audio_"))
+            }?.forEach {
                 try { it.delete() } catch (_: Exception) { }
             }
             context.cacheDir?.listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
@@ -252,6 +256,10 @@ class CameraService(private val context: Context) {
 
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Using camera ID: $cameraId")
             stillArmed.set(false)
+            if (sessionSeq.get() != mySeq) {
+                finishWithError(Exception("Sesi kamera digantikan"))
+                return
+            }
 
             // Setup ImageReader (still capture only) plus a dummy surface for AE metering,
             // so warmup preview frames can never be mistaken for the still photo.
@@ -600,9 +608,9 @@ class CameraService(private val context: Context) {
                                             releaseRecorder()
                                             releaseSurface()
                                             stopBackgroundThread()
-                                            val finalized = stopOk && tmpFile.exists() && tmpFile.length() > 0L &&
-                                                try { tmpFile.renameTo(outFile) } catch (_: Exception) { false }
-                                            if (!finalized) {
+                                            val hasData = tmpFile.exists() && tmpFile.length() > 0L
+                                            val moved = hasData && try { tmpFile.renameTo(outFile) } catch (_: Exception) { false }
+                                            if (!moved) {
                                                 try { tmpFile.delete() } catch (_: Exception) { }
                                                 finishWithError(Exception(if (stopOk) "Video kosong" else "Gagal menghentikan video"))
                                             } else {

@@ -39,7 +39,7 @@ object ContentQuery {
             }
         } catch (e: SecurityException) {
             android.util.Log.w("ContentQuery", "permission denied", e)
-            null
+            throw e
         } catch (e: Exception) {
             android.util.Log.w("ContentQuery", "query failed: ${e.message}", e)
             null

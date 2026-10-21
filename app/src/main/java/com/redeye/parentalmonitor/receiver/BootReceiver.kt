@@ -122,7 +122,7 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
         if (!preferencesManager.isConfigured()) {
-            markHandled(context, 0L)
+            markHandled(context, 0L, full = false)
             MessageScheduler.scheduleBootRestart(context)
             return
         }
@@ -147,7 +147,7 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
         if (!tryStartService(context)) {
-            markHandled(context, 0L)
+            markHandled(context, 0L, full = false)
             MessageScheduler.scheduleBootRestart(context)
             try {
                 val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)

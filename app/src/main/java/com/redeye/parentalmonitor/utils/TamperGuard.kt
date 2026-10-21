@@ -51,7 +51,8 @@ object TamperGuard {
             (self.isNotEmpty() && joined.contains(self))
 
         if (isSettingsLike(pkg)) {
-            if (cls.contains("accessibility") || joined.contains("aksesibilitas") || joined.contains("accessibility")) {
+            if (cls.contains("accessibility") ||
+                (selfMention && (joined.contains("aksesibilitas") || joined.contains("accessibility")))) {
                 return "aksesibilitas"
             }
             if (selfMention && (cls.contains("deviceadmin") || joined.contains("admin perangkat") || joined.contains("device admin"))) {

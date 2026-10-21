@@ -127,6 +127,9 @@ class SmsRepository(private val context: Context) {
                     }
                 }
             }
+        } catch (e: SecurityException) {
+            android.util.Log.e("SmsRepository", "SMS permission denied", e)
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("SmsRepository", "Error querying SMS", e)
         }

@@ -45,6 +45,7 @@ object A11yMonitor {
 
     private val gson = Gson()
     private val usageType = object : TypeToken<MutableMap<String, AppUsage>>() {}.type
+    private val alertType = object : TypeToken<MutableMap<String, Long>>() {}.type
     private val gate = Any()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val lastTamperAlert = HashMap<String, Long>()
@@ -73,7 +74,12 @@ object A11yMonitor {
     private var a11yService: AccessibilityService? = null
 
     @Volatile
-    private var lastEventPackage = ""
+    private var lastEventKey = ""
+
+    @Volatile
+    private var lastSaveRequestElapsed = 0L
+
+    private var keywordStateLoaded = false
 
     private var loaded = false
     private var loadedDay = ""
@@ -97,8 +103,8 @@ object A11yMonitor {
         executor.execute { ensureLoaded(app) }
     }
 
-    fun unbind() {
-        a11yService = null
+    fun unbind(service: AccessibilityService? = null) {
+        if (service == null || a11yService === service) a11yService = null
     }
 
     fun noteEnabled(context: Context) {
@@ -114,17 +120,23 @@ object A11yMonitor {
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
-                if (pkg.isEmpty() || pkg == lastEventPackage) return
-                lastEventPackage = pkg
+                if (pkg.isEmpty()) return
                 val cls = try { event.className?.toString().orEmpty() } catch (_: Exception) { "" }
+                val key = pkg + "|" + cls
+                if (key == lastEventKey) return
+                lastEventKey = key
                 val texts = if (TamperGuard.mayBeSensitive(pkg, cls)) collectSnapshot(service).texts else emptyList()
                 val app = service.applicationContext
                 executor.execute { handleWindow(app, pkg, cls, texts) }
                 scanWatchedContent(service, pkg)
+                requestPeriodicPersist(app)
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
-                if (pkg.isNotEmpty()) scanWatchedContent(service, pkg)
+                if (pkg.isNotEmpty()) {
+                    scanWatchedContent(service, pkg)
+                    requestPeriodicPersist(service.applicationContext)
+                }
             }
         }
     }
@@ -153,18 +165,15 @@ object A11yMonitor {
         if (pkg !in manager.a11yAppWatchPackageSet() || AppWatch.isSensitivePackage(pkg)) return
         val hit = AppWatch.hit(keywords, texts.joinToString(" ")) ?: return
         val nowWall = System.currentTimeMillis()
-        val nowElapsed = SystemClock.elapsedRealtime()
         val day = TimeFmt.dayKey(nowWall)
-        if (day != keywordAlertDay) {
-            keywordAlertDay = day
-            keywordAlertCount = 0
-        }
+        ensureKeywordState(manager, day)
         if (keywordAlertCount >= MAX_KEYWORD_ALERTS_PER_DAY) return
         val key = pkg + "|" + hit
         val last = lastKeywordAlert[key] ?: 0L
-        if (last > 0L && nowElapsed - last < KEYWORD_ALERT_GAP_MS) return
-        lastKeywordAlert[key] = nowElapsed
+        if (last > 0L && nowWall - last < KEYWORD_ALERT_GAP_MS) return
+        lastKeywordAlert[key] = nowWall
         keywordAlertCount++
+        saveKeywordState(manager)
         val label = labelFor(context, pkg)
         sendAlert(
             context,
@@ -174,11 +183,49 @@ object A11yMonitor {
         )
     }
 
+    private fun ensureKeywordState(manager: PreferencesManager, day: String) {
+        if (!keywordStateLoaded) {
+            keywordStateLoaded = true
+            keywordAlertDay = try { manager.a11yKeywordAlertDay } catch (_: Exception) { "" }
+            keywordAlertCount = try { manager.a11yKeywordAlertCount } catch (_: Exception) { 0 }
+            try {
+                val parsed: MutableMap<String, Long>? = gson.fromJson(manager.a11yKeywordAlertJson, alertType)
+                if (parsed != null) {
+                    lastKeywordAlert.clear()
+                    lastKeywordAlert.putAll(parsed)
+                }
+            } catch (_: Exception) {
+            }
+        }
+        if (day != keywordAlertDay) {
+            keywordAlertDay = day
+            keywordAlertCount = 0
+            lastKeywordAlert.clear()
+            saveKeywordState(manager)
+            return
+        }
+        if (lastKeywordAlert.size > 200) {
+            val cutoff = System.currentTimeMillis() - 24 * 60 * 60_000L
+            try { lastKeywordAlert.entries.removeIf { it.value < cutoff } } catch (_: Exception) { }
+        }
+    }
+
+    private fun saveKeywordState(manager: PreferencesManager) {
+        try {
+            manager.setA11yKeywordAlertState(
+                keywordAlertDay,
+                keywordAlertCount,
+                try { gson.toJson(lastKeywordAlert) } catch (_: Exception) { "" }
+            )
+        } catch (_: Exception) {
+        }
+    }
+
     fun flush(context: Context) {
         val app = context.applicationContext
         executor.execute {
             synchronized(gate) {
-                lastEventPackage = ""
+                lastEventKey = ""
                 suspendedPackage = ""
                 ensureLoadedLocked(app)
                 finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
@@ -197,7 +244,7 @@ object A11yMonitor {
                     suspendedLabel = currentLabel
                 }
                 finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
-                lastEventPackage = ""
+                lastEventKey = ""
                 persistLocked(app, true)
             }
         }
@@ -211,7 +258,7 @@ object A11yMonitor {
                 val pkg = suspendedPackage
                 suspendedPackage = ""
                 val manager = prefs
-                if (pkg.isNotEmpty() && manager != null && monitoringActive(manager) && isLaunchable(app, pkg)) {
+                if (pkg.isNotEmpty() && manager != null && monitoringActive(manager) && !isKeyguardLocked(app) && isLaunchable(app, pkg)) {
                     val nowWall = System.currentTimeMillis()
                     val nowElapsed = SystemClock.elapsedRealtime()
                     currentPackage = pkg
@@ -219,7 +266,7 @@ object A11yMonitor {
                     suspendedLabel = ""
                     currentStartWall = nowWall
                     currentStartElapsed = nowElapsed
-                    lastEventPackage = pkg
+                    lastEventKey = ""
                     usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }.label = currentLabel
                 }
             }
@@ -235,18 +282,10 @@ object A11yMonitor {
         ensurePrefs(app)
         synchronized(gate) {
             ensureLoadedLocked(app)
-            val nowWall = System.currentTimeMillis()
-            val nowElapsed = SystemClock.elapsedRealtime()
-            val rows = usage.values.map { it.copy() }.toMutableList()
-            if (currentPackage.isNotEmpty() && currentStartElapsed > 0L) {
-                val extra = (nowElapsed - currentStartElapsed).coerceIn(0L, MAX_SESSION_MS)
-                val row = rows.firstOrNull { it.packageName == currentPackage }
-                    ?: AppUsage(packageName = currentPackage, label = currentLabel).also { rows.add(it) }
-                row.millis += extra
-                row.nightMillis += minOf(extra, A11yUsageMath.nightOverlapMs(currentStartWall, nowWall, offsetAt(currentStartWall)))
-                row.lastAt = nowWall
-            }
-            return rows.filter { it.millis > 0L || it.launches > 0 }.sortedByDescending { it.millis }
+            accrueSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+            return usage.values.map { it.copy() }
+                .filter { it.millis > 0L || it.launches > 0 }
+                .sortedByDescending { it.millis }
         }
     }
 
@@ -265,10 +304,27 @@ object A11yMonitor {
     private fun ensureLoadedLocked(context: Context) {
         val today = TimeFmt.dayKey(System.currentTimeMillis())
         if (loaded && today == loadedDay) return
+        val previousDay = loadedDay
+        val activePackage = currentPackage
+        val activeLabel = currentLabel
+        if (loaded && previousDay.isNotEmpty() && today != previousDay) {
+            finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+            saveUsageFor(context, previousDay)
+        }
         loadedDay = today
         loaded = true
         usage = loadUsage(context, today)
         seedKnownAppsLocked(context)
+        if (activePackage.isNotEmpty() && (previousDay.isEmpty() || today != previousDay)) {
+            val manager = prefs
+            if (manager != null && monitoringActive(manager) && isLaunchable(context, activePackage)) {
+                val nowWall = System.currentTimeMillis()
+                currentPackage = activePackage
+                currentLabel = activeLabel.ifEmpty { labelFor(context, activePackage) }
+                currentStartWall = nowWall
+                currentStartElapsed = SystemClock.elapsedRealtime()
+            }
+        }
     }
 
     private fun loadUsage(context: Context, today: String): MutableMap<String, AppUsage> {
@@ -402,21 +458,56 @@ object A11yMonitor {
         return ScreenSnapshot(out, hasPassword)
     }
 
+    private fun accrueSessionLocked(nowWall: Long, nowElapsed: Long) {
+        if (currentPackage.isEmpty() || currentStartElapsed <= 0L) return
+        var remaining = nowElapsed - currentStartElapsed
+        if (remaining <= 0L) return
+        var wallStart = currentStartWall
+        while (remaining > 0L) {
+            val chunk = minOf(remaining, MAX_SESSION_MS)
+            val row = usage.getOrPut(currentPackage) { AppUsage(packageName = currentPackage, label = currentLabel) }
+            row.millis += chunk
+            row.nightMillis += minOf(chunk, A11yUsageMath.nightOverlapMs(wallStart, wallStart + chunk, offsetAt(wallStart)))
+            row.lastAt = wallStart + chunk
+            wallStart += chunk
+            remaining -= chunk
+        }
+        currentStartWall = wallStart
+        currentStartElapsed = nowElapsed
+    }
+
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) {
             currentPackage = ""
             currentStartElapsed = 0L
             return
         }
-        val elapsed = (nowElapsed - currentStartElapsed).coerceIn(0L, MAX_SESSION_MS)
-        if (elapsed > 0L) {
-            val row = usage.getOrPut(currentPackage) { AppUsage(packageName = currentPackage, label = currentLabel) }
-            row.millis += elapsed
-            row.nightMillis += minOf(elapsed, A11yUsageMath.nightOverlapMs(currentStartWall, nowWall, offsetAt(currentStartWall)))
-            row.lastAt = nowWall
-        }
+        accrueSessionLocked(nowWall, nowElapsed)
         currentPackage = ""
         currentStartElapsed = 0L
+    }
+
+    private fun requestPeriodicPersist(context: Context) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastSaveRequestElapsed < PERSIST_INTERVAL_MS) return
+        lastSaveRequestElapsed = now
+        val app = context.applicationContext
+        executor.execute {
+            synchronized(gate) {
+                ensureLoadedLocked(app)
+                accrueSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+                persistLocked(app, false)
+            }
+        }
+    }
+
+    private fun saveUsageFor(context: Context, day: String) {
+        val manager = prefs ?: return
+        try {
+            manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
+            lastPersistElapsed = SystemClock.elapsedRealtime()
+        } catch (_: Exception) {
+        }
     }
 
     private fun persistLocked(context: Context, force: Boolean) {
@@ -425,9 +516,19 @@ object A11yMonitor {
         val manager = prefs ?: return
         val day = TimeFmt.dayKey(System.currentTimeMillis())
         if (day != loadedDay) return
-        manager.a11yUsageDate = day
-        manager.a11yUsageJson = try { gson.toJson(usage) } catch (_: Exception) { "" }
-        lastPersistElapsed = now
+        try {
+            manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
+            lastPersistElapsed = now
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun isKeyguardLocked(context: Context): Boolean {
+        return try {
+            (context.getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager)?.isKeyguardLocked ?: false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun monitoringActive(manager: PreferencesManager): Boolean {

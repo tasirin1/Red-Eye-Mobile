@@ -18,8 +18,24 @@ direktori_kait() {
 pasang_kait() {
     cat > "$1" <<'HOOK'
 #!/bin/sh
-cd "$(git rev-parse --show-toplevel)"
-if ! python3 tools/verifikasi-path.py; then exit 1; fi
+cd "$(git rev-parse --show-toplevel)" || exit 1
+ZERO="0000000000000000000000000000000000000000"
+status=0
+ada=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -n "$local_sha" ] || continue
+    [ "$local_sha" = "$ZERO" ] && continue
+    ada=1
+    if [ -z "$remote_sha" ] || [ "$remote_sha" = "$ZERO" ]; then
+        python3 tools/verifikasi-path.py --rentang "$local_sha~1..$local_sha" || status=1
+    else
+        python3 tools/verifikasi-path.py --rentang "$remote_sha..$local_sha" || status=1
+    fi
+done
+if [ "$ada" -eq 0 ]; then
+    python3 tools/verifikasi-path.py || status=1
+fi
+if [ "$status" -ne 0 ]; then exit 1; fi
 exec bash scripts/cek-cepat.sh
 HOOK
     chmod +x "$1" 2>/dev/null || true

@@ -19,6 +19,8 @@ class FgsWakeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestTypeRefresh()
+        mainHandler.removeCallbacks(finishRunnable)
+        mainHandler.postDelayed(finishRunnable, SAFETY_MS)
     }
 
     override fun onResume() {
@@ -31,6 +33,7 @@ class FgsWakeActivity : Activity() {
     override fun onPause() {
         super.onPause()
         mainHandler.removeCallbacks(finishRunnable)
+        mainHandler.postDelayed(finishRunnable, SAFETY_MS)
     }
 
     override fun onDestroy() {
@@ -76,5 +79,6 @@ class FgsWakeActivity : Activity() {
 
     companion object {
         private const val VISIBLE_MS = 2_500L
+        private const val SAFETY_MS = 10_000L
     }
 }

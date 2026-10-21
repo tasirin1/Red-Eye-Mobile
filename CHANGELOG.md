@@ -1,3 +1,37 @@
+## [Unreleased]
+### Changed
+- Aksesibilitas: event dedupe per paket+kelas sehingga layar sensitif tetap diperiksa, pemakaian dipersist tiap ~20 detik, sesi panjang tidak lagi dipotong 4 jam, pergantian hari menyimpan data hari sebelumnya, dan batas kabar kata kunci disimpan lintas restart.
+- Tamper: halaman dianggap sensitif "aksesibilitas" hanya bila kelas layar cocok atau nama aplikasi ikut terlihat, sehingga halaman Setelan lain tidak ikut ditutup.
+- Hapus kredensial lewat tahan tombol Simpan kini meminta PIN akses bila PIN aktif; token/chat yang dikosongkan hanya memperingatkan, tidak langsung menghapus.
+- Backup memakai format `REDEYE2:` dengan 210.000 iterasi PBKDF2; file `REDEYE1:` lama tetap bisa diimpor.
+- Hapus `app/src/main/res/values-v30/bools.xml` yang identik dengan nilai dasar.
+
+### Fixed
+- Cache foto membuang berkas terlama, bukan terbaru, saat penuh.
+- Pengiriman foto tidak lagi berhenti pada satu berkas yang ditahan (maksimal 2 per siklus).
+- Jam malam menolak jam 05:00-11:59 yang sebelumnya membuat kurungan hampir sepanjang hari.
+- `/ping` berulang dibalas sisa waktu tunggu, bukan diam.
+- `/pantauapp status|daftar` hanya via private chat; penambahan aplikasi sensitif ditolak; aplikasi yang sudah dicopot dibersihkan dari daftar.
+- `/appalert on` dan `/lindungi on` memperingatkan bila Aksesibilitas mati.
+- `/bersihkan media` wajib menyebut jumlah hari.
+- Patroli tetap berjalan saat mode hemat daya (interval diperpanjang) dan loop kamera tidak berputar tiap 2 menit saat kamera dimatikan.
+- Geofence fallback meneruskan akurasi fix terbaru.
+- `/logout` membatalkan proses restore yang masih berjalan.
+- Audit hanya dicatat untuk pengirim sah dan setelah gerbang owner.
+- Callback tombol memakai kunci kontrol yang sama dengan perintah kontrol.
+- Wake lock video dilepas saat service berhenti; video tetap difinalisasi walau `stop()` melempar.
+- Foto dan video tidak lagi berjalan bertumpuk (`recordBusy`/`cameraBusy`).
+- Foto gelap otomatis memberi kabar maksimal sekali per jam.
+- Rekaman yang sudah terkirim tidak lagi dilaporkan gagal saat coroutine dibatalkan.
+- Antrean pesan tidak dihapus saat PIN aktif dan owner logout; sisa chunk hanya dianggap terantre bila tersimpan; pesan terkirim dihapus per satu.
+- `SecurityException` dari SMS/panggilan diteruskan agar jalur coba ulang berjalan.
+- `CrashReporter` membuang laporan yang ditolak permanen (400) alih-alih mengulang tiap siklus.
+- `FgsWakeActivity` selalu selesai lewat jadwal di `onCreate`/`onPause`.
+- `BootReceiver` tidak lagi menghapus penanda boot penuh saat menangani event.
+- `AppPermissions.hasAll` ikut memeriksa izin notifikasi di Android 13+.
+- `CameraService` hanya membersihkan berkas `.tmp` milik kamera dan memeriksa sesi sebelum membuat resource.
+- Hook pre-push memeriksa rentang commit yang benar-benar didorong.
+
 ## [1.6.431] - 2026-10-21
 ### Added
 - `/pantauapp on|off|status|daftar|tambah <app>|hapus <app>`: pantau kata kunci dari `/watch` di dalam aplikasi terpilih dan kirim kabar Telegram berisi aplikasi + kata + waktu.

@@ -28,6 +28,7 @@ class ShotAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        released = false
         instance = this
         A11yMonitor.attach(this)
         A11yMonitor.noteEnabled(this)
@@ -49,20 +50,26 @@ class ShotAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        if (instance === this) instance = null
-        try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
-        A11yMonitor.flush(this)
-        A11yMonitor.unbind()
+        release()
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
+        release()
+        super.onDestroy()
+    }
+
+    private fun release() {
+        if (released) return
+        released = true
         if (instance === this) instance = null
         try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
         A11yMonitor.flush(this)
-        A11yMonitor.unbind()
-        super.onDestroy()
+        A11yMonitor.unbind(this)
     }
+
+    @Volatile
+    private var released = false
 
     companion object {
         @Volatile

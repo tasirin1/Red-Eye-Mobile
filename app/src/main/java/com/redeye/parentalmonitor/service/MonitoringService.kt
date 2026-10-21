@@ -149,6 +149,10 @@ class MonitoringService : Service() {
     private val videoAttempt = java.util.concurrent.atomic.AtomicInteger(0)
     @Volatile
     private var videoWatchdog: Job? = null
+    @Volatile
+    private var videoWakeLock: android.os.PowerManager.WakeLock? = null
+    @Volatile
+    private var lastDarkPhotoAlertAt = 0L
     private val shotBusy = AtomicBoolean(false)
     @Volatile
     private var shotWatchdog: Job? = null
@@ -213,6 +217,8 @@ class MonitoringService : Service() {
     )
     @Volatile
     private var pendingRestore: PendingRestore? = null
+    @Volatile
+    private var ownerEpoch = 0
     @Volatile
     private var skipUpdateOffsetOnce = false
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
@@ -883,7 +889,7 @@ class MonitoringService : Service() {
                         cameraCycleMs = 5 * 60_000L
                         delayMs(5 * 60_000L)
                     } else {
-                        val adminPaused = photoPauseSource() == PHOTO_PAUSE_ADMIN
+                        val adminPaused = effMinutes > 0 && photoPauseSource() == PHOTO_PAUSE_ADMIN
                         if (adminPaused) {
                             if (isCameraDisabledByPolicy()) {
                                 if (isPhotoPaused()) {
@@ -942,7 +948,7 @@ class MonitoringService : Service() {
                     patrolCycleMs = effMinutes * 60_000L
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
-                        if (!lowPower) patrolRound()
+                        patrolRound()
                         delayMs(effMinutes * 60_000L)
                     } else if (cachedMonitoringPaused) {
                         delayMs(15 * 60_000L)
@@ -1303,6 +1309,7 @@ class MonitoringService : Service() {
         pendingRestore = null
         pendingInputCommand = ""
         pendingInputAt = 0L
+        ownerEpoch++
         try { messageQueue.clearQueue() } catch (_: Exception) {
         }
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) {
@@ -1614,7 +1621,7 @@ class MonitoringService : Service() {
                 val callback = update.callbackQuery
                 if (callback != null) {
                     serviceScope.launch {
-                        commandLock.withLock {
+                        controlLock.withLock {
                             try {
                                 handleCallbackQuery(callback)
                             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -2133,7 +2140,7 @@ class MonitoringService : Service() {
         TextInput("/sms", "komu", "Kirim <b>nomor</b> lalu <b>isi pesannya</b>.", "08123456789 Halo", "Kirim SMS dari HP ini. Nomor minimal 7 digit."),
         TextInput("/contacts", "komu", "Kirim nama/nomor kontak, atau angka halaman untuk daftar semua.", "budi", "Cari kontak; ketik 1 untuk halaman pertama daftar semua (butuh izin Kontak)."),
         TextInput("/history", "komu", "Kirim nomor telepon (7-20 digit).", "08123456789", "Tampilkan 5 panggilan + 5 SMS terakhir nomor itu."),
-        TextInput("/layar", "info", "Kirim jumlah jam 1-24, atau ketik apa saja untuk 24 jam.", "6", "Ringkasan pemakaian layar per aplikasi."),
+        TextInput("/layar", "info", "Kirim jumlah jam 1-24 (kosongkan untuk 24 jam).", "6", "Ringkasan pemakaian layar per aplikasi."),
         TextInput("/watch", "pantau", "Kirim kata yang diawasi (pisahkan koma, min 3 huruf).", "judol,pinjol", "Pantau kata terlarang. Ketik /watch off untuk mematikan."),
         TextInput("/watchnomor", "pantau", "Kirim nomor yang diawasi (pisahkan koma, min 7 digit).", "08123456789", "Kabar bila nomor itu muncul. Ketik /watchnomor off untuk mematikan."),
         TextInput("/jampulang", "pantau", "Kirim jam format HH:MM.", "21:30", "Kabar bila di luar rumah lewat jam itu. Ketik /jampulang off untuk mematikan."),
@@ -2324,9 +2331,6 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
-        if (command in AUDIT_COMMANDS) {
-            audit(command.removePrefix("/") + " " + (if (senderOk) "ok" else "ditolak"), if (privateChat) "private" else "chat")
-        }
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             val ageSec = if (sentAtSec <= 0L) 0L else System.currentTimeMillis() / 1000L - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
@@ -2339,6 +2343,9 @@ class MonitoringService : Service() {
             }
         } else if (!senderOk && (!chatOk || (cachedChatId.startsWith("-") && cachedOwnerId != 0L))) {
             return
+        }
+        if (command in AUDIT_COMMANDS && senderOk) {
+            audit(command.removePrefix("/") + " ok", if (privateChat) "private" else "chat")
         }
         val numberInput = numberInputFor(command)
         if (numberInput != null && numberInput.required && arg.isBlank()) {
@@ -2443,7 +2450,7 @@ class MonitoringService : Service() {
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg)
             "/lindungi" -> handleProtectCommand(arg)
-            "/pantauapp" -> handleAppWatchCommand(arg)
+            "/pantauapp" -> handleAppWatchCommand(arg, privateChat)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
@@ -2598,7 +2605,7 @@ class MonitoringService : Service() {
             return
         }
         val dayArg = parts.getOrNull(1)
-        val days = if (dayArg == null) 30 else dayArg.toIntOrNull() ?: 0
+        val days = dayArg?.toIntOrNull() ?: 0
         if (days !in 1..365) {
             sendToTelegram("Cara pakai: /bersihkan media &lt;1-365&gt; (hari)")
             return
@@ -2799,7 +2806,7 @@ class MonitoringService : Service() {
         }
         val text = blob ?: return
         try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
-        if (!text.startsWith(SettingsBackup.MAGIC)) {
+        if (!SettingsBackup.looksLikeBackup(text)) {
             pendingRestore = null
             sendToTelegram("File bukan backup Red Eye yang valid.")
             return
@@ -2835,8 +2842,13 @@ class MonitoringService : Service() {
             return
         }
         pendingRestore = null
+        val restoreEpoch = ownerEpoch
         if (!validateRestoreTarget(data)) {
             audit("restore validasi gagal", "private")
+            return
+        }
+        if (restoreEpoch != ownerEpoch) {
+            audit("restore dibatalkan setelah logout", "private")
             return
         }
         val confirm = PendingRestore(RESTORE_STAGE_CONFIRM, data = data)
@@ -2848,7 +2860,7 @@ class MonitoringService : Service() {
         )
         serviceScope.launch {
             delay(RESTORE_CANCEL_WINDOW_MS)
-            if (pendingRestore === confirm && confirm.stage == RESTORE_STAGE_CONFIRM) {
+            if (pendingRestore === confirm && confirm.stage == RESTORE_STAGE_CONFIRM && restoreEpoch == ownerEpoch) {
                 pendingRestore = null
                 applyRestoredSettings(data)
             }
@@ -3215,6 +3227,10 @@ class MonitoringService : Service() {
         } else if (sub == "on" || sub == "off") {
             val on = sub == "on"
             preferencesManager.a11yAppAlert = on
+            if (on && !ShotAccessibilityService.isEnabled(this)) {
+                sendToTelegram("\uD83D\uDCF1 Alert app nyala, tetapi Aksesibilitas MATI. Aktifkan di Setup agar alert bisa jalan.")
+                return
+            }
             sendToTelegram(if (on) "\uD83D\uDCF1 Alert app baru dan app malam nyala." else "\uD83D\uDCF1 Alert app dimatikan.")
         } else {
             sendToTelegram("Cara pakai: /appalert on|off|status")
@@ -3236,6 +3252,10 @@ class MonitoringService : Service() {
         } else if (sub == "on" || sub == "off") {
             val on = sub == "on"
             preferencesManager.a11yTamperEnabled = on
+            if (on && !ShotAccessibilityService.isEnabled(this)) {
+                sendToTelegram("\uD83D\uDEE1\uFE0F Proteksi tamper nyala, tetapi Aksesibilitas MATI. Aktifkan di Setup agar proteksi berjalan.")
+                return
+            }
             sendToTelegram(if (on) "\uD83D\uDEE1\uFE0F Proteksi tamper nyala." else "\uD83D\uDEE1\uFE0F Proteksi tamper mati. Setelan HP bisa diubah sampai dinyalakan lagi.")
         } else {
             sendToTelegram("Cara pakai: /lindungi on|off|status")
@@ -3252,28 +3272,50 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleAppWatchCommand(arg: String) {
+    private suspend fun handleAppWatchCommand(arg: String, privateChat: Boolean) {
         val text = arg.trim()
         val parts = text.split(Regex("\\s+"), limit = 2)
         val action = parts.getOrNull(0)?.lowercase(java.util.Locale.ROOT).orEmpty()
         val rest = parts.getOrNull(1)?.trim().orEmpty()
         when (action) {
-            "", "status" -> sendAppWatchStatus()
+            "", "status" -> {
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+                sendAppWatchStatus()
+            }
             "on" -> enableAppWatch()
             "off" -> {
                 preferencesManager.a11yAppWatchEnabled = false
                 sendToTelegram("\uD83D\uDD75\uFE0F Pantau app dimatikan. Pemakaian layar tetap tercatat.")
             }
-            "daftar" -> sendAppWatchList()
+            "daftar" -> {
+                if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
+                sendAppWatchList()
+            }
             "tambah" -> updateAppWatchPackages(rest, true)
             "hapus" -> updateAppWatchPackages(rest, false)
             else -> sendToTelegram("Cara pakai: /pantauapp on|off|status|daftar|tambah <app>|hapus <app>")
         }
     }
 
+    private fun pruneAppWatchPackages(): MutableSet<String> {
+        val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
+        val alive = packages.filter { pkg ->
+            try {
+                packageManager.getApplicationInfo(pkg, 0)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+        if (alive.size != packages.size) {
+            try { preferencesManager.setA11yAppWatchPackageSet(alive.toMutableSet()) } catch (_: Exception) { }
+        }
+        return alive.toMutableSet()
+    }
+
     private suspend fun sendAppWatchStatus() {
         val enabled = try { preferencesManager.a11yAppWatchEnabled } catch (_: Exception) { false }
-        val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
+        val packages = pruneAppWatchPackages()
         val keywords = AppWatch.parseKeywords(preferencesManager.watchKeywords)
         sendToTelegram(buildString {
             appendLine("\uD83D\uDD75\uFE0F <b>Pantau app</b>")
@@ -3313,7 +3355,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendAppWatchList() {
-        val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
+        val packages = pruneAppWatchPackages()
         if (packages.isEmpty()) {
             sendToTelegram("\uD83D\uDD75\uFE0F Belum ada aplikasi dipantau. Nyalakan: /pantauapp on")
             return
@@ -3332,10 +3374,13 @@ class MonitoringService : Service() {
         val tokens = if (raw.contains(",")) raw.split(',').map { it.trim() }.filter { it.isNotEmpty() } else listOf(raw.trim())
         val resolved = LinkedHashMap<String, String>()
         val failed = ArrayList<String>()
+        val blocked = ArrayList<String>()
         for (token in tokens) {
             val pkg = resolveAppPackage(token)
             if (pkg == null) {
                 failed.add(token)
+            } else if (add && AppWatch.isSensitivePackage(pkg)) {
+                blocked.add(appLabelFor(pkg))
             } else {
                 resolved[pkg] = appLabelFor(pkg)
             }
@@ -3349,6 +3394,7 @@ class MonitoringService : Service() {
                 appendLine((if (add) "Ditambah: " else "Dihapus: ") + resolved.values.joinToString(", ") { Html.escape(it) })
             }
             if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
+            if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
             appendLine("Total: ${packages.size} app")
             appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /pantauapp on")
         }.trimEnd())
@@ -3483,6 +3529,11 @@ class MonitoringService : Service() {
             preferencesManager.curfewTime = ""
             sendToTelegram("🌙 Jam malam dimatikan.")
         } else if (CURFEW_REGEX.matches(sub)) {
+            val startHour = sub.substringBefore(":").toIntOrNull() ?: -1
+            if (startHour in 5..11) {
+                sendToTelegram("🌙 Jam malam harus mulai pukul 12:00 atau lebih (berakhir 05:00), atau sebelum 05:00. Contoh: 21:30.")
+                return
+            }
             preferencesManager.curfewTime = sub
             sendToTelegram("🌙 Jam malam disetel $sub. Bila di luar rumah lewat jam itu, owner dikabari (maks 1x/hari).")
         } else {
@@ -3970,7 +4021,11 @@ class MonitoringService : Service() {
         val pingKey = senderId.ifEmpty { "unknown" }
         val nowPing = android.os.SystemClock.elapsedRealtime()
         val lastPing = try { synchronized(pingRate) { pingRate[pingKey] } } catch (_: Exception) { null }
-        if (lastPing != null && nowPing - lastPing < PING_RATE_WINDOW_MS) return
+        if (lastPing != null && nowPing - lastPing < PING_RATE_WINDOW_MS) {
+            val waitSec = ((PING_RATE_WINDOW_MS - (nowPing - lastPing)) / 1000L).coerceAtLeast(1L)
+            sendToTelegram("⏳ Tunggu $waitSec detik sebelum /ping lagi.")
+            return
+        }
         try { synchronized(pingRate) { pingRate[pingKey] = nowPing } } catch (_: Exception) { }
         when (arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)) {
             "camera", "photo" -> {
@@ -5923,14 +5978,16 @@ class MonitoringService : Service() {
             lastGeofenceCheckAt = nowElapsed
             val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             val cached = lastSentLatLon()
+            var accuracyM = -1f
             val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
                 cached
             } else {
                 val fix = try { fetchLocation() } catch (_: Exception) { null } ?: return
+                accuracyM = fix.accuracy
                 try { rememberSentLatLon(fix.latitude, fix.longitude) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
-            checkGeofence(pos.first, pos.second)
+            checkGeofence(pos.first, pos.second, accuracyM)
         } catch (_: Exception) {
         }
     }
@@ -5971,7 +6028,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val level = batteryLevel()
-            sendToTelegram(buildString {
+            val sent = sendToTelegram(buildString {
                 appendLine("🌙 <b>Ringkasan harian</b>")
                 appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
@@ -5984,7 +6041,7 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
-            return true
+            return sent
         } catch (_: Exception) {
             return false
         }
@@ -6318,10 +6375,10 @@ class MonitoringService : Service() {
                 val startMin = ch * 60 + cm
                 val nowMin = h * 60 + cal.get(java.util.Calendar.MINUTE)
                 val morningEnd = 5 * 60
-                inCurfew = ch in 0..23 && cm in 0..59 && if (startMin >= morningEnd) {
+                inCurfew = ch in 0..23 && cm in 0..59 && if (startMin >= 12 * 60) {
                     nowMin >= startMin || nowMin < morningEnd
                 } else {
-                    nowMin >= startMin && nowMin < morningEnd
+                    startMin < morningEnd && nowMin >= startMin && nowMin < morningEnd
                 }
             }
             val homeLat = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
@@ -6471,6 +6528,7 @@ class MonitoringService : Service() {
         }
         photoWatchdog?.cancel()
         videoWatchdog?.cancel()
+        try { releaseVideoWakeLock(videoWakeLock) } catch (_: Exception) { }
         shotWatchdog?.cancel()
         cameraAttempt.set(0)
         videoAttempt.set(0)
@@ -6853,6 +6911,14 @@ class MonitoringService : Service() {
 
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
         if (!photoPreconditions(reportResult)) return
+        if (recordBusy.get() || recorderActive.get()) {
+            if (reportResult) {
+                serviceScope.launch {
+                    sendToTelegram("⚠️ Sedang merekam video. Coba /photo lagi setelah selesai.")
+                }
+            }
+            return
+        }
         if (!cameraBusy.compareAndSet(false, true)) {
             if (reportResult) {
                 serviceScope.launch {
@@ -6959,6 +7025,14 @@ class MonitoringService : Service() {
             if (reportResult) {
                 serviceScope.launch {
                     sendToTelegram("🌑 Foto terlalu gelap, dilewati. Nyalakan lampu atau coba /photo lagi.")
+                }
+            } else {
+                val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                if (nowElapsed - lastDarkPhotoAlertAt >= 60 * 60_000L) {
+                    lastDarkPhotoAlertAt = nowElapsed
+                    serviceScope.launch {
+                        sendToTelegram("🌑 Foto otomatis terlalu gelap beberapa kali (kamera mungkin tertutup).")
+                    }
                 }
             }
             return
@@ -8121,6 +8195,11 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun releaseVideoWakeLock(lock: android.os.PowerManager.WakeLock?) {
+        releaseOpWakeLock(lock)
+        if (videoWakeLock === lock) videoWakeLock = null
+    }
+
     private suspend fun ringDevice(seconds: Int) {
         val audioManager = audioManagerSvc
         if (audioManager == null) {
@@ -8338,7 +8417,6 @@ class MonitoringService : Service() {
                         throw e
                     } catch (_: Exception) {
                     }
-                    audioOutcome = null
                     try {
                         flushPendingAudio()
                     } catch (e: kotlinx.coroutines.CancellationException) {
@@ -8499,6 +8577,13 @@ class MonitoringService : Service() {
             }
             return
         }
+        if (cameraBusy.get()) {
+            recordBusy.set(false)
+            serviceScope.launch {
+                sendToTelegram("⚠️ Kamera sedang dipakai untuk foto, coba /recordvideo lagi sebentar.")
+            }
+            return
+        }
         if (isCameraDisabledByPolicy()) {
             recordBusy.set(false)
             autoPausePhotosOnPolicyBlock()
@@ -8527,6 +8612,7 @@ class MonitoringService : Service() {
         }
         val attempt = videoAttempt.incrementAndGet()
         val videoLock = acquireOpWakeLock("recordvideo", seconds * 1000L + MEDIA_UPLOAD_GRACE_MS + 60_000L)
+        videoWakeLock = videoLock
         videoWatchdog?.cancel()
         val wd = serviceScope.launch {
             delay(seconds * 1000L + 120_000L)
@@ -8534,7 +8620,7 @@ class MonitoringService : Service() {
                 recorderActive.set(false)
                 videoAttempt.incrementAndGet()
                 try { cameraService.forceReset() } catch (_: Exception) { }
-                releaseOpWakeLock(videoLock)
+                releaseVideoWakeLock(videoLock)
                 android.util.Log.w("MonitoringService", "Video watchdog: recording did not finish, flag reset")
                 sendToTelegram("⚠️ Perekaman video tak menjawab (timeout). Coba /recordvideo lagi.")
             }
@@ -8577,7 +8663,7 @@ class MonitoringService : Service() {
                             }
                         } finally {
                             clearMediaActive(videoFile)
-                            releaseOpWakeLock(videoLock)
+                            releaseVideoWakeLock(videoLock)
                             recordBusy.set(false)
                         }
                     }
@@ -8586,7 +8672,7 @@ class MonitoringService : Service() {
                     if (videoAttempt.get() != attempt) return@captureVideo
                     videoAttempt.incrementAndGet()
                     try { wd.cancel() } catch (_: Exception) { }
-                    releaseOpWakeLock(videoLock)
+                    releaseVideoWakeLock(videoLock)
                     recordBusy.set(false)
                     recorderActive.set(false)
                     serviceScope.launch {
@@ -8598,7 +8684,7 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             videoAttempt.incrementAndGet()
             try { wd.cancel() } catch (_: Exception) { }
-            releaseOpWakeLock(videoLock)
+            releaseVideoWakeLock(videoLock)
             recordBusy.set(false)
             recorderActive.set(false)
             android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
@@ -9043,6 +9129,7 @@ class MonitoringService : Service() {
                 if (pending.isEmpty()) break@drain
                 val now = System.currentTimeMillis()
                 var batchProgress = false
+                var keptThisBatch = 0
                 for (file in pending) {
                     if (isMediaActive(file)) continue
                     if (now - file.lastModified() < 10_000L) continue
@@ -9053,7 +9140,11 @@ class MonitoringService : Service() {
                         continue
                     }
                     val photoOutcome = sendPhotoFile(file)
-                    if (photoOutcome == MediaSendOutcome.KEPT) break@drain
+                    if (photoOutcome == MediaSendOutcome.KEPT) {
+                        keptThisBatch++
+                        if (keptThisBatch >= 2) break@drain
+                        continue
+                    }
                     batchProgress = true
                     photoProgress = true
                     if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++
@@ -9094,12 +9185,12 @@ class MonitoringService : Service() {
             val photos = cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
-            val dropped = photos.drop(maxKept)
+            if (photos.size <= maxKept) return photos.size
+            val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
-            if (dropped.isEmpty()) return remaining
             dropped.forEach { deleteQuietly(it) }
             try {
-                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto dibuang (cache penuh).", true)
+                messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto lama dibuang (cache penuh).", true)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }

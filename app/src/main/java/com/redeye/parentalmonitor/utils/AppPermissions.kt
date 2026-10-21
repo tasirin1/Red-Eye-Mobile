@@ -23,7 +23,7 @@ object AppPermissions {
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permsTiramisuPlus else permsLegacy
 
     fun hasAll(context: Context): Boolean {
-        return permsLegacy.all {
+        return requiredPermissions.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
     }

@@ -24,6 +24,7 @@
     <string name="setup_storage_recovered">Penyimpanan terenkripsi direset. Isi lagi token bot.</string>
     <string name="setup_clear_title">Hapus kredensial?</string>
     <string name="setup_clear_text">Ini menghapus token bot, menghentikan monitoring, dan membuang antrean pesan. Lanjut?</string>
+    <string name="setup_clear_hint">Token dan chat ID wajib diisi. Untuk menghapus kredensial, tahan tombol Simpan.</string>
     <string name="sync_interval">Interval sync (menit)</string>
     <string name="camera_interval">Interval foto dalam menit (0 = manual saja)</string>
     <string name="admin_description">Mencegah uninstall diam-diam. Memberi kebijakan kunci-layar yang hanya dipakai perintah /lock dan proteksi uninstall.</string>

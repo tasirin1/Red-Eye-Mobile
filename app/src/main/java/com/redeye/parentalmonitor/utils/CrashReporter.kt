@@ -272,6 +272,7 @@ object CrashReporter {
                         }
                     }
                     if (!NetworkUtils.isChatMissing(body)) {
+                        var permanentReject = false
                         val delivered: Boolean = try {
                             val plain = Html.unescape(fitted)
                             val plainResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
@@ -296,6 +297,8 @@ object CrashReporter {
                                     if (!adopted) {
                                         try { prefs.setCredentialError("400", System.currentTimeMillis()) } catch (_: Exception) { }
                                     }
+                                } else {
+                                    permanentReject = true
                                 }
                                 false
                             } else {
@@ -310,6 +313,8 @@ object CrashReporter {
                             } else {
                                 keepRemainder(file, raw, rest, savedElapsed0)
                             }
+                        } else if (permanentReject) {
+                            try { file.delete() } catch (_: Exception) { }
                         }
                     }
                 }

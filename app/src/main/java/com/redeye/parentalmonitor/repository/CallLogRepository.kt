@@ -89,6 +89,9 @@ class CallLogRepository(private val context: Context) {
                     }
                 }
             }
+        } catch (e: SecurityException) {
+            android.util.Log.e("CallLogRepository", "Call log permission denied", e)
+            throw e
         } catch (e: Exception) {
             android.util.Log.e("CallLogRepository", "Error querying calls", e)
         }

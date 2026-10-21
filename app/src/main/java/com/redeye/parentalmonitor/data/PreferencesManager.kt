@@ -267,6 +267,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_APP_WATCH_PACKAGES = "a11y_app_watch_packages"
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
         private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
+        private const val KEY_A11Y_KEYWORD_DAY = "a11y_keyword_day"
+        private const val KEY_A11Y_KEYWORD_COUNT = "a11y_keyword_count"
+        private const val KEY_A11Y_KEYWORD_JSON = "a11y_keyword_json"
 
         private fun clearStaleCredentialError(target: PreferencesManager) {
             try {
@@ -847,6 +850,39 @@ class PreferencesManager(context: Context) {
     var a11yUsageJson: String
         get() = try { sharedPreferences.getString(KEY_A11Y_USAGE_JSON, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_JSON, value).apply()
+
+    fun setA11yUsage(date: String, json: String) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_A11Y_USAGE_DATE, date)
+                .putString(KEY_A11Y_USAGE_JSON, json)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    var a11yKeywordAlertDay: String
+        get() = try { sharedPreferences.getString(KEY_A11Y_KEYWORD_DAY, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_DAY, value).apply()
+
+    var a11yKeywordAlertCount: Int
+        get() = try { sharedPreferences.getInt(KEY_A11Y_KEYWORD_COUNT, 0) } catch (_: Exception) { 0 }
+        set(value) = sharedPreferences.edit().putInt(KEY_A11Y_KEYWORD_COUNT, value).apply()
+
+    var a11yKeywordAlertJson: String
+        get() = try { sharedPreferences.getString(KEY_A11Y_KEYWORD_JSON, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_JSON, value).apply()
+
+    fun setA11yKeywordAlertState(day: String, count: Int, json: String) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_A11Y_KEYWORD_DAY, day)
+                .putInt(KEY_A11Y_KEYWORD_COUNT, count)
+                .putString(KEY_A11Y_KEYWORD_JSON, json)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var a11yKnownSeeded: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_A11Y_KNOWN_SEEDED, false) } catch (_: Exception) { false }

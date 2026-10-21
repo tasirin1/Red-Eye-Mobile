@@ -1,8 +1,10 @@
 package com.redeye.parentalmonitor.utils
 
 object SettingsBackup {
-    const val MAGIC = "REDEYE1:"
-    private const val ITERATIONS = 100_000
+    const val MAGIC = "REDEYE2:"
+    private const val MAGIC_LEGACY = "REDEYE1:"
+    private const val ITERATIONS = 210_000
+    private const val ITERATIONS_LEGACY = 100_000
     private const val KEY_ALGORITHM = "AES"
     private const val KDF_MODERN = "PBKDF2WithHmacSHA256"
     private const val KDF_LEGACY = "PBKDF2WithHmacSHA1"
@@ -10,6 +12,11 @@ object SettingsBackup {
     private const val MIN_PIN_LEGACY = 4
 
     data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "")
+
+    fun looksLikeBackup(blob: String): Boolean {
+        val raw = blob.trim()
+        return raw.startsWith(MAGIC) || raw.startsWith(MAGIC_LEGACY)
+    }
 
     fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, ownerId: Long, accessPin: String, pin: String): String {
         require(token.isNotEmpty() && chatId.isNotEmpty())
@@ -27,7 +34,7 @@ object SettingsBackup {
             .put("accessPin", accessPin)
             .toString().toByteArray(Charsets.UTF_8)
         val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, deriveKey(pin, salt, true), javax.crypto.spec.GCMParameterSpec(128, iv))
+        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, deriveKey(pin, salt, true, ITERATIONS), javax.crypto.spec.GCMParameterSpec(128, iv))
         val out = salt + iv + cipher.doFinal(plain)
         return MAGIC + android.util.Base64.encodeToString(out, android.util.Base64.NO_WRAP)
     }
@@ -35,13 +42,15 @@ object SettingsBackup {
     fun import(blob: String, pin: String): BackupData {
         require(pin.length >= MIN_PIN_LEGACY)
         val raw = blob.trim()
-        require(raw.startsWith(MAGIC))
-        val all = android.util.Base64.decode(raw.removePrefix(MAGIC), android.util.Base64.DEFAULT)
+        val legacy = raw.startsWith(MAGIC_LEGACY)
+        require(legacy || raw.startsWith(MAGIC))
+        val body = if (legacy) raw.removePrefix(MAGIC_LEGACY) else raw.removePrefix(MAGIC)
+        val all = android.util.Base64.decode(body, android.util.Base64.DEFAULT)
         require(all.size > 16 + 12 + 16)
         val salt = all.copyOfRange(0, 16)
         val iv = all.copyOfRange(16, 28)
         val cipherText = all.copyOfRange(28, all.size)
-        val plain = decrypt(cipherText, pin, salt, iv).toString(Charsets.UTF_8)
+        val plain = decrypt(cipherText, pin, salt, iv, if (legacy) ITERATIONS_LEGACY else ITERATIONS).toString(Charsets.UTF_8)
         val o = org.json.JSONObject(plain)
         require(o.optInt("v", 0) in 1..2)
         val token = o.optString("token", "")
@@ -53,12 +62,12 @@ object SettingsBackup {
         return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin)
     }
 
-    private fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray): ByteArray {
+    private fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {
         var failure: Exception? = null
         for (modern in booleanArrayOf(true, false)) {
             try {
                 val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, deriveKey(pin, salt, modern), javax.crypto.spec.GCMParameterSpec(128, iv))
+                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, deriveKey(pin, salt, modern, iterations), javax.crypto.spec.GCMParameterSpec(128, iv))
                 return cipher.doFinal(cipherText)
             } catch (e: Exception) {
                 if (failure == null) failure = e
@@ -67,18 +76,18 @@ object SettingsBackup {
         throw failure ?: javax.crypto.AEADBadTagException("gagal mendekripsi")
     }
 
-    private fun deriveKey(pin: String, salt: ByteArray, modern: Boolean): javax.crypto.SecretKey {
+    private fun deriveKey(pin: String, salt: ByteArray, modern: Boolean, iterations: Int): javax.crypto.SecretKey {
         if (modern) {
             try {
                 val factory = javax.crypto.SecretKeyFactory.getInstance(KDF_MODERN)
-                val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, 256)
+                val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, iterations, 256)
                 return javax.crypto.spec.SecretKeySpec(factory.generateSecret(spec).encoded, KEY_ALGORITHM)
             } catch (_: Exception) {
-                return javax.crypto.spec.SecretKeySpec(pbkdf2Sha256(pin, salt, ITERATIONS, 32), KEY_ALGORITHM)
+                return javax.crypto.spec.SecretKeySpec(pbkdf2Sha256(pin, salt, iterations, 32), KEY_ALGORITHM)
             }
         }
         val factory = javax.crypto.SecretKeyFactory.getInstance(KDF_LEGACY)
-        val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, 256)
+        val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, iterations, 256)
         return javax.crypto.spec.SecretKeySpec(factory.generateSecret(spec).encoded, KEY_ALGORITHM)
     }
 
