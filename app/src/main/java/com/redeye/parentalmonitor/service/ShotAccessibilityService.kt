@@ -1,8 +1,10 @@
 package com.redeye.parentalmonitor.service
 
 import android.accessibilityservice.AccessibilityService
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Handler
@@ -10,16 +12,37 @@ import android.os.Looper
 import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import com.redeye.parentalmonitor.utils.AccessibilityProbe
 
 class ShotAccessibilityService : AccessibilityService() {
 
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> A11yMonitor.screenOff(this@ShotAccessibilityService)
+                Intent.ACTION_SCREEN_ON -> A11yMonitor.screenOn(this@ShotAccessibilityService)
+            }
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        A11yMonitor.attach(this)
+        A11yMonitor.noteEnabled(this)
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }
+            ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } catch (_: Exception) {
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        A11yMonitor.onEvent(this, event)
     }
 
     override fun onInterrupt() {
@@ -27,11 +50,15 @@ class ShotAccessibilityService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         if (instance === this) instance = null
+        try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
+        A11yMonitor.flush(this)
         return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
+        A11yMonitor.flush(this)
         super.onDestroy()
     }
 

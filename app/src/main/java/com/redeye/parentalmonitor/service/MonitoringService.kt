@@ -291,10 +291,10 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout")
+        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert")
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan")
+        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/pulihkan", "/audit", "/bersihkan", "/appalert")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -444,6 +444,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         restoreRingVolumeIfStuck()
+        try { A11yMonitor.attach(this) } catch (_: Exception) { }
         coreInitialized = true
     }
 
@@ -782,6 +783,7 @@ class MonitoringService : Service() {
                     try { checkCurfew() } catch (_: Exception) { }
                     try { checkGeofenceFallback() } catch (_: Exception) { }
                     try { checkQuietHealth() } catch (_: Exception) { }
+                    try { checkAccessibilityHealth() } catch (_: Exception) { }
                     try { checkSilentLink() } catch (_: Exception) { }
                     try { checkVehicle() } catch (_: Exception) { }
                     if (!cachedMonitoringPaused) {
@@ -2025,9 +2027,9 @@ class MonitoringService : Service() {
                     listOf(button("\u25B6\uFE0F Patroli nyala", "x:patrol on"), button("\u23F9\uFE0F Patroli mati", "x:patrol off")),
                     listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF11 Malam mati", "x:night off")),
                     listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
-                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDCF6 Hemat data", "x:hematdata status")),
+                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang")),
                     listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
-                    listOf(button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
+                    listOf(button("\uD83D\uDCF6 Hemat data", "x:hematdata status"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
                     listOf(menuUtama)
                 )
             )
@@ -2420,6 +2422,7 @@ class MonitoringService : Service() {
             "/storage" -> handleStorageCommand()
             "/history" -> handleHistoryCommand(arg)
             "/watch" -> handleWatchCommand(arg, privateChat)
+            "/appalert" -> handleAppAlertCommand(arg)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
@@ -3174,6 +3177,29 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun handleAppAlertCommand(arg: String) {
+        val sub = arg.trim().lowercase(java.util.Locale.ROOT)
+        if (sub.isEmpty() || sub == "status") {
+            val on = try { preferencesManager.a11yAppAlert } catch (_: Exception) { true }
+            val rows = a11yUsageRows()
+            val total = rows.sumOf { it.millis }
+            val now = A11yMonitor.currentAppLabel()
+            sendToTelegram(buildString {
+                appendLine("\uD83D\uDCF1 <b>Alert aplikasi</b>")
+                appendLine("Status: " + if (on) "nyala" else "mati")
+                appendLine("Sekarang: " + if (now.isEmpty()) "-" else Html.escape(now))
+                appendLine("Hari ini: " + durationText(total) + " \u00b7 " + rows.size + " app")
+                appendLine("Atur: /appalert on|off")
+            })
+        } else if (sub == "on" || sub == "off") {
+            val on = sub == "on"
+            preferencesManager.a11yAppAlert = on
+            sendToTelegram(if (on) "\uD83D\uDCF1 Alert app baru dan app malam nyala." else "\uD83D\uDCF1 Alert app dimatikan.")
+        } else {
+            sendToTelegram("Cara pakai: /appalert on|off|status")
+        }
+    }
+
     private suspend fun handleFenceCommand(command: String, arg: String, privateChat: Boolean) {
         val name = if (command == "/home") "Rumah" else "Sekolah"
         val sub = arg.trim()
@@ -3829,6 +3855,12 @@ class MonitoringService : Service() {
                 appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
                 appendLine("Lokasi latar: ${if (hasBackgroundLocation()) "ada" else "HILANG"}")
                 appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
+                appendLine("Aksesibilitas: " + when {
+                    ShotAccessibilityService.isEnabled(this) -> "aktif"
+                    preferencesManager.accessibilityEverEnabled -> "MATI"
+                    else -> "belum diaktifkan"
+                } + " · alert app: " + if (preferencesManager.a11yAppAlert) "nyala" else "mati")
+                appendLine("Sekarang: " + (A11yMonitor.currentAppLabel().ifEmpty { "-" }))
                 appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
                 appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
             },
@@ -3847,6 +3879,7 @@ class MonitoringService : Service() {
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
+            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this)) "aktif" else "mati")
             appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
         },
             mainMenu()
@@ -5262,7 +5295,9 @@ class MonitoringService : Service() {
 
     private fun screenTimeFull(hours: Int): String {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) {
-            return "📱 Izin \"Usage access\" belum aktif. Buka Setup → tombol \"Screen time access\", aktifkan untuk aplikasi ini, lalu coba lagi."
+            val a11y = a11yUsageRows()
+            if (a11y.isNotEmpty()) return a11yScreenTime(hours, a11y)
+            return "📱 Izin \"Usage access\" belum aktif dan belum ada data aksesibilitas. Buka Setup → tombol \"Screen time access\", aktifkan untuk aplikasi ini, lalu coba lagi."
         }
         val rows = usageRows(hours)
             ?: return "📱 Data pemakaian layar tak bisa dibaca sekarang. Coba lagi sebentar; bila tetap gagal, matikan lalu hidupkan lagi izin \"Usage access\" aplikasi ini."
@@ -5272,12 +5307,46 @@ class MonitoringService : Service() {
             appendLine("📱 <b>Ringkasan layar</b> ($hours jam terakhir)")
             appendLine("Total: " + durationText(total))
             for (row in rows.take(6)) appendLine("• " + Html.escape(row.first) + " — " + durationText(row.second))
+            val a11y = a11yUsageRows()
+            if (a11y.isNotEmpty()) {
+                val night = a11y.sumOf { it.nightMillis }
+                if (night > 0L) appendLine("Malam ini (aksesibilitas): " + durationText(night))
+            }
+            val now = A11yMonitor.currentAppLabel()
+            if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
         }.trimEnd()
     }
 
+    private fun a11yScreenTime(hours: Int, rows: List<A11yMonitor.AppUsage>): String {
+        val total = rows.sumOf { it.millis }
+        val night = rows.sumOf { it.nightMillis }
+        return buildString {
+            appendLine("📱 <b>Ringkasan layar</b> (aksesibilitas, hari ini)")
+            appendLine("Total: " + durationText(total))
+            for (row in rows.take(6)) {
+                appendLine("• " + Html.escape(row.label) + " — " + durationText(row.millis) +
+                    if (row.nightMillis > 0L) " · malam " + durationText(row.nightMillis) else "")
+            }
+            if (night > 0L) appendLine("Pemakaian malam: " + durationText(night))
+            val now = A11yMonitor.currentAppLabel()
+            if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
+            if (hours < 24) appendLine("Catatan: data aksesibilitas dihitung sejak 00:00, bukan $hours jam terakhir.")
+        }.trimEnd()
+    }
+
+    private fun a11yUsageRows(): List<A11yMonitor.AppUsage> {
+        return try { A11yMonitor.todayUsage(this) } catch (_: Exception) { emptyList() }
+    }
+
     private fun screenTimeSummary(hours: Int): String? {
-        val rows = usageRows(hours) ?: return null
-        if (rows.isEmpty()) return null
+        val rows = usageRows(hours)
+        if (rows == null || rows.isEmpty()) {
+            val a11y = a11yUsageRows()
+            if (a11y.isEmpty()) return null
+            val total = a11y.sumOf { it.millis }
+            val top = a11y.first()
+            return "Layar hari ini: " + durationText(total) + " · teratas " + Html.escape(top.label) + " " + durationText(top.millis)
+        }
         val total = rows.sumOf { it.second }
         val top = rows.first()
         return "Layar $hours jam: " + durationText(total) + " · teratas " + Html.escape(top.first) + " " + durationText(top.second)
@@ -5705,6 +5774,7 @@ class MonitoringService : Service() {
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
                 try { screenTimeSummary(24)?.let { appendLine(it) } } catch (_: Exception) { }
+                A11yMonitor.currentAppLabel().takeIf { it.isNotEmpty() }?.let { appendLine("Sekarang: " + Html.escape(it)) }
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                 appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
                 if (!manual) appendLine("Kirim /digest kapan saja untuk versi manual.")
@@ -7595,6 +7665,22 @@ class MonitoringService : Service() {
             if (nowMs >= last && nowMs - last < 24 * 60 * 60_000L) return
             try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
             sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
+        } catch (_: Exception) {
+        }
+    }
+
+    private suspend fun checkAccessibilityHealth() {
+        try {
+            if (!preferencesManager.accessibilityEverEnabled) return
+            if (ShotAccessibilityService.isEnabled(this)) {
+                if (preferencesManager.a11yDisabledAlertAt != 0L) preferencesManager.a11yDisabledAlertAt = 0L
+                return
+            }
+            val now = System.currentTimeMillis()
+            val last = try { preferencesManager.a11yDisabledAlertAt } catch (_: Exception) { 0L }
+            if (now >= last && now - last < 6 * 60 * 60_000L) return
+            preferencesManager.a11yDisabledAlertAt = now
+            sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
         } catch (_: Exception) {
         }
     }

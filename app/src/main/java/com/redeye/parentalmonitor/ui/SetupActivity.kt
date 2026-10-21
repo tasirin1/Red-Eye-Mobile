@@ -440,9 +440,6 @@ class SetupActivity : AppCompatActivity() {
         notifButton.setOnClickListener { toggleNotifForwarding() }
         shotButton.setOnClickListener { requestScreenCapture() }
         a11yButton.setOnClickListener { openAccessibilitySettings() }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            a11yButton.visibility = android.view.View.GONE
-        }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

@@ -257,6 +257,13 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_VEHICLE_ALERT_AT = "last_vehicle_alert_at"
         private const val KEY_DATA_SAVER_ENABLED = "data_saver_enabled"
         private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
+        private const val KEY_A11Y_USAGE_DATE = "a11y_usage_date"
+        private const val KEY_A11Y_USAGE_JSON = "a11y_usage_json"
+        private const val KEY_A11Y_KNOWN_APPS = "a11y_known_apps"
+        private const val KEY_A11Y_KNOWN_SEEDED = "a11y_known_seeded"
+        private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
+        private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
+        private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
 
         private fun clearStaleCredentialError(target: PreferencesManager) {
             try {
@@ -829,6 +836,59 @@ class PreferencesManager(context: Context) {
     var watchKeywords: String
         get() = try { sharedPreferences.getString(KEY_WATCH_KEYWORDS, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_WATCH_KEYWORDS, value).apply()
+
+    var a11yUsageDate: String
+        get() = try { sharedPreferences.getString(KEY_A11Y_USAGE_DATE, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_DATE, value).apply()
+
+    var a11yUsageJson: String
+        get() = try { sharedPreferences.getString(KEY_A11Y_USAGE_JSON, "") ?: "" } catch (_: Exception) { "" }
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_JSON, value).apply()
+
+    var a11yKnownSeeded: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_A11Y_KNOWN_SEEDED, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_KNOWN_SEEDED, value).apply()
+
+    var a11yAppAlert: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_A11Y_APP_ALERT, true) } catch (_: Exception) { true }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_ALERT, value).apply()
+
+    var accessibilityEverEnabled: Boolean
+        get() = try { sharedPreferences.getBoolean(KEY_A11Y_EVER_ENABLED, false) } catch (_: Exception) { false }
+        set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_EVER_ENABLED, value).apply()
+
+    var a11yDisabledAlertAt: Long
+        get() = try { sharedPreferences.getLong(KEY_A11Y_DISABLED_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_DISABLED_ALERT_AT, value).apply()
+
+    fun a11yKnownApps(): Set<String> {
+        return try { sharedPreferences.getStringSet(KEY_A11Y_KNOWN_APPS, emptySet())?.toHashSet() ?: HashSet() } catch (_: Exception) { HashSet() }
+    }
+
+    fun rememberA11yApp(packageName: String): Boolean {
+        if (packageName.isEmpty()) return false
+        return try {
+            val current = a11yKnownApps()
+            if (packageName in current) return false
+            current.add(packageName)
+            sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun seedA11yKnownApps(packages: Collection<String>) {
+        try {
+            val current = a11yKnownApps()
+            current.addAll(packages)
+            sharedPreferences.edit()
+                .putStringSet(KEY_A11Y_KNOWN_APPS, current)
+                .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var homeLatE6: Long
         get() = try { sharedPreferences.getLong(KEY_HOME_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }

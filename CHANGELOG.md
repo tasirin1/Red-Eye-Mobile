@@ -1,3 +1,9 @@
+## [Unreleased]
+### Added
+- Pemakaian aplikasi lewat Aksesibilitas: durasi per aplikasi, jumlah buka, pemakaian malam, aplikasi yang sedang dibuka, dan cadangan `/layar` saat izin Usage access belum ada.
+- `/appalert on|off|status`: kabar saat aplikasi baru pertama kali dibuka dan saat aplikasi dibuka pada malam hari (maksimal sekali per 30 menit), plus status pemakaian hari ini.
+- Layanan Aksesibilitas kini tersedia mulai Android 7 (sebelumnya hanya Android 11+) untuk pencatatan pemakaian; tangkap layar tetap khusus Android 11+.
+
 ## [1.6.428] - 2026-10-21
 ### Changed
 - Menu command Telegram (☰) di chat owner hanya memuat `/help` dan `/ping`; perintah lain tetap berfungsi lewat teks dan pintasan tombol di `/help`.
