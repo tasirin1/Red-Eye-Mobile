@@ -3057,7 +3057,19 @@ class MonitoringService : Service() {
         }
         val totalPages = (total + pageSize - 1) / pageSize
         if (page > totalPages) {
-            sendToTelegram("\uD83D\uDC65 Halaman $page tidak ada. Total $totalPages halaman ($total nomor kontak).")
+            sendToTelegram(
+                "\uD83D\uDC65 Halaman $page tidak ada. Total $totalPages halaman ($total nomor kontak).",
+                com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
+                    listOf(
+                        listOf(
+                            com.redeye.parentalmonitor.network.InlineButton(
+                                "\u2b05\ufe0f Halaman $totalPages",
+                                "x:contacts $totalPages"
+                            )
+                        )
+                    )
+                )
+            )
             return
         }
         val items = listContactsPage(page, pageSize)
@@ -3065,17 +3077,21 @@ class MonitoringService : Service() {
             sendToTelegram("\uD83D\uDC64 Tak ada kontak di halaman $page.")
             return
         }
+        val nav = mutableListOf<com.redeye.parentalmonitor.network.InlineButton>()
+        if (page > 1) {
+            nav.add(com.redeye.parentalmonitor.network.InlineButton("\u2b05\ufe0f Sebelumnya", "x:contacts ${page - 1}"))
+        }
+        if (page < totalPages) {
+            nav.add(com.redeye.parentalmonitor.network.InlineButton("Berikutnya \u27a1\ufe0f", "x:contacts ${page + 1}"))
+        }
         sendToTelegram(
             buildString {
                 appendLine("\uD83D\uDC65 <b>Kontak</b> \u00b7 halaman $page/$totalPages ($total nomor)")
                 for ((name, number) in items) {
                     appendLine("\u2022 " + Html.escape(name) + " \u2014 " + Html.escape(number))
                 }
-                val nav = mutableListOf<String>()
-                if (page > 1) nav.add("\u2b05\ufe0f /contacts ${page - 1}")
-                if (page < totalPages) nav.add("\u27a1\ufe0f /contacts ${page + 1}")
-                if (nav.isNotEmpty()) appendLine(nav.joinToString("  \u00b7  "))
-            }
+            },
+            if (nav.isEmpty()) null else com.redeye.parentalmonitor.network.InlineKeyboardMarkup(listOf(nav))
         )
     }
 

@@ -142,7 +142,7 @@ Kirim dari akun owner yang sudah pairing (`/start <chat ID> <kode>` via private 
 | `/recordvideo 5-180` | Rekam video detik |
 | `/lock` | Kunci layar |
 | `/ring` | Bunyikan HP |
-| `/contacts [nama\|nomor]` atau `/contacts [halaman]` | Cari kontak; tanpa argumen atau dengan angka halaman menampilkan semua kontak per halaman (30 nomor, butuh izin Kontak) |
+| `/contacts [nama\|nomor]` atau `/contacts [halaman]` | Cari kontak; tanpa argumen atau dengan angka halaman menampilkan semua kontak per halaman (30 nomor, butuh izin Kontak). Navigasi halaman juga tersedia lewat tombol **⬅️ Sebelumnya** / **Berikutnya ➡️** |
 | `/apps` | Daftar aplikasi terinstal |
 | `/storage` | Sisa penyimpanan |
 | `/log` | Log error terakhir |
