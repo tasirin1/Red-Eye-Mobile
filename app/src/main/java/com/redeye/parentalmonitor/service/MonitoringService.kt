@@ -5852,6 +5852,68 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun trailDigestLines(): List<String> {
+        val pts = trailList().map { com.redeye.parentalmonitor.utils.TrailStats.Point(it.first, it.second, it.third) }
+        if (pts.size < 2) return emptyList()
+        val out = mutableListOf<String>()
+        val dist = com.redeye.parentalmonitor.utils.TrailStats.distanceMeters(pts)
+        if (dist >= 200f) {
+            val tenth = Math.round(com.redeye.parentalmonitor.utils.TrailStats.kilometers(dist) * 10f)
+            out.add("Jarak 24 jam: ${tenth / 10}.${tenth % 10} km")
+        }
+        val stay = com.redeye.parentalmonitor.utils.TrailStats.longestStay(pts)
+        if (stay != null && stay.millis >= 45 * 60_000L) {
+            out.add("Diam ${durationText(stay.millis)} di https://maps.google.com/?q=${stay.lat},${stay.lon}")
+        }
+        try {
+            val la = preferencesManager.schoolLatE6
+            val lo = preferencesManager.schoolLonE6
+            val rad = preferencesManager.schoolRadiusM
+            if (la != Long.MIN_VALUE && lo != Long.MIN_VALUE && rad > 0) {
+                val inside = com.redeye.parentalmonitor.utils.TrailStats.millisInside(
+                    pts, la / 1_000_000.0, lo / 1_000_000.0, rad.toFloat()
+                )
+                if (inside >= 10 * 60_000L) out.add("Di sekolah: ${durationText(inside)}")
+            }
+        } catch (_: Exception) {
+        }
+        return out
+    }
+
+    private fun usageEventSummary(hours: Int): List<String> {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return emptyList()
+        val manager = usageStatsManager ?: return emptyList()
+        val end = System.currentTimeMillis()
+        val start = end - hours.coerceIn(1, 24) * 3_600_000L
+        val events = ArrayList<com.redeye.parentalmonitor.utils.UsageEventsSummary.Event>()
+        try {
+            val cursor = manager.queryEvents(start, end) ?: return emptyList()
+            val event = android.app.usage.UsageEvents.Event()
+            while (cursor.hasNextEvent()) {
+                cursor.getNextEvent(event)
+                val type = event.eventType
+                if (type != com.redeye.parentalmonitor.utils.UsageEventsSummary.TYPE_RESUMED &&
+                    type != com.redeye.parentalmonitor.utils.UsageEventsSummary.TYPE_KEYGUARD_HIDDEN
+                ) continue
+                val pkg = try { event.packageName } catch (_: Exception) { null }
+                if (pkg == packageName) continue
+                events.add(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
+            }
+            try { cursor.close() } catch (_: Exception) {
+            }
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        val summary = com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
+        val out = mutableListOf<String>()
+        if (summary.unlocks > 0) {
+            out.add("HP dibuka: ${summary.unlocks}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(summary.firstUnlockAt)}")
+        }
+        val labels = summary.topOpens.map { (pkg, count) -> "${appLabelFor(pkg)} ${count}x" }
+        if (labels.isNotEmpty()) out.add("Paling sering dibuka: " + labels.joinToString(", "))
+        return out
+    }
+
     private fun trailList(): List<Triple<Long, Double, Double>> {
         return try {
             preferencesManager.trail24.split(";").mapNotNull { p ->
@@ -6068,6 +6130,8 @@ class MonitoringService : Service() {
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
                 try { screenTimeSummary(24)?.let { appendLine(it) } } catch (_: Exception) { }
+                try { usageEventSummary(24).forEach { appendLine(it) } } catch (_: Exception) { }
+                try { trailDigestLines().forEach { appendLine(it) } } catch (_: Exception) { }
                 A11yMonitor.currentAppLabel().takeIf { it.isNotEmpty() }?.let { appendLine("Sekarang: " + Html.escape(it)) }
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
                 appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")

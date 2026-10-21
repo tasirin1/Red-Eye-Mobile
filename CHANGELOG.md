@@ -1,3 +1,9 @@
+## [1.6.440] - 2026-10-21
+### Added
+- Ringkasan harian memuat statistik perjalanan dari jejak 24 jam: jarak tempuh, lokasi diam terlama (bila ≥45 menit, disertai tautan peta), dan durasi di area sekolah bila geofence sekolah aktif.
+- Ringkasan harian memuat statistik pemakaian perangkat dari `UsageStatsManager.queryEvents`: jumlah HP dibuka + jam buka pertama, serta 3 aplikasi yang paling sering dibuka.
+- `TrailStats` (haversine murni) dan `UsageEventsSummary` beserta uji unit `TrailStatsTest` dan `UsageEventsSummaryTest`.
+
 ## [1.6.439] - 2026-10-21
 ### Fixed
 - `ShotConsentActivity`: jendela izin tangkap layar menutup sendiri setelah 5 menit (tidak menggantung di Recents/task sendiri) dan menerima permintaan baru lewat `onNewIntent`, sehingga tombol izin dari Telegram tetap bereaksi saat jendela lama masih ada.
