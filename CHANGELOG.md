@@ -1,3 +1,14 @@
+## [1.6.436] - 2026-10-21
+### Changed
+- Build memakai AGP **8.7.3** + Gradle **8.9** (sebelumnya AGP 8.5.2 + Gradle 8.7) agar `compileSdk 35` berada dalam matriks dukungan resmi.
+- CI hanya mengulang unit test/build bila log menunjukkan kegagalan jaringan; kegagalan kompilasi langsung berhenti (tidak lagi 3× menit terbuang dan penyebab tersamarkan).
+- Workflow menolak tag `vX.Y.Z` yang tidak cocok dengan `versionName` di `app/build.gradle`.
+
+### Fixed
+- `scripts/cek-cepat.sh`: pemeriksaan path vektor dan token memakai `rg -q`/`git grep -q` (pola lama `... | grep -q .` membuat `rg` kena `SIGPIPE` di bawah `pipefail` sehingga pemeriksaan lolos diam-diam), dan pemindaian tree terlacak kini selalu jalan walau ada berkas staged.
+- `tools/pasang-hook.sh`: dorongan cabang baru memakai rentang dari `git merge-base refs/remotes/origin/main` agar semua commit yang didorong diperiksa, bukan hanya commit terakhir.
+- `tools/verifikasi-path.py`: pemisah rentang (`..` vs `...`) dipakai konsisten antara daftar berkas dan diff.
+
 ## [1.6.435] - 2026-10-21
 ### Fixed
 - Batas 429 dari unggahan media hanya menahan pengiriman global 60 detik; sebelumnya `retry_after` media sampai 1 jam ikut mematikan polling, balasan perintah, dan teks.
