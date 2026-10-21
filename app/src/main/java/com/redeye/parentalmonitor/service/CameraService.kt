@@ -107,8 +107,17 @@ class CameraService(private val context: Context) {
                 activeRecorder?.stop()
             } catch (_: Exception) {
             }
+            val staleSurface = try {
+                activeRecorder?.surface
+            } catch (_: Exception) {
+                null
+            }
             try {
                 activeRecorder?.release()
+            } catch (_: Exception) {
+            }
+            try {
+                staleSurface?.release()
             } catch (_: Exception) {
             }
             activeRecorder = null
@@ -450,6 +459,14 @@ class CameraService(private val context: Context) {
                     } finally {
                         capturing.set(false)
                     }
+                }
+                try {
+                    releaseRecorder()
+                } catch (_: Exception) {
+                }
+                try {
+                    releaseSurface()
+                } catch (_: Exception) {
                 }
                 onError(e)
             }

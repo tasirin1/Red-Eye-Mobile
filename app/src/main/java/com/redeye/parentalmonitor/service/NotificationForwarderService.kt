@@ -1094,6 +1094,11 @@ class NotificationForwarderService : NotificationListenerService() {
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)
         } catch (e: kotlinx.coroutines.CancellationException) {
+            try {
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
             throw e
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed: ${redactToken(e.message)}")

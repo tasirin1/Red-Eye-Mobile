@@ -23,9 +23,9 @@ Monitoring can be stopped at any time by disabling it in the app or by
 uninstalling the app.
 
 The optional bot access PIN is stored in the app's encrypted preferences. It
-is not included in settings backups and is removed when the bot token is
-changed or credentials are cleared. A `/login` message is deleted from the
-Telegram chat after it is processed.
+is included in encrypted settings backups so it can be restored, and it is
+kept when the bot token changes. Clearing credentials removes it from the app.
+A `/login` message is deleted from the Telegram chat after it is processed.
 
 ## Contact
 The app operator (the parent who configured the bot) is the data controller.

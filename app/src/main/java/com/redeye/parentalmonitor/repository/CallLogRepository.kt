@@ -100,9 +100,15 @@ class CallLogRepository(private val context: Context) {
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return emptyList()
         val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
+        val variants = mutableListOf(norm, "+$norm")
+        if (wantAlt != null) {
+            if (wantAlt !in variants) variants.add(wantAlt)
+            val altPlus = "+$wantAlt"
+            if (altPlus !in variants) variants.add(altPlus)
+        }
         val exactRows = queryCalls(
-            selection = "${CallLog.Calls.NUMBER} = ?",
-            args = arrayOf(norm),
+            selection = variants.joinToString(" OR ") { "${CallLog.Calls.NUMBER} = ?" },
+            args = variants.toTypedArray(),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = safeLimit
         )

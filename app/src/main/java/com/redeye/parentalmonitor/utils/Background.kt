@@ -8,6 +8,13 @@ object Background {
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )
 
+    private val receivers: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
+        0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
+        java.util.concurrent.LinkedBlockingQueue(),
+        java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecv").apply { isDaemon = true } },
+        java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+    )
+
     fun runCritical(block: () -> Unit) {
         critical.execute {
             try {
@@ -19,7 +26,7 @@ object Background {
 
     fun runReceiver(pendingResult: android.content.BroadcastReceiver.PendingResult?, block: () -> Unit) {
         try {
-            runCritical {
+            receivers.execute {
                 try {
                     block()
                 } catch (_: Exception) {

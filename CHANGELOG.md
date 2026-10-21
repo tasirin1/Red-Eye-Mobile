@@ -1,3 +1,16 @@
+## [Unreleased]
+### Fixed
+- Sesi rekaman video yang digantikan watchdog `forceReset` tidak lagi meninggalkan `MediaRecorder`/`Surface`; `finishWithError` melepas sumber daya sesi walau sesi sudah digantikan.
+- Notifikasi yang sedang dikirim tidak hilang saat coroutine dibatalkan (mis. service dihentikan); pesan dikembalikan ke antrean.
+- Broadcast receiver memakai executor terpisah dari tugas kritis, sehingga receiver tidak menunggu unggahan panjang dan tidak saling menahan.
+- Pencarian SMS dan panggilan per nomor mencocokkan varian nomor (`62...`, `0...`, `+62...`) langsung di query, tidak selalu jatuh ke pemindaian fuzzy.
+
+### Security
+- `BootReceiver`, `TimeChangeReceiver`, dan `PackageChangeReceiver` tidak diekspor; hanya sistem dan aplikasi sendiri yang dapat mengirim broadcast.
+
+### Changed
+- `README.md` dan `PRIVACY.md` diselaraskan dengan kode: PIN ikut tersimpan di backup terenkripsi dan PIN backup minimal 6 digit.
+
 ## [1.6.424] - 2026-10-21
 ### Fixed
 - Pengiriman yang tertunda saat owner logout tidak lagi mengantrekan pesan lalu membuangnya setelah kursor data maju; `sendFitted` dan ringkasan harian berhenti sebelum mengirim selama menunggu login, sehingga data baru dikirim setelah login, bukan hilang.

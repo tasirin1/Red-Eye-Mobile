@@ -167,7 +167,7 @@ Kalau status Setup masih **Pemilik: belum dikenal**, isi **PIN akses bot** (6-12
 /login 123456
 ```
 
-PIN yang benar membuat akun itu menjadi owner dan **Chat ID tujuan ikut diganti ke private chat tersebut**, jadi balasan serta laporan monitoring langsung sampai ke akun itu. PIN salah dibatasi 5 kali per akun (kunci 15 menit) dan 50 kali total (kunci 10 menit); pesan `/login` dihapus dari chat setelah diproses. Bila PIN dikosongkan, cara lama (link pairing / `/start <chat ID> <kode>`) aktif kembali. PIN tidak ikut tersimpan di file backup.
+PIN yang benar membuat akun itu menjadi owner dan **Chat ID tujuan ikut diganti ke private chat tersebut**, jadi balasan serta laporan monitoring langsung sampai ke akun itu. PIN salah dibatasi 5 kali per akun (kunci 15 menit) dan 50 kali total (kunci 10 menit); pesan `/login` dihapus dari chat setelah diproses. Bila PIN dikosongkan, cara lama (link pairing / `/start <chat ID> <kode>`) aktif kembali. PIN ikut tersimpan di file backup terenkripsi dan dipakai lagi saat restore lewat Setup maupun `/pulihkan`.
 
 Saat sudah login, kirim `/logout` dari private chat owner untuk mencabut sesi. Owner ID dihapus dan semua perintah owner langsung terkunci sampai kamu mengirim `/login <PIN>` lagi; tombol **🚪 Logout owner** juga ada di menu **⚙️ Alat & kontrol**. Selama belum login lagi, aplikasi tidak mengirim laporan, foto, video, rekaman, notifikasi, atau pesan antrean apa pun; bot hanya mengirim pengarahan login. Antrean pesan dibuang dan media yang belum terkirim dihapus agar tidak ikut terkirim setelah login. Monitoring tetap berjalan di latar belakang dan laporan masuk lagi setelah login. `/logout` hanya tersedia bila PIN akses sudah diisi, supaya kamu tidak terkunci di luar.
 
@@ -180,7 +180,7 @@ Kirim `/pulihkan` dari **private chat owner**, lalu ikuti urutannya:
 3. Bot mengecek token baru (`getMe`), Chat ID baru (`getChat`), dan mengirim **tes pesan** ke chat baru. Kalau gagal, setelan lama tetap dipakai dan bot lama masih bisa dipakai.
 4. Kalau lolos, bot memberi jeda **60 detik** sebelum menerapkan. Kirim `/pulihkan batal` selama jeda itu untuk membatalkan. Setelah jatuh tempo, token/chat dicek ulang; bila masih valid, token, Chat ID, owner, interval sync, dan interval foto diganti. Bot lama mengirim pemberitahuan terakhir ke chat lama (kalau masih bisa), lalu tidak dipakai lagi.
 
-Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token (terenkripsi PIN): pakai PIN minimal 8 digit dan jangan sebarkan file backup.
+Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token dan PIN akses (terenkripsi PIN): pakai PIN minimal 6 digit dan jangan sebarkan file backup.
 
 **Mode ketat (opsional).** Buka Setup → **Kode restore ketat**, nyalakan switch, lalu kirim `/pulihkan <kode 6 digit>` (bukan `/pulihkan` saja). Kode berputar tiap 10 menit dan hanya ditampilkan di Setup; kode lama satu jendela masih diterima. Mode ini menambah syarat akses fisik saat restore. Default mati agar restore dari jauh tetap bisa.
 
