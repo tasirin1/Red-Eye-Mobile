@@ -23,6 +23,7 @@ import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.AccessPin
+import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
@@ -1888,7 +1889,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.BotCommand("lastnotif", "Notifikasi terakhir"),
             com.redeye.parentalmonitor.network.BotCommand("version", "Versi app + HP"),
             com.redeye.parentalmonitor.network.BotCommand("uptime", "Lama service jalan"),
-            com.redeye.parentalmonitor.network.BotCommand("contacts", "Cari kontak: /contacts nama"),
+            com.redeye.parentalmonitor.network.BotCommand("contacts", "Kontak: /contacts [nama|nomor] atau /contacts 2"),
             com.redeye.parentalmonitor.network.BotCommand("apps", "Daftar aplikasi"),
             com.redeye.parentalmonitor.network.BotCommand("storage", "Sisa penyimpanan"),
             com.redeye.parentalmonitor.network.BotCommand("history", "Call+SMS per nomor"),
@@ -2050,7 +2051,8 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS terakhir", "lastsms")),
                     listOf(button("\u2709\uFE0F Kirim SMS", "i:komu:sms"), button("\u2705 SMS tertunda", "x:smsconfirm")),
                     listOf(button("\uD83D\uDD14 Notifikasi", "x:notif status"), button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotif")),
-                    listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
+                    listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCC7 Semua kontak", "x:contacts 1")),
+                    listOf(button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
                     listOf(menuUtama)
                 )
             )
@@ -2157,7 +2159,7 @@ class MonitoringService : Service() {
 
     private val textInputs = listOf(
         TextInput("/sms", "komu", "Kirim <b>nomor</b> lalu <b>isi pesannya</b>.", "08123456789 Halo", "Kirim SMS dari HP ini. Nomor minimal 7 digit."),
-        TextInput("/contacts", "komu", "Kirim nama atau sebagian nama kontak.", "budi", "Cari kontak di HP (butuh izin Kontak)."),
+        TextInput("/contacts", "komu", "Kirim nama/nomor kontak, atau angka halaman untuk daftar semua.", "budi", "Cari kontak; ketik 1 untuk halaman pertama daftar semua (butuh izin Kontak)."),
         TextInput("/history", "komu", "Kirim nomor telepon (7-20 digit).", "08123456789", "Tampilkan 5 panggilan + 5 SMS terakhir nomor itu."),
         TextInput("/layar", "info", "Kirim jumlah jam 1-24, atau ketik apa saja untuk 24 jam.", "6", "Ringkasan pemakaian layar per aplikasi."),
         TextInput("/watch", "pantau", "Kirim kata yang diawasi (pisahkan koma, min 3 huruf).", "judol,pinjol", "Pantau kata terlarang. Ketik /watch off untuk mematikan."),
@@ -3017,25 +3019,105 @@ class MonitoringService : Service() {
 
 
     private suspend fun handleContactsCommand(arg: String) {
-        if (arg.isEmpty()) {
-            sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
-        } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
-        } else {
-            val found = searchContacts(arg.take(40))
-            if (found.isEmpty()) {
-                sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
-            } else {
-                sendToTelegram(
-                    buildString {
-                        appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
-                        for (entry in found) {
-                            appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
-                        }
-                    }
-                )
-            }
+            return
         }
+        val page = ContactsPaging.pageArg(arg)
+        if (page != null) {
+            showContactsPage(page)
+            return
+        }
+        val query = arg.trim().take(40)
+        if (query.isEmpty()) {
+            sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
+            return
+        }
+        val found = searchContacts(query)
+        if (found.isEmpty()) {
+            sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
+        } else {
+            sendToTelegram(
+                buildString {
+                    appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
+                    for (entry in found) {
+                        appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
+                    }
+                }
+            )
+        }
+    }
+
+    private suspend fun showContactsPage(page: Int) {
+        val pageSize = ContactsPaging.PAGE_SIZE
+        val total = countContacts()
+        if (total <= 0) {
+            sendToTelegram("\uD83D\uDC64 Tak ada kontak tersimpan.")
+            return
+        }
+        val totalPages = (total + pageSize - 1) / pageSize
+        if (page > totalPages) {
+            sendToTelegram("\uD83D\uDC65 Halaman $page tidak ada. Total $totalPages halaman ($total nomor kontak).")
+            return
+        }
+        val items = listContactsPage(page, pageSize)
+        if (items.isEmpty()) {
+            sendToTelegram("\uD83D\uDC64 Tak ada kontak di halaman $page.")
+            return
+        }
+        sendToTelegram(
+            buildString {
+                appendLine("\uD83D\uDC65 <b>Kontak</b> \u00b7 halaman $page/$totalPages ($total nomor)")
+                for ((name, number) in items) {
+                    appendLine("\u2022 " + Html.escape(name) + " \u2014 " + Html.escape(number))
+                }
+                val nav = mutableListOf<String>()
+                if (page > 1) nav.add("\u2b05\ufe0f /contacts ${page - 1}")
+                if (page < totalPages) nav.add("\u27a1\ufe0f /contacts ${page + 1}")
+                if (nav.isNotEmpty()) appendLine(nav.joinToString("  \u00b7  "))
+            }
+        )
+    }
+
+    private fun countContacts(): Int {
+        return try {
+            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val projection = arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone._ID)
+            contentResolver.query(uri, projection, null, null, null)?.use { it.count } ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    private fun listContactsPage(page: Int, pageSize: Int): List<Pair<String, String>> {
+        val out = mutableListOf<Pair<String, String>>()
+        val offset = (page - 1).toLong() * pageSize
+        var skipped = 0L
+        try {
+            val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            val order = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC, " +
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " ASC"
+            contentResolver.query(uri, projection, null, null, order)?.use { c ->
+                val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                if (nameIdx < 0 || numIdx < 0) return@use
+                while (c.moveToNext() && out.size < pageSize) {
+                    if (skipped < offset) {
+                        skipped++
+                        continue
+                    }
+                    val name = try { c.getString(nameIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
+                    val number = try { c.getString(numIdx)?.trim().orEmpty() } catch (_: Exception) { "" }
+                    out.add(name.ifEmpty { "(tanpa nama)" }.take(60) to number.ifEmpty { "(tanpa nomor)" }.take(40))
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return out
     }
 
     private suspend fun handleAppsCommand(arg: String) {

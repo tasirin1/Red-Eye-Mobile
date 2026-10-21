@@ -1,3 +1,7 @@
+## [Unreleased]
+### Added
+- `/contacts` tanpa argumen (atau `/contacts <halaman>`, mis. `/contacts 2`) menampilkan seluruh kontak per halaman berisi 30 nomor, lengkap dengan navigasi halaman; `/contacts <nama|nomor>` tetap mencari seperti sebelumnya. Tombol **📇 Semua kontak** ditambahkan di menu Komunikasi. Butuh izin Kontak.
+
 ## [1.6.425] - 2026-10-21
 ### Fixed
 - Sesi rekaman video yang digantikan watchdog `forceReset` tidak lagi meninggalkan `MediaRecorder`/`Surface`; `finishWithError` melepas sumber daya sesi walau sesi sudah digantikan.
