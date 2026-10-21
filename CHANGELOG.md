@@ -1,3 +1,14 @@
+## [1.6.437] - 2026-10-21
+### Changed
+- `/izinshot` masuk daftar perintah yang dikenal sehingga ikut muncul di bantuan/pencocokan perintah.
+- Hint `/heartbeat` menulis rentang `0-48` (nilai `0` memang diterima untuk mematikan).
+
+### Fixed
+- `A11yMonitor` menghapus field `appContext` yang hanya ditulis dan tak pernah dibaca.
+- `NotificationForwarderService.pkgTryAcquire` diganti nama menjadi `pkgShouldDrop` agar sesuai perilakunya (`true` = notifikasi dibuang).
+- Regex `\s+` dipindah ke konstanta `WS_REGEX`, tidak lagi dikompilasi tiap perintah `/pantauapp`.
+- `values/strings.xml`: `setup_clear_hint` diterjemahkan ke bahasa Inggris (sebelumnya teks Indonesia muncul di perangkat berbahasa Inggris).
+
 ## [1.6.436] - 2026-10-21
 ### Changed
 - Build memakai AGP **8.7.3** + Gradle **8.9** (sebelumnya AGP 8.5.2 + Gradle 8.7) agar `compileSdk 35` berada dalam matriks dukungan resmi.
