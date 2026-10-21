@@ -1,3 +1,12 @@
+## [1.6.435] - 2026-10-21
+### Fixed
+- Batas 429 dari unggahan media hanya menahan pengiriman global 60 detik; sebelumnya `retry_after` media sampai 1 jam ikut mematikan polling, balasan perintah, dan teks.
+- Geofence fallback memakai akurasi fix yang tersimpan (prefs baru `last_loc_acc_m`), tidak lagi menganggap akurasi "tak diketahui" sehingga transisi palsu dari posisi cache 30 menit tidak terjadi.
+- `CrashReporter` hanya membuang laporan pertama yang ditolak permanen (400); laporan lain di berkas yang sama tetap disimpan untuk dikirim ulang.
+- `CameraService` melepas `ImageReader`/surface miliknya bila `forceReset()` menyela setup, dan pemanggil menerima galat "sesi kamera digantikan" (tidak lagi menggantung tanpa callback).
+- Loop bangun `NotificationForwarderService` 25 → 60 detik (hemat baterai, tetap memulihkan layanan yang mati).
+- Tombol Tes menolak interval di luar rentang dengan pesan galat; sebelumnya nilai di luar rentang diganti diam-diam dengan nilai tersimpan lalu ikut disimpan.
+
 ## [1.6.434] - 2026-10-21
 ### Fixed
 - Cache foto kini benar-benar membuang berkas **terlama**: `v1.6.432` memakai `dropLast()` pada daftar terurut naik sehingga yang terhapus justru foto terbaru, termasuk yang belum terkirim.
