@@ -1,4 +1,4 @@
-## [Unreleased]
+## [1.6.425] - 2026-10-21
 ### Fixed
 - Sesi rekaman video yang digantikan watchdog `forceReset` tidak lagi meninggalkan `MediaRecorder`/`Surface`; `finishWithError` melepas sumber daya sesi walau sesi sudah digantikan.
 - Notifikasi yang sedang dikirim tidak hilang saat coroutine dibatalkan (mis. service dihentikan); pesan dikembalikan ke antrean.
