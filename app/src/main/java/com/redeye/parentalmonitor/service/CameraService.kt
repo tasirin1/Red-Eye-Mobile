@@ -272,8 +272,15 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             meteringTexture = dummyTexture
-            meteringSurface = android.view.Surface(dummyTexture)
-            imageReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
+            val ownedSurface = android.view.Surface(dummyTexture)
+            meteringSurface = ownedSurface
+            val ownedReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
+            imageReader = ownedReader
+            fun releaseOwned() {
+                try { ownedReader.close() } catch (_: Exception) { }
+                try { ownedSurface.release() } catch (_: Exception) { }
+                try { dummyTexture.release() } catch (_: Exception) { }
+            }
             imageReader?.setOnImageAvailableListener({ reader ->
                 try {
                     onTrace("trace: image arrived")
@@ -342,6 +349,8 @@ class CameraService(private val context: Context) {
                     try {
                         if (done.get() || sessionSeq.get() != mySeq) {
                             try { camera.close() } catch (_: Exception) { }
+                            releaseOwned()
+                            finishWithError(Exception("Sesi kamera digantikan"))
                             return
                         }
                         cameraDevice = camera

@@ -314,7 +314,12 @@ object CrashReporter {
                                 keepRemainder(file, raw, rest, savedElapsed0)
                             }
                         } else if (permanentReject) {
-                            try { file.delete() } catch (_: Exception) { }
+                            val sep = report.indexOf("\n---\n")
+                            if (sep >= 0) {
+                                keepRemainder(file, raw, report.substring(sep + 5), savedElapsed0)
+                            } else {
+                                try { file.delete() } catch (_: Exception) { }
+                            }
                         }
                     }
                 }

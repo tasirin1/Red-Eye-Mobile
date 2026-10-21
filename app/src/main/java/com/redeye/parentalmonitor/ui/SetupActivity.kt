@@ -1032,8 +1032,15 @@ class SetupActivity : AppCompatActivity() {
         }
         val intervalParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
         val cameraParsed = cameraIntervalInput.text.toString().trim().toIntOrNull()
-        val syncInterval = if (intervalParsed != null && intervalParsed in 1..1440) intervalParsed else try { prefs.syncInterval } catch (_: Exception) { 5 }
-        val cameraInterval = if (cameraParsed != null && cameraParsed in 0..60) cameraParsed else try { prefs.cameraInterval } catch (_: Exception) { 1 }
+        val syncBlank = syncIntervalInput.text.toString().isBlank()
+        val cameraBlank = cameraIntervalInput.text.toString().isBlank()
+        if ((!syncBlank && (intervalParsed == null || intervalParsed !in 1..1440)) ||
+            (!cameraBlank && (cameraParsed == null || cameraParsed !in 0..60))) {
+            Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
+            return
+        }
+        val syncInterval = intervalParsed ?: try { prefs.syncInterval } catch (_: Exception) { 5 }
+        val cameraInterval = cameraParsed ?: try { prefs.cameraInterval } catch (_: Exception) { 1 }
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }

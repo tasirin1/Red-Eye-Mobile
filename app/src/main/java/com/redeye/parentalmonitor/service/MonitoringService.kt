@@ -997,7 +997,7 @@ class MonitoringService : Service() {
                 if (dist >= 0f && dist < 100f) {
                     appendLine("Lokasi: masih di titik terakhir (±${dist.toInt()} m)")
                 } else {
-                    rememberSentLatLon(location.latitude, location.longitude)
+                    rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
                     appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
                 }
                 appendLine("Akurasi: ±${location.accuracy.toInt()} m")
@@ -2524,7 +2524,7 @@ class MonitoringService : Service() {
         if (loc != null) {
             val stale = isStaleFix(loc)
             if (!stale) {
-                try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
                 try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
             }
             sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
@@ -3501,7 +3501,7 @@ class MonitoringService : Service() {
         if (loc != null) {
             val stale = isStaleFix(loc)
             if (!stale) {
-                try { rememberSentLatLon(loc.latitude, loc.longitude) } catch (_: Exception) { }
+                try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
                 try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
             }
             sendToTelegram(buildString {
@@ -3822,7 +3822,7 @@ class MonitoringService : Service() {
                 val prev = if (stale) null else lastSentLatLon()
                 val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (!stale) {
-                    rememberSentLatLon(location.latitude, location.longitude)
+                    rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
                     try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                 }
                 val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
@@ -5833,7 +5833,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun rememberSentLatLon(lat: Double, lon: Double) {
+    private fun rememberSentLatLon(lat: Double, lon: Double, accuracyM: Float = -1f) {
         try {
             synchronized(prefsRmwLock) {
                 val now = System.currentTimeMillis()
@@ -5842,7 +5842,7 @@ class MonitoringService : Service() {
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
                 if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
-                preferencesManager.recordSentLocation(lat, lon, fresh.joinToString(";"))
+                preferencesManager.recordSentLocation(lat, lon, fresh.joinToString(";"), accuracyM)
             }
         } catch (_: Exception) {
         }
@@ -6009,11 +6009,12 @@ class MonitoringService : Service() {
             val cached = lastSentLatLon()
             var accuracyM = -1f
             val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
+                accuracyM = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
                 cached
             } else {
                 val fix = try { fetchLocation() } catch (_: Exception) { null } ?: return
                 accuracyM = fix.accuracy
-                try { rememberSentLatLon(fix.latitude, fix.longitude) } catch (_: Exception) { }
+                try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
             checkGeofence(pos.first, pos.second, accuracyM)
@@ -6431,7 +6432,7 @@ class MonitoringService : Service() {
                     return
                 }
                 try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
-                try { rememberSentLatLon(fix.latitude, fix.longitude) } catch (_: Exception) { }
+                try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
             }
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
@@ -7711,7 +7712,7 @@ class MonitoringService : Service() {
     private fun mediaRateLimitBackoff(errorFull: String, label: String): MediaSendOutcome {
         val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
         mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
-        NetworkUtils.noteRateLimited(waitSecs)
+        NetworkUtils.noteRateLimited(minOf(waitSecs, 60L))
         android.util.Log.w("MonitoringService", "$label rate limited, backing off ${waitSecs}s without blocking")
         try {
             MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)

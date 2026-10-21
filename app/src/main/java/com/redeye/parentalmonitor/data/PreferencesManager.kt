@@ -218,6 +218,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
         private const val KEY_LAST_LOC_AT = "last_loc_at"
+        private const val KEY_LAST_LOC_ACC = "last_loc_acc_m"
         private const val KEY_TRAIL = "trail_24"
         private const val KEY_BEGADANG_DATE = "begadang_date"
         private const val KEY_JEMPUT_RAD = "jemput_radius_m"
@@ -804,16 +805,21 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LAST_LOC_AT, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_AT, value).apply()
 
+    var lastLocAccM: Float
+        get() = try { sharedPreferences.getFloat(KEY_LAST_LOC_ACC, -1f) } catch (_: Exception) { -1f }
+        set(value) = sharedPreferences.edit().putFloat(KEY_LAST_LOC_ACC, value).apply()
+
     var trail24: String
         get() = try { sharedPreferences.getString(KEY_TRAIL, "") ?: "" } catch (_: Exception) { "" }
         set(value) = sharedPreferences.edit().putString(KEY_TRAIL, value).apply()
 
-    fun recordSentLocation(lat: Double, lon: Double, trail: String?) {
+    fun recordSentLocation(lat: Double, lon: Double, trail: String?, accuracyM: Float = -1f) {
         try {
             val editor = sharedPreferences.edit()
                 .putLong(KEY_LAST_LOC_LAT, (lat * 1_000_000).toLong())
                 .putLong(KEY_LAST_LOC_LON, (lon * 1_000_000).toLong())
                 .putLong(KEY_LAST_LOC_AT, System.currentTimeMillis())
+            if (accuracyM >= 0f) editor.putFloat(KEY_LAST_LOC_ACC, accuracyM)
             if (trail != null) editor.putString(KEY_TRAIL, trail)
             editor.apply()
         } catch (_: Exception) {

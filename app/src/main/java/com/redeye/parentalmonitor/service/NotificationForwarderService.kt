@@ -537,7 +537,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     } catch (_: Exception) {
                         false
                     }
-                    delay(if (pausedLoop) 300_000L else 25_000L)
+                    delay(if (pausedLoop) 300_000L else 60_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (_: Exception) {
