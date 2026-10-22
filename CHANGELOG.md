@@ -1,3 +1,11 @@
+## [1.6.446] - 2026-10-22
+### Fixed
+- Watchdog tidak lagi me-restart loop patroli saat jeda tidur lebih panjang dari `patrolInterval` (mis. monitoring dijeda, foto dijeda, atau jam malam): `patrolCycleMs` kini mengikuti durasi tidur yang benar-benar dipakai.
+- Backup: toast "selesai" hanya muncul bila berkas benar-benar ditulis; `openOutputStream` yang mengembalikan `null` kini dilaporkan sebagai gagal.
+- `/hilang` tetap mengirim lokasi + foto walau perangkat sedang berdering (ketukan kedua tidak lagi berhenti tanpa kiriman apa pun).
+- `InstantEventReceiver`: kegagalan `startForegroundService` kini menjadwalkan `scheduleBootRestart` alih-alih hilang senyap.
+- `CameraService`: `onOpened`/`onConfigured` memeriksa ulang nomor sesi di dalam `captureLock`, sehingga `forceReset()` yang menyela tidak meninggalkan `CameraDevice`/sesi kamera yang bocor; jalur rekaman video juga memberi error langsung saat sesinya digantikan.
+
 ## [1.6.445] - 2026-10-21
 ### Added
 - `/status` kini menampilkan jenis jaringan + penanda VPN, status baterai/charging, identitas SIM yang terpasang, jumlah buka-kunci gagal (bila admin perangkat aktif dan angkanya > 0), serta status izin `RECEIVE_SMS`/`READ_PHONE_STATE`.

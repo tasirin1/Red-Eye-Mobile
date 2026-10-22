@@ -71,7 +71,8 @@ class SetupActivity : AppCompatActivity() {
             return@registerForActivityResult
         }
         try {
-            contentResolver.openOutputStream(uri)?.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
+            val out = contentResolver.openOutputStream(uri) ?: throw java.io.IOException("openOutputStream null")
+            out.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
             Toast.makeText(this, getString(R.string.backup_done), Toast.LENGTH_LONG).show()
         } catch (_: Exception) {
             Toast.makeText(this, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()

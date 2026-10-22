@@ -36,6 +36,10 @@ class InstantEventReceiver : BroadcastReceiver() {
                 appContext.startService(service)
             }
         } catch (_: Exception) {
+            try {
+                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
+            } catch (_: Exception) {
+            }
         }
     }
 }

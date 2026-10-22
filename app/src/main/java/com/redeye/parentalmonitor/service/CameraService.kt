@@ -347,16 +347,18 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
-                        if (done.get() || sessionSeq.get() != mySeq) {
-                            try { camera.close() } catch (_: Exception) { }
-                            releaseOwned()
-                            finishWithError(Exception("Sesi kamera digantikan"))
-                            return
+                        synchronized(captureLock) {
+                            if (done.get() || sessionSeq.get() != mySeq) {
+                                try { camera.close() } catch (_: Exception) { }
+                                releaseOwned()
+                                finishWithError(Exception("Sesi kamera digantikan"))
+                                return
+                            }
+                            cameraDevice = camera
                         }
-                        cameraDevice = camera
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
                         onTrace("trace: camera opened")
-                        createCaptureSession(camera, jpegOrientation, ::finishWithError, { onTrace(it) })
+                        createCaptureSession(camera, jpegOrientation, mySeq, ::finishWithError, { onTrace(it) })
                     } catch (e: Exception) {
                         finishWithError(e)
                     } catch (t: Throwable) {
@@ -578,11 +580,14 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
-                        if (done.get() || sessionSeq.get() != mySeq) {
-                            try { camera.close() } catch (_: Exception) { }
-                            return
+                        synchronized(captureLock) {
+                            if (done.get() || sessionSeq.get() != mySeq) {
+                                try { camera.close() } catch (_: Exception) { }
+                                finishWithError(Exception("Sesi kamera digantikan"))
+                                return
+                            }
+                            cameraDevice = camera
                         }
-                        cameraDevice = camera
                         val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
                         builder.addTarget(recordSurface)
                         builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
@@ -590,7 +595,14 @@ class CameraService(private val context: Context) {
                             listOf(recordSurface),
                             object : CameraCaptureSession.StateCallback() {
                                 override fun onConfigured(session: CameraCaptureSession) {
-                                    captureSession = session
+                                    synchronized(captureLock) {
+                                        if (sessionSeq.get() != mySeq) {
+                                            try { session.close() } catch (_: Exception) { }
+                                            finishWithError(Exception("Sesi kamera digantikan"))
+                                            return
+                                        }
+                                        captureSession = session
+                                    }
                                     try {
                                         session.setRepeatingRequest(builder.build(), null, backgroundHandler)
                                     } catch (e: Exception) {
@@ -853,6 +865,7 @@ class CameraService(private val context: Context) {
     private fun createCaptureSession(
         camera: CameraDevice,
         jpegOrientation: Int,
+        mySeq: Int,
         onError: (Exception) -> Unit,
         onTrace: (String) -> Unit = {}
     ) {
@@ -869,7 +882,14 @@ class CameraService(private val context: Context) {
                 listOf(surface, meterSurface),
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
-                        captureSession = session
+                        synchronized(captureLock) {
+                            if (sessionSeq.get() != mySeq) {
+                                try { session.close() } catch (_: Exception) { }
+                                onError(Exception("Sesi kamera digantikan"))
+                                return
+                            }
+                            captureSession = session
+                        }
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture session configured")
                         onTrace("trace: session configured")
                         runMeteredCapture(camera, session, captureBuilder, onError, onTrace)

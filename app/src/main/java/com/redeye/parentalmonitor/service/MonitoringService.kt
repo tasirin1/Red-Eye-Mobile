@@ -986,16 +986,17 @@ class MonitoringService : Service() {
                     val minutes = cachedPatrolInterval.coerceIn(5, 180)
                     val lowPower = lowPowerActive()
                     val effMinutes = if (lowPower) (minutes * 2).coerceAtMost(180) else minutes
-                    patrolCycleMs = effMinutes * 60_000L
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
-                    if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
+                    val sleepMs = if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
                         patrolRound()
-                        delayMs(effMinutes * 60_000L)
+                        effMinutes * 60_000L
                     } else if (cachedMonitoringPaused) {
-                        delayMs(15 * 60_000L)
+                        15 * 60_000L
                     } else {
-                        delayMs(30 * 60_000L)
+                        30 * 60_000L
                     }
+                    patrolCycleMs = sleepMs
+                    delayMs(sleepMs)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -2544,10 +2545,8 @@ class MonitoringService : Service() {
     private suspend fun handleHilangCommand() {
         val level = batteryLevel()
         if (!ringBusy.compareAndSet(false, true)) {
-            sendToTelegram("⏳ Sudah bunyi, tunggu selesai.")
-            return
-        }
-        if (recordBusy.get() || recorderActive.get()) {
+            sendToTelegram("⏳ Sudah bunyi, tunggu selesai — tetap kirim lokasi + foto…")
+        } else if (recordBusy.get() || recorderActive.get()) {
             ringBusy.set(false)
             sendToTelegram("⏳ Merekam jalan: bunyi dilewati, kirim lokasi + foto…")
         } else {
