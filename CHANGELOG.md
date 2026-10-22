@@ -1,3 +1,10 @@
+## [1.6.456] - 2026-10-22
+### Fixed
+- `MessageScheduler` memakai `REPLACE` saat ada retry tertunda dan tidak ada worker yang sedang berjalan, sehingga pesan mendesak tidak lagi menunggu backoff hingga 15 menit; bila worker masih berjalan, rantai tetap diserialkan agar tidak ada kiriman ganda.
+- `InstantEventReceiver` membaca preferensi dan memulai service di executor (`goAsync`), sehingga `onReceive` tidak lagi melakukan I/O di thread utama.
+- `CameraService` membersihkan berkas sementara di thread latar saat dibuat, bukan di thread utama.
+- Radius `/home` dan `/school` dibulatkan ke meter terdekat, tidak lagi dipotong `toInt()` (mis. 500,9 m tidak menjadi 500 m).
+
 ## [1.6.455] - 2026-10-22
 ### Fixed
 - Build `1.6.454` gagal dikompilasi: `SmsRepository.smsDateForId()` kini memakai `sortOrder` non-null yang diterima `ContentQuery`, dan blok dispatch perintah memberi nilai `Unit` eksplisit agar `if` tidak dipakai sebagai ekspresi.

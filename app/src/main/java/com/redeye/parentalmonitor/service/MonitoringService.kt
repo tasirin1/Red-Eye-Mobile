@@ -3590,7 +3590,7 @@ class MonitoringService : Service() {
             } else {
                 val lat = nums[0]!!
                 val lon = nums[1]!!
-                val rad = nums.getOrNull(2)?.toInt() ?: 200
+                val rad = nums.getOrNull(2)?.let { Math.round(it).toInt() } ?: 200
                 if (lat !in -90.0..90.0 || lon !in -180.0..180.0 || rad !in 50..5000) {
                     sendToTelegram("Koordinat/radius tak valid (lat -90..90, lon -180..180, radius 50-5000).")
                 } else {

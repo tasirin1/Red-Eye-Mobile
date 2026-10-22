@@ -10,6 +10,10 @@ import com.redeye.parentalmonitor.service.MonitoringService
 
 class InstantEventReceiver : BroadcastReceiver() {
 
+    companion object {
+        private val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val target = when (intent.action) {
             "android.provider.Telephony.SMS_RECEIVED" -> MonitoringService.ACTION_SMS_RECEIVED
@@ -21,24 +25,38 @@ class InstantEventReceiver : BroadcastReceiver() {
             else -> return
         }
         val appContext = context.applicationContext
-        val active = try {
-            val prefs = PreferencesManager.getInstance(appContext)
-            prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring
-        } catch (_: Exception) {
-            false
-        }
-        if (!active) return
+        val pending = try { goAsync() } catch (_: Exception) { null }
         try {
-            val service = Intent(appContext, MonitoringService::class.java).apply { action = target }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                appContext.startForegroundService(service)
-            } else {
-                appContext.startService(service)
+            executor.execute {
+                try {
+                    val active = try {
+                        val prefs = PreferencesManager.getInstance(appContext)
+                        prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (active) {
+                        try {
+                            val service = Intent(appContext, MonitoringService::class.java).apply { action = target }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                appContext.startForegroundService(service)
+                            } else {
+                                appContext.startService(service)
+                            }
+                        } catch (_: Exception) {
+                            try {
+                                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
+                } finally {
+                    try { pending?.finish() } catch (_: Exception) {
+                    }
+                }
             }
         } catch (_: Exception) {
-            try {
-                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
-            } catch (_: Exception) {
+            try { pending?.finish() } catch (_: Exception) {
             }
         }
     }

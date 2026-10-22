@@ -76,19 +76,21 @@ class CameraService(private val context: Context) {
     private var activeVideoFile: java.io.File? = null
 
     init {
-        try {
-            context.cacheDir?.listFiles { f ->
-                f.isFile && f.name.endsWith(".tmp") &&
-                    (f.name.startsWith("camera_") || f.name.startsWith("screenshot_") ||
-                        f.name.startsWith("video_") || f.name.startsWith("audio_"))
-            }?.forEach {
-                try { it.delete() } catch (_: Exception) { }
+        Thread {
+            try {
+                context.cacheDir?.listFiles { f ->
+                    f.isFile && f.name.endsWith(".tmp") &&
+                        (f.name.startsWith("camera_") || f.name.startsWith("screenshot_") ||
+                            f.name.startsWith("video_") || f.name.startsWith("audio_"))
+                }?.forEach {
+                    try { it.delete() } catch (_: Exception) { }
+                }
+                context.cacheDir?.listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
+                    try { it.delete() } catch (_: Exception) { }
+                }
+            } catch (_: Exception) {
             }
-            context.cacheDir?.listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
-                try { it.delete() } catch (_: Exception) { }
-            }
-        } catch (_: Exception) {
-        }
+        }.start()
     }
 
     fun forceReset() {

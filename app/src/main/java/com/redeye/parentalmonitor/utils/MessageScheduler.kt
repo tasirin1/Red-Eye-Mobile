@@ -21,6 +21,8 @@ object MessageScheduler {
     private const val SEND_SKIP_SELF_HEAL_MS = 10 * 60_000L
     private val outstandingSends = java.util.concurrent.atomic.AtomicInteger(0)
     private val lastSendAppendAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val nextSendAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
+    private const val REPLACE_MIN_REMAINING_MS = 15_000L
 
     private val netConstraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -44,10 +46,16 @@ object MessageScheduler {
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
 
-            val policy = ExistingWorkPolicy.APPEND_OR_REPLACE
+            val replaceDelayed = now + REPLACE_MIN_REMAINING_MS < nextSendAtElapsed.get() &&
+                !SendMessageWorker.isRunning()
+            val policy = if (replaceDelayed) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
             try {
                 WorkManager.getInstance(context.applicationContext)
                     .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
+                if (replaceDelayed) {
+                    nextSendAtElapsed.set(0L)
+                    outstandingSends.set(1)
+                }
             } catch (e: Exception) {
                 outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
                 throw e
@@ -61,15 +69,17 @@ object MessageScheduler {
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
         return try {
+            val delayMs = initialDelayMs.coerceAtLeast(0L)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
-            if (initialDelayMs > 0L) {
-                requestBuilder.setInitialDelay(initialDelayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
+            if (delayMs > 0L) {
+                requestBuilder.setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
             }
             val policyNext = ExistingWorkPolicy.APPEND_OR_REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
             outstandingSends.updateAndGet { if (it <= 0) 1 else it }
+            nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
             true
         } catch (e: Exception) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
@@ -87,6 +97,10 @@ object MessageScheduler {
     fun cancelMessageSend(context: Context) {
         try {
             outstandingSends.set(0)
+        } catch (_: Exception) {
+        }
+        try {
+            nextSendAtElapsed.set(0L)
         } catch (_: Exception) {
         }
         try {

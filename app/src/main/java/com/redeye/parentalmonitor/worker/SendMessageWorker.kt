@@ -17,6 +17,12 @@ class SendMessageWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    companion object {
+        private val activeRuns = java.util.concurrent.atomic.AtomicInteger(0)
+
+        fun isRunning(): Boolean = activeRuns.get() > 0
+    }
+
     private val messageQueue: MessageQueue by lazy { MessageQueue.getInstance(applicationContext) }
     private val preferencesManager: PreferencesManager by lazy {
         try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
@@ -24,6 +30,7 @@ class SendMessageWorker(
     }
 
     override suspend fun doWork(): Result {
+        activeRuns.incrementAndGet()
         try {
             return try {
                 doWorkInternal()
@@ -37,6 +44,10 @@ class SendMessageWorker(
                 Result.success()
             }
         } finally {
+            try {
+                activeRuns.updateAndGet { if (it > 0) it - 1 else 0 }
+            } catch (_: Exception) {
+            }
             try {
                 MessageScheduler.onSendRunFinished()
             } catch (_: Exception) {
