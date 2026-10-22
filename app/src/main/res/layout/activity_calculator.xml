@@ -60,39 +60,39 @@
         android:clipToPadding="false"
         android:clipChildren="false">
 
-        <Button android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="AC" />
-        <Button android:id="@+id/btnToggleSign" style="@style/CalculatorButton.Utility" android:text="±" />
-        <Button android:id="@+id/btnPercent" style="@style/CalculatorButton.Utility" android:text="%" />
-        <Button android:id="@+id/btnDivide" style="@style/CalculatorButton.Operation" android:text="÷" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnClear" style="@style/CalculatorButton.Utility" android:text="AC" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnToggleSign" style="@style/CalculatorButton.Utility" android:text="±" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnPercent" style="@style/CalculatorButton.Utility" android:text="%" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnDivide" style="@style/CalculatorButton.Operation" android:text="÷" />
 
-        <Button android:id="@+id/btn7" style="@style/CalculatorButton.Number" android:text="7" />
-        <Button android:id="@+id/btn8" style="@style/CalculatorButton.Number" android:text="8" />
-        <Button android:id="@+id/btn9" style="@style/CalculatorButton.Number" android:text="9" />
-        <Button android:id="@+id/btnMultiply" style="@style/CalculatorButton.Operation" android:text="×" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn7" style="@style/CalculatorButton.Number" android:text="7" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn8" style="@style/CalculatorButton.Number" android:text="8" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn9" style="@style/CalculatorButton.Number" android:text="9" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnMultiply" style="@style/CalculatorButton.Operation" android:text="×" />
 
-        <Button android:id="@+id/btn4" style="@style/CalculatorButton.Number" android:text="4" />
-        <Button android:id="@+id/btn5" style="@style/CalculatorButton.Number" android:text="5" />
-        <Button android:id="@+id/btn6" style="@style/CalculatorButton.Number" android:text="6" />
-        <Button android:id="@+id/btnMinus" style="@style/CalculatorButton.Operation" android:text="−" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn4" style="@style/CalculatorButton.Number" android:text="4" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn5" style="@style/CalculatorButton.Number" android:text="5" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn6" style="@style/CalculatorButton.Number" android:text="6" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnMinus" style="@style/CalculatorButton.Operation" android:text="−" />
 
-        <Button android:id="@+id/btn1" style="@style/CalculatorButton.Number" android:text="1" />
-        <Button android:id="@+id/btn2" style="@style/CalculatorButton.Number" android:text="2" />
-        <Button android:id="@+id/btn3" style="@style/CalculatorButton.Number" android:text="3" />
-        <Button android:id="@+id/btnPlus" style="@style/CalculatorButton.Operation" android:text="+" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn1" style="@style/CalculatorButton.Number" android:text="1" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn2" style="@style/CalculatorButton.Number" android:text="2" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn3" style="@style/CalculatorButton.Number" android:text="3" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnPlus" style="@style/CalculatorButton.Operation" android:text="+" />
 
-        <Button android:id="@+id/btn0" style="@style/CalculatorButton.Number"
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btn0" style="@style/CalculatorButton.Number"
             android:text="0"
             android:layout_columnSpan="2"
             android:layout_rowSpan="2"
             android:layout_rowWeight="0.8"
             android:layout_gravity="fill" />
-        <Button android:id="@+id/btnDot" style="@style/CalculatorButton.Utility"
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnDot" style="@style/CalculatorButton.Utility"
             android:text="."
             android:textSize="28sp"
             android:layout_rowSpan="2"
             android:layout_rowWeight="0.8"
             android:layout_gravity="fill" />
-        <Button android:id="@+id/btnEquals" style="@style/CalculatorButton.Accent"
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/btnEquals" style="@style/CalculatorButton.Accent"
             android:text="="
             android:layout_rowSpan="2"
             android:layout_rowWeight="0.8"

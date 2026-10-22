@@ -1,3 +1,7 @@
+## [1.6.460] - 2026-10-22
+### Fixed
+- Warna tombol kalkulator kembali sesuai palet: tombol angka putih, tombol fungsi peach, dan tombol sama dengan hijau tua berteks putih. Tombol kini memakai `androidx.appcompat.widget.AppCompatButton` dan `backgroundTint` dinonaktifkan, sehingga drawable ripple kustom tidak lagi ditimpa `colorPrimary` dari tema Material.
+
 ## [1.6.459] - 2026-10-22
 ### Fixed
 - PIN akses hasil restore backup tidak lagi ditulis ke `savedInstanceState` (yang bisa disimpan sistem ke disk); PIN ditahan sementara di memori proses sehingga rotasi layar tetap melanjutkan restore tanpa membocorkan PIN.
