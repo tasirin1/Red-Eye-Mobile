@@ -620,6 +620,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
+            try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
             var recovered = false
             val wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
             if (wasVolatile) {

@@ -117,7 +117,8 @@ object CrashReporter {
             if (start > 0 && start < merged.length && Character.isLowSurrogate(merged[start]) && Character.isHighSurrogate(merged[start - 1])) start += 1
             val combined = if (start > 0) merged.substring(start) else merged
             val elapsed0 = prevRaw.substringBefore('\n').toLongOrNull() ?: 0L
-            writeReportFile(file, (if (elapsed0 > 0L) elapsed0 else android.os.SystemClock.elapsedRealtime()).toString() + "\n" + combined)
+            val prefix = if (start > 0 || elapsed0 <= 0L) android.os.SystemClock.elapsedRealtime() else elapsed0
+            writeReportFile(file, prefix.toString() + "\n" + combined)
         }
     }
 

@@ -1,3 +1,14 @@
+## [1.6.453] - 2026-10-22
+### Fixed
+- `checkVehicle()` tidak lagi mengirim kabar kendaraan saat monitoring dijeda (`/stop`), konsisten dengan `checkGeofenceFallback()`.
+- `checkGeofenceFallback()` baru mencatat waktu cek setelah fix lokasi didapat, jadi kegagalan GPS tidak membuat geofence buta selama 15 menit.
+- `ensureForegroundTypes()` mencoba ulang tipe FGS yang pernah ditolak setelah 5 menit, sehingga kamera latar pulih sendiri setelah izin diberikan tanpa restart proses.
+- `NotificationForwarderService` mengosongkan riwayat notifikasi saat logout atau hapus kredensial, jadi owner baru tidak bisa membaca `/lastnotif` milik sesi sebelumnya.
+- Input angka/teks dari tombol menu memakai kunci sendiri saat dipasang dan dikonsumsi, sehingga balasan cepat tidak lagi diambil perintah lain atau diproses dua kali.
+- `CrashReporter` memakai umur baru setelah laporan lama dipotong, tidak lagi memakai umur laporan tertua sehingga laporan yang masih baru tidak terhapus sebelum terkirim.
+- `cek-cepat.sh` membaca seluruh pipeline tanpa `grep -q`, sehingga `pipefail` + `SIGPIPE` tidak lagi membuat pemeriksaan berkas/token lolos diam pada diff besar.
+- `verifikasi-path.py` melewati direktori `build`, `.gradle`, dan `__pycache__` saat memindai, jadi berkas hasil build tidak dianggap sumber repo.
+
 ## [1.6.452] - 2026-10-22
 ### Fixed
 - `PreferencesManager.upgradeToPersistent()` tidak lagi menghapus kunci terenkripsi yang tidak ada di snapshot memori; bila snapshot kosong, data terenkripsi yang ada dipakai apa adanya sehingga kredensial/pengaturan tidak terhapus saat migrasi.

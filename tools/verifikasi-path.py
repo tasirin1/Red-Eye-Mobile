@@ -99,7 +99,8 @@ def baca(path):
 
 
 def jalan_repo(rel, ext=EKSTENSI_KODE):
-    for akar, _, berkas in os.walk(os.path.join(AKAR, rel)):
+    for akar, dirs, berkas in os.walk(os.path.join(AKAR, rel)):
+        dirs[:] = [d for d in dirs if d not in ("build", ".gradle", "__pycache__")]
         for nama in berkas:
             if nama.endswith(ext):
                 yield os.path.relpath(os.path.join(akar, nama), AKAR)

@@ -123,6 +123,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 return history.toList()
             }
         }
+
+        fun clearHistory() {
+            synchronized(historyLock) {
+                history.clear()
+            }
+        }
     }
 
     override fun onCreate() {

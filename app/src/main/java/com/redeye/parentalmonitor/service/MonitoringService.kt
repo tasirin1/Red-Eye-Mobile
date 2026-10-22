@@ -162,6 +162,8 @@ class MonitoringService : Service() {
     @Volatile
     private var rejectedFgsTypes = 0
     @Volatile
+    private var rejectedFgsAt = 0L
+    @Volatile
     private var cameraWakeAt = 0L
     @Volatile
     private var cameraWakeNotifiedAt = 0L
@@ -1356,6 +1358,8 @@ class MonitoringService : Service() {
         ownerEpoch++
         try { messageQueue.clearQueue() } catch (_: Exception) {
         }
+        try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
+        }
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) {
         }
         try {
@@ -2167,6 +2171,8 @@ class MonitoringService : Service() {
     @Volatile
     private var pendingInputAt = 0L
 
+    private val inputLock = Any()
+
     private fun numberInputFor(command: String): NumberInput? {
         val head = command.trim().substringBefore(" ").lowercase(java.util.Locale.ROOT)
         return numberInputs.firstOrNull { it.command == head }
@@ -2285,31 +2291,40 @@ class MonitoringService : Service() {
     private suspend fun armInput(command: String, view: String) {
         val angka = numberInputFor(command)
         if (angka != null) {
-            pendingInputCommand = angka.command
-            pendingInputAt = android.os.SystemClock.elapsedRealtime()
+            synchronized(inputLock) {
+                pendingInputCommand = angka.command
+                pendingInputAt = android.os.SystemClock.elapsedRealtime()
+            }
             val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { "angka" })
             sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
             return
         }
         val teks = textInputFor(command) ?: return
-        pendingInputCommand = teks.command
-        pendingInputAt = android.os.SystemClock.elapsedRealtime()
+        synchronized(inputLock) {
+            pendingInputCommand = teks.command
+            pendingInputAt = android.os.SystemClock.elapsedRealtime()
+        }
         val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { teks.view })
         sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
 
     private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
         if (!ownerOk) return false
-        val pending = pendingInputCommand
-        if (pending.isEmpty()) return false
-        if (android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
-            pendingInputCommand = ""
-            return false
-        }
         val bersih = text.trim()
         if (bersih.isEmpty()) return false
+        val pending = synchronized(inputLock) {
+            val current = pendingInputCommand
+            if (current.isEmpty()) return false
+            if (android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
+                pendingInputCommand = ""
+                return false
+            }
+            current
+        }
         if (bersih.startsWith("/")) {
-            pendingInputCommand = ""
+            synchronized(inputLock) {
+                if (pendingInputCommand == pending) pendingInputCommand = ""
+            }
             return false
         }
         val mintaHelp = bersih.equals("help", ignoreCase = true) || bersih.equals("bantuan", ignoreCase = true) || bersih == "?" || bersih.equals("cara", ignoreCase = true)
@@ -2324,20 +2339,38 @@ class MonitoringService : Service() {
                 sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", menuScreen("angka").markup)
                 return true
             }
-            pendingInputCommand = ""
+            val taken = synchronized(inputLock) {
+                if (pendingInputCommand != pending) {
+                    false
+                } else {
+                    pendingInputCommand = ""
+                    true
+                }
+            }
+            if (!taken) return false
             handleTelegramCommand(angka.command + " " + nilai, sentAtSec, ownerOk, chatOk, senderId, privateChat)
             return true
         }
         val teks = textInputFor(pending)
         if (teks == null) {
-            pendingInputCommand = ""
+            synchronized(inputLock) {
+                if (pendingInputCommand == pending) pendingInputCommand = ""
+            }
             return false
         }
         if (mintaHelp) {
             sendToTelegram(textInputHelp(teks))
             return true
         }
-        pendingInputCommand = ""
+        val taken = synchronized(inputLock) {
+            if (pendingInputCommand != pending) {
+                false
+            } else {
+                pendingInputCommand = ""
+                true
+            }
+        }
+        if (!taken) return false
         handleTelegramCommand(teks.command + " " + bersih, sentAtSec, ownerOk, chatOk, senderId, privateChat)
         return true
     }
@@ -5782,7 +5815,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun checkVehicle() {
-        if (!cachedVehicleEnabled) return
+        if (!cachedVehicleEnabled || cachedMonitoringPaused) return
         val fix = lastCachedLocation() ?: return
         val now = System.currentTimeMillis()
         if (now - fix.time > 10 * 60_000L) {
@@ -6193,7 +6226,6 @@ class MonitoringService : Service() {
                 false
             }
             if (!hasHome && !hasSchool) return
-            lastGeofenceCheckAt = nowElapsed
             val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             val cached = lastSentLatLon()
             var accuracyM = -1f
@@ -6207,6 +6239,7 @@ class MonitoringService : Service() {
                 Pair(fix.latitude, fix.longitude)
             }
             checkGeofence(pos.first, pos.second, accuracyM)
+            lastGeofenceCheckAt = nowElapsed
         } catch (_: Exception) {
         }
     }
@@ -8097,7 +8130,8 @@ class MonitoringService : Service() {
     private fun ensureForegroundTypes() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val types = computeForegroundTypes()
-        if (types == appliedFgsTypes || types == rejectedFgsTypes) return
+        if (types == appliedFgsTypes) return
+        if (types == rejectedFgsTypes && android.os.SystemClock.elapsedRealtime() - rejectedFgsAt < 5 * 60_000L) return
         val notification = try {
             buildForegroundNotification()
         } catch (_: Exception) {
@@ -8106,8 +8140,10 @@ class MonitoringService : Service() {
         val before = appliedFgsTypes
         if (!applyForegroundTypes(notification)) {
             rejectedFgsTypes = types
+            rejectedFgsAt = android.os.SystemClock.elapsedRealtime()
             return
         }
+        rejectedFgsTypes = 0
         if (appliedFgsTypes != types && appliedFgsTypes != before) {
             android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + fgsTypesText(appliedFgsTypes) + " (diminta " + fgsTypesText(types) + ")")
         }
