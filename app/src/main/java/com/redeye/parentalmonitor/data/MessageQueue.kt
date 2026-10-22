@@ -438,9 +438,9 @@ class MessageQueue private constructor(context: Context) {
                 if (pending != null) persistLocked(pending, force = true)
                 if (dropsDirty) persistDropCountsLocked()
             }
-            val waitSeconds = if (onMain) 2L else 5L
+            if (onMain) return
             try {
-                persistExecutor.submit(java.lang.Runnable { }).get(waitSeconds, java.util.concurrent.TimeUnit.SECONDS)
+                persistExecutor.submit(java.lang.Runnable { }).get(5L, java.util.concurrent.TimeUnit.SECONDS)
             } catch (_: Exception) {
             }
         } catch (_: Exception) {

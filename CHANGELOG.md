@@ -1,3 +1,12 @@
+## [1.6.458] - 2026-10-22
+### Fixed
+- `sendFitted()` kini membedakan `SENT`/`QUEUED`/`DROPPED`: pesan yang ditolak permanen oleh Telegram (400) tidak lagi dianggap terkirim, sehingga kursor SMS/panggilan dan laporan crash tidak maju/terhapus tanpa pengiriman.
+- Offset update Telegram hanya disimpan untuk urutan pembaruan yang benar-benar selesai ditangani (lewat `UpdateOffsetTracker` baru + tes unit); pembatalan service di tengah handler tidak lagi melewati perintah yang belum diproses.
+- Galat sisi kirim seperti "chat not found" (400) tidak lagi memblokir `getUpdates` selama 30 menit; hanya 401/403 yang menahan polling.
+- `MessageQueue.flushSync()` tidak lagi menunggu barrier persist hingga 2 detik di main thread; penulisan tetap dijadwalkan ke executor latar sehingga service berhenti tanpa risiko ANR.
+- Sesi tangkap layar `MediaProjection` melepas `VirtualDisplay`/`ImageReader` setelah setiap pengambilan (termasuk jalur gagal/timeout), sehingga surface tidak menumpuk sampai service dimatikan.
+- Watchdog periodik `BootRestartWorker` tidak lagi berhenti permanen setelah 5 kegagalan beruntun; hasil akhirnya `success` agar jadwal 15 menit tetap berjalan.
+
 ## [1.6.457] - 2026-10-22
 ### Fixed
 - Loop patroli ikut di-restart saat status jeda monitoring berubah, sehingga `/resume` langsung memicu patroli berikutnya alih-alih menunggu sisa interval lama (bisa sampai 3 jam).

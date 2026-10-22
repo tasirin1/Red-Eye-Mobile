@@ -100,7 +100,7 @@ class BootRestartWorker(
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
         } catch (_: Exception) {
-            return if (runAttemptCount < 5) Result.retry() else Result.failure()
+            return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         try {
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(prefs)
@@ -155,7 +155,7 @@ class BootRestartWorker(
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
             MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
-            if (runAttemptCount < 5) Result.retry() else Result.failure()
+            if (runAttemptCount < 5) Result.retry() else Result.success()
         }
         return startResult
     }

