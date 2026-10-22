@@ -27,7 +27,7 @@ class UsageEventsSummaryTest {
             UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 5L, "com.c")
         )
         val s = UsageEventsSummary.build(events, topCount = 2)
-        assertEquals(listOf("com.a" to 3, "com.b" to 1), s.topOpens)
+        assertEquals(listOf("com.a" to 2, "com.b" to 1), s.topOpens)
     }
 
     @Test

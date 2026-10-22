@@ -252,9 +252,9 @@ object A11yMonitor {
             synchronized(gate) {
                 ensureLoadedLocked(app)
                 val pkg = suspendedPackage
-                suspendedPackage = ""
                 val manager = prefs
                 if (pkg.isNotEmpty() && manager != null && monitoringActive(manager) && !isKeyguardLocked(app) && isLaunchable(app, pkg)) {
+                    suspendedPackage = ""
                     val nowWall = System.currentTimeMillis()
                     val nowElapsed = SystemClock.elapsedRealtime()
                     currentPackage = pkg
@@ -419,11 +419,7 @@ object A11yMonitor {
     }
 
     private fun protectionActive(manager: PreferencesManager): Boolean {
-        return try {
-            manager.isMonitoringEnabled && !manager.userDisabledMonitoring && manager.userConsentedMonitoring
-        } catch (_: Exception) {
-            false
-        }
+        return monitoringActive(manager)
     }
 
     private fun collectSnapshot(service: AccessibilityService): ScreenSnapshot {

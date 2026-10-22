@@ -69,7 +69,7 @@ object MessageScheduler {
             val policyNext = ExistingWorkPolicy.APPEND_OR_REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
-            outstandingSends.set(1)
+            outstandingSends.updateAndGet { if (it <= 0) 1 else it }
             true
         } catch (e: Exception) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)

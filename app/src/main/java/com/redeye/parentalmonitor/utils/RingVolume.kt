@@ -27,7 +27,7 @@ object RingVolume {
             -1
         }
         val usable = previous >= 0 && savedAt > 0L &&
-            (age < MAX_AGE_MS || (maxVolume > 0 && currentVolume >= maxVolume))
+            (age in 0..MAX_AGE_MS || (maxVolume > 0 && currentVolume >= maxVolume))
         if (usable && audioManager != null) {
             try {
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)

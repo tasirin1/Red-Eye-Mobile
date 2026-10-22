@@ -12,6 +12,7 @@ object UsageEventsSummary {
     fun build(events: List<Event>, topCount: Int = 3): Summary {
         var unlocks = 0
         var first = 0L
+        var lastResumed = ""
         val opens = HashMap<String, Int>()
         for (e in events) {
             when (e.type) {
@@ -21,8 +22,14 @@ object UsageEventsSummary {
                 }
                 TYPE_RESUMED -> {
                     val pkg = e.pkg
-                    if (!pkg.isNullOrEmpty()) opens[pkg] = (opens[pkg] ?: 0) + 1
+                    if (pkg.isNullOrEmpty()) {
+                        lastResumed = ""
+                    } else if (pkg != lastResumed) {
+                        opens[pkg] = (opens[pkg] ?: 0) + 1
+                        lastResumed = pkg
+                    }
                 }
+                else -> lastResumed = ""
             }
         }
         val top = opens.entries

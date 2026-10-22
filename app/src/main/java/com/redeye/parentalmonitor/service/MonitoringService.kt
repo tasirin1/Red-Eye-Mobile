@@ -2111,7 +2111,7 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
                     listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
                     listOf(button("\uD83D\uDD22 Atur angka", "m:angka")),
-                    listOf(button("\uD83E\uDDF9 Bersihkan media 30h", "x:bersihkan media 30")),
+                    listOf(button("\uD83E\uDDF9 Bersihkan media 30 hari", "x:bersihkan media 30")),
                     listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan")),
                     listOf(button("\uD83D\uDEAA Logout owner", "x:logout")),
                     listOf(menuUtama)
@@ -3057,7 +3057,12 @@ class MonitoringService : Service() {
             showContactsPage(page)
             return
         }
-        val query = arg.trim().take(40)
+        val trimmedArg = arg.trim()
+        if (trimmedArg.isNotEmpty() && trimmedArg.all { it.isDigit() }) {
+            sendToTelegram("Halaman kontak 1-999. Contoh: /contacts 2")
+            return
+        }
+        val query = trimmedArg.take(40)
         if (query.isEmpty()) {
             sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
             return
@@ -3683,27 +3688,38 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleSmsCommand(arg: String, senderId: String) {
-        val numberArg = arg.split(CMD_SPLIT_REGEX, limit = 2)
-        val number = numberArg.getOrNull(0)?.trim().orEmpty()
-        val smsText = numberArg.getOrNull(1)?.trim().orEmpty()
-        var badChar = false
-        var plusCount = 0
-        val digits = StringBuilder(number.length + 1)
-        if (number.startsWith("+")) digits.append('+')
-        for (c in number) {
-            when {
-                c.isDigit() -> digits.append(c)
-                c == '+' -> { plusCount++; if (!number.startsWith("+") || plusCount > 1) badChar = true }
-                c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
-                else -> badChar = true
+        val trimmedArg = arg.trim()
+        var number = ""
+        var smsText = ""
+        var normalized = ""
+        for (i in trimmedArg.indices) {
+            if (!trimmedArg[i].isWhitespace()) continue
+            val candidate = trimmedArg.substring(0, i).trim()
+            val rest = trimmedArg.substring(i).trim()
+            if (candidate.isEmpty() || rest.isEmpty()) continue
+            var badChar = false
+            var plusCount = 0
+            val digits = StringBuilder(candidate.length + 1)
+            if (candidate.startsWith("+")) digits.append('+')
+            for (c in candidate) {
+                when {
+                    c.isDigit() -> digits.append(c)
+                    c == '+' -> { plusCount++; if (!candidate.startsWith("+") || plusCount > 1) badChar = true }
+                    c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
+                    else -> badChar = true
+                }
+            }
+            val parsed = digits.toString()
+            if (!badChar && plusCount <= 1 && SMS_NUMBER_REGEX.matches(parsed)) {
+                number = candidate
+                normalized = parsed
+                smsText = rest
+                break
             }
         }
-        val normalized = digits.toString()
-        if (number.isEmpty() || smsText.isEmpty()) {
+        if (trimmedArg.isEmpty() || !trimmedArg.any { it.isWhitespace() }) {
             sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-        } else if (badChar || plusCount > 1) {
-            sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-        } else if (!normalized.matches(SMS_NUMBER_REGEX)) {
+        } else if (number.isEmpty() || smsText.isEmpty()) {
             sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
         } else if (isPremiumSmsNumber(normalized)) {
             sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
@@ -6241,6 +6257,9 @@ class MonitoringService : Service() {
             )
             return sent
         } catch (_: Exception) {
+            if (manual) {
+                try { sendToTelegram("\u26A0\uFE0F Ringkasan harian gagal dibuat.") } catch (_: Exception) { }
+            }
             return false
         }
     }
@@ -6458,6 +6477,7 @@ class MonitoringService : Service() {
                 mainMenu()
             )
         } catch (_: Exception) {
+            try { sendToTelegram("\u26A0\uFE0F Laporan waspada gagal dibuat.") } catch (_: Exception) { }
         }
     }
 
@@ -6555,6 +6575,7 @@ class MonitoringService : Service() {
                 mainMenu()
             )
         } catch (_: Exception) {
+            try { sendToTelegram("\u26A0\uFE0F Laporan mingguan gagal dibuat.") } catch (_: Exception) { }
         }
     }
 

@@ -1,3 +1,15 @@
+## [1.6.449] - 2026-10-22
+### Fixed
+- `/sms` kini menerima nomor yang ditulis dengan spasi/tanda pisah (mis. `+62 812-3456`); pesan dipisahkan setelah nomor valid pertama.
+- `/contacts 0` atau nomor halaman di luar 1–999 dijawab dengan rentang halaman, tidak lagi dicari sebagai nama kontak.
+- Tombol menu "Bersihkan media 30h" diperbaiki menjadi "30 hari" agar sesuai perintah `/bersihkan media <hari>`.
+- `/digest`, `/waspada`, dan `/minggu` mengirim pesan gagal bila laporan tidak bisa dibuat, tidak lagi diam.
+- `BootRestartWorker` tidak lagi memasang notifikasi foreground saat monitoring memang dimatikan/belum dikonfigurasi.
+- `RingVolume` tidak memulihkan volume alarm lama saat jam perangkat mundur (umur negatif).
+- `MessageScheduler`: `scheduleMessageSendNext()` tidak lagi mereset penghitung antrean kirim yang masih berjalan, sehingga batas 3 work tidak bisa dilewati.
+- `A11yMonitor`: proteksi tamper ikut berhenti saat monitoring dijeda, dan paket yang tertunda tidak lagi hilang saat layar menyala dalam keadaan terkunci.
+- `UsageEventsSummary` menghitung "HP dibuka" per sesi aplikasi (peristiwa resume berurutan dari paket yang sama tidak dihitung ganda).
+
 ## [1.6.448] - 2026-10-22
 ### Fixed
 - `SetupActivity`: data restore yang menunggu (owner ID + PIN akses) dan blob backup tidak lagi hilang saat layar diputar atau proses dipulihkan; keduanya disimpan di `onSaveInstanceState`.

@@ -96,12 +96,6 @@ class BootRestartWorker(
             MessageScheduler.scheduleMessageSend(appContext)
             return Result.success()
         }
-        try {
-            setForeground(getForegroundInfo())
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
         val prefs = try {
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
@@ -126,6 +120,12 @@ class BootRestartWorker(
         }
         if (!prefs.isConfigured()) {
             return Result.success()
+        }
+        try {
+            setForeground(getForegroundInfo())
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
         MessageScheduler.scheduleWatchdog(appContext)
         val startResult: Result = try {
