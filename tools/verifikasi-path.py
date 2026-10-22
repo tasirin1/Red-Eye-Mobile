@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from functools import lru_cache
 
 AKAR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN = os.path.join(AKAR, "app", "src", "main")
@@ -88,6 +89,7 @@ def nama_tak_lacak():
     return out.splitlines() if out else []
 
 
+@lru_cache(maxsize=None)
 def baca(path):
     try:
         with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
@@ -280,7 +282,7 @@ def cek_duplikat_definisi(gagal):
             gagal.append("Definisi ganda di %s: %s" % (path, ", ".join(ganda[:5])))
 
 
-def berkas_dihapus(rentang, diff_biasa):
+def berkas_dihapus(rentang):
     """Daftar path yang dihapus pada diff (butuh status; kosong bila tak tahu)."""
     if rentang and ("..." in rentang or ".." in rentang):
         for pemisah in ("...", ".."):
@@ -800,7 +802,7 @@ def utama():
     else:
         cek_secret(gagal, diff)
     cek_kurung_kode(gagal, berubah)
-    hapus = berkas_dihapus(args.rentang, diff)
+    hapus = berkas_dihapus(args.rentang)
     if not args.rentang:
         keluar = jalan("git", "diff", "--cached", "--name-status") or ""
         hapus += [x.split(None, 1)[1] for x in keluar.splitlines() if x.startswith("D")]

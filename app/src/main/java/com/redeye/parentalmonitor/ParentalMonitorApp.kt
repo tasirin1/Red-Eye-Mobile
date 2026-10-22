@@ -69,7 +69,7 @@ class ParentalMonitorApp : Application() {
             } catch (_: Exception) {
             }
             try {
-                val resume = NotificationChannel(RESUME_CHANNEL_ID, getString(R.string.channel_name_alerts), NotificationManager.IMPORTANCE_MIN).apply {
+                val resume = NotificationChannel(RESUME_CHANNEL_ID, getString(R.string.channel_name_alerts), NotificationManager.IMPORTANCE_DEFAULT).apply {
                     setShowBadge(false)
                     setSound(null, null)
                     enableVibration(false)

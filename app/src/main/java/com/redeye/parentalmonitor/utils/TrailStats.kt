@@ -50,7 +50,16 @@ object TrailStats {
         for (i in 1 until points.size) {
             val gap = points[i].at - points[i - 1].at
             if (gap <= 0L || gap > maxGapMs) continue
-            if (meters(center, points[i - 1]) <= radiusM && meters(center, points[i]) <= radiusM) total += gap
+            val before = meters(center, points[i - 1])
+            val after = meters(center, points[i])
+            val beforeInside = before <= radiusM
+            val afterInside = after <= radiusM
+            if (beforeInside && afterInside) {
+                total += gap
+            } else if (beforeInside != afterInside) {
+                val fraction = ((radiusM - before) / (after - before)).coerceIn(0.0, 1.0)
+                total += (gap * fraction).toLong()
+            }
         }
         return total
     }

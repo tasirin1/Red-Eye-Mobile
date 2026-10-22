@@ -1,3 +1,8 @@
+## [1.6.451] - 2026-10-22
+### Fixed
+- `TrailStats.millisInside()` menghitung sebagian durasi pada segmen yang melintasi batas radius (interpolasi jarak), tidak lagi membuang seluruh segmen hanya karena salah satu ujung di luar radius.
+- Pengingat "monitoring berhenti"/masalah token memakai kanal `IMPORTANCE_DEFAULT`, sehingga muncul di laci notifikasi dan tidak lagi tersembunyi di kanal `IMPORTANCE_MIN`.
+
 ## [1.6.450] - 2026-10-22
 ### Fixed
 - Sinkron awal tidak lagi menandai selesai saat riwayat SMS/panggilan gagal dibaca: `SmsRepository`/`CallLogRepository` melaporkan kegagalan query ke pemanggil sinkron, retry 30 menit dipasang, dan probe pemotongan halaman juga dihitung gagal.

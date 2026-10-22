@@ -34,7 +34,6 @@ release-key.keystore
 
 # Configuration files with sensitive data
 .builder_config
-app/src/main/java/com/redeye/parentalmonitor/utils/AutoConfig.kt
 
 # Output directory
 output/

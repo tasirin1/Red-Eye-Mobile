@@ -56,7 +56,17 @@ class TrailStatsTest {
             TrailStats.Point(base + 30 * 60_000L, -6.400100, 106.800000)
         )
         val inside = TrailStats.millisInside(pts, -6.200000, 106.800000, 200f)
-        assertEquals(10 * 60_000L, inside)
+        assertTrue("durasi $inside", inside in 10 * 60_000L..10 * 60_000L + 5_000L)
+    }
+
+    @Test
+    fun segmenLintasBatasDihitungSebagian() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 10 * 60_000L, -6.203600, 106.800000)
+        )
+        val inside = TrailStats.millisInside(pts, -6.200000, 106.800000, 200f)
+        assertTrue("masuk $inside", inside in 4 * 60_000L..6 * 60_000L)
     }
 
     @Test
