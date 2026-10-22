@@ -42,7 +42,7 @@ class SmsRepository(private val context: Context) {
             arrayOf(Telephony.Sms.DATE),
             "${Telephony.Sms._ID} = ?",
             arrayOf(id.toString()),
-            null,
+            "${Telephony.Sms._ID} ASC",
             1
         ) ?: return 0L
         return try {

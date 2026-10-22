@@ -1785,6 +1785,7 @@ class MonitoringService : Service() {
                                                 }
                                             }
                                         }
+                                        Unit
                                     } catch (e: kotlinx.coroutines.CancellationException) {
                                         throw e
                                     } catch (e: Exception) {

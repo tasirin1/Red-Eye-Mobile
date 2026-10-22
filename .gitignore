@@ -45,7 +45,6 @@ crash_log.txt
 logcat.txt
 
 # Kotlin and Java
-*.class
 *.jar
 *.war
 *.ear
@@ -59,7 +58,6 @@ gen/
 *.swo
 
 # OS files
-.DS_Store
 Thumbs.db
 
 # Lint

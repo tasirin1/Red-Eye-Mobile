@@ -20,7 +20,7 @@ object AppWatch {
         return try {
             SPLIT.split(raw.lowercase(Locale.ROOT))
                 .map { it.trim() }
-                .filter { it.length >= 3 }
+                .filter { it.length in 3..64 }
                 .distinct()
                 .take(10)
         } catch (_: Exception) {

@@ -149,10 +149,12 @@ object A11yMonitor {
         if (pkg !in manager.a11yAppWatchPackageSet()) return
         val keywords = AppWatch.parseKeywords(manager.watchKeywords)
         if (keywords.isEmpty()) return
-        val snapshot = collectSnapshot(service)
-        if (snapshot.hasPassword || snapshot.texts.isEmpty()) return
         val app = service.applicationContext
-        executor.execute { handleContent(app, pkg, snapshot.texts, keywords) }
+        executor.execute {
+            val snapshot = collectSnapshot(service)
+            if (snapshot.hasPassword || snapshot.texts.isEmpty()) return@execute
+            handleContent(app, pkg, snapshot.texts, keywords)
+        }
     }
 
     private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>) {

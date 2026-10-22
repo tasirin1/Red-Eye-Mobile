@@ -1,3 +1,13 @@
+## [1.6.455] - 2026-10-22
+### Fixed
+- Build `1.6.454` gagal dikompilasi: `SmsRepository.smsDateForId()` kini memakai `sortOrder` non-null yang diterima `ContentQuery`, dan blok dispatch perintah memberi nilai `Unit` eksplisit agar `if` tidak dipakai sebagai ekspresi.
+- `A11yMonitor` memindahkan pengambilan snapshot pemantau kata ke executor, sehingga penelusuran node aksesibilitas tidak lagi membebani thread utama.
+- `testConnection` tidak menghapus PIN akses tersimpan saat kolom PIN dibiarkan kosong; PIN hanya berubah lewat simpan eksplisit atau hapus kredensial.
+- `AppWatch` membatasi panjang kata kunci 3–64 karakter agar masukan sangat panjang tidak membebani pencocokan.
+### Changed
+- `.gitignore` dibersihkan dari pola duplikat (`*.class`, `.DS_Store`).
+- `SYNC_INTERVAL` yang bukan angka atau di luar 1–1440 kini memberi peringatan di log build sebelum memakai nilai bawaan.
+
 ## [1.6.454] - 2026-10-22
 ### Fixed
 - Kursor SMS/panggilan kini memakai `_ID` **dan** `DATE`: baris baru dengan id lebih kecil (restore/gabung basis data) tetap terkirim, dan kursor tanggal disimpan/diinisialisasi dari pesan terakhir yang sudah diproses.
