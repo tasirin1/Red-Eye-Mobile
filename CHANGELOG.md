@@ -1,3 +1,11 @@
+## [1.6.448] - 2026-10-22
+### Fixed
+- `SetupActivity`: data restore yang menunggu (owner ID + PIN akses) dan blob backup tidak lagi hilang saat layar diputar atau proses dipulihkan; keduanya disimpan di `onSaveInstanceState`.
+- Penulisan berkas backup dipindah ke thread latar; toast sukses/gagal muncul di thread utama setelah penulisan selesai.
+
+### Changed
+- `saveSettings()` dan `testConnection()` memakai interval/PIN yang sudah dimuat saat layar dibuka, sehingga tidak lagi membaca preferensi terenkripsi di main thread.
+
 ## [1.6.447] - 2026-10-22
 ### Changed
 - `MessageQueue`: penulisan antrean dari main thread tidak lagi menyerialkan JSON di thread itu; snapshot dikirim ke satu thread latar dengan urutan terjaga, dan penulisan beruntun digabung menjadi satu tulis terakhir.

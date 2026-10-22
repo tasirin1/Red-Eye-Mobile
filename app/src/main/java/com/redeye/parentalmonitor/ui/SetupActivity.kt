@@ -59,6 +59,9 @@ class SetupActivity : AppCompatActivity() {
     private var pendingRestoreOwnerId = 0L
     private var pendingRestoreAccessPin = ""
     private var fieldsLoaded = false
+    private var loadedConfigured = false
+    private var loadedSyncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
+    private var loadedCameraInterval = 1
 
     private val backupLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -70,12 +73,18 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
             return@registerForActivityResult
         }
-        try {
-            val out = contentResolver.openOutputStream(uri) ?: throw java.io.IOException("openOutputStream null")
-            out.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
-            Toast.makeText(this, getString(R.string.backup_done), Toast.LENGTH_LONG).show()
-        } catch (_: Exception) {
-            Toast.makeText(this, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val ok = try {
+                val out = contentResolver.openOutputStream(uri) ?: throw java.io.IOException("openOutputStream null")
+                out.use { it.write(blob.toByteArray(Charsets.UTF_8)) }
+                true
+            } catch (_: Exception) {
+                false
+            }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                Toast.makeText(this@SetupActivity, getString(if (ok) R.string.backup_done else R.string.backup_fail), Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -211,6 +220,9 @@ class SetupActivity : AppCompatActivity() {
         private const val MIN_BACKUP_PIN = 6
         private const val MIN_RESTORE_PIN = 4
         private const val MAX_BACKUP_BYTES = 1_000_000L
+        private const val STATE_RESTORE_OWNER = "state_restore_owner"
+        private const val STATE_RESTORE_PIN = "state_restore_pin"
+        private const val STATE_BACKUP_BLOB = "state_backup_blob"
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
@@ -356,6 +368,10 @@ class SetupActivity : AppCompatActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
         setContentView(R.layout.activity_setup)
 
+        pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
+        pendingRestoreAccessPin = savedInstanceState?.getString(STATE_RESTORE_PIN).orEmpty()
+        pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
+
         prefs = PreferencesManager.getInstance(this)
         try {
             supportActionBar?.hide()
@@ -388,8 +404,12 @@ class SetupActivity : AppCompatActivity() {
             val accessPinMasked = try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false }
             val syncVal = try { prefs.syncInterval.toString() } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString() }
             val camVal = try { prefs.cameraInterval.toString() } catch (_: Exception) { "1" }
+            val configuredNow = try { prefs.isConfigured() } catch (_: Exception) { false }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
+                loadedConfigured = configuredNow
+                loadedSyncInterval = syncVal.toIntOrNull() ?: com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
+                loadedCameraInterval = camVal.toIntOrNull() ?: 1
                 try {
                     if (botTokenInput.text.toString().isEmpty() && tokenMasked) botTokenInput.setText(STORED_MASK)
                     if (chatIdInput.text.toString().isEmpty() && chatMasked) chatIdInput.setText(STORED_MASK)
@@ -456,6 +476,13 @@ class SetupActivity : AppCompatActivity() {
         super.onResume()
         reviveMonitoringIfNeeded()
         updateStatus()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
+        outState.putString(STATE_RESTORE_PIN, pendingRestoreAccessPin)
+        outState.putString(STATE_BACKUP_BLOB, pendingBackupBlob)
     }
 
     private fun reviveMonitoringIfNeeded() {
@@ -603,6 +630,9 @@ class SetupActivity : AppCompatActivity() {
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
+                loadedConfigured = false
+                loadedSyncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
+                loadedCameraInterval = 1
                 Toast.makeText(this@SetupActivity, getString(if (recovered) R.string.setup_storage_recovered else R.string.setup_credentials_cleared), Toast.LENGTH_SHORT).show()
                 try {
                     updateStatus()
@@ -618,24 +648,20 @@ class SetupActivity : AppCompatActivity() {
         val rawAccessPin = accessPinInput.text.toString().trim()
         val intervalRaw = syncIntervalInput.text.toString().trim()
         val cameraRaw = cameraIntervalInput.text.toString().trim()
-        val intervalParsed = intervalRaw.toIntOrNull() ?: try { prefs.syncInterval } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL }
-        val cameraParsed = cameraRaw.toIntOrNull() ?: try { prefs.cameraInterval } catch (_: Exception) { 1 }
+        val intervalParsed = intervalRaw.toIntOrNull() ?: loadedSyncInterval
+        val cameraParsed = cameraRaw.toIntOrNull() ?: loadedCameraInterval
         if (intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
             return
         }
-        val accessPinCheck = if (rawAccessPin == STORED_MASK) {
-            try { prefs.accessPin } catch (_: Exception) { "" }
-        } else {
-            rawAccessPin
-        }
+        val accessPinCheck = if (rawAccessPin == STORED_MASK) "" else rawAccessPin
         if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
             Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
             return
         }
         val interval = intervalParsed
         val cameraInterval = cameraParsed
-        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        val hasStored = loadedConfigured
         if (!fieldsLoaded && hasStored) {
             Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
             return
@@ -713,6 +739,9 @@ class SetupActivity : AppCompatActivity() {
                     }
                     if (offSaved == true) {
                         try { prefs.accessPin = accessPin } catch (_: Exception) { }
+                        loadedConfigured = true
+                        loadedSyncInterval = interval
+                        loadedCameraInterval = cameraInterval
                         applyPendingRestoreOwner()
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -740,6 +769,9 @@ class SetupActivity : AppCompatActivity() {
             val persisted = persistOutcome
             if (persisted) {
                 try { prefs.accessPin = accessPin } catch (_: Exception) { }
+                loadedConfigured = true
+                loadedSyncInterval = interval
+                loadedCameraInterval = cameraInterval
                 applyPendingRestoreOwner()
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1014,7 +1046,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
-        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+        val hasStored = loadedConfigured
         if (!fieldsLoaded && hasStored) {
             Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
             return
@@ -1022,11 +1054,7 @@ class SetupActivity : AppCompatActivity() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
         val rawAccessPin = accessPinInput.text.toString().trim()
-        val accessPinCheck = if (rawAccessPin == STORED_MASK) {
-            try { prefs.accessPin } catch (_: Exception) { "" }
-        } else {
-            rawAccessPin
-        }
+        val accessPinCheck = if (rawAccessPin == STORED_MASK) "" else rawAccessPin
         if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
             Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
             return
@@ -1040,8 +1068,8 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
             return
         }
-        val syncInterval = intervalParsed ?: try { prefs.syncInterval } catch (_: Exception) { 5 }
-        val cameraInterval = cameraParsed ?: try { prefs.cameraInterval } catch (_: Exception) { 1 }
+        val syncInterval = intervalParsed ?: loadedSyncInterval
+        val cameraInterval = cameraParsed ?: loadedCameraInterval
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
         try { saveSeq.incrementAndGet() } catch (_: Exception) { }
