@@ -1,3 +1,10 @@
+## [1.6.447] - 2026-10-22
+### Changed
+- `MessageQueue`: penulisan antrean dari main thread tidak lagi menyerialkan JSON di thread itu; snapshot dikirim ke satu thread latar dengan urutan terjaga, dan penulisan beruntun digabung menjadi satu tulis terakhir.
+- `SendMessageWorker`: pesan terkirim dihapus dari antrean per 10 pesan (bukan per 1), mengurangi penulisan ulang seluruh antrean.
+- `SetupActivity.updateStatus()` membaca empat kunci preferensi langsung lewat getter, tidak lagi menyalin seluruh isi preferensi.
+- `PreferencesManager.appendAudit()` memakai `apply()` (tidak memblokir thread pemanggil dengan `commit()`).
+
 ## [1.6.446] - 2026-10-22
 ### Fixed
 - Watchdog tidak lagi me-restart loop patroli saat jeda tidur lebih panjang dari `patrolInterval` (mis. monitoring dijeda, foto dijeda, atau jam malam): `patrolCycleMs` kini mengikuti durasi tidur yang benar-benar dipakai.

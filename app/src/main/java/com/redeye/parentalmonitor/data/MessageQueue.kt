@@ -21,8 +21,17 @@ class MessageQueue private constructor(context: Context) {
     @Volatile
     private var dropsDirty = false
     private var lastPersistAt = 0L
+    @Volatile
     private var persistDirty = false
     private val lock = Any()
+    private val persistExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "redeye-queue-persist").apply { isDaemon = true }
+    }
+    private val persistQueued = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val persistMutex = Any()
+    @Volatile
+    private var persistVersion = 0L
+    private var pendingSnapshot: Pair<Long, List<QueuedMessage>>? = null
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
     private var cached: MutableList<QueuedMessage>? = null
     private val arrayType = Array<QueuedMessage>::class.java
@@ -82,6 +91,9 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = restored
                 volatileOnly = false
                 cached = null
+                persistVersion++
+                pendingSnapshot = null
+                persistDirty = false
                 loadDropCountsLocked(add = true)
                 persistDropCountsLocked()
                 if (pending.isNotEmpty()) {
@@ -111,6 +123,9 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = null
                 volatileOnly = true
                 cached = null
+                persistVersion++
+                pendingSnapshot = null
+                persistDirty = false
                 false
             }
         }
@@ -121,6 +136,9 @@ class MessageQueue private constructor(context: Context) {
             cached = null
             volatileQueue.clear()
             dropsDirty = false
+            persistVersion++
+            pendingSnapshot = null
+            persistDirty = false
             try {
                 sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 volatileOnly = false
@@ -407,26 +425,16 @@ class MessageQueue private constructor(context: Context) {
                 } catch (_: Exception) {
                 }
             }
-            val prefs = sharedPreferences ?: return
+            if (sharedPreferences == null) return
             synchronized(lock) {
                 val pending = cached
-                if (pending != null && persistDirty) {
-                    var saved = false
-                    try {
-                        val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(pending))
-                        if (onMain) {
-                            editor?.apply()
-                            saved = editor != null
-                        } else {
-                            saved = editor?.commit() == true
-                        }
-                    } catch (_: Exception) {
-                    }
-                    persistDirty = !saved
-                    if (saved) lastPersistAt = android.os.SystemClock.elapsedRealtime()
-                }
-                if (dropsDirty) {
-                    persistDropCountsLocked()
+                if (pending != null) persistLocked(pending, force = true)
+                if (dropsDirty) persistDropCountsLocked()
+            }
+            if (!onMain) {
+                try {
+                    persistExecutor.submit(java.lang.Runnable { }).get(5, java.util.concurrent.TimeUnit.SECONDS)
+                } catch (_: Exception) {
                 }
             }
         } catch (_: Exception) {
@@ -518,20 +526,79 @@ class MessageQueue private constructor(context: Context) {
         }
         lastPersistAt = now
         persistDirty = false
-        return try {
-            val editor = prefs.edit()?.putString(KEY_QUEUE, gson.toJson(queue))
-            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
-                val saved = editor?.commit() == true
-                persistDirty = !saved
-                saved
-            } else {
-                editor?.apply()
-                persistDirty = editor != null
+        val version = ++persistVersion
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            pendingSnapshot = version to ArrayList(queue)
+            persistDirty = true
+            schedulePersistLocked()
+            return true
+        }
+        return writeSnapshot(prefs, ArrayList(queue), version)
+    }
+
+    private fun schedulePersistLocked() {
+        if (!persistQueued.compareAndSet(false, true)) return
+        try {
+            persistExecutor.execute { drainPersist() }
+        } catch (_: Exception) {
+            persistQueued.set(false)
+        }
+    }
+
+    private fun writeSnapshot(prefs: SharedPreferences, snapshot: List<QueuedMessage>, version: Long): Boolean {
+        synchronized(persistMutex) {
+            if (persistVersion != version) return true
+            val saved = try {
+                prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))?.commit() == true
+            } catch (_: Exception) {
                 false
             }
-        } catch (_: Exception) {
-            persistDirty = true
-            false
+            if (!saved && persistVersion == version) persistDirty = true
+            return saved
+        }
+    }
+
+    private fun drainPersist() {
+        while (true) {
+            val prefs: SharedPreferences
+            val snapshot: List<QueuedMessage>
+            val version: Long
+            synchronized(lock) {
+                val pending = pendingSnapshot
+                val currentPrefs = sharedPreferences
+                if (pending == null || currentPrefs == null || !persistDirty) {
+                    pendingSnapshot = null
+                    persistDirty = false
+                    persistQueued.set(false)
+                    return
+                }
+                pendingSnapshot = null
+                persistDirty = false
+                prefs = currentPrefs
+                version = pending.first
+                snapshot = pending.second
+                if (dropsDirty) persistDropCountsLocked()
+            }
+            if (!writeSnapshot(prefs, snapshot, version)) {
+                synchronized(lock) {
+                    if (pendingSnapshot == null) {
+                        pendingSnapshot = version to snapshot
+                        persistDirty = true
+                    }
+                    persistQueued.set(false)
+                }
+                return
+            }
+            synchronized(lock) {
+                if (pendingSnapshot == null && !persistDirty) {
+                    persistQueued.set(false)
+                    return
+                }
+                if (pendingSnapshot == null && persistDirty) {
+                    pendingSnapshot = cached?.let { persistVersion to ArrayList(it) }
+                    persistDirty = pendingSnapshot != null
+                }
+            }
         }
     }
 

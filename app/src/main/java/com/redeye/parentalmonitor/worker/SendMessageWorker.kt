@@ -96,7 +96,7 @@ class SendMessageWorker(
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
                         noteSendOk()
-                        if (sentIds.size - flushedSent >= 1) {
+                        if (sentIds.size - flushedSent >= 10) {
                             try {
                                 messageQueue.removeMessages(sentIds)
                                 flushedSent = sentIds.size

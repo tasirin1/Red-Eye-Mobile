@@ -1635,19 +1635,16 @@ class SetupActivity : AppCompatActivity() {
     private fun updateStatus() {
         val myStatus = statusSeq.incrementAndGet()
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val snap = try { prefs.snapshot() } catch (_: Exception) { emptyMap<String, Any?>() }
-            fun s(key: String): String = snap[key] as? String ?: ""
-            fun b(key: String, def: Boolean): Boolean = snap[key] as? Boolean ?: def
             val configured = try { prefs.isConfigured() } catch (_: Exception) { false }
             val perms = hasAllPermissions()
-            val enabled = b(PreferencesManager.KEY_MONITORING_ENABLED, false)
+            val enabled = try { prefs.isMonitoringEnabled } catch (_: Exception) { false }
             val running = enabled && MonitoringService.isRunning
-            val paused = b(PreferencesManager.KEY_MONITORING_PAUSED, false)
+            val paused = try { prefs.monitoringPaused } catch (_: Exception) { false }
             val bg = hasBackgroundLocation()
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
-            val credErr = s(PreferencesManager.KEY_CRED_ERROR)
+            val credErr = try { prefs.credentialError } catch (_: Exception) { "" }
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
             val accessPinActive = try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false }
             val pairCode = try {
@@ -1660,7 +1657,7 @@ class SetupActivity : AppCompatActivity() {
             else if (accessPinActive) "\n" + getString(R.string.setup_status_owner_unknown_pin)
             else if (pairCode.isNotEmpty()) "\n" + getString(R.string.setup_status_owner_unknown_code, pairCode)
             else "\n" + getString(R.string.setup_status_owner_unknown)
-            val notifOn = b(PreferencesManager.KEY_NOTIF_FORWARD, true)
+            val notifOn = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
             val a11yOn = com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }

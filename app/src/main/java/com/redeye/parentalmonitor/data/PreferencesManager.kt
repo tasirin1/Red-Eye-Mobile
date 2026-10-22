@@ -509,7 +509,7 @@ class PreferencesManager(context: Context) {
                 val lines = if (current.isEmpty()) mutableListOf<String>() else current.split('\n').toMutableList()
                 lines.add(line)
                 while (lines.size > 50) lines.removeAt(0)
-                sharedPreferences.edit().putString(KEY_AUDIT_LOG, lines.joinToString("\n")).commit()
+                sharedPreferences.edit().putString(KEY_AUDIT_LOG, lines.joinToString("\n")).apply()
             } catch (_: Exception) {
             }
         }
