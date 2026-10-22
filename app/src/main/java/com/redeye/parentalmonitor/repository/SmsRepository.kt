@@ -15,14 +15,43 @@ class SmsRepository(private val context: Context) {
         Telephony.Sms.TYPE
     )
 
-    fun getNewSms(afterId: Long): List<SmsData> {
+    fun getNewSms(afterId: Long, afterDate: Long = 0L): List<SmsData> {
+        val selection: String
+        val args: Array<String>
+        if (afterDate > 0L) {
+            selection = "(${Telephony.Sms._ID} > ? OR ${Telephony.Sms.DATE} > ?)"
+            args = arrayOf(afterId.toString(), afterDate.toString())
+        } else {
+            selection = "${Telephony.Sms._ID} > ?"
+            args = arrayOf(afterId.toString())
+        }
         return querySms(
-            selection = "${Telephony.Sms._ID} > ?",
-            args = arrayOf(afterId.toString()),
-            sortOrder = "${Telephony.Sms._ID} ASC",
+            selection = selection,
+            args = args,
+            sortOrder = "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC",
             limit = 100,
             strict = true
         )
+    }
+
+    fun smsDateForId(id: Long): Long {
+        if (id <= 0L) return 0L
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms.DATE),
+            "${Telephony.Sms._ID} = ?",
+            arrayOf(id.toString()),
+            null,
+            1
+        ) ?: return 0L
+        return try {
+            if (cursor.moveToFirst()) cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)) else 0L
+        } catch (_: Exception) {
+            0L
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
     }
 
     fun newestSmsId(): Long {

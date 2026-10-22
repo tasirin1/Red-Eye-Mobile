@@ -100,6 +100,10 @@ class SetupActivity : AppCompatActivity() {
                     Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
                     return@withContext
                 }
+                if (!com.redeye.parentalmonitor.utils.SettingsBackup.looksStructurallyValid(text)) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
                 askPin(getString(R.string.restore_pin_title), false) { pin ->
                     if (pin == null) return@askPin
                     lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
@@ -212,6 +216,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     companion object {
+        private val persistScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
         private const val STORED_MASK = "••••••••"
         private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
@@ -558,7 +563,7 @@ class SetupActivity : AppCompatActivity() {
             pendingRestoreAccessPin = ""
         } catch (_: Exception) {
         }
-        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+        persistScope.launch(ioExceptionHandler) {
             val oldOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
             val oldToken = try { prefs.botToken } catch (_: Exception) { "" }
             try { prefs.botToken = "" } catch (_: Exception) { }
@@ -675,7 +680,7 @@ class SetupActivity : AppCompatActivity() {
         try { testSeq.incrementAndGet() } catch (_: Exception) { }
         try { saveJob?.cancel() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
-        saveJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+        saveJob = persistScope.launch(ioExceptionHandler) {
             val input = resolveCredentialInput(rawToken, rawChat) ?: return@launch
             val currentToken = input.storedToken
             val storedChatId = input.storedChatId

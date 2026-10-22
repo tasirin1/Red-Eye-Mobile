@@ -1,3 +1,10 @@
+## [1.6.454] - 2026-10-22
+### Fixed
+- Kursor SMS/panggilan kini memakai `_ID` **dan** `DATE`: baris baru dengan id lebih kecil (restore/gabung basis data) tetap terkirim, dan kursor tanggal disimpan/diinisialisasi dari pesan terakhir yang sudah diproses.
+- Restore backup memeriksa struktur blob (magic + base64 + panjang minimum) sebelum meminta PIN, sehingga file rusak tidak lagi dianggap "PIN salah" dan menghabiskan percobaan.
+- `clearCredentials()` dan `saveSettings()` berjalan di scope aplikasi, jadi rotasi layar atau activity ditutup tidak memotong proses simpan/hapus kredensial di tengah jalan.
+- Offset update Telegram baru disimpan setelah perintah selesai dijalankan (teks maupun callback), sehingga perintah tidak hilang bila proses berhenti saat handler berjalan; update yang belum selesai akan dikirim ulang, bukan dilewati.
+
 ## [1.6.453] - 2026-10-22
 ### Fixed
 - `checkVehicle()` tidak lagi mengirim kabar kendaraan saat monitoring dijeda (`/stop`), konsisten dengan `checkGeofenceFallback()`.

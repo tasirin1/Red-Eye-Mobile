@@ -1665,18 +1665,24 @@ class MonitoringService : Service() {
         for (update in updates) {
             val seen = markSeen(handledUpdateIds, update.updateId)
             if (seen) continue
+            var offsetDeferred = false
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
+                    offsetDeferred = true
                     serviceScope.launch {
-                        controlLock.withLock {
-                            try {
-                                handleCallbackQuery(callback)
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
+                        try {
+                            controlLock.withLock {
+                                try {
+                                    handleCallbackQuery(callback)
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
+                                }
                             }
+                        } finally {
+                            persistUpdateOffset(update.updateId)
                         }
                     }
                 } else {
@@ -1762,51 +1768,60 @@ class MonitoringService : Service() {
                         val isPrivate = msgChatId.isNotEmpty() && msgChatId == senderId
                         val messageDate = message?.date ?: 0L
                         val lock = if (control) controlLock else commandLock
+                        offsetDeferred = true
                         serviceScope.launch {
-                            lock.withLock {
-                                try {
-                                    val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
-                                    if (!restoreHandled) {
-                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
-                                        if (!balasAngka && command.startsWith("/")) {
-                                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                            handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
-                                        } else if (!balasAngka) {
-                                            if (aliasInput != null && privateOwner) {
-                                                handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
+                            try {
+                                lock.withLock {
+                                    try {
+                                        val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
+                                        if (!restoreHandled) {
+                                            val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
+                                            if (!balasAngka && command.startsWith("/")) {
+                                                val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                                handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
+                                            } else if (!balasAngka) {
+                                                if (aliasInput != null && privateOwner) {
+                                                    handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
+                                                }
                                             }
                                         }
+                                    } catch (e: kotlinx.coroutines.CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                                     }
-                                } catch (e: kotlinx.coroutines.CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                                 }
+                            } finally {
+                                persistUpdateOffset(update.updateId)
                             }
                         }
                     }
                 }
             } finally {
-                try {
-                    if (skipUpdateOffsetOnce) {
-                        skipUpdateOffsetOnce = false
-                    } else if (update.updateId > preferencesManager.lastUpdateId) {
-                        preferencesManager.setLastUpdateIdSync(update.updateId)
-                        if (preferencesManager.lastUpdateId < update.updateId) {
-                            commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
-                            android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
-                        }
-                    }
-                } catch (_: Exception) {
-                    try {
-                        commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
-                    } catch (_: Exception) {
-                    }
-                    android.util.Log.w("MonitoringService", "offset persist failed")
-                }
+                if (!offsetDeferred) persistUpdateOffset(update.updateId)
             }
         }
         return true
+    }
+
+    private fun persistUpdateOffset(updateId: Long) {
+        try {
+            if (skipUpdateOffsetOnce) {
+                skipUpdateOffsetOnce = false
+            } else if (updateId > preferencesManager.lastUpdateId) {
+                preferencesManager.setLastUpdateIdSync(updateId)
+                if (preferencesManager.lastUpdateId < updateId) {
+                    commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                    android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
+                }
+            }
+        } catch (_: Exception) {
+            try {
+                commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+            } catch (_: Exception) {
+            }
+            android.util.Log.w("MonitoringService", "offset persist failed")
+        }
     }
 
     private suspend fun handleCallbackQuery(query: com.redeye.parentalmonitor.network.TelegramCallbackQuery) {
@@ -4633,26 +4648,29 @@ class MonitoringService : Service() {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting SMS history...")
             repairCursorsAfterProviderReset()
             val entrySmsId = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
+            val entrySmsDate = try { preferencesManager.lastSmsTimestamp } catch (_: Exception) { 0L }
             val pendingSms = mutableListOf<com.redeye.parentalmonitor.data.models.SmsData>()
             var smsReadFailed = false
             var smsCursor = entrySmsId
+            var smsDate = entrySmsDate
             var smsPages = 0
             var smsLastFull = false
             while (smsPages < 5) {
-                val page = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) {
+                val page = try { smsRepository.getNewSms(smsCursor, smsDate) } catch (_: Exception) {
                     smsReadFailed = true
                     emptyList()
                 }
                 if (page.isEmpty()) break
                 pendingSms.addAll(page)
-                smsCursor = page.maxOf { it.id }
+                smsCursor = maxOf(smsCursor, page.maxOf { it.id })
+                smsDate = maxOf(smsDate, page.maxOf { it.date })
                 smsPages++
                 smsLastFull = page.size >= 100
                 if (page.size < 100) break
             }
             var smsTruncated = smsPages >= 5 && smsLastFull
             if (smsTruncated) {
-                val probe = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) {
+                val probe = try { smsRepository.getNewSms(smsCursor, smsDate) } catch (_: Exception) {
                     smsReadFailed = true
                     emptyList()
                 }
@@ -4677,9 +4695,8 @@ class MonitoringService : Service() {
                 }
                 if (page.isEmpty()) break
                 pendingCalls.addAll(page)
-                val latest = page.maxWith(compareBy({ it.id }, { it.date }))
-                callTs = latest.date
-                callId = latest.id
+                callTs = maxOf(callTs, page.maxOf { it.date })
+                callId = maxOf(callId, page.maxOf { it.id })
                 callPages++
                 callLastFull = page.size >= 100
                 if (page.size < 100) break
@@ -4747,7 +4764,10 @@ class MonitoringService : Service() {
                     val sentSmsPart = sendFitted(message, queueOnFail = true)
                     if (sentSmsPart) {
                         try {
-                            preferencesManager.setSmsCursorSync(maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }))
+                            preferencesManager.setSmsCursorSync(
+                                maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }),
+                                maxOf(preferencesManager.lastSmsTimestamp, part.maxOf { it.date })
+                            )
                         } catch (_: Exception) {
                         }
                     } else {
@@ -4784,10 +4804,10 @@ class MonitoringService : Service() {
                     val sentCallPart = sendFitted(message, queueOnFail = true)
                     if (sentCallPart) {
                         try {
-                            val latest = part.maxWith(compareBy({ it.id }, { it.date }))
-                            if (latest.id > preferencesManager.lastCallId) {
-                                preferencesManager.setCallCursorSync(latest.date, latest.id)
-                            }
+                            preferencesManager.setCallCursorSync(
+                                maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
+                                maxOf(preferencesManager.lastCallId, part.maxOf { it.id })
+                            )
                         } catch (_: Exception) {
                         }
                     } else {
@@ -4858,6 +4878,11 @@ class MonitoringService : Service() {
                     android.util.Log.w("MonitoringService", "Kursor SMS direset: basis data pesan berganti (id $newest < $smsCursor)")
                 }
             }
+            val currentSms = preferencesManager.lastSmsId
+            if (currentSms > 0L && preferencesManager.lastSmsTimestamp <= 0L) {
+                val ts = smsRepository.smsDateForId(currentSms)
+                if (ts > 0L) preferencesManager.setSmsCursorSync(currentSms, ts)
+            }
         } catch (_: Exception) {
         }
         try {
@@ -4913,9 +4938,15 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 0L
             }
-            val smsPage = smsRepository.getNewSms(lastSms)
+            val lastSmsTs = try {
+                preferencesManager.lastSmsTimestamp
+            } catch (_: Exception) {
+                0L
+            }
+            val smsPage = smsRepository.getNewSms(lastSms, lastSmsTs)
             if (smsPage.isNotEmpty()) {
                 var smsCursor = lastSms
+                var smsDate = lastSmsTs
                 var smsSentAny = false
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
@@ -4924,7 +4955,8 @@ class MonitoringService : Service() {
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
                     if (sentSms) {
                         smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                        try { preferencesManager.setSmsCursorSync(smsCursor) } catch (_: Exception) { }
+                        smsDate = maxOf(smsDate, part.maxOf { it.date })
+                        try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
                     } else {
@@ -4955,10 +4987,10 @@ class MonitoringService : Service() {
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
                     if (sentCall) {
                         try {
-                            val latest = part.maxWith(compareBy({ it.id }, { it.date }))
-                            if (latest.id > preferencesManager.lastCallId) {
-                                preferencesManager.setCallCursorSync(latest.date, latest.id)
-                            }
+                            preferencesManager.setCallCursorSync(
+                                maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
+                                maxOf(preferencesManager.lastCallId, part.maxOf { it.id })
+                            )
                         } catch (_: Exception) {
                         }
                         callSentAny = true

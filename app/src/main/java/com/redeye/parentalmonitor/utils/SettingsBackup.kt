@@ -18,6 +18,18 @@ object SettingsBackup {
         return raw.startsWith(MAGIC) || raw.startsWith(MAGIC_LEGACY)
     }
 
+    fun looksStructurallyValid(blob: String): Boolean {
+        val raw = blob.trim()
+        val legacy = raw.startsWith(MAGIC_LEGACY)
+        if (!legacy && !raw.startsWith(MAGIC)) return false
+        val body = if (legacy) raw.removePrefix(MAGIC_LEGACY) else raw.removePrefix(MAGIC)
+        return try {
+            android.util.Base64.decode(body, android.util.Base64.DEFAULT).size > 16 + 12 + 16
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun export(token: String, chatId: String, syncInterval: Int, cameraInterval: Int, ownerId: Long, accessPin: String, pin: String): String {
         require(token.isNotEmpty() && chatId.isNotEmpty())
         require(pin.length >= MIN_PIN)

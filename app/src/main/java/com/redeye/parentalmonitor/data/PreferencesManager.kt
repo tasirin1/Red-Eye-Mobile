@@ -201,6 +201,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SYNC = "last_sync"
         const val KEY_SYNC_INTERVAL = "sync_interval"
         private const val KEY_LAST_SMS_ID = "last_sms_id"
+        private const val KEY_LAST_SMS_TIMESTAMP = "last_sms_timestamp"
         private const val KEY_LAST_CALL_TIMESTAMP = "last_call_timestamp"
         private const val KEY_SIM_IDENTITY = "sim_identity"
         private const val KEY_LAST_CALL_ID = "last_call_id"
@@ -394,6 +395,9 @@ class PreferencesManager(context: Context) {
 
     val lastSmsId: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_SMS_ID, 0L) } catch (_: Exception) { 0L }
+
+    val lastSmsTimestamp: Long
+        get() = try { sharedPreferences.getLong(KEY_LAST_SMS_TIMESTAMP, 0L) } catch (_: Exception) { 0L }
 
     val lastCallTimestamp: Long
         get() = try { sharedPreferences.getLong(KEY_LAST_CALL_TIMESTAMP, 0L) } catch (_: Exception) { 0L }
@@ -1104,9 +1108,11 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setSmsCursorSync(id: Long) {
+    fun setSmsCursorSync(id: Long, timestamp: Long = 0L) {
         try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id).commit()
+            val editor = sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id)
+            if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
+            editor.commit()
         } catch (_: Exception) {
         }
     }
@@ -1120,7 +1126,7 @@ class PreferencesManager(context: Context) {
 
     fun resetSmsCursorSync() {
         try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).commit()
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit()
         } catch (_: Exception) {
         }
     }
@@ -1148,6 +1154,7 @@ class PreferencesManager(context: Context) {
             editor.remove(KEY_LAST_UPDATE_ID)
             editor.remove(KEY_INITIAL_SYNC_DONE)
             editor.putLong(KEY_LAST_SMS_ID, 0L)
+            editor.putLong(KEY_LAST_SMS_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_TIMESTAMP, 0L)
             editor.putLong(KEY_LAST_CALL_ID, 0L)
             editor.putLong(KEY_OWNER_ID, 0L)
