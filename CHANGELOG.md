@@ -1,3 +1,12 @@
+## [1.6.452] - 2026-10-22
+### Fixed
+- `PreferencesManager.upgradeToPersistent()` tidak lagi menghapus kunci terenkripsi yang tidak ada di snapshot memori; bila snapshot kosong, data terenkripsi yang ada dipakai apa adanya sehingga kredensial/pengaturan tidak terhapus saat migrasi.
+- `MessageQueue.clearQueue()` menaikkan versi persist dan menyerialkan penghapusan dengan penulis latar, sehingga antrean lama tidak muncul kembali setelah dibersihkan.
+- `MessageQueue.flushSync()` tetap menunggu barrier persist di main thread (batas 2 detik), jadi tulisan terakhir tidak hilang saat service berhenti.
+- `MessageQueue.filterFresh()` hanya memakai cadangan "clock jump" bila stempel waktu monoton tidak valid; pesan yang benar-benar kedaluwarsa setelah offline lama kini dibuang.
+- `/sms` memilih nomor valid terpanjang, sehingga `0812 3456 7890 Halo` tidak lagi terpotong menjadi nomor `0812 3456`.
+- Watchdog loop tidak lagi me-restart monitoring di tengah flush media karena detak loop diperbarui setiap berkas selesai dikirim.
+
 ## [1.6.451] - 2026-10-22
 ### Fixed
 - `TrailStats.millisInside()` menghitung sebagian durasi pada segmen yang melintasi batas radius (interpolasi jarak), tidak lagi membuang seluruh segmen hanya karena salah satu ujung di luar radius.

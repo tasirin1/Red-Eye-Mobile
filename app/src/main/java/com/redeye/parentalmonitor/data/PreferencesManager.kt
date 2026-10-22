@@ -38,44 +38,43 @@ class PreferencesManager(context: Context) {
                 var snap: Map<String, Any?> = emptyMap()
                 var stable = false
                 var attempts = 0
+                var adopt = false
                 while (!stable && attempts < 5) {
                     attempts++
                     snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val target = try { HashMap(fresh.all) } catch (_: Exception) { HashMap<String, Any?>() }
-                    val editor = fresh.edit()
-                    var changed = false
-                    for ((key, value) in snap) {
-                        if (!target.containsKey(key) || target[key] != value) {
-                            putEntryInto(editor, key, value)
-                            changed = true
-                        }
-                    }
-                    for (key in target.keys) {
-                        if (!snap.containsKey(key)) {
-                            editor.remove(key)
-                            changed = true
-                        }
-                    }
-                    if (changed && !editor.commit()) return false
-                    val after = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { HashMap<String, Any?>() }
-                    stable = after == snap
-                }
-                sharedPreferences = fresh
-                try {
-                    val after = HashMap(mem?.all ?: emptyMap<String, Any?>())
-                    if (after != snap) {
-                        val editor2 = fresh.edit()
-                        for ((key, value) in after) {
-                            if (!snap.containsKey(key) || snap[key] != value) {
-                                putEntryInto(editor2, key, value)
+                    if (snap.isEmpty() && target.isNotEmpty()) {
+                        adopt = true
+                        stable = true
+                    } else {
+                        val editor = fresh.edit()
+                        var changed = false
+                        for ((key, value) in snap) {
+                            if (!target.containsKey(key) || target[key] != value) {
+                                putEntryInto(editor, key, value)
+                                changed = true
                             }
                         }
-                        for (key in snap.keys) {
-                            if (!after.containsKey(key)) editor2.remove(key)
-                        }
-                        if (!editor2.commit()) return false
+                        if (changed && !editor.commit()) return false
+                        val after = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { HashMap<String, Any?>() }
+                        stable = after == snap
                     }
-                } catch (_: Exception) {
+                }
+                sharedPreferences = fresh
+                if (!adopt) {
+                    try {
+                        val after = HashMap(mem?.all ?: emptyMap<String, Any?>())
+                        if (after != snap) {
+                            val editor2 = fresh.edit()
+                            for ((key, value) in after) {
+                                if (!snap.containsKey(key) || snap[key] != value) {
+                                    putEntryInto(editor2, key, value)
+                                }
+                            }
+                            if (!editor2.commit()) return false
+                        }
+                    } catch (_: Exception) {
+                    }
                 }
                 synchronized(listenerLock) {
                     for (l in listenerSet) {

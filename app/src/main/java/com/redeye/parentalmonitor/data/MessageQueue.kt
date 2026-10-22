@@ -288,8 +288,11 @@ class MessageQueue private constructor(context: Context) {
         if (items.all { isFresh(it, wallCutoff, now) }) return items
         val fresh = items.filter { isFresh(it, wallCutoff, now) }
         if (fresh.size * 2 < items.size) {
-            android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
-            return items
+            val monoTracked = items.count { it.elapsedAt > 0L && now >= it.elapsedAt }
+            if (monoTracked * 2 < items.size) {
+                android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
+                return items
+            }
         }
         return fresh
     }
@@ -407,10 +410,14 @@ class MessageQueue private constructor(context: Context) {
             } else {
                 sharedPreferences
             }
-            val cleared = try {
-                wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit() == true
-            } catch (_: Exception) {
-                false
+            val cleared = synchronized(persistMutex) {
+                persistVersion++
+                pendingSnapshot = null
+                try {
+                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit() == true
+                } catch (_: Exception) {
+                    false
+                }
             }
             if (!cleared) persistDirty = true
         }
@@ -431,11 +438,10 @@ class MessageQueue private constructor(context: Context) {
                 if (pending != null) persistLocked(pending, force = true)
                 if (dropsDirty) persistDropCountsLocked()
             }
-            if (!onMain) {
-                try {
-                    persistExecutor.submit(java.lang.Runnable { }).get(5, java.util.concurrent.TimeUnit.SECONDS)
-                } catch (_: Exception) {
-                }
+            val waitSeconds = if (onMain) 2L else 5L
+            try {
+                persistExecutor.submit(java.lang.Runnable { }).get(waitSeconds, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (_: Exception) {
             }
         } catch (_: Exception) {
         }
