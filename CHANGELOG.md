@@ -1,3 +1,7 @@
+## [1.6.457] - 2026-10-22
+### Fixed
+- Loop patroli ikut di-restart saat status jeda monitoring berubah, sehingga `/resume` langsung memicu patroli berikutnya alih-alih menunggu sisa interval lama (bisa sampai 3 jam).
+
 ## [1.6.456] - 2026-10-22
 ### Fixed
 - `MessageScheduler` memakai `REPLACE` saat ada retry tertunda dan tidak ada worker yang sedang berjalan, sehingga pesan mendesak tidak lagi menunggu backoff hingga 15 menit; bila worker masih berjalan, rantai tetap diserialkan agar tidak ada kiriman ganda.
