@@ -21,14 +21,16 @@ class CallLogRepository(private val context: Context) {
                 selection = "${CallLog.Calls._ID} > ?",
                 args = arrayOf(afterId.toString()),
                 sortOrder = "${CallLog.Calls._ID} ASC",
-                limit = 100
+                limit = 100,
+                strict = true
             )
         }
         return queryCalls(
             selection = "${CallLog.Calls.DATE} > ?",
             args = arrayOf(afterTimestamp.toString()),
             sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
-            limit = 100
+            limit = 100,
+            strict = true
         )
     }
 
@@ -80,7 +82,7 @@ class CallLogRepository(private val context: Context) {
         return out.toString()
     }
 
-    private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<CallData> {
+    private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
             val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder, limit)
@@ -114,6 +116,7 @@ class CallLogRepository(private val context: Context) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("CallLogRepository", "Error querying calls", e)
+            if (strict) throw e
         }
         return result
     }

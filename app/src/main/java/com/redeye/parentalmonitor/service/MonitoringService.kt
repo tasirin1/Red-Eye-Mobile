@@ -4618,7 +4618,10 @@ class MonitoringService : Service() {
             }
             var smsTruncated = smsPages >= 5 && smsLastFull
             if (smsTruncated) {
-                val probe = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) { emptyList() }
+                val probe = try { smsRepository.getNewSms(smsCursor) } catch (_: Exception) {
+                    smsReadFailed = true
+                    emptyList()
+                }
                 smsTruncated = probe.isNotEmpty()
             }
             pendingSms.sortBy { it.id }
@@ -4649,7 +4652,10 @@ class MonitoringService : Service() {
             }
             var callTruncated = callPages >= 5 && callLastFull
             if (callTruncated) {
-                val probe = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) { emptyList() }
+                val probe = try { callLogRepository.getNewCalls(callTs, callId) } catch (_: Exception) {
+                    callReadFailed = true
+                    emptyList()
+                }
                 callTruncated = probe.isNotEmpty()
             }
             pendingCalls.sortWith(compareBy({ it.id }, { it.date }))
@@ -4782,7 +4788,7 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("Semua perintah ada di menu bot — ketuk /help kapan saja.")
             }
-            if (initialOk && !smsTruncated && !callTruncated) {
+            if (initialOk && !smsReadFailed && !callReadFailed && !smsTruncated && !callTruncated) {
                 sendToTelegram(completeMessage)
                 initialSyncRetryAt = 0L
                 initialStartSent = false

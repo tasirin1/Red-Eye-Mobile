@@ -40,6 +40,7 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var queueRef: MessageQueue? = null
     private val pendingPosts = java.util.concurrent.atomic.AtomicInteger(0)
+    private val pendingOverflow = java.util.concurrent.atomic.AtomicInteger(0)
     private val pkgHits = object : LinkedHashMap<String, ArrayDeque<Long>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Long>>): Boolean {
             return size > 100
@@ -91,6 +92,7 @@ class NotificationForwarderService : NotificationListenerService() {
     companion object {
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
+        private const val MAX_OVERFLOW_QUEUE = 8
         private const val MAX_BATCH = 32
         private const val NORMAL_RATE_LIMIT = 10
         private const val PRIORITY_RATE_LIMIT = 20
@@ -257,6 +259,10 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         if (pendingPosts.incrementAndGet() > MAX_QUEUED) {
             pendingPosts.decrementAndGet()
+            if (pendingOverflow.incrementAndGet() > MAX_OVERFLOW_QUEUE) {
+                pendingOverflow.decrementAndGet()
+                return
+            }
             scope.launch {
                 try {
                     val nf = notifTitleText(notification)
@@ -268,6 +274,8 @@ class NotificationForwarderService : NotificationListenerService() {
                         } else recordOverflow(pkg, nf.title, nf.text)
                     }
                 } catch (_: Exception) {
+                } finally {
+                    pendingOverflow.decrementAndGet()
                 }
             }
             return

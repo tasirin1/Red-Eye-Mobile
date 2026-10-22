@@ -20,7 +20,8 @@ class SmsRepository(private val context: Context) {
             selection = "${Telephony.Sms._ID} > ?",
             args = arrayOf(afterId.toString()),
             sortOrder = "${Telephony.Sms._ID} ASC",
-            limit = 100
+            limit = 100,
+            strict = true
         )
     }
 
@@ -129,7 +130,7 @@ class SmsRepository(private val context: Context) {
         return out.toString()
     }
 
-    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE): List<SmsData> {
+    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<SmsData> {
         val result = mutableListOf<SmsData>()
         try {
             val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, projection, selection, args, sortOrder, limit)
@@ -152,6 +153,7 @@ class SmsRepository(private val context: Context) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("SmsRepository", "Error querying SMS", e)
+            if (strict) throw e
         }
         return result
     }

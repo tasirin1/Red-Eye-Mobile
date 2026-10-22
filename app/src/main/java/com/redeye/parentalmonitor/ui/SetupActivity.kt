@@ -838,33 +838,39 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun copyPairingLink() {
-        val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
-        if (!fieldsLoaded && hasStored) {
-            Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
-            return
-        }
         val rawToken = botTokenInput.text?.toString()?.trim().orEmpty()
-        val token = if (rawToken == STORED_MASK) {
-            try { prefs.botToken } catch (_: Exception) { "" }
-        } else rawToken
         val rawChat = chatIdInput.text?.toString()?.trim().orEmpty()
-        val chat = if (rawChat == STORED_MASK) {
-            try { prefs.chatId } catch (_: Exception) { "" }
-        } else rawChat
         val rawAccessPin = accessPinInput.text?.toString()?.trim().orEmpty()
-        val accessPin = if (rawAccessPin == STORED_MASK) {
-            try { prefs.accessPin } catch (_: Exception) { "" }
-        } else rawAccessPin
-        if (accessPin.isNotEmpty()) {
-            Toast.makeText(this, getString(R.string.setup_pair_link_pin_active), Toast.LENGTH_LONG).show()
-            return
-        }
-        val chatNumber = chat.toLongOrNull()
-        if (!token.matches(TOKEN_REGEX) || chatNumber == null || chatNumber <= 0L) {
-            Toast.makeText(this, getString(R.string.setup_pair_link_fail), Toast.LENGTH_LONG).show()
-            return
-        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
+            if (!fieldsLoaded && hasStored) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+            val token = if (rawToken == STORED_MASK) {
+                try { prefs.botToken } catch (_: Exception) { "" }
+            } else rawToken
+            val chat = if (rawChat == STORED_MASK) {
+                try { prefs.chatId } catch (_: Exception) { "" }
+            } else rawChat
+            val accessPin = if (rawAccessPin == STORED_MASK) {
+                try { prefs.accessPin } catch (_: Exception) { "" }
+            } else rawAccessPin
+            if (accessPin.isNotEmpty()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_pair_link_pin_active), Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+            val chatNumber = chat.toLongOrNull()
+            if (!token.matches(TOKEN_REGEX) || chatNumber == null || chatNumber <= 0L) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_pair_link_fail), Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
             val username = try {
                 val resp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
                 if (!resp.isSuccessful || resp.body()?.ok != true) ""
@@ -1004,41 +1010,47 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun backupSettings() {
-        val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
-        val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
-        val uiToken = resolveStored(botTokenInput.text.toString().trim(), storedToken)
-        val uiChat = resolveStored(chatIdInput.text.toString().trim(), storedChat)
-        val token = if (uiToken.matches(TOKEN_REGEX)) uiToken else storedToken
-        val chatId = if (isChatIdValid(uiChat)) uiChat else storedChat
+        val uiToken = botTokenInput.text.toString().trim()
+        val uiChat = chatIdInput.text.toString().trim()
         val uiInterval = syncIntervalInput.text.toString().trim().toIntOrNull()
-        val interval = if (uiInterval != null && uiInterval in 1..1440) uiInterval else try { prefs.syncInterval } catch (_: Exception) { 5 }
         val uiCam = cameraIntervalInput.text.toString().trim().toIntOrNull()
-        val camInterval = if (uiCam != null && uiCam in 0..60) uiCam else try { prefs.cameraInterval } catch (_: Exception) { 1 }
-        if (token.isEmpty() || chatId.isEmpty()) {
-            Toast.makeText(this, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
-            return
-        }
-        askPin(getString(R.string.backup_pin_title), true) { pin ->
-            if (pin == null) return@askPin
-            lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-                val blob = try {
-                    com.redeye.parentalmonitor.utils.SettingsBackup.export(
-                        token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, try { prefs.accessPin } catch (_: Exception) { "" }, pin
-                    )
-                } catch (_: Exception) {
-                    null
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+            val token = resolveStored(uiToken, storedToken).takeIf { it.matches(TOKEN_REGEX) } ?: storedToken
+            val resolvedChat = resolveStored(uiChat, storedChat)
+            val chatId = if (isChatIdValid(resolvedChat)) resolvedChat else storedChat
+            val interval = if (uiInterval != null && uiInterval in 1..1440) uiInterval else try { prefs.syncInterval } catch (_: Exception) { 5 }
+            val camInterval = if (uiCam != null && uiCam in 0..60) uiCam else try { prefs.cameraInterval } catch (_: Exception) { 1 }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                if (token.isEmpty() || chatId.isEmpty()) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
+                    return@withContext
                 }
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    if (blob == null) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
-                        return@withContext
-                    }
-                    pendingBackupBlob = blob
-                    try {
-                        backupLauncher.launch("redeye-backup.redeyebak")
-                    } catch (_: Exception) {
-                        pendingBackupBlob = null
+                askPin(getString(R.string.backup_pin_title), true) { pin ->
+                    if (pin == null) return@askPin
+                    lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                        val blob = try {
+                            com.redeye.parentalmonitor.utils.SettingsBackup.export(
+                                token, chatId, interval, camInterval, try { prefs.ownerUserId } catch (_: Exception) { 0L }, try { prefs.accessPin } catch (_: Exception) { "" }, pin
+                            )
+                        } catch (_: Exception) {
+                            null
+                        }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            if (isFinishing || isDestroyed) return@withContext
+                            if (blob == null) {
+                                Toast.makeText(this@SetupActivity, getString(R.string.backup_fail), Toast.LENGTH_LONG).show()
+                                return@withContext
+                            }
+                            pendingBackupBlob = blob
+                            try {
+                                backupLauncher.launch("redeye-backup.redeyebak")
+                            } catch (_: Exception) {
+                                pendingBackupBlob = null
+                            }
+                        }
                     }
                 }
             }

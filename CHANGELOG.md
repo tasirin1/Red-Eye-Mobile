@@ -1,3 +1,13 @@
+## [1.6.450] - 2026-10-22
+### Fixed
+- Sinkron awal tidak lagi menandai selesai saat riwayat SMS/panggilan gagal dibaca: `SmsRepository`/`CallLogRepository` melaporkan kegagalan query ke pemanggil sinkron, retry 30 menit dipasang, dan probe pemotongan halaman juga dihitung gagal.
+- `PreferencesManager.upgradeToPersistent()` mengulang pencocokan snapshot sampai stabil dan menyusul selisih setelah pertukaran penyimpanan, sehingga tulisan yang datang di tengah migrasi tidak hilang.
+- `PreferencesManager.recoverEncryptedStorage()` membuka ulang penyimpanan pada instance yang sama, jadi referensi yang sudah dipegang service (mis. `NotificationForwarderService.prefsRef`) tidak lagi menunjuk preferensi yang sudah dihapus.
+- `NotificationForwarderService`: jalur luapan notifikasi dibatasi 8 korutin bersamaan agar lonjakan notifikasi tidak membuat antrean korutin tak terbatas.
+
+### Changed
+- `SetupActivity`: tautan pemasangan (pairing) dan backup membaca preferensi terenkripsi di thread latar, bukan di main thread.
+
 ## [1.6.449] - 2026-10-22
 ### Fixed
 - `/sms` kini menerima nomor yang ditulis dengan spasi/tanda pisah (mis. `+62 812-3456`); pesan dipisahkan setelah nomor valid pertama.

@@ -35,30 +35,48 @@ class PreferencesManager(context: Context) {
             return try {
                 val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
                 val mem = sharedPreferences
-                val snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                if (snap.isNotEmpty()) {
+                var snap: Map<String, Any?> = emptyMap()
+                var stable = false
+                var attempts = 0
+                while (!stable && attempts < 5) {
+                    attempts++
+                    snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    val target = try { HashMap(fresh.all) } catch (_: Exception) { HashMap<String, Any?>() }
                     val editor = fresh.edit()
+                    var changed = false
                     for ((key, value) in snap) {
-                        putEntryInto(editor, key, value)
+                        if (!target.containsKey(key) || target[key] != value) {
+                            putEntryInto(editor, key, value)
+                            changed = true
+                        }
                     }
-                    if (!editor.commit()) return false
+                    for (key in target.keys) {
+                        if (!snap.containsKey(key)) {
+                            editor.remove(key)
+                            changed = true
+                        }
+                    }
+                    if (changed && !editor.commit()) return false
+                    val after = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { HashMap<String, Any?>() }
+                    stable = after == snap
                 }
+                sharedPreferences = fresh
                 try {
-                    val memNow = mem?.all ?: emptyMap()
-                    if (memNow != snap) {
+                    val after = HashMap(mem?.all ?: emptyMap<String, Any?>())
+                    if (after != snap) {
                         val editor2 = fresh.edit()
-                        var changed = false
-                        for ((key, value) in memNow) {
+                        for ((key, value) in after) {
                             if (!snap.containsKey(key) || snap[key] != value) {
                                 putEntryInto(editor2, key, value)
-                                changed = true
                             }
                         }
-                        if (changed && !editor2.commit()) return false
+                        for (key in snap.keys) {
+                            if (!after.containsKey(key)) editor2.remove(key)
+                        }
+                        if (!editor2.commit()) return false
                     }
                 } catch (_: Exception) {
                 }
-                sharedPreferences = fresh
                 synchronized(listenerLock) {
                     for (l in listenerSet) {
                         try { fresh.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
@@ -70,6 +88,18 @@ class PreferencesManager(context: Context) {
                 false
             }
         }
+    }
+
+    private fun reopenStorage(): Boolean {
+        val opened = openPrefs(appContext)
+        sharedPreferences = opened.first
+        storageEncrypted = opened.second
+        synchronized(listenerLock) {
+            for (l in listenerSet) {
+                try { opened.first.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
+            }
+        }
+        return storageEncrypted
     }
 
     private fun putEntryInto(editor: android.content.SharedPreferences.Editor, key: String, value: Any?) {
@@ -308,6 +338,8 @@ class PreferencesManager(context: Context) {
         }
 
         fun recoverEncryptedStorage(context: Context): Boolean {
+            var current: PreferencesManager? = null
+            var reopened = false
             synchronized(this) {
                 try {
                     val app = context.applicationContext
@@ -324,10 +356,11 @@ class PreferencesManager(context: Context) {
                 } catch (_: Exception) {
                 }
                 sharedMasterKey = null
-                instance = null
+                current = instance
+                reopened = try { current?.reopenStorage() == true } catch (_: Exception) { false }
             }
             return try {
-                val ok = getInstance(context).isStorageEncrypted
+                val ok = if (current != null) reopened else getInstance(context).isStorageEncrypted
                 if (ok) {
                     try {
                         MessageQueue.getInstance(context).reopenAfterStorageReset()
