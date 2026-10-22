@@ -728,15 +728,30 @@ def cek_uji_baru(peringatan, diff):
                         "(aturan: uji logika murni baru)" % nama)
 
 
-def cek_pola_berisiko(peringatan, diff):
+def cek_pola_berisiko(peringatan, diff, rentang=""):
     for _, isi in tambah_kode(diff):
         if "System.out.println" in isi:
             peringatan.append("System.out.println di diff (pakai Log/Toast): " + isi.strip()[:80])
         if ".printStackTrace()" in isi:
             peringatan.append("printStackTrace di diff (telan/abaikan eksplisit): " + isi.strip()[:80])
-    cek = jalan("git", "diff", "--check")
+    cek = ""
+    try:
+        perintah = ["git", "diff", "--check"]
+        if rentang:
+            perintah.append(rentang)
+        hasil = subprocess.run(perintah, cwd=AKAR, capture_output=True, text=True, timeout=60)
+        cek = (hasil.stdout or "").strip()
+        if not rentang:
+            hasil_cached = subprocess.run(
+                ["git", "diff", "--cached", "--check"], cwd=AKAR,
+                capture_output=True, text=True, timeout=60)
+            lain = (hasil_cached.stdout or "").strip()
+            if lain:
+                cek = (cek + "\n" + lain).strip()
+    except Exception:
+        cek = ""
     if cek:
-        peringatan.append("Rapikan spasi diff --check: " + cek.strip().splitlines()[0][:100])
+        peringatan.append("Rapikan spasi diff --check: " + cek.splitlines()[0][:100])
 
 
 def utama():
@@ -818,7 +833,7 @@ def utama():
         if ada_uji:
             cek_uji_baru(peringatan, diff)
             cek_uji_ubah(peringatan, diff)
-        cek_pola_berisiko(peringatan, diff)
+        cek_pola_berisiko(peringatan, diff, args.rentang)
         cek_pola_boros(peringatan, diff)
         cek_izin_baru(peringatan, diff)
         cek_definisi_baru(peringatan, diff)

@@ -1,3 +1,9 @@
+## [1.6.459] - 2026-10-22
+### Fixed
+- PIN akses hasil restore backup tidak lagi ditulis ke `savedInstanceState` (yang bisa disimpan sistem ke disk); PIN ditahan sementara di memori proses sehingga rotasi layar tetap melanjutkan restore tanpa membocorkan PIN.
+- `clearCredentials()` kini juga menonaktifkan Device Admin aplikasi, sehingga hak admin tidak tertinggal aktif setelah kredensial dihapus.
+- `tools/verifikasi-path.py` membaca keluaran `git diff --check` dengan benar (exit 2 bukan berarti kosong) dan memeriksa rentang `--rentang` yang dipakai CI; spasi berlebih tidak lagi lolos diam.
+
 ## [1.6.458] - 2026-10-22
 ### Fixed
 - `sendFitted()` kini membedakan `SENT`/`QUEUED`/`DROPPED`: pesan yang ditolak permanen oleh Telegram (400) tidak lagi dianggap terkirim, sehingga kursor SMS/panggilan dan laporan crash tidak maju/terhapus tanpa pengiriman.

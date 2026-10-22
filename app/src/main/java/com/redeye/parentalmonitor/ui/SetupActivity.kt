@@ -57,7 +57,11 @@ class SetupActivity : AppCompatActivity() {
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
     private var pendingRestoreOwnerId = 0L
-    private var pendingRestoreAccessPin = ""
+    private var pendingRestoreAccessPin: String
+        get() = RestorePinHolder.value
+        set(value) {
+            RestorePinHolder.value = value
+        }
     private var fieldsLoaded = false
     private var loadedConfigured = false
     private var loadedSyncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
@@ -226,8 +230,12 @@ class SetupActivity : AppCompatActivity() {
         private const val MIN_RESTORE_PIN = 4
         private const val MAX_BACKUP_BYTES = 1_000_000L
         private const val STATE_RESTORE_OWNER = "state_restore_owner"
-        private const val STATE_RESTORE_PIN = "state_restore_pin"
         private const val STATE_BACKUP_BLOB = "state_backup_blob"
+
+        private object RestorePinHolder {
+            @Volatile
+            var value: String = ""
+        }
     }
 
     private fun isChatIdValid(chatId: String): Boolean {
@@ -374,7 +382,6 @@ class SetupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_setup)
 
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
-        pendingRestoreAccessPin = savedInstanceState?.getString(STATE_RESTORE_PIN).orEmpty()
         pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
 
         prefs = PreferencesManager.getInstance(this)
@@ -486,7 +493,6 @@ class SetupActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
-        outState.putString(STATE_RESTORE_PIN, pendingRestoreAccessPin)
         outState.putString(STATE_BACKUP_BLOB, pendingBackupBlob)
     }
 
@@ -553,6 +559,12 @@ class SetupActivity : AppCompatActivity() {
         try { MessageScheduler.cancelWatchdog(this) } catch (_: Exception) { }
         try { MessageScheduler.cancelBootRestart(this) } catch (_: Exception) { }
         try { com.redeye.parentalmonitor.utils.Liveness.cancel(this) } catch (_: Exception) { }
+        try {
+            val admin = ComponentName(this, AdminReceiver::class.java)
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            if (dpm.isAdminActive(admin)) dpm.removeActiveAdmin(admin)
+        } catch (_: Exception) {
+        }
         try {
             botTokenInput.setText("")
             chatIdInput.setText("")
