@@ -1851,6 +1851,7 @@ class MonitoringService : Service() {
                         android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
                     }
                 }
+                Unit
             } catch (_: Exception) {
                 try {
                     commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
