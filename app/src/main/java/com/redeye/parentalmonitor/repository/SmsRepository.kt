@@ -162,7 +162,7 @@ class SmsRepository(private val context: Context) {
     private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<SmsData> {
         val result = mutableListOf<SmsData>()
         try {
-            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, projection, selection, args, sortOrder, limit)
+            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, projection, selection, args, sortOrder, limit, strict)
             cursor?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)

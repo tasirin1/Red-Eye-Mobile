@@ -94,7 +94,7 @@ class CallLogRepository(private val context: Context) {
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
-            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder, limit)
+            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder, limit, strict)
             cursor?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(CallLog.Calls._ID)
                 val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)

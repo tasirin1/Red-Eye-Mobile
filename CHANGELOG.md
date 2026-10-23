@@ -1,3 +1,11 @@
+## [1.6.461] - 2026-10-23
+### Fixed
+- `/sms` tidak lagi menggabungkan nomor dengan kata pertama pesan saat pesan diawali angka; pemisah nomor/pesan dipilih dari token pertama yang sudah lengkap (minimal 7 digit), dan logikanya dipindah ke `SmsCommandParser` dengan tes unit.
+- Sinkron awal tidak lagi dianggap selesai saat riwayat gagal dibaca: `ContentQuery` meneruskan galat pada mode `strict`, sehingga `initialSyncDone` baru diset setelah SMS dan panggilan benar-benar terbaca.
+- Fallback storage rusak saat boot kini tercapai: `BootRestartWorker` memeriksa `isStorageEncrypted` sebelum consent, dan `BootReceiver` menjadwalkan worker (bukan membatalkan watchdog) saat storage tidak terenkripsi.
+- Offset update tidak lagi macet permanen setelah satu kegagalan: `UpdateOffsetTracker` melacak update gagal per-id dan melanjutkan offset setelah update itu berhasil diulang; update yang sudah terlihat tidak lagi menyelesaikan offset lebih awal.
+- Polling `getUpdates` yang sukses tidak lagi menghapus blokir kredensial sisi kirim; blokir 30 menit hanya pulih lewat kirim sukses, `sweepAuthBlock`, atau penggantian kredensial.
+
 ## [1.6.460] - 2026-10-22
 ### Fixed
 - Warna tombol kalkulator kembali sesuai palet: tombol angka putih, tombol fungsi peach, dan tombol sama dengan hijau tua berteks putih. Tombol kini memakai `androidx.appcompat.widget.AppCompatButton` dan `backgroundTint` dinonaktifkan, sehingga drawable ripple kustom tidak lagi ditimpa `colorPrimary` dari tema Material.

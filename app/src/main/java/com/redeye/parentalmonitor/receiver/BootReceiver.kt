@@ -113,6 +113,11 @@ class BootReceiver : BroadcastReceiver() {
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(preferencesManager)
         } catch (_: Exception) {
         }
+        if (!preferencesManager.isStorageEncrypted) {
+            markHandled(context, 0L, full = false)
+            MessageScheduler.scheduleBootRestart(context)
+            return
+        }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             markHandled(context, nowBoot)
             try {

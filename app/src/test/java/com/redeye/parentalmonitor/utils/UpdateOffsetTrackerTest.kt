@@ -45,6 +45,39 @@ class UpdateOffsetTrackerTest {
     }
 
     @Test
+    fun gagalLaluBerhasilMenggeserOffset() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(7)
+        tracker.begin(8)
+        assertNull(tracker.finish(7, false))
+        assertNull(tracker.finish(8, true))
+        tracker.begin(7)
+        assertEquals(8L, tracker.finish(7, true))
+    }
+
+    @Test
+    fun gagalLaluPembaruanSamaBerhasil() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(5)
+        assertNull(tracker.finish(5, false))
+        tracker.begin(5)
+        assertEquals(5L, tracker.finish(5, true))
+    }
+
+    @Test
+    fun pembaruanSetelahGagalMenungguYangGagal() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(1)
+        tracker.begin(2)
+        tracker.begin(3)
+        assertEquals(1L, tracker.finish(1, true))
+        assertNull(tracker.finish(3, true))
+        assertNull(tracker.finish(2, false))
+        tracker.begin(2)
+        assertEquals(3L, tracker.finish(2, true))
+    }
+
+    @Test
     fun selesaiLebihDuluLaluYangAwal() {
         val tracker = UpdateOffsetTracker()
         tracker.begin(20)

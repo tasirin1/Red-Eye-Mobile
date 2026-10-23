@@ -8,10 +8,11 @@ object ContentQuery {
         selection: String?,
         args: Array<String>?,
         sortOrder: String,
-        limit: Int = Int.MAX_VALUE
+        limit: Int = Int.MAX_VALUE,
+        strict: Boolean = false
     ): android.database.Cursor? {
         val safeLimit = if (limit < 0) Int.MAX_VALUE else limit
-        return try {
+        val cursor = try {
             if (safeLimit != Int.MAX_VALUE && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val bundle = android.os.Bundle().apply {
                     putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
@@ -42,7 +43,10 @@ object ContentQuery {
             throw e
         } catch (e: Exception) {
             android.util.Log.w("ContentQuery", "query failed: ${e.message}", e)
+            if (strict) throw e
             null
         }
+        if (cursor == null && strict) throw IllegalStateException("query returned null")
+        return cursor
     }
 }

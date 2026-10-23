@@ -110,13 +110,13 @@ class BootRestartWorker(
         if (com.redeye.parentalmonitor.utils.NetworkUtils.isAuthBlocked(prefs)) {
             return if (runAttemptCount < 5) Result.retry() else Result.success()
         }
-        if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
-            MessageScheduler.cancelWatchdog(appContext)
-            return Result.success()
-        }
         if (!prefs.isStorageEncrypted) {
             postStorageFallbackReminder(appContext)
             return if (runAttemptCount < 5) Result.retry() else Result.success()
+        }
+        if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
+            MessageScheduler.cancelWatchdog(appContext)
+            return Result.success()
         }
         if (!prefs.isConfigured()) {
             return Result.success()

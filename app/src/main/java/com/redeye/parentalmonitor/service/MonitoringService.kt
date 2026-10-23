@@ -37,6 +37,7 @@ import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.RestoreCode
 import com.redeye.parentalmonitor.utils.RestoreRules
 import com.redeye.parentalmonitor.utils.SettingsBackup
+import com.redeye.parentalmonitor.utils.SmsCommandParser
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
@@ -276,6 +277,10 @@ class MonitoringService : Service() {
             }
             seen
         }
+    }
+
+    private fun forgetSeen(updateId: Long) {
+        synchronized(handledUpdateIds) { handledUpdateIds.remove(updateId) }
     }
 
     companion object {
@@ -1656,10 +1661,6 @@ class MonitoringService : Service() {
         }
         if (!response.isSuccessful || response.body()?.ok != true) return false
         offsetFailCount = 0
-        try {
-            preferencesManager.setCredentialError("", 0L)
-        } catch (_: Exception) {
-        }
 
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
@@ -1667,7 +1668,6 @@ class MonitoringService : Service() {
             beginUpdateTrack(update.updateId)
             val seen = markSeen(handledUpdateIds, update.updateId)
             if (seen) {
-                finishUpdateTrack(update.updateId, true)
                 continue
             }
             var offsetDeferred = false
@@ -1694,6 +1694,7 @@ class MonitoringService : Service() {
                         } catch (e: Exception) {
                             android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
                         } finally {
+                            if (!handled) forgetSeen(update.updateId)
                             finishUpdateTrack(update.updateId, handled)
                         }
                     }
@@ -1811,6 +1812,7 @@ class MonitoringService : Service() {
                             } catch (e: Exception) {
                                 android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                             } finally {
+                                if (!handled) forgetSeen(update.updateId)
                                 finishUpdateTrack(update.updateId, handled)
                             }
                         }
@@ -1823,7 +1825,10 @@ class MonitoringService : Service() {
                 delivered = false
                 android.util.Log.e("MonitoringService", "Update dispatch error: ${redactToken(e.message)}")
             } finally {
-                if (!offsetDeferred) finishUpdateTrack(update.updateId, delivered)
+                if (!offsetDeferred) {
+                    if (!delivered) forgetSeen(update.updateId)
+                    finishUpdateTrack(update.updateId, delivered)
+                }
             }
         }
         return true
@@ -3775,35 +3780,12 @@ class MonitoringService : Service() {
 
     private suspend fun handleSmsCommand(arg: String, senderId: String) {
         val trimmedArg = arg.trim()
-        var number = ""
-        var smsText = ""
-        var normalized = ""
+        val parsedArg = SmsCommandParser.parse(trimmedArg)
+        val number = parsedArg?.number ?: ""
+        val smsText = parsedArg?.text ?: ""
+        val normalized = parsedArg?.normalized ?: ""
         val wholeCandidate = trimmedArg.filter { !it.isWhitespace() && it != '-' && it != '(' && it != ')' && it != '.' }
         val wholeIsNumber = wholeCandidate.all { it.isDigit() || it == '+' } && SMS_NUMBER_REGEX.matchEntire(wholeCandidate) != null
-        for (i in trimmedArg.indices) {
-            if (!trimmedArg[i].isWhitespace()) continue
-            val candidate = trimmedArg.substring(0, i).trim()
-            val rest = trimmedArg.substring(i).trim()
-            if (candidate.isEmpty() || rest.isEmpty()) continue
-            var badChar = false
-            var plusCount = 0
-            val digits = StringBuilder(candidate.length + 1)
-            if (candidate.startsWith("+")) digits.append('+')
-            for (c in candidate) {
-                when {
-                    c.isDigit() -> digits.append(c)
-                    c == '+' -> { plusCount++; if (!candidate.startsWith("+") || plusCount > 1) badChar = true }
-                    c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
-                    else -> badChar = true
-                }
-            }
-            val parsed = digits.toString()
-            if (!badChar && plusCount <= 1 && SMS_NUMBER_REGEX.matches(parsed)) {
-                number = candidate
-                normalized = parsed
-                smsText = rest
-            }
-        }
         if (trimmedArg.isEmpty() || !trimmedArg.any { it.isWhitespace() } || wholeIsNumber) {
             sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
         } else if (number.isEmpty() || smsText.isEmpty()) {
