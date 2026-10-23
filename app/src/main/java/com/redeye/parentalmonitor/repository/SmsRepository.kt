@@ -93,6 +93,7 @@ class SmsRepository(private val context: Context) {
         )
         val exactMatched = filterByNumber(exactRows, norm, wantAlt) { it.address }
         if (exactMatched.isNotEmpty()) return exactMatched.take(safeLimit)
+        if (norm.length < 10) return emptyList()
         val fuzzy = buildFuzzy(norm)
         val rows = querySms(
             selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
@@ -101,7 +102,7 @@ class SmsRepository(private val context: Context) {
             limit = safeLimit
         )
         val matched = filterByNumber(rows, norm, wantAlt) { it.address }
-        if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
+        if (matched.isNotEmpty()) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE

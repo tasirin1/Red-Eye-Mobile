@@ -8,5 +8,6 @@ data class QueuedMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val elapsedAt: Long = 0L,
     val retryCount: Int = 0,
-    val priority: Boolean = false
+    val priority: Boolean = false,
+    val bootAt: Long = 0L
 )

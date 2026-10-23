@@ -638,6 +638,19 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
             try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
+            try { prefs.trail24 = "" } catch (_: Exception) { }
+            try { prefs.homeLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
+            try { prefs.homeLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
+            try { prefs.homeRadiusM = 0 } catch (_: Exception) { }
+            try { prefs.homeState = 0 } catch (_: Exception) { }
+            try { prefs.schoolLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
+            try { prefs.schoolLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
+            try { prefs.schoolRadiusM = 0 } catch (_: Exception) { }
+            try { prefs.schoolState = 0 } catch (_: Exception) { }
+            try { prefs.schoolAlertDate = "" } catch (_: Exception) { }
+            try { prefs.clearAuditLog() } catch (_: Exception) { }
+            try { prefs.watchKeywords = "" } catch (_: Exception) { }
+            try { prefs.watchNumbers = "" } catch (_: Exception) { }
             var recovered = false
             val wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
             if (wasVolatile) {
@@ -698,7 +711,8 @@ class SetupActivity : AppCompatActivity() {
             val storedChatId = input.storedChatId
             val token = input.token
             var chatId = input.chatId
-            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" }).ifEmpty { pendingRestoreAccessPin }
+            val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
+            val accessPin = resolveStored(rawAccessPin, storedAccessPin).ifEmpty { pendingRestoreAccessPin.ifEmpty { storedAccessPin } }
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
@@ -1111,7 +1125,8 @@ class SetupActivity : AppCompatActivity() {
             val storedChatId = input.storedChatId
             val token = input.token
             val chatId = input.chatId
-            val accessPin = resolveStored(rawAccessPin, try { prefs.accessPin } catch (_: Exception) { "" }).ifEmpty { pendingRestoreAccessPin }
+            val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
+            val accessPin = resolveStored(rawAccessPin, storedAccessPin).ifEmpty { pendingRestoreAccessPin.ifEmpty { storedAccessPin } }
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
                 if (myTest != testSeq.get()) return@launch

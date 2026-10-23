@@ -149,6 +149,7 @@ class CallLogRepository(private val context: Context) {
         )
         val exactMatched = filterCallsByNumber(exactRows, norm, wantAlt)
         if (exactMatched.isNotEmpty()) return exactMatched.take(safeLimit)
+        if (norm.length < 10) return emptyList()
         val fuzzy = buildFuzzy(norm)
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
@@ -157,7 +158,7 @@ class CallLogRepository(private val context: Context) {
             limit = safeLimit
         )
         val matched = filterCallsByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty() || norm.length < 10) return matched.take(safeLimit)
+        if (matched.isNotEmpty()) return matched.take(safeLimit)
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE

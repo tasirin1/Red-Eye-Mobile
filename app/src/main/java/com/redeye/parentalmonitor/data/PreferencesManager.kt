@@ -535,6 +535,15 @@ class PreferencesManager(context: Context) {
     val auditLog: String
         get() = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
 
+    fun clearAuditLog() {
+        synchronized(auditLock) {
+            try {
+                sharedPreferences.edit().remove(KEY_AUDIT_LOG).apply()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun appendAudit(event: String, source: String) {
         synchronized(auditLock) {
             try {

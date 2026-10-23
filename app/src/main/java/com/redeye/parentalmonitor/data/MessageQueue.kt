@@ -171,14 +171,15 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority))
+                val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
+                volatileQueue.add(item)
                 while (volatileQueue.size > cap) {
                     evictOldestLocked(volatileQueue)
                 }
-                return false
+                return volatileQueue.any { it === item }
             }
             val queue = readLocked().toMutableList()
-            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority))
+            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt()))
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
@@ -193,17 +194,18 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                for (message in messages) volatileQueue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
+                val added = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
+                volatileQueue.addAll(added)
                 var evictedVolatile = 0
                 while (volatileQueue.size > cap) {
                     evictOldestLocked(volatileQueue, persist = false)
                     evictedVolatile++
                 }
                 if (evictedVolatile > 0) persistDropCountsLocked()
-                return false
+                return added.any { item -> volatileQueue.any { it === item } }
             }
             val queue = readLocked().toMutableList()
-            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority))
+            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()))
             var evictedBatch = 0
             while (queue.size > cap) {
                 evictOldestLocked(queue, persist = false)
@@ -278,28 +280,33 @@ class MessageQueue private constructor(context: Context) {
         android.util.Log.w("MessageQueue", "Queue full, dropped oldest message")
     }
 
+    private fun bootWallAt(): Long = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
+
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
         val now = try {
             android.os.SystemClock.elapsedRealtime()
         } catch (_: Exception) {
             0L
         }
-        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff, now) }
-        if (items.all { isFresh(it, wallCutoff, now) }) return items
-        val fresh = items.filter { isFresh(it, wallCutoff, now) }
-        if (fresh.size * 2 < items.size) {
-            val monoTracked = items.count { it.elapsedAt > 0L && now >= it.elapsedAt }
-            if (monoTracked * 2 < items.size) {
-                android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
-                return items
-            }
+        val bootAt = try {
+            bootWallAt()
+        } catch (_: Exception) {
+            0L
+        }
+        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff, now, bootAt) }
+        if (items.all { isFresh(it, wallCutoff, now, bootAt) }) return items
+        val fresh = items.filter { isFresh(it, wallCutoff, now, bootAt) }
+        if (fresh.size * 2 < items.size && items.all { it.bootAt <= 0L }) {
+            android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
+            return items
         }
         return fresh
     }
 
-    private fun isFresh(q: QueuedMessage, wallCutoff: Long, now: Long): Boolean {
+    private fun isFresh(q: QueuedMessage, wallCutoff: Long, now: Long, bootAt: Long): Boolean {
         val mark = q.elapsedAt
-        if (mark > 0L) {
+        val sameBoot = q.bootAt > 0L && bootAt > 0L && kotlin.math.abs(q.bootAt - bootAt) <= 120_000L
+        if (mark > 0L && sameBoot) {
             return if (now < mark) {
                 q.timestamp >= wallCutoff
             } else {

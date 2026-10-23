@@ -2939,7 +2939,7 @@ class MonitoringService : Service() {
         }
         val text = blob ?: return
         try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
-        if (!SettingsBackup.looksLikeBackup(text)) {
+        if (!SettingsBackup.looksStructurallyValid(text)) {
             pendingRestore = null
             sendToTelegram("File bukan backup Red Eye yang valid.")
             return

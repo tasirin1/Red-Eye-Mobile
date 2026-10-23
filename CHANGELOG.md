@@ -1,3 +1,12 @@
+## [1.6.462] - 2026-10-23
+### Fixed
+- Antrean pesan mode volatil kini melaporkan pesan yang benar-benar masuk antrean, sehingga `sendFitted` tidak lagi menganggapnya `DROPPED`, tidak mengulang kursor SMS, dan worker langsung dijadwalkan.
+- Pesan kedaluwarsa tidak lagi dipertahankan setelah reboot: setiap pesan menyimpan penanda boot, dan pemeriksaan umur memakai waktu dinding untuk pesan dari boot sebelumnya.
+- Restore lewat Telegram memakai validasi struktur file (`looksStructurallyValid`), sehingga file rusak tidak lagi dihitung sebagai PIN salah dan menghabiskan tiga percobaan.
+- Pencarian riwayat untuk nomor pendek tidak lagi menjalankan `LIKE '%...%'` ke seluruh tabel; pencarian fuzzy hanya untuk nomor minimal 10 digit.
+- Menyimpan pengaturan dengan kolom PIN kosong tidak lagi menghapus PIN akses yang tersimpan; perilakunya kini sama dengan tombol Tes.
+- Hapus kredensial ikut membersihkan jejak lokasi 24 jam, titik rumah/sekolah, log audit, kata pantau, dan nomor pantau milik pemilik lama.
+
 ## [1.6.461] - 2026-10-23
 ### Fixed
 - `/sms` tidak lagi menggabungkan nomor dengan kata pertama pesan saat pesan diawali angka; pemisah nomor/pesan dipilih dari token pertama yang sudah lengkap (minimal 7 digit), dan logikanya dipindah ke `SmsCommandParser` dengan tes unit.
