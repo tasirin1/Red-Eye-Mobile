@@ -1679,14 +1679,12 @@ class MonitoringService : Service() {
                     serviceScope.launch {
                         var handled = false
                         try {
-                            controlLock.withLock {
-                                try {
-                                    handleCallbackQuery(callback)
-                                } catch (e: kotlinx.coroutines.CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
-                                }
+                            try {
+                                handleCallbackQuery(callback)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
                             }
                             handled = true
                         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1708,10 +1706,37 @@ class MonitoringService : Service() {
                     val head = headArg.getOrNull(0).orEmpty()
                     val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val arg = headArg.getOrNull(1)?.trim().orEmpty()
-                    if (command == "/login" || command == "/start") {
+                    val loginOnly = command == "/login" || (command == "/start" && arg.isEmpty())
+                    if (loginOnly) {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
-                        if (handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)) continue
-                        if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && command == "/start" && arg.isNotEmpty() && accessPin.isNotEmpty()) {
+                        offsetDeferred = true
+                        serviceScope.launch {
+                            var handled = false
+                            try {
+                                commandLock.withLock {
+                                    try {
+                                        handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                                    } catch (e: kotlinx.coroutines.CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MonitoringService", "Login dispatch error: ${redactToken(e.message)}")
+                                    }
+                                }
+                                handled = true
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                android.util.Log.e("MonitoringService", "Login dispatch error: ${redactToken(e.message)}")
+                            } finally {
+                                if (!handled) forgetSeen(update.updateId)
+                                finishUpdateTrack(update.updateId, handled)
+                            }
+                        }
+                        continue
+                    }
+                    if (command == "/start" && arg.isNotEmpty()) {
+                        val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
+                        if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && accessPin.isNotEmpty()) {
                             sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
                             continue
                         }
@@ -1905,7 +1930,7 @@ class MonitoringService : Service() {
         }
         if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
             if (!ownerOk) return
-            armInput("/" + aksi.command, aksi.view)
+            controlLock.withLock { armInput("/" + aksi.command, aksi.view) }
             return
         }
         val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
@@ -1923,7 +1948,9 @@ class MonitoringService : Service() {
                 return
             }
         }
-        handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+        controlLock.withLock {
+            handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+        }
     }
 
     private suspend fun editMenuMessage(chatId: String, messageId: Long, layar: MenuScreen): Boolean {

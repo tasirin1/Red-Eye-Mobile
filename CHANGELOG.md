@@ -1,3 +1,10 @@
+## [1.6.463] - 2026-10-23
+### Fixed
+- `/login` dan `/start` tanpa argumen tidak lagi menahan loop polling: penanganannya dijalankan di coroutine dengan `commandLock`, dan offset baru diselesaikan setelah login selesai.
+- Callback tombol menu tidak lagi memegang `controlLock` selama `answerCallback`, `editMenuMessage`, atau pengiriman pesan; lock hanya dipegang saat eksekusi perintah dan `armInput`.
+- Worker antrean pesan kini punya tenggat total 8 menit dan tenggat per pesan chunk; sisa pesan dijadwalkan ulang sehingga tidak melewati batas ±10 menit WorkManager.
+- Rantai `scheduleMessageSendNext` dibatasi `MAX_OUTSTANDING_SEND` dengan reservasi atomik; slot dikembalikan bila enqueue gagal sehingga antrean tidak tumbuh tanpa batas.
+
 ## [1.6.462] - 2026-10-23
 ### Fixed
 - Antrean pesan mode volatil kini melaporkan pesan yang benar-benar masuk antrean, sehingga `sendFitted` tidak lagi menganggapnya `DROPPED`, tidak mengulang kursor SMS, dan worker langsung dijadwalkan.

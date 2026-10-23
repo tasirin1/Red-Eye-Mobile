@@ -77,6 +77,7 @@ class SendMessageWorker(
         var flushedSent = 0
 
         var queueCleared = false
+        val runDeadlineAt = android.os.SystemClock.elapsedRealtime() + 8 * 60_000L
         for (queuedMessage in queue) {
             try {
                 if (messageQueue.queueGeneration() != runGen) {
@@ -88,7 +89,7 @@ class SendMessageWorker(
             if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
                 return Result.success()
             }
-            if (processed >= 20) {
+            if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
                 break
             }
             val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
@@ -102,7 +103,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -452,7 +453,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -468,6 +469,24 @@ class SendMessageWorker(
         var remainderQueued = false
         var rejected = 0
         for ((idx, part) in parts.withIndex()) {
+            if (android.os.SystemClock.elapsedRealtime() >= deadlineAt) {
+                if (idx == 0) return SendOutcome.Failed
+                val queued = try {
+                    messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                } catch (_: Exception) {
+                    false
+                }
+                if (!queued) return SendOutcome.Failed
+                try {
+                    if (origId != null) messageQueue.removeMessages(listOf(origId))
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
+                return SendOutcome.Sent
+            }
             when (val outcome = sendSingleChunk(part, botToken, chatId)) {
                 is SendOutcome.Sent -> {
                     noteSendOk()
@@ -669,7 +688,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE): SendOutcome {
         return try {
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(
@@ -680,7 +699,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId) else sendPlainFallback(message, botToken, chatId)
+                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 val retryAfterSecs = try {

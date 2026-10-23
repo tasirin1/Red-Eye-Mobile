@@ -68,6 +68,12 @@ object MessageScheduler {
     }
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
+        var reserved = false
+        while (!reserved) {
+            val cur = outstandingSends.get()
+            if (cur >= MAX_OUTSTANDING_SEND) return true
+            reserved = outstandingSends.compareAndSet(cur, cur + 1)
+        }
         return try {
             val delayMs = initialDelayMs.coerceAtLeast(0L)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
@@ -78,10 +84,10 @@ object MessageScheduler {
             val policyNext = ExistingWorkPolicy.APPEND_OR_REPLACE
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
-            outstandingSends.updateAndGet { if (it <= 0) 1 else it }
             nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
             true
         } catch (e: Exception) {
+            outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false
         }
