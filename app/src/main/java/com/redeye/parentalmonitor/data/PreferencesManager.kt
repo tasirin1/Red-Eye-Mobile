@@ -7,6 +7,8 @@ import androidx.security.crypto.MasterKey
 
 class PreferencesManager(context: Context) {
 
+    enum class StorageRecovery { FAILED, RESET }
+
     private val appContext = context.applicationContext
 
     private val securePrefs: Pair<SharedPreferences, Boolean> = openPrefs(appContext)
@@ -392,8 +394,6 @@ class PreferencesManager(context: Context) {
                 false
             }
         }
-
-        enum class StorageRecovery { FAILED, RESET }
 
         fun resetEncryptedStorage(context: Context): StorageRecovery {
             var current: PreferencesManager? = null
