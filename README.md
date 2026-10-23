@@ -33,7 +33,7 @@ Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat ora
 
 1. Buka tab Actions > Build APK > Run workflow. Atau `push` ke `main` atau `push` tag `vX.Y.Z`.
 2. Tiap run langsung jadi dua file di artifacts `apks`: `redeye-debug.apk` dan `redeye-release.apk` (signed; tanpa keystore rilis, varian release memakai debug key).
-3. Tiap ada gangguan 429 dari Maven, workflow retry sendiri sampai 3x. Run untuk ref yang sama (mis. push beruntun ke `main`) dibatalkan otomatis; push tag rilis tidak dibatalkan. Ref berbeda (main/PR/tag) bisa berjalan bersamaan.
+3. Tiap ada gangguan jaringan saat unduh dependensi, workflow mencoba ulang sekali (total dua percobaan). Run untuk ref yang sama (mis. push beruntun ke `main`) dibatalkan otomatis; push tag rilis tidak dibatalkan. Ref berbeda (main/PR/tag) bisa berjalan bersamaan.
 4. Buat file rilis resmi, `push` tag `vX.Y.Z` (wajib ada keystore rilis di Secrets, kalau tidak build tag gagal tegas). Nanti muncul di halaman Releases sebagai `redeye-vX.Y.Z-debug.apk` dan `redeye-vX.Y.Z-release.apk` (signed).
 
 Secret opsional di Settings > Secrets and variables > Actions:

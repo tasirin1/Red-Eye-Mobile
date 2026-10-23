@@ -191,4 +191,5 @@ jobs:
         with:
           files: |
             release-assets/apks/redeye-*.apk
+          fail_on_unmatched_files: true
           generate_release_notes: true

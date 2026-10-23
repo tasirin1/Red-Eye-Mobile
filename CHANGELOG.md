@@ -1,3 +1,8 @@
+## [1.6.464] - 2026-10-23
+### Changed
+- Rilis GitHub kini gagal tegas bila pola APK tidak menemukan berkas (`fail_on_unmatched_files`), sehingga tag tanpa APK tidak lagi menghasilkan rilis kosong.
+- README menyebut perilaku retry jaringan workflow yang sebenarnya (satu kali ulang, total dua percobaan), bukan 3x.
+
 ## [1.6.463] - 2026-10-23
 ### Fixed
 - `/login` dan `/start` tanpa argumen tidak lagi menahan loop polling: penanganannya dijalankan di coroutine dengan `commandLock`, dan offset baru diselesaikan setelah login selesai.
