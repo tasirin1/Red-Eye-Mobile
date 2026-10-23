@@ -4081,7 +4081,12 @@ class MonitoringService : Service() {
                 }
                 appendLine("Auth: " + if (credErr.isEmpty()) "OK" else "GAGAL ($credErr)")
                 appendLine("Antrean: ${messageQueue.getQueueSize()}")
-                appendLine("Penyimpanan: " + if (preferencesManager.isStorageEncrypted) "terenkripsi" else "volatil")
+                val storageReason = try { PreferencesManager.storageFailureReason } catch (_: Exception) { "" }
+                appendLine("Penyimpanan: " + when {
+                    preferencesManager.isStorageEncrypted -> "terenkripsi"
+                    storageReason.isNotEmpty() -> "volatil ($storageReason)"
+                    else -> "volatil"
+                })
                 val camErr = try {
                     preferencesManager.lastCameraErrorNotice
                 } catch (_: Exception) {

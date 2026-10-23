@@ -651,11 +651,16 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.clearAuditLog() } catch (_: Exception) { }
             try { prefs.watchKeywords = "" } catch (_: Exception) { }
             try { prefs.watchNumbers = "" } catch (_: Exception) { }
-            var recovered = false
+            var storageReset = false
             val wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
             if (wasVolatile) {
-                recovered = try { PreferencesManager.recoverEncryptedStorage(this@SetupActivity) } catch (_: Exception) { false }
-                if (recovered) {
+                val outcome = try {
+                    PreferencesManager.resetEncryptedStorage(this@SetupActivity)
+                } catch (_: Exception) {
+                    PreferencesManager.StorageRecovery.FAILED
+                }
+                storageReset = outcome == PreferencesManager.StorageRecovery.RESET
+                if (storageReset) {
                     try { prefs = PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
                 }
             }
@@ -664,7 +669,12 @@ class SetupActivity : AppCompatActivity() {
                 loadedConfigured = false
                 loadedSyncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL
                 loadedCameraInterval = 1
-                Toast.makeText(this@SetupActivity, getString(if (recovered) R.string.setup_storage_recovered else R.string.setup_credentials_cleared), Toast.LENGTH_SHORT).show()
+                val messageRes = when {
+                    storageReset -> R.string.setup_storage_recovered
+                    wasVolatile -> R.string.setup_storage_reset_failed
+                    else -> R.string.setup_credentials_cleared
+                }
+                Toast.makeText(this@SetupActivity, getString(messageRes), Toast.LENGTH_SHORT).show()
                 try {
                     updateStatus()
                 } catch (_: Exception) {
@@ -1762,13 +1772,19 @@ class SetupActivity : AppCompatActivity() {
             val authLine = if (credErr.isNotEmpty()) "\n" + getString(R.string.setup_status_auth_failed, credErr) else ""
             val usageOn = try { com.redeye.parentalmonitor.utils.UsageAccess.granted(this@SetupActivity) } catch (_: Exception) { false }
             val usageLine = "\n" + getString(R.string.setup_status_usage_fmt, getString(if (usageOn) R.string.setup_status_ready else R.string.setup_status_usage_off))
+            val storageReason = try { PreferencesManager.storageFailureReason } catch (_: Exception) { "" }
+            val storageLabel = when {
+                encrypted -> getString(R.string.setup_status_storage_enc)
+                storageReason.isNotEmpty() -> getString(R.string.setup_status_storage_plain_reason, storageReason)
+                else -> getString(R.string.setup_status_storage_plain)
+            }
             val body = getString(
                 R.string.setup_status_fmt,
                 if (configured) "OK" else "-",
                 if (perms) "OK" else "-",
                 if (running && paused) getString(R.string.monitoring_paused) else if (running) getString(R.string.monitoring_active) else getString(R.string.monitoring_inactive)
             ) + "\n" + getString(R.string.setup_status_battery_fmt, getString(if (exempt) R.string.setup_status_battery_free else R.string.setup_status_battery_limited)) +
-                "\n" + getString(R.string.setup_status_storage_fmt, getString(if (encrypted) R.string.setup_status_storage_enc else R.string.setup_status_storage_plain)) +
+                "\n" + getString(R.string.setup_status_storage_fmt, storageLabel) +
                 authLine + ownerLine + livenessLine + usageLine +
                 "\n" + getString(R.string.setup_status_notif_fmt, getString(if (listener && notifOn) R.string.setup_status_forwarded else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_shot_fmt, getString(if (shotOn) R.string.setup_status_allowed else R.string.setup_status_off)) +

@@ -19,9 +19,10 @@
     <string name="channel_desc">Calculator service status</string>
     <string name="never">Never</string>
     <string name="settings_saved">Settings saved</string>
-    <string name="setup_save_no_storage">Not saved permanently — secure storage (keystore) is unavailable on this device, so credentials cannot be stored</string>
+    <string name="setup_save_no_storage">Not saved permanently — secure storage (keystore) is unavailable on this device. Hold Save to reset encrypted storage, then save again.</string>
     <string name="setup_credentials_cleared">Credentials cleared</string>
     <string name="setup_storage_recovered">Encrypted storage reset. Enter the bot token again.</string>
+    <string name="setup_storage_reset_failed">Credentials cleared, but encrypted storage could not be reset. Restart the app, then hold Save to try again.</string>
     <string name="setup_clear_title">Clear credentials?</string>
     <string name="setup_clear_text">This removes the bot token, stops monitoring, and drops the queued messages. Continue?</string>
     <string name="setup_clear_hint">Token and chat ID are required. To remove credentials, hold the Save button.</string>
@@ -129,7 +130,7 @@
     <string name="resume_title">Service paused</string>
     <string name="resume_text">Open the app to restore monitoring</string>
     <string name="storage_fallback_title">Secure storage unavailable</string>
-    <string name="storage_fallback_text">Credentials cannot be stored, so monitoring is stopped. Open the app, then save them again from Setup.</string>
+    <string name="storage_fallback_text">Credentials cannot be stored, so monitoring is stopped. Open the app, hold Save to reset encrypted storage if needed, then save them again.</string>
     <string name="admin_disabled">⚠️ Protection disabled!</string>
     <string name="admin_disable_warning">⚠️ Caution! Device Admin must be disabled before uninstalling this app!</string>
     <string name="setup_status_owner_known">Owner: recognized</string>
@@ -157,6 +158,7 @@
     <string name="setup_status_storage_fmt">Storage: %1$s</string>
     <string name="setup_status_storage_enc">encrypted</string>
     <string name="setup_status_storage_plain">temporary (keystore unavailable)</string>
+    <string name="setup_status_storage_plain_reason">temporary (keystore unavailable: %1$s)</string>
     <string name="setup_status_notif_fmt">Notifications: %1$s</string>
     <string name="setup_status_forwarded">forwarded</string>
     <string name="setup_status_off">off</string>

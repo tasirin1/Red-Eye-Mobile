@@ -1,3 +1,13 @@
+## [1.6.465] - 2026-10-23
+### Fixed
+- Membuka penyimpanan terenkripsi kini dicoba tiga kali dengan `MasterKey` baru sebelum jatuh ke mode volatil, sehingga kegagalan Keystore sesaat (misalnya saat boot) tidak langsung membuat kredensial tampak hilang.
+- Membuka Setup atau menyimpan kredensial dari mode volatil kini mencoba membuka ulang penyimpanan terenkripsi tanpa menghapus data (dua percobaan dengan `MasterKey` baru), jadi kunci yang sempat tak tersedia bisa pulih tanpa mengorbankan antrean dan pengaturan.
+- Reset penyimpanan terenkripsi dipisah ke jalur eksplisit `resetEncryptedStorage()` yang hanya dipakai tombol hapus kredensial; bila reset gagal, Setup melaporkannya terpisah dan tidak lagi menampilkan "kredensial dihapus" seolah semuanya beres.
+### Added
+- Status Setup dan laporan galat Telegram menampilkan alasan teknis kegagalan Keystore (jenis exception dan pesan singkat) agar kasus per perangkat bisa didiagnosis.
+### Changed
+- Pesan "penyimpanan aman tak tersedia" kini menyebut langkah perbaikan: simpan ulang, atau tahan tombol Simpan untuk mereset penyimpanan terenkripsi.
+
 ## [1.6.464] - 2026-10-23
 ### Changed
 - Rilis GitHub kini gagal tegas bila pola APK tidak menemukan berkas (`fail_on_unmatched_files`), sehingga tag tanpa APK tidak lagi menghasilkan rilis kosong.

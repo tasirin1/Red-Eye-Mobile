@@ -19,9 +19,10 @@
     <string name="channel_desc">Status layanan kalkulator</string>
     <string name="never">Tidak pernah</string>
     <string name="settings_saved">Setingan tersimpan</string>
-    <string name="setup_save_no_storage">Tidak tersimpan permanen — penyimpanan aman (keystore) tak tersedia di HP ini, kredensial tak bisa disimpan</string>
+    <string name="setup_save_no_storage">Tidak tersimpan permanen — penyimpanan aman (keystore) tak tersedia di HP ini. Tahan tombol Simpan untuk mereset penyimpanan terenkripsi, lalu simpan lagi.</string>
     <string name="setup_credentials_cleared">Kredensial dihapus</string>
     <string name="setup_storage_recovered">Penyimpanan terenkripsi direset. Isi lagi token bot.</string>
+    <string name="setup_storage_reset_failed">Kredensial dihapus, tetapi penyimpanan terenkripsi gagal direset. Mulai ulang aplikasi, lalu tahan tombol Simpan untuk mencoba lagi.</string>
     <string name="setup_clear_title">Hapus kredensial?</string>
     <string name="setup_clear_text">Ini menghapus token bot, menghentikan monitoring, dan membuang antrean pesan. Lanjut?</string>
     <string name="setup_clear_hint">Token dan chat ID wajib diisi. Untuk menghapus kredensial, tahan tombol Simpan.</string>
@@ -129,7 +130,7 @@
     <string name="resume_title">Layanan dijeda</string>
     <string name="resume_text">Buka aplikasi untuk memulihkan pemantauan</string>
     <string name="storage_fallback_title">Penyimpanan aman tak tersedia</string>
-    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Buka aplikasi, lalu simpan ulang dari Setup.</string>
+    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Buka aplikasi, tahan tombol Simpan untuk mereset penyimpanan terenkripsi bila perlu, lalu simpan ulang.</string>
     <string name="admin_disabled">⚠️ Proteksi dimatikan!</string>
     <string name="admin_disable_warning">⚠️ Hati-hati! Admin Perangkat harus dimatikan sebelum uninstall aplikasi ini!</string>
     <string name="setup_status_owner_known">Pemilik: dikenali</string>
@@ -157,6 +158,7 @@
     <string name="setup_status_storage_fmt">Penyimpanan: %1$s</string>
     <string name="setup_status_storage_enc">terenkripsi</string>
     <string name="setup_status_storage_plain">sementara (keystore tak tersedia)</string>
+    <string name="setup_status_storage_plain_reason">sementara (keystore tak tersedia: %1$s)</string>
     <string name="setup_status_notif_fmt">Notifikasi: %1$s</string>
     <string name="setup_status_forwarded">diteruskan</string>
     <string name="setup_status_off">mati</string>
