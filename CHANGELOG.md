@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.472] - 2026-10-24
 ### Fixed
 - Respons 401/403 dari permintaan yang memakai kredensial lama tidak lagi memblokir kredensial baru.
 
