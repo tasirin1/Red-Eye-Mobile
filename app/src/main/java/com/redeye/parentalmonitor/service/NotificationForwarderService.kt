@@ -400,7 +400,16 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
             }
         }
-        val key = pkg + "|" + keyTitle.hashCode() + "|" + keyBody.hashCode() + "|" + keyTitle.length + "|" + keyBody.length
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        for (part in arrayOf(pkg, keyTitle, keyBody)) {
+            val bytes = part.toByteArray(Charsets.UTF_8)
+            digest.update((bytes.size ushr 24).toByte())
+            digest.update((bytes.size ushr 16).toByte())
+            digest.update((bytes.size ushr 8).toByte())
+            digest.update(bytes.size.toByte())
+            digest.update(bytes)
+        }
+        val key = android.util.Base64.encodeToString(digest.digest(), android.util.Base64.NO_WRAP)
         val priority = try { isPriorityNotif(pkg, keyTitle, keyBody) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L

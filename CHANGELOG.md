@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Deduplikasi notifikasi memakai SHA-256 dengan input berpanjang eksplisit, sehingga teks berbeda dengan `hashCode()` yang sama tidak lagi dianggap notifikasi duplikat.
+
 ## [1.6.469] - 2026-10-24
 ### Fixed
 - `/history` kini menyebut pencarian belum lengkap saat 2.000 entri terbaru habis dipindai tanpa hasil, agar hasil kosong tidak dikira pasti tak ada riwayat.
