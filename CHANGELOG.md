@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+## [1.6.471] - 2026-10-24
 ### Removed
 - Hapus `SettingsBackup.looksLikeBackup()` yang sudah tidak memiliki pemanggil; pemeriksaan backup memakai `looksStructurallyValid()`.
 
