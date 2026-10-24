@@ -82,15 +82,6 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
-    private fun buildFuzzy(norm: String): String {
-        val out = StringBuilder(norm.length * 2 + 2)
-        out.append('%')
-        for (c in norm) {
-            out.append(c).append('%')
-        }
-        return out.toString()
-    }
-
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<CallData> {
         val result = mutableListOf<CallData>()
         try {
@@ -130,10 +121,10 @@ class CallLogRepository(private val context: Context) {
         return result
     }
 
-    fun getCallsForNumber(digits: String, limit: Int = 50): List<CallData> {
+    fun getCallsForNumber(digits: String, limit: Int = 50): NumberHistoryResult<CallData> {
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
-        if (norm.isEmpty()) return emptyList()
+        if (norm.isEmpty()) return NumberHistoryResult(emptyList())
         val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val variants = mutableListOf(norm, "+$norm")
         if (wantAlt != null) {
@@ -148,9 +139,9 @@ class CallLogRepository(private val context: Context) {
             limit = safeLimit
         )
         val exactMatched = filterCallsByNumber(exactRows, norm, wantAlt)
-        if (exactMatched.isNotEmpty()) return exactMatched.take(safeLimit)
-        if (norm.length < 10) return emptyList()
-        val fuzzy = buildFuzzy(norm)
+        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
+        if (norm.length < 10) return NumberHistoryResult(emptyList())
+        val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
         val rows = queryCalls(
             selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
             args = arrayOf(fuzzy),
@@ -158,7 +149,7 @@ class CallLogRepository(private val context: Context) {
             limit = safeLimit
         )
         val matched = filterCallsByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty()) return matched.take(safeLimit)
+        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
@@ -169,18 +160,18 @@ class CallLogRepository(private val context: Context) {
                 sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
                 limit = 500
             )
-            if (page.isEmpty()) return emptyList()
+            if (page.isEmpty()) return NumberHistoryResult(emptyList())
             val pageMatched = filterCallsByNumber(page, norm, wantAlt)
-            if (pageMatched.isNotEmpty()) return pageMatched.take(safeLimit)
-            if (page.size < 500) return emptyList()
+            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit))
+            if (page.size < 500) return NumberHistoryResult(emptyList())
             val oldest = page.last()
-            if (oldest.date <= cutoff) return emptyList()
-            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return emptyList()
+            if (oldest.date <= cutoff) return NumberHistoryResult(emptyList())
+            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return NumberHistoryResult(emptyList())
             upperDate = oldest.date
             upperId = oldest.id
         }
         android.util.Log.w("CallLogRepository", "paged scan truncated")
-        return emptyList()
+        return NumberHistoryResult(emptyList(), truncated = true)
     }
 
     private fun filterCallsByNumber(rows: List<CallData>, want: String, wantAlt: String?): List<CallData> {

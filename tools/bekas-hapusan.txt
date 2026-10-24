@@ -47,3 +47,4 @@ masksFourToEightDigitGroups
 clearAudit
 pkgTryAcquire
 recoverEncryptedStorage
+buildFuzzy

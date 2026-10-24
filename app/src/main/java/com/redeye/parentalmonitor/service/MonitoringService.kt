@@ -3356,23 +3356,33 @@ class MonitoringService : Service() {
         if (digits.length < 7 || digits.length > 20) {
             sendToTelegram("Cara pakai: /history &lt;nomor&gt; (7-20 digit)")
         } else {
-            val calls = try {
-                callLogRepository.getCallsForNumber(digits, 50).take(5)
+            val callsResult: com.redeye.parentalmonitor.repository.NumberHistoryResult<com.redeye.parentalmonitor.data.models.CallData> = try {
+                callLogRepository.getCallsForNumber(digits, 50)
             } catch (_: Exception) {
-                emptyList()
+                com.redeye.parentalmonitor.repository.NumberHistoryResult(emptyList())
             }
-            val sms = try {
-                smsRepository.getSmsForNumber(digits, 50).take(5)
+            val smsResult: com.redeye.parentalmonitor.repository.NumberHistoryResult<com.redeye.parentalmonitor.data.models.SmsData> = try {
+                smsRepository.getSmsForNumber(digits, 50)
             } catch (_: Exception) {
-                emptyList()
+                com.redeye.parentalmonitor.repository.NumberHistoryResult(emptyList())
             }
+            val calls = callsResult.items.take(5)
+            val sms = smsResult.items.take(5)
             if (calls.isEmpty() && sms.isEmpty()) {
-                sendToTelegram("\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir).")
+                val message = if (callsResult.truncated || smsResult.truncated) {
+                    "⚠️ Nomor $digits tidak ditemukan dalam 2.000 entri terbaru. Pencarian dibatasi; riwayat lain mungkin belum diperiksa."
+                } else {
+                    "\uD83D\uDD0E Tak ada riwayat untuk $digits (pencarian sekitar 12 bulan terakhir)."
+                }
+                sendToTelegram(message)
             } else {
                 val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 val freqH = try { batchFreqMap() } catch (_: Exception) { null }
                 if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
                 if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
+                if (callsResult.truncated || smsResult.truncated) {
+                    sendToTelegram("⚠️ Pencarian berhenti setelah 2.000 entri terbaru; mungkin masih ada riwayat yang lebih lama.")
+                }
             }
         }
     }

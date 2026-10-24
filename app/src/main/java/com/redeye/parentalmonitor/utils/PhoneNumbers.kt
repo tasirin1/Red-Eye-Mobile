@@ -1,6 +1,11 @@
 package com.redeye.parentalmonitor.utils
 
 object PhoneNumbers {
+    fun fuzzyLikePattern(digits: String): String = buildString(digits.length * 2 + 2) {
+        append('%')
+        for (digit in digits) append(digit).append('%')
+    }
+
     fun altVariant(digits: String): String? {
         if (digits.isEmpty()) return null
         if (digits.startsWith("628") && digits.length in 10..15) return "0" + digits.substring(2)

@@ -535,6 +535,8 @@ def nama_metode_hilang(diff, lewati_berkas=()):
     hilang = []
     for path, baris in hapus_kode(diff):
         rapi = baris.rstrip()
+        if re.match(r"\s*return\b", baris):
+            continue
         if not re.search(r"\b(public|protected|private|static|fun|override|suspend)\b", baris) \
                 and not rapi.endswith("{") \
                 and (rapi.endswith(";")

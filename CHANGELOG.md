@@ -1,5 +1,9 @@
 ## [Unreleased]
+### Fixed
+- `/history` kini menyebut pencarian belum lengkap saat 2.000 entri terbaru habis dipindai tanpa hasil, agar hasil kosong tidak dikira pasti tak ada riwayat.
 ### Changed
+- Pola pencarian fuzzy nomor kini dibangun di satu fungsi bersama, bukan duplikat di repository SMS dan panggilan.
+- Pemeriksa metode terhapus mengabaikan pernyataan `return`, sehingga pemanggilan fungsi library seperti `emptyList()` tidak salah dianggap sebagai deklarasi yang dihapus.
 
 ## [1.6.468] - 2026-10-24
 ### Changed
