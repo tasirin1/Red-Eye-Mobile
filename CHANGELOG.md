@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.474] - 2026-10-24
 ### Fixed
 - Penghapusan pesan terkirim dan pencatatan batas retry antrean mencoba ulang persistensi; penghapusan gagal dilaporkan dan retry yang belum tersimpan tidak lagi dihitung sebagai pesan terbuang.
 
