@@ -86,6 +86,10 @@ class MessageQueue private constructor(context: Context) {
         synchronized(lock) {
             if (!volatileOnly) return true
             val pending = volatileQueue.toList()
+            val previousOverflowDrops = overflowDrops.get()
+            val previousExpiredDrops = expiredDrops.get()
+            val previousPriorityDrops = priorityDrops.get()
+            val previousDropsDirty = dropsDirty
             return try {
                 val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 sharedPreferences = restored
@@ -94,30 +98,33 @@ class MessageQueue private constructor(context: Context) {
                 persistVersion++
                 pendingSnapshot = null
                 persistDirty = false
-                loadDropCountsLocked(add = true)
-                persistDropCountsLocked()
                 if (pending.isNotEmpty()) {
                     val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
                     val freshPending = filterFresh(pending, cutoff)
                     val expired = pending.size - freshPending.size
                     if (expired > 0) {
-                        noteExpiredLocked(expired.toLong())
+                        noteExpiredLocked(expired.toLong(), persist = false)
                         android.util.Log.w("MessageQueue", "Dropped $expired expired restore message(s)")
                     }
                     val queue = readLocked().toMutableList()
                     if (volatileOnly) throw IllegalStateException("queue read failed during restore")
                     queue.addAll(freshPending)
-                    var evicted = 0
                     while (queue.size > MAX_QUEUE_SIZE) {
                         evictOldestLocked(queue, persist = false)
-                        evicted++
                     }
-                    if (evicted > 0) persistDropCountsLocked()
-                    persistLocked(queue)
+                    if (!persistLocked(queue, force = true)) {
+                        throw IllegalStateException("queue write failed during restore")
+                    }
                 }
+                loadDropCountsLocked(add = true)
+                persistDropCountsLocked()
                 volatileQueue.clear()
                 true
             } catch (_: Exception) {
+                overflowDrops.set(previousOverflowDrops)
+                expiredDrops.set(previousExpiredDrops)
+                priorityDrops.set(previousPriorityDrops)
+                dropsDirty = previousDropsDirty
                 volatileQueue.clear()
                 volatileQueue.addAll(pending)
                 sharedPreferences = null

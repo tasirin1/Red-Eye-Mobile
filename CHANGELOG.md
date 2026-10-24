@@ -1,3 +1,7 @@
+## [Unreleased]
+### Fixed
+- Pemulihan antrean tidak lagi menggandakan penghitung pesan terbuang ketika pembacaan antrean gagal atau penyimpanan belum berhasil dipulihkan.
+
 ## [1.6.465] - 2026-10-23
 ### Fixed
 - Membuka penyimpanan terenkripsi kini dicoba tiga kali dengan `MasterKey` baru sebelum jatuh ke mode volatil, sehingga kegagalan Keystore sesaat (misalnya saat boot) tidak langsung membuat kredensial tampak hilang.
