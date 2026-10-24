@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.466] - 2026-10-24
 ### Fixed
 - Pemulihan antrean tidak lagi menggandakan penghitung pesan terbuang ketika pembacaan antrean gagal atau penyimpanan belum berhasil dipulihkan.
 
