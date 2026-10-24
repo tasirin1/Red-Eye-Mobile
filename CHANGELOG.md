@@ -4,6 +4,8 @@
 ### Changed
 - Pola pencarian fuzzy nomor kini dibangun di satu fungsi bersama, bukan duplikat di repository SMS dan panggilan.
 - Pemeriksa metode terhapus mengabaikan pernyataan `return`, sehingga pemanggilan fungsi library seperti `emptyList()` tidak salah dianggap sebagai deklarasi yang dihapus.
+### Removed
+- Isi lama `builder.sh` dan `builder.bat` yang tak terjangkau setelah perintah berhenti dihapus; kedua skrip tetap menolak menjalankan alur build lama.
 
 ## [1.6.468] - 2026-10-24
 ### Changed
