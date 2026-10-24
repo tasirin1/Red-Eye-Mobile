@@ -110,8 +110,9 @@ class SendMessageWorker(
                         noteSendOk()
                         if (sentIds.size - flushedSent >= 10) {
                             try {
-                                messageQueue.removeMessages(sentIds)
-                                flushedSent = sentIds.size
+                                if (messageQueue.removeMessages(sentIds)) {
+                                    flushedSent = sentIds.size
+                                }
                             } catch (_: Exception) {
                             }
                         }
@@ -136,6 +137,7 @@ class SendMessageWorker(
                 if (sentIds.size > flushedSent) {
                     try {
                         messageQueue.removeMessages(sentIds)
+                        messageQueue.flushSync()
                     } catch (_: Exception) {
                     }
                 }
@@ -156,6 +158,7 @@ class SendMessageWorker(
             if (!queueCleared && sentIds.size > flushedSent) {
                 try {
                     messageQueue.removeMessages(sentIds)
+                    messageQueue.flushSync()
                 } catch (_: Exception) {
                 }
             }
@@ -171,10 +174,6 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        try {
-            messageQueue.flushSync()
-        } catch (_: Exception) {
-        }
         if (!queueCleared && rejectedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
             try {
                 messageQueue.removeMessages(rejectedIds)
@@ -183,6 +182,10 @@ class SendMessageWorker(
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
         } else if (rejectedIds.isNotEmpty()) {
             android.util.Log.w("SendMessageWorker", "Keeping ${rejectedIds.size} rejected message(s) for retry under fresh credentials")
+        }
+        try {
+            messageQueue.flushSync()
+        } catch (_: Exception) {
         }
 
         handleAuthOrRate(authCode, rateLimitedSecs, failedIds, queueCleared, runToken, runChatId)?.let { return it }

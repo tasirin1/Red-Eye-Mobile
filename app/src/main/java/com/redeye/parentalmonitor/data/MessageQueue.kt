@@ -347,17 +347,20 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    fun removeMessages(messageIds: Collection<String>) {
-        if (messageIds.isEmpty()) return
+    fun removeMessages(messageIds: Collection<String>): Boolean {
+        if (messageIds.isEmpty()) return true
         synchronized(lock) {
             ensureRestored()
             if (volatileOnly) {
                 volatileQueue.removeAll { it.id in messageIds }
-                return
+                return true
             }
             val queue = readLocked().toMutableList()
-            queue.removeAll { it.id in messageIds }
-            persistLocked(queue, force = true)
+            val removed = queue.removeAll { it.id in messageIds }
+            if (!removed && !persistDirty) return true
+            val saved = persistWithRetriesLocked(queue)
+            if (!saved) android.util.Log.e("MessageQueue", "Failed to persist message removal after retries")
+            return saved
         }
     }
 
@@ -384,7 +387,8 @@ class MessageQueue private constructor(context: Context) {
                 volatileQueue.removeAll { it.id in drop }
                 return Pair(drop, maxRetry)
             }
-            val queue = readLocked().toMutableList()
+            val original = readLocked().toMutableList()
+            val queue = original.toMutableList()
             val drop = mutableListOf<String>()
             for (i in queue.indices) {
                 val queued = queue[i]
@@ -396,9 +400,22 @@ class MessageQueue private constructor(context: Context) {
                 }
             }
             queue.removeAll { it.id in drop }
-            persistLocked(queue, force = true)
+            if (!persistWithRetriesLocked(queue)) {
+                cached = original
+                if (!persistWithRetriesLocked(original)) {
+                    android.util.Log.e("MessageQueue", "Failed to persist retry rollback after retries")
+                }
+                return Pair(emptyList(), maxRetry)
+            }
             return Pair(drop, maxRetry)
         }
+    }
+
+    private fun persistWithRetriesLocked(queue: MutableList<QueuedMessage>, attempts: Int = 3): Boolean {
+        repeat(attempts) {
+            if (persistLocked(queue, force = true)) return true
+        }
+        return false
     }
 
     fun queueGeneration(): Long {
