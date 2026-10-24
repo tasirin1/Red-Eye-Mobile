@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.467] - 2026-10-24
 ### Fixed
 - Penghapusan antrean mencoba format kosong cadangan jika penghapusan SharedPreferences gagal, dan perintah Setup/Telegram kini melaporkan bila antrean belum dapat dipastikan kosong.
 
