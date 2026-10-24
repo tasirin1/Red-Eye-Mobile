@@ -51,6 +51,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var dropNoticeJob: Job? = null
     private val dropNoticeLock = Any()
+    private var dropNoticeInFlight = 0
     @Volatile
     private var watchKeywordsRaw = ""
     @Volatile
@@ -701,7 +702,7 @@ class NotificationForwarderService : NotificationListenerService() {
     override fun onDestroy() {
         try {
             synchronized(dropNoticeLock) {
-                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get() + dropNoticeInFlight)
             }
         } catch (_: Exception) {
         }
@@ -888,7 +889,7 @@ class NotificationForwarderService : NotificationListenerService() {
         synchronized(dropNoticeLock) {
             dropNoticeCount.addAndGet(count.coerceAtLeast(0))
             try {
-                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get() + dropNoticeInFlight)
             } catch (_: Exception) {
             }
             if (dropNoticeJob?.isActive == true) return
@@ -908,7 +909,9 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun flushDropNotice() {
-        val count = synchronized(dropNoticeLock) { dropNoticeCount.getAndSet(0) }
+        val count = synchronized(dropNoticeLock) {
+            dropNoticeCount.getAndSet(0).also { dropNoticeInFlight += it }
+        }
         if (count <= 0) return
         val text = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
             else "$count notifikasi dibuang (ditolak/antrean penuh)."
@@ -918,6 +921,7 @@ class NotificationForwarderService : NotificationListenerService() {
             false
         }
         synchronized(dropNoticeLock) {
+            dropNoticeInFlight = (dropNoticeInFlight - count).coerceAtLeast(0)
             if (!queued) dropNoticeCount.addAndGet(count)
             try {
                 prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
