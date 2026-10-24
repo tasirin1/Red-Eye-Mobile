@@ -13,11 +13,6 @@ object SettingsBackup {
 
     data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "")
 
-    fun looksLikeBackup(blob: String): Boolean {
-        val raw = blob.trim()
-        return raw.startsWith(MAGIC) || raw.startsWith(MAGIC_LEGACY)
-    }
-
     fun looksStructurallyValid(blob: String): Boolean {
         val raw = blob.trim()
         val legacy = raw.startsWith(MAGIC_LEGACY)

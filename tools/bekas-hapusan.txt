@@ -48,3 +48,4 @@ clearAudit
 pkgTryAcquire
 recoverEncryptedStorage
 buildFuzzy
+looksLikeBackup
