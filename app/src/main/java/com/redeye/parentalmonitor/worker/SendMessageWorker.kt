@@ -188,7 +188,7 @@ class SendMessageWorker(
         handleAuthOrRate(authCode, rateLimitedSecs, failedIds, queueCleared, runToken, runChatId)?.let { return it }
         val credsSameNow = credsSame(runToken, runChatId)
         if (sentIds.isNotEmpty() && credsSameNow) {
-            preferencesManager.setCredentialError("", 0L)
+            preferencesManager.setCredentialErrorIfCredentialsMatch(runToken, runChatId, "", 0L)
         }
         val transientMaxRetry = reportDrops(failedIds, rejectedIds, queueCleared, queue, runToken, runChatId)
         if (messageQueue.getQueueSize() > 0) {
@@ -260,7 +260,16 @@ class SendMessageWorker(
             }
         }
         if (authCode != 0) {
-            preferencesManager.setCredentialError(authCode.toString(), System.currentTimeMillis())
+            val marked = preferencesManager.setCredentialErrorIfCredentialsMatch(
+                runToken,
+                runChatId,
+                authCode.toString(),
+                System.currentTimeMillis()
+            )
+            if (!marked) {
+                MessageScheduler.scheduleMessageSend(applicationContext)
+                return Result.success()
+            }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && credsSame(runToken, runChatId)) {
                 try {
@@ -549,7 +558,12 @@ class SendMessageWorker(
                         if (remainderQueued) {
                             try {
                                 MessageScheduler.scheduleMessageSend(applicationContext)
-                                preferencesManager.setCredentialError(outcome.code.toString(), System.currentTimeMillis())
+                                preferencesManager.setCredentialErrorIfCredentialsMatch(
+                                    botToken,
+                                    chatId,
+                                    outcome.code.toString(),
+                                    System.currentTimeMillis()
+                                )
                             } catch (_: Exception) {
                             }
                         }

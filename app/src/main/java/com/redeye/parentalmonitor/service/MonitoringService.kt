@@ -1578,6 +1578,8 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             return false
         }
+        var responseToken = botToken
+        var responseChat = chatId
         if (response.code() == 401 || response.code() == 403) {
             try {
                 refreshCreds()
@@ -1585,6 +1587,8 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat) = sendCreds()
             if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
+                responseToken = freshToken
+                responseChat = freshChat
                 val retryUrl = updatesUrl(freshToken, offset)
                 response = try {
                     TelegramClient.api.getUpdates(retryUrl)
@@ -1596,10 +1600,13 @@ class MonitoringService : Service() {
             }
         }
         if (response.code() == 401 || response.code() == 403) {
-            try {
-                preferencesManager.setCredentialError(response.code().toString(), System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
+            val marked = preferencesManager.setCredentialErrorIfCredentialsMatch(
+                responseToken,
+                responseChat,
+                response.code().toString(),
+                System.currentTimeMillis()
+            )
+            if (!marked) return false
             try {
                 postAuthFailureReminder(response.code())
             } catch (_: Exception) {
@@ -5583,10 +5590,7 @@ class MonitoringService : Service() {
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
-                try {
-                    preferencesManager.setCredentialError("", 0L)
-                } catch (_: Exception) {
-                }
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
                 noteSendOk()
                 return true
             } else if (response.code() == 429) {
@@ -5597,10 +5601,7 @@ class MonitoringService : Service() {
                 return false
             } else if (response.code() == 401 || response.code() == 403) {
                 android.util.Log.e("MonitoringService", "Send rejected (${response.code()}), queuing")
-                try {
-                    preferencesManager.setCredentialError(response.code().toString(), System.currentTimeMillis())
-                } catch (_: Exception) {
-                }
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, response.code().toString(), System.currentTimeMillis())
                 queueForRetry(message, queueOnFail)
                 return false
             } else if (response.code() == 400) {
@@ -5634,10 +5635,7 @@ class MonitoringService : Service() {
             return false
         }
         if (NetworkUtils.isChatMissing(goneBody)) {
-            try {
-                preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, code.toString(), System.currentTimeMillis())
             try {
                 postAuthFailureReminder(400)
             } catch (_: Exception) {
@@ -5680,10 +5678,7 @@ class MonitoringService : Service() {
         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
         if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-            try {
-                preferencesManager.setCredentialError("", 0L)
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
             noteSendOk()
             return true
         } else if (fallbackResp.code() == 429) {
@@ -5692,10 +5687,7 @@ class MonitoringService : Service() {
             queueForRetryLater(plain, queueOnFail, retryAfter * 1000L)
             return false
         } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
-            try {
-                preferencesManager.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
             queueForRetry(plain, queueOnFail)
             return false
         } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
@@ -5708,10 +5700,7 @@ class MonitoringService : Service() {
                 return false
             }
             if (NetworkUtils.isChatMissing(fbBody)) {
-                try {
-                    preferencesManager.setCredentialError(fallbackResp.code().toString(), System.currentTimeMillis())
-                } catch (_: Exception) {
-                }
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
                 queueForRetry(plain, queueOnFail)
                 return false
             }
@@ -8127,25 +8116,20 @@ class MonitoringService : Service() {
         file: File,
         code: Int,
         errorFull: String,
+        botToken: String,
         chatId: String,
         label: String,
         jenis: String
     ): MediaSendOutcome {
         if (code == 401 || code == 403) {
             android.util.Log.e("MonitoringService", "$label auth rejected ($code), keeping file for retry")
-            try {
-                preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
-            } catch (_: Exception) {
-            }
+            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, code.toString(), System.currentTimeMillis())
             return MediaSendOutcome.KEPT
         }
         if (code == 400) {
             if (adoptMigratedChat(errorFull, chatId)) return MediaSendOutcome.KEPT
             if (NetworkUtils.isChatMissing(errorFull)) {
-                try {
-                    preferencesManager.setCredentialError(code.toString(), System.currentTimeMillis())
-                } catch (_: Exception) {
-                }
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, code.toString(), System.currentTimeMillis())
                 return MediaSendOutcome.KEPT
             }
             if (NetworkUtils.isRightsLimited(errorFull)) {
@@ -9027,7 +9011,7 @@ class MonitoringService : Service() {
                 ""
             }
             if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Audio")
-            return classifyMediaRejection(audioFile, response.code(), errorFull, chatId, "Audio", "audio")
+            return classifyMediaRejection(audioFile, response.code(), errorFull, botToken, chatId, "Audio", "audio")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -9223,7 +9207,7 @@ class MonitoringService : Service() {
                 ""
             }
             if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Video")
-            return classifyMediaRejection(videoFile, response.code(), errorFull, chatId, "Video", "video")
+            return classifyMediaRejection(videoFile, response.code(), errorFull, botToken, chatId, "Video", "video")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -9590,7 +9574,7 @@ class MonitoringService : Service() {
                 ""
             }
             if (response.code() == 429) return mediaRateLimitBackoff(errorFull, "Photo")
-            return classifyMediaRejection(photoFile, response.code(), errorFull, chatId, "Photo", "foto")
+            return classifyMediaRejection(photoFile, response.code(), errorFull, botToken, chatId, "Photo", "foto")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {

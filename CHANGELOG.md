@@ -1,4 +1,7 @@
 ## [Unreleased]
+### Fixed
+- Respons 401/403 dari permintaan yang memakai kredensial lama tidak lagi memblokir kredensial baru.
+
 
 ## [1.6.471] - 2026-10-24
 ### Removed

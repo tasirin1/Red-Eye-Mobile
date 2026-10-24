@@ -145,6 +145,8 @@ class PreferencesManager(context: Context) {
     }
 
     companion object {
+        private val credentialLock = Any()
+
         @Volatile
         private var instance: PreferencesManager? = null
 
@@ -436,11 +438,19 @@ class PreferencesManager(context: Context) {
 
     var botToken: String
         get() = try { sharedPreferences.getString(KEY_BOT_TOKEN, "") ?: "" } catch (_: Exception) { "" }
-        set(value) = sharedPreferences.edit().putString(KEY_BOT_TOKEN, value).apply()
+        set(value) {
+            synchronized(credentialLock) {
+                sharedPreferences.edit().putString(KEY_BOT_TOKEN, value).apply()
+            }
+        }
 
     var chatId: String
         get() = try { sharedPreferences.getString(KEY_CHAT_ID, "") ?: "" } catch (_: Exception) { "" }
-        set(value) = sharedPreferences.edit().putString(KEY_CHAT_ID, value).apply()
+        set(value) {
+            synchronized(credentialLock) {
+                sharedPreferences.edit().putString(KEY_CHAT_ID, value).apply()
+            }
+        }
 
     val isMonitoringEnabled: Boolean
         get() = try { sharedPreferences.getBoolean(KEY_MONITORING_ENABLED, false) } catch (_: Exception) { false }
@@ -630,8 +640,22 @@ class PreferencesManager(context: Context) {
 
     fun setCredentialError(code: String, at: Long) {
         try {
-            sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+            synchronized(credentialLock) {
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+            }
         } catch (_: Exception) {
+        }
+    }
+
+    fun setCredentialErrorIfCredentialsMatch(token: String, chat: String, code: String, at: Long): Boolean {
+        return synchronized(credentialLock) {
+            if (botToken != token || chatId != chat) return@synchronized false
+            try {
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+                true
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 
@@ -1234,7 +1258,9 @@ class PreferencesManager(context: Context) {
 
     fun setChatIdSync(newChatId: String) {
         try {
-            sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
+            synchronized(credentialLock) {
+                sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
+            }
         } catch (_: Exception) {
         }
     }
@@ -1244,13 +1270,19 @@ class PreferencesManager(context: Context) {
             val upgraded = try { upgradeToPersistent() } catch (_: Exception) { false }
             if (!upgraded || !storageEncrypted) return false
         }
-        val editor = sharedPreferences.edit()
-        putCredentialState(editor, newToken, newChatId)
-        editor.putString(KEY_BOT_TOKEN, newToken)
-        editor.putString(KEY_CHAT_ID, newChatId)
-        editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
-        editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-        return try { editor.commit() } catch (_: Exception) { false }
+        return synchronized(credentialLock) {
+            try {
+                val editor = sharedPreferences.edit()
+                putCredentialState(editor, newToken, newChatId)
+                editor.putString(KEY_BOT_TOKEN, newToken)
+                editor.putString(KEY_CHAT_ID, newChatId)
+                editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
+                editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
+                editor.commit()
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     fun setMonitoringActive(active: Boolean) {

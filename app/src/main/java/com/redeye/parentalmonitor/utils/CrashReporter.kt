@@ -252,7 +252,7 @@ object CrashReporter {
                     }
                 } else if (response.code() == 401 || response.code() == 403) {
                     try {
-                        prefs.setCredentialError(response.code().toString(), System.currentTimeMillis())
+                        prefs.setCredentialErrorIfCredentialsMatch(token, chatId, response.code().toString(), System.currentTimeMillis())
                     } catch (_: Exception) {
                     }
                 } else if (response.code() == 400) {
@@ -269,7 +269,7 @@ object CrashReporter {
                         }
                         if (!adopted) {
                             try {
-                                prefs.setCredentialError("400", System.currentTimeMillis())
+                                prefs.setCredentialErrorIfCredentialsMatch(token, chatId, "400", System.currentTimeMillis())
                             } catch (_: Exception) {
                             }
                         }
@@ -287,7 +287,7 @@ object CrashReporter {
                                 } catch (_: Exception) { }
                                 false
                             } else if (plainResp.code() == 401 || plainResp.code() == 403) {
-                                try { prefs.setCredentialError("401", System.currentTimeMillis()) } catch (_: Exception) { }
+                                try { prefs.setCredentialErrorIfCredentialsMatch(token, chatId, plainResp.code().toString(), System.currentTimeMillis()) } catch (_: Exception) { }
                                 false
                             } else if (plainResp.code() == 400) {
                                 val fbBody = try { plainResp.errorBody()?.string() } catch (_: Exception) { null }
@@ -298,7 +298,7 @@ object CrashReporter {
                                         false
                                     }
                                     if (!adopted) {
-                                        try { prefs.setCredentialError("400", System.currentTimeMillis()) } catch (_: Exception) { }
+                                        try { prefs.setCredentialErrorIfCredentialsMatch(token, chatId, "400", System.currentTimeMillis()) } catch (_: Exception) { }
                                     }
                                 } else {
                                     permanentReject = true

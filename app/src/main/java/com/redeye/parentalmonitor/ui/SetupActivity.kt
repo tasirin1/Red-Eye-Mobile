@@ -1203,7 +1203,7 @@ class SetupActivity : AppCompatActivity() {
         if (code != 401 && code != 403) return
         if (token != storedToken || chatId != storedChatId) return
         try {
-            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
+            prefs.setCredentialErrorIfCredentialsMatch(token, chatId, code.toString(), System.currentTimeMillis())
         } catch (_: Exception) {
         }
     }
@@ -1488,7 +1488,7 @@ class SetupActivity : AppCompatActivity() {
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 var failCode = resp.code()
                 if (ok) {
-                    prefs.setCredentialError("", 0L)
+                    prefs.setCredentialErrorIfCredentialsMatch(token, chatId, "", 0L)
                 } else if (resp.code() == 429) {
                     val retryAfter = try {
                         NetworkUtils.parseRetryAfter(resp.errorBody()?.string())
@@ -1501,7 +1501,7 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 } else if (resp.code() == 401 || resp.code() == 403) {
-                    markCredentialError(resp.code())
+                    markCredentialError(resp.code(), token, chatId)
                     queueStatusMessage(text)
                 } else if (resp.code() == 400) {
                     val goneBody = try { resp.errorBody()?.string() } catch (_: Exception) { null }
@@ -1512,20 +1512,17 @@ class SetupActivity : AppCompatActivity() {
                         try {
                             val retryResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedDirect, text = text))
                             if (retryResp.isSuccessful && retryResp.body()?.ok == true) {
-                                try {
-                                    prefs.setCredentialError("", 0L)
-                                } catch (_: Exception) {
-                                }
+                                prefs.setCredentialErrorIfCredentialsMatch(token, migratedDirect, "", 0L)
                                 toastStatusSent()
                                 return@launch
                             }
                             failCode = retryResp.code()
                             if (retryResp.code() == 401 || retryResp.code() == 403) {
-                                markCredentialError(retryResp.code())
+                                markCredentialError(retryResp.code(), token, migratedDirect)
                             } else if (retryResp.code() == 400) {
                                 val retryBody = try { retryResp.errorBody()?.string() } catch (_: Exception) { null }
                                 if (NetworkUtils.isChatMissing(retryBody) && NetworkUtils.extractMigratedChatId(retryBody) == null) {
-                                    markCredentialError(retryResp.code())
+                                    markCredentialError(retryResp.code(), token, migratedDirect)
                                 }
                             }
                         } catch (_: Exception) {
@@ -1538,7 +1535,7 @@ class SetupActivity : AppCompatActivity() {
                         return@launch
                     }
                     if (NetworkUtils.isChatMissing(goneBody)) {
-                        markCredentialError(resp.code())
+                        markCredentialError(resp.code(), token, chatId)
                     } else {
                         val plain = Html.unescape(text)
                         if (plain != text) {
@@ -1550,7 +1547,7 @@ class SetupActivity : AppCompatActivity() {
                                 }
                                 failCode = plainResp.code()
                                 if (plainResp.code() == 401 || plainResp.code() == 403) {
-                                    markCredentialError(plainResp.code())
+                                    markCredentialError(plainResp.code(), token, chatId)
                                 } else if (plainResp.code() == 400) {
                                     val plainBody = try {
                                         plainResp.errorBody()?.string()
@@ -1571,13 +1568,13 @@ class SetupActivity : AppCompatActivity() {
                                             if (retryPlain.code() == 400) {
                                                 val retryPlainBody = try { retryPlain.errorBody()?.string() } catch (_: Exception) { null }
                                                 if (NetworkUtils.isChatMissing(retryPlainBody) && NetworkUtils.extractMigratedChatId(retryPlainBody) == null) {
-                                                    markCredentialError(retryPlain.code())
+                                                    markCredentialError(retryPlain.code(), token, migratedPlain)
                                                 }
                                             }
                                         } catch (_: Exception) {
                                         }
                                     } else if (NetworkUtils.isChatMissing(plainBody)) {
-                                        markCredentialError(plainResp.code())
+                                        markCredentialError(plainResp.code(), token, chatId)
                                     }
                                 }
                             } catch (_: Exception) {
@@ -1615,9 +1612,9 @@ class SetupActivity : AppCompatActivity() {
     }
 
 
-    private fun markCredentialError(code: Int) {
+    private fun markCredentialError(code: Int, token: String, chatId: String) {
         try {
-            prefs.setCredentialError(code.toString(), System.currentTimeMillis())
+            prefs.setCredentialErrorIfCredentialsMatch(token, chatId, code.toString(), System.currentTimeMillis())
         } catch (_: Exception) {
         }
     }
