@@ -1,6 +1,6 @@
 ## [Unreleased]
 ### Fixed
-- Peringatan notifikasi yang dibuang tetap tersimpan sampai enqueue antrean berhasil; kegagalan enqueue dan penghentian service tidak lagi menghapus penghitungnya.
+- Peringatan notifikasi yang dibuang tetap tersimpan sampai enqueue antrean berhasil; kegagalan enqueue, flush yang sedang berjalan, dan penghentian service tidak lagi menghapus penghitungnya.
 
 
 ## [1.6.472] - 2026-10-24
