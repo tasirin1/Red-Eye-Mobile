@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Changed
+- Pemindaian aksesibilitas melepaskan node yang sudah dibaca dan node sisa pada Android sebelum API 33.
 
 ## [1.6.467] - 2026-10-24
 ### Fixed

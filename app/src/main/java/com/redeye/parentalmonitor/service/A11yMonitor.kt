@@ -424,6 +424,12 @@ object A11yMonitor {
         return monitoringActive(manager)
     }
 
+    @Suppress("DEPRECATION")
+    private fun recycleNode(node: AccessibilityNodeInfo) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) return
+        try { node.recycle() } catch (_: Exception) { }
+    }
+
     private fun collectSnapshot(service: AccessibilityService): ScreenSnapshot {
         val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false)
         val out = ArrayList<String>()
@@ -431,22 +437,30 @@ object A11yMonitor {
         val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var nodes = 0
-        while (queue.isNotEmpty() && nodes < 160 && out.size < 80) {
-            val node = queue.removeFirst()
-            nodes++
-            if (try { node.isPassword } catch (_: Exception) { false }) hasPassword = true
-            val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
-            if (!text.isNullOrEmpty() && text.length <= 160) out.add(text)
-            val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
-            if (!desc.isNullOrEmpty() && desc != text && desc.length <= 160) out.add(desc)
-            val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
-            for (i in 0 until count) {
+        try {
+            while (queue.isNotEmpty() && nodes < 160 && out.size < 80) {
+                val node = queue.removeFirst()
+                nodes++
                 try {
-                    val child = node.getChild(i)
-                    if (child != null) queue.add(child)
-                } catch (_: Exception) {
+                    if (try { node.isPassword } catch (_: Exception) { false }) hasPassword = true
+                    val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
+                    if (!text.isNullOrEmpty() && text.length <= 160) out.add(text)
+                    val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
+                    if (!desc.isNullOrEmpty() && desc != text && desc.length <= 160) out.add(desc)
+                    val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
+                    for (i in 0 until count) {
+                        try {
+                            val child = node.getChild(i)
+                            if (child != null) queue.add(child)
+                        } catch (_: Exception) {
+                        }
+                    }
+                } finally {
+                    recycleNode(node)
                 }
             }
+        } finally {
+            while (queue.isNotEmpty()) recycleNode(queue.removeFirst())
         }
         return ScreenSnapshot(out, hasPassword)
     }
