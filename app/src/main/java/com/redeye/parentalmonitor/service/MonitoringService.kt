@@ -1362,8 +1362,7 @@ class MonitoringService : Service() {
         pendingInputCommand = ""
         pendingInputAt = 0L
         ownerEpoch++
-        try { messageQueue.clearQueue() } catch (_: Exception) {
-        }
+        val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
         }
         try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) {
@@ -1381,7 +1380,11 @@ class MonitoringService : Service() {
         }
         try { registerBotCommands(force = true) } catch (_: Exception) {
         }
-        val message = "🚪 Logout berhasil. Sesi owner dihapus; kirim /login <PIN> untuk masuk lagi."
+        val message = if (queueCleared) {
+            "🚪 Logout berhasil. Sesi owner dihapus; kirim /login <PIN> untuk masuk lagi."
+        } else {
+            "⚠️ Logout berhasil, tetapi antrean pesan gagal dibersihkan. Penyimpanan antrean belum dipastikan kosong."
+        }
         if (!sendToTelegram(message, queueOnFail = false)) sendDirect(cachedChatId, message)
     }
 
@@ -4153,11 +4156,17 @@ class MonitoringService : Service() {
 
     private suspend fun handleClearQueueCommand() {
         val queued = messageQueue.getQueueSize()
-        try {
+        val cleared = try {
             messageQueue.clearQueue()
         } catch (_: Exception) {
+            false
         }
-        sendToTelegram("\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang.", null, true)
+        val message = if (cleared) {
+            "\uD83D\uDDD1\uFE0F Antrean dibersihkan ($queued dibuang). Catatan: pembaruan SMS/panggilan yang sudah ditandai terbaca tidak dikirim ulang."
+        } else {
+            "⚠️ Antrean gagal dibersihkan ($queued pesan). Penyimpanan belum memastikan antrean kosong; coba lagi."
+        }
+        sendToTelegram(message, null, true)
     }
 
     private suspend fun handleLockCommand() {

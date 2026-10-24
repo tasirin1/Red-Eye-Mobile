@@ -405,7 +405,7 @@ class MessageQueue private constructor(context: Context) {
         return generationCounter.get()
     }
 
-    fun clearQueue() {
+    fun clearQueue(): Boolean {
         synchronized(lock) {
             generationCounter.incrementAndGet()
             cached = mutableListOf()
@@ -427,13 +427,21 @@ class MessageQueue private constructor(context: Context) {
             val cleared = synchronized(persistMutex) {
                 persistVersion++
                 pendingSnapshot = null
-                try {
+                val removed = try {
                     wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit() == true
+                } catch (_: Exception) {
+                    false
+                }
+                removed || try {
+                    wipe?.edit()?.putString(KEY_QUEUE, "[]")?.putString(KEY_QUEUE_BAK, "[]")
+                        ?.putLong(KEY_OVERFLOW_DROPS, 0L)?.putLong(KEY_EXPIRED_DROPS, 0L)
+                        ?.putLong(KEY_PRIORITY_DROPS, 0L)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
             }
             if (!cleared) persistDirty = true
+            return cleared
         }
     }
 

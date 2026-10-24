@@ -636,7 +636,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.patrolEnabled = false } catch (_: Exception) { }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
-            try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { }
+            val queueCleared = try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { false }
             try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
             try { prefs.trail24 = "" } catch (_: Exception) { }
             try { prefs.homeLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
@@ -671,6 +671,7 @@ class SetupActivity : AppCompatActivity() {
                 loadedCameraInterval = 1
                 val messageRes = when {
                     storageReset -> R.string.setup_storage_recovered
+                    !queueCleared -> R.string.setup_clear_queue_failed
                     wasVolatile -> R.string.setup_storage_reset_failed
                     else -> R.string.setup_credentials_cleared
                 }

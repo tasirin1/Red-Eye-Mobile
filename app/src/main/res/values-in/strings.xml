@@ -23,6 +23,7 @@
     <string name="setup_credentials_cleared">Kredensial dihapus</string>
     <string name="setup_storage_recovered">Penyimpanan terenkripsi direset. Isi lagi token bot.</string>
     <string name="setup_storage_reset_failed">Kredensial dihapus, tetapi penyimpanan terenkripsi gagal direset. Mulai ulang aplikasi, lalu tahan tombol Simpan untuk mencoba lagi.</string>
+    <string name="setup_clear_queue_failed">Kredensial dihapus, tetapi antrean pesan belum bisa dipastikan kosong. Mulai ulang aplikasi lalu hapus kredensial lagi.</string>
     <string name="setup_clear_title">Hapus kredensial?</string>
     <string name="setup_clear_text">Ini menghapus token bot, menghentikan monitoring, dan membuang antrean pesan. Lanjut?</string>
     <string name="setup_clear_hint">Token dan chat ID wajib diisi. Untuk menghapus kredensial, tahan tombol Simpan.</string>
