@@ -1,4 +1,7 @@
 ## [Unreleased]
+### Fixed
+- Migrasi chat ID hanya dianggap berhasil jika commit SharedPreferences memastikan ID baru tersimpan.
+
 
 ## [1.6.474] - 2026-10-24
 ### Fixed

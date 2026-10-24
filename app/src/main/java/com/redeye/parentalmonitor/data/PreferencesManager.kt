@@ -1256,12 +1256,13 @@ class PreferencesManager(context: Context) {
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
     }
 
-    fun setChatIdSync(newChatId: String) {
-        try {
+    fun setChatIdSync(newChatId: String): Boolean {
+        return try {
             synchronized(credentialLock) {
                 sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
             }
         } catch (_: Exception) {
+            false
         }
     }
 

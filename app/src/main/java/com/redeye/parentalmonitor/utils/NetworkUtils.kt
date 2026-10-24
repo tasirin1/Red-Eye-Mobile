@@ -138,7 +138,7 @@ object NetworkUtils {
         }
         if (migrated == currentChatId) return false
         return try {
-            prefs.setChatIdSync(migrated)
+            if (!prefs.setChatIdSync(migrated)) return false
             prefs.setCredentialError("", 0L)
             refresh()
             try { announce() } catch (_: Exception) { }
