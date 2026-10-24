@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+## [1.6.470] - 2026-10-24
 ### Fixed
 - Deduplikasi notifikasi memakai SHA-256 dengan input berpanjang eksplisit, sehingga teks berbeda dengan `hashCode()` yang sama tidak lagi dianggap notifikasi duplikat.
 
