@@ -141,18 +141,16 @@ class NotificationForwarderService : NotificationListenerService() {
             if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
         }
         try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
+        try {
+            dropNoticeCount.set((prefsRef?.pendingNotifDrops ?: 0).coerceAtLeast(0))
+        } catch (_: Exception) {
+        }
         scope.launch {
             try {
                 refreshFwdCreds()
                 try { queueRef?.tryRestorePersistent() } catch (_: Exception) { }
                 try {
-                    val pending = prefsRef?.pendingNotifDrops ?: 0
-                    if (pending > 0) {
-                        try {
-                            prefsRef?.setPendingNotifDropsSync(0)
-                        } catch (_: Exception) {
-                        }
-                        dropNoticeCount.addAndGet(pending)
+                    if (dropNoticeCount.get() > 0) {
                         synchronized(dropNoticeLock) {
                             if (dropNoticeJob?.isActive != true) {
                                 dropNoticeJob = scope.launch {
@@ -702,33 +700,8 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onDestroy() {
         try {
-            val drops = dropNoticeCount.getAndSet(0)
-            if (drops > 0) {
-                try {
-                    val text = if (drops == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
-                        else "$drops notifikasi dibuang (ditolak/antrean penuh)."
-                    queue().addMessage(text, true)
-                    queue().flushSync()
-                    try {
-                        prefsRef?.setPendingNotifDropsSync(0)
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
-                    } catch (_: Exception) {
-                    }
-                } catch (_: Exception) {
-                    dropNoticeCount.addAndGet(drops)
-                    try {
-                        prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
-                    } catch (_: Exception) {
-                    }
-                }
-            } else {
-                try {
-                    prefsRef?.setPendingNotifDropsSync(0)
-                } catch (_: Exception) {
-                }
+            synchronized(dropNoticeLock) {
+                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
             }
         } catch (_: Exception) {
         }
@@ -912,12 +885,12 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun noteDroppedNotification(count: Int = 1) {
-        dropNoticeCount.addAndGet(count.coerceAtLeast(0))
-        try {
-            prefsRef?.let { it.pendingNotifDrops = dropNoticeCount.get() }
-        } catch (_: Exception) {
-        }
         synchronized(dropNoticeLock) {
+            dropNoticeCount.addAndGet(count.coerceAtLeast(0))
+            try {
+                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
+            } catch (_: Exception) {
+            }
             if (dropNoticeJob?.isActive == true) return
             dropNoticeJob = scope.launch {
                 try {
@@ -935,24 +908,23 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun flushDropNotice() {
-        val count = dropNoticeCount.getAndSet(0)
-        try {
-            prefsRef?.setPendingNotifDropsSync(0)
-        } catch (_: Exception) {
-        }
+        val count = synchronized(dropNoticeLock) { dropNoticeCount.getAndSet(0) }
         if (count <= 0) return
-        try {
-            val text = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
-                else "$count notifikasi dibuang (ditolak/antrean penuh)."
+        val text = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
+            else "$count notifikasi dibuang (ditolak/antrean penuh)."
+        val queued = try {
             queue().addMessage(text, true)
-            MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
         } catch (_: Exception) {
-            dropNoticeCount.addAndGet(count)
+            false
+        }
+        synchronized(dropNoticeLock) {
+            if (!queued) dropNoticeCount.addAndGet(count)
             try {
                 prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
             } catch (_: Exception) {
             }
         }
+        if (queued) MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
     }
 
     private fun adoptMigratedChat(prefs: PreferencesManager, errorBody: String?, currentChatId: String): Boolean {
