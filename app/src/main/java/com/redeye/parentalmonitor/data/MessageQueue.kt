@@ -190,7 +190,7 @@ class MessageQueue private constructor(context: Context) {
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            return persistLocked(queue, force = true)
+            return persistLocked(queue)
         }
     }
 
@@ -219,7 +219,7 @@ class MessageQueue private constructor(context: Context) {
                 evictedBatch++
             }
             if (evictedBatch > 0) persistDropCountsLocked()
-            return persistLocked(queue, force = true)
+            return persistLocked(queue)
         }
     }
 
@@ -566,8 +566,11 @@ class MessageQueue private constructor(context: Context) {
         val prefs = sharedPreferences ?: return false
         val now = android.os.SystemClock.elapsedRealtime()
         if (!force && now - lastPersistAt < 2000L) {
+            val version = ++persistVersion
+            pendingSnapshot = version to ArrayList(queue)
             persistDirty = true
-            return false
+            schedulePersistLocked()
+            return true
         }
         lastPersistAt = now
         persistDirty = false

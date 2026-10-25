@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.481] - 2026-10-25
+### Changed
+- `MessageQueue.addMessage`/`addMessages` tidak lagi memaksa serialisasi + `commit()` seluruh antrean tiap pesan; perubahan dalam jendela 2 detik digabung ke satu tulis asinkron, sementara tulis sinkron tetap dilakukan minimal tiap 2 detik sebagai jangkar durabilitas.
+
+### Fixed
+- `tools/bekas-hapusan.txt` mencatat metode uji yang diganti nama agar penjaga regresi tetap akurat.
+- Rilis otomatis menemukan APK lagi setelah `mapping.txt` dikeluarkan dari artifact (`release-assets/redeye-*.apk`).
+
 ## [1.6.480] - 2026-10-25
 ### Fixed
 - Uji `NotificationPrivacyTest` disesuaikan dengan penyamaran deretan 13 digit atau lebih, sehingga build 1.6.478/1.6.479 tidak lagi gagal di tahap unit test.
