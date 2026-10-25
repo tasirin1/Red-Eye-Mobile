@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Tahap 2 pemecahan `MonitoringService.kt` (#7): `photoStats` dan `hammingDistance` pindah ke `utils/PhotoFingerprint.kt` (`analyze`, `hammingDistance`) dengan bodi identik, dipakai jalur foto untuk deteksi gelap dan foto duplikat.
+
+### Added
+- Uji JVM `PhotoFingerprintTest` untuk jarak Hamming sidik jari foto.
 
 ## [1.6.482] - 2026-10-25
 ### Changed
