@@ -8,7 +8,7 @@ object SettingsBackup {
     private const val KEY_ALGORITHM = "AES"
     private const val KDF_MODERN = "PBKDF2WithHmacSHA256"
     private const val KDF_LEGACY = "PBKDF2WithHmacSHA1"
-    private const val MIN_PIN = 6
+    private const val MIN_PIN = 10
     private const val MIN_PIN_LEGACY = 4
 
     data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "")

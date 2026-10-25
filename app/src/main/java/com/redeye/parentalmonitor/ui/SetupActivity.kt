@@ -228,7 +228,7 @@ class SetupActivity : AppCompatActivity() {
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
         private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
-        private const val MIN_BACKUP_PIN = 6
+        private const val MIN_BACKUP_PIN = 10
         private const val MIN_RESTORE_PIN = 4
         private const val MAX_BACKUP_BYTES = 1_000_000L
         private const val STATE_RESTORE_OWNER = "state_restore_owner"
@@ -997,11 +997,11 @@ class SetupActivity : AppCompatActivity() {
     private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {
         val minLen = if (confirm) MIN_BACKUP_PIN else MIN_RESTORE_PIN
         val first = android.widget.EditText(this).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             hint = getString(if (confirm) R.string.backup_pin_hint else R.string.restore_pin_hint)
         }
         val second = android.widget.EditText(this).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             hint = getString(R.string.backup_pin_hint2)
         }
         val box = android.widget.LinearLayout(this).apply {

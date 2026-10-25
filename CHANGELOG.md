@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.6.477] - 2026-10-25
+### Fixed
+- `SendMessageWorker` berhenti di tengah antrean tanpa membersihkan pesan yang sudah terkirim saat PIN aktif dan owner belum login; pesan terkirim tidak lagi dikirim ulang.
+- `ShotConsentActivity` mengabaikan permintaan izin kedua saat dialog MediaProjection masih berjalan dan memperbarui timer pengaman, sehingga dialog izin tidak terbuka ganda.
+- Media (foto/video/rekaman) tidak lagi dihapus saat owner belum login; berkas disimpan dan dikirim setelah login. Laporan berkas yang dibuang tidak lagi menyebut "ditolak Telegram (400)" untuk semua kasus.
+- PIN backup naik dari 6 digit menjadi minimal 10 karakter dan menerima huruf, sehingga blob berisi token bot lebih tahan brute force; restore tetap menerima PIN legacy 4 digit.
+- Dua bagian `[1.6.4]` duplikat di changelog digabung.
+
 ## [1.6.476] - 2026-10-25
 ### Fixed
 - Offset `getUpdates` tidak lagi membeku: update yang sudah pernah ditangani tidak masuk daftar pending, dan jalur balasan `/start`/login menutup pelacakan update, sehingga perintah lama tidak dijalankan ulang setelah restart.
@@ -4066,22 +4074,6 @@
 - Trust anchor sistem saja menutup MITM via CA terinstal pengguna; token tetap di path URL sesuai API Telegram dan tak di-log.
 - Status storage volatil (`volatile (keystore unavailable)`) tampil di Setup agar fallback keystore rusak tak berhenti diam-diam.
 
-## [1.6.4] - 2026-09-24
-
-### Fixed
-- `MonitoringService.checkAndSendNewData` menandai `lastSmsId`/`lastCallTimestamp` per chunk dan mengambil halaman lanjutan bila backlog >500, sehingga crash tidak mengulang batch dan kelebihan data tidak hilang.
-- Sync awal idempoten via `initialSyncStarted` persisten: restart saat riwayat setengah terkirim tidak mengulang 100 SMS + 100 calls.
-- Perintah Telegram yang masuk saat offline tetap dieksekusi; filter basi 600 detik yang membuang diam-diam dihapus.
-- `CameraService` ganti `backgroundThread!!`/`fallback!!` dengan guard aman dan `join(2_000)` ber-timeout.
-- `NotificationForwarderService` kunci dedup kini menyertakan ID notifikasi dengan jendela 60 detik agar pesan sah yang berulang tidak ikut terbuang.
-- `SendMessageWorker` memakai `registerFailures()` bulk satu tulis per run.
-
-### Changed
-- Kredensial Telegram di-cache di `MonitoringService` dan status jaringan di-cache 20 detik, hilangkan puluhan dekripsi dan query per batch.
-- Loop kamera tidur 5 menit saat interval 0 alih-alih bangun tiap 60 detik.
-- Delay history 2000/1000ms jadi 500ms dan jeda worker 200ms jadi 100ms.
-- `MessageQueue.registerFailures()` menggantikan tulis-ulang per pesan gagal.
-
 ## [1.6.3] - 2026-09-24
 
 ### Security
@@ -4246,6 +4238,12 @@
 - `BootReceiver` menangani `MY_PACKAGE_REPLACED` (filter terpisah + `userDisabledMonitoring`) agar monitoring restart setelah update.
 - Polling perintah Telegram melambat ke 60 detik saat bot belum dikonfigurasi agar hemat baterai.
 - `getNewSms`/`getNewCalls` dibatasi 500 baris agar lonjakan data setelah offline lama tak membebani memori.
+- `MonitoringService.checkAndSendNewData` menandai `lastSmsId`/`lastCallTimestamp` per chunk dan mengambil halaman lanjutan bila backlog >500, sehingga crash tidak mengulang batch dan kelebihan data tidak hilang.
+- Sync awal idempoten via `initialSyncStarted` persisten: restart saat riwayat setengah terkirim tidak mengulang 100 SMS + 100 calls.
+- Perintah Telegram yang masuk saat offline tetap dieksekusi; filter basi 600 detik yang membuang diam-diam dihapus.
+- `CameraService` ganti `backgroundThread!!`/`fallback!!` dengan guard aman dan `join(2_000)` ber-timeout.
+- `NotificationForwarderService` kunci dedup kini menyertakan ID notifikasi dengan jendela 60 detik agar pesan sah yang berulang tidak ikut terbuang.
+- `SendMessageWorker` memakai `registerFailures()` bulk satu tulis per run.
 
 ### Security
 - `security-crypto` alpha `1.1.0-alpha06` naik ke stabil `1.1.0`; Retrofit `2.11.0` dengan OkHttp `4.12.0` eksplisit.
@@ -4259,6 +4257,10 @@
 - `gradle.properties`: `enableJetifier=false`, `nonTransitiveRClass=true` untuk build lebih cepat.
 - `MessageScheduler` memakai `ExistingWorkPolicy.KEEP` agar worker antrean tak menumpuk dan mengirim ganda.
 - `parseRetryAfter` disatukan di `NetworkUtils`; `escapeHtml` satu pass tanpa alokasi berantai.
+- Kredensial Telegram di-cache di `MonitoringService` dan status jaringan di-cache 20 detik, hilangkan puluhan dekripsi dan query per batch.
+- Loop kamera tidur 5 menit saat interval 0 alih-alih bangun tiap 60 detik.
+- Delay history 2000/1000ms jadi 500ms dan jeda worker 200ms jadi 100ms.
+- `MessageQueue.registerFailures()` menggantikan tulis-ulang per pesan gagal.
 
 ## [1.6.16] - 2026-09-24
 

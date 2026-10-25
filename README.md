@@ -77,7 +77,7 @@ Catatan: kalkulatornya beneran bisa dipakai. Ketik angka setelah `=` mulai hitun
 - Data baru masuk ke bot tiap interval yang kamu set.
 - Foto ngikutin interval kamera, `0` berarti manual via `/photo` aja.
 - Habis reboot jalan sendiri, nggak perlu dibuka manual.
-- Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN) biar pindah HP nggak perlu ketik ulang token; backup kini menyertakan owner ID, dan restore hanya mengisi form — tetap tap Save.
+- Backup/pulihkan setingan via tombol di Setup (file `.redeyebak` terenkripsi PIN/frasa sandi minimal 10 karakter) biar pindah HP nggak perlu ketik ulang token; backup kini menyertakan owner ID, dan restore hanya mengisi form — tetap tap Save.
 - Rekaman/bunyi menahan WakeLock agar durasinya tepat meski layar mati (izin normal `WAKE_LOCK`, aktif hanya selama rekaman/bunyi).
 - Anti-mati: service dipantau jam bangun adaptif (3 menit sesaat setelah dipulihkan, 10 menit saat layar mati, 15 menit saat layar nyala) — kalau sistem menghentikannya (Doze/hemat baterai), service dihidupkan lagi otomatis dan kamu dapat pesan Telegram berisi perkiraan jam berhentinya (maksimal sekali per 6 jam; kalau berhenti berkali-kali, jumlah kematiannya disebut). Tombol Anti-kill &amp; Autostart membantu mengizinkan autostart merek HP + "tampil di atas aplikasi lain" supaya makin jarang mati, dan tombol Tes anti-mati (atau perintah `/cekmati`) membuktikan pemulihan ini benar-benar jalan di HP-mu.
 - Hemat daya: saat baterai ≤15% dan tidak di-charge, selang foto otomatis dan patroli otomatis dilipatgandakan (patroli diliburkan sementara) supaya HP tidak mati kehabisan daya; kamu diberi kabar saat mode ini mulai dan saat kembali normal.
@@ -178,7 +178,7 @@ Kalau status Setup masih **Pemilik: belum dikenal**, isi **PIN akses bot** (6-12
 
 PIN yang benar membuat akun itu menjadi owner dan **Chat ID tujuan ikut diganti ke private chat tersebut**, jadi balasan serta laporan monitoring langsung sampai ke akun itu. PIN salah dibatasi 5 kali per akun (kunci 15 menit) dan 50 kali total (kunci 10 menit); pesan `/login` dihapus dari chat setelah diproses. Bila PIN dikosongkan, cara lama (link pairing / `/start <chat ID> <kode>`) aktif kembali. PIN ikut tersimpan di file backup terenkripsi dan dipakai lagi saat restore lewat Setup maupun `/pulihkan`.
 
-Saat sudah login, kirim `/logout` dari private chat owner untuk mencabut sesi. Owner ID dihapus dan semua perintah owner langsung terkunci sampai kamu mengirim `/login <PIN>` lagi; tombol **🚪 Logout owner** juga ada di menu **⚙️ Alat & kontrol**. Selama belum login lagi, aplikasi tidak mengirim laporan, foto, video, rekaman, notifikasi, atau pesan antrean apa pun; bot hanya mengirim pengarahan login. Antrean pesan dibuang dan media yang belum terkirim dihapus agar tidak ikut terkirim setelah login. Monitoring tetap berjalan di latar belakang dan laporan masuk lagi setelah login. `/logout` hanya tersedia bila PIN akses sudah diisi, supaya kamu tidak terkunci di luar.
+Saat sudah login, kirim `/logout` dari private chat owner untuk mencabut sesi. Owner ID dihapus dan semua perintah owner langsung terkunci sampai kamu mengirim `/login <PIN>` lagi; tombol **🚪 Logout owner** juga ada di menu **⚙️ Alat & kontrol**. Selama belum login lagi, aplikasi tidak mengirim laporan, foto, video, rekaman, notifikasi, atau pesan antrean apa pun; bot hanya mengirim pengarahan login. Antrean pesan dibuang, sedangkan media yang belum terkirim disimpan dan baru dikirim setelah login. Monitoring tetap berjalan di latar belakang dan laporan masuk lagi setelah login. `/logout` hanya tersedia bila PIN akses sudah diisi, supaya kamu tidak terkunci di luar.
 
 ### Pulihkan lewat bot
 
@@ -189,7 +189,7 @@ Kirim `/pulihkan` dari **private chat owner**, lalu ikuti urutannya:
 3. Bot mengecek token baru (`getMe`), Chat ID baru (`getChat`), dan mengirim **tes pesan** ke chat baru. Kalau gagal, setelan lama tetap dipakai dan bot lama masih bisa dipakai.
 4. Kalau lolos, bot memberi jeda **60 detik** sebelum menerapkan. Kirim `/pulihkan batal` selama jeda itu untuk membatalkan. Setelah jatuh tempo, token/chat dicek ulang; bila masih valid, token, Chat ID, owner, interval sync, dan interval foto diganti. Bot lama mengirim pemberitahuan terakhir ke chat lama (kalau masih bisa), lalu tidak dipakai lagi.
 
-Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token dan PIN akses (terenkripsi PIN): pakai PIN minimal 6 digit dan jangan sebarkan file backup.
+Sebelum restore, **buka bot baru dan kirim `/start` sekali** dari chat tujuan supaya bot baru boleh mengirim ke sana. Sesi restore berlaku 10 menit, PIN salah maksimal 3 kali. File backup berisi token dan PIN akses (terenkripsi PIN/frasa sandi): pakai minimal 10 karakter (angka maupun huruf) dan jangan sebarkan file backup.
 
 **Mode ketat (opsional).** Buka Setup → **Kode restore ketat**, nyalakan switch, lalu kirim `/pulihkan <kode 6 digit>` (bukan `/pulihkan` saja). Kode berputar tiap 10 menit dan hanya ditampilkan di Setup; kode lama satu jendela masih diterima. Mode ini menambah syarat akses fisik saat restore. Default mati agar restore dari jauh tetap bisa.
 

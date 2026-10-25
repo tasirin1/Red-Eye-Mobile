@@ -16,6 +16,7 @@ class ShotConsentActivity : Activity() {
 
     private val safetyHandler = Handler(Looper.getMainLooper())
     private val safetyFinish = Runnable { finishQuietly() }
+    private var consentInFlight = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,15 +29,26 @@ class ShotConsentActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        if (consentInFlight) {
+            try {
+                safetyHandler.removeCallbacks(safetyFinish)
+                safetyHandler.postDelayed(safetyFinish, SAFETY_MS)
+            } catch (_: Exception) {
+            }
+            return
+        }
         launchConsent()
     }
 
     private fun launchConsent() {
+        if (consentInFlight) return
+        consentInFlight = true
         try {
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             @Suppress("DEPRECATION")
             startActivityForResult(mpm.createScreenCaptureIntent(), REQ_CONSENT)
         } catch (_: Exception) {
+            consentInFlight = false
             finishQuietly()
         }
     }
@@ -44,6 +56,7 @@ class ShotConsentActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        consentInFlight = false
         if (requestCode != REQ_CONSENT) {
             finishQuietly()
             return

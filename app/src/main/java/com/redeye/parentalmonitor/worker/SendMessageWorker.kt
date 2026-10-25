@@ -87,7 +87,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
-                return Result.success()
+                break
             }
             if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
                 break
