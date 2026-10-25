@@ -76,11 +76,12 @@
     <string name="setup_bad_chat">Invalid chat ID: numeric (e.g. -1001234567890) or @username</string>
     <string name="setup_bad_access_pin">Access PIN must be 6-12 digits</string>
     <string name="setup_bad_interval">Invalid interval, must be 1-1440 min (camera 0-60 min)</string>
+    <string name="setup_no_network">no network</string>
     <string name="backup_settings">Backup settings</string>
     <string name="restore_settings">Restore settings</string>
     <string name="setup_health">Check device health</string>
     <string name="setup_health_title">Device health</string>
-    <string name="setup_health_footer">Use Grant all permissions or Anti-kill to fix red items.</string>
+    <string name="setup_health_footer">Use Grant all permissions or Anti-kill &amp; Autostart to fix red items.</string>
     <string name="setup_pair_link">Copy pairing link</string>
     <string name="setup_pair_link_title">Pairing link</string>
     <string name="setup_pair_link_body">Open this link from your Telegram account:\n\n%1$s\n\nYou can also share it.</string>

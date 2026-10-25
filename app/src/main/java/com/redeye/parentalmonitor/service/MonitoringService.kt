@@ -101,6 +101,8 @@ class MonitoringService : Service() {
     private val ringBusy = AtomicBoolean(false)
     private val recordBusy = AtomicBoolean(false)
     private val recorderActive = AtomicBoolean(false)
+    @Volatile
+    private var recordingKind = ""
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
@@ -358,6 +360,7 @@ class MonitoringService : Service() {
         private const val MAX_PHOTO_KEPT = 10
         private const val DATA_QUEUE_SOFT_LIMIT = 90
         private const val MEDIA_UPLOAD_GRACE_MS = 600_000L
+        private const val AUDIO_UPLOAD_TIMEOUT_MS = 300_000L
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
@@ -2535,7 +2538,11 @@ class MonitoringService : Service() {
                 return
             }
             if (!senderOk) {
-                if (privateChat) sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
+                if (privateChat) {
+                    sendToTelegram("\u26D4 Hanya owner yang bisa pakai ${Html.escape(command)}.")
+                } else {
+                    sendToTelegram("\u26D4 ${Html.escape(command)} hanya bisa dijalankan owner dari private chat. Kirim /login &lt;PIN&gt; dari private chat owner bila PIN akses aktif, atau isi Chat ID dengan ID private chat.")
+                }
                 return
             }
         } else if (!senderOk && (!chatOk || (cachedChatId.startsWith("-") && cachedOwnerId != 0L))) {
@@ -3807,17 +3814,19 @@ class MonitoringService : Service() {
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
         } else if (!recordBusy.compareAndSet(false, true)) {
-            sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
+            sendToTelegram(if (recordingKind == "video") "⏱️ Sedang merekam video, tunggu sebentar." else "⏱️ Sedang merekam/mengunggah rekaman, tunggu sebentar.")
         } else if (ringBusy.get()) {
             recordBusy.set(false)
             sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
         } else {
             sendToTelegram("\uD83C\uDF99\uFE0F Merekam $seconds dtk\u2026")
             try { recordJob?.cancel() } catch (_: Exception) { }
+            recordingKind = "audio"
             recordJob = serviceScope.launch {
                 try {
                     recordAndSendAudio(seconds)
                 } finally {
+                    recordingKind = ""
                     recordBusy.set(false)
                 }
             }
@@ -3836,13 +3845,14 @@ class MonitoringService : Service() {
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("\u26A0\uFE0F Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
         } else if (!recordBusy.compareAndSet(false, true)) {
-            sendToTelegram("⏱️ Sedang merekam, tunggu sebentar.")
+            sendToTelegram(if (recordingKind == "audio") "⏱️ Sedang merekam/mengunggah rekaman, tunggu sebentar." else "⏱️ Sedang merekam video, tunggu sebentar.")
         } else if (ringBusy.get()) {
             recordBusy.set(false)
             sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
         } else {
             sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
             try { recordJob?.cancel() } catch (_: Exception) { }
+            recordingKind = "video"
             recordJob = serviceScope.launch {
                 try {
                     recordAndSendVideo(seconds)
@@ -3850,6 +3860,8 @@ class MonitoringService : Service() {
                     recordBusy.set(false)
                     recorderActive.set(false)
                     throw e
+                } finally {
+                    recordingKind = ""
                 }
             }
         }
@@ -7365,7 +7377,7 @@ class MonitoringService : Service() {
 
     private fun captureAndSendPhoto(reportResult: Boolean = false) {
         if (!photoPreconditions(reportResult)) return
-        if (recordBusy.get() || recorderActive.get()) {
+        if (recordingKind == "video") {
             if (reportResult) {
                 serviceScope.launch {
                     sendToTelegram("⚠️ Sedang merekam video. Coba /photo lagi setelah selesai.")
@@ -8921,7 +8933,18 @@ class MonitoringService : Service() {
                 return
             }
             recorderActive.set(false)
-            audioOutcome = sendAudioFile(audioFile)
+            val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(AUDIO_UPLOAD_TIMEOUT_MS) { sendAudioFile(audioFile) }
+            if (uploadOutcome == null) {
+                keepForRetry = true
+                audioOutcome = MediaSendOutcome.KEPT
+                try {
+                    messageQueue.addMessage("\u26A0\uFE0F Unggah rekaman melebihi batas waktu. Berkas disimpan untuk dicoba otomatis.")
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+                return
+            }
+            audioOutcome = uploadOutcome
             when (audioOutcome) {
                 MediaSendOutcome.SENT -> {
                     try {

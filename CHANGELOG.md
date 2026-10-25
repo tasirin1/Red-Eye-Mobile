@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.6.479] - 2026-10-25
+### Fixed
+- Teks fallback "tak ada jaringan" memakai resource terlokalisasi, dan footer kesehatan locale Indonesia menyebut label tombol yang benar.
+- Guard `fieldsLoaded` di Setup kini benar-benar menahan Simpan/Tes/link pairing sampai field termuat; job status lama dibatalkan sebelum job baru agar tidak menumpuk.
+- Perintah mutasi dari chat grup kini dibalas petunjuk `/login <PIN>`/private chat, tidak lagi diam tanpa penjelasan.
+- Foto tidak lagi diblokir selama rekaman audio/unggahannya; pesan sibuk menyebut jenis rekaman yang benar dan unggah audio dibatasi 5 menit agar tidak menahan kamera sampai timeout.
+
+### Security
+- Distribusi Gradle diverifikasi SHA-256 sebelum diekstrak, cache memakai kunci berisi checksum, dan `distributionSha256Sum` ditambahkan di wrapper.
+- `mapping.txt` tidak lagi diunggah ke artifact publik `apks`.
+
 ## [1.6.478] - 2026-10-25
 ### Fixed
 - Backoff `429` disimpan di preferensi, sehingga pembatasan laju Telegram tetap dihormati setelah proses aplikasi mati atau perangkat reboot.

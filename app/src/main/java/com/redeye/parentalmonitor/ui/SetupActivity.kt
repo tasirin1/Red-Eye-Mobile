@@ -51,6 +51,7 @@ class SetupActivity : AppCompatActivity() {
     private var lastNotifToggleAt = 0L
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val statusSeq = java.util.concurrent.atomic.AtomicInteger(0)
+    private var statusJob: kotlinx.coroutines.Job? = null
     private val configMutex = kotlinx.coroutines.sync.Mutex()
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
@@ -706,7 +707,7 @@ class SetupActivity : AppCompatActivity() {
         val interval = intervalParsed
         val cameraInterval = cameraParsed
         val hasStored = loadedConfigured
-        if (!fieldsLoaded && hasStored) {
+        if (!fieldsLoaded) {
             Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
             return
         }
@@ -792,13 +793,13 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (mySave != saveSeq.get()) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_save_failed, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(if (offSaved == true) R.string.setup_saved_offline else R.string.setup_save_failed, verifyDetail.ifEmpty { getString(R.string.setup_no_network) }), Toast.LENGTH_LONG).show()
                         try { updateStatus() } catch (_: Exception) { }
                     }
                     return@launch
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, verifyDetail.ifEmpty { "tak ada jaringan" }), Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, verifyDetail.ifEmpty { getString(R.string.setup_no_network) }), Toast.LENGTH_LONG).show()
                 }
                 return@launch
             }
@@ -887,8 +888,7 @@ class SetupActivity : AppCompatActivity() {
         val rawChat = chatIdInput.text?.toString()?.trim().orEmpty()
         val rawAccessPin = accessPinInput.text?.toString()?.trim().orEmpty()
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val hasStored = try { prefs.isConfigured() } catch (_: Exception) { false }
-            if (!fieldsLoaded && hasStored) {
+            if (!fieldsLoaded) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
                 }
@@ -1103,8 +1103,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun testConnection() {
-        val hasStored = loadedConfigured
-        if (!fieldsLoaded && hasStored) {
+        if (!fieldsLoaded) {
             Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
             return
         }
@@ -1746,7 +1745,8 @@ class SetupActivity : AppCompatActivity() {
 
     private fun updateStatus() {
         val myStatus = statusSeq.incrementAndGet()
-        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+        try { statusJob?.cancel() } catch (_: Exception) { }
+        statusJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val configured = try { prefs.isConfigured() } catch (_: Exception) { false }
             val perms = hasAllPermissions()
             val enabled = try { prefs.isMonitoringEnabled } catch (_: Exception) { false }

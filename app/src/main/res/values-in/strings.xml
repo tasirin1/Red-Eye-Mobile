@@ -76,11 +76,12 @@
     <string name="setup_bad_chat">Format chat ID salah: angka (contoh -1001234567890) atau @username</string>
     <string name="setup_bad_access_pin">PIN akses harus 6-12 digit</string>
     <string name="setup_bad_interval">Interval salah, harus 1-1440 mnt (kamera 0-60 mnt)</string>
+    <string name="setup_no_network">tak ada jaringan</string>
     <string name="backup_settings">Backup setingan</string>
     <string name="restore_settings">Pulihkan setingan</string>
     <string name="setup_health">Cek kesehatan perangkat</string>
     <string name="setup_health_title">Kesehatan perangkat</string>
-    <string name="setup_health_footer">Pakai tombol Grant all permissions atau Anti-mati untuk membenahi item merah.</string>
+    <string name="setup_health_footer">Pakai tombol Berikan semua izin atau Anti-mati &amp; Autostart untuk membenahi item merah.</string>
     <string name="setup_pair_link">Salin link pairing</string>
     <string name="setup_pair_link_title">Link pairing</string>
     <string name="setup_pair_link_body">Buka link ini dari akun Telegram kamu:\n\n%1$s\n\nBisa juga dibagikan.</string>
