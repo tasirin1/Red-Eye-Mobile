@@ -41,6 +41,7 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 - Jangan `git commit` / buat branch kecuali diminta eksplisit atau diwajibkan alur rilis `§8`.
 - Mode perbaiki = maraton: kerjakan temuan satu per satu sampai habis; tiap putaran cek antrian CI (`gh run list`), bila ada gagal build dahulukan perbaikannya baru lanjut ke temuan lain.
 - Audit menyeluruh = sub-agen paralel + verifikasi mandiri: pecah jadi 2–5 sub-agen per area, lalu verifikasi sendiri tiap klaim berat langsung ke kode (`rg`/`sed`) sebelum masuk laporan/patch — klaim sub-agen bukan fakta sampai terbukti. Aturan maraton + sub-agen ini berlaku lintas repo (versi kanonik: `SOUL.md` di memori agen).
+- Setiap temuan audit dicatat sebagai issue dulu: hasil audit (mode baca-saja) tidak langsung diperbaiki — tiap temuan yang lolos verifikasi dibuatkan satu issue GitHub (`gh issue create`, satu issue = satu temuan) berisi `file:baris`, kenapa berbahaya, skenario pemicu, level, dan ronde audit. Perintah "perbaiki/lanjut" mengambil antrean dari issue terbuka (level terberat dulu, lalu nomor tertua); commit menyebut `Closes #N` dan issue ditutup setelah perbaikan di-push (temuan yang digugurkan ditutup dengan alasan). Bila Issues dimatikan/`gh` tak ada, catat daftar bernomor di file memori repo. Versi kanonik: `SOUL.md` di memori agen.
 - Ikuti gaya kode yang ada (findViewById, Material3, tanpa ViewBinding — fitur dimatikan di `app/build.gradle`).
 
 ## 6. Changelog & Dokumentasi
