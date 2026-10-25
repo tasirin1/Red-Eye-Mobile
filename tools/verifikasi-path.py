@@ -775,9 +775,15 @@ def utama():
             ujung = args.rentang.split("...")[-1] or "HEAD"
             if not ujung or set(ujung) == {"0"}:
                 ujung = "HEAD"
-            print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
-            berubah = [p for p in jalan_repo("app") if not p.endswith(".md")]
-            diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
+            awal = re.split(r"\.\.+", args.rentang, maxsplit=1)[0]
+            if awal and set(awal) != {"0"} and jalan("git", "rev-parse", "--verify", "--quiet", awal + "^{commit}") is None:
+                gagal.append("Rentang diff tak valid: %s (revisi %s tidak ditemukan)." % (args.rentang, awal))
+                berubah = []
+                diff = ""
+            else:
+                print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
+                berubah = [p for p in jalan_repo("app") if not p.endswith(".md")]
+                diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
         else:
             berubah = daftar
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)

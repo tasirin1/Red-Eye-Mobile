@@ -273,6 +273,15 @@ class CameraService(private val context: Context) {
                 dummyTexture.setDefaultBufferSize(meterSize.first, meterSize.second)
             } catch (_: Exception) {
             }
+            try {
+                dummyTexture.setOnFrameAvailableListener({
+                    try {
+                        dummyTexture.updateTexImage()
+                    } catch (_: Exception) {
+                    }
+                }, backgroundHandler)
+            } catch (_: Exception) {
+            }
             val ownedSurface = android.view.Surface(dummyTexture)
             val ownedReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
             fun releaseOwned() {

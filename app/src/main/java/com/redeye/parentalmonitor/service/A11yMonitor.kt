@@ -121,9 +121,12 @@ object A11yMonitor {
                 val key = pkg + "|" + cls
                 if (key == lastEventKey) return
                 lastEventKey = key
-                val texts = if (TamperGuard.mayBeSensitive(pkg, cls)) collectSnapshot(service).texts else emptyList()
+                val sensitive = TamperGuard.mayBeSensitive(pkg, cls)
                 val app = service.applicationContext
-                executor.execute { handleWindow(app, pkg, cls, texts) }
+                executor.execute {
+                    val texts = if (sensitive) collectSnapshot(service).texts else emptyList()
+                    handleWindow(app, pkg, cls, texts)
+                }
                 scanWatchedContent(service, pkg)
                 requestPeriodicPersist(app)
             }

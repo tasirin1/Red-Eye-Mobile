@@ -23,6 +23,10 @@ class ParentalMonitorApp : Application() {
         } catch (_: Exception) {
         }
         try {
+            com.redeye.parentalmonitor.utils.NetworkUtils.init(this)
+        } catch (_: Exception) {
+        }
+        try {
             createNotificationChannel()
         } catch (_: Exception) {
         }

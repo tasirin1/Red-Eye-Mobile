@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.6.478] - 2026-10-25
+### Fixed
+- Backoff `429` disimpan di preferensi, sehingga pembatasan laju Telegram tetap dihormati setelah proses aplikasi mati atau perangkat reboot.
+- Surface metering kamera mengonsumsi frame lewat `updateTexImage`, sehingga buffer tidak menumpuk dan AE/AWB lebih stabil.
+- Tombol menu yang meminta input (`AskInput`) ikut kedaluwarsa setelah 5 menit seperti tombol perintah lain.
+- Snapshot aksesibilitas dibaca di thread executor, bukan di thread utama accessibility.
+- `tools/verifikasi-path.py` gagal saat `--rentang` menunjuk revisi yang tidak ada, alih-alih memeriksa seluruh `app/` lalu LOLOS.
+- Penyamaran digit di notifikasi kini mencakup deretan 13 digit atau lebih (nomor kartu/NIK/rekening).
+- Ringkasan: `digestAt` di masa depan tidak lagi mematikan throttle, dan `/digest` manual memperbarui penanda agar ringkasan otomatis tidak langsung menyusul.
+- Geofence fallback menandai percobaan walau fix GPS gagal (tidak lagi mencoba tiap siklus), dan cek jam malam/sekolah tidak mengambil lokasi bila alert hari itu sudah terkirim.
+- `/bersihkan` menerima `media`, `foto`, `video`, atau `rekaman` dan menghapus sesuai jenisnya.
+
 ## [1.6.477] - 2026-10-25
 ### Fixed
 - `SendMessageWorker` berhenti di tengah antrean tanpa membersihkan pesan yang sudah terkirim saat PIN aktif dan owner belum login; pesan terkirim tidak lagi dikirim ulang.

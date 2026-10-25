@@ -11,7 +11,7 @@ object NotificationPrivacy {
             OTP_WORDS.joinToString("|") { Regex.escape(it) } +
             ")(?![\\p{L}\\p{N}])"
     )
-    private val DIGIT_GROUPS = Regex("(?<!\\d)(?:\\d[ .-]?){3,11}\\d(?![ .-]?\\d)")
+    private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]?\\d){3,}(?![ .-]?\\d)")
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 

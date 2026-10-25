@@ -1959,19 +1959,23 @@ class MonitoringService : Service() {
             sendToTelegram(layar.text, layar.markup)
             return
         }
-        if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
-            if (!ownerOk) return
-            controlLock.withLock { armInput("/" + aksi.command, aksi.view) }
-            return
-        }
-        val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
-        val originOk = originChat.isNotEmpty() && originChat == chatId
         val pressedAt = try {
             val msg = query.message
             if (msg == null) 0L else if (msg.editDate > msg.date) msg.editDate else msg.date
         } catch (_: Exception) {
             0L
         }
+        if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
+            if (!ownerOk) return
+            if (pressedAt <= 0L || serverNowSec() - pressedAt > MUTATING_MAX_AGE_SEC) {
+                sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
+                return
+            }
+            controlLock.withLock { armInput("/" + aksi.command, aksi.view) }
+            return
+        }
+        val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
+        val originOk = originChat.isNotEmpty() && originChat == chatId
         val gateCommand = command.substringBefore(" ")
         if (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS) {
             if (pressedAt <= 0L || serverNowSec() - pressedAt > MUTATING_MAX_AGE_SEC) {
@@ -2791,14 +2795,18 @@ class MonitoringService : Service() {
 
     private suspend fun handleCleanMediaCommand(arg: String) {
         val parts = arg.trim().lowercase(java.util.Locale.ROOT).split(CMD_SPLIT_REGEX)
-        if (parts.isEmpty() || parts[0] != "media") {
-            sendToTelegram("Cara pakai: /bersihkan media &lt;1-365&gt; (hari)")
+        val target = parts[0]
+        val wantsPhoto = target in setOf("media", "semua", "all", "foto", "photo")
+        val wantsVideo = target in setOf("media", "semua", "all", "video")
+        val wantsAudio = target in setOf("media", "semua", "all", "rekaman", "audio", "suara")
+        if (!wantsPhoto && !wantsVideo && !wantsAudio) {
+            sendToTelegram("Cara pakai: /bersihkan media|foto|video|rekaman &lt;1-365&gt; (hari)")
             return
         }
         val dayArg = parts.getOrNull(1)
         val days = dayArg?.toIntOrNull() ?: 0
         if (days !in 1..365) {
-            sendToTelegram("Cara pakai: /bersihkan media &lt;1-365&gt; (hari)")
+            sendToTelegram("Cara pakai: /bersihkan media|foto|video|rekaman &lt;1-365&gt; (hari)")
             return
         }
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
@@ -2808,9 +2816,10 @@ class MonitoringService : Service() {
             cacheDir.listFiles()?.forEach { file ->
                 if (!file.isFile || isMediaActive(file)) return@forEach
                 val name = file.name
-                val media = (name.startsWith("camera_") || name.startsWith("screenshot_")) && (name.endsWith(".jpg") || name.endsWith(".tmp")) ||
-                    name.startsWith("video_") && (name.endsWith(".mp4") || name.endsWith(".tmp")) ||
-                    name.startsWith("audio_") && (name.endsWith(".m4a") || name.endsWith(".tmp"))
+                val photo = wantsPhoto && (name.startsWith("camera_") || name.startsWith("screenshot_")) && (name.endsWith(".jpg") || name.endsWith(".tmp"))
+                val video = wantsVideo && name.startsWith("video_") && (name.endsWith(".mp4") || name.endsWith(".tmp"))
+                val audio = wantsAudio && name.startsWith("audio_") && (name.endsWith(".m4a") || name.endsWith(".tmp"))
+                val media = photo || video || audio
                 if (media && file.lastModified() < cutoff) {
                     val len = file.length()
                     if (file.delete()) {
@@ -6072,7 +6081,11 @@ class MonitoringService : Service() {
     private suspend fun maybeSendDigest() {
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
-        if (last <= now && now - last < 6 * 60 * 60_000L) return
+        if (last > now) {
+            try { preferencesManager.digestAt = now } catch (_: Exception) { }
+            return
+        }
+        if (now - last < 6 * 60 * 60_000L) return
         try { preferencesManager.digestAt = now } catch (_: Exception) { }
         val since = now - 6 * 60 * 60_000L
         val smsCount = try { smsRepository.getRecentSmsSince(since, 200).size } catch (_: Exception) { -1 }
@@ -6341,6 +6354,7 @@ class MonitoringService : Service() {
                 false
             }
             if (!hasHome && !hasSchool) return
+            lastGeofenceCheckAt = nowElapsed
             val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             val cached = lastSentLatLon()
             var accuracyM = -1f
@@ -6354,7 +6368,6 @@ class MonitoringService : Service() {
                 Pair(fix.latitude, fix.longitude)
             }
             checkGeofence(pos.first, pos.second, accuracyM)
-            lastGeofenceCheckAt = nowElapsed
         } catch (_: Exception) {
         }
     }
@@ -6410,6 +6423,9 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
+            if (manual && sent) {
+                try { preferencesManager.digestAt = now } catch (_: Exception) { }
+            }
             return sent
         } catch (_: Exception) {
             if (manual) {
@@ -6767,6 +6783,11 @@ class MonitoringService : Service() {
             if (!(inCurfew && homeFence) && !inSchool) return
             val key = todayKey(if (h < 5) now - 24 * 60 * 60_000L else now)
             if (key.isEmpty()) return
+            val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
+            val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
+            val needCurfew = inCurfew && homeFence && curfewDone != key
+            val needSchool = inSchool && schoolDone != key
+            if (!needCurfew && !needSchool) return
             var pos = lastSentLatLon()
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             if (pos == null || locAge > 30 * 60_000L) {
@@ -6779,8 +6800,7 @@ class MonitoringService : Service() {
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
             }
-            val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
-            if (inCurfew && homeFence && curfewDone != key) {
+            if (needCurfew) {
                 val dist = distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
                 if (dist >= 0f && dist > homeRad) {
                     try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
@@ -6788,8 +6808,7 @@ class MonitoringService : Service() {
                     return
                 }
             }
-            val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
-            if (inSchool && schoolDone != key) {
+            if (needSchool) {
                 val dist = distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
                 if (dist >= 0f && dist > schoolRad) {
                     try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
