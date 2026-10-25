@@ -50,3 +50,5 @@ recoverEncryptedStorage
 buildFuzzy
 looksLikeBackup
 masksSeparatedCodesAndKeepsLongNumbers
+isEmergencySmsNumber
+isPremiumSmsNumber

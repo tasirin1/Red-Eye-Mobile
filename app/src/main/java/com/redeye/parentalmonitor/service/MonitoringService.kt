@@ -33,11 +33,13 @@ import com.redeye.parentalmonitor.utils.OwnerAccess
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.ReportFormat
 import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.RestoreCode
 import com.redeye.parentalmonitor.utils.RestoreRules
 import com.redeye.parentalmonitor.utils.SettingsBackup
 import com.redeye.parentalmonitor.utils.SmsCommandParser
+import com.redeye.parentalmonitor.utils.SmsNumbers
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
@@ -1046,7 +1048,7 @@ class MonitoringService : Service() {
                 try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
                 try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
-                val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+                val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (dist >= 0f && dist < 100f) {
                     appendLine("Lokasi: masih di titik terakhir (±${dist.toInt()} m)")
                 } else {
@@ -3385,7 +3387,7 @@ class MonitoringService : Service() {
         sendToTelegram(
             buildString {
                 appendLine("\uD83D\uDCBE <b>Penyimpanan</b>")
-                appendLine("Cache: " + formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
+                appendLine("Cache: " + ReportFormat.formatBytes(stats.bytes) + " (" + stats.photos + " foto, " + stats.audios + " audio, " + stats.videos + " video)")
                 appendLine("Antrean: ${messageQueue.getQueueSize()}")
             }
         )
@@ -3466,7 +3468,7 @@ class MonitoringService : Service() {
                 appendLine("\uD83D\uDCF1 <b>Alert aplikasi</b>")
                 appendLine("Status: " + if (on) "nyala" else "mati")
                 appendLine("Sekarang: " + if (now.isEmpty()) "-" else Html.escape(now))
-                appendLine("Hari ini: " + durationText(total) + " \u00b7 " + rows.size + " app")
+                appendLine("Hari ini: " + ReportFormat.durationText(total) + " \u00b7 " + rows.size + " app")
                 appendLine("Atur: /appalert on|off")
             })
         } else if (sub == "on" || sub == "off") {
@@ -3879,9 +3881,9 @@ class MonitoringService : Service() {
             sendToTelegram("Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
         } else if (number.isEmpty() || smsText.isEmpty()) {
             sendToTelegram("\u26A0\uFE0F Nomor tidak valid. Cara pakai: /sms &lt;nomor&gt; &lt;pesan&gt;")
-        } else if (isPremiumSmsNumber(normalized)) {
+        } else if (SmsNumbers.isPremium(normalized)) {
             sendToTelegram("\uD83D\uDEAB Nomor premium tidak boleh dipakai /sms.")
-        } else if (isEmergencySmsNumber(normalized)) {
+        } else if (SmsNumbers.isEmergency(normalized)) {
             sendToTelegram("\uD83D\uDEAB Nomor darurat tidak boleh dipakai /sms. Hubungi langsung dari HP.")
         } else if (smsText.length > 500) {
             sendToTelegram("⚠️ Pesan terlalu panjang (maks 500 karakter).")
@@ -3920,7 +3922,7 @@ class MonitoringService : Service() {
             sendToTelegram("⛔ Hanya peminta yang bisa mengonfirmasi SMS ini.")
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("\u26A0\uFE0F Izin SMS hilang. Berikan di Setup lalu stage ulang.")
-        } else if (isPremiumSmsNumber(number) || isEmergencySmsNumber(number)) {
+        } else if (SmsNumbers.isPremium(number) || SmsNumbers.isEmergency(number)) {
             preferencesManager.clearSmsPendingIf(stagedAt)
             sendToTelegram("\uD83D\uDEAB Nomor kini diblokir, pending dibuang. Stage ulang nomor lain.")
         } else if (preferencesManager.lastSmsSendAt <= nowConfirm && nowConfirm - preferencesManager.lastSmsSendAt < 60_000L) {
@@ -4057,7 +4059,7 @@ class MonitoringService : Service() {
             } else {
                 val stale = isStaleFix(location)
                 val prev = if (stale) null else lastSentLatLon()
-                val dist = if (prev == null) -1f else distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
+                val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (!stale) {
                     rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
                     try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
@@ -5132,41 +5134,6 @@ class MonitoringService : Service() {
         return found
     }
 
-    private val emergencyNumbers = setOf("112", "911", "999", "110", "000", "111", "118", "119")
-
-    private fun isEmergencySmsNumber(raw: String): Boolean {
-        val digits = raw.filter { it.isDigit() }
-        if (digits.isEmpty()) return false
-        var intl = digits
-        if (intl.startsWith("011")) intl = intl.substring(3)
-        else if (intl.startsWith("00")) intl = intl.substring(2)
-        val local = if (digits.startsWith("0")) digits.substring(1) else digits
-        return digits in emergencyNumbers || intl in emergencyNumbers || local in emergencyNumbers
-    }
-
-    private fun isPremiumSmsNumber(raw: String): Boolean {
-        val digits = raw.filter { it.isDigit() }
-        if (digits.isEmpty()) return false
-        if (digits in emergencyNumbers) return false
-        var intl = digits
-        if (intl.startsWith("011")) intl = intl.substring(3)
-        else if (intl.startsWith("00")) intl = intl.substring(2)
-        val local = if (digits.startsWith("0")) digits.substring(1) else digits
-        if (local == "1900" || local.startsWith("1900") || local.startsWith("900") || local.startsWith("976")) return true
-        if (intl.startsWith("44")) {
-            val uk = intl.substring(2)
-            if (uk.startsWith("70") || uk.startsWith("90") || uk.startsWith("118") || uk.startsWith("09") || uk.startsWith("087") || uk.startsWith("084")) return true
-        }
-        if (intl.startsWith("1")) {
-            if (intl.substring(1).startsWith("900")) return true
-        }
-        if (intl.startsWith("900")) return true
-        if (local.length <= 6) {
-            return true
-        }
-        return false
-    }
-
     private suspend fun sendSmsPending(number: String, smsText: String, stagedAt: Long = 0L) {
         val uuid = java.util.UUID.randomUUID()
         val sentAction = "com.redeye.parentalmonitor.SMS_SENT_" + System.nanoTime() + "_" + uuid.toString()
@@ -5885,12 +5852,12 @@ class MonitoringService : Service() {
         val total = rows.sumOf { it.second }
         return buildString {
             appendLine("📱 <b>Ringkasan layar</b> ($hours jam terakhir)")
-            appendLine("Total: " + durationText(total))
-            for (row in rows.take(6)) appendLine("• " + Html.escape(row.first) + " — " + durationText(row.second))
+            appendLine("Total: " + ReportFormat.durationText(total))
+            for (row in rows.take(6)) appendLine("• " + Html.escape(row.first) + " — " + ReportFormat.durationText(row.second))
             val a11y = a11yUsageRows()
             if (a11y.isNotEmpty()) {
                 val night = a11y.sumOf { it.nightMillis }
-                if (night > 0L) appendLine("Malam ini (aksesibilitas): " + durationText(night))
+                if (night > 0L) appendLine("Malam ini (aksesibilitas): " + ReportFormat.durationText(night))
             }
             val now = A11yMonitor.currentAppLabel()
             if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
@@ -5902,12 +5869,12 @@ class MonitoringService : Service() {
         val night = rows.sumOf { it.nightMillis }
         return buildString {
             appendLine("📱 <b>Ringkasan layar</b> (aksesibilitas, hari ini)")
-            appendLine("Total: " + durationText(total))
+            appendLine("Total: " + ReportFormat.durationText(total))
             for (row in rows.take(6)) {
-                appendLine("• " + Html.escape(row.label) + " — " + durationText(row.millis) +
-                    if (row.nightMillis > 0L) " · malam " + durationText(row.nightMillis) else "")
+                appendLine("• " + Html.escape(row.label) + " — " + ReportFormat.durationText(row.millis) +
+                    if (row.nightMillis > 0L) " · malam " + ReportFormat.durationText(row.nightMillis) else "")
             }
-            if (night > 0L) appendLine("Pemakaian malam: " + durationText(night))
+            if (night > 0L) appendLine("Pemakaian malam: " + ReportFormat.durationText(night))
             val now = A11yMonitor.currentAppLabel()
             if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
             if (hours < 24) appendLine("Catatan: data aksesibilitas dihitung sejak 00:00, bukan $hours jam terakhir.")
@@ -5925,11 +5892,11 @@ class MonitoringService : Service() {
             if (a11y.isEmpty()) return null
             val total = a11y.sumOf { it.millis }
             val top = a11y.first()
-            return "Layar hari ini: " + durationText(total) + " · teratas " + Html.escape(top.label) + " " + durationText(top.millis)
+            return "Layar hari ini: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.label) + " " + ReportFormat.durationText(top.millis)
         }
         val total = rows.sumOf { it.second }
         val top = rows.first()
-        return "Layar $hours jam: " + durationText(total) + " · teratas " + Html.escape(top.first) + " " + durationText(top.second)
+        return "Layar $hours jam: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.first) + " " + ReportFormat.durationText(top.second)
     }
 
     @Suppress("DEPRECATION")
@@ -5969,7 +5936,7 @@ class MonitoringService : Service() {
         if (speed < 0f && prev != null) {
             val dt = fix.time - prev.third
             if (dt in 30_000L..30 * 60_000L) {
-                val dist = distanceMeters(prev.first, prev.second, fix.latitude, fix.longitude)
+                val dist = ReportFormat.distanceMeters(prev.first, prev.second, fix.latitude, fix.longitude)
                 if (dist >= 20f) {
                     speed = dist / (dt / 1000f)
                     hardwareSpeed = false
@@ -6161,7 +6128,7 @@ class MonitoringService : Service() {
         }
         val stay = com.redeye.parentalmonitor.utils.TrailStats.longestStay(pts, maxGapMs = maxGap)
         if (stay != null && stay.millis >= 45 * 60_000L) {
-            out.add("Diam ${durationText(stay.millis)} di https://maps.google.com/?q=${stay.lat},${stay.lon}")
+            out.add("Diam ${ReportFormat.durationText(stay.millis)} di https://maps.google.com/?q=${stay.lat},${stay.lon}")
         }
         try {
             val la = preferencesManager.schoolLatE6
@@ -6171,7 +6138,7 @@ class MonitoringService : Service() {
                 val inside = com.redeye.parentalmonitor.utils.TrailStats.millisInside(
                     pts, la / 1_000_000.0, lo / 1_000_000.0, rad.toFloat(), maxGap
                 )
-                if (inside >= 10 * 60_000L) out.add("Di sekolah: ${durationText(inside)}")
+                if (inside >= 10 * 60_000L) out.add("Di sekolah: ${ReportFormat.durationText(inside)}")
             }
         } catch (_: Exception) {
         }
@@ -6222,16 +6189,6 @@ class MonitoringService : Service() {
             }.filter { it.first > System.currentTimeMillis() - 24 * 60 * 60_000L }
         } catch (_: Exception) {
             emptyList()
-        }
-    }
-
-    private fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Float {
-        return try {
-            val out = FloatArray(1)
-            android.location.Location.distanceBetween(aLat, aLon, bLat, bLon, out)
-            out[0]
-        } catch (_: Exception) {
-            -1f
         }
     }
 
@@ -6304,7 +6261,7 @@ class MonitoringService : Service() {
             for ((cfg, isHome) in fences) {
                 val (laE6, loE6, rad) = cfg
                 if (laE6 == Long.MIN_VALUE || loE6 == Long.MIN_VALUE || rad <= 0) continue
-                val dist = distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
+                val dist = ReportFormat.distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
                 val inside = dist <= rad
                 if (isHome) {
@@ -6641,7 +6598,7 @@ class MonitoringService : Service() {
                 if (pos == null || ageH > 6) {
                     locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
                 } else if (la != Long.MIN_VALUE && rad > 0 &&
-                    distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
+                    ReportFormat.distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
                 ) score += 10
             } catch (_: Exception) {
             }
@@ -6813,7 +6770,7 @@ class MonitoringService : Service() {
                 pos = Pair(fix.latitude, fix.longitude)
             }
             if (needCurfew) {
-                val dist = distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
+                val dist = ReportFormat.distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
                 if (dist >= 0f && dist > homeRad) {
                     try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
                     sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")
@@ -6821,24 +6778,13 @@ class MonitoringService : Service() {
                 }
             }
             if (needSchool) {
-                val dist = distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
+                val dist = ReportFormat.distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
                 if (dist >= 0f && dist > schoolRad) {
                     try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
                     sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
                 }
             }
         } catch (_: Exception) {
-        }
-    }
-
-    private fun durationText(millis: Long): String {
-        val minutes = (millis / 60_000L).coerceAtLeast(0L)
-        val hours = minutes / 60
-        val days = hours / 24
-        return when {
-            days > 0 -> "$days d ${hours % 24} h"
-            hours > 0 -> "$hours h ${minutes % 60} m"
-            else -> "$minutes m"
         }
     }
 
@@ -6868,11 +6814,11 @@ class MonitoringService : Service() {
         return buildString {
             appendLine("💚 <b>Alive</b>")
             appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
-            appendLine("Lama nyala: ${if (started > 0) durationText(now - started) else "?"}")
+            appendLine("Lama nyala: ${if (started > 0) ReportFormat.durationText(now - started) else "?"}")
             if (started > 0) appendLine("Sejak: " + formatDate(started))
             appendLine("Denyut terakhir: " + if (beatAge >= 0L) {
                 val at = if (lastAlive > 0L) " pukul " + Liveness.clockText(lastAlive) else ""
-                durationText(beatAge) + " lalu" + at
+                ReportFormat.durationText(beatAge) + " lalu" + at
             } else "?")
             appendLine("Dipulihkan: ${kills}x sejak dihentikan sistem" +
                 if (unreported > 0) " (belum dilaporkan: ${unreported}x)" else "")
@@ -6881,8 +6827,8 @@ class MonitoringService : Service() {
             val heals = try { preferencesManager.silentHeals } catch (_: Exception) { 0 }
             val sendText = when {
                 sendAge < 0L -> "?"
-                sendAge < 30 * 60_000L -> "OK (" + durationText(sendAge) + " lalu)"
-                else -> "BISU " + durationText(sendAge) + " lalu"
+                sendAge < 30 * 60_000L -> "OK (" + ReportFormat.durationText(sendAge) + " lalu)"
+                else -> "BISU " + ReportFormat.durationText(sendAge) + " lalu"
             }
             appendLine("Jalur kirim: $sendText" + (if (heals > 0) " · dipulihkan sendiri ${heals}x" else ""))
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
@@ -7425,7 +7371,7 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             finishCaptureAttempt(wd)
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto: ${redactToken(e.message)}")
-            val policyBlocked = isCameraPolicyError(e.message)
+            val policyBlocked = ReportFormat.isCameraPolicyError(e.message)
             if (policyBlocked) autoPausePhotosOnPolicyBlock()
             reportPhotoResult(reportResult, "⚠️ Gagal memotret: " + sanitizedCameraError(e.message) + ".", sanitizedCameraError(e.message))
         }
@@ -7523,7 +7469,7 @@ class MonitoringService : Service() {
         if (cameraAttempt.get() != attempt) return
         finishCaptureAttempt(wd)
         android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
-        val policyBlocked = isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
+        val policyBlocked = ReportFormat.isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
         if (policyBlocked) autoPausePhotosOnPolicyBlock()
         serviceScope.launch {
             if (reportResult) {
@@ -8044,7 +7990,7 @@ class MonitoringService : Service() {
     }
 
     private fun sanitizedCameraError(reason: String?): String {
-        if (isCameraPolicyError(reason)) {
+        if (ReportFormat.isCameraPolicyError(reason)) {
             return if (isCameraDisabledByPolicy()) "kamera dimatikan kebijakan perangkat (CAMERA_DISABLED)"
             else "kamera menolak akses latar (CAMERA_DISABLED)"
         }
@@ -8127,7 +8073,7 @@ class MonitoringService : Service() {
     private suspend fun notifyCameraFailure(reason: String) {
         try {
             val clean = sanitizedCameraError(reason)
-            val policyError = isCameraPolicyError(clean)
+            val policyError = ReportFormat.isCameraPolicyError(clean)
             if (policyError) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
@@ -8557,12 +8503,6 @@ class MonitoringService : Service() {
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    private fun isCameraPolicyError(reason: String?): Boolean {
-        if (reason == null) return false
-        return reason.contains("CAMERA_DISABLED", ignoreCase = true) ||
-            reason.contains("disabled by policy", ignoreCase = true)
-    }
-
     private fun isCameraDisabledByPolicy(): Boolean {
         try {
             val dpm = devicePolicySvc ?: return false
@@ -8583,7 +8523,7 @@ class MonitoringService : Service() {
 
     private fun cameraFailureHint(reason: String?): String {
         if (!hasCameraPermission()) return "Buka Setup dan berikan izin Kamera."
-        if (isCameraPolicyError(reason) || isCameraDisabledByPolicy()) return "Kamera diblokir kebijakan perangkat (aplikasi admin lain, profil kerja, atau kontrol orang tua mematikannya). Periksa Setelan > Keamanan > Aplikasi admin perangkat, cabut pembatasan kamera, atau jeda foto dengan /pause."
+        if (ReportFormat.isCameraPolicyError(reason) || isCameraDisabledByPolicy()) return "Kamera diblokir kebijakan perangkat (aplikasi admin lain, profil kerja, atau kontrol orang tua mematikannya). Periksa Setelan > Keamanan > Aplikasi admin perangkat, cabut pembatasan kamera, atau jeda foto dengan /pause."
         return "Kamera mungkin sedang dipakai aplikasi lain."
     }
 
@@ -9568,15 +9508,6 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         return CacheStats(bytes, photos, audios, videos)
-    }
-
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(java.util.Locale.US, "%.1f KB", kb)
-        val mb = kb / 1024.0
-        if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
-        return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
     private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome =

@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Enam helper murni dipindah keluar dari `MonitoringService.kt` tanpa mengubah perilaku (bodi identik): `durationText`, `formatBytes`, `distanceMeters`, `isCameraPolicyError` ke `utils/ReportFormat.kt`; `isEmergencySmsNumber`/`isPremiumSmsNumber` ke `utils/SmsNumbers.kt`. Tahap pertama pemecahan kelas raksasa (#7).
+
+### Added
+- Uji JVM `ReportFormatTest` dan `SmsNumbersTest` untuk helper yang dipindah.
 
 ## [1.6.481] - 2026-10-25
 ### Changed
