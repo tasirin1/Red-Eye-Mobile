@@ -24,9 +24,10 @@ class NotificationPrivacyTest {
     }
 
     @Test
-    fun masksSeparatedCodesAndKeepsLongNumbers() {
+    fun masksSeparatedCodesAndLongNumbers() {
         val out = NotificationPrivacy.mask("OTP 123 456, kode 123-456, nomor 123456789, panjang 1234567890123")
-        assertEquals("OTP ••• •••, kode •••-•••, nomor •••••••••, panjang 1234567890123", out)
+        assertEquals("OTP ••• •••, kode •••-•••, nomor •••••••••, panjang •••••••••••••", out)
+        assertEquals("kartu •••• •••• •••• ••••", NotificationPrivacy.mask("kartu 1234 5678 9012 3456"))
     }
 
     @Test

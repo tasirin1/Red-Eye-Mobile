@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [1.6.480] - 2026-10-25
+### Fixed
+- Uji `NotificationPrivacyTest` disesuaikan dengan penyamaran deretan 13 digit atau lebih, sehingga build 1.6.478/1.6.479 tidak lagi gagal di tahap unit test.
+
 ## [1.6.479] - 2026-10-25
 ### Fixed
 - Teks fallback "tak ada jaringan" memakai resource terlokalisasi, dan footer kesehatan locale Indonesia menyebut label tombol yang benar.
