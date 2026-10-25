@@ -273,15 +273,22 @@ class CameraService(private val context: Context) {
                 dummyTexture.setDefaultBufferSize(meterSize.first, meterSize.second)
             } catch (_: Exception) {
             }
-            meteringTexture = dummyTexture
             val ownedSurface = android.view.Surface(dummyTexture)
-            meteringSurface = ownedSurface
             val ownedReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
-            imageReader = ownedReader
             fun releaseOwned() {
                 try { ownedReader.close() } catch (_: Exception) { }
                 try { ownedSurface.release() } catch (_: Exception) { }
                 try { dummyTexture.release() } catch (_: Exception) { }
+            }
+            synchronized(captureLock) {
+                if (sessionSeq.get() != mySeq) {
+                    releaseOwned()
+                    finishWithError(Exception("Sesi kamera digantikan"))
+                    return
+                }
+                meteringTexture = dummyTexture
+                meteringSurface = ownedSurface
+                imageReader = ownedReader
             }
             imageReader?.setOnImageAvailableListener({ reader ->
                 try {
@@ -578,6 +585,19 @@ class CameraService(private val context: Context) {
             rec.setOutputFile(tmpFile.absolutePath)
             rec.prepare()
             videoSurface = rec.surface
+            synchronized(captureLock) {
+                if (sessionSeq.get() != mySeq) {
+                    try { rec.release() } catch (_: Exception) {
+                    }
+                    try { tmpFile.delete() } catch (_: Exception) {
+                    }
+                    if (activeRecorder === rec) activeRecorder = null
+                    if (activeVideoFile === tmpFile) activeVideoFile = null
+                    if (pendingOut === tmpFile) pendingOut = null
+                    finishWithError(Exception("Sesi kamera digantikan"))
+                    return
+                }
+            }
             val recordSurface = videoSurface ?: run { finishWithError(Exception("Permukaan rekaman tak tersedia")); return }
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {

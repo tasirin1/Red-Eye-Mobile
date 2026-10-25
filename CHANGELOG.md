@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.6.476] - 2026-10-25
+### Fixed
+- Offset `getUpdates` tidak lagi membeku: update yang sudah pernah ditangani tidak masuk daftar pending, dan jalur balasan `/start`/login menutup pelacakan update, sehingga perintah lama tidak dijalankan ulang setelah restart.
+- Umur perintah dihitung memakai waktu server Telegram (header `Date`) alih-alih jam perangkat, sehingga jam perangkat yang meleset tidak lagi menolak semua perintah.
+- Tombol Aksesibilitas di Setup memberi tenggang 2 menit pada proteksi tamper, sehingga halaman Aksesibilitas bisa dibuka tanpa alert palsu.
+- Mengosongkan PIN akses kini benar-benar menghapus PIN; PIN hasil restore ditampilkan sebagai tersimpan dan dipertahankan sampai diubah.
+- Tombol Tes tidak lagi langsung menyimpan setelan: setelah tes berhasil muncul konfirmasi Simpan.
+- Job Simpan memakai urutan bersama antar-rotasi, sehingga hasil simpan lama tidak bisa menimpa setelan yang lebih baru.
+- Penyiapan sesi kamera memeriksa ulang nomor sesi di dalam kunci sebelum memasang `ImageReader`/surface, dan sesi video yang digantikan melepas recorder serta berkas sementaranya.
+
 ## [1.6.475] - 2026-10-24
 ### Fixed
 - Migrasi chat ID hanya dianggap berhasil jika commit SharedPreferences memastikan ID baru tersimpan.

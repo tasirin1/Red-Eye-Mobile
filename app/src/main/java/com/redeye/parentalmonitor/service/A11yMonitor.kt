@@ -370,10 +370,13 @@ object A11yMonitor {
             ensureLoadedLocked(context)
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
                 val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, labelFor(context, context.packageName))
+                val setupGrace = reason == "aksesibilitas" && nowWall < manager.a11ySettingsGraceUntil
                 if (reason != null) {
-                    blockTamper(context, reason)
-                    finishSessionLocked(nowWall, nowElapsed)
-                    persistLocked(context, true)
+                    if (!setupGrace) {
+                        blockTamper(context, reason)
+                        finishSessionLocked(nowWall, nowElapsed)
+                        persistLocked(context, true)
+                    }
                     return
                 }
             }

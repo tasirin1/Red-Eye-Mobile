@@ -45,12 +45,10 @@ class SetupActivity : AppCompatActivity() {
     private lateinit var notifButton: MaterialButton
     private lateinit var shotButton: MaterialButton
     private lateinit var a11yButton: MaterialButton
-    private var saveJob: kotlinx.coroutines.Job? = null
     private var testJob: kotlinx.coroutines.Job? = null
     private val startGuard = Any()
     private var startingMonitoring = false
     private var lastNotifToggleAt = 0L
-    private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val statusSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val configMutex = kotlinx.coroutines.sync.Mutex()
@@ -129,6 +127,7 @@ class SetupActivity : AppCompatActivity() {
                                 cameraIntervalInput.setText(data.cameraInterval.toString())
                                 pendingRestoreOwnerId = data.ownerId
                                 pendingRestoreAccessPin = data.accessPin
+                                if (data.accessPin.isNotEmpty()) accessPinInput.setText(STORED_MASK)
                             } catch (_: Exception) {
                             }
                             Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
@@ -221,6 +220,9 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private val persistScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+        @Volatile
+        private var saveJob: kotlinx.coroutines.Job? = null
+        private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
         private const val STORED_MASK = "••••••••"
         private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
@@ -723,7 +725,7 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             var chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = resolveStored(rawAccessPin, storedAccessPin).ifEmpty { pendingRestoreAccessPin.ifEmpty { storedAccessPin } }
+            val accessPin = if (rawAccessPin == STORED_MASK) pendingRestoreAccessPin.ifEmpty { storedAccessPin } else rawAccessPin
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
@@ -1127,9 +1129,7 @@ class SetupActivity : AppCompatActivity() {
         val cameraInterval = cameraParsed ?: loadedCameraInterval
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
-        try { saveSeq.incrementAndGet() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
-        try { saveJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val input = resolveCredentialInput(rawToken, rawChat) ?: return@launch
             val storedToken = input.storedToken
@@ -1137,7 +1137,7 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             val chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = resolveStored(rawAccessPin, storedAccessPin).ifEmpty { pendingRestoreAccessPin.ifEmpty { storedAccessPin } }
+            val accessPin = if (rawAccessPin == STORED_MASK) pendingRestoreAccessPin.ifEmpty { storedAccessPin } else rawAccessPin
             try {
                 val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
                 if (myTest != testSeq.get()) return@launch
@@ -1159,21 +1159,10 @@ class SetupActivity : AppCompatActivity() {
                         val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                         if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
                     }
-                    val testPersisted = persistTestSettings(token, effectiveChat, myTest, syncInterval, cameraInterval, accessPin)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
-                        if (!testPersisted) {
-                            val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
-                            val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
-                            Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
-                            return@withContext
-                        }
-                        botTokenInput.setText(STORED_MASK)
-                        chatIdInput.setText(STORED_MASK)
-                        accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
-                        if (myTest == testSeq.get()) reviveMonitoringIfNeeded()
+                        confirmSaveAfterTest(token, effectiveChat, myTest, syncInterval, cameraInterval, accessPin)
                     }
                 } else {
                     val code = chatResp.code()
@@ -1196,6 +1185,41 @@ class SetupActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@withContext
                 updateStatus()
             }
+        }
+    }
+
+    private fun confirmSaveAfterTest(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String) {
+        try {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.save_settings))
+                .setMessage(getString(R.string.setup_test_success))
+                .setPositiveButton(getString(R.string.save_settings)) { _, _ ->
+                    lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+                        val persisted = persistTestSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin)
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            if (isFinishing || isDestroyed) return@withContext
+                            if (myTest != testSeq.get()) return@withContext
+                            if (!persisted) {
+                                val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
+                                val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
+                                Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
+                                return@withContext
+                            }
+                            botTokenInput.setText(STORED_MASK)
+                            chatIdInput.setText(STORED_MASK)
+                            accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
+                            Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                            reviveMonitoringIfNeeded()
+                            updateStatus()
+                        }
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel) { _, _ ->
+                    Toast.makeText(this, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+                }
+                .show()
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1677,6 +1701,10 @@ class SetupActivity : AppCompatActivity() {
 
     private fun launchAccessibilitySettings() {
         try {
+            try {
+                prefs.a11ySettingsGraceUntil = System.currentTimeMillis() + 120_000L
+            } catch (_: Exception) {
+            }
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             queueStatusMessage(getString(R.string.setup_a11y_how))
         } catch (_: Exception) {

@@ -1451,6 +1451,10 @@ class MonitoringService : Service() {
     @Volatile
     private var offsetFailCount = 0
     @Volatile
+    private var serverClockOffsetMs = 0L
+    @Volatile
+    private var serverClockSynced = false
+    @Volatile
     private var mediaBackoffUntil = 0L
     private val msgDropCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var msgDropJob: Job? = null
@@ -1557,6 +1561,19 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun noteServerDate(response: retrofit2.Response<*>) {
+        try {
+            val date = response.headers().getDate("Date") ?: return
+            serverClockOffsetMs = date.time - System.currentTimeMillis()
+            serverClockSynced = true
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun serverNowSec(): Long {
+        return (System.currentTimeMillis() + if (serverClockSynced) serverClockOffsetMs else 0L) / 1000L
+    }
+
     private suspend fun pollTelegramCommands(): Boolean {
         if (android.os.SystemClock.elapsedRealtime() < commandBackoffUntil) return false
         if (NetworkUtils.isPollBlocked(preferencesManager)) return false
@@ -1578,6 +1595,7 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             return false
         }
+        noteServerDate(response)
         var responseToken = botToken
         var responseChat = chatId
         if (response.code() == 401 || response.code() == 403) {
@@ -1597,6 +1615,7 @@ class MonitoringService : Service() {
                 } catch (e: Exception) {
                     return false
                 }
+                noteServerDate(response)
             }
         }
         if (response.code() == 401 || response.code() == 403) {
@@ -1675,11 +1694,11 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
-            beginUpdateTrack(update.updateId)
             val seen = markSeen(handledUpdateIds, update.updateId)
             if (seen) {
                 continue
             }
+            beginUpdateTrack(update.updateId)
             var offsetDeferred = false
             var delivered = true
             try {
@@ -1748,11 +1767,13 @@ class MonitoringService : Service() {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && accessPin.isNotEmpty()) {
                             sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
+                            finishUpdateTrack(update.updateId, true)
                             continue
                         }
                     }
                     if (awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
                         sendDirect(senderId.ifEmpty { msgChatId }, loginHintText())
+                        finishUpdateTrack(update.updateId, true)
                         continue
                     }
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
@@ -1953,7 +1974,7 @@ class MonitoringService : Service() {
         }
         val gateCommand = command.substringBefore(" ")
         if (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS) {
-            if (pressedAt <= 0L || System.currentTimeMillis() / 1000L - pressedAt > MUTATING_MAX_AGE_SEC) {
+            if (pressedAt <= 0L || serverNowSec() - pressedAt > MUTATING_MAX_AGE_SEC) {
                 if (ownerOk) sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
@@ -2471,7 +2492,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
-        val nowSec = System.currentTimeMillis() / 1000L
+        val nowSec = serverNowSec()
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
@@ -2504,7 +2525,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
-            val ageSec = if (sentAtSec <= 0L) 0L else System.currentTimeMillis() / 1000L - sentAtSec
+            val ageSec = if (sentAtSec <= 0L) 0L else serverNowSec() - sentAtSec
             if (ageSec > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
