@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.483] - 2026-10-25
 ### Changed
 - Tahap 2 pemecahan `MonitoringService.kt` (#7): `photoStats` dan `hammingDistance` pindah ke `utils/PhotoFingerprint.kt` (`analyze`, `hammingDistance`) dengan bodi identik, dipakai jalur foto untuk deteksi gelap dan foto duplikat.
 
