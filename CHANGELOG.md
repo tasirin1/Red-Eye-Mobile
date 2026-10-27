@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- Baseline lokasi melengkapi pola adaptif: transisi geofence Rumah (masuk/keluar area, jalur `checkGeofence` yang sama yang mengirim pesan "📍 Rumah") kini mencatat menit tiba dan menit berangkat terakhir hari itu ke fakta harian. Entri hari yang belum direkam digest dibuat sebagai penampung (layar −1 = belum tercatat) dan digabung, bukan ditimpa, saat digest merekam fakta lengkapnya; sebaliknya transisi berikutnya memperbarui entri yang ada lewat `copy`, jadi tidak ada fakta yang hilang dari kedua arah. Agar penampung tak mengotori statistik, cabang layar `PatternBaseline` kini hanya memakai hari dengan layar tercatat (≥3 sampel) — dibuktikan ulang lewat porting Python yang diperluas menjadi 18 kasus (2 kasus penampung baru) 0 beda, dan uji JVM `PatternBaselineTest` bertambah kasus yang sama. Dengan ≥3 hari bersejarah berisi jam tiba, `/waspada` membandingkan "Tiba di rumah HH.mm — biasanya HH.mm" dan penyimpangan ≥60 menit lebih malam ikut memicu peringatan anomali harian.
+
 ## [1.6.504] - 2026-10-27
 
 ### Added

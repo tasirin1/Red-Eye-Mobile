@@ -24,10 +24,13 @@ object PatternBaseline {
     fun assess(history: List<DailyFacts.Day>, today: DailyFacts.Day): List<Finding> {
         if (history.size < 5) return emptyList()
         val out = ArrayList<Finding>()
-        val screenMedian = median(history.map { it.screenMin })
-        if (screenMedian >= 60) {
-            val strong = today.screenMin * 2 >= screenMedian * 3 && today.screenMin - screenMedian >= 60
-            out.add(Finding("SCREEN", "Layar " + dur(today.screenMin) + " — biasanya ±" + dur(screenMedian), strong))
+        val screenVals = history.filter { it.screenMin >= 0 }.map { it.screenMin }
+        if (screenVals.size >= 3) {
+            val screenMedian = median(screenVals)
+            if (screenMedian >= 60) {
+                val strong = today.screenMin * 2 >= screenMedian * 3 && today.screenMin - screenMedian >= 60
+                out.add(Finding("SCREEN", "Layar " + dur(today.screenMin) + " — biasanya ±" + dur(screenMedian), strong))
+            }
         }
         val nightVals = history.filter { it.nightMin >= 0 }.map { it.nightMin }
         if (nightVals.size >= 3 && today.nightMin >= 0) {

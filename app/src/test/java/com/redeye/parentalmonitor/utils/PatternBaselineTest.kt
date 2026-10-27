@@ -61,6 +61,28 @@ class PatternBaselineTest {
     }
 
     @Test
+    fun fencePlaceholderDaysDoNotPolluteScreenMedian() {
+        val mixed = listOf(
+            day("20261019", s = -1, a = 1130),
+            day("20261020", s = 180),
+            day("20261021", s = 200),
+            day("20261022", s = 190),
+            day("20261023", s = 210),
+            day("20261024", s = -1, a = 1140)
+        )
+        val got = PatternBaseline.assess(mixed, day("20261025", s = 195))
+        assertEquals(
+            listOf(PatternBaseline.Finding("SCREEN", "Layar 3 h 15 m — biasanya ±3 h 15 m", false)),
+            got
+        )
+        val tooFew = listOf(
+            day("20261020", s = -1), day("20261021", s = -1), day("20261022", s = -1),
+            day("20261023", s = 210), day("20261024", s = 175)
+        )
+        assertTrue(PatternBaseline.assess(tooFew, day("20261025", s = 195)).isEmpty())
+    }
+
+    @Test
     fun sparseMetricsAreSkipped() {
         val sparse = listOf(
             day("20261020", s = 180), day("20261021", s = 200), day("20261022", s = 190),

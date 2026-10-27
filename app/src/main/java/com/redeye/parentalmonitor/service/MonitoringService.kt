@@ -6202,6 +6202,23 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun recordFenceFact(arrive: Boolean) {
+        try {
+            val now = System.currentTimeMillis()
+            val key = todayKey(now)
+            val off = java.util.TimeZone.getDefault().getOffset(now)
+            val minute = (((now + off) / 60_000L) % 1440L).toInt()
+            val days = DailyFacts.parse(preferencesManager.dailyFacts)
+            val existing = days.firstOrNull { it.day == key }
+            val merged = when {
+                existing == null -> DailyFacts.Day(key, -1, -1, -1, if (arrive) minute else -1, if (arrive) -1 else minute)
+                arrive -> existing.copy(arriveMin = minute)
+                else -> existing.copy(departMin = minute)
+            }
+            preferencesManager.dailyFacts = DailyFacts.serialize(DailyFacts.upsert(days, merged))
+        } catch (_: Exception) { }
+    }
+
     private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f) {
         try {
             val fences = listOf(
@@ -6247,6 +6264,7 @@ class MonitoringService : Service() {
                     val name = if (isHome) "Rumah" else "Sekolah"
                     val verb = if (inside) "masuk" else "keluar"
                     sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                    if (isHome) recordFenceFact(inside)
                 }
             }
         } catch (_: Exception) {
