@@ -326,6 +326,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_LOC_AT = "last_loc_at"
         private const val KEY_LAST_LOC_ACC = "last_loc_acc_m"
         private const val KEY_TRAIL = "trail_24"
+        private const val KEY_DAILY_FACTS = "daily_facts"
+        private const val KEY_ANOMALY_ALERTS = "anomaly_alerts"
         private const val KEY_BEGADANG_DATE = "begadang_date"
         private const val KEY_JEMPUT_RAD = "jemput_radius_m"
         const val KEY_WATCH_KEYWORDS = "watch_keywords"
@@ -978,6 +980,14 @@ class PreferencesManager(context: Context) {
     var trail24: String
         get() = prefString(KEY_TRAIL, "")
         set(value) = sharedPreferences.edit().putString(KEY_TRAIL, value).apply()
+
+    var dailyFacts: String
+        get() = prefString(KEY_DAILY_FACTS, "")
+        set(value) = sharedPreferences.edit().putString(KEY_DAILY_FACTS, value).apply()
+
+    var anomalyAlerts: String
+        get() = prefString(KEY_ANOMALY_ALERTS, "")
+        set(value) = sharedPreferences.edit().putString(KEY_ANOMALY_ALERTS, value).apply()
 
     fun recordSentLocation(lat: Double, lon: Double, trail: String?, accuracyM: Float = -1f) {
         try {

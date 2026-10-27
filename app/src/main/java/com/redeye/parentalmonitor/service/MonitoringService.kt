@@ -29,6 +29,7 @@ import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.CurfewLogic
+import com.redeye.parentalmonitor.utils.DailyFacts
 import com.redeye.parentalmonitor.utils.DigestHighlights
 import com.redeye.parentalmonitor.utils.DigestSchedule
 import com.redeye.parentalmonitor.utils.FgsTypes
@@ -41,6 +42,7 @@ import com.redeye.parentalmonitor.utils.OwnerAccess
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.PatternBaseline
 import com.redeye.parentalmonitor.utils.PermReport
 import com.redeye.parentalmonitor.utils.PhotoFingerprint
 import com.redeye.parentalmonitor.utils.ReportFormat
@@ -6325,6 +6327,57 @@ class MonitoringService : Service() {
         return DigestHighlights.build(DigestHighlights.Facts(todayMs, yesterdayMs, topLabel, topMs, topYesterdayMs, nightMs, fuMinute))
     }
 
+    private fun todayFacts(now: Long): DailyFacts.Day? {
+        val key = todayKey(now)
+        val stored = try { DailyFacts.parse(preferencesManager.dailyFacts).firstOrNull { it.day == key } } catch (_: Exception) { null }
+        var screenMin = -1
+        val rows = try { usageRows(24) } catch (_: Exception) { null }
+        val a11yRows = a11yUsageRows()
+        if (rows != null) {
+            screenMin = (rows.sumOf { it.second } / 60_000L).toInt()
+        } else if (a11yRows.isNotEmpty()) {
+            screenMin = (a11yRows.sumOf { it.millis } / 60_000L).toInt()
+        }
+        if (screenMin < 0) return null
+        val nightMin = if (a11yRows.isEmpty()) -1 else (a11yRows.sumOf { it.nightMillis } / 60_000L).toInt()
+        val fuAt = try { usageSummary(24)?.firstUnlockAt ?: 0L } catch (_: Exception) { 0L }
+        val fuMinute = if (fuAt > 0L) {
+            val off = java.util.TimeZone.getDefault().getOffset(fuAt)
+            (((fuAt + off) / 60_000L) % 1440L).toInt()
+        } else {
+            -1
+        }
+        return DailyFacts.Day(key, screenMin, nightMin, fuMinute, stored?.arriveMin ?: -1, stored?.departMin ?: -1)
+    }
+
+    private suspend fun recordDailyFacts(now: Long) {
+        val today = todayFacts(now) ?: return
+        val days = try { DailyFacts.parse(preferencesManager.dailyFacts) } catch (_: Exception) { emptyList() }
+        val updated = DailyFacts.upsert(days, today)
+        try { preferencesManager.dailyFacts = DailyFacts.serialize(updated) } catch (_: Exception) { }
+        val history = updated.filter { it.day != today.day }
+        val strong = PatternBaseline.assess(history, today).filter { it.strong }
+        if (strong.isEmpty()) return
+        val stamp = try { preferencesManager.anomalyAlerts } catch (_: Exception) { "" }
+        val stampDay = stamp.substringBefore(":", "")
+        val already = if (stampDay == today.day) {
+            stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
+        } else {
+            emptySet()
+        }
+        val fresh = strong.filter { it.type !in already }
+        if (fresh.isEmpty()) return
+        val sentOk = sendToTelegram(buildString {
+            appendLine("🚨 <b>Di luar pola biasanya</b>")
+            for (f in fresh) appendLine("• " + f.text)
+        })
+        if (sentOk) {
+            try {
+                preferencesManager.anomalyAlerts = today.day + ":" + (already + fresh.map { it.type }).joinToString(",")
+            } catch (_: Exception) { }
+        }
+    }
+
     private suspend fun sendDailyDigest(manual: Boolean = false): Boolean {
         if (awaitingOwnerLogin()) return false
         try {
@@ -6379,6 +6432,9 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
+            if (sent) {
+                try { recordDailyFacts(now) } catch (_: Exception) { }
+            }
             if (manual && sent) {
                 try { preferencesManager.digestAt = now } catch (_: Exception) { }
             }
@@ -6605,6 +6661,18 @@ class MonitoringService : Service() {
                 appendLine("Watch hit 24 jam: $hits")
                 appendLine("Nomor baru: ${unknown.size}")
                 appendLine("Begadang (23–05): $nights$locNote")
+                try {
+                    val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
+                    val todayF = todayFacts(now)
+                    val hist = allDays.filter { it.day != todayKey(now) }
+                    val temuan = if (todayF != null) PatternBaseline.assess(hist, todayF) else emptyList()
+                    if (temuan.isNotEmpty()) {
+                        appendLine("📊 <b>Dibanding pola biasanya</b> (${hist.size} hari)")
+                        for (f in temuan) appendLine("• " + f.text + if (f.strong) " ⚠️" else "")
+                    } else if (hist.size < 5) {
+                        appendLine("📊 Pola: masih belajar (${hist.size}/5 hari tercatat)")
+                    }
+                } catch (_: Exception) { }
             },
                 mainMenu()
             )
