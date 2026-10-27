@@ -84,6 +84,9 @@ android {
             if (ref.startsWith("refs/tags/v")) {
                 throw new GradleException("Release tag build requires release keystore (ANDROID_KEYSTORE_BASE64 + KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)")
             }
+            if (ref == "refs/heads/main") {
+                throw new GradleException("Main branch build requires release keystore (ANDROID_KEYSTORE_BASE64 + KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD) - refusing to produce a debug-signed release APK")
+            }
         }
     }
     tasks.matching { it.name.contains("assemble") && it.name.contains("Release") }.configureEach {
