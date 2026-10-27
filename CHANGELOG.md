@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.501] - 2026-10-27
+
 ### Changed
 - Workflow build: `actions/cache` dinaikkan dari v4 ke v6 (SHA pin sama dengan yang sudah dipakai repo Vaultwarden dan terverifikasi menunjuk tag `v6` resmi), menghilangkan peringatan anotasi "Node.js 20 is deprecated" — v4 adalah satu-satunya action yang masih menarget Node 20 di workflow ini (checkout, setup-java, upload-artifact, dan action rilis sudah v5/v7/v3). Langkah cache-nya sendiri tidak berubah (path + key yang sama), jadi perilaku cache Gradle tidak berubah.
 
