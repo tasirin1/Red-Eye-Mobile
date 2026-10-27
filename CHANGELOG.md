@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Changed
+- Pembungkus dispatch update Telegram kini satu penolong bersama (#62): pola `launch + handled + tangkap-ganda + finally finishUpdateTrack` yang tadinya ditulis tiga kali di `pollTelegramCommands` (callback, login, perintah) dipindah ke `MonitoringService.dispatchTracked(updateId, logTag, block)`; ketiga situs kini hanya menyerahkan badan kerjanya (termasuk kunci perintahnya masing-masing) dan tag log-nya, dengan pesan log serta semantik penanda handled yang sama.
 - Long-poll `getUpdates` kini punya klien sendiri, `TelegramPollClient` (#60): sebelumnya polling 30 detik berbagi dispatcher klien teks (`maxRequestsPerHost = 4`), sehingga satu slot selalu terisi permanen dan hanya menyisakan tiga untuk lalu lintas kirim/kontrol. Klien poll membawa dispatcher sendiri (2 per host) dengan timeout yang sama persis dengan klien teks; kedua situs panggil di loop polling `MonitoringService` kini memakainya. Dampak latensi sebelumnya berstatus dugaan (belum terukur); perubahan ini memisahkan anggaran konkurensinya secara struktural.
 - `BASE_URL` Telegram kini satu konstanta bersama di `SharedNet` (#61): literal `"https://api.telegram.org/"` yang tadinya dideklarasikan dua kali (di `TelegramClient` dan `TelegramMediaClient`) diangkat ke `SharedNet.BASE_URL` dan kedua klien memakainya. Dua tumpukan Retrofit/OkHttp tetap terpisah dengan sengaja karena profil timeout-nya memang berbeda (teks 90 detik vs media 600 detik).
 

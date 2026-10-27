@@ -1710,25 +1710,8 @@ class MonitoringService : Service() {
                 val callback = update.callbackQuery
                 if (callback != null) {
                     offsetDeferred = true
-                    serviceScope.launch {
-                        var handled = false
-                        try {
-                            try {
-                                handleCallbackQuery(callback)
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
-                            }
-                            handled = true
-                        } catch (e: kotlinx.coroutines.CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            android.util.Log.e("MonitoringService", "Callback dispatch error: ${redactToken(e.message)}")
-                        } finally {
-                            if (!handled) forgetSeen(update.updateId)
-                            finishUpdateTrack(update.updateId, handled)
-                        }
+                    dispatchTracked(update.updateId, "Callback dispatch error") {
+                        handleCallbackQuery(callback)
                     }
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
@@ -1744,26 +1727,9 @@ class MonitoringService : Service() {
                     if (loginOnly) {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         offsetDeferred = true
-                        serviceScope.launch {
-                            var handled = false
-                            try {
-                                commandLock.withLock {
-                                    try {
-                                        handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
-                                    } catch (e: kotlinx.coroutines.CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("MonitoringService", "Login dispatch error: ${redactToken(e.message)}")
-                                    }
-                                }
-                                handled = true
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                android.util.Log.e("MonitoringService", "Login dispatch error: ${redactToken(e.message)}")
-                            } finally {
-                                if (!handled) forgetSeen(update.updateId)
-                                finishUpdateTrack(update.updateId, handled)
+                        dispatchTracked(update.updateId, "Login dispatch error") {
+                            commandLock.withLock {
+                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
                             }
                         }
                         continue
@@ -1845,38 +1811,21 @@ class MonitoringService : Service() {
                         val messageDate = if (message == null) 0L else if (message.editDate > message.date) message.editDate else message.date
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
-                        serviceScope.launch {
-                            var handled = false
-                            try {
-                                lock.withLock {
-                                    try {
-                                        val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
-                                        if (!restoreHandled) {
-                                            val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
-                                            if (!balasAngka && command.startsWith("/")) {
-                                                val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                                handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
-                                            } else if (!balasAngka) {
-                                                if (aliasInput != null && privateOwner) {
-                                                    handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
-                                                }
-                                            }
+                        dispatchTracked(update.updateId, "Command dispatch error") {
+                            lock.withLock {
+                                val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
+                                if (!restoreHandled) {
+                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
+                                    if (!balasAngka && command.startsWith("/")) {
+                                        val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                        handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
+                                    } else if (!balasAngka) {
+                                        if (aliasInput != null && privateOwner) {
+                                            handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
                                         }
-                                        Unit
-                                    } catch (e: kotlinx.coroutines.CancellationException) {
-                                        throw e
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
                                     }
                                 }
-                                handled = true
-                            } catch (e: kotlinx.coroutines.CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                android.util.Log.e("MonitoringService", "Command dispatch error: ${redactToken(e.message)}")
-                            } finally {
-                                if (!handled) forgetSeen(update.updateId)
-                                finishUpdateTrack(update.updateId, handled)
+                                Unit
                             }
                         }
                     }
@@ -1898,6 +1847,30 @@ class MonitoringService : Service() {
     }
 
     private val updateOffsetTracker = com.redeye.parentalmonitor.utils.UpdateOffsetTracker()
+
+    private fun dispatchTracked(updateId: Long, logTag: String, block: suspend () -> Unit) {
+        serviceScope.launch {
+            var handled = false
+            try {
+                try {
+                    block()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    android.util.Log.e("MonitoringService", "$logTag: ${redactToken(e.message)}")
+                }
+                handled = true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("MonitoringService", "$logTag: ${redactToken(e.message)}")
+            } finally {
+                if (!handled) forgetSeen(updateId)
+                finishUpdateTrack(updateId, handled)
+            }
+        }
+    }
+
 
     private fun beginUpdateTrack(updateId: Long) {
         updateOffsetTracker.begin(updateId)
