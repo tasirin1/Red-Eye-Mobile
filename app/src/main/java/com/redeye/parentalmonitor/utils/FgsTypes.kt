@@ -57,4 +57,16 @@ object FgsTypes {
     fun wakeCooldownMs(fails: Int): Long {
         return if (fails >= WAKE_MAX_FAILS) WAKE_LONG_COOLDOWN_MS else WAKE_COOLDOWN_MS
     }
+
+    fun describe(types: Int): String {
+        if (types == 0) return "-"
+        val names = ArrayList<String>()
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) != 0) names.add("dataSync")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION) != 0) names.add("location")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0) names.add("camera")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0) names.add("mic")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) names.add("screen")
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) != 0) names.add("specialUse")
+        return if (names.isEmpty()) "lain" else names.joinToString("+")
+    }
 }

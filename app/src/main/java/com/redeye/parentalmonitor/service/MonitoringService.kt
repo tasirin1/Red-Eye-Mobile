@@ -6195,11 +6195,11 @@ class MonitoringService : Service() {
 
     private fun fenceStatusText(isHome: Boolean): String {
         return try {
-            val lat = (if (isHome) preferencesManager.homeLatE6 else preferencesManager.schoolLatE6) / 1_000_000.0
-            val lon = (if (isHome) preferencesManager.homeLonE6 else preferencesManager.schoolLonE6) / 1_000_000.0
-            val rad = if (isHome) preferencesManager.homeRadiusM else preferencesManager.schoolRadiusM
-            val la = if (isHome) preferencesManager.homeLatE6 else preferencesManager.schoolLatE6
-            if (la == Long.MIN_VALUE || rad <= 0) "mati" else "$lat,$lon ±${rad}m"
+            if (isHome) {
+                GeofenceLogic.statusText(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM)
+            } else {
+                GeofenceLogic.statusText(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM)
+            }
         } catch (_: Exception) {
             "?"
         }
@@ -6709,18 +6709,6 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun fgsTypesText(types: Int): String {
-        if (types == 0) return "-"
-        val names = ArrayList<String>()
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) != 0) names.add("dataSync")
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION) != 0) names.add("location")
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0) names.add("camera")
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0) names.add("mic")
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) names.add("screen")
-        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) != 0) names.add("specialUse")
-        return if (names.isEmpty()) "lain" else names.joinToString("+")
-    }
-
     private fun aliveReportText(): String {
         val now = System.currentTimeMillis()
         val started = serviceStartAt
@@ -6753,7 +6741,7 @@ class MonitoringService : Service() {
             }
             appendLine("Jalur kirim: $sendText" + (if (heals > 0) " · dipulihkan sendiri ${heals}x" else ""))
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
-            appendLine("Tipe FGS aktif: " + fgsTypesText(appliedFgsTypes))
+            appendLine("Tipe FGS aktif: " + FgsTypes.describe(appliedFgsTypes))
             if (level in 0..100) appendLine("Baterai: $level%" +
                 (if (lowPowerActive()) " (hemat daya: foto/patroli diperlambat)" else ""))
         }
@@ -7483,7 +7471,7 @@ class MonitoringService : Service() {
         if (shotViaAccessibility()) {
             return "Jalur Aksesibilitas aktif tapi pengambilan gagal \u2014 coba /screenshot lagi; bila terus gagal, buka Setup lalu matikan-nyalakan lagi layanan Aksesibilitasnya."
         }
-        val types = fgsTypesText(appliedFgsTypes)
+        val types = FgsTypes.describe(appliedFgsTypes)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !screenshotTypeActive()) {
             "Tipe latar 'screen' belum aktif (kini: $types). Buka aplikasi sekali agar layanan memulihkan tipe latar di depan, lalu kirim /screenshot lagi. Bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
         } else {
@@ -7986,7 +7974,7 @@ class MonitoringService : Service() {
                 " Foto otomatis dijeda 120 mnt; jalan sendiri begitu blokir dicabut."
         }
         return "Kamera menolak akses walau tak ada admin perangkat yang mematikannya — biasanya izin kamera latar hilang: Android 14+ hanya memasang tipe latar \"camera\" saat aplikasi dibuka, dan tipe latar aktif sekarang \"" +
-            fgsTypesText(appliedFgsTypes) + "\". Aplikasi mencoba memasangnya sendiri lewat jendela transparan; bila tetap gagal, buka aplikasi sekali dan pastikan izin \"tampilkan di atas aplikasi lain\" diberikan di Setup." +
+            FgsTypes.describe(appliedFgsTypes) + "\". Aplikasi mencoba memasangnya sendiri lewat jendela transparan; bila tetap gagal, buka aplikasi sekali dan pastikan izin \"tampilkan di atas aplikasi lain\" diberikan di Setup." +
             " Kemungkinan lain saklar privasi kamera bawaan HP (Xiaomi/Oppo/Samsung/OEM) atau alat kontrol orang tua lain." +
             " Dicoba lagi tiap 15 menit; kirim /photointerval 0 untuk mematikan foto otomatis."
     }
@@ -8124,7 +8112,7 @@ class MonitoringService : Service() {
         }
         rejectedFgsTypes = 0
         if (appliedFgsTypes != types && appliedFgsTypes != before) {
-            android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + fgsTypesText(appliedFgsTypes) + " (diminta " + fgsTypesText(types) + ")")
+            android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + FgsTypes.describe(appliedFgsTypes) + " (diminta " + FgsTypes.describe(types) + ")")
         }
         if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0 && !hasCameraFgsType()) {
             wakeForegroundForCameraType()
@@ -8168,7 +8156,7 @@ class MonitoringService : Service() {
         cameraWakeNotifiedAt = now
         serviceScope.launch {
             try {
-                sendToTelegram("✅ Izin latar kamera dipasang ulang otomatis (tipe FGS: " + fgsTypesText(appliedFgsTypes) + "). Foto otomatis jalan lagi.")
+                sendToTelegram("✅ Izin latar kamera dipasang ulang otomatis (tipe FGS: " + FgsTypes.describe(appliedFgsTypes) + "). Foto otomatis jalan lagi.")
             } catch (_: Exception) {
             }
         }

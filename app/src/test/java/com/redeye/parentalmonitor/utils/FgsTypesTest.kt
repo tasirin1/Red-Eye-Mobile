@@ -46,6 +46,24 @@ class FgsTypesTest {
     }
 
     @Test
+    fun describeNames() {
+        val su = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        val ds = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        val cam = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        val mic = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        val loc = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val mp = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        assertEquals("-", FgsTypes.describe(0))
+        assertEquals("dataSync", FgsTypes.describe(ds))
+        assertEquals("camera", FgsTypes.describe(cam))
+        assertEquals("dataSync+camera+mic", FgsTypes.describe(ds or cam or mic))
+        assertEquals("screen", FgsTypes.describe(mp))
+        assertEquals("specialUse", FgsTypes.describe(su))
+        assertEquals("location+camera+mic+screen+specialUse", FgsTypes.describe(su or cam or mic or loc or mp))
+        assertEquals("lain", FgsTypes.describe(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK))
+    }
+
+    @Test
     fun hasCameraAndCooldown() {
         val cam = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         val loc = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION

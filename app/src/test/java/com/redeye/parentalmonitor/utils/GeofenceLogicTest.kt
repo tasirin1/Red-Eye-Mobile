@@ -39,6 +39,13 @@ class GeofenceLogicTest {
     }
 
     @Test
+    fun statusTextFormatting() {
+        assertEquals("-6.180058,107.384718 ±150m", GeofenceLogic.statusText(-6_180_058L, 107_384_718L, 150))
+        assertEquals("mati", GeofenceLogic.statusText(Long.MIN_VALUE, 107_384_718L, 150))
+        assertEquals("mati", GeofenceLogic.statusText(-6_180_058L, 107_384_718L, 0))
+    }
+
+    @Test
     fun configuredSentinels() {
         assertFalse(GeofenceLogic.configured(Long.MIN_VALUE, 106_800_000L, 200))
         assertFalse(GeofenceLogic.configured(-6_200_000L, Long.MIN_VALUE, 200))
