@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Balapan tulis fakta harian (issue #74): perekaman digest (`recordDailyFacts`) dan pencatatan transisi geofence Rumah (`recordFenceFact`) sama-sama membaca-ubah-menulis prefs `dailyFacts` tanpa kunci, dan objek yang ditulis digest membawa jam tiba/berangkat dari bacaan di awal `todayFacts` — sebelum kueri usage yang lambat — sehingga transisi yang mendarat bersamaan tertimpa dan hilang dari baseline pola. Kedua jalur kini diserialkan kunci yang sama (`prefsRmwLock`), dan digest menggabungkan ulang jam tiba/berangkat dari entri tersimpan terbaru di dalam kunci sebelum menulis (nilai tersimpan yang ada menang), jadi tidak ada fakta yang hilang dari kedua arah.
+
 ## [1.6.507] - 2026-10-27
 
 ### Fixed

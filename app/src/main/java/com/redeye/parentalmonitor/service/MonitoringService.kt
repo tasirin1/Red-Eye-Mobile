@@ -6203,14 +6203,16 @@ class MonitoringService : Service() {
             val key = todayKey(now)
             val off = java.util.TimeZone.getDefault().getOffset(now)
             val minute = (((now + off) / 60_000L) % 1440L).toInt()
-            val days = DailyFacts.parse(preferencesManager.dailyFacts)
-            val existing = days.firstOrNull { it.day == key }
-            val merged = when {
-                existing == null -> DailyFacts.Day(key, -1, -1, -1, if (arrive) minute else -1, if (arrive) -1 else minute)
-                arrive -> existing.copy(arriveMin = minute)
-                else -> existing.copy(departMin = minute)
+            synchronized(prefsRmwLock) {
+                val days = DailyFacts.parse(preferencesManager.dailyFacts)
+                val existing = days.firstOrNull { it.day == key }
+                val merged = when {
+                    existing == null -> DailyFacts.Day(key, -1, -1, -1, if (arrive) minute else -1, if (arrive) -1 else minute)
+                    arrive -> existing.copy(arriveMin = minute)
+                    else -> existing.copy(departMin = minute)
+                }
+                preferencesManager.dailyFacts = DailyFacts.serialize(DailyFacts.upsert(days, merged))
             }
-            preferencesManager.dailyFacts = DailyFacts.serialize(DailyFacts.upsert(days, merged))
         } catch (_: Exception) { }
     }
 
@@ -6365,9 +6367,21 @@ class MonitoringService : Service() {
 
     private suspend fun recordDailyFacts(now: Long) {
         val today = todayFacts(now) ?: return
-        val days = try { DailyFacts.parse(preferencesManager.dailyFacts) } catch (_: Exception) { emptyList() }
-        val updated = DailyFacts.upsert(days, today)
-        try { preferencesManager.dailyFacts = DailyFacts.serialize(updated) } catch (_: Exception) { }
+        val updated = synchronized(prefsRmwLock) {
+            val days = try { DailyFacts.parse(preferencesManager.dailyFacts) } catch (_: Exception) { emptyList() }
+            val storedToday = days.firstOrNull { it.day == today.day }
+            val merged = if (storedToday != null) {
+                today.copy(
+                    arriveMin = if (storedToday.arriveMin >= 0) storedToday.arriveMin else today.arriveMin,
+                    departMin = if (storedToday.departMin >= 0) storedToday.departMin else today.departMin
+                )
+            } else {
+                today
+            }
+            val upd = DailyFacts.upsert(days, merged)
+            try { preferencesManager.dailyFacts = DailyFacts.serialize(upd) } catch (_: Exception) { }
+            upd
+        }
         val history = updated.filter { it.day != today.day }
         val strong = PatternBaseline.assess(history, today).filter { it.strong }
         if (strong.isEmpty()) return
