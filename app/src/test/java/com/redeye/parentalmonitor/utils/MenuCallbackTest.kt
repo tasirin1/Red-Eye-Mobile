@@ -10,7 +10,7 @@ class MenuCallbackTest {
     @Test
     fun navigasiMenuBaru() {
         assertEquals(MenuCallback.Navigate("main", false), MenuCallback.parse("menu:open"))
-        assertEquals(MenuCallback.Navigate("angka", false), MenuCallback.parse("menu:angka"))
+        assertEquals(MenuCallback.Navigate("main", false), MenuCallback.parse("menu:angka"))
         assertEquals(MenuCallback.Navigate("pantau", true), MenuCallback.parse("m:pantau"))
         assertEquals(MenuCallback.Navigate("main", true), MenuCallback.parse("m:main"))
     }
@@ -18,9 +18,10 @@ class MenuCallbackTest {
     @Test
     fun navigasiViewTakDikenalJatuhKeMenuUtama() {
         assertEquals(MenuCallback.Navigate("main", true), MenuCallback.parse("m:entah"))
+        assertEquals(MenuCallback.Navigate("main", true), MenuCallback.parse("m:angka"))
         assertEquals("main", MenuCallback.viewName("entah"))
         assertEquals("alat", MenuCallback.viewName("alat"))
-        assertTrue(MenuCallback.VIEWS.contains("angka"))
+        assertTrue(!MenuCallback.VIEWS.contains("angka"))
     }
 
     @Test
@@ -36,12 +37,12 @@ class MenuCallbackTest {
 
     @Test
     fun mintaAngkaAtauTeks() {
-        assertEquals(MenuCallback.AskInput("record", "angka"), MenuCallback.parse("num:record"))
+        assertEquals(MenuCallback.AskInput("record", ""), MenuCallback.parse("num:record"))
         assertEquals(MenuCallback.AskInput("record", "media"), MenuCallback.parse("num:media:record"))
         assertEquals(MenuCallback.AskInput("sms", "komu"), MenuCallback.parse("i:komu:sms"))
         assertEquals(MenuCallback.AskInput("home", "lokasi"), MenuCallback.parse("i:lokasi:home"))
         assertEquals(MenuCallback.AskInput("sms", ""), MenuCallback.parse("i:sms"))
-        assertEquals(MenuCallback.AskInput("photointerval", "angka"), MenuCallback.parse("num:entah:photointerval"))
+        assertEquals(MenuCallback.AskInput("photointerval", ""), MenuCallback.parse("num:entah:photointerval"))
         assertNull(MenuCallback.parse("num:"))
         assertNull(MenuCallback.parse("i:komu:"))
     }
@@ -54,7 +55,7 @@ class MenuCallbackTest {
         assertEquals(MenuCallback.Run("camera belakang"), MenuCallback.parse("camback"))
         assertEquals(MenuCallback.Run("pause 60"), MenuCallback.parse("pause60"))
         assertEquals(MenuCallback.Run("status"), MenuCallback.parse("status"))
-        assertEquals(MenuCallback.Navigate("angka", false), MenuCallback.parse("num:menu"))
+        assertEquals(MenuCallback.Navigate("main", false), MenuCallback.parse("num:menu"))
         assertNull(MenuCallback.parse("tombol_lama_tak_dikenal"))
         assertNull(MenuCallback.parse(""))
         assertNull(MenuCallback.parse("   "))

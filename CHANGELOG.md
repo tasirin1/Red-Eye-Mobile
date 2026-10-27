@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Removed
+- Panel "🔢 Atur angka" dihapus total atas permintaan owner: tombolnya di baris cepat bawah hasil, di menu utama, dan di panel Alat & kontrol; layar panelnya di `menuScreen`; serta perintah `/tombol` dan `/angka` — termasuk alias kata "tombol"/"angka", entri di daftar mutasi, dan daftar saran `CommandSuggest`. Tombol Atur angka pada pesan lama tidak mati: callback `menu:angka` dan `m:angka` kini membuka Menu utama (`MenuCallback` mengarahkan view "angka" yang sudah tidak ada ke "main"). Cara mengatur angka tidak berubah: ketik perintah + nilainya (mis. `/photointerval 15`); perintah angka wajib tanpa nilai tetap memancing prompt angka (markup prompt kini Menu utama); tombol peminta angka di panel lain (Rekam audio, Rekam video, Jemput, Bunyi HP) tetap berfungsi.
+
+### Changed
+- Tombol-tombol menu dirapikan: panel Alat & kontrol — "Pulihkan setelan" dan "Logout owner" kini sebaris, dan baris cepat di bawah hasil perintah tinggal satu tombol "🏠 Menu utama". Seluruh panel kini seragam dua tombol per baris kecuali aksi berlabel panjang/berisiko yang sengaja selebar panel. Integritas tombol dibuktikan dengan audit statis: porting Python `MenuCallback.parse` memeriksa ke-67 callback unik yang dipakai semua panel — semuanya terhubung ke layar, handler perintah, atau input (angka/teks) yang benar-benar ada, tanpa satu pun yatim.
+
 ## [1.6.505] - 2026-10-27
 
 ### Added

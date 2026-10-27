@@ -328,7 +328,7 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
-        private val MUTATING_COMMANDS = setOf("/tombol", "/angka", "/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp")
+        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp")
         private val DEFAULT_APP_WATCH_PACKAGES = listOf(
             "com.whatsapp",
             "org.telegram.messenger",
@@ -348,7 +348,7 @@ class MonitoringService : Service() {
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
@@ -2146,7 +2146,7 @@ class MonitoringService : Service() {
             com.redeye.parentalmonitor.network.InlineButton(text, data)
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(button("\uD83C\uDFE0 Menu utama", "menu:open"), button("\uD83D\uDD22 Atur angka", "menu:angka"))
+                listOf(button("\uD83C\uDFE0 Menu utama", "menu:open"))
             )
         )
     }
@@ -2225,19 +2225,9 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDD12 Kunci layar", "x:lock"), button("\uD83D\uDD14 Bunyi HP", "num:alat:ring")),
                     listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
                     listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
-                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka")),
                     listOf(button("\uD83E\uDDF9 Bersihkan media 30 hari", "x:bersihkan media 30")),
-                    listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan")),
-                    listOf(button("\uD83D\uDEAA Logout owner", "x:logout")),
+                    listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan"), button("\uD83D\uDEAA Logout owner", "x:logout")),
                     listOf(menuUtama)
-                )
-            )
-            "angka" -> MenuScreen(
-                "\uD83D\uDD22 <b>Atur angka</b>\nTekan tombolnya, lalu balas angkanya. Balas <code>help</code> untuk keterangan.",
-                com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
-                    numberInputs.chunked(2).map { baris ->
-                        baris.map { button(it.button, "num:" + it.command.removePrefix("/")) }
-                    } + listOf(listOf(menuUtama))
                 )
             )
             else -> MenuScreen(
@@ -2249,7 +2239,6 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDCF7 Media", "m:media"), button("\uD83D\uDCF1 Komunikasi", "m:komu")),
                     listOf(button("\uD83D\uDDFA\uFE0F Lokasi & jejak", "m:lokasi"), button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau")),
                     listOf(button("\u2139\uFE0F Info & data", "m:info"), button("⚙️ Alat & kontrol", "m:alat")),
-                    listOf(button("\uD83D\uDD22 Atur angka", "m:angka"))
                 )
             )
         }
@@ -2406,7 +2395,7 @@ class MonitoringService : Service() {
                 pendingInputCommand = angka.command
                 pendingInputAt = android.os.SystemClock.elapsedRealtime()
             }
-            val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { "angka" })
+            val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view)
             sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
             return
         }
@@ -2447,7 +2436,7 @@ class MonitoringService : Service() {
             }
             val nilai = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
             if (nilai == null) {
-                sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", menuScreen("angka").markup)
+                sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", mainMenu())
                 return true
             }
             val taken = synchronized(inputLock) {
@@ -2541,14 +2530,10 @@ class MonitoringService : Service() {
         }
         val numberInput = numberInputFor(command)
         if (numberInput != null && numberInput.required && arg.isBlank()) {
-            armInput(numberInput.command, "angka")
+            armInput(numberInput.command, "")
             return
         }
         when (command) {
-            "/tombol", "/angka" -> {
-                val layar = menuScreen("angka")
-                sendToTelegram(layar.text, layar.markup)
-            }
             "/photo" -> handlePhotoCommand(arg)
             "/screenshot" -> {
                 if (preferencesManager.monitoringPaused) {

@@ -8,7 +8,7 @@ sealed class MenuCallback {
     data class AskInput(val command: String, val view: String) : MenuCallback()
 
     companion object {
-        val VIEWS = setOf("main", "media", "lokasi", "komu", "info", "pantau", "alat", "angka")
+        val VIEWS = setOf("main", "media", "lokasi", "komu", "info", "pantau", "alat")
 
         private val LEGACY = mapOf(
             "photo" to "photo",
@@ -33,7 +33,7 @@ sealed class MenuCallback {
             val raw = data.trim()
             if (raw.isEmpty()) return null
             if (raw == "menu:open") return Navigate("main", false)
-            if (raw == "menu:angka") return Navigate("angka", false)
+            if (raw == "menu:angka") return Navigate("main", false)
             if (raw.startsWith("m:")) return Navigate(viewName(raw.removePrefix("m:").trim()), true)
             if (raw.startsWith("x:")) {
                 val command = perintah(raw.removePrefix("x:"))
@@ -42,17 +42,17 @@ sealed class MenuCallback {
             val angka = raw.startsWith("num:")
             if (angka || raw.startsWith("i:")) {
                 val isi = raw.substringAfter(":")
-                if (isi.trim() == "menu") return Navigate("angka", false)
+                if (isi.trim() == "menu") return Navigate("main", false)
                 val pisah = isi.indexOf(':')
                 if (pisah < 0) {
                     val command = perintah(isi)
                     if (command.isEmpty()) return null
-                    return AskInput(command, if (angka) "angka" else "")
+                    return AskInput(command, "")
                 }
                 val command = perintah(isi.substring(pisah + 1))
                 if (command.isEmpty()) return null
                 val nama = isi.substring(0, pisah).trim()
-                val asal = if (nama in VIEWS) nama else if (angka) "angka" else ""
+                val asal = if (nama in VIEWS) nama else ""
                 return AskInput(command, asal)
             }
             return LEGACY[raw]?.let { Run(it) }
