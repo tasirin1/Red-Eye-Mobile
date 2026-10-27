@@ -5416,7 +5416,11 @@ class MonitoringService : Service() {
                 val markup = if (idx == chunks.lastIndex) replyMarkup else NO_MARKUP
                 var permanent = false
                 if (!sendToTelegram(chunk, markup, false) { permanent = true }) {
-                    if (!permanent) failed.add(chunk)
+                    if (!permanent) {
+                        failed.add(chunk)
+                        for (restIdx in idx + 1 until chunks.size) failed.add(chunks[restIdx])
+                        break
+                    }
                 } else {
                     lastSentIdx = idx
                     sentAny = true
