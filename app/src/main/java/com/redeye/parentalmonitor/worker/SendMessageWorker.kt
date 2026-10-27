@@ -392,7 +392,7 @@ class SendMessageWorker(
     private suspend fun sendPlainFallback(message: String, botToken: String, chatId: String): SendOutcome {
         return try {
             val plain = Html.unescape(message)
-            val url = "https://api.telegram.org/bot${botToken}/sendMessage"
+            val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = plain, parseMode = null)
@@ -400,13 +400,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 429) {
-                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(errBody)
-                } catch (_: Exception) {
-                    5L
-                }
-                SendOutcome.RateLimited(retryAfterSecs)
+                rateLimited(response)
             } else if (response.code() == 401) {
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
@@ -432,7 +426,7 @@ class SendMessageWorker(
 
     private suspend fun sendSingleChunk(chunk: String, botToken: String, chatId: String): SendOutcome {
         return try {
-            val url = "https://api.telegram.org/bot${botToken}/sendMessage"
+            val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = chunk, parseMode = "HTML")
@@ -442,13 +436,7 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 classify400(response, chatId) ?: sendPlainFallback(chunk, botToken, chatId)
             } else if (response.code() == 429) {
-                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(errBody)
-                } catch (_: Exception) {
-                    5L
-                }
-                SendOutcome.RateLimited(retryAfterSecs)
+                rateLimited(response)
             } else if (response.code() == 401) {
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
@@ -632,7 +620,7 @@ class SendMessageWorker(
             "⚠️ $count pesan dalam antrean dibuang ($reason). Contoh: $clean"
         }
         try {
-            val url = "https://api.telegram.org/bot$botToken/sendMessage"
+            val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = text, parseMode = null)
@@ -661,6 +649,19 @@ class SendMessageWorker(
                 }
             }
         )
+    }
+
+    private fun sendMessageUrl(botToken: String): String = "https://api.telegram.org/bot${botToken}/sendMessage"
+
+    private fun rateLimited(response: retrofit2.Response<*>): SendOutcome.RateLimited {
+        val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
+        val retryAfterSecs = try {
+            NetworkUtils.parseRetryAfter(errBody)
+        } catch (_: Exception) {
+            5L
+        }
+        android.util.Log.w("SendMessageWorker", "Rate limited, retrying after ${retryAfterSecs}s")
+        return SendOutcome.RateLimited(retryAfterSecs)
     }
 
     private fun classify400(response: retrofit2.Response<*>, chatId: String): SendOutcome? {
@@ -707,7 +708,7 @@ class SendMessageWorker(
 
     private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE): SendOutcome {
         return try {
-            val url = "https://api.telegram.org/bot${botToken}/sendMessage"
+            val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
                 url,
                 TelegramMessage(chatId = chatId, text = message, parseMode = "HTML")
@@ -718,14 +719,7 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
-                val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                val retryAfterSecs = try {
-                    NetworkUtils.parseRetryAfter(errBody)
-                } catch (_: Exception) {
-                    5L
-                }
-                android.util.Log.w("SendMessageWorker", "Rate limited, retrying after ${retryAfterSecs}s")
-                SendOutcome.RateLimited(retryAfterSecs)
+                rateLimited(response)
             } else if (response.code() == 401) {
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
