@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.508] - 2026-10-27
+
 ### Fixed
 - Prompt input kini terikat pada chat asalnya (issue #78): status prompt sebelumnya satu pasang global untuk seluruh bot dan `consumePendingInput` hanya memeriksa pengirim adalah owner — prompt yang dipersenjatai dari chat pribadi (mis. tombol 🎬 Rekam video) bisa memakan pesan owner berikutnya di grup terkonfigurasi dalam 5 menit, dan perintahnya (mis. `/recordvideo 30`) berjalan dari balasan yang tidak dimaksudkan. `armInput` kini mencatat chat asal prompt (chat callback untuk tombol, chat pribadi/terkonfigurasi untuk perintah ketik) di field baru `pendingInputChat`, dan prompt hanya mengonsumsi balasan dari chat yang sama; balasan dari chat lain diperlakukan sebagai pesan biasa dan prompt tetap menunggu di chat asalnya. Ikatan chat ikut dibersihkan di semua titik pembersihan prompt, termasuk logout.
 - Baris UsageStats yang kosong kini diperlakukan sebagai "tidak ada data", sama seperti null (issue #77): `digestHighlights` dan `todayFacts` sebelumnya masuk cabang usage hanya karena daftarnya bukan null — padahal isinya kosong (umum sesaat setelah izin Usage access diberikan atau di beberapa OEM) — sehingga Sorotan melewatkan data aksesibilitas dan, lebih buruk, `todayFacts` merekam hari "0 menit" palsu ke baseline. Keduanya kini jatuh ke cadangan aksesibilitas bila daftar kosong, menyamai perlakuan `screenTimeSummary`; bila kedua sumber kosong, hari itu tidak direkam sama sekali.
