@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.489] - 2026-10-27
 ### Changed
 - Tahap 3 pemecahan `MonitoringService.kt` (#7): `editDistance`, `transposedEquals`, `suggestCommand` beserta himpunan `KNOWN_COMMANDS` pindah ke `utils/CommandSuggest.kt` dengan bodi identik, dipakai jalur perintah tak dikenal untuk saran ejaan perintah.
 
