@@ -313,7 +313,6 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
-        private val CURFEW_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
         private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
         private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
@@ -3751,7 +3750,7 @@ class MonitoringService : Service() {
         } else if (sub.equals("off", ignoreCase = true)) {
             preferencesManager.curfewTime = ""
             sendToTelegram("🌙 Jam malam dimatikan.")
-        } else if (CURFEW_REGEX.matches(sub)) {
+        } else if (CurfewLogic.isValidTime(sub)) {
             val startHour = sub.substringBefore(":").toIntOrNull() ?: -1
             if (startHour in 5..11) {
                 sendToTelegram("🌙 Jam malam harus mulai pukul 12:00 atau lebih (berakhir 05:00), atau sebelum 05:00. Contoh: 21:30.")

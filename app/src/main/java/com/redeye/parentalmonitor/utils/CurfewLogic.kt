@@ -3,6 +3,10 @@ package com.redeye.parentalmonitor.utils
 object CurfewLogic {
     private val TIME_REGEX = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
 
+    fun isValidTime(text: String): Boolean {
+        return TIME_REGEX.matches(text)
+    }
+
     fun inWindow(curfew: String, hour: Int, minute: Int): Boolean {
         if (!TIME_REGEX.matches(curfew)) return false
         val parts = curfew.split(":")

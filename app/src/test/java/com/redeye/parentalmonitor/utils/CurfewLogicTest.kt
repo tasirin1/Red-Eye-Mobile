@@ -6,6 +6,19 @@ import org.junit.Test
 
 class CurfewLogicTest {
     @Test
+    fun validTimeFormat() {
+        assertTrue(CurfewLogic.isValidTime("21:30"))
+        assertTrue(CurfewLogic.isValidTime("05:00"))
+        assertTrue(CurfewLogic.isValidTime("00:00"))
+        assertTrue(CurfewLogic.isValidTime("23:59"))
+        assertFalse(CurfewLogic.isValidTime("24:00"))
+        assertFalse(CurfewLogic.isValidTime("9:30"))
+        assertFalse(CurfewLogic.isValidTime("21:60"))
+        assertFalse(CurfewLogic.isValidTime("2130"))
+        assertFalse(CurfewLogic.isValidTime(""))
+    }
+
+    @Test
     fun eveningCurfewWindow() {
         assertFalse(CurfewLogic.inWindow("21:00", 20, 59))
         assertTrue(CurfewLogic.inWindow("21:00", 21, 0))
