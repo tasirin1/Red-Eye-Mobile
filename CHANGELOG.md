@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.493] - 2026-10-27
 ### Changed
 - Pemisahan keputusan tipe FGS (#7, tahap 5): perhitungan tipe foreground service (tipe dasar per SDK, gabungan izin kamera/mikrofon/lokasi/proyeksi, tangga penurunan tipe, dan cooldown bangun kamera) pindah dari `MonitoringService` ke fungsi murni `utils/FgsTypes.kt` (`base`, `compute`, `ladder`, `hasCamera`, `wakeCooldownMs`). Pemanggilan `startForeground`, tulis state, dan aktivitas bangun tetap di service; kesetaraan perilaku dibuktikan dengan tabel kebenaran (134 kombinasi masukan, 0 beda antara logika lama dan baru).
 
