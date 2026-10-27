@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Kegagalan handler tombol kini memberi kabar ke owner (issue #86): exception yang lolos dari `handleCallbackQuery` sebelumnya hanya dicatat ke log oleh `dispatchTracked`, lalu update ditandai terkirim (offset maju, tak pernah dicoba ulang) — tombol terasa mati tanpa penjelasan, berbeda dengan jalur perintah teks yang membalas "Perintah gagal". Situs panggil callback kini membungkus handler: exception (selain pembatalan) mengirim "⚠️ Tombol gagal diproses. Coba lagi atau kirim /help." sebelum diteruskan ke pencatatan yang sama.
+
 ## [1.6.509] - 2026-10-27
 
 ### Fixed

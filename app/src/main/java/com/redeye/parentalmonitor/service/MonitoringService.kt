@@ -1716,7 +1716,17 @@ class MonitoringService : Service() {
                 if (callback != null) {
                     offsetDeferred = true
                     dispatchTracked(update.updateId, "Callback dispatch error") {
-                        handleCallbackQuery(callback)
+                        try {
+                            handleCallbackQuery(callback)
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            try {
+                                sendToTelegram("\u26A0\uFE0F Tombol gagal diproses. Coba lagi atau kirim /help.")
+                            } catch (_: Exception) {
+                            }
+                            throw e
+                        }
                     }
                 } else {
                     val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
