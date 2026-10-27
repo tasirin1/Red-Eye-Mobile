@@ -20,6 +20,12 @@ class SendMessageWorker(
     companion object {
         private val activeRuns = java.util.concurrent.atomic.AtomicInteger(0)
 
+        @Volatile
+        private var lastSendOkNoteAt = 0L
+
+        @Volatile
+        private var healStageCleared = false
+
         fun isRunning(): Boolean = activeRuns.get() > 0
     }
 
@@ -683,10 +689,6 @@ class SendMessageWorker(
         }
         return if (adopted) SendOutcome.Failed else SendOutcome.AuthFailed(403)
     }
-
-    @Volatile
-    private var lastSendOkNoteAt = 0L
-    private var healStageCleared = false
 
     private fun noteSendOk() {
         val now = android.os.SystemClock.elapsedRealtime()
