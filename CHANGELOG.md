@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- PIN akses hasil impor backup tidak lagi terpakai diam-diam pada penyimpanan berikutnya (#48): PIN tertunda restore kini dibersihkan setiap kali halaman Setup dibuka segar (tanpa state tersimpan), sejalan dengan owner tertunda restore yang memang per-instance. Sebelumnya PIN backup yang batal disimpan bertahan di holder statis seumur proses dan menggantikan PIN tersimpan saat kolom PIN bermasker disimpan.
+
 ## [1.6.497] - 2026-10-27
 ### Changed
 - Penyelesaian teks tampilan domain terekstrak (#7, tahap 9): teks nama tipe FGS pindah dari `MonitoringService.fgsTypesText` ke `FgsTypes.describe`, dan inti format status pagar pindah ke `GeofenceLogic.statusText` (pembungkus `fenceStatusText` di service tetap membaca preferences seperti sebelumnya). Nilai keluaran dibuktikan sama dengan porting Python untuk seluruh kombinasi bit tipe dan kasus pagar (koordinat contoh, penanda belum diatur, radius 0).

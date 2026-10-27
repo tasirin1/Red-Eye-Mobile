@@ -386,6 +386,9 @@ class SetupActivity : AppCompatActivity() {
 
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
         pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
+        if (savedInstanceState == null) {
+            pendingRestoreAccessPin = ""
+        }
 
         prefs = PreferencesManager.getInstance(this)
         try {
