@@ -35,7 +35,7 @@ done
 fi
 # 3. Jangan commit binary/APK/secret ke repo (kredensial hanya via SetupActivity).
 # Termasuk keystore agar password tak bocor ke repo.
-if git diff --cached --name-only | grep -E '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
+if git diff --cached --name-only | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
   echo "GAGAL: binary/APK/secret ikut staged (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
 # 4. Token bot asli jangan ikut staged (tanpa pengecualian baris regex).
@@ -44,7 +44,7 @@ if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -E '[0-9]{6,}:[
 fi
 # 5. Pindai tracked tree selalu (bukan hanya saat index bersih).
 # Menangkap secret yang terlanjur ter-commit via --no-verify walau ada perubahan staged.
-if git ls-files -z | tr '\0' '\n' | grep -E '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
+if git ls-files -z | tr '\0' '\n' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
   echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
 if git grep -q -I -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null; then
@@ -54,7 +54,7 @@ fi
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  d=$(awk '/^[[:space:]]*@[A-Za-z_]+[[:space:]]*$/{ if ($0==prev) { print FNR; exit } prev=$0; next } { prev="" }' "$f" 2>/dev/null || true)
+  d=$(awk '/^[[:space:]]*@[A-Za-z_]+[[:space:]]*$/{ line=$0; gsub(/^[[:space:]]+/, "", line); gsub(/[[:space:]]+$/, "", line); if (line==prev) { print FNR; exit } prev=line; next } { prev="" }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
 done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
 if [ -n "$loop_dup" ]; then
