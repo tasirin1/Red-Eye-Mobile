@@ -40,6 +40,7 @@ import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.RestoreCode
 import com.redeye.parentalmonitor.utils.RestoreRules
 import com.redeye.parentalmonitor.utils.SettingsBackup
+import com.redeye.parentalmonitor.utils.Sparkline
 import com.redeye.parentalmonitor.utils.SmsCommandParser
 import com.redeye.parentalmonitor.utils.SmsNumbers
 import com.redeye.parentalmonitor.utils.TimeFmt
@@ -6503,18 +6504,6 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun sparkline(hours: IntArray): String {
-        return try {
-            val bars = charArrayOf('▁', '▂', '▃', '▄', '▅', '▆', '▇', '█')
-            val peak = hours.maxOrNull()?.coerceAtLeast(1) ?: 1
-            buildString {
-                for (h in hours) append(bars[((h * 7) / peak).coerceIn(0, 7)])
-            }
-        } catch (_: Exception) {
-            ""
-        }
-    }
-
     private suspend fun sendWaspada() {
         try {
             val now = System.currentTimeMillis()
@@ -6669,7 +6658,7 @@ class MonitoringService : Service() {
                 appendLine("SMS: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (busy >= 0 && hours[busy] > 0) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
-                appendLine("Aktif 00–23: " + sparkline(hours))
+                appendLine("Aktif 00–23: " + Sparkline.render(hours))
                 appendLine("Begadang (23–05): $nights")
                 if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Kena pantau: $watchHits")
                 if (capped) appendLine("(dari 200 data terakhir)")
