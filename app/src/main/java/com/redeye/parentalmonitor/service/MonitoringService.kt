@@ -6111,6 +6111,29 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
     }
 
+    private fun firstUnlockTodayMs(now: Long): Long {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return 0L
+        val manager = usageStatsManager ?: return 0L
+        val off = java.util.TimeZone.getDefault().getOffset(now)
+        val start = ((now + off) / 86_400_000L) * 86_400_000L - off
+        var first = 0L
+        try {
+            val cursor = manager.queryEvents(start, now) ?: return 0L
+            val event = android.app.usage.UsageEvents.Event()
+            while (cursor.hasNextEvent()) {
+                cursor.getNextEvent(event)
+                if (event.eventType != com.redeye.parentalmonitor.utils.UsageEventsSummary.TYPE_KEYGUARD_HIDDEN) continue
+                val pkg = try { event.packageName } catch (_: Exception) { null }
+                if (pkg == packageName) continue
+                val at = event.timeStamp
+                if (at > 0L && (first == 0L || at < first)) first = at
+            }
+        } catch (_: Exception) {
+            return 0L
+        }
+        return first
+    }
+
     private fun usageEventSummary(hours: Int): List<String> {
         val summary = usageSummary(hours) ?: return emptyList()
         val out = mutableListOf<String>()
@@ -6332,7 +6355,7 @@ class MonitoringService : Service() {
             topMs = a11yRows.first().millis
         }
         val nightMs = if (a11yRows.isEmpty()) -1L else a11yRows.sumOf { it.nightMillis }
-        val fuAt = try { usageSummary(24)?.firstUnlockAt ?: 0L } catch (_: Exception) { 0L }
+        val fuAt = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
         val fuMinute = if (fuAt > 0L) {
             val off = java.util.TimeZone.getDefault().getOffset(fuAt)
             (((fuAt + off) / 60_000L) % 1440L).toInt()
@@ -6355,7 +6378,7 @@ class MonitoringService : Service() {
         }
         if (screenMin < 0) return null
         val nightMin = if (a11yRows.isEmpty()) -1 else (a11yRows.sumOf { it.nightMillis } / 60_000L).toInt()
-        val fuAt = try { usageSummary(24)?.firstUnlockAt ?: 0L } catch (_: Exception) { 0L }
+        val fuAt = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
         val fuMinute = if (fuAt > 0L) {
             val off = java.util.TimeZone.getDefault().getOffset(fuAt)
             (((fuAt + off) / 60_000L) % 1440L).toInt()
