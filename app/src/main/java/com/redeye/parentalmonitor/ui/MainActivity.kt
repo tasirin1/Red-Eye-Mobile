@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
         outState.putString("operator", operator)
         outState.putString("lastExpression", lastExpression)
         outState.putBoolean("justCalculated", justCalculated)
+        outState.putBoolean("entryReplaced", entryReplaced)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
             operator = savedInstanceState.getString("operator", "")
             lastExpression = savedInstanceState.getString("lastExpression", "")
             justCalculated = savedInstanceState.getBoolean("justCalculated", false)
+            entryReplaced = savedInstanceState.getBoolean("entryReplaced", false)
             updateCalculatorDisplay()
         }
         val appCtx = applicationContext
@@ -99,6 +101,7 @@ class MainActivity : AppCompatActivity() {
     private var previousNumber = ""
     private var lastExpression = ""
     private var justCalculated = false
+    private var entryReplaced = false
 
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
@@ -136,6 +139,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendNumber(number: String) {
+        if (entryReplaced) {
+            currentNumber = ""
+            entryReplaced = false
+        }
         if (justCalculated) {
             currentNumber = ""
             previousNumber = ""
@@ -170,6 +177,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setOperator(op: String) {
         justCalculated = false
+        entryReplaced = false
         if (currentNumber == "Error") {
             clear()
             return
@@ -260,6 +268,7 @@ class MainActivity : AppCompatActivity() {
         operator = ""
         lastExpression = ""
         justCalculated = false
+        entryReplaced = false
         updateCalculatorDisplay()
     }
 
@@ -275,6 +284,7 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
+        entryReplaced = false
         currentNumber = when {
             currentNumber == "-" -> ""
             currentNumber.startsWith("-") -> currentNumber.removePrefix("-")
@@ -299,7 +309,7 @@ class MainActivity : AppCompatActivity() {
         }
         currentNumber = formatResult(result)
         lastExpression = ""
-        justCalculated = true
+        entryReplaced = true
         updateCalculatorDisplay()
     }
 
