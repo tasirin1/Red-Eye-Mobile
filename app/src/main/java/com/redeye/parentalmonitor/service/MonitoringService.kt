@@ -1226,7 +1226,15 @@ class MonitoringService : Service() {
         if (command != "/login" && !isStartHint) return false
         val privateChat = senderId.isNotEmpty() && msgChatId == senderId
         if (!privateChat) {
-            if (command == "/login") sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat.")
+            if (command == "/login") {
+                if (arg.isNotEmpty() && messageId > 0L) {
+                    val tokenGrup = try { preferencesManager.botToken } catch (_: Exception) { "" }
+                    deleteIncomingMessage(msgChatId, messageId, tokenGrup)
+                    sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat. Pesan PIN yang terketik di grup sudah dicoba dihapus — bila masih terlihat, hapus manual sekarang: anggota grup bisa memakai PIN itu untuk login lebih dulu.")
+                } else {
+                    sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat.")
+                }
+            }
             return true
         }
         if (cachedOwnerId != 0L) {
@@ -1253,6 +1261,8 @@ class MonitoringService : Service() {
             sendDirect(senderId, "\uD83D\uDD11 Kirim /login <PIN> (6-12 digit) untuk masuk.")
             return true
         }
+        val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        if (messageId > 0L) deleteIncomingMessage(senderId, messageId, token)
         val now = SystemClock.elapsedRealtime()
         if (now < loginGlobalLockoutUntil.get()) {
             sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
@@ -1271,8 +1281,6 @@ class MonitoringService : Service() {
             loginAttemptAt[senderId] = now
         } catch (_: Exception) {
         }
-        val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
-        if (messageId > 0L) deleteIncomingMessage(senderId, messageId, token)
         if (!AccessPin.verify(accessPin, arg)) {
             val fails = try { (loginFails[senderId] ?: 0) + 1 } catch (_: Exception) { 1 }
             try {
@@ -1773,12 +1781,14 @@ class MonitoringService : Service() {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && accessPin.isNotEmpty()) {
                             sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
+                            offsetDeferred = true
                             finishUpdateTrack(update.updateId, true)
                             continue
                         }
                     }
                     if (awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
                         sendDirect(senderId.ifEmpty { msgChatId }, loginHintText())
+                        offsetDeferred = true
                         finishUpdateTrack(update.updateId, true)
                         continue
                     }
@@ -1841,7 +1851,7 @@ class MonitoringService : Service() {
                         val effective = aliasInput?.substringBefore(" ") ?: command
                         val control = effective in CONTROL_COMMANDS
                         val isPrivate = msgChatId.isNotEmpty() && msgChatId == senderId
-                        val messageDate = message?.date ?: 0L
+                        val messageDate = if (message == null) 0L else if (message.editDate > message.date) message.editDate else message.date
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         serviceScope.launch {
@@ -4301,7 +4311,7 @@ class MonitoringService : Service() {
                 }
                 val tail = if (restarted) " ⏰ Loop dijalankan ulang." else ""
                 val pong = if (sentAtSec > 0) {
-                    val lag = System.currentTimeMillis() / 1000L - sentAtSec
+                    val lag = serverNowSec() - sentAtSec
                     "\uD83C\uDFD3 Pong! Delay ${lag.coerceAtLeast(0)} s." + tail
                 } else {
                     "\uD83C\uDFD3 Pong! " + TimeFmt.full(System.currentTimeMillis()) + tail

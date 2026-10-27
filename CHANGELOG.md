@@ -1,4 +1,10 @@
 ## [Unreleased]
+### Fixed
+- `/login <PIN>` yang terketik di chat grup kini dicoba dihapus dari grup dan pengirim diperingatkan bahwa PIN terlihat anggota grup (#30); sebelumnya pesan berisi PIN menetap di riwayat grup selama owner belum tertaut, sehingga anggota grup mana pun bisa memakai PIN itu untuk tertaut sebagai owner lebih dulu.
+- Pesan berisi PIN kini dihapus sebelum cek lockout/throttle login (#39), bukan hanya di jalur yang sampai ke verifikasi — PIN yang dikirim saat login terkunci tidak lagi menetap di riwayat chat.
+- Jalur petunjuk pairing dan petunjuk login kini menandai `offsetDeferred` sebelum `finishUpdateTrack` (#40), sehingga blok `finally` loop polling tidak memanggilnya dua kali untuk update yang sama.
+- Umur pesan hasil edit kini memakai `edit_date` bila lebih baru (#37), selaras jalur callback: perintah yang diedit tidak lagi ditolak kedaluwarsa dari tanggal kirim asli.
+- Angka Delay pada `/ping` kini dihitung dari waktu server Telegram (`serverNowSec`) (#38), sisa terakhir pola jam lokal vs tanggal pesan dari perbaikan #9.
 
 ## [1.6.485] - 2026-10-27
 ### Fixed
