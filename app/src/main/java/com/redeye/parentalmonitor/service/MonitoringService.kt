@@ -45,6 +45,7 @@ import com.redeye.parentalmonitor.utils.RingVolume
 import com.redeye.parentalmonitor.utils.RestoreCode
 import com.redeye.parentalmonitor.utils.RestoreRules
 import com.redeye.parentalmonitor.utils.SettingsBackup
+import com.redeye.parentalmonitor.utils.Sha256Hex
 import com.redeye.parentalmonitor.utils.Sparkline
 import com.redeye.parentalmonitor.utils.SmsCommandParser
 import com.redeye.parentalmonitor.utils.SmsNumbers
@@ -306,7 +307,6 @@ class MonitoringService : Service() {
         const val ACTION_CALL_STATE = "CALL_STATE_IDLE"
         const val ACTION_AFTER_SHOT_GRANT = "AFTER_SHOT_GRANT"
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
-        private const val HEX_DIGITS = "0123456789abcdef"
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
@@ -738,20 +738,6 @@ class MonitoringService : Service() {
     }
 
 
-    private fun sha256Hex(value: String): String {
-        return try {
-            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-            val hex = CharArray(digest.size * 2)
-            for (i in digest.indices) {
-                val b = digest[i].toInt()
-                hex[i * 2] = HEX_DIGITS[(b ushr 4) and 0xF]
-                hex[i * 2 + 1] = HEX_DIGITS[b and 0xF]
-            }
-            String(hex)
-        } catch (_: Exception) {
-            value.hashCode().toString()
-        }
-    }
 
     private fun redactToken(value: String?): String {
         val token = try {
@@ -2117,7 +2103,7 @@ class MonitoringService : Service() {
             if (botToken.isEmpty()) return
             val ownerId = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
             val accessPinActive = try { preferencesManager.accessPin.isNotEmpty() } catch (_: Exception) { false }
-            val tokenHash = sha256Hex(botToken + ":" + ownerId + ":" + accessPinActive + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
+            val tokenHash = Sha256Hex.hex(botToken + ":" + ownerId + ":" + accessPinActive + ":" + com.redeye.parentalmonitor.BuildConfig.VERSION_CODE)
             if (!force) {
                 try {
                     if (preferencesManager.commandsTokenHash == tokenHash) return

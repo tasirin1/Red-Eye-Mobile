@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Pemisahan hash SHA-256 (#7, tahap 8): fungsi `sha256Hex` (hash sidik kredensial untuk registrasi perintah bot) pindah verbatim dari `MonitoringService` ke `utils/Sha256Hex.kt` sebagai `Sha256Hex.hex`, beserta konstanta `HEX_DIGITS` yang hanya dipakainya; satu-satunya situs panggil kini memakai util itu. Badan fungsi identik baris demi baris dengan aslinya (dibangun skrip dari teks berkas lama).
+
+### Added
+- Uji JVM `Sha256HexTest` dengan vektor SHA-256 baku (string kosong, "abc", dan bentuk string sidik kredensial).
 
 ## [1.6.495] - 2026-10-27
 ### Changed

@@ -61,3 +61,4 @@ cameraWakeCooldownMs
 permissionMask
 missingPermLabels
 permInventoryText
+sha256Hex
