@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.499] - 2026-10-27
+
 ### Fixed
 - Tulis preferences hitungan notifikasi-dibuang tidak lagi dilakukan di dalam `dropNoticeLock` (#64): ketiga situs di `NotificationForwarderService` (`onDestroy`, `noteDroppedNotification`, `flushDropNotice`) kini mengambil snapshot nilai di dalam kunci lalu menulisnya (commit prefs terenkripsi sinkron) di luar kunci, sehingga utas lain yang menunggu kunci yang sama tidak ikut tertahan selama IO penyimpanan. Nilai yang ditulis adalah snapshot pada momen yang sama seperti sebelumnya.
 
