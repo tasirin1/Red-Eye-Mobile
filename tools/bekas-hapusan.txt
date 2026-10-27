@@ -58,3 +58,6 @@ baseForegroundType
 computeForegroundTypes
 foregroundTypeLadder
 cameraWakeCooldownMs
+permissionMask
+missingPermLabels
+permInventoryText
