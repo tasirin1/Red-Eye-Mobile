@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penjaga negasi `IntentParser` kini mengenali bentuk berimbuhan (issue #80): pencocokan negasi sebelumnya token persis, jadi "janganlah ambil foto" / "tidaklah usah kirim screenshot" / "bukankah kirim screenshot sekarang" lolos sebagai bukan negasi dan perintahnya tetap dijalankan — melawan kata owner sendiri. Helper baru `isNegation` menerima token persis atau awalan kata negasi panjang (≥4 huruf) dengan imbuhan akhir ≤3 huruf (mirrors aturan imbuhan kata kunci); kata pendek ("tak", "gak", "ndak") tetap persis agar kata seperti "takut"/"taksi" tidak ikut tertelan. Aturan dibuktikan lewat porting Python 20 kasus (termasuk penjaga positif-palsu) 0 beda dan uji JVM `IntentParserTest` bertambah 3 frasa penolakan.
 - Pesan anomali "🚨 Di luar pola biasanya" tidak bisa lagi terkirim dua kali (issue #79): stempel tipe yang sudah dikirim sebelumnya hanya ditulis bila pengiriman langsung berhasil — pengiriman yang masuk antrean (jaringan mati/rate-limit) tidak menulis stempel, jadi digest kedua di hari yang sama mengirim ulang pesan yang sama, dan dua digest yang berjalan bersamaan bisa sama-sama membaca stempel lama. Kini penanda ditulis lebih dulu secara atomik di dalam `prefsRmwLock` sebelum mengirim (jalur bersamaan kedua membaca penanda yang sudah terisi), pengiriman memakai `sendFitted`, dan penanda hanya ditarik kembali bila statusnya DROPPED (gagal permanen) agar peringatan tidak hilang diam-diam.
 
 ## [1.6.508] - 2026-10-27

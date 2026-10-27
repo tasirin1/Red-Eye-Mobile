@@ -113,6 +113,11 @@ object IntentParser {
         )
     )
 
+    private fun isNegation(token: String): Boolean {
+        if (token in NEGATIONS) return true
+        return NEGATIONS.any { it.length >= 4 && token.length - it.length in 1..3 && token.startsWith(it) }
+    }
+
     private fun tokenMatches(token: String, keyword: String): Boolean {
         if (token == keyword) return true
         return keyword.length >= 4 && token.length - keyword.length in 1..3 && token.startsWith(keyword)
@@ -138,7 +143,7 @@ object IntentParser {
         for (c in lower) sb.append(if (c.isLetterOrDigit()) c else ' ')
         val tokens = sb.toString().split(WHITESPACE).filter { it.isNotEmpty() }
         if (tokens.isEmpty()) return null
-        if (tokens.any { it in NEGATIONS }) return null
+        if (tokens.any { isNegation(it) }) return null
         val padded = " " + tokens.joinToString(" ") + " "
         var best: String? = null
         var bestScore = 0

@@ -64,6 +64,9 @@ class IntentParserTest {
     fun parseRejectsUnsafeOrAmbiguous() {
         val cases = listOf(
             "jangan kirim foto",
+            "janganlah ambil foto",
+            "tidaklah usah kirim screenshot",
+            "bukankah kirim screenshot sekarang",
             "nggak usah kirim screenshot",
             "ada foto baru nggak",
             "baterai hp bocor",
