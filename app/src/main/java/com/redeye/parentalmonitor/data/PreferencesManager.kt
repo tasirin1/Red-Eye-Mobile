@@ -499,10 +499,12 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LAST_UPDATE_ID, 0L) } catch (_: Exception) { 0L }
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
-    fun setLastUpdateIdSync(id: Long) {
-        try {
-            sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit()
+    fun setLastUpdateIdSync(id: Long): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit() ||
+                sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -1206,40 +1208,52 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setSmsCursorSync(id: Long, timestamp: Long = 0L) {
-        try {
-            val editor = sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id)
-            if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
-            editor.commit()
+    fun setSmsCursorSync(id: Long, timestamp: Long = 0L): Boolean {
+        return try {
+            fun tulis(): Boolean {
+                val editor = sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id)
+                if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
+                return editor.commit()
+            }
+            tulis() || tulis()
         } catch (_: Exception) {
+            false
         }
     }
 
-    fun setCallCursorSync(timestamp: Long, id: Long) {
-        try {
-            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit()
+    fun setCallCursorSync(timestamp: Long, id: Long): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit() ||
+                sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
-    fun resetSmsCursorSync() {
-        try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit()
+    fun resetSmsCursorSync(): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit() ||
+                sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
-    fun resetCallCursorSync() {
-        try {
-            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit()
+    fun resetCallCursorSync(): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit() ||
+                sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
-    fun setLastSmsSendAtSync(now: Long) {
-        try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit()
+    fun setLastSmsSendAtSync(now: Long): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit() ||
+                sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
