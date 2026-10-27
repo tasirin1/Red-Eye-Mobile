@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- `BASE_URL` Telegram kini satu konstanta bersama di `SharedNet` (#61): literal `"https://api.telegram.org/"` yang tadinya dideklarasikan dua kali (di `TelegramClient` dan `TelegramMediaClient`) diangkat ke `SharedNet.BASE_URL` dan kedua klien memakainya. Dua tumpukan Retrofit/OkHttp tetap terpisah dengan sengaja karena profil timeout-nya memang berbeda (teks 90 detik vs media 600 detik).
+
 ### Fixed
 - `BootRestartWorker`: penjadwalan kirim pesan pada cabang service-sedang-berjalan kini terbungkus try/catch seperti pemanggilan tetangganya (#59) — sebelumnya satu-satunya panggilan tanpa pelindung di `doWorkInternal`, sehingga pengecualian saat menjadwalkan lolos ke penangkap luar dan memicu retry worker sampai 5 kali (menjalankan ulang flush laporan crash dan penjadwalan liveness) padahal keadaan sebenarnya sehat.
 

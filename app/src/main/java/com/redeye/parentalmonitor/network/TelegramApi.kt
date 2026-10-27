@@ -225,11 +225,11 @@ interface TelegramApi {
 }
 
 private object SharedNet {
+    const val BASE_URL = "https://api.telegram.org/"
     val pool = ConnectionPool(4, 1, TimeUnit.MINUTES)
 }
 
 object TelegramClient {
-    private const val BASE_URL = "https://api.telegram.org/"
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
@@ -245,7 +245,7 @@ object TelegramClient {
         .build()
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
+        .baseUrl(SharedNet.BASE_URL)
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
@@ -254,7 +254,6 @@ object TelegramClient {
 }
 
 object TelegramMediaClient {
-    private const val BASE_URL = "https://api.telegram.org/"
 
     private val mediaOkHttp = OkHttpClient.Builder()
         .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
@@ -270,7 +269,7 @@ object TelegramMediaClient {
         .build()
 
     private val mediaRetrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
+        .baseUrl(SharedNet.BASE_URL)
         .client(mediaOkHttp)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
