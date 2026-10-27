@@ -138,7 +138,7 @@
         <!-- Jalur tangkap layar lewat Aksesibilitas (izin sekali, tahan restart) -->
         <service
             android:name=".service.ShotAccessibilityService"
-            android:enabled="@bool/shot_a11y_service_enabled"
+            android:enabled="true"
             android:exported="false"
             android:label="@string/shot_a11y_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
