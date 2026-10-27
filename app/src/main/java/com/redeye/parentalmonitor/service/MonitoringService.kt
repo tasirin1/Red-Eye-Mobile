@@ -6742,7 +6742,7 @@ class MonitoringService : Service() {
                 appendLine("Begadang (23–05): $nights$locNote")
                 try {
                     val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
-                    val todayF = todayFacts(now)
+                    val todayF = todayFacts(now) ?: allDays.firstOrNull { it.day == todayKey(now) }
                     val hist = allDays.filter { it.day != todayKey(now) }
                     val temuan = if (todayF != null) PatternBaseline.assess(hist, todayF) else emptyList()
                     if (temuan.isNotEmpty()) {
