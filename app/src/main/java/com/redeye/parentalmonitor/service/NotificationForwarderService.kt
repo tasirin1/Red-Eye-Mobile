@@ -12,6 +12,7 @@ import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.NotificationPrivacy
+import com.redeye.parentalmonitor.utils.TelegramSendPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -944,6 +945,53 @@ class NotificationForwarderService : NotificationListenerService() {
         )
     }
 
+    private fun classifyForward(response: retrofit2.Response<com.redeye.parentalmonitor.network.TelegramResponse>, prefs: PreferencesManager, chatId: String): TelegramSendPolicy.Outcome {
+        val code = response.code()
+        val body = if (code == 429 || code == 400) {
+            try { response.errorBody()?.string() } catch (_: Exception) { null }
+        } else {
+            null
+        }
+        val migrated = if (code == 400) adoptMigratedChat(prefs, body, chatId) else false
+        return TelegramSendPolicy.classify(response.isSuccessful, response.body()?.ok == true, code, body, migrated)
+    }
+
+    private suspend fun forwardPlainFallback(url: String, botToken: String, chatId: String, original: String, plain: String, prefs: PreferencesManager): Boolean {
+        val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+        val outcome = classifyForward(fallbackResp, prefs, chatId)
+        return when (outcome.kind) {
+            TelegramSendPolicy.Kind.SENT -> {
+                try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L) } catch (_: Exception) { }
+                true
+            }
+            TelegramSendPolicy.Kind.AUTH_FAILED -> {
+                try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
+                queue().addMessage(original)
+                MessageScheduler.scheduleMessageSend(this)
+                true
+            }
+            TelegramSendPolicy.Kind.RATE_LIMITED -> {
+                NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
+                queue().addMessage(original)
+                MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
+                true
+            }
+            TelegramSendPolicy.Kind.TRANSIENT, TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
+                queue().addMessage(original)
+                MessageScheduler.scheduleMessageSend(this)
+                true
+            }
+            TelegramSendPolicy.Kind.CHAT_MISSING -> {
+                try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
+                queue().addMessage(original)
+                MessageScheduler.scheduleMessageSend(this)
+                true
+            }
+            TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> false
+        }
+    }
+
+
     private suspend fun forwardLocked(message: String, msgCount: Int = 1) {
         try {
             val prefs = prefsRef ?: try {
@@ -992,119 +1040,55 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
-            if (response.isSuccessful && response.body()?.ok == true) {
-                return
-            }
-            if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("NotifForwarder", "Send rejected (${response.code()}), queuing notification")
-                try {
-                    prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, response.code().toString(), System.currentTimeMillis())
-                } catch (_: Exception) {
+            val outcome = classifyForward(response, prefs, chatId)
+            when (outcome.kind) {
+                TelegramSendPolicy.Kind.SENT -> {
+                    try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L) } catch (_: Exception) { }
+                    return
                 }
-                queue().addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
-                return
-            }
-            if (response.code() == 429) {
-                val retryAfter = try {
-                    NetworkUtils.parseRetryAfter(response.errorBody()?.string())
-                } catch (_: Exception) {
-                    5L
-                }
-                NetworkUtils.noteRateLimited(retryAfter)
-                queue().addMessage(message)
-                MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                return
-            }
-            if (response.code() == 400) {
-                val body = try {
-                    response.errorBody()?.string()
-                } catch (_: Exception) {
-                    null
-                }
-                if (adoptMigratedChat(prefs, body, chatId)) {
+                TelegramSendPolicy.Kind.AUTH_FAILED -> {
+                    android.util.Log.e("NotifForwarder", "Send rejected (${outcome.code}), queuing notification")
+                    try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return
                 }
-                if (NetworkUtils.isChatMissing(body)) {
-                    try {
-                        prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, response.code().toString(), System.currentTimeMillis())
-                    } catch (_: Exception) {
+                TelegramSendPolicy.Kind.RATE_LIMITED -> {
+                    NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
+                    return
+                }
+                TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return
+                }
+                TelegramSendPolicy.Kind.CHAT_MISSING -> {
+                    try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                    return
+                }
+                TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
+                    if (outcome.code == 400) {
+                        val plain = Html.unescape(message)
+                        if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
+                            if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return
+                        }
+                        android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
+                        try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
+                        return
                     }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return
                 }
-                if (NetworkUtils.isRightsLimited(body)) {
+                TelegramSendPolicy.Kind.TRANSIENT -> {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                     return
                 }
-                val plain = Html.unescape(message)
-                if (plain != message) {
-                    val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
-                    if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-                        return
-                    }
-                    if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
-                        try {
-                            prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
-                        } catch (_: Exception) {
-                        }
-                        queue().addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                        return
-                    }
-                    if (fallbackResp.code() == 429) {
-                        val retryAfter = try {
-                            NetworkUtils.parseRetryAfter(fallbackResp.errorBody()?.string())
-                        } catch (_: Exception) {
-                            5L
-                        }
-                        NetworkUtils.noteRateLimited(retryAfter)
-                        queue().addMessage(message)
-                        MessageScheduler.scheduleMessageSendNext(this, retryAfter * 1000L)
-                        return
-                    }
-                    if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
-                        queue().addMessage(message)
-                        MessageScheduler.scheduleMessageSend(this)
-                        return
-                    }
-                    if (fallbackResp.code() == 400) {
-                        val fallbackBody = try {
-                            fallbackResp.errorBody()?.string()
-                        } catch (_: Exception) {
-                            null
-                        }
-                        if (adoptMigratedChat(prefs, fallbackBody, chatId)) {
-                            queue().addMessage(message)
-                            MessageScheduler.scheduleMessageSend(this)
-                            return
-                        }
-                        if (NetworkUtils.isChatMissing(fallbackBody)) {
-                            try {
-                                prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
-                            } catch (_: Exception) {
-                            }
-                            queue().addMessage(message)
-                            MessageScheduler.scheduleMessageSend(this)
-                            return
-                        }
-                        if (NetworkUtils.isRightsLimited(fallbackBody)) {
-                            queue().addMessage(message)
-                            MessageScheduler.scheduleMessageSend(this)
-                            return
-                        }
-                    }
-                }
-                android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
-                try {
-                    noteDroppedNotification(msgCount)
-                } catch (_: Exception) {
-                }
-                return
             }
             queue().addMessage(message)
             MessageScheduler.scheduleMessageSend(this)

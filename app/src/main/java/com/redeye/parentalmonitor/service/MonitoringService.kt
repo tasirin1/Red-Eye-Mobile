@@ -49,6 +49,7 @@ import com.redeye.parentalmonitor.utils.Sha256Hex
 import com.redeye.parentalmonitor.utils.Sparkline
 import com.redeye.parentalmonitor.utils.SmsCommandParser
 import com.redeye.parentalmonitor.utils.SmsNumbers
+import com.redeye.parentalmonitor.utils.TelegramSendPolicy
 import com.redeye.parentalmonitor.utils.TimeFmt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
@@ -5493,6 +5494,17 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun classifySend(response: retrofit2.Response<com.redeye.parentalmonitor.network.TelegramResponse>, chatId: String): TelegramSendPolicy.Outcome {
+        val code = response.code()
+        val body = if (code == 429 || code == 400) {
+            try { response.errorBody()?.string() } catch (_: Exception) { null }
+        } else {
+            null
+        }
+        val migrated = if (code == 400) adoptMigratedChat(body, chatId) else false
+        return TelegramSendPolicy.classify(response.isSuccessful, response.body()?.ok == true, code, body, migrated)
+    }
+
     private suspend fun sendToTelegram(
         message: String,
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
@@ -5542,29 +5554,34 @@ class MonitoringService : Service() {
             val url = "https://api.telegram.org/bot${botToken}/sendMessage"
             val response = TelegramClient.api.sendMessage(url, telegramMessage)
 
-            if (response.isSuccessful && response.body()?.ok == true) {
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
-                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
-                noteSendOk()
-                return true
-            } else if (response.code() == 429) {
-                val retryAfter = NetworkUtils.parseRetryAfter(response.errorBody()?.string())
-                NetworkUtils.noteRateLimited(retryAfter)
-                android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${retryAfter}s")
-                queueForRetryLater(message, queueOnFail, retryAfter * 1000L)
-                return false
-            } else if (response.code() == 401 || response.code() == 403) {
-                android.util.Log.e("MonitoringService", "Send rejected (${response.code()}), queuing")
-                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, response.code().toString(), System.currentTimeMillis())
-                queueForRetry(message, queueOnFail)
-                return false
-            } else if (response.code() == 400) {
-                val goneBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
-                return sendStatus400(response.code(), goneBody, message, botToken, chatId, queueOnFail, onPermanent)
-            } else {
-                android.util.Log.e("MonitoringService", "✗ Failed to send: ${response.code()}")
-                queueForRetry(message, queueOnFail)
-                return false
+            val outcome = classifySend(response, chatId)
+            when (outcome.kind) {
+                TelegramSendPolicy.Kind.SENT -> {
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
+                    preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
+                    noteSendOk()
+                    return true
+                }
+                TelegramSendPolicy.Kind.RATE_LIMITED -> {
+                    NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
+                    android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${outcome.retryAfterSecs}s")
+                    queueForRetryLater(message, queueOnFail, outcome.retryAfterSecs * 1000L)
+                    return false
+                }
+                TelegramSendPolicy.Kind.AUTH_FAILED -> {
+                    android.util.Log.e("MonitoringService", "Send rejected (${outcome.code}), queuing")
+                    preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
+                    queueForRetry(message, queueOnFail)
+                    return false
+                }
+                else -> {
+                    if (outcome.code == 400) {
+                        return sendStatus400(outcome, message, botToken, chatId, queueOnFail, onPermanent)
+                    }
+                    android.util.Log.e("MonitoringService", "✗ Failed to send: ${outcome.code}")
+                    queueForRetry(message, queueOnFail)
+                    return false
+                }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -5576,20 +5593,19 @@ class MonitoringService : Service() {
     }
 
     private suspend fun sendStatus400(
-        code: Int,
-        goneBody: String?,
+        outcome: TelegramSendPolicy.Outcome,
         message: String,
         botToken: String,
         chatId: String,
         queueOnFail: Boolean,
         onPermanent: (() -> Unit)? = null
     ): Boolean {
-        if (adoptMigratedChat(goneBody, chatId)) {
+        if (outcome.kind == TelegramSendPolicy.Kind.MIGRATED) {
             queueForRetry(message, queueOnFail)
             return false
         }
-        if (NetworkUtils.isChatMissing(goneBody)) {
-            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, code.toString(), System.currentTimeMillis())
+        if (outcome.kind == TelegramSendPolicy.Kind.CHAT_MISSING) {
+            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
             try {
                 postAuthFailureReminder(400)
             } catch (_: Exception) {
@@ -5597,14 +5613,13 @@ class MonitoringService : Service() {
             queueForRetry(message, queueOnFail)
             return false
         }
-        if (NetworkUtils.isRightsLimited(goneBody)) {
+        if (outcome.kind == TelegramSendPolicy.Kind.RIGHTS_LIMITED) {
             android.util.Log.w("MonitoringService", "Insufficient rights (400), queuing without auth block")
             queueForRetry(message, queueOnFail)
             return false
         }
-        val parseRetry = goneBody?.contains("can't parse entities", ignoreCase = true) == true
         val plain = Html.unescape(message)
-        if (plain != message || parseRetry) {
+        if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
             try {
                 return sendPlainFallback(botToken, chatId, plain, queueOnFail, onPermanent)
             } catch (_: Exception) {
@@ -5631,52 +5646,41 @@ class MonitoringService : Service() {
     ): Boolean {
         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
-        if (fallbackResp.isSuccessful && fallbackResp.body()?.ok == true) {
-            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
-            noteSendOk()
-            return true
-        } else if (fallbackResp.code() == 429) {
-            val retryAfter = NetworkUtils.parseRetryAfter(try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null })
-            NetworkUtils.noteRateLimited(retryAfter)
-            queueForRetryLater(plain, queueOnFail, retryAfter * 1000L)
-            return false
-        } else if (fallbackResp.code() == 401 || fallbackResp.code() == 403) {
-            preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
-            queueForRetry(plain, queueOnFail)
-            return false
-        } else if (fallbackResp.code() == 408 || fallbackResp.code() >= 500) {
-            queueForRetry(plain, queueOnFail)
-            return false
-        } else if (fallbackResp.code() == 400) {
-            val fbBody = try { fallbackResp.errorBody()?.string() } catch (_: Exception) { null }
-            if (adoptMigratedChat(fbBody, chatId)) {
+        val outcome = classifySend(fallbackResp, chatId)
+        return when (outcome.kind) {
+            TelegramSendPolicy.Kind.SENT -> {
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
+                noteSendOk()
+                true
+            }
+            TelegramSendPolicy.Kind.RATE_LIMITED -> {
+                NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
+                queueForRetryLater(plain, queueOnFail, outcome.retryAfterSecs * 1000L)
+                false
+            }
+            TelegramSendPolicy.Kind.AUTH_FAILED -> {
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
                 queueForRetry(plain, queueOnFail)
-                return false
+                false
             }
-            if (NetworkUtils.isChatMissing(fbBody)) {
-                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, fallbackResp.code().toString(), System.currentTimeMillis())
+            TelegramSendPolicy.Kind.TRANSIENT, TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
                 queueForRetry(plain, queueOnFail)
-                return false
+                false
             }
-            if (NetworkUtils.isRightsLimited(fbBody)) {
+            TelegramSendPolicy.Kind.CHAT_MISSING -> {
+                preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
                 queueForRetry(plain, queueOnFail)
-                return false
+                false
             }
-            android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
-            try {
-                noteDroppedMessage()
-            } catch (_: Exception) {
+            TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
+                android.util.Log.w("MonitoringService", "Message permanently rejected (${outcome.code}), not queued")
+                try {
+                    noteDroppedMessage()
+                } catch (_: Exception) {
+                }
+                try { onPermanent?.invoke() } catch (_: Exception) { }
+                false
             }
-            try { onPermanent?.invoke() } catch (_: Exception) { }
-            return false
-        } else {
-            android.util.Log.w("MonitoringService", "Message permanently rejected (${fallbackResp.code()}), not queued")
-            try {
-                noteDroppedMessage()
-            } catch (_: Exception) {
-            }
-            try { onPermanent?.invoke() } catch (_: Exception) { }
-            return false
         }
     }
 
