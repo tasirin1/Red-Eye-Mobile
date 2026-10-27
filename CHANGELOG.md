@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Changed
+- Long-poll `getUpdates` kini punya klien sendiri, `TelegramPollClient` (#60): sebelumnya polling 30 detik berbagi dispatcher klien teks (`maxRequestsPerHost = 4`), sehingga satu slot selalu terisi permanen dan hanya menyisakan tiga untuk lalu lintas kirim/kontrol. Klien poll membawa dispatcher sendiri (2 per host) dengan timeout yang sama persis dengan klien teks; kedua situs panggil di loop polling `MonitoringService` kini memakainya. Dampak latensi sebelumnya berstatus dugaan (belum terukur); perubahan ini memisahkan anggaran konkurensinya secara struktural.
 - `BASE_URL` Telegram kini satu konstanta bersama di `SharedNet` (#61): literal `"https://api.telegram.org/"` yang tadinya dideklarasikan dua kali (di `TelegramClient` dan `TelegramMediaClient`) diangkat ke `SharedNet.BASE_URL` dan kedua klien memakainya. Dua tumpukan Retrofit/OkHttp tetap terpisah dengan sengaja karena profil timeout-nya memang berbeda (teks 90 detik vs media 600 detik).
 
 ### Fixed

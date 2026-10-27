@@ -276,3 +276,25 @@ object TelegramMediaClient {
 
     val api: TelegramApi = mediaRetrofit.create(TelegramApi::class.java)
 }
+object TelegramPollClient {
+    private val pollOkHttp = OkHttpClient.Builder()
+        .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+        .dispatcher(Dispatcher().apply {
+            maxRequests = 2
+            maxRequestsPerHost = 2
+        })
+        .connectionPool(SharedNet.pool)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
+        .build()
+
+    private val pollRetrofit = Retrofit.Builder()
+        .baseUrl(SharedNet.BASE_URL)
+        .client(pollOkHttp)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    val api: TelegramApi = pollRetrofit.create(TelegramApi::class.java)
+}

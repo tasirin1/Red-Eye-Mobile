@@ -22,6 +22,7 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
+import com.redeye.parentalmonitor.network.TelegramPollClient
 import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.CommandSuggest
@@ -1593,7 +1594,7 @@ class MonitoringService : Service() {
         val url = updatesUrl(botToken, offset)
 
         var response = try {
-            TelegramClient.api.getUpdates(url)
+            TelegramPollClient.api.getUpdates(url)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1613,7 +1614,7 @@ class MonitoringService : Service() {
                 responseChat = freshChat
                 val retryUrl = updatesUrl(freshToken, offset)
                 response = try {
-                    TelegramClient.api.getUpdates(retryUrl)
+                    TelegramPollClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
