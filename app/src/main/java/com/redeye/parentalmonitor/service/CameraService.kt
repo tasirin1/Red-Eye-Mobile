@@ -299,7 +299,7 @@ class CameraService(private val context: Context) {
                 meteringSurface = ownedSurface
                 imageReader = ownedReader
             }
-            imageReader?.setOnImageAvailableListener({ reader ->
+            ownedReader.setOnImageAvailableListener({ reader ->
                 try {
                     onTrace("trace: image arrived")
                     val image = reader.acquireLatestImage()
@@ -753,8 +753,11 @@ class CameraService(private val context: Context) {
             } else {
                 val capArea = 1280L * 720L
                 val within = sizes.filter { it.width.toLong() * it.height <= capArea }
-                val pool = if (within.isNotEmpty()) within else sizes.toList()
-                val chosen = pool.maxByOrNull { it.width.toLong() * it.height }
+                val chosen = if (within.isNotEmpty()) {
+                    within.maxByOrNull { it.width.toLong() * it.height }
+                } else {
+                    sizes.minByOrNull { it.width.toLong() * it.height }
+                }
                 if (chosen != null) chosen.width to chosen.height else 640 to 480
             }
         } catch (e: Exception) {
