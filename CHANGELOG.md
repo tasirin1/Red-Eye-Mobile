@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pesan anomali "🚨 Di luar pola biasanya" tidak bisa lagi terkirim dua kali (issue #79): stempel tipe yang sudah dikirim sebelumnya hanya ditulis bila pengiriman langsung berhasil — pengiriman yang masuk antrean (jaringan mati/rate-limit) tidak menulis stempel, jadi digest kedua di hari yang sama mengirim ulang pesan yang sama, dan dua digest yang berjalan bersamaan bisa sama-sama membaca stempel lama. Kini penanda ditulis lebih dulu secara atomik di dalam `prefsRmwLock` sebelum mengirim (jalur bersamaan kedua membaca penanda yang sudah terisi), pengiriman memakai `sendFitted`, dan penanda hanya ditarik kembali bila statusnya DROPPED (gagal permanen) agar peringatan tidak hilang diam-diam.
+
 ## [1.6.508] - 2026-10-27
 
 ### Fixed

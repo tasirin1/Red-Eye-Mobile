@@ -6424,23 +6424,38 @@ class MonitoringService : Service() {
         val history = updated.filter { it.day != today.day }
         val strong = PatternBaseline.assess(history, today).filter { it.strong }
         if (strong.isEmpty()) return
-        val stamp = try { preferencesManager.anomalyAlerts } catch (_: Exception) { "" }
-        val stampDay = stamp.substringBefore(":", "")
-        val already = if (stampDay == today.day) {
-            stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
-        } else {
-            emptySet()
+        val fresh = synchronized(prefsRmwLock) {
+            val stamp = try { preferencesManager.anomalyAlerts } catch (_: Exception) { "" }
+            val stampDay = stamp.substringBefore(":", "")
+            val already = if (stampDay == today.day) {
+                stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
+            } else {
+                emptySet()
+            }
+            val freshNow = strong.filter { it.type !in already }
+            if (freshNow.isNotEmpty()) {
+                try {
+                    preferencesManager.anomalyAlerts = today.day + ":" + (already + freshNow.map { it.type }).joinToString(",")
+                } catch (_: Exception) { }
+            }
+            freshNow
         }
-        val fresh = strong.filter { it.type !in already }
         if (fresh.isEmpty()) return
-        val sentOk = sendToTelegram(buildString {
+        val status = sendFitted(buildString {
             appendLine("🚨 <b>Di luar pola biasanya</b>")
             for (f in fresh) appendLine("• " + f.text)
         })
-        if (sentOk) {
-            try {
-                preferencesManager.anomalyAlerts = today.day + ":" + (already + fresh.map { it.type }).joinToString(",")
-            } catch (_: Exception) { }
+        if (status == SendStatus.DROPPED) {
+            synchronized(prefsRmwLock) {
+                try {
+                    val stamp = preferencesManager.anomalyAlerts
+                    if (stamp.substringBefore(":", "") == today.day) {
+                        val droppedTypes = fresh.map { it.type }.toSet()
+                        val keep = stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() && it !in droppedTypes }
+                        preferencesManager.anomalyAlerts = if (keep.isEmpty()) "" else today.day + ":" + keep.joinToString(",")
+                    }
+                } catch (_: Exception) { }
+            }
         }
     }
 
