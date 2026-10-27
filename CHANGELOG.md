@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- `BootRestartWorker`: penjadwalan kirim pesan pada cabang service-sedang-berjalan kini terbungkus try/catch seperti pemanggilan tetangganya (#59) — sebelumnya satu-satunya panggilan tanpa pelindung di `doWorkInternal`, sehingga pengecualian saat menjadwalkan lolos ke penangkap luar dan memicu retry worker sampai 5 kali (menjalankan ulang flush laporan crash dan penjadwalan liveness) padahal keadaan sebenarnya sehat.
+
 ### Changed
 - Kondisi gerbang "PIN aktif, owner belum login" di `SendMessageWorker` kini satu penolong bersama (#58): `ownerLoginPending()` dipakai oleh `guardPreconditions` dan oleh pemeriksaan ulang di tengah loop kirim, dan idiom jadwal-ulang 30 menit yang tadinya ditulis di tiga cabang kini lewat `rescheduleIn30Min(...)` (syarat antre-tidak-kosong dipertahankan per cabang lewat parameter). Aksi tiap titik tidak berubah: gerbang awal menjadwal ulang, pemeriksaan tengah loop berhenti.
 

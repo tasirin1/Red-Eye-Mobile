@@ -85,7 +85,10 @@ class BootRestartWorker(
         } catch (_: Exception) {
         }
         if (MonitoringService.isRunning) {
-            MessageScheduler.scheduleMessageSend(appContext)
+            try {
+                MessageScheduler.scheduleMessageSend(appContext)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
         val prefs = try {
