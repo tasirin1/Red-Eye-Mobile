@@ -1,4 +1,11 @@
 ## [Unreleased]
+### Fixed
+- Lima throttle notifikasi berbasis jam dinding kini tahan jam mundur (#32), mengikuti pola yang ditambahkan #21 ke digest: stempel tersimpan yang berada di masa depan direset ke sekarang dan notifikasi dilewati siklus ini — mencakup notifikasi hemat kuota (`dataSaverHoldNow`, sebelumnya justru mengirim pada `now <= last`), alert baterai, kegagalan kamera, kegagalan unggah media, dan kesehatan aksesibilitas.
+- Listener foto `CameraService` kini didaftarkan pada `ImageReader` lokal milik sesi itu sendiri (#33), bukan pada field bersama yang dibaca di luar kunci sesi — sesi yang digantikan di tengah setup tidak lagi bisa menempelkan listenernya ke reader sesi baru.
+- `chooseVideoSize` kini memilih ukuran terkecil sebagai jalan terakhir bila tak ada ukuran ≤720p (#34), bukan yang terbesar — perangkat yang hanya mengekspos ≥1080p tidak lagi merekam pada resolusi maksimal.
+- Penjaga aktivasi diseragamkan di semua pintu masuk (#35): `InstantEventReceiver` kini juga memeriksa persetujuan pemantauan dan status jeda; `Liveness.allowed` serta jalur bangun `NotificationForwarderService` kini juga memeriksa status jeda — monitoring yang dijeda tidak lagi dibangunkan oleh pintu-pintu itu.
+- `AdminReceiver.onPasswordFailed` kini punya jalur cadangan antrean pesan (#36) seperti `onDisabled`/`onDisableRequested`: bila memulai service gagal, peringatan PIN salah tetap diantrekan ke `MessageQueue` agar tidak hilang.
+- Callback `SetupActivity.askPin` kini dijaga bendera selesai (#45): menekan Batal tidak lagi memanggil callback dua kali (tombol negatif + `OnCancelListener`).
 
 ## [1.6.486] - 2026-10-27
 ### Fixed

