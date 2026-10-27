@@ -6459,9 +6459,7 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
-            if (sent) {
-                try { recordDailyFacts(now) } catch (_: Exception) { }
-            }
+            try { recordDailyFacts(now) } catch (_: Exception) { }
             if (manual && sent) {
                 try { preferencesManager.digestAt = now } catch (_: Exception) { }
             }
