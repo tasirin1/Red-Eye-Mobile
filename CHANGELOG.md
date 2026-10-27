@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.495] - 2026-10-27
 ### Changed
 - Pemisahan logika jam malam (#7, tahap 7): perhitungan jendela jam malam (termasuk sifat bawaan bahwa jam malam 05:00–11:59 tidak pernah aktif) dan aturan jam sekolah pindah dari `MonitoringService.checkCurfew` ke fungsi murni `utils/CurfewLogic.kt` (`inWindow`, `schoolHours`); predikat pagar rumah/sekolah kini memakai `GeofenceLogic.configured`, dan rumus jam lokal di `hourOf`/`isNightTime`/`checkBegadang` disatukan ke `DigestSchedule.localHour`. Baca preferences, pengambilan lokasi, dan titik kirim tetap di service; kesetaraan perilaku dibuktikan dengan tabel kebenaran (4.568 kombinasi masukan, 0 beda antara logika lama dan baru).
 
