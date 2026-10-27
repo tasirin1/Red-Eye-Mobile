@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.485] - 2026-10-27
 ### Fixed
 - Jalur gagal `MessageQueue.drainPersist()` tidak lagi meninggalkan snapshot kotor tanpa penulis (#31): tulis yang gagal kini memulihkan snapshot lalu menjadwalkan drain ulang tertunda 1 detik pada executor persist yang sama, sehingga pesan tidak hilang/duplikat bangkit hanya karena proses mati sebelum mutasi antrean berikutnya.
 - Deadline 429 tersimpan di `NetworkUtils.noteRateLimited` kini dibaca-dibandingkan-ditulis di bawah kunci yang sama (#46): dua komponen yang menerima 429 bersamaan tidak lagi bisa saling menimpa dengan deadline yang lebih pendek.
