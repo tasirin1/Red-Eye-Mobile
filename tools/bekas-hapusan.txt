@@ -54,3 +54,7 @@ isEmergencySmsNumber
 isPremiumSmsNumber
 photoStats
 sparkline
+baseForegroundType
+computeForegroundTypes
+foregroundTypeLadder
+cameraWakeCooldownMs

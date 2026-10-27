@@ -28,6 +28,7 @@ import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.DigestSchedule
+import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.GeofenceLogic
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
@@ -355,11 +356,8 @@ class MonitoringService : Service() {
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val VIDEO_BYTES_PER_SEC = 300_000L
         private const val MAX_VIDEO_BYTES = 48L * 1024L * 1024L
-        private const val CAMERA_WAKE_COOLDOWN_MS = 30 * 60_000L
-        private const val CAMERA_WAKE_LONG_COOLDOWN_MS = 6 * 60 * 60_000L
         private const val CAMERA_WAKE_FRESH_MS = 10 * 60_000L
         private const val CAMERA_WAKE_NOTIFY_GAP_MS = 6 * 60 * 60_000L
-        private const val CAMERA_WAKE_MAX_FAILS = 3
         private const val NOTIFICATION_ID = 1
         private const val MAX_AUDIO_KEPT = 5
         private const val MAX_VIDEO_KEPT = 3
@@ -8106,55 +8104,6 @@ class MonitoringService : Service() {
         return MediaSendOutcome.KEPT
     }
 
-    private fun baseForegroundType(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-        } else {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        }
-    }
-
-    private fun computeForegroundTypes(): Int {
-        var types = baseForegroundType()
-        if (hasCameraPermission()) {
-            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-        }
-        if (hasMicPermission()) {
-            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        }
-        if (hasLocationPermission()) {
-            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && hasScreenshotConsent()) {
-            types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        }
-        return types
-    }
-
-    private fun foregroundTypeLadder(): List<Int> {
-        val ladder = ArrayList<Int>(4)
-        val full = try {
-            computeForegroundTypes()
-        } catch (_: Exception) {
-            baseForegroundType()
-        }
-        ladder.add(full)
-        if ((full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) {
-            ladder.add(full and ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION.inv())
-        }
-        val camType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-        val micType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        val locType = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-        val whileInUse = camType or micType or locType
-        val withoutWhileInUse = full and whileInUse.inv()
-        if (withoutWhileInUse != full && withoutWhileInUse != ladder[ladder.size - 1]) {
-            ladder.add(withoutWhileInUse)
-        }
-        val base = baseForegroundType()
-        if (base != full && base != ladder[ladder.size - 1]) ladder.add(base)
-        return ladder
-    }
-
     private fun applyForegroundTypes(notification: android.app.Notification): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return try {
@@ -8165,7 +8114,12 @@ class MonitoringService : Service() {
             }
         }
         var lastError: Exception? = null
-        for (types in foregroundTypeLadder()) {
+        val fullTypes = try {
+            FgsTypes.compute(Build.VERSION.SDK_INT, hasCameraPermission(), hasMicPermission(), hasLocationPermission(), hasScreenshotConsent())
+        } catch (_: Exception) {
+            FgsTypes.base(Build.VERSION.SDK_INT)
+        }
+        for (types in FgsTypes.ladder(fullTypes, FgsTypes.base(Build.VERSION.SDK_INT))) {
             try {
                 startForeground(NOTIFICATION_ID, notification, types)
                 appliedFgsTypes = types
@@ -8180,7 +8134,7 @@ class MonitoringService : Service() {
 
     private fun ensureForegroundTypes() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        val types = computeForegroundTypes()
+        val types = FgsTypes.compute(Build.VERSION.SDK_INT, hasCameraPermission(), hasMicPermission(), hasLocationPermission(), hasScreenshotConsent())
         if (types == appliedFgsTypes) return
         if (types == rejectedFgsTypes && android.os.SystemClock.elapsedRealtime() - rejectedFgsAt < 5 * 60_000L) return
         val notification = try {
@@ -8204,7 +8158,7 @@ class MonitoringService : Service() {
     }
 
     private fun hasCameraFgsType(): Boolean {
-        return (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0
+        return FgsTypes.hasCamera(appliedFgsTypes)
     }
 
     private fun wakeForegroundForCameraType() {
@@ -8214,7 +8168,7 @@ class MonitoringService : Service() {
         val now = SystemClock.elapsedRealtime()
         val last = cameraWakeAt
         if (last != 0L) {
-            if (now - last < cameraWakeCooldownMs()) return
+            if (now - last < FgsTypes.wakeCooldownMs(cameraWakeFails)) return
             cameraWakeFails += 1
         }
         cameraWakeAt = now
@@ -8226,10 +8180,6 @@ class MonitoringService : Service() {
             )
         } catch (_: Exception) {
         }
-    }
-
-    private fun cameraWakeCooldownMs(): Long {
-        return if (cameraWakeFails >= CAMERA_WAKE_MAX_FAILS) CAMERA_WAKE_LONG_COOLDOWN_MS else CAMERA_WAKE_COOLDOWN_MS
     }
 
     private fun confirmCameraWakeRestored() {
