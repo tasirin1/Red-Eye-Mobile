@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Kondisi gerbang "PIN aktif, owner belum login" di `SendMessageWorker` kini satu penolong bersama (#58): `ownerLoginPending()` dipakai oleh `guardPreconditions` dan oleh pemeriksaan ulang di tengah loop kirim, dan idiom jadwal-ulang 30 menit yang tadinya ditulis di tiga cabang kini lewat `rescheduleIn30Min(...)` (syarat antre-tidak-kosong dipertahankan per cabang lewat parameter). Aksi tiap titik tidak berubah: gerbang awal menjadwal ulang, pemeriksaan tengah loop berhenti.
+
 ### Fixed
 - Throttle penanda kirim-ok `SendMessageWorker` kini benar-benar bekerja lintas run (#57): `lastSendOkNoteAt` dan `healStageCleared` dipindah dari field instance ke companion object — WorkManager membuat instance worker baru setiap eksekusi, sehingga throttle 30 detik dan penanda tahap-heal sebelumnya selalu mulai dari nol di setiap run. Semantik di dalam satu run tidak berubah.
 

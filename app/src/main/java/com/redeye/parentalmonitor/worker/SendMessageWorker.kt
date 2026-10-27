@@ -92,7 +92,7 @@ class SendMessageWorker(
                 }
             } catch (_: Exception) {
             }
-            if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
+            if (ownerLoginPending()) {
                 break
             }
             if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
@@ -211,33 +211,37 @@ class SendMessageWorker(
         return Result.success()
     }
 
+    private fun ownerLoginPending(): Boolean {
+        return preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L
+    }
+
+    private fun rescheduleIn30Min(onlyIfQueued: Boolean) {
+        try {
+            if (!onlyIfQueued || messageQueue.getQueueSize() > 0) {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private fun guardPreconditions(): Result? {
         try {
             messageQueue.tryRestorePersistent()
         } catch (_: Exception) {
         }
         if (!preferencesManager.isConfigured()) {
-            try {
-                if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
+            rescheduleIn30Min(true)
             return Result.success()
         }
-        if (preferencesManager.accessPin.isNotEmpty() && preferencesManager.ownerUserId == 0L) {
-            try {
-                if (messageQueue.getQueueSize() > 0) MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
+        if (ownerLoginPending()) {
+            rescheduleIn30Min(true)
             return Result.success()
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
             return Result.success()
         }
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-            try {
-                MessageScheduler.scheduleMessageSendNext(applicationContext, 30 * 60_000L)
-            } catch (_: Exception) {
-            }
+            rescheduleIn30Min(false)
             return Result.success()
         }
         val rateRemain = NetworkUtils.rateLimitedRemainMs()
