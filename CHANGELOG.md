@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.494] - 2026-10-27
 ### Changed
 - Pemisahan laporan izin (#7, tahap 6): perhitungan masker izin (termasuk aturan warisan bit lokasi-latar/notifikasi dari masker tersimpan), daftar label izin yang hilang, dan teks inventaris izin pindah dari `MonitoringService` ke fungsi murni `utils/PermReport.kt` (`mask`, `missingLabels`, `inventoryText`); label tetap milik service dan diteruskan sebagai parameter. Pembacaan status izin mentah dan titik kirim tetap di service; kesetaraan perilaku dibuktikan dengan tabel kebenaran (13.312 kombinasi masukan, 0 beda antara logika lama dan baru).
 
