@@ -1941,7 +1941,7 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         val aksi = com.redeye.parentalmonitor.utils.MenuCallback.parse(query.data.orEmpty()) ?: return
         if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.Navigate) {
-            if (!ownerOk && !(originChat.isNotEmpty() && originChat == chatId)) return
+            if (!ownerOk) return
             val layar = menuScreen(aksi.view)
             val pesanId = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
             if (aksi.editInPlace && pesanId > 0L) {
