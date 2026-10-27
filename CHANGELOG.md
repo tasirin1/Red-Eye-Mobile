@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.503] - 2026-10-27
+
 ### Added
 - Digest harian kini membuka dengan bagian "⭐ Sorotan" (bila ada): maksimal 3 hal paling menonjol — perubahan total layar ≥30% dibanding 24 jam sebelumnya, pemakaian malam (data aksesibilitas), aplikasi teratas yang melonjak ≥1,5× dari kemarin, atau HP pertama dibuka sebelum pukul 05.30 — dipilih dengan skor tetap oleh util murni baru `DigestHighlights`. Isi digest di bawah bagian itu tidak berubah. Jalur datanya: `usageRows` kini membagi kerja ke `usageRowsBetween(start, end)` (jendela lama memanggilnya dengan rentang yang sama persis) agar jendela "kemarin" bisa dibaca, dan kueri kejadian pemakaian dipakai bersama lewat `usageSummary` baru (format keluaran `usageEventSummary` tidak berubah). Bukti perilaku: porting Python atas 14 skenario fakta memberi 0 beda sebelum Kotlin ditulis; uji JVM `DigestHighlightsTest` mengunci skenario yang sama.
 
