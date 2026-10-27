@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Pemisahan keputusan geofence (#7, langkah desain pertama sesudah jalur verbatim habis): syarat transisi masuk/keluar area, syarat kena jemput, dan predikat pagar aktif pindah dari `MonitoringService.checkGeofence`/`checkGeofenceFallback` ke fungsi murni `utils/GeofenceLogic.kt` (`transition`, `jemputHit`, `configured`). Baca/tulis preferences, kunci `fenceLock`, dan titik kirim peringatan tetap di service pada struktur yang sama; kesetaraan perilaku dibuktikan dengan tabel kebenaran (757 kombinasi masukan, 0 beda antara logika lama dan baru).
+
+### Added
+- Uji JVM `GeofenceLogicTest` untuk mesin transisi geofence (adopsi state tanpa gerbang akurasi, perubahan tergerbang akurasi <= radius), batas kena jemput, dan predikat konfigurasi pagar.
 
 ## [1.6.490] - 2026-10-27
 ### Changed

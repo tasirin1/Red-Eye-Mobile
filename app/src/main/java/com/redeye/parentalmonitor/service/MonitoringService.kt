@@ -27,6 +27,7 @@ import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.GeofenceLogic
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
@@ -6223,7 +6224,7 @@ class MonitoringService : Service() {
             )
             for ((cfg, isHome) in fences) {
                 val (laE6, loE6, rad) = cfg
-                if (laE6 == Long.MIN_VALUE || loE6 == Long.MIN_VALUE || rad <= 0) continue
+                if (!GeofenceLogic.configured(laE6, loE6, rad)) continue
                 val dist = ReportFormat.distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
                 val inside = dist <= rad
@@ -6231,7 +6232,7 @@ class MonitoringService : Service() {
                     val jemputHit = try {
                         synchronized(fenceLock) {
                             val jemput = preferencesManager.jemputRadiusM
-                            if (jemput > 0 && dist <= jemput && (accuracyM < 0f || accuracyM <= jemput.toFloat())) {
+                            if (GeofenceLogic.jemputHit(jemput, dist, accuracyM)) {
                                 preferencesManager.jemputRadiusM = 0
                                 true
                             } else {
@@ -6243,19 +6244,15 @@ class MonitoringService : Service() {
                     }
                     if (jemputHit) sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
                 }
-                val now = if (inside) 1 else 2
                 val transition = try {
                     synchronized(fenceLock) {
                         val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
-                        if (state !in 1..2) {
-                            if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
-                            false
-                        } else if (state != now && (accuracyM < 0f || accuracyM <= rad.toFloat())) {
-                            if (isHome) preferencesManager.homeState = now else preferencesManager.schoolState = now
-                            true
-                        } else {
-                            false
+                        val t = GeofenceLogic.transition(state, inside, accuracyM, rad)
+                        val ws = t.writeState
+                        if (ws != null) {
+                            if (isHome) preferencesManager.homeState = ws else preferencesManager.schoolState = ws
                         }
+                        t.alert
                     }
                 } catch (_: Exception) {
                     false
@@ -6276,12 +6273,12 @@ class MonitoringService : Service() {
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             if (lastGeofenceCheckAt != 0L && nowElapsed - lastGeofenceCheckAt < 15 * 60_000L) return
             val hasHome = try {
-                preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeLonE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0
+                GeofenceLogic.configured(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM)
             } catch (_: Exception) {
                 false
             }
             val hasSchool = try {
-                preferencesManager.schoolLatE6 != Long.MIN_VALUE && preferencesManager.schoolLonE6 != Long.MIN_VALUE && preferencesManager.schoolRadiusM > 0
+                GeofenceLogic.configured(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM)
             } catch (_: Exception) {
                 false
             }
