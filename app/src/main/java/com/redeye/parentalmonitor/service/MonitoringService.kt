@@ -27,6 +27,7 @@ import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.CurfewLogic
 import com.redeye.parentalmonitor.utils.DigestSchedule
 import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.GeofenceLogic
@@ -5737,7 +5738,7 @@ class MonitoringService : Service() {
         return try {
             val now = System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
-            val h = (((now + off) / 3_600_000L) % 24L).toInt()
+            val h = DigestSchedule.localHour(now, off.toLong())
             h >= 23 || h < 5
         } catch (_: Exception) {
             false
@@ -6573,7 +6574,7 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
-            val h = (((now + off) / 3_600_000L) % 24L).toInt()
+            val h = DigestSchedule.localHour(now, off.toLong())
             if (h !in 5..11) return
             val key = todayKey()
             if (key.isEmpty()) return
@@ -6606,8 +6607,7 @@ class MonitoringService : Service() {
 
     private fun hourOf(ts: Long): Int {
         return try {
-            val off = java.util.TimeZone.getDefault().getOffset(ts)
-            (((ts + off) / 3_600_000L) % 24L).toInt()
+            DigestSchedule.localHour(ts, java.util.TimeZone.getDefault().getOffset(ts).toLong())
         } catch (_: Exception) {
             -1
         }
@@ -6674,29 +6674,16 @@ class MonitoringService : Service() {
             val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
             val day = cal.get(java.util.Calendar.DAY_OF_WEEK)
             val curfew = try { preferencesManager.curfewTime } catch (_: Exception) { "" }
-            var inCurfew = false
-            if (CURFEW_REGEX.matches(curfew)) {
-                val parts = curfew.split(":")
-                val ch = parts[0].toIntOrNull() ?: -1
-                val cm = parts[1].toIntOrNull() ?: -1
-                val startMin = ch * 60 + cm
-                val nowMin = h * 60 + cal.get(java.util.Calendar.MINUTE)
-                val morningEnd = 5 * 60
-                inCurfew = ch in 0..23 && cm in 0..59 && if (startMin >= 12 * 60) {
-                    nowMin >= startMin || nowMin < morningEnd
-                } else {
-                    startMin < morningEnd && nowMin >= startMin && nowMin < morningEnd
-                }
-            }
+            val inCurfew = CurfewLogic.inWindow(curfew, h, cal.get(java.util.Calendar.MINUTE))
             val homeLat = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
             val homeLon = try { preferencesManager.homeLonE6 } catch (_: Exception) { Long.MIN_VALUE }
             val homeRad = try { preferencesManager.homeRadiusM } catch (_: Exception) { 0 }
-            val homeFence = homeLat != Long.MIN_VALUE && homeLon != Long.MIN_VALUE && homeRad > 0
+            val homeFence = GeofenceLogic.configured(homeLat, homeLon, homeRad)
             val schoolLat = try { preferencesManager.schoolLatE6 } catch (_: Exception) { Long.MIN_VALUE }
             val schoolLon = try { preferencesManager.schoolLonE6 } catch (_: Exception) { Long.MIN_VALUE }
             val schoolRad = try { preferencesManager.schoolRadiusM } catch (_: Exception) { 0 }
-            val schoolFence = schoolLat != Long.MIN_VALUE && schoolLon != Long.MIN_VALUE && schoolRad > 0
-            val inSchool = schoolFence && day != java.util.Calendar.SATURDAY && day != java.util.Calendar.SUNDAY && h in 8..15
+            val schoolFence = GeofenceLogic.configured(schoolLat, schoolLon, schoolRad)
+            val inSchool = schoolFence && CurfewLogic.schoolHours(day, h)
             if (!(inCurfew && homeFence) && !inSchool) return
             val key = todayKey(if (h < 5) now - 24 * 60 * 60_000L else now)
             if (key.isEmpty()) return
