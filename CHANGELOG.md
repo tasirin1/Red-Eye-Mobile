@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.504] - 2026-10-27
+
 ### Added
 - Pola pemakaian adaptif: setiap digest harian yang terkirim kini merekam fakta hari itu (total layar 24 jam, pemakaian malam dari aksesibilitas, jam HP pertama dibuka) ke daftar bergulir 14 hari di preferensi. `/waspada` mendapat bagian "📊 Dibanding pola biasanya" — perbandingan hari ini terhadap median riwayat (layar, malam, buka pertama, tiba, berangkat) dengan tanda ⚠️ untuk yang menyimpang kuat; sebelum 5 hari tercatat, bagian itu jujur menampilkan status "masih belajar (n/5 hari)". Penyimpangan kuat juga dikirim sekali sebagai pesan "🚨 Di luar pola biasanya", dibatasi maksimal 1× per jenis per hari lewat stempel `anomaly_alerts`. Aturan statistiknya util murni baru `PatternBaseline` (median + ambang tetap per metrik) dan format simpanannya `DailyFacts`; bukti perilaku: porting Python atas 16 kasus (parse/serialize/upsert/median/penilaian) 0 beda sebelum Kotlin ditulis, uji JVM `DailyFactsTest` + `PatternBaselineTest` mengunci kasus yang sama. Bidang tiba/berangkat hari ini sudah disiapkan di format simpanan (diisi tahap berikutnya).
 
