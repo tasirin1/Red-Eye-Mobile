@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.484] - 2026-10-27
 ### Fixed
 - Kursor riwayat SMS/panggilan tidak lagi melewatkan baris selamanya (#29): kemajuan kursor kini mengikuti pasangan baris terakhir yang terkonsumsi dalam urutan (tanggal, id) selama pengambilan/pengiriman, dan hanya diselesaikan ke maksimum per bidang bila seluruh baris yang cocok sudah terkonsumsi (`utils/CursorAdvance`). Sebelumnya maksimum id dan tanggal diambil terpisah dari halaman yang sama, sehingga baris hasil restore/migrasi di sudut kedua kursor tersaring keluar permanen.
 
