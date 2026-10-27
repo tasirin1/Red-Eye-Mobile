@@ -514,13 +514,16 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_LAST_UPDATE_ID, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
-    fun setLastUpdateIdSync(id: Long): Boolean {
+    private fun commitWithRetry(build: (android.content.SharedPreferences.Editor) -> android.content.SharedPreferences.Editor): Boolean {
         return try {
-            sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit() ||
-                sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, id).commit()
+            build(sharedPreferences.edit()).commit() || build(sharedPreferences.edit()).commit()
         } catch (_: Exception) {
             false
         }
+    }
+
+    fun setLastUpdateIdSync(id: Long): Boolean {
+        return commitWithRetry { it.putLong(KEY_LAST_UPDATE_ID, id) }
     }
 
     var lastPhotoTime: Long
@@ -1224,52 +1227,27 @@ class PreferencesManager(context: Context) {
     }
 
     fun setSmsCursorSync(id: Long, timestamp: Long = 0L): Boolean {
-        return try {
-            fun tulis(): Boolean {
-                val editor = sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, id)
-                if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
-                return editor.commit()
-            }
-            tulis() || tulis()
-        } catch (_: Exception) {
-            false
+        return commitWithRetry { editor ->
+            editor.putLong(KEY_LAST_SMS_ID, id)
+            if (timestamp > 0L) editor.putLong(KEY_LAST_SMS_TIMESTAMP, timestamp)
+            editor
         }
     }
 
     fun setCallCursorSync(timestamp: Long, id: Long): Boolean {
-        return try {
-            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit() ||
-                sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id).commit()
-        } catch (_: Exception) {
-            false
-        }
+        return commitWithRetry { it.putLong(KEY_LAST_CALL_TIMESTAMP, timestamp).putLong(KEY_LAST_CALL_ID, id) }
     }
 
     fun resetSmsCursorSync(): Boolean {
-        return try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit() ||
-                sharedPreferences.edit().putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L).commit()
-        } catch (_: Exception) {
-            false
-        }
+        return commitWithRetry { it.putLong(KEY_LAST_SMS_ID, 0L).putLong(KEY_LAST_SMS_TIMESTAMP, 0L) }
     }
 
     fun resetCallCursorSync(): Boolean {
-        return try {
-            sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit() ||
-                sharedPreferences.edit().putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L).commit()
-        } catch (_: Exception) {
-            false
-        }
+        return commitWithRetry { it.putLong(KEY_LAST_CALL_TIMESTAMP, 0L).putLong(KEY_LAST_CALL_ID, 0L) }
     }
 
     fun setLastSmsSendAtSync(now: Long): Boolean {
-        return try {
-            sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit() ||
-                sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, now).commit()
-        } catch (_: Exception) {
-            false
-        }
+        return commitWithRetry { it.putLong(KEY_LAST_SMS_SEND_AT, now) }
     }
 
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Changed
+- Pola commit sinkron coba-dua-kali di `PreferencesManager` kini satu penolong bersama (#56): enam setter kursor/id (`setLastUpdateIdSync`, `setSmsCursorSync`, `setCallCursorSync`, `resetSmsCursorSync`, `resetCallCursorSync`, `setLastSmsSendAtSync`) yang tadinya masing-masing menulis `commit() || commit()` yang identik kini membangun editornya lewat `commitWithRetry(...)`; semantik persis dipertahankan (percobaan kedua hanya bila commit pertama mengembalikan false, pengecualian -> false).
 - Persistensi antrean pesan kini memakai cache serialisasi per pesan (#55): `MessageQueue.writeSnapshot` tidak lagi menjalankan Gson atas seluruh antrean pada setiap flush — JSON tiap pesan yang tidak berubah dipakai ulang dari cache (kunci id + kesetaraan data class), hanya pesan baru/berubah yang diserialisasi, dan string JSON akhir yang ditulis ke preferences identik dengan hasil `gson.toJson(snapshot)` sebelumnya. Throttle 2 detik, penundaan main-thread, dan drain berversi yang sudah ada tidak berubah.
 
 ## [1.6.498] - 2026-10-27
