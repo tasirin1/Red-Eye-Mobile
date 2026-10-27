@@ -16,4 +16,8 @@ object DigestSchedule {
     fun nightDue(hour: Int, doneKey: String, todayKey: String): Boolean {
         return hour >= 21 && todayKey.isNotEmpty() && doneKey != todayKey
     }
+
+    fun nightCatchUpDue(doneKey: String, yesterdayKey: String, todayKey: String): Boolean {
+        return doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneKey != yesterdayKey && doneKey != todayKey
+    }
 }

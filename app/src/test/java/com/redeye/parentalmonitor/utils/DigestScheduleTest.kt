@@ -37,4 +37,13 @@ class DigestScheduleTest {
         assertFalse(DigestSchedule.nightDue(23, "", ""))
         assertFalse(DigestSchedule.nightDue(21, "", ""))
     }
+
+    @Test
+    fun nightCatchUpDueRules() {
+        assertTrue(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-26", "2026-10-26", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-27", "2026-10-26", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue("", "2026-10-26", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "", "2026-10-27"))
+    }
 }
