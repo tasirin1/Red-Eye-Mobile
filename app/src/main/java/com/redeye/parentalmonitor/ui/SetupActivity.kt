@@ -988,14 +988,16 @@ class SetupActivity : AppCompatActivity() {
         val code = com.redeye.parentalmonitor.utils.RestoreCode.current(secret, now)
         val until = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             .format(java.util.Date(com.redeye.parentalmonitor.utils.RestoreCode.windowEnd(now)))
+        val padH = (32 * resources.displayMetrics.density).toInt()
+        val padV = (9 * resources.displayMetrics.density).toInt()
         val info = TextView(this).apply {
             text = getString(R.string.setup_restore_code_fmt, code, until) + "\n\n" + getString(R.string.setup_restore_code_need_setup)
-            setPadding(32, 9, 32, 9)
+            setPadding(padH, padV, padH, padV)
         }
         val toggle = android.widget.Switch(this).apply {
             isChecked = try { prefs.restoreStrict } catch (_: Exception) { false }
             text = getString(R.string.setup_restore_switch)
-            setPadding(32, 9, 32, 9)
+            setPadding(padH, padV, padH, padV)
         }
         val box = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
