@@ -21,6 +21,8 @@ object NetworkUtils {
     @Volatile
     var rateLimitedUntil = 0L
 
+    private val rateLimitLock = Any()
+
     fun init(context: Context) {
         try {
             appContext = context.applicationContext ?: context
@@ -53,16 +55,18 @@ object NetworkUtils {
     }
 
     fun noteRateLimited(retryAfterSecs: Long) {
-        try {
-            val waitMs = retryAfterSecs.coerceIn(1L, 3600L) * 1000L
-            rateLimitedUntil = maxOf(rateLimitedUntil, android.os.SystemClock.elapsedRealtime() + waitMs)
-            val context = appContext ?: return
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val untilWall = System.currentTimeMillis() + waitMs
-            if (untilWall > prefs.getLong(KEY_RATE_LIMITED_UNTIL, 0L)) {
-                prefs.edit().putLong(KEY_RATE_LIMITED_UNTIL, untilWall).apply()
+        synchronized(rateLimitLock) {
+            try {
+                val waitMs = retryAfterSecs.coerceIn(1L, 3600L) * 1000L
+                rateLimitedUntil = maxOf(rateLimitedUntil, android.os.SystemClock.elapsedRealtime() + waitMs)
+                val context = appContext ?: return
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val untilWall = System.currentTimeMillis() + waitMs
+                if (untilWall > prefs.getLong(KEY_RATE_LIMITED_UNTIL, 0L)) {
+                    prefs.edit().putLong(KEY_RATE_LIMITED_UNTIL, untilWall).apply()
+                }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
     }
 
