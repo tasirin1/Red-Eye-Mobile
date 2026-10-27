@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang `tools/verifikasi-path.py`: detektor metode-terhapus tidak lagi salah tangkap pada fragmen pernyataan alur kendali — baris hapus seperti `else startService(intent)` (cabang ekspresi-tunggal) sebelumnya terbaca sebagai "metode `startService` terhapus" karena slot "tipe"-nya terisi kata `else`; kini slot yang seluruhnya hanya kata alur kendali (`KATA_ALUR`: `else`/`if`/`while`/…) dilewati. Terverifikasi pada 6 kasus sintetis: deklarasi asli (`private fun …`, `override fun …`, gaya Java `static …`) tetap tertangkap, fragmen `else …`/`if …` dan panggilan bereceiver tidak lagi tertangkap.
 - `A11yMonitor.defaultLauncherPackage` tidak lagi menahan paket launcher selamanya (#65): hasil resolusi kini diberi masa berlaku 10 menit lalu di-resolusi ulang, sehingga bila pengguna mengganti launcher bawaan, paket launcher lama tidak terus diperlakukan sebagai launcher (yang mengotori klasifikasi waktu-layar). Hasil kosong (gagal resolusi) tetap tidak di-cache dan dicoba lagi pada panggilan berikutnya, seperti sebelumnya.
 
 ## [1.6.499] - 2026-10-27

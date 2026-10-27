@@ -34,6 +34,13 @@ KATA_KUNCI = {
     "field", "const", "lateinit", "open", "final", "abstract", "out",
     "import", "package",
 }
+# Kata alur kendali: tak pernah menjadi tipe atau judul deklarasi. Baris
+# hapus yang slot "tipe"-nya hanya kata ini adalah fragmen pernyataan
+# (mis. `else startService(intent)`), bukan deklarasi metode yang terhapus.
+KATA_ALUR = {
+    "if", "else", "while", "for", "when", "catch", "do", "try",
+    "return", "throw", "switch", "case", "assert", "synchronized",
+}
 # Nama metode yang sengaja dihapus total dimuat dari tools/bekas-hapusan.txt
 # (satu nama per baris, # = komentar): bila baris baru masih memanggilnya,
 # itu regresi hapusan. Tambahkan nama ke berkas itu tiap menghapus metode.
@@ -550,9 +557,10 @@ def nama_metode_hilang(diff, lewati_berkas=()):
             continue
         cocok = re.match(
             r"\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?"
-            r"(?:fun\s+)?[\w<>\[\].,? ]*\w\s+(\w+)\s*\(", baris)
-        if cocok and cocok.group(1) not in KATA_KUNCI:
-            hilang.append(cocok.group(1))
+            r"(?:fun\s+)?([\w<>\[\].,? ]*\w)\s+(\w+)\s*\(", baris)
+        if cocok and cocok.group(2) not in KATA_KUNCI \
+                and cocok.group(1).strip() not in KATA_ALUR:
+            hilang.append(cocok.group(2))
     return hilang
 
 
