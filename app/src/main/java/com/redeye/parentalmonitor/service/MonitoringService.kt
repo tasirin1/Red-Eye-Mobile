@@ -29,6 +29,7 @@ import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.CurfewLogic
+import com.redeye.parentalmonitor.utils.DigestHighlights
 import com.redeye.parentalmonitor.utils.DigestSchedule
 import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.GeofenceLogic
@@ -5747,9 +5748,13 @@ class MonitoringService : Service() {
     }
 
     private fun usageRows(hours: Int): List<Pair<String, Long>>? {
-        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 60 * 60_000L
+        return usageRowsBetween(start, end)
+    }
+
+    private fun usageRowsBetween(start: Long, end: Long): List<Pair<String, Long>>? {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
         return try {
             val manager = usageStatsManager ?: return null
             val stats = manager.queryAndAggregateUsageStats(start, end) ?: return null
@@ -6084,14 +6089,14 @@ class MonitoringService : Service() {
         return out
     }
 
-    private fun usageEventSummary(hours: Int): List<String> {
-        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return emptyList()
-        val manager = usageStatsManager ?: return emptyList()
+    private fun usageSummary(hours: Int): com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary? {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
+        val manager = usageStatsManager ?: return null
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 3_600_000L
         val events = ArrayList<com.redeye.parentalmonitor.utils.UsageEventsSummary.Event>()
         try {
-            val cursor = manager.queryEvents(start, end) ?: return emptyList()
+            val cursor = manager.queryEvents(start, end) ?: return null
             val event = android.app.usage.UsageEvents.Event()
             while (cursor.hasNextEvent()) {
                 cursor.getNextEvent(event)
@@ -6104,9 +6109,13 @@ class MonitoringService : Service() {
                 events.add(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
             }
         } catch (_: Exception) {
-            return emptyList()
+            return null
         }
-        val summary = com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
+        return com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
+    }
+
+    private fun usageEventSummary(hours: Int): List<String> {
+        val summary = usageSummary(hours) ?: return emptyList()
         val out = mutableListOf<String>()
         if (summary.unlocks > 0) {
             out.add("HP dibuka: ${summary.unlocks}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(summary.firstUnlockAt)}")
@@ -6280,6 +6289,42 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.TimeFmt.dayKey(ts)
     }
 
+    private fun digestHighlights(now: Long): List<String> {
+        var todayMs = 0L
+        var yesterdayMs = 0L
+        var topLabel = ""
+        var topMs = 0L
+        var topYesterdayMs = 0L
+        val a11yRows = a11yUsageRows()
+        val rows = try { usageRows(24) } catch (_: Exception) { null }
+        if (rows != null) {
+            todayMs = rows.sumOf { it.second }
+            val top = rows.firstOrNull()
+            if (top != null) {
+                topLabel = top.first
+                topMs = top.second
+                val rowsY = try { usageRowsBetween(now - 48 * 3_600_000L, now - 24 * 3_600_000L) } catch (_: Exception) { null }
+                if (rowsY != null) {
+                    yesterdayMs = rowsY.sumOf { it.second }
+                    topYesterdayMs = rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
+                }
+            }
+        } else if (a11yRows.isNotEmpty()) {
+            todayMs = a11yRows.sumOf { it.millis }
+            topLabel = a11yRows.first().label
+            topMs = a11yRows.first().millis
+        }
+        val nightMs = if (a11yRows.isEmpty()) -1L else a11yRows.sumOf { it.nightMillis }
+        val fuAt = try { usageSummary(24)?.firstUnlockAt ?: 0L } catch (_: Exception) { 0L }
+        val fuMinute = if (fuAt > 0L) {
+            val off = java.util.TimeZone.getDefault().getOffset(fuAt)
+            (((fuAt + off) / 60_000L) % 1440L).toInt()
+        } else {
+            -1
+        }
+        return DigestHighlights.build(DigestHighlights.Facts(todayMs, yesterdayMs, topLabel, topMs, topYesterdayMs, nightMs, fuMinute))
+    }
+
     private suspend fun sendDailyDigest(manual: Boolean = false): Boolean {
         if (awaitingOwnerLogin()) return false
         try {
@@ -6314,6 +6359,13 @@ class MonitoringService : Service() {
             val level = batteryLevel()
             val sent = sendToTelegram(buildString {
                 appendLine("🌙 <b>Ringkasan harian</b>")
+                try {
+                    val sorotan = digestHighlights(now)
+                    if (sorotan.isNotEmpty()) {
+                        appendLine("⭐ <b>Sorotan</b>")
+                        for (line in sorotan) appendLine("• $line")
+                    }
+                } catch (_: Exception) { }
                 appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
