@@ -729,19 +729,20 @@ class SetupActivity : AppCompatActivity() {
         val rawAccessPin = accessPinInput.text.toString().trim()
         val intervalRaw = syncIntervalInput.text.toString().trim()
         val cameraRaw = cameraIntervalInput.text.toString().trim()
-        val intervalParsed = intervalRaw.toIntOrNull() ?: loadedSyncInterval
-        val cameraParsed = cameraRaw.toIntOrNull() ?: loadedCameraInterval
-        if (intervalParsed !in 1..1440 || cameraParsed !in 0..60) {
+        val intervalParsed = intervalRaw.toIntOrNull()
+        val cameraParsed = cameraRaw.toIntOrNull()
+        if ((intervalRaw.isNotEmpty() && (intervalParsed == null || intervalParsed !in 1..1440)) ||
+            (cameraRaw.isNotEmpty() && (cameraParsed == null || cameraParsed !in 0..60))) {
             Toast.makeText(this, getString(R.string.setup_bad_interval), Toast.LENGTH_LONG).show()
             return
         }
+        val interval = intervalParsed ?: loadedSyncInterval
+        val cameraInterval = cameraParsed ?: loadedCameraInterval
         val accessPinCheck = if (rawAccessPin == STORED_MASK) "" else rawAccessPin
         if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
             Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
             return
         }
-        val interval = intervalParsed
-        val cameraInterval = cameraParsed
         val hasStored = loadedConfigured
         if (!fieldsLoaded) {
             Toast.makeText(this, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
