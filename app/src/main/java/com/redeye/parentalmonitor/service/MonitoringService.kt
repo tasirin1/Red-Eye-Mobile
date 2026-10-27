@@ -1952,8 +1952,7 @@ class MonitoringService : Service() {
             return
         }
         val pressedAt = try {
-            val msg = query.message
-            if (msg == null) 0L else if (msg.editDate > msg.date) msg.editDate else msg.date
+            query.message?.date ?: 0L
         } catch (_: Exception) {
             0L
         }
