@@ -19,6 +19,21 @@ class PreferencesManager(context: Context) {
     @Volatile
     private var sharedPreferences: SharedPreferences = securePrefs.first
 
+    private fun prefString(key: String, default: String): String =
+        try { sharedPreferences.getString(key, default) ?: default } catch (_: Exception) { default }
+
+    private fun prefLong(key: String, default: Long): Long =
+        try { sharedPreferences.getLong(key, default) } catch (_: Exception) { default }
+
+    private fun prefInt(key: String, default: Int): Int =
+        try { sharedPreferences.getInt(key, default) } catch (_: Exception) { default }
+
+    private fun prefBoolean(key: String, default: Boolean): Boolean =
+        try { sharedPreferences.getBoolean(key, default) } catch (_: Exception) { default }
+
+    private fun prefFloat(key: String, default: Float): Float =
+        try { sharedPreferences.getFloat(key, default) } catch (_: Exception) { default }
+
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
 
@@ -438,7 +453,7 @@ class PreferencesManager(context: Context) {
     }
 
     var botToken: String
-        get() = try { sharedPreferences.getString(KEY_BOT_TOKEN, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_BOT_TOKEN, "")
         set(value) {
             synchronized(credentialLock) {
                 sharedPreferences.edit().putString(KEY_BOT_TOKEN, value).apply()
@@ -446,7 +461,7 @@ class PreferencesManager(context: Context) {
         }
 
     var chatId: String
-        get() = try { sharedPreferences.getString(KEY_CHAT_ID, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_CHAT_ID, "")
         set(value) {
             synchronized(credentialLock) {
                 sharedPreferences.edit().putString(KEY_CHAT_ID, value).apply()
@@ -454,34 +469,34 @@ class PreferencesManager(context: Context) {
         }
 
     val isMonitoringEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_MONITORING_ENABLED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_MONITORING_ENABLED, false)
 
     var lastSyncTime: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SYNC, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_SYNC, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SYNC, value).apply()
 
     var syncInterval: Int
-        get() = try { sharedPreferences.getInt(KEY_SYNC_INTERVAL, com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL) } catch (_: Exception) { com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL }
+        get() = prefInt(KEY_SYNC_INTERVAL, com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL)
         set(value) = sharedPreferences.edit().putInt(KEY_SYNC_INTERVAL, value).apply()
 
     val lastSmsId: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SMS_ID, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_SMS_ID, 0L)
 
     val lastSmsTimestamp: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SMS_TIMESTAMP, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_SMS_TIMESTAMP, 0L)
 
     val lastCallTimestamp: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_CALL_TIMESTAMP, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_CALL_TIMESTAMP, 0L)
 
     val lastCallId: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_CALL_ID, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_CALL_ID, 0L)
 
     var userDisabledMonitoring: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_USER_DISABLED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_USER_DISABLED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_USER_DISABLED, value).apply()
 
     var initialSyncDone: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_INITIAL_SYNC_DONE, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_INITIAL_SYNC_DONE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
 
     fun setInitialSyncDoneSync(done: Boolean) {
@@ -492,11 +507,11 @@ class PreferencesManager(context: Context) {
     }
 
     var cameraInterval: Int
-        get() = try { sharedPreferences.getInt(KEY_CAMERA_INTERVAL, 1) } catch (_: Exception) { 1 }
+        get() = prefInt(KEY_CAMERA_INTERVAL, 1)
         set(value) = sharedPreferences.edit().putInt(KEY_CAMERA_INTERVAL, value).apply()
 
     var lastUpdateId: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_UPDATE_ID, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_UPDATE_ID, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
     fun setLastUpdateIdSync(id: Long): Boolean {
@@ -509,43 +524,43 @@ class PreferencesManager(context: Context) {
     }
 
     var lastPhotoTime: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_TIME, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_PHOTO_TIME, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_PHOTO_TIME, value).apply()
 
     var lastCameraErrorNotice: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_CAM_ERR_NOTICE, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_CAM_ERR_NOTICE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_CAM_ERR_NOTICE, value).apply()
 
     var lastUploadErrorNotice: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_UPLOAD_ERR_NOTICE, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_UPLOAD_ERR_NOTICE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPLOAD_ERR_NOTICE, value).apply()
 
     var monitoringPaused: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_MONITORING_PAUSED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_MONITORING_PAUSED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MONITORING_PAUSED, value).apply()
 
     var photoPausedUntil: Long
-        get() = try { sharedPreferences.getLong(KEY_PHOTO_PAUSED_UNTIL, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_UNTIL, value).apply()
 
     var photoPauseSource: Int
-        get() = try { sharedPreferences.getInt(KEY_PHOTO_PAUSE_SOURCE, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).apply()
 
     var patrolEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_PATROL_ENABLED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_PATROL_ENABLED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_PATROL_ENABLED, value).apply()
 
     var nightMode: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_NIGHT_MODE, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_NIGHT_MODE, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NIGHT_MODE, value).apply()
 
     var patrolInterval: Int
-        get() = try { sharedPreferences.getInt(KEY_PATROL_INTERVAL, 30) } catch (_: Exception) { 30 }
+        get() = prefInt(KEY_PATROL_INTERVAL, 30)
         set(value) = sharedPreferences.edit().putInt(KEY_PATROL_INTERVAL, value).apply()
 
     var cameraFacing: String
-        get() = try { sharedPreferences.getString(KEY_CAMERA_FACING, "front") ?: "front" } catch (_: Exception) { "front" }
+        get() = prefString(KEY_CAMERA_FACING, "front")
         set(value) = sharedPreferences.edit().putString(KEY_CAMERA_FACING, value).apply()
 
     fun isConfigured(): Boolean {
@@ -576,19 +591,19 @@ class PreferencesManager(context: Context) {
     }
 
     var userConsentedMonitoring: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_USER_CONSENTED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_USER_CONSENTED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_USER_CONSENTED, value).apply()
 
     var notifForwardEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_NOTIF_FORWARD, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_NOTIF_FORWARD, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_NOTIF_FORWARD, value).apply()
 
     var otpMaskEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_OTP_MASK, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_OTP_MASK, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_OTP_MASK, value).apply()
 
     var restoreStrict: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_RESTORE_STRICT, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_RESTORE_STRICT, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_RESTORE_STRICT, value).apply()
 
     fun ensureRestoreCodeSecret(): String {
@@ -606,7 +621,7 @@ class PreferencesManager(context: Context) {
     }
 
     val auditLog: String
-        get() = try { sharedPreferences.getString(KEY_AUDIT_LOG, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_AUDIT_LOG, "")
 
     fun clearAuditLog() {
         synchronized(auditLock) {
@@ -634,11 +649,11 @@ class PreferencesManager(context: Context) {
     }
 
     var credentialError: String
-        get() = try { sharedPreferences.getString(KEY_CRED_ERROR, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_CRED_ERROR, "")
         set(value) = sharedPreferences.edit().putString(KEY_CRED_ERROR, value).apply()
 
     var credentialErrorAt: Long
-        get() = try { sharedPreferences.getLong(KEY_CRED_ERROR_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_CRED_ERROR_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_CRED_ERROR_AT, value).apply()
 
     fun setCredentialError(code: String, at: Long) {
@@ -663,23 +678,23 @@ class PreferencesManager(context: Context) {
     }
 
     var commandsTokenHash: String
-        get() = try { sharedPreferences.getString(KEY_COMMANDS_TOKEN_HASH, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_COMMANDS_TOKEN_HASH, "")
         set(value) = sharedPreferences.edit().putString(KEY_COMMANDS_TOKEN_HASH, value).apply()
 
     var ringPrevVolume: Int
-        get() = try { sharedPreferences.getInt(KEY_RING_PREV_VOL, -1) } catch (_: Exception) { -1 }
+        get() = prefInt(KEY_RING_PREV_VOL, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, value).apply()
 
     var ringSavedAt: Long
-        get() = try { sharedPreferences.getLong(KEY_RING_SAVED_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_RING_SAVED_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_RING_SAVED_AT, value).apply()
 
     var lastAliveAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_ALIVE_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_ALIVE_AT, value).apply()
 
     val lastAliveElapsed: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_ALIVE_ELAPSED, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_ALIVE_ELAPSED, 0L)
 
     fun setLastAliveMarker(wallAt: Long, elapsedAt: Long) {
         try {
@@ -692,43 +707,43 @@ class PreferencesManager(context: Context) {
     }
 
     var livenessKills: Int
-        get() = try { sharedPreferences.getInt(KEY_LIVENESS_KILLS, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_LIVENESS_KILLS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS, value).apply()
 
     var livenessKillsUnreported: Int
-        get() = try { sharedPreferences.getInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_LIVENESS_KILLS_UNREPORTED, value).apply()
 
     var livenessReportAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LIVENESS_REPORT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LIVENESS_REPORT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LIVENESS_REPORT_AT, value).apply()
 
     var heartbeatHours: Int
-        get() = try { sharedPreferences.getInt(KEY_HEARTBEAT_HOURS, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_HEARTBEAT_HOURS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_HEARTBEAT_HOURS, value).apply()
 
     var heartbeatAt: Long
-        get() = try { sharedPreferences.getLong(KEY_HEARTBEAT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_HEARTBEAT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_AT, value).apply()
 
     var liveTestPending: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_LIVE_TEST_PENDING, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_LIVE_TEST_PENDING, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_PENDING, value).apply()
 
     var liveTestStartedElapsed: Long
-        get() = try { sharedPreferences.getLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_STARTED_ELAPSED, value).apply()
 
     var liveTestByAlarm: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_LIVE_TEST_BY_ALARM, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_LIVE_TEST_BY_ALARM, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).apply()
 
     var liveTestLastSec: Int
-        get() = try { sharedPreferences.getInt(KEY_LIVE_TEST_LAST_SEC, -1) } catch (_: Exception) { -1 }
+        get() = prefInt(KEY_LIVE_TEST_LAST_SEC, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_LIVE_TEST_LAST_SEC, value).apply()
 
     val lastSendOkElapsed: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SEND_OK_ELAPSED, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_SEND_OK_ELAPSED, 0L)
 
     fun setLastSendOkMarker(elapsedAt: Long) {
         try {
@@ -740,31 +755,31 @@ class PreferencesManager(context: Context) {
     }
 
     var silentHealAt: Long
-        get() = try { sharedPreferences.getLong(KEY_SILENT_HEAL_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_SILENT_HEAL_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_SILENT_HEAL_AT, value).apply()
 
     var silentHealStage: Int
-        get() = try { sharedPreferences.getInt(KEY_SILENT_HEAL_STAGE, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_SILENT_HEAL_STAGE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SILENT_HEAL_STAGE, value).apply()
 
     var silentHeals: Int
-        get() = try { sharedPreferences.getInt(KEY_SILENT_HEALS, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_SILENT_HEALS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SILENT_HEALS, value).apply()
 
     var vehicleAlertEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_VEHICLE_ALERT_ENABLED, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_VEHICLE_ALERT_ENABLED, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_VEHICLE_ALERT_ENABLED, value).apply()
 
     var lastVehicleAlertAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_VEHICLE_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_VEHICLE_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_VEHICLE_ALERT_AT, value).apply()
 
     var dataSaverEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_DATA_SAVER_ENABLED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_DATA_SAVER_ENABLED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_DATA_SAVER_ENABLED, value).apply()
 
     var dataSaverNoticeAt: Long
-        get() = try { sharedPreferences.getLong(KEY_DATA_SAVER_NOTICE_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_DATA_SAVER_NOTICE_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_DATA_SAVER_NOTICE_AT, value).apply()
 
     fun setRingStateSync(prev: Int, at: Long) {
@@ -782,31 +797,31 @@ class PreferencesManager(context: Context) {
     }
 
     var pendingSmsNumber: String
-        get() = try { sharedPreferences.getString(KEY_PENDING_SMS_NUMBER, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_PENDING_SMS_NUMBER, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_NUMBER, value).apply()
 
     var pendingSmsText: String
-        get() = try { sharedPreferences.getString(KEY_PENDING_SMS_TEXT, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_PENDING_SMS_TEXT, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_TEXT, value).apply()
 
     var pendingSmsAt: Long
-        get() = try { sharedPreferences.getLong(KEY_PENDING_SMS_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_PENDING_SMS_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PENDING_SMS_AT, value).apply()
 
     var lastSmsSendAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_SMS_SEND_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_SMS_SEND_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_SMS_SEND_AT, value).apply()
 
     var pendingSmsOwner: String
-        get() = try { sharedPreferences.getString(KEY_PENDING_SMS_OWNER, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_PENDING_SMS_OWNER, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_SMS_OWNER, value).apply()
 
     var ownerUserId: Long
-        get() = try { sharedPreferences.getLong(KEY_OWNER_ID, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_OWNER_ID, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
 
     var accessPin: String
-        get() = try { sharedPreferences.getString(KEY_ACCESS_PIN, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_ACCESS_PIN, "")
         set(value) = sharedPreferences.edit().putString(KEY_ACCESS_PIN, value).apply()
 
     fun setOwnerIdSync(id: Long) {
@@ -846,7 +861,7 @@ class PreferencesManager(context: Context) {
     }
 
     var ownerPairCode: String
-        get() = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_OWNER_PAIR_CODE, "")
         set(value) = sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
 
     fun ensureOwnerPairCode(): String {
@@ -876,7 +891,7 @@ class PreferencesManager(context: Context) {
     }
 
     var pendingMsgDrops: Int
-        get() = try { sharedPreferences.getInt(KEY_PENDING_MSG_DROPS, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_PENDING_MSG_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()
 
     fun setPendingMsgDropsSync(value: Int) {
@@ -887,7 +902,7 @@ class PreferencesManager(context: Context) {
     }
 
     var pendingNotifDrops: Int
-        get() = try { sharedPreferences.getInt(KEY_PENDING_NOTIF_DROPS, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_PENDING_NOTIF_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).apply()
 
     fun setPendingNotifDropsSync(value: Int) {
@@ -898,7 +913,7 @@ class PreferencesManager(context: Context) {
     }
 
     var permSnapshot: Int
-        get() = try { sharedPreferences.getInt(KEY_PERM_SNAPSHOT, -1) } catch (_: Exception) { -1 }
+        get() = prefInt(KEY_PERM_SNAPSHOT, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_PERM_SNAPSHOT, value).apply()
 
     fun setPermSnapshotSync(value: Int) {
@@ -909,7 +924,7 @@ class PreferencesManager(context: Context) {
     }
 
     val lastPhotoHash: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_PHOTO_HASH, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_PHOTO_HASH, 0L)
 
     fun setLastPhotoHashSync(value: Long) {
         try {
@@ -919,35 +934,35 @@ class PreferencesManager(context: Context) {
     }
 
     var digestAt: Long
-        get() = try { sharedPreferences.getLong(KEY_DIGEST_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_DIGEST_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_DIGEST_AT, value).apply()
 
     var batteryAlertAt: Long
-        get() = try { sharedPreferences.getLong(KEY_BATTERY_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_BATTERY_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_BATTERY_ALERT_AT, value).apply()
 
     var lastLocLatE6: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_LAST_LOC_LAT, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LAT, value).apply()
 
     var lastLocLonE6: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_LAST_LOC_LON, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_LON, value).apply()
 
     var lastLocAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_LOC_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_LOC_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_LOC_AT, value).apply()
 
     var lastLocAccM: Float
-        get() = try { sharedPreferences.getFloat(KEY_LAST_LOC_ACC, -1f) } catch (_: Exception) { -1f }
+        get() = prefFloat(KEY_LAST_LOC_ACC, -1f)
         set(value) = sharedPreferences.edit().putFloat(KEY_LAST_LOC_ACC, value).apply()
 
     var simIdentity: String
-        get() = try { sharedPreferences.getString(KEY_SIM_IDENTITY, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_SIM_IDENTITY, "")
         set(value) = sharedPreferences.edit().putString(KEY_SIM_IDENTITY, value).apply()
 
     var trail24: String
-        get() = try { sharedPreferences.getString(KEY_TRAIL, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_TRAIL, "")
         set(value) = sharedPreferences.edit().putString(KEY_TRAIL, value).apply()
 
     fun recordSentLocation(lat: Double, lon: Double, trail: String?, accuracyM: Float = -1f) {
@@ -964,15 +979,15 @@ class PreferencesManager(context: Context) {
     }
 
     var begadangDate: String
-        get() = try { sharedPreferences.getString(KEY_BEGADANG_DATE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_BEGADANG_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_BEGADANG_DATE, value).apply()
 
     var jemputRadiusM: Int
-        get() = try { sharedPreferences.getInt(KEY_JEMPUT_RAD, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_JEMPUT_RAD, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_JEMPUT_RAD, value).apply()
 
     var permHealthAlertAt: Long
-        get() = try { sharedPreferences.getLong(KEY_PERM_HEALTH_ALERT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_PERM_HEALTH_ALERT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).apply()
 
     fun setPermHealthAlertAtSync(value: Long) {
@@ -983,15 +998,15 @@ class PreferencesManager(context: Context) {
     }
 
     var watchKeywords: String
-        get() = try { sharedPreferences.getString(KEY_WATCH_KEYWORDS, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_WATCH_KEYWORDS, "")
         set(value) = sharedPreferences.edit().putString(KEY_WATCH_KEYWORDS, value).apply()
 
     var a11yUsageDate: String
-        get() = try { sharedPreferences.getString(KEY_A11Y_USAGE_DATE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_A11Y_USAGE_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_DATE, value).apply()
 
     var a11yUsageJson: String
-        get() = try { sharedPreferences.getString(KEY_A11Y_USAGE_JSON, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_A11Y_USAGE_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_JSON, value).apply()
 
     fun setA11yUsage(date: String, json: String) {
@@ -1005,15 +1020,15 @@ class PreferencesManager(context: Context) {
     }
 
     var a11yKeywordAlertDay: String
-        get() = try { sharedPreferences.getString(KEY_A11Y_KEYWORD_DAY, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_A11Y_KEYWORD_DAY, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_DAY, value).apply()
 
     var a11yKeywordAlertCount: Int
-        get() = try { sharedPreferences.getInt(KEY_A11Y_KEYWORD_COUNT, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_A11Y_KEYWORD_COUNT, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_A11Y_KEYWORD_COUNT, value).apply()
 
     var a11yKeywordAlertJson: String
-        get() = try { sharedPreferences.getString(KEY_A11Y_KEYWORD_JSON, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_A11Y_KEYWORD_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_JSON, value).apply()
 
     fun setA11yKeywordAlertState(day: String, count: Int, json: String) {
@@ -1028,27 +1043,27 @@ class PreferencesManager(context: Context) {
     }
 
     var a11yKnownSeeded: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_A11Y_KNOWN_SEEDED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_A11Y_KNOWN_SEEDED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_KNOWN_SEEDED, value).apply()
 
     var a11yAppAlert: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_A11Y_APP_ALERT, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_A11Y_APP_ALERT, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_ALERT, value).apply()
 
     var a11yTamperEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_A11Y_TAMPER, true) } catch (_: Exception) { true }
+        get() = prefBoolean(KEY_A11Y_TAMPER, true)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_TAMPER, value).apply()
 
     var a11ySettingsGraceUntil: Long
-        get() = try { sharedPreferences.getLong(KEY_A11Y_SETTINGS_GRACE, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_A11Y_SETTINGS_GRACE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE, value).apply()
 
     var a11yAppWatchEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_A11Y_APP_WATCH, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_A11Y_APP_WATCH, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_WATCH, value).apply()
 
     var a11yAppWatchPackages: String
-        get() = try { sharedPreferences.getString(KEY_A11Y_APP_WATCH_PACKAGES, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_A11Y_APP_WATCH_PACKAGES, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_APP_WATCH_PACKAGES, value).apply()
 
     fun a11yAppWatchPackageSet(): MutableSet<String> {
@@ -1065,11 +1080,11 @@ class PreferencesManager(context: Context) {
     }
 
     var accessibilityEverEnabled: Boolean
-        get() = try { sharedPreferences.getBoolean(KEY_A11Y_EVER_ENABLED, false) } catch (_: Exception) { false }
+        get() = prefBoolean(KEY_A11Y_EVER_ENABLED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_EVER_ENABLED, value).apply()
 
     var a11yDisabledAlertAt: Long
-        get() = try { sharedPreferences.getLong(KEY_A11Y_DISABLED_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_A11Y_DISABLED_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_DISABLED_ALERT_AT, value).apply()
 
     fun a11yKnownApps(): MutableSet<String> {
@@ -1102,67 +1117,67 @@ class PreferencesManager(context: Context) {
     }
 
     var homeLatE6: Long
-        get() = try { sharedPreferences.getLong(KEY_HOME_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_HOME_LAT, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_HOME_LAT, value).apply()
 
     var homeLonE6: Long
-        get() = try { sharedPreferences.getLong(KEY_HOME_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_HOME_LON, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_HOME_LON, value).apply()
 
     var homeRadiusM: Int
-        get() = try { sharedPreferences.getInt(KEY_HOME_RAD, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_HOME_RAD, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_HOME_RAD, value).apply()
 
     var homeState: Int
-        get() = try { sharedPreferences.getInt(KEY_HOME_STATE, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_HOME_STATE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_HOME_STATE, value).apply()
 
     var schoolLatE6: Long
-        get() = try { sharedPreferences.getLong(KEY_SCHOOL_LAT, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_SCHOOL_LAT, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_LAT, value).apply()
 
     var schoolLonE6: Long
-        get() = try { sharedPreferences.getLong(KEY_SCHOOL_LON, Long.MIN_VALUE) } catch (_: Exception) { Long.MIN_VALUE }
+        get() = prefLong(KEY_SCHOOL_LON, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_LON, value).apply()
 
     var schoolRadiusM: Int
-        get() = try { sharedPreferences.getInt(KEY_SCHOOL_RAD, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_SCHOOL_RAD, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_RAD, value).apply()
 
     var schoolState: Int
-        get() = try { sharedPreferences.getInt(KEY_SCHOOL_STATE, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_SCHOOL_STATE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_STATE, value).apply()
 
     var nightDigestDate: String
-        get() = try { sharedPreferences.getString(KEY_NIGHT_DIGEST_DATE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_NIGHT_DIGEST_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_NIGHT_DIGEST_DATE, value).apply()
 
     var lastDataAt: Long
-        get() = try { sharedPreferences.getLong(KEY_LAST_DATA_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_LAST_DATA_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_DATA_AT, value).apply()
 
     var locFailCount: Int
-        get() = try { sharedPreferences.getInt(KEY_LOC_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+        get() = prefInt(KEY_LOC_FAIL_COUNT, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_LOC_FAIL_COUNT, value).apply()
 
     var healthAlertAt: Long
-        get() = try { sharedPreferences.getLong(KEY_HEALTH_ALERT_AT, 0L) } catch (_: Exception) { 0L }
+        get() = prefLong(KEY_HEALTH_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_HEALTH_ALERT_AT, value).apply()
 
     var watchNumbers: String
-        get() = try { sharedPreferences.getString(KEY_WATCH_NUMBERS, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_WATCH_NUMBERS, "")
         set(value) = sharedPreferences.edit().putString(KEY_WATCH_NUMBERS, value).apply()
 
     var curfewTime: String
-        get() = try { sharedPreferences.getString(KEY_CURFEW_TIME, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_CURFEW_TIME, "")
         set(value) = sharedPreferences.edit().putString(KEY_CURFEW_TIME, value).apply()
 
     var curfewAlertDate: String
-        get() = try { sharedPreferences.getString(KEY_CURFEW_DATE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_CURFEW_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_CURFEW_DATE, value).apply()
 
     var schoolAlertDate: String
-        get() = try { sharedPreferences.getString(KEY_SCHOOL_DATE, "") ?: "" } catch (_: Exception) { "" }
+        get() = prefString(KEY_SCHOOL_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_SCHOOL_DATE, value).apply()
 
     fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
