@@ -475,7 +475,7 @@ class MessageQueue private constructor(context: Context) {
             if (sharedPreferences == null) return
             synchronized(lock) {
                 val pending = cached
-                if (pending != null) persistLocked(pending, force = true)
+                if (pending != null) persistLocked(pending, force = true, syncOnMain = true)
                 if (dropsDirty) persistDropCountsLocked()
             }
             if (onMain) return
@@ -562,7 +562,7 @@ class MessageQueue private constructor(context: Context) {
         return loaded
     }
 
-    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false): Boolean {
+    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false, syncOnMain: Boolean = false): Boolean {
         cached = queue
         val prefs = sharedPreferences ?: return false
         val now = android.os.SystemClock.elapsedRealtime()
@@ -576,7 +576,7 @@ class MessageQueue private constructor(context: Context) {
         lastPersistAt = now
         persistDirty = false
         val version = ++persistVersion
-        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+        if (!syncOnMain && android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             pendingSnapshot = version to ArrayList(queue)
             persistDirty = true
             schedulePersistLocked()
