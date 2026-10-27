@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Pemisahan keputusan jadwal digest (#7, langkah desain kedua): putusan kirim/tunggu/reset digest berkala 6 jam dan aturan digest malam (jam lokal + sekali per tanggal mulai 21:00) pindah dari `MonitoringService.maybeSendDigest`/`maybeSendNightDigest` ke fungsi murni `utils/DigestSchedule.kt` (`periodicDecision`, `localHour`, `nightDue`). Baca/tulis preferences dan titik kirim tetap di service pada struktur yang sama (termasuk tulis stempel sebelum kirim); kesetaraan perilaku dibuktikan dengan tabel kebenaran (118 kombinasi masukan, 0 beda antara logika lama dan baru).
+
+### Added
+- Uji JVM `DigestScheduleTest` untuk putusan digest berkala (batas tepat 6 jam, stempel masa depan), jam lokal lintas offset zona waktu (termasuk batas 21:00 Jakarta), dan aturan digest malam.
 
 ## [1.6.491] - 2026-10-27
 ### Changed

@@ -27,6 +27,7 @@ import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.DigestSchedule
 import com.redeye.parentalmonitor.utils.GeofenceLogic
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.Liveness
@@ -6024,12 +6025,14 @@ class MonitoringService : Service() {
     private suspend fun maybeSendDigest() {
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
-        if (last > now) {
-            try { preferencesManager.digestAt = now } catch (_: Exception) { }
-            return
+        when (DigestSchedule.periodicDecision(last, now)) {
+            DigestSchedule.Verdict.RESET -> {
+                try { preferencesManager.digestAt = now } catch (_: Exception) { }
+                return
+            }
+            DigestSchedule.Verdict.WAIT -> return
+            DigestSchedule.Verdict.SEND -> try { preferencesManager.digestAt = now } catch (_: Exception) { }
         }
-        if (now - last < 6 * 60 * 60_000L) return
-        try { preferencesManager.digestAt = now } catch (_: Exception) { }
         val since = now - 6 * 60 * 60_000L
         val smsCount = try { smsRepository.getRecentSmsSince(since, 200).size } catch (_: Exception) { -1 }
         val callCount = try { callLogRepository.getCallsSince(since, 200).size } catch (_: Exception) { -1 }
@@ -6368,12 +6371,10 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
-            val h = (((now + off) / 3_600_000L) % 24L).toInt()
-            if (h < 21) return
+            val h = DigestSchedule.localHour(now, off.toLong())
             val key = todayKey()
-            if (key.isEmpty()) return
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
-            if (done == key) return
+            if (!DigestSchedule.nightDue(h, done, key)) return
             if (sendDailyDigest(manual = false)) {
                 try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
             }
