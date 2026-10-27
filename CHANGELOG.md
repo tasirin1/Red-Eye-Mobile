@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.490] - 2026-10-27
 ### Changed
 - Tahap 4 pemecahan `MonitoringService.kt` (#7): `sparkline` pindah ke `utils/Sparkline.kt` (`render`) dengan bodi identik, dipakai digest mingguan untuk grafik aktivitas per jam. Inti geofence/digest selebihnya terikat state bersama (preferences, kunci pagar, pengiriman pesan) dan tidak dipindah verbatim — menunggu desain pemisahan state.
 
