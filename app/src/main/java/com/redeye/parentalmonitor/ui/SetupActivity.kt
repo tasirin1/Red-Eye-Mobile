@@ -287,6 +287,39 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
+    private sealed class VerifyOutcome {
+        data class Success(val effectiveChatId: String) : VerifyOutcome()
+        data class HttpError(val code: Int, val fromGetMe: Boolean) : VerifyOutcome()
+        data class Error(val detail: String) : VerifyOutcome()
+        object Stale : VerifyOutcome()
+    }
+
+    private suspend fun verifyCredentials(token: String, chatId: String, isStale: () -> Boolean): VerifyOutcome {
+        return try {
+            val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot" + token + "/getMe")
+            if (isStale()) return VerifyOutcome.Stale
+            if (!meResp.isSuccessful || meResp.body()?.ok != true) {
+                return VerifyOutcome.HttpError(meResp.code(), true)
+            }
+            val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
+            val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot" + token + "/getChat?chat_id=" + enc)
+            if (isStale()) return VerifyOutcome.Stale
+            if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
+                return VerifyOutcome.HttpError(chatResp.code(), false)
+            }
+            var effectiveChat = chatId
+            if (effectiveChat.startsWith("@")) {
+                val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
+                if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
+            }
+            VerifyOutcome.Success(effectiveChat)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            VerifyOutcome.Error(redactToken(e.message))
+        }
+    }
+
     private suspend fun resolveChatId(token: String, chatId: String): String {
         if (!chatId.startsWith("@")) return chatId
         return try {
@@ -745,33 +778,20 @@ class SetupActivity : AppCompatActivity() {
             if (mySave != saveSeq.get()) return@launch
             var verified = true
             var verifyDetail = ""
-            try {
-                val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot" + token + "/getMe")
-                if (mySave != saveSeq.get()) return@launch
-                if (!meResp.isSuccessful || meResp.body()?.ok != true) {
-                    val code = meResp.code()
-                    markCredentialErrorIfStored(code, token, chatId, currentToken, storedChatId)
+            when (val outcome = verifyCredentials(token, chatId) { mySave != saveSeq.get() }) {
+                is VerifyOutcome.Stale -> return@launch
+                is VerifyOutcome.HttpError -> {
+                    markCredentialErrorIfStored(outcome.code, token, chatId, currentToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, outcome.code), Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }
-                val encVerify = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
-                val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot" + token + "/getChat?chat_id=" + encVerify)
-                if (mySave != saveSeq.get()) return@launch
-                if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
-                    val code = chatResp.code()
-                    markCredentialErrorIfStored(code, token, chatId, currentToken, storedChatId)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, code), Toast.LENGTH_LONG).show()
-                    }
-                    return@launch
+                is VerifyOutcome.Error -> {
+                    verified = false
+                    verifyDetail = outcome.detail
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                verified = false
-                verifyDetail = redactToken(e.message)
+                is VerifyOutcome.Success -> Unit
             }
             if (mySave != saveSeq.get()) return@launch
             if (!verified) {
@@ -1146,47 +1166,28 @@ class SetupActivity : AppCompatActivity() {
             val chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
             val accessPin = if (rawAccessPin == STORED_MASK) pendingRestoreAccessPin.ifEmpty { storedAccessPin } else rawAccessPin
-            try {
-                val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
-                if (myTest != testSeq.get()) return@launch
-                if (!meResp.isSuccessful || meResp.body()?.ok != true) {
-                    val code = meResp.code()
-                    markCredentialErrorIfStored(code, token, chatId, storedToken, storedChatId)
+            when (val outcome = verifyCredentials(token, chatId) { myTest != testSeq.get() }) {
+                is VerifyOutcome.Stale -> return@launch
+                is VerifyOutcome.HttpError -> {
+                    markCredentialErrorIfStored(outcome.code, token, chatId, storedToken, storedChatId)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, outcome.code), Toast.LENGTH_LONG).show()
                     }
-                    return@launch
+                    if (outcome.fromGetMe) return@launch
                 }
-                val encChat = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
-                val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$encChat")
-                if (myTest != testSeq.get()) return@launch
-                if (chatResp.isSuccessful && chatResp.body()?.ok == true) {
-                    var effectiveChat = chatId
-                    if (effectiveChat.startsWith("@")) {
-                        val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
-                        if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
+                is VerifyOutcome.Error -> {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
+                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, outcome.detail), Toast.LENGTH_LONG).show()
                     }
+                }
+                is VerifyOutcome.Success -> {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
-                        confirmSaveAfterTest(token, effectiveChat, myTest, syncInterval, cameraInterval, accessPin)
+                        confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, accessPin)
                     }
-                } else {
-                    val code = chatResp.code()
-                    markCredentialErrorIfStored(code, token, chatId, storedToken, storedChatId)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        if (isFinishing || isDestroyed) return@withContext
-                        Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, code), Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val detail = redactToken(e.message)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isFinishing || isDestroyed) return@withContext
-                    Toast.makeText(this@SetupActivity, getString(R.string.setup_test_fail, detail), Toast.LENGTH_LONG).show()
                 }
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

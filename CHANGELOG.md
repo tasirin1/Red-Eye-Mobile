@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Verifikasi kredensial Telegram di Setup kini satu jalur bersama (#49): urutan `getMe` -> `getChat` -> resolusi chat `@username` dari respons yang sama dipindah ke `SetupActivity.verifyCredentials` dengan hasil bertipe `VerifyOutcome` (sukses / gagal HTTP per tahap / error jaringan / basi). Jalur Simpan dan jalur Tes tinggal bereaksi terhadap hasilnya — toast, penanda error kredensial, jalur simpan-offline Simpan, dan kebiasaan Tes yang berbeda antara gagal `getMe` (berhenti) dan gagal `getChat` (tetap menyegarkan status) dipertahankan persis seperti sebelumnya.
+
 ### Fixed
 - PIN akses hasil impor backup tidak lagi terpakai diam-diam pada penyimpanan berikutnya (#48): PIN tertunda restore kini dibersihkan setiap kali halaman Setup dibuka segar (tanpa state tersimpan), sejalan dengan owner tertunda restore yang memang per-instance. Sebelumnya PIN backup yang batal disimpan bertahan di holder statis seumur proses dan menggantikan PIN tersimpan saat kolom PIN bermasker disimpan.
 
