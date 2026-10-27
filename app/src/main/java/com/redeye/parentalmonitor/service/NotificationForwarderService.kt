@@ -702,9 +702,8 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onDestroy() {
         try {
-            synchronized(dropNoticeLock) {
-                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get() + dropNoticeInFlight)
-            }
+            val pendingDrops = synchronized(dropNoticeLock) { dropNoticeCount.get() + dropNoticeInFlight }
+            prefsRef?.setPendingNotifDropsSync(pendingDrops)
         } catch (_: Exception) {
         }
         try {
@@ -887,25 +886,28 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun noteDroppedNotification(count: Int = 1) {
-        synchronized(dropNoticeLock) {
+        val pendingDrops = synchronized(dropNoticeLock) {
             dropNoticeCount.addAndGet(count.coerceAtLeast(0))
-            try {
-                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get() + dropNoticeInFlight)
-            } catch (_: Exception) {
-            }
-            if (dropNoticeJob?.isActive == true) return
-            dropNoticeJob = scope.launch {
-                try {
-                    delay(30_000L)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                }
-                try {
-                    flushDropNotice()
-                } catch (_: Exception) {
+            val snapshot = dropNoticeCount.get() + dropNoticeInFlight
+            if (dropNoticeJob?.isActive != true) {
+                dropNoticeJob = scope.launch {
+                    try {
+                        delay(30_000L)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        flushDropNotice()
+                    } catch (_: Exception) {
+                    }
                 }
             }
+            snapshot
+        }
+        try {
+            prefsRef?.setPendingNotifDropsSync(pendingDrops)
+        } catch (_: Exception) {
         }
     }
 
@@ -921,13 +923,14 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             false
         }
-        synchronized(dropNoticeLock) {
+        val pendingDrops = synchronized(dropNoticeLock) {
             dropNoticeInFlight = (dropNoticeInFlight - count).coerceAtLeast(0)
             if (!queued) dropNoticeCount.addAndGet(count)
-            try {
-                prefsRef?.setPendingNotifDropsSync(dropNoticeCount.get())
-            } catch (_: Exception) {
-            }
+            dropNoticeCount.get()
+        }
+        try {
+            prefsRef?.setPendingNotifDropsSync(pendingDrops)
+        } catch (_: Exception) {
         }
         if (queued) MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
     }

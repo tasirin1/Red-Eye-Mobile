@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Tulis preferences hitungan notifikasi-dibuang tidak lagi dilakukan di dalam `dropNoticeLock` (#64): ketiga situs di `NotificationForwarderService` (`onDestroy`, `noteDroppedNotification`, `flushDropNotice`) kini mengambil snapshot nilai di dalam kunci lalu menulisnya (commit prefs terenkripsi sinkron) di luar kunci, sehingga utas lain yang menunggu kunci yang sama tidak ikut tertahan selama IO penyimpanan. Nilai yang ditulis adalah snapshot pada momen yang sama seperti sebelumnya.
+
 ### Changed
 - `MonitoringService.isKnownContact` kini memakai cache tingkat service (#63): hasil query provider kontak per nomor disimpan (maksimum 512 entri, disegarkan tiap 6 jam), sehingga nomor yang sama tidak lagi ditanyakan berulang ke provider pada setiap siklus sinkron / halaman riwayat / halaman status. Hanya hasil definitif yang disimpan — jawaban fail-open `true` karena pengecualian atau kursor null tidak masuk cache, jadi kegagalan sesaat tidak membeku jadi "dikenal".
 - Pembungkus dispatch update Telegram kini satu penolong bersama (#62): pola `launch + handled + tangkap-ganda + finally finishUpdateTrack` yang tadinya ditulis tiga kali di `pollTelegramCommands` (callback, login, perintah) dipindah ke `MonitoringService.dispatchTracked(updateId, logTag, block)`; ketiga situs kini hanya menyerahkan badan kerjanya (termasuk kunci perintahnya masing-masing) dan tag log-nya, dengan pesan log serta semantik penanda handled yang sama.
