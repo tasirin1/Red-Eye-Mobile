@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.488] - 2026-10-27
 ### Fixed
 - Gerbang `tools/verifikasi-path.py` kini mengenali rujukan metode `::nama` (#41): nama yang sudah dihapus (daftar `bekas-hapusan.txt`) yang dihidupkan lagi sebagai method reference tidak lagi lolos dari cek baris baru maupun pendeteksian pemanggil metode yang dihapus.
 - Cek resource `tools/verifikasi-path.py` kini mengupas komentar XML sebelum memindai (#42): definisi di dalam `<!-- -->` tidak lagi memicu "definisi ganda" palsu, menutupi acuan yatim sungguhan, atau mengganggu sinkronisasi terjemahan dan paritas format.
