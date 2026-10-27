@@ -1040,7 +1040,7 @@ class MonitoringService : Service() {
         val body = buildString {
             appendLine("\uD83D\uDEF0 <b>Patrol</b>")
             if (location != null) {
-                try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
+                resetLocFailCount()
                 try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
                 try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
@@ -6076,6 +6076,15 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun resetLocFailCount() {
+        try {
+            synchronized(prefsRmwLock) {
+                preferencesManager.locFailCount = 0
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private fun rememberSentLatLon(lat: Double, lon: Double, accuracyM: Float = -1f) {
         try {
             synchronized(prefsRmwLock) {
@@ -6674,7 +6683,7 @@ class MonitoringService : Service() {
             val fails = try { preferencesManager.locFailCount } catch (_: Exception) { 0 }
             if (fails >= 5) {
                 notes.add("lokasi gagal $fails x beruntun")
-                try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
+                resetLocFailCount()
             }
             val q = try { messageQueue.getQueueSize() } catch (_: Exception) { 0 }
             if (q >= 50) notes.add("antrean $q (≥50)")
@@ -6917,7 +6926,7 @@ class MonitoringService : Service() {
                     bumpLocFailCount()
                     return
                 }
-                try { preferencesManager.locFailCount = 0 } catch (_: Exception) { }
+                resetLocFailCount()
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
             }
