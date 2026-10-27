@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.510] - 2026-10-27
+
 ### Fixed
 - Satu pengiriman digest kini menghitung data usage sekali saja (issue #92): `sendDailyDigest` sebelumnya memanggil `digestHighlights` dan `recordDailyFacts`→`todayFacts`, dan keduanya sama-sama menanyakan `usageRows(24)`, `a11yUsageRows()`, dan buka-pertama — kueri UsageStats/UsageEvents adalah panggilan IPC yang tidak murah dan hasilnya identik. Kini satu wadah `UsageDayData` dihitung sekali lewat `usageDayData(now)` lalu diteruskan ke kedua konsumen; `/waspada` menghitung wadahnya sendiri sekali untuk kebutuhannya. Hasil dan isi pesan tidak berubah.
 - Kalkulator: mengetik angka setelah `%` tidak lagi menghapus operasi yang sedang tertunda (issue #91): `percent()` sebelumnya memasang `justCalculated = true` — status yang sama dengan sesudah `=` — sehingga `appendNumber` mengosongkan seluruh state (`200 + 10 %` lalu ketik `5` bermaksud mengganti entri → konteks `200 +` hilang). Persen kini memakai penanda sendiri `entryReplaced`: angka berikutnya hanya mengganti entri hasil persen, operasi tertunda tetap hidup; penanda dibersihkan oleh operator, `±`, `C`, dan sesudah `=`, serta ikut disimpan/dipulihkan bersama state kalkulator lain.
