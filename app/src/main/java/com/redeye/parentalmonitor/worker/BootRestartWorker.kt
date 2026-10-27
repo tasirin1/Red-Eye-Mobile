@@ -15,6 +15,7 @@ import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class BootRestartWorker(
     context: Context,
@@ -127,11 +128,7 @@ class BootRestartWorker(
             val serviceIntent = Intent(appContext, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                appContext.startForegroundService(serviceIntent)
-            } else {
-                appContext.startService(serviceIntent)
-            }
+            ServiceStart.startForeground(appContext, serviceIntent)
             MessageScheduler.scheduleMessageSend(appContext)
             Result.success()
         } catch (e: kotlinx.coroutines.CancellationException) {

@@ -2,11 +2,11 @@ package com.redeye.parentalmonitor.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import com.redeye.parentalmonitor.service.MonitoringService
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 // Jendela transparan tanpa tampilan, hidup ~2 dtk: Android 14+ hanya memasang
 // tipe FGS "camera" saat aplikasi punya activity terlihat, jadi jendela ini
@@ -55,11 +55,7 @@ class FgsWakeActivity : Activity() {
             val intent = Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_REFRESH_FGS
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            ServiceStart.startForeground(this, intent)
         } catch (_: Exception) {
         }
     }

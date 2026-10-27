@@ -14,6 +14,7 @@ import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.CalculatorFormat
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.BuildConfig
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class MainActivity : AppCompatActivity() {
 
@@ -82,11 +83,7 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_REFRESH_FGS
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            ServiceStart.startForeground(this, intent)
         } catch (_: Exception) {
         }
     }
@@ -401,12 +398,13 @@ class MainActivity : AppCompatActivity() {
 
         if (BuildConfig.DEBUG) android.util.Log.d("MainActivity", "Starting service...")
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-                if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as foreground service")
-            } else {
-                startService(intent)
-                if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Started as regular service")
+            ServiceStart.startForeground(this, intent)
+            if (BuildConfig.DEBUG) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    android.util.Log.i("MainActivity", "Started as foreground service")
+                } else {
+                    android.util.Log.i("MainActivity", "Started as regular service")
+                }
             }
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "Failed to start service", e)

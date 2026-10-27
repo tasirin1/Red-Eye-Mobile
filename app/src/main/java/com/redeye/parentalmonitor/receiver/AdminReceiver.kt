@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import com.redeye.parentalmonitor.R
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class AdminReceiver : DeviceAdminReceiver() {
 
@@ -28,11 +29,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 action = com.redeye.parentalmonitor.service.MonitoringService.ACTION_UNLOCK_FAILED
                 putExtra(com.redeye.parentalmonitor.service.MonitoringService.EXTRA_UNLOCK_ATTEMPTS, attempts)
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                appContext.startForegroundService(alert)
-            } else {
-                appContext.startService(alert)
-            }
+            ServiceStart.startForeground(appContext, alert)
         } catch (_: Exception) {
             mulaiGagal = true
         }
@@ -77,11 +74,7 @@ class AdminReceiver : DeviceAdminReceiver() {
             val alert = Intent(appContext, com.redeye.parentalmonitor.service.MonitoringService::class.java).apply {
                 action = com.redeye.parentalmonitor.service.MonitoringService.ACTION_ADMIN_ALERT
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                appContext.startForegroundService(alert)
-            } else {
-                appContext.startService(alert)
-            }
+            ServiceStart.startForeground(appContext, alert)
         } catch (_: Exception) {
         }
         try {

@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import com.redeye.parentalmonitor.R
@@ -200,11 +199,7 @@ object Liveness {
             val serviceIntent = Intent(context, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
+            ServiceStart.startForeground(context, serviceIntent)
             true
         } catch (_: Exception) {
             false

@@ -3,10 +3,10 @@ package com.redeye.parentalmonitor.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.telephony.TelephonyManager
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class InstantEventReceiver : BroadcastReceiver() {
 
@@ -38,11 +38,7 @@ class InstantEventReceiver : BroadcastReceiver() {
                     if (active) {
                         try {
                             val service = Intent(appContext, MonitoringService::class.java).apply { action = target }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                appContext.startForegroundService(service)
-                            } else {
-                                appContext.startService(service)
-                            }
+                            ServiceStart.startForeground(appContext, service)
                         } catch (_: Exception) {
                             try {
                                 com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)

@@ -63,6 +63,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class MonitoringService : Service() {
 
@@ -7087,11 +7088,7 @@ class MonitoringService : Service() {
                     val restart = Intent(this, MonitoringService::class.java).apply {
                         action = ACTION_START_MONITORING
                     }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(restart)
-                    } else {
-                        startService(restart)
-                    }
+                    ServiceStart.startForeground(this, restart)
                 } catch (_: Exception) {
                 }
             }

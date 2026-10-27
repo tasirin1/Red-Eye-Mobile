@@ -30,6 +30,7 @@ import com.redeye.parentalmonitor.receiver.AdminReceiver
 import com.redeye.parentalmonitor.service.MonitoringService
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class SetupActivity : AppCompatActivity() {
 
@@ -1341,11 +1342,7 @@ class SetupActivity : AppCompatActivity() {
                         action = MonitoringService.ACTION_START_MONITORING
                     }
                     try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            startForegroundService(intent)
-                        } else {
-                            startService(intent)
-                        }
+                        ServiceStart.startForeground(this@SetupActivity, intent)
                         Toast.makeText(this@SetupActivity, getString(R.string.monitoring_active), Toast.LENGTH_SHORT).show()
                     } catch (_: Exception) {
                         Toast.makeText(this@SetupActivity, getString(R.string.msg_service_failed), Toast.LENGTH_LONG).show()
@@ -1445,11 +1442,7 @@ class SetupActivity : AppCompatActivity() {
             val intent = Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_LIVENESS_TEST
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
+            ServiceStart.startForeground(this, intent)
             Toast.makeText(this, getString(R.string.selfcheck_started), Toast.LENGTH_LONG).show()
         } catch (_: Exception) {
             Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
@@ -1699,7 +1692,7 @@ class SetupActivity : AppCompatActivity() {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(getString(R.string.setup_a11y_restricted_title))
                 .setMessage(getString(R.string.setup_a11y_restricted_body))
-                .setPositiveButton(getString(R.string.setup_a11y_app_info)) { _, _ -> openAppInfo() }
+                .setPositiveButton(getString(R.string.setup_a11y_app_info)) { _, _ -> openAppSettings() }
                 .setNeutralButton(getString(R.string.setup_a11y_open_settings)) { _, _ -> launchAccessibilitySettings() }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
@@ -1718,16 +1711,6 @@ class SetupActivity : AppCompatActivity() {
             queueStatusMessage(getString(R.string.setup_a11y_how))
         } catch (_: Exception) {
             Toast.makeText(this, getString(R.string.setup_a11y_how), Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun openAppInfo() {
-        try {
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.fromParts("package", packageName, null))
-            )
-        } catch (_: Exception) {
-            Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
         }
     }
 

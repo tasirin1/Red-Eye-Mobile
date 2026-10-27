@@ -3,7 +3,6 @@ package com.redeye.parentalmonitor.ui
 import android.app.Activity
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +10,7 @@ import android.widget.Toast
 import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.ScreenCapture
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class ShotConsentActivity : Activity() {
 
@@ -88,8 +88,7 @@ class ShotConsentActivity : Activity() {
         try {
             val intent = Intent(this, MonitoringService::class.java)
                 .setAction(MonitoringService.ACTION_AFTER_SHOT_GRANT)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-            else startService(intent)
+            ServiceStart.startForeground(this, intent)
         } catch (_: Exception) {
         }
     }

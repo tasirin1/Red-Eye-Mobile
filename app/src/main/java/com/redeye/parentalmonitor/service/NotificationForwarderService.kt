@@ -21,6 +21,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class NotificationForwarderService : NotificationListenerService() {
 
@@ -605,11 +606,7 @@ class NotificationForwarderService : NotificationListenerService() {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(restart)
-            } else {
-                startService(restart)
-            }
+            ServiceStart.startForeground(this, restart)
         } catch (_: Exception) {
             android.util.Log.w("NotifForwarder", "Wake restart failed, retry via worker")
         }
@@ -646,11 +643,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         val restart = android.content.Intent(this@NotificationForwarderService, MonitoringService::class.java).apply {
                             action = MonitoringService.ACTION_START_MONITORING
                         }
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                            startForegroundService(restart)
-                        } else {
-                            startService(restart)
-                        }
+                        ServiceStart.startForeground(this@NotificationForwarderService, restart)
                     } catch (_: Exception) {
                         android.util.Log.w("NotifForwarder", "Monitoring restart failed, retry via worker")
                         try {

@@ -3,11 +3,11 @@ package com.redeye.parentalmonitor.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.RingVolume
+import com.redeye.parentalmonitor.utils.ServiceStart
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -174,11 +174,7 @@ class BootReceiver : BroadcastReceiver() {
             action = MonitoringService.ACTION_START_MONITORING
         }
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
-            }
+            ServiceStart.startForeground(context, serviceIntent)
             true
         } catch (e: Exception) {
             android.util.Log.w("BootReceiver", "Service start blocked after reboot, will retry via worker", e)
