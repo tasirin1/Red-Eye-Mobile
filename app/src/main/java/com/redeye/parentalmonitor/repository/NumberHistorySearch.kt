@@ -22,34 +22,19 @@ class NumberHistorySearch<T>(
             val altPlus = "+$wantAlt"
             if (altPlus !in variants) variants.add(altPlus)
         }
-        val exactRows = query(
-            selection = variants.joinToString(" OR ") { "${numberColumn} = ?" },
-            args = variants.toTypedArray(),
-            sortOrder = "${dateColumn} DESC, ${idColumn} DESC",
-            limit = safeLimit
-        )
+        val exactRows = query(variants.joinToString(" OR ") { "${numberColumn} = ?" }, variants.toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val exactMatched = filterByNumber(exactRows, norm, wantAlt)
         if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
         if (norm.length < 10) return NumberHistoryResult(emptyList())
         val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = query(
-            selection = "${numberColumn} LIKE ? ESCAPE '\\'",
-            args = arrayOf(fuzzy),
-            sortOrder = "${dateColumn} DESC, ${idColumn} DESC",
-            limit = safeLimit
-        )
+        val rows = query("${numberColumn} LIKE ? ESCAPE '\\'", arrayOf(fuzzy), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val matched = filterByNumber(rows, norm, wantAlt)
         if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
         val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
         var upperDate = Long.MAX_VALUE
         var upperId = Long.MAX_VALUE
         for (pageIndex in 0 until 4) {
-            val page = query(
-                selection = "${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))",
-                args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),
-                sortOrder = "${dateColumn} DESC, ${idColumn} DESC",
-                limit = 500
-            )
+            val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
             if (page.isEmpty()) return NumberHistoryResult(emptyList())
             val pageMatched = filterByNumber(page, norm, wantAlt)
             if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit))
