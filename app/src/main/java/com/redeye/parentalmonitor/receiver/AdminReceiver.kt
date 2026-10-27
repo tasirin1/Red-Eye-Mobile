@@ -22,6 +22,7 @@ class AdminReceiver : DeviceAdminReceiver() {
         } catch (_: Exception) {
             0
         }
+        var mulaiGagal = false
         try {
             val alert = Intent(appContext, com.redeye.parentalmonitor.service.MonitoringService::class.java).apply {
                 action = com.redeye.parentalmonitor.service.MonitoringService.ACTION_UNLOCK_FAILED
@@ -33,6 +34,21 @@ class AdminReceiver : DeviceAdminReceiver() {
                 appContext.startService(alert)
             }
         } catch (_: Exception) {
+            mulaiGagal = true
+        }
+        if (mulaiGagal) {
+            val pending = try { goAsync() } catch (_: Exception) { null }
+            com.redeye.parentalmonitor.utils.Background.runReceiver(pending) {
+                try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext) } catch (_: Exception) { }
+                try {
+                    val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage("🔐 <b>Percobaan buka kunci gagal</b>\nAda $attempts percobaan PIN salah tercatat di HP ini.", true)
+                        com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(appContext)
+                    }
+                } catch (_: Exception) {
+                }
+            }
         }
     }
 
