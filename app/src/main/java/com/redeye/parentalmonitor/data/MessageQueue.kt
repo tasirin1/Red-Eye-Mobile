@@ -584,6 +584,18 @@ class MessageQueue private constructor(context: Context) {
         return writeSnapshot(prefs, ArrayList(queue), version)
     }
 
+    private fun jadwalUlangDrain(): Boolean {
+        return try {
+            persistExecutor.execute {
+                try { Thread.sleep(1000L) } catch (_: Exception) { }
+                drainPersist()
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun schedulePersistLocked() {
         if (!persistQueued.compareAndSet(false, true)) return
         try {
@@ -633,6 +645,8 @@ class MessageQueue private constructor(context: Context) {
                         pendingSnapshot = version to snapshot
                         persistDirty = true
                     }
+                }
+                if (!jadwalUlangDrain()) {
                     persistQueued.set(false)
                 }
                 return
