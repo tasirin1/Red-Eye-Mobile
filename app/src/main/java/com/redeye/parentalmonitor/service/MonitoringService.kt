@@ -6346,26 +6346,45 @@ class MonitoringService : Service() {
         }
     }
 
+    private val knownContactCache = HashMap<String, Boolean>()
+    private var knownContactCacheAt = 0L
+
     private fun isKnownContact(number: String): Boolean {
-        return try {
-            val digits = number.filter { it.isDigit() }
-            if (digits.isEmpty()) return true
-            val tail = digits.takeLast(7)
-            if (tail.length < 7) return true
+        val digits = number.filter { it.isDigit() }
+        if (digits.isEmpty()) return true
+        val tail = digits.takeLast(7)
+        if (tail.length < 7) return true
+        synchronized(knownContactCache) {
+            if (System.currentTimeMillis() - knownContactCacheAt > 6 * 60 * 60_000L) {
+                knownContactCache.clear()
+                knownContactCacheAt = System.currentTimeMillis()
+            }
+            knownContactCache[digits]?.let { return it }
+        }
+        val result = try {
             val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
             val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%$tail%"), null) ?: return true
+            var found = false
             c.use { cur ->
                 while (cur.moveToNext()) {
                     val nb = try { cur.getString(0) ?: "" } catch (_: Exception) { "" }
-                    if (contactNumberMatches(nb, digits)) return true
+                    if (contactNumberMatches(nb, digits)) {
+                        found = true
+                        break
+                    }
                 }
-                false
             }
+            found
         } catch (e: SecurityException) {
-            true
+            return true
         } catch (_: Exception) {
-            true
+            return true
         }
+        synchronized(knownContactCache) {
+            if (knownContactCache.size >= 512) knownContactCache.clear()
+            knownContactCache[digits] = result
+        }
+        return result
     }
 
     private fun batchFreqMap(): Map<String, Int> {
