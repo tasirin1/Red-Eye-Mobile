@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Persistensi antrean pesan kini memakai cache serialisasi per pesan (#55): `MessageQueue.writeSnapshot` tidak lagi menjalankan Gson atas seluruh antrean pada setiap flush — JSON tiap pesan yang tidak berubah dipakai ulang dari cache (kunci id + kesetaraan data class), hanya pesan baru/berubah yang diserialisasi, dan string JSON akhir yang ditulis ke preferences identik dengan hasil `gson.toJson(snapshot)` sebelumnya. Throttle 2 detik, penundaan main-thread, dan drain berversi yang sudah ada tidak berubah.
+
 ## [1.6.498] - 2026-10-27
 
 ### Changed

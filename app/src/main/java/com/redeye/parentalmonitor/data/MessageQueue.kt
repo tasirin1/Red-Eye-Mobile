@@ -29,6 +29,7 @@ class MessageQueue private constructor(context: Context) {
     }
     private val persistQueued = java.util.concurrent.atomic.AtomicBoolean(false)
     private val persistMutex = Any()
+    private val jsonCache = HashMap<String, Pair<QueuedMessage, String>>()
     @Volatile
     private var persistVersion = 0L
     private var pendingSnapshot: Pair<Long, List<QueuedMessage>>? = null
@@ -605,11 +606,36 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    private fun snapshotJson(snapshot: List<QueuedMessage>): String {
+        if (snapshot.isEmpty()) return "[]"
+        val sb = StringBuilder()
+        sb.append('[')
+        var first = true
+        for (msg in snapshot) {
+            if (!first) sb.append(',')
+            first = false
+            val hit = jsonCache[msg.id]
+            if (hit != null && hit.first == msg) {
+                sb.append(hit.second)
+            } else {
+                val json = gson.toJson(msg)
+                jsonCache[msg.id] = msg to json
+                sb.append(json)
+            }
+        }
+        sb.append(']')
+        if (jsonCache.size > snapshot.size * 2 + 64) {
+            val ids = snapshot.mapTo(HashSet()) { it.id }
+            jsonCache.keys.retainAll(ids)
+        }
+        return sb.toString()
+    }
+
     private fun writeSnapshot(prefs: SharedPreferences, snapshot: List<QueuedMessage>, version: Long): Boolean {
         synchronized(persistMutex) {
             if (persistVersion != version) return true
             val saved = try {
-                prefs.edit()?.putString(KEY_QUEUE, gson.toJson(snapshot))?.commit() == true
+                prefs.edit()?.putString(KEY_QUEUE, snapshotJson(snapshot))?.commit() == true
             } catch (_: Exception) {
                 false
             }
