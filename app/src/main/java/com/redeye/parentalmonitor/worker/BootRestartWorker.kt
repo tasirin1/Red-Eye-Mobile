@@ -2,7 +2,6 @@ package com.redeye.parentalmonitor.worker
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -13,6 +12,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.CrashReporter
+import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
 
@@ -32,7 +32,7 @@ class BootRestartWorker(
                 .setSilent(true)
                 .build()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ForegroundInfo(NOTIF_ID, fallback, fgsType())
+                ForegroundInfo(NOTIF_ID, fallback, FgsTypes.base(Build.VERSION.SDK_INT))
             } else {
                 ForegroundInfo(NOTIF_ID, fallback)
             }
@@ -56,17 +56,9 @@ class BootRestartWorker(
             .setSilent(true)
             .build()
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(NOTIF_ID, notification, fgsType())
+            ForegroundInfo(NOTIF_ID, notification, FgsTypes.base(Build.VERSION.SDK_INT))
         } else {
             ForegroundInfo(NOTIF_ID, notification)
-        }
-    }
-
-    private fun fgsType(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-        } else {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         }
     }
 
