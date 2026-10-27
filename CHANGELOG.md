@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.497] - 2026-10-27
 ### Changed
 - Penyelesaian teks tampilan domain terekstrak (#7, tahap 9): teks nama tipe FGS pindah dari `MonitoringService.fgsTypesText` ke `FgsTypes.describe`, dan inti format status pagar pindah ke `GeofenceLogic.statusText` (pembungkus `fenceStatusText` di service tetap membaca preferences seperti sebelumnya). Nilai keluaran dibuktikan sama dengan porting Python untuk seluruh kombinasi bit tipe dan kasus pagar (koordinat contoh, penanda belum diatur, radius 0).
 
