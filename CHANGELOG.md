@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.498] - 2026-10-27
+
 ### Changed
 - Klasifikasi respons kirim Telegram kini satu sumber bersama (#54): `utils/TelegramSendPolicy.classify` memutuskan jenis hasil (terkirim / rate-limit + retry-after / auth gagal / chat migrasi / chat hilang / hak terbatas / parse-entities / transient / ditolak) untuk `MonitoringService.sendToTelegram` + `sendPlainFallback` dan `NotificationForwarderService.forwardLocked` + fallback-nya; keempat jalur tinggal menjalankan aksinya masing-masing (antre, antre terjadwal, buang, tandai error kredensial) berdasarkan jenis itu. Dua penyimpangan lama diselaraskan: penerus notifikasi kini juga membersihkan error kredensial tersimpan sesudah kirim berhasil (sebelumnya hanya jalur service), dan 400 "can't parse entities" kini juga memicu fallback teks polos di penerus notifikasi (sebelumnya hanya bila unescape mengubah teks; mode parse NFS memang HTML sehingga kesalahan ini terjangkau). Pembacaan badan error 429 di jalur utama service kini terjaga try/catch seperti jalur lain. `SendMessageWorker` mempertahankan aliran `SendOutcome` sendiri. Uji JVM `TelegramSendPolicyTest` mengunci tabel klasifikasinya.
 - `BootRestartWorker` kini memakai `FgsTypes.base(...)` untuk tipe foreground dasar (#53): salinan lokal `fgsType()` yang tertinggal dari ekstraksi tahap 5 issue #7 dihapus (namanya dicatat di `tools/bekas-hapusan.txt`), sehingga kebijakan tipe FGS dasar hanya punya satu sumber kebenaran.
