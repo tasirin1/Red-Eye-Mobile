@@ -28,6 +28,19 @@ class NumberReplyTest {
     }
 
     @Test
+    fun jangkauanAngka() {
+        assertEquals(false, NumberReply.inRange(4, "5-180"))
+        assertEquals(true, NumberReply.inRange(5, "5-180"))
+        assertEquals(true, NumberReply.inRange(180, "5-180"))
+        assertEquals(false, NumberReply.inRange(181, "5-180"))
+        assertEquals(true, NumberReply.inRange(0, "0-60"))
+        assertEquals(false, NumberReply.inRange(5001, "50-5000"))
+        assertEquals(true, NumberReply.inRange(10, ""))
+        assertEquals(true, NumberReply.inRange(10, "abc"))
+        assertEquals(true, NumberReply.inRange(10, "5"))
+    }
+
+    @Test
     fun perintahTidakDianggapAngka() {
         assertNull(NumberReply.parse("/photointerval 15"))
         assertNull(NumberReply.parse("help me"))

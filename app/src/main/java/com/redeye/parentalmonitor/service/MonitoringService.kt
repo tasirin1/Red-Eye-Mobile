@@ -2436,7 +2436,17 @@ class MonitoringService : Service() {
             }
             val nilai = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
             if (nilai == null) {
+                synchronized(inputLock) {
+                    if (pendingInputCommand == pending) pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                }
                 sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", mainMenu())
+                return true
+            }
+            if (!com.redeye.parentalmonitor.utils.NumberReply.inRange(nilai, angka.range)) {
+                synchronized(inputLock) {
+                    if (pendingInputCommand == pending) pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                }
+                sendToTelegram("Angka " + nilai + " di luar jangkauan (" + angka.range + " " + angka.unit + "). Kirim lagi, contoh <code>" + numberInputExample(angka) + "</code>.", mainMenu())
                 return true
             }
             val taken = synchronized(inputLock) {

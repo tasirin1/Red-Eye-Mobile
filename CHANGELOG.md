@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Alur pencet tombol → balas angka kini tahan salah nilai: balasan angka yang di luar jangkauan perintahnya (mis. membalas `4` untuk Rekam video yang jangkauannya 5-180 detik) sebelumnya diteruskan ke handler dan jatuh ke pesan "Cara pakai: /recordvideo <5-180> (seconds)" generik, lalu prompt-nya mati sehingga owner harus menekan tombol dari awal. Kini `consumePendingInput` memeriksa jangkauan lebih dulu lewat helper murni baru `NumberReply.inRange` (teruji JVM): bot menjawab angka itu di luar jangkauan beserta contoh yang benar, prompt tetap hidup, dan batas waktu prompt diperbarui — berlaku juga untuk balasan bukan angka. Perintah yang diketik langsung dengan nilai di luar jangkauan tetap menjawab "Cara pakai" seperti sebelumnya.
+
 ## [1.6.506] - 2026-10-27
 
 ### Removed
