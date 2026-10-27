@@ -15,6 +15,17 @@ class SmsRepository(private val context: Context) {
         Telephony.Sms.TYPE
     )
 
+    private val numberSearch = NumberHistorySearch(
+        numberColumn = Telephony.Sms.ADDRESS,
+        dateColumn = Telephony.Sms.DATE,
+        idColumn = Telephony.Sms._ID,
+        logTag = "SmsRepository",
+        query = { selection, args, sortOrder, limit -> querySms(selection, args, sortOrder, limit) },
+        numberOf = { it.address },
+        dateOf = { it.date },
+        idOf = { it.id }
+    )
+
     fun getNewSms(afterId: Long, afterDate: Long = 0L): List<SmsData> {
         val selection: String
         val args: Array<String>
@@ -75,56 +86,7 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getSmsForNumber(digits: String, limit: Int = 50): NumberHistoryResult<SmsData> {
-        val safeLimit = limit.coerceIn(1, 100)
-        val norm = digits.filter { it.isDigit() }
-        if (norm.isEmpty()) return NumberHistoryResult(emptyList())
-        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
-        val variants = mutableListOf(norm, "+$norm")
-        if (wantAlt != null) {
-            if (wantAlt !in variants) variants.add(wantAlt)
-            val altPlus = "+$wantAlt"
-            if (altPlus !in variants) variants.add(altPlus)
-        }
-        val exactRows = querySms(
-            selection = variants.joinToString(" OR ") { "${Telephony.Sms.ADDRESS} = ?" },
-            args = variants.toTypedArray(),
-            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
-            limit = safeLimit
-        )
-        val exactMatched = filterByNumber(exactRows, norm, wantAlt) { it.address }
-        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
-        if (norm.length < 10) return NumberHistoryResult(emptyList())
-        val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = querySms(
-            selection = "${Telephony.Sms.ADDRESS} LIKE ? ESCAPE '\\'",
-            args = arrayOf(fuzzy),
-            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
-            limit = safeLimit
-        )
-        val matched = filterByNumber(rows, norm, wantAlt) { it.address }
-        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
-        val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        var upperDate = Long.MAX_VALUE
-        var upperId = Long.MAX_VALUE
-        repeat(4) {
-            val page = querySms(
-                selection = "${Telephony.Sms.DATE} >= ? AND (${Telephony.Sms.DATE} < ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} < ?))",
-                args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),
-                sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
-                limit = 500
-            )
-            if (page.isEmpty()) return NumberHistoryResult(emptyList())
-            val pageMatched = filterByNumber(page, norm, wantAlt) { it.address }
-            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit))
-            if (page.size < 500) return NumberHistoryResult(emptyList())
-            val oldest = page.last()
-            if (oldest.date <= cutoff) return NumberHistoryResult(emptyList())
-            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return NumberHistoryResult(emptyList())
-            upperDate = oldest.date
-            upperId = oldest.id
-        }
-        android.util.Log.w("SmsRepository", "paged scan truncated")
-        return NumberHistoryResult(emptyList(), truncated = true)
+        return numberSearch.search(digits, limit)
     }
 
     fun getRecentSmsSince(sinceMillis: Long, limit: Int = 200): List<SmsData> {
@@ -137,9 +99,6 @@ class SmsRepository(private val context: Context) {
         )
     }
 
-    private fun filterByNumber(rows: List<SmsData>, want: String, wantAlt: String?, pick: (SmsData) -> String): List<SmsData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesPrecomputed(pick(it), want, wantAlt) }
-    }
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
         val safeLimit = limit.coerceIn(1, 200)

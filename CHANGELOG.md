@@ -1,9 +1,11 @@
 ## [Unreleased]
 
 ### Changed
+- Strategi pencarian riwayat per nomor kini satu implementasi bersama (#50): tahap eksak -> fuzzy -> pindai berhalaman 4x500 dengan cutoff 365 hari yang tadinya ditulis dua kali penuh di `SmsRepository` dan `CallLogRepository` dipindah ke `repository/NumberHistorySearch.kt` generik; kedua repository tinggal mengikat kolom, fungsi query, dan pengambil nomor/tanggal/id masing-masing. Kedua badan lama dibuktikan identik baris demi baris sesudah pemetaan (kolom, fungsi query, penapis, dan kepala loop `repeat(4)` -> `for` yang indeksnya memang tidak dipakai) sebelum digabung, jadi perilaku pencarian tidak berubah. Logika `getNewSms`/`getNewCalls` tetap terpisah per provider karena struktur cabang kursornya memang berbeda.
 - Verifikasi kredensial Telegram di Setup kini satu jalur bersama (#49): urutan `getMe` -> `getChat` -> resolusi chat `@username` dari respons yang sama dipindah ke `SetupActivity.verifyCredentials` dengan hasil bertipe `VerifyOutcome` (sukses / gagal HTTP per tahap / error jaringan / basi). Jalur Simpan dan jalur Tes tinggal bereaksi terhadap hasilnya — toast, penanda error kredensial, jalur simpan-offline Simpan, dan kebiasaan Tes yang berbeda antara gagal `getMe` (berhenti) dan gagal `getChat` (tetap menyegarkan status) dipertahankan persis seperti sebelumnya.
 
 ### Fixed
+- Gerbang `tools/verifikasi-path.py`: detektor "metode dihapus" tidak lagi mengekstrak nama dari baris panggilan berindentasi murni (slot "tipe" pada polanya bisa dipenuhi spasi indentasi saja, sehingga panggilan pustaka baku seperti `repeat(4) {` pada baris yang dihapus terbaca sebagai metode proyek yang hilang dan menggagalkan pemeriksaan). Pola kini mewajibkan slot tipe berakhir pada karakter kata; definisi metode sungguhan tetap terdeteksi.
 - PIN akses hasil impor backup tidak lagi terpakai diam-diam pada penyimpanan berikutnya (#48): PIN tertunda restore kini dibersihkan setiap kali halaman Setup dibuka segar (tanpa state tersimpan), sejalan dengan owner tertunda restore yang memang per-instance. Sebelumnya PIN backup yang batal disimpan bertahan di holder statis seumur proses dan menggantikan PIN tersimpan saat kolom PIN bermasker disimpan.
 
 ## [1.6.497] - 2026-10-27

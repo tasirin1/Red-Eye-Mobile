@@ -15,6 +15,17 @@ class CallLogRepository(private val context: Context) {
         CallLog.Calls.TYPE
     )
 
+    private val numberSearch = NumberHistorySearch(
+        numberColumn = CallLog.Calls.NUMBER,
+        dateColumn = CallLog.Calls.DATE,
+        idColumn = CallLog.Calls._ID,
+        logTag = "CallLogRepository",
+        query = { selection, args, sortOrder, limit -> queryCalls(selection, args, sortOrder, limit) },
+        numberOf = { it.number },
+        dateOf = { it.date },
+        idOf = { it.id }
+    )
+
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
         if (afterId > 0L && afterTimestamp > 0L) {
             return queryCalls(
@@ -122,60 +133,6 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getCallsForNumber(digits: String, limit: Int = 50): NumberHistoryResult<CallData> {
-        val safeLimit = limit.coerceIn(1, 100)
-        val norm = digits.filter { it.isDigit() }
-        if (norm.isEmpty()) return NumberHistoryResult(emptyList())
-        val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
-        val variants = mutableListOf(norm, "+$norm")
-        if (wantAlt != null) {
-            if (wantAlt !in variants) variants.add(wantAlt)
-            val altPlus = "+$wantAlt"
-            if (altPlus !in variants) variants.add(altPlus)
-        }
-        val exactRows = queryCalls(
-            selection = variants.joinToString(" OR ") { "${CallLog.Calls.NUMBER} = ?" },
-            args = variants.toTypedArray(),
-            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-            limit = safeLimit
-        )
-        val exactMatched = filterCallsByNumber(exactRows, norm, wantAlt)
-        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
-        if (norm.length < 10) return NumberHistoryResult(emptyList())
-        val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = queryCalls(
-            selection = "${CallLog.Calls.NUMBER} LIKE ? ESCAPE '\\'",
-            args = arrayOf(fuzzy),
-            sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-            limit = safeLimit
-        )
-        val matched = filterCallsByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
-        val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        var upperDate = Long.MAX_VALUE
-        var upperId = Long.MAX_VALUE
-        repeat(4) {
-            val page = queryCalls(
-                selection = "${CallLog.Calls.DATE} >= ? AND (${CallLog.Calls.DATE} < ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} < ?))",
-                args = arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()),
-                sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
-                limit = 500
-            )
-            if (page.isEmpty()) return NumberHistoryResult(emptyList())
-            val pageMatched = filterCallsByNumber(page, norm, wantAlt)
-            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit))
-            if (page.size < 500) return NumberHistoryResult(emptyList())
-            val oldest = page.last()
-            if (oldest.date <= cutoff) return NumberHistoryResult(emptyList())
-            if (oldest.date > upperDate || (oldest.date == upperDate && oldest.id >= upperId)) return NumberHistoryResult(emptyList())
-            upperDate = oldest.date
-            upperId = oldest.id
-        }
-        android.util.Log.w("CallLogRepository", "paged scan truncated")
-        return NumberHistoryResult(emptyList(), truncated = true)
+        return numberSearch.search(digits, limit)
     }
-
-    private fun filterCallsByNumber(rows: List<CallData>, want: String, wantAlt: String?): List<CallData> {
-        return rows.filter { com.redeye.parentalmonitor.utils.PhoneNumbers.matchesPrecomputed(it.number, want, wantAlt) }
-    }
-
 }
