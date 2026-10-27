@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.506] - 2026-10-27
+
 ### Removed
 - Panel "🔢 Atur angka" dihapus total atas permintaan owner: tombolnya di baris cepat bawah hasil, di menu utama, dan di panel Alat & kontrol; layar panelnya di `menuScreen`; serta perintah `/tombol` dan `/angka` — termasuk alias kata "tombol"/"angka", entri di daftar mutasi, dan daftar saran `CommandSuggest`. Tombol Atur angka pada pesan lama tidak mati: callback `menu:angka` dan `m:angka` kini membuka Menu utama (`MenuCallback` mengarahkan view "angka" yang sudah tidak ada ke "main"). Cara mengatur angka tidak berubah: ketik perintah + nilainya (mis. `/photointerval 15`); perintah angka wajib tanpa nilai tetap memancing prompt angka (markup prompt kini Menu utama); tombol peminta angka di panel lain (Rekam audio, Rekam video, Jemput, Bunyi HP) tetap berfungsi.
 
