@@ -1370,6 +1370,7 @@ class MonitoringService : Service() {
         pendingRestore = null
         pendingInputCommand = ""
         pendingInputAt = 0L
+        pendingInputChat = ""
         ownerEpoch++
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
@@ -1824,7 +1825,7 @@ class MonitoringService : Service() {
                             lock.withLock {
                                 val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
                                 if (!restoreHandled) {
-                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate)
+                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate, msgChatId)
                                     if (!balasAngka && command.startsWith("/")) {
                                         val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
                                         handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
@@ -1962,7 +1963,7 @@ class MonitoringService : Service() {
                 sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
-            controlLock.withLock { armInput("/" + aksi.command, aksi.view) }
+            controlLock.withLock { armInput("/" + aksi.command, aksi.view, originChat) }
             return
         }
         val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
@@ -2271,6 +2272,9 @@ class MonitoringService : Service() {
     @Volatile
     private var pendingInputAt = 0L
 
+    @Volatile
+    private var pendingInputChat = ""
+
     private val inputLock = Any()
 
     private fun numberInputFor(command: String): NumberInput? {
@@ -2388,12 +2392,13 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun armInput(command: String, view: String) {
+    private suspend fun armInput(command: String, view: String, chatKey: String) {
         val angka = numberInputFor(command)
         if (angka != null) {
             synchronized(inputLock) {
                 pendingInputCommand = angka.command
                 pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                pendingInputChat = chatKey
             }
             val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view)
             sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
@@ -2403,12 +2408,13 @@ class MonitoringService : Service() {
         synchronized(inputLock) {
             pendingInputCommand = teks.command
             pendingInputAt = android.os.SystemClock.elapsedRealtime()
+            pendingInputChat = chatKey
         }
         val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { teks.view })
         sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
 
-    private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean): Boolean {
+    private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean, chatKey: String): Boolean {
         if (!ownerOk) return false
         val bersih = text.trim()
         if (bersih.isEmpty()) return false
@@ -2417,13 +2423,18 @@ class MonitoringService : Service() {
             if (current.isEmpty()) return false
             if (android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
                 pendingInputCommand = ""
+                pendingInputChat = ""
                 return false
             }
+            if (pendingInputChat.isNotEmpty() && pendingInputChat != chatKey) return false
             current
         }
         if (bersih.startsWith("/")) {
             synchronized(inputLock) {
-                if (pendingInputCommand == pending) pendingInputCommand = ""
+                if (pendingInputCommand == pending) {
+                    pendingInputCommand = ""
+                    pendingInputChat = ""
+                }
             }
             return false
         }
@@ -2454,6 +2465,7 @@ class MonitoringService : Service() {
                     false
                 } else {
                     pendingInputCommand = ""
+                    pendingInputChat = ""
                     true
                 }
             }
@@ -2464,7 +2476,10 @@ class MonitoringService : Service() {
         val teks = textInputFor(pending)
         if (teks == null) {
             synchronized(inputLock) {
-                if (pendingInputCommand == pending) pendingInputCommand = ""
+                if (pendingInputCommand == pending) {
+                    pendingInputCommand = ""
+                    pendingInputChat = ""
+                }
             }
             return false
         }
@@ -2477,6 +2492,7 @@ class MonitoringService : Service() {
                 false
             } else {
                 pendingInputCommand = ""
+                pendingInputChat = ""
                 true
             }
         }
@@ -2540,7 +2556,7 @@ class MonitoringService : Service() {
         }
         val numberInput = numberInputFor(command)
         if (numberInput != null && numberInput.required && arg.isBlank()) {
-            armInput(numberInput.command, "")
+            armInput(numberInput.command, "", if (privateChat) senderId else cachedChatId)
             return
         }
         when (command) {
