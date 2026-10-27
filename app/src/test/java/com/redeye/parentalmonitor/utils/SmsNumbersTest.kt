@@ -25,6 +25,15 @@ class SmsNumbersTest {
     }
 
     @Test
+    fun emergencyVariantsAreNotPremium() {
+        assertFalse(SmsNumbers.isPremium("0112"))
+        assertFalse(SmsNumbers.isPremium("00911"))
+        assertFalse(SmsNumbers.isPremium("0118"))
+        assertFalse(SmsNumbers.isPremium("00112"))
+        assertTrue(SmsNumbers.isEmergency("0112"))
+    }
+
+    @Test
     fun keepsEmergencyAndNormalNumbersOutOfPremium() {
         assertFalse(SmsNumbers.isPremium("112"))
         assertFalse(SmsNumbers.isPremium("911"))
