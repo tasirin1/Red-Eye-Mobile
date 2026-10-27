@@ -2365,6 +2365,8 @@ class MonitoringService : Service() {
         }.trim()
     }
 
+    private val buttonNumberCommands = setOf("/record", "/recordvideo", "/jemput", "/ring")
+
     private fun numberInputHelp(input: NumberInput): String {
         val kini = numberInputCurrent(input)
         return buildString {
@@ -2372,7 +2374,11 @@ class MonitoringService : Service() {
             appendLine(input.note)
             appendLine("Pakai: <code>" + input.command + " &lt;" + input.range + "&gt;</code> (" + input.unit + ")")
             if (kini.isNotEmpty()) appendLine("Sekarang: " + kini)
-            appendLine("Cara cepat: tekan tombolnya, lalu balas angkanya (contoh <code>" + numberInputExample(input) + "</code>).")
+            if (input.command in buttonNumberCommands) {
+                appendLine("Cara cepat: tekan tombolnya, lalu balas angkanya (contoh <code>" + numberInputExample(input) + "</code>).")
+            } else {
+                appendLine("Balas angkanya saja (contoh <code>" + numberInputExample(input) + "</code>). Perintah ini tidak punya tombol di menu; prompt ini muncul setelah kamu mengetik perintahnya.")
+            }
         }.trim()
     }
 
