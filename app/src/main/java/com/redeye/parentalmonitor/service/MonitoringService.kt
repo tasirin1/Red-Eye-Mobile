@@ -6337,7 +6337,7 @@ class MonitoringService : Service() {
         var topYesterdayMs = 0L
         val a11yRows = a11yUsageRows()
         val rows = try { usageRows(24) } catch (_: Exception) { null }
-        if (rows != null) {
+        if (rows != null && rows.isNotEmpty()) {
             todayMs = rows.sumOf { it.second }
             val top = rows.firstOrNull()
             if (top != null) {
@@ -6371,7 +6371,7 @@ class MonitoringService : Service() {
         var screenMin = -1
         val rows = try { usageRows(24) } catch (_: Exception) { null }
         val a11yRows = a11yUsageRows()
-        if (rows != null) {
+        if (rows != null && rows.isNotEmpty()) {
             screenMin = (rows.sumOf { it.second } / 60_000L).toInt()
         } else if (a11yRows.isNotEmpty()) {
             screenMin = (a11yRows.sumOf { it.millis } / 60_000L).toInt()
