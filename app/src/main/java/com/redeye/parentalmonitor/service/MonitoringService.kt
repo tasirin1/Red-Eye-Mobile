@@ -6373,14 +6373,27 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.TimeFmt.dayKey(ts)
     }
 
-    private fun digestHighlights(now: Long): List<String> {
+    private class UsageDayData(
+        val rows: List<Pair<String, Long>>?,
+        val a11yRows: List<A11yMonitor.AppUsage>,
+        val firstUnlockMs: Long
+    )
+
+    private fun usageDayData(now: Long): UsageDayData {
+        val rows = try { usageRows(24) } catch (_: Exception) { null }
+        val a11yRows = a11yUsageRows()
+        val fu = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
+        return UsageDayData(rows, a11yRows, fu)
+    }
+
+    private fun digestHighlights(now: Long, data: UsageDayData): List<String> {
         var todayMs = 0L
         var yesterdayMs = 0L
         var topLabel = ""
         var topMs = 0L
         var topYesterdayMs = 0L
-        val a11yRows = a11yUsageRows()
-        val rows = try { usageRows(24) } catch (_: Exception) { null }
+        val a11yRows = data.a11yRows
+        val rows = data.rows
         if (rows != null && rows.isNotEmpty()) {
             todayMs = rows.sumOf { it.second }
             val top = rows.firstOrNull()
@@ -6399,7 +6412,7 @@ class MonitoringService : Service() {
             topMs = a11yRows.first().millis
         }
         val nightMs = if (a11yRows.isEmpty()) -1L else a11yRows.sumOf { it.nightMillis }
-        val fuAt = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
+        val fuAt = data.firstUnlockMs
         val fuMinute = if (fuAt > 0L) {
             val off = java.util.TimeZone.getDefault().getOffset(fuAt)
             (((fuAt + off) / 60_000L) % 1440L).toInt()
@@ -6409,12 +6422,12 @@ class MonitoringService : Service() {
         return DigestHighlights.build(DigestHighlights.Facts(todayMs, yesterdayMs, topLabel, topMs, topYesterdayMs, nightMs, fuMinute))
     }
 
-    private fun todayFacts(now: Long): DailyFacts.Day? {
+    private fun todayFacts(now: Long, data: UsageDayData): DailyFacts.Day? {
         val key = todayKey(now)
         val stored = try { DailyFacts.parse(preferencesManager.dailyFacts).firstOrNull { it.day == key } } catch (_: Exception) { null }
         var screenMin = -1
-        val rows = try { usageRows(24) } catch (_: Exception) { null }
-        val a11yRows = a11yUsageRows()
+        val rows = data.rows
+        val a11yRows = data.a11yRows
         if (rows != null && rows.isNotEmpty()) {
             screenMin = (rows.sumOf { it.second } / 60_000L).toInt()
         } else if (a11yRows.isNotEmpty()) {
@@ -6422,7 +6435,7 @@ class MonitoringService : Service() {
         }
         if (screenMin < 0) return null
         val nightMin = if (a11yRows.isEmpty()) -1 else (a11yRows.sumOf { it.nightMillis } / 60_000L).toInt()
-        val fuAt = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
+        val fuAt = data.firstUnlockMs
         val fuMinute = if (fuAt > 0L) {
             val off = java.util.TimeZone.getDefault().getOffset(fuAt)
             (((fuAt + off) / 60_000L) % 1440L).toInt()
@@ -6432,8 +6445,8 @@ class MonitoringService : Service() {
         return DailyFacts.Day(key, screenMin, nightMin, fuMinute, stored?.arriveMin ?: -1, stored?.departMin ?: -1)
     }
 
-    private suspend fun recordDailyFacts(now: Long) {
-        val today = todayFacts(now) ?: return
+    private suspend fun recordDailyFacts(now: Long, data: UsageDayData) {
+        val today = todayFacts(now, data) ?: return
         val updated = synchronized(prefsRmwLock) {
             val days = try { DailyFacts.parse(preferencesManager.dailyFacts) } catch (_: Exception) { emptyList() }
             val storedToday = days.firstOrNull { it.day == today.day }
@@ -6491,6 +6504,7 @@ class MonitoringService : Service() {
         if (awaitingOwnerLogin()) return false
         try {
             val now = System.currentTimeMillis()
+            val dayData = usageDayData(now)
             val since = now - 24 * 60 * 60_000L
             val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
             val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
@@ -6522,7 +6536,7 @@ class MonitoringService : Service() {
             val sent = sendToTelegram(buildString {
                 appendLine("🌙 <b>Ringkasan harian</b>")
                 try {
-                    val sorotan = digestHighlights(now)
+                    val sorotan = digestHighlights(now, dayData)
                     if (sorotan.isNotEmpty()) {
                         appendLine("⭐ <b>Sorotan</b>")
                         for (line in sorotan) appendLine("• $line")
@@ -6541,7 +6555,7 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
-            try { recordDailyFacts(now) } catch (_: Exception) { }
+            try { recordDailyFacts(now, dayData) } catch (_: Exception) { }
             if (manual && sent) {
                 try { preferencesManager.digestAt = now } catch (_: Exception) { }
             }
@@ -6778,7 +6792,7 @@ class MonitoringService : Service() {
                 appendLine("Begadang (23–05): $nights$locNote")
                 try {
                     val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
-                    val todayF = todayFacts(now) ?: allDays.firstOrNull { it.day == todayKey(now) }
+                    val todayF = todayFacts(now, usageDayData(now)) ?: allDays.firstOrNull { it.day == todayKey(now) }
                     val hist = allDays.filter { it.day != todayKey(now) }
                     val temuan = if (todayF != null) PatternBaseline.assess(hist, todayF) else emptyList()
                     if (temuan.isNotEmpty()) {
