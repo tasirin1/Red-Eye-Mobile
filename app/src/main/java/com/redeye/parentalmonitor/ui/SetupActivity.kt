@@ -1011,10 +1011,16 @@ class SetupActivity : AppCompatActivity() {
             addView(first)
             if (confirm) addView(second)
         }
+        var selesaiPin = false
+        fun selesai(pin: String?) {
+            if (selesaiPin) return
+            selesaiPin = true
+            done(pin)
+        }
         val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(title)
             .setView(box)
-            .setNegativeButton(android.R.string.cancel) { _, _ -> done(null) }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> selesai(null) }
             .setPositiveButton(android.R.string.ok, null)
             .create()
         dialog.setOnShowListener {
@@ -1029,10 +1035,10 @@ class SetupActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 dialog.dismiss()
-                done(pin)
+                selesai(pin)
             }
         }
-        dialog.setOnCancelListener { done(null) }
+        dialog.setOnCancelListener { selesai(null) }
         dialog.show()
     }
 
