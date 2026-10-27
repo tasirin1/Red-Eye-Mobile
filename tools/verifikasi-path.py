@@ -550,7 +550,7 @@ def nama_metode_hilang(diff, lewati_berkas=()):
             continue
         cocok = re.match(
             r"\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?"
-            r"(?:fun\s+)?[\w<>\[\].,? ]+\s+(\w+)\s*\(", baris)
+            r"(?:fun\s+)?[\w<>\[\].,? ]*\w\s+(\w+)\s*\(", baris)
         if cocok and cocok.group(1) not in KATA_KUNCI:
             hilang.append(cocok.group(1))
     return hilang
