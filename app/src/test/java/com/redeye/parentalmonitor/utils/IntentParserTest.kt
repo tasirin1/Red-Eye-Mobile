@@ -1,0 +1,112 @@
+package com.redeye.parentalmonitor.utils
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class IntentParserTest {
+
+    @Test
+    fun parsePositivePhrases() {
+        val cases = listOf(
+            "anakku di mana sekarang" to "/location",
+            "cek lokasi hp" to "/location",
+            "posisi anak terkini" to "/location",
+            "lokasi hp saat ini" to "/location",
+            "keberadaan anak saat ini" to "/location",
+            "baterai hp tinggal berapa persen" to "/battery",
+            "kondisi baterai gimana" to "/battery",
+            "daya baterai sekarang" to "/battery",
+            "batre tinggal berapa" to "/battery",
+            "status hp sekarang" to "/status",
+            "kabar anak gimana" to "/status",
+            "kondisi monitoring terkini" to "/status",
+            "anak main hp berapa lama hari ini" to "/layar",
+            "berapa lama anak pakai aplikasi hari ini" to "/layar",
+            "total waktu layar kemarin" to "/layar",
+            "screen time hari ini berapa" to "/layar",
+            "laporan hari ini" to "/digest",
+            "ringkasan hari ini dong" to "/digest",
+            "rekap aktivitas hari ini" to "/digest",
+            "rekap seminggu terakhir" to "/minggu",
+            "laporan minggu ini" to "/minggu",
+            "ringkasan minggu lalu" to "/minggu",
+            "tadi habis dari mana saja" to "/jejak",
+            "jejak anak hari ini" to "/jejak",
+            "riwayat lokasi kemarin" to "/jejak",
+            "ada yang mencurigakan semalam" to "/waspada",
+            "ada kejadian aneh tadi malam" to "/waspada",
+            "notif apa saja yang masuk" to "/lastnotif",
+            "pemberitahuan terakhir apa" to "/lastnotif",
+            "sms terakhir dari siapa" to "/lastsms",
+            "sms masuk terbaru apa" to "/lastsms",
+            "sms dari bank masuk" to "/lastsms",
+            "siapa saja yang nelpon hari ini" to "/lastcalls",
+            "panggilan terakhir siapa" to "/lastcalls",
+            "panggilan masuk tadi" to "/lastcalls",
+            "bot ini bisa apa saja" to "/help",
+            "daftar perintah apa saja" to "/help",
+            "tolong kirim foto sekarang" to "/photo",
+            "kirim foto dong" to "/photo",
+            "foto sekarang dong" to "/photo",
+            "tolong foto" to "/photo",
+            "kirim tangkapan layar sekarang" to "/screenshot",
+            "screenshot dong" to "/screenshot",
+            "tangkap layar sekarang" to "/screenshot",
+            "notifikasi baterai penuh" to "/battery"
+        )
+        for ((text, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.parse(text))
+        }
+    }
+
+    @Test
+    fun parseRejectsUnsafeOrAmbiguous() {
+        val cases = listOf(
+            "jangan kirim foto",
+            "nggak usah kirim screenshot",
+            "ada foto baru nggak",
+            "baterai hp bocor",
+            "layar hp mati",
+            "telepon anak mati",
+            "minggu depan ada acara apa",
+            "rute ke sekolah jauh nggak",
+            "cara screenshot di hp android",
+            "pesan terakhir apa isinya",
+            "lokasi baterai di gudang",
+            "status baterai hp sekarang",
+            "laporan hari ini sama laporan minggu ini",
+            "anak main hp terus",
+            "dia lagi tidur",
+            "kirim pesan ke ibu",
+            "tolong kunci hp",
+            "matikan monitoring sekarang",
+            "hapus foto kemarin",
+            "halo",
+            "terima kasih",
+            "",
+            "/location"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+    }
+
+    @Test
+    fun parseNeverReturnsMutatingCommands() {
+        val allowed = setOf(
+            "/location", "/battery", "/status", "/layar", "/digest", "/minggu", "/jejak",
+            "/waspada", "/lastnotif", "/lastsms", "/lastcalls", "/help", "/photo", "/screenshot"
+        )
+        val probes = listOf(
+            "tolong kunci hp sekarang", "matikan monitoring sekarang", "berhenti memantau sekarang",
+            "hapus semua foto dan video", "kirim sms ke ibu sekarang", "tolong telepon ibu sekarang",
+            "restart hp sekarang", "logout sekarang juga", "ganti jam pulang jadi 22 00"
+        )
+        for (text in probes) {
+            val got = IntentParser.parse(text)
+            assertNull("frasa: $text", got)
+            assertEquals(true, got == null || got in allowed)
+        }
+    }
+}

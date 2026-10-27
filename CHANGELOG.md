@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- Perintah bahasa bebas di bot (chat pribadi owner): kalimat pertanyaan biasa kini dipetakan ke perintah baca yang setara oleh util murni baru `IntentParser` — mis. "anakku di mana sekarang" → `/location`, "baterai tinggal berapa persen" → `/battery`, "anak main hp berapa lama hari ini" → `/layar`, "tolong kirim foto sekarang" → `/photo`. Pemetaan hanya berjalan bila alias kata-persis tidak ada dan teks tidak diawali `/`; skor kata kunci wajib mengenai 2 grup maksud dan unik (seri = ditolak), kalimat bernegasi ("jangan", "nggak", dst.) selalu ditolak, dan perintah yang boleh dituju hanya laporan/aksi baca — tidak pernah perintah pengubah setelan seperti `/lock`, `/stop`, atau `/sms`. Hasil peta masuk lewat `handleTelegramCommand` biasa sehingga semua gerbang lama (owner, umur perintah, kunci kontrol) tetap berlaku persis. Bukti perilaku: porting Python atas 68 frasa (45 positif, 23 negatif/jebakan) memberi 0 beda sebelum Kotlin ditulis; uji JVM `IntentParserTest` mengunci tabel yang sama ditambah daftar izin perintah tujuannya.
+
 ## [1.6.501] - 2026-10-27
 
 ### Changed

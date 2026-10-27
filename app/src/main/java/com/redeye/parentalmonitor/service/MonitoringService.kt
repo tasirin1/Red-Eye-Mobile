@@ -33,6 +33,7 @@ import com.redeye.parentalmonitor.utils.DigestSchedule
 import com.redeye.parentalmonitor.utils.FgsTypes
 import com.redeye.parentalmonitor.utils.GeofenceLogic
 import com.redeye.parentalmonitor.utils.Html
+import com.redeye.parentalmonitor.utils.IntentParser
 import com.redeye.parentalmonitor.utils.Liveness
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.OwnerAccess
@@ -1805,7 +1806,12 @@ class MonitoringService : Service() {
                     val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
                     if (chatOk || ownerOk) {
                         val aliasInput = resolveAliasInput(command, arg)
-                        val effective = aliasInput?.substringBefore(" ") ?: command
+                        val intentInput = if (aliasInput == null && !command.startsWith("/")) {
+                            try { IntentParser.parse(rawText) } catch (_: Exception) { null }
+                        } else {
+                            null
+                        }
+                        val effective = (aliasInput ?: intentInput)?.substringBefore(" ") ?: command
                         val control = effective in CONTROL_COMMANDS
                         val isPrivate = msgChatId.isNotEmpty() && msgChatId == senderId
                         val messageDate = if (message == null) 0L else if (message.editDate > message.date) message.editDate else message.date
@@ -1822,6 +1828,8 @@ class MonitoringService : Service() {
                                     } else if (!balasAngka) {
                                         if (aliasInput != null && privateOwner) {
                                             handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
+                                        } else if (intentInput != null && privateOwner) {
+                                            handleTelegramCommand(intentInput, messageDate, ownerOk, chatOk, senderId, true)
                                         }
                                     }
                                 }
