@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- `A11yMonitor.defaultLauncherPackage` tidak lagi menahan paket launcher selamanya (#65): hasil resolusi kini diberi masa berlaku 10 menit lalu di-resolusi ulang, sehingga bila pengguna mengganti launcher bawaan, paket launcher lama tidak terus diperlakukan sebagai launcher (yang mengotori klasifikasi waktu-layar). Hasil kosong (gagal resolusi) tetap tidak di-cache dan dicoba lagi pada panggilan berikutnya, seperti sebelumnya.
+
 ## [1.6.499] - 2026-10-27
 
 ### Fixed

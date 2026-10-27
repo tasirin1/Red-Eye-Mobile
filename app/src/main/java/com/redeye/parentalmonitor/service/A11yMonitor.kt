@@ -90,6 +90,7 @@ object A11yMonitor {
     private var suspendedPackage = ""
     private var suspendedLabel = ""
     private var launcherPackage = ""
+    private var launcherPackageAt = 0L
     private var knownSeeded = false
 
     fun attach(context: Context) {
@@ -562,13 +563,14 @@ object A11yMonitor {
     }
 
     private fun defaultLauncherPackage(context: Context): String {
-        if (launcherPackage.isNotEmpty()) return launcherPackage
+        if (launcherPackage.isNotEmpty() && System.currentTimeMillis() - launcherPackageAt < 10 * 60_000L) return launcherPackage
         launcherPackage = try {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName.orEmpty()
         } catch (_: Exception) {
             ""
         }
+        launcherPackageAt = System.currentTimeMillis()
         return launcherPackage
     }
 
