@@ -1,4 +1,9 @@
 ## [Unreleased]
+### Changed
+- Tahap 3 pemecahan `MonitoringService.kt` (#7): `editDistance`, `transposedEquals`, `suggestCommand` beserta himpunan `KNOWN_COMMANDS` pindah ke `utils/CommandSuggest.kt` dengan bodi identik, dipakai jalur perintah tak dikenal untuk saran ejaan perintah.
+
+### Added
+- Uji JVM `CommandSuggestTest` untuk jarak edit, deteksi transposisi satu tukar, dan perilaku saran perintah (batas panjang, perintah persis tanpa saran, dan seri yang dimenangkan urutan himpunan).
 
 ## [1.6.488] - 2026-10-27
 ### Fixed

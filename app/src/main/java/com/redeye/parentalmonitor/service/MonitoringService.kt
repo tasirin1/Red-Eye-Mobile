@@ -24,6 +24,7 @@ import com.redeye.parentalmonitor.network.TelegramMediaClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.AppWatch
+import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.Html
@@ -335,7 +336,6 @@ class MonitoringService : Service() {
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val KNOWN_COMMANDS = setOf("/tombol", "/angka", "/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi", "/pantauapp")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "tombol" to "/tombol", "angka" to "/tombol", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -2691,7 +2691,7 @@ class MonitoringService : Service() {
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
-                val hint = try { suggestCommand(command) } catch (_: Exception) { null }
+                val hint = try { CommandSuggest.suggestCommand(command) } catch (_: Exception) { null }
                 val safeCommand = try { Html.escape(command) } catch (_: Exception) { command }
                 if (hint != null) sendToTelegram("❓ Perintah tak dikenal: $safeCommand. Maksudnya $hint? Kirim /help untuk daftar.")
                 else sendToTelegram("❓ Perintah tak dikenal: $safeCommand. Kirim /help untuk daftar.")
@@ -5375,54 +5375,6 @@ class MonitoringService : Service() {
         return com.redeye.parentalmonitor.utils.TextChunk.safeCut(text, max)
     }
 
-
-
-    private fun editDistance(a: String, b: String): Int {
-        if (a == b) return 0
-        val m = a.length
-        val n = b.length
-        if (m == 0) return n
-        if (n == 0) return m
-        var prev = IntArray(n + 1) { it }
-        var cur = IntArray(n + 1)
-        for (i in 1..m) {
-            cur[0] = i
-            for (j in 1..n) {
-                cur[j] = minOf(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1)
-            }
-            val tmp = prev
-            prev = cur
-            cur = tmp
-        }
-        return prev[n]
-    }
-
-    private fun transposedEquals(a: String, b: String): Boolean {
-        if (a.length != b.length) return false
-        var i = 0
-        while (i < a.length && a[i] == b[i]) i++
-        if (i + 1 >= a.length) return false
-        if (a[i] != b[i + 1] || a[i + 1] != b[i]) return false
-        for (j in i + 2 until a.length) if (a[j] != b[j]) return false
-        return true
-    }
-
-    private fun suggestCommand(typed: String): String? {
-        var best: String? = null
-        var bestDist = Int.MAX_VALUE
-        for (known in KNOWN_COMMANDS) {
-            val d = try { editDistance(typed, known) } catch (_: Exception) { Int.MAX_VALUE }
-            if (d < bestDist) {
-                bestDist = d
-                best = known
-            }
-        }
-        if (best != null && bestDist == 2) {
-            try { if (transposedEquals(typed, best)) bestDist = 1 } catch (_: Exception) { }
-        }
-        val limit = if (typed.length <= 5) 1 else 2
-        return if (best != null && bestDist in 1..limit) best else null
-    }
     private enum class SendStatus { SENT, QUEUED, DROPPED }
 
     private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): SendStatus {
