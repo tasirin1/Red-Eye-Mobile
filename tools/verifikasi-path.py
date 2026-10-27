@@ -98,6 +98,10 @@ def baca(path):
         return ""
 
 
+def kupas_komentar_xml(isi):
+    return re.sub(r"<!--.*?-->", "", isi, flags=re.S)
+
+
 def jalan_repo(rel, ext=EKSTENSI_KODE):
     for akar, dirs, berkas in os.walk(os.path.join(AKAR, rel)):
         dirs[:] = [d for d in dirs if d not in ("build", ".gradle", "__pycache__")]
@@ -122,7 +126,7 @@ def himpun_definisi():
 
     akar_res = os.path.join(MAIN, "res")
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
-        isi = baca(path)
+        isi = kupas_komentar_xml(baca(path))
         for jenis, nama in pola_def.findall(isi):
             tambah(jenis, nama)
         for jenis, nama in pola_array.findall(isi):
@@ -275,7 +279,7 @@ def cek_duplikat_definisi(gagal):
         if "/values" not in path.replace(os.sep, "/"):
             continue
         hitung = {}
-        for jenis, nama in pola.findall(baca(path)):
+        for jenis, nama in pola.findall(kupas_komentar_xml(baca(path))):
             kunci = jenis + "/" + nama
             hitung[kunci] = hitung.get(kunci, 0) + 1
         ganda = sorted(k for k, n in hitung.items() if n > 1)
@@ -476,7 +480,7 @@ def cek_sinkron_terjemah(gagal):
     if not os.path.isfile(os.path.join(AKAR, "app/src/main/res/values-in/strings.xml")):
         return
     def nama_string(path):
-        return set(re.findall(r'<string\s+name="([^"]+)"', baca(path)))
+        return set(re.findall(r'<string\s+name="([^"]+)"', kupas_komentar_xml(baca(path))))
 
     inggris = nama_string("app/src/main/res/values/strings.xml")
     indonesia = nama_string("app/src/main/res/values-in/strings.xml")
@@ -564,7 +568,7 @@ def masih_didefinisikan(nama):
 
 
 def pemanggil(nama):
-    pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
+    pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
     temu = []
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
         for i, baris in enumerate(baca(path).splitlines(), 1):
@@ -592,7 +596,7 @@ def cek_metode_hilang(gagal, peringatan, diff, hapus=()):
 
 def cek_panggil_bekas_hapusan(gagal, diff):
     for nama in sorted(BEKAS_HAPUSAN):
-        pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
+        pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
         for _, baris in tambah_kode(diff):
             if pola.search(baris):
                 gagal.append(
@@ -656,8 +660,8 @@ def cek_paritas_resource(gagal):
     if not os.path.isfile(os.path.join(AKAR, "app/src/main/res/values-in/strings.xml")):
         return
     pola = re.compile(r'<string\s+name="([^"]+)"[^>]*>(.*?)</string>', re.S)
-    inggris = dict(pola.findall(baca("app/src/main/res/values/strings.xml")))
-    indonesia = dict(pola.findall(baca("app/src/main/res/values-in/strings.xml")))
+    inggris = dict(pola.findall(kupas_komentar_xml(baca("app/src/main/res/values/strings.xml"))))
+    indonesia = dict(pola.findall(kupas_komentar_xml(baca("app/src/main/res/values-in/strings.xml"))))
     for nama, isi in sorted(indonesia.items()):
         if nama in inggris and argumen_format(isi) != argumen_format(inggris[nama]):
             gagal.append("Argumen format beda di values-in: " + nama)
