@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.509] - 2026-10-27
+
 ### Fixed
 - `MessageQueue.flushSync()` kini benar-benar menulis sinkron juga dari thread utama (issue #85): semua pemanggilnya (`onDestroy`, `onTrimMemory`, `onLowMemory`) berjalan di thread utama, tetapi cabang thread-utama `persistLocked` selalu menunda penulisan ke drain async dan `flushSync` langsung kembali sebelum barrier executor — jadi "sinkron"-nya kosong persis di tempat ia dipakai, dan pesan yang terantre dalam jendela terakhir bisa hilang bila proses dibunuh tepat setelah service berhenti. `persistLocked` kini menerima `syncOnMain`; `flushSync` memintanya, sehingga snapshot ditulis saat itu juga lewat `writeSnapshot` (`commit()`), sementara jalur persist biasa di thread utama tetap async seperti sebelumnya.
 - Teks bantuan input angka tidak lagi menyuruh menekan tombol untuk perintah yang tombolnya tidak ada (issue #84): baris "Cara cepat: tekan tombolnya" tampil untuk semua input angka, padahal sejak panel Atur angka dihapus (v1.6.506) lima perintah (`/photointerval`, `/patrolinterval`, `/pause`, `/syncinterval`, `/heartbeat`) hanya bisa dicapai dengan mengetik. Bantuan kini bercabang menurut himpunan perintah yang memang punya tombol menu (`/record`, `/recordvideo`, `/jemput`, `/ring`): yang tanpa tombol mendapat keterangan "balas angkanya saja; perintah ini tidak punya tombol di menu".
