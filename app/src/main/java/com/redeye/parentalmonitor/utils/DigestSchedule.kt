@@ -10,7 +10,7 @@ object DigestSchedule {
     }
 
     fun localHour(nowMs: Long, offsetMs: Long): Int {
-        return (((nowMs + offsetMs) / 3_600_000L) % 24L).toInt()
+        return A11yUsageMath.localHour(nowMs, offsetMs.toInt())
     }
 
     fun nightDue(hour: Int, doneKey: String, todayKey: String): Boolean {
