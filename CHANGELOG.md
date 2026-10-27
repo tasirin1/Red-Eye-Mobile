@@ -4,6 +4,9 @@
 - Cek resource `tools/verifikasi-path.py` kini mengupas komentar XML sebelum memindai (#42): definisi di dalam `<!-- -->` tidak lagi memicu "definisi ganda" palsu, menutupi acuan yatim sungguhan, atau mengganggu sinkronisasi terjemahan dan paritas format.
 - Cek anotasi ganda `scripts/cek-cepat.sh` kini membandingkan baris yang sudah dirapikan indentasinya (#43): dua anotasi tak-repeatable yang sama pada kedalaman indentasi berbeda tidak lagi lolos.
 - Pola ekstensi terlarang `scripts/cek-cepat.sh` kini tak peka huruf besar/kecil (#44), selaras `verifikasi-path.py`: berkas seperti `KUNCI.P12` kini tertangkap di cek staged maupun pohon terlacak.
+
+## [1.6.487] - 2026-10-27
+### Fixed
 - Lima throttle notifikasi berbasis jam dinding kini tahan jam mundur (#32), mengikuti pola yang ditambahkan #21 ke digest: stempel tersimpan yang berada di masa depan direset ke sekarang dan notifikasi dilewati siklus ini — mencakup notifikasi hemat kuota (`dataSaverHoldNow`, sebelumnya justru mengirim pada `now <= last`), alert baterai, kegagalan kamera, kegagalan unggah media, dan kesehatan aksesibilitas.
 - Listener foto `CameraService` kini didaftarkan pada `ImageReader` lokal milik sesi itu sendiri (#33), bukan pada field bersama yang dibaca di luar kunci sesi — sesi yang digantikan di tengah setup tidak lagi bisa menempelkan listenernya ke reader sesi baru.
 - `chooseVideoSize` kini memilih ukuran terkecil sebagai jalan terakhir bila tak ada ukuran ≤720p (#34), bukan yang terbesar — perangkat yang hanya mengekspos ≥1080p tidak lagi merekam pada resolusi maksimal.
