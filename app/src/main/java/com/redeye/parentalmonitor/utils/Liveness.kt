@@ -77,7 +77,7 @@ object Liveness {
 
     fun allowed(manager: PreferencesManager): Boolean {
         return try {
-            manager.isMonitoringEnabled && manager.isConfigured() && !manager.userDisabledMonitoring && manager.userConsentedMonitoring
+            manager.isMonitoringEnabled && manager.isConfigured() && !manager.userDisabledMonitoring && manager.userConsentedMonitoring && !manager.monitoringPaused
         } catch (_: Exception) {
             false
         }

@@ -31,7 +31,7 @@ class InstantEventReceiver : BroadcastReceiver() {
                 try {
                     val active = try {
                         val prefs = PreferencesManager.getInstance(appContext)
-                        prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring
+                        prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && !prefs.monitoringPaused
                     } catch (_: Exception) {
                         false
                     }

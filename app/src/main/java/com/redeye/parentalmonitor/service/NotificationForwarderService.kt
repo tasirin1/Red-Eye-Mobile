@@ -591,7 +591,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         val resumeOk = try {
-            prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+            prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && !prefs.monitoringPaused
         } catch (_: Exception) {
             false
         }
@@ -636,7 +636,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         return@launch
                     }
                     val resume = try {
-                        prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+                        prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && !prefs.monitoringPaused
                     } catch (_: Exception) {
                         false
                     }
