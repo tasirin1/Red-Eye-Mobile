@@ -893,6 +893,17 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun currentOwnerPairCode(): String {
+        synchronized(pairCodeLock) {
+            val cur = try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { return "" }
+            if (cur.length != 6 || !cur.all { it in '0'..'9' }) return ""
+            val at = try { sharedPreferences.getLong(KEY_OWNER_PAIR_AT, 0L) } catch (_: Exception) { 0L }
+            if (at == 0L) return cur
+            val now = System.currentTimeMillis()
+            return if (at <= now && now - at < 24 * 60 * 60_000L) cur else ""
+        }
+    }
+
     var pendingMsgDrops: Int
         get() = prefInt(KEY_PENDING_MSG_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()

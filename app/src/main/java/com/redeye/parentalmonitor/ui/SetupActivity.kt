@@ -229,7 +229,6 @@ class SetupActivity : AppCompatActivity() {
         private val TOKEN_REGEX = Regex("^[0-9]+:[A-Za-z0-9_-]{35,}$")
         private val CHAT_ID_REGEX = Regex("^-?[0-9]+$")
         private val USERNAME_REGEX = Regex("^@[A-Za-z0-9_]{5,32}$")
-        private val PAIR_CODE_REGEX = Regex("^[0-9]{6}$")
         private const val MIN_BACKUP_PIN = 10
         private const val MIN_RESTORE_PIN = 4
         private const val MAX_BACKUP_BYTES = 1_000_000L
@@ -1753,8 +1752,7 @@ class SetupActivity : AppCompatActivity() {
             val ownerKnown = try { prefs.ownerUserId != 0L } catch (_: Exception) { false }
             val accessPinActive = try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false }
             val pairCode = try {
-                val storedPairCode = prefs.ownerPairCode.takeIf { PAIR_CODE_REGEX.matchEntire(it) != null }.orEmpty()
-                if (!configured || ownerKnown || accessPinActive) storedPairCode else storedPairCode.ifEmpty { prefs.ensureOwnerPairCode() }
+                if (!configured || ownerKnown || accessPinActive) "" else prefs.currentOwnerPairCode()
             } catch (_: Exception) {
                 ""
             }
