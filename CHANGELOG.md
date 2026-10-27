@@ -1,4 +1,6 @@
 ## [Unreleased]
+
+## [1.6.486] - 2026-10-27
 ### Fixed
 - `/login <PIN>` yang terketik di chat grup kini dicoba dihapus dari grup dan pengirim diperingatkan bahwa PIN terlihat anggota grup (#30); sebelumnya pesan berisi PIN menetap di riwayat grup selama owner belum tertaut, sehingga anggota grup mana pun bisa memakai PIN itu untuk tertaut sebagai owner lebih dulu.
 - Pesan berisi PIN kini dihapus sebelum cek lockout/throttle login (#39), bukan hanya di jalur yang sampai ke verifikasi — PIN yang dikirim saat login terkunci tidak lagi menetap di riwayat chat.
