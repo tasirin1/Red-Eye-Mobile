@@ -1738,8 +1738,8 @@ class MonitoringService : Service() {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Login dispatch error") {
-                            controlLock.withLock {
-                                commandLock.withLock {
+                            commandLock.withLock {
+                                controlLock.withLock {
                                     handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
                                 }
                             }

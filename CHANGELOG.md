@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Konvoi kunci login diperbaiki (issue #171): dispatch `/login` sebelumnya mengambil `controlLock` lebih dulu lalu menunggu `commandLock` sambil terus memegangnya, sehingga perintah kontrol darurat (`/stop`, `/lock`, `/pause`) ikut tertahan di belakang perintah biasa yang panjang yang sedang memegang `commandLock` — jalur darurat kehilangan prioritasnya. Urutan sarang kini dibalik: login menunggu `commandLock` tanpa memegang kunci apa pun, dan `controlLock` baru diambil saat login benar-benar dieksekusi. Arah sarang tetap tunggal (tidak ada jalur lain yang mengambil kedua kunci sekaligus) sehingga tidak ada risiko deadlock baru, dan jaminan urutan dari #97 tetap utuh: perintah kontrol tetap tidak bisa menyalip login yang sedang diproses, hanya tidak lagi ikut mengantre di belakang perintah biasa sebelumnya.
+
 ## [1.6.513] - 2026-10-28
 
 ### Fixed
