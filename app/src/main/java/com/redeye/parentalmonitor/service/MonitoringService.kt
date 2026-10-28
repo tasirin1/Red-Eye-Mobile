@@ -6579,16 +6579,16 @@ class MonitoringService : Service() {
             val key = todayKey()
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
             if (DigestSchedule.nightDue(h, done, key)) {
-                if (sendDailyDigest(manual = false)) {
-                    try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
-                }
+                if (awaitingOwnerLogin()) return
+                try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                sendDailyDigest(manual = false)
                 return
             }
             val yesterday = todayKey(now - 86_400_000L)
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key)) {
-                if (sendDailyDigest(manual = false)) {
-                    try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
-                }
+                if (awaitingOwnerLogin()) return
+                try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
+                sendDailyDigest(manual = false)
             }
         } catch (_: Exception) {
         }
