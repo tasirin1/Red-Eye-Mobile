@@ -304,7 +304,6 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        entryReplaced = false
         currentNumber = when {
             currentNumber == "-" -> ""
             currentNumber.startsWith("-") -> currentNumber.removePrefix("-")
