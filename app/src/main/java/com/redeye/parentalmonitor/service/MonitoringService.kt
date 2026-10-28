@@ -127,6 +127,8 @@ class MonitoringService : Service() {
     private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
     @Volatile
     private var curfewFetchFailAt = 0L
+    private var trailMirrorRaw: String? = null
+    private var trailMirrorPts: List<String>? = null
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val activeMediaFiles = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<File, Boolean>()
@@ -6121,11 +6123,19 @@ class MonitoringService : Service() {
             synchronized(prefsRmwLock) {
                 val now = System.currentTimeMillis()
                 val cutoff = now - 24 * 60 * 60_000L
-                val pts = preferencesManager.trail24.split(";").filter { it.contains(":") }.toMutableList()
+                val raw = preferencesManager.trail24
+                val pts = if (raw == trailMirrorRaw && trailMirrorPts != null) {
+                    ArrayList(trailMirrorPts!!)
+                } else {
+                    raw.split(";").filter { it.contains(":") }
+                }
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
                 if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
-                preferencesManager.recordSentLocation(lat, lon, fresh.joinToString(";"), accuracyM)
+                val joined = fresh.joinToString(";")
+                trailMirrorRaw = joined
+                trailMirrorPts = fresh
+                preferencesManager.recordSentLocation(lat, lon, joined, accuracyM)
             }
         } catch (_: Exception) {
         }
