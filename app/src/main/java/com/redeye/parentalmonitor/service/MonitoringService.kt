@@ -9239,7 +9239,8 @@ class MonitoringService : Service() {
                                 deleteQuietly(videoFile)
                                 sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
-                                when (sendVideoFile(videoFile)) {
+                                val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(600_000L) { sendVideoFile(videoFile) }
+                                when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
                                         sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
                                         flushPendingVideos()
