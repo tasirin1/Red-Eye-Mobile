@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.512] - 2026-10-28
+
 ### Added
 - Pemerataan pengelolaan repo (lanjutan v1.6.511): Dependabot kini juga memantau dependensi Gradle (berkelompok androidx/kotlinx/jvm-libs; major AGP/Kotlin tetap manual; PR Gradle tidak di-auto-merge), ditambah `SECURITY.md` (kebijakan pelaporan kerentanan privat), `CONTRIBUTING.md` (ringkasan aturan kontributor), dan `.editorconfig` — menyamakan paket dokumen pengelolaan dengan repo Tasirin lain.
 
