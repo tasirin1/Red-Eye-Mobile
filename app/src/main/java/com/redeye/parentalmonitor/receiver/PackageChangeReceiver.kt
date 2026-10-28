@@ -45,10 +45,10 @@ class PackageChangeReceiver : BroadcastReceiver() {
         }
         if (!active) return
         val text = if (action == Intent.ACTION_PACKAGE_ADDED) {
-            val info = try { context.packageManager.getApplicationInfo(pkg, 0) } catch (_: Exception) { null }
-            if (info != null && (info.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0) return
+            val info = try { context.packageManager.getApplicationInfo(pkg, 0) } catch (_: Exception) { null } ?: return
+            if ((info.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0) return
             val label = try {
-                if (info == null) pkg else context.packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+                context.packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
             } catch (_: Exception) {
                 pkg
             }
