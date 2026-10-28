@@ -7848,7 +7848,9 @@ class MonitoringService : Service() {
                 val shotFile = try {
                     takeScreenshotFrame()
                 } catch (e: SecurityException) {
-                    try { releaseShotSurface() } catch (_: Exception) { }
+                    if (shotAttempt.get() == shotSeq) {
+                        try { releaseShotSurface() } catch (_: Exception) { }
+                    }
                     try { wd.cancel() } catch (_: Exception) { }
                     clearShotBusy(shotSeq)
                     android.util.Log.w("MonitoringService", "Tangkap layar ditolak sistem: " + redactToken(e.message))
