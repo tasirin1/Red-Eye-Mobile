@@ -8197,8 +8197,10 @@ class MonitoringService : Service() {
             } finally {
                 try { img.close() } catch (_: Exception) { }
             }
-        } finally {
-            releaseShotSurface()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return null
         }
     }
 
