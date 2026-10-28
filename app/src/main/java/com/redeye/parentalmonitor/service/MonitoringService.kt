@@ -9460,8 +9460,9 @@ class MonitoringService : Service() {
                         videoProgress = true
                         continue
                     }
-                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
-                    val videoOutcome = sendVideoFile(file)
+                    val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
+                    if (remainMs <= 0L) break@drain
+                    val videoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) } ?: MediaSendOutcome.KEPT
                     if (videoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
@@ -9543,8 +9544,9 @@ class MonitoringService : Service() {
                         audioProgress = true
                         continue
                     }
-                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
-                    val audioOutcome = sendAudioFile(file)
+                    val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
+                    if (remainMs <= 0L) break@drain
+                    val audioOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) } ?: MediaSendOutcome.KEPT
                     if (audioOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
@@ -9834,8 +9836,9 @@ class MonitoringService : Service() {
                         photoProgress = true
                         continue
                     }
-                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
-                    val photoOutcome = sendPhotoFile(file)
+                    val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
+                    if (remainMs <= 0L) break@drain
+                    val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
