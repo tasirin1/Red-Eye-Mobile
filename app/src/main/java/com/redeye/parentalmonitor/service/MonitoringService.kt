@@ -5483,7 +5483,14 @@ class MonitoringService : Service() {
             }
             throw e
         }
-        if (permanentLoss) return SendStatus.DROPPED
+        if (permanentLoss) {
+            if (queueOnFail && !queuePriority && failed.isNotEmpty()) {
+                val queuedTail = messageQueue.addMessages(failed, queuePriority)
+                if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
+                if (queuedTail) MessageScheduler.scheduleMessageSend(this)
+            }
+            return SendStatus.DROPPED
+        }
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
                 val queued = messageQueue.addMessages(failed, queuePriority)
