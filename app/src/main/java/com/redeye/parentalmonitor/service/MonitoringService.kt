@@ -5509,7 +5509,7 @@ class MonitoringService : Service() {
         try {
             val text = if (count == 1) "1 pesan dibuang karena ditolak Telegram (permanen) — kosong atau tak valid."
                 else "$count pesan dibuang karena ditolak Telegram (permanen) — kosong atau tak valid."
-            messageQueue.addMessage(text, true)
+            if (!messageQueue.addMessage(text, true)) throw IllegalStateException("addMessage gagal")
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
             msgDropCount.addAndGet(count)
