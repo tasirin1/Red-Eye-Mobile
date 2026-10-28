@@ -51,6 +51,22 @@ class UsageEventsSummaryTest {
     }
 
     @Test
+    fun bukaKunciPertamaHariIniDipisahDariJendela24Jam() {
+        val events = listOf(
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 1_000L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_RESUMED, 1_500L, "com.a"),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 5_000L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 3_000L)
+        )
+        val s = UsageEventsSummary.build(events)
+        assertEquals(3, s.unlocks)
+        assertEquals(1_000L, s.firstUnlockAt)
+        assertEquals(3_000L, UsageEventsSummary.firstUnlockToday(events, 2_000L))
+        assertEquals(0L, UsageEventsSummary.firstUnlockToday(events, 0L))
+        assertEquals(0L, UsageEventsSummary.firstUnlockToday(events, 9_000L))
+    }
+
+    @Test
     fun pertamaDiambilTimestampTerkecil() {
         val events = listOf(
             UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 8_000L),

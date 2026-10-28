@@ -6207,13 +6207,17 @@ class MonitoringService : Service() {
     }
 
     private fun usageSummary(hours: Int): com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary? {
-        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
-        val manager = usageStatsManager ?: return null
+        return usageSummaryScan(hours, 0L).first
+    }
+
+    private fun usageSummaryScan(hours: Int, dayStartMs: Long): Pair<com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary?, Long> {
+        if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null to 0L
+        val manager = usageStatsManager ?: return null to 0L
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 3_600_000L
         val events = ArrayList<com.redeye.parentalmonitor.utils.UsageEventsSummary.Event>()
         try {
-            val cursor = manager.queryEvents(start, end) ?: return null
+            val cursor = manager.queryEvents(start, end) ?: return null to 0L
             val event = android.app.usage.UsageEvents.Event()
             while (cursor.hasNextEvent()) {
                 cursor.getNextEvent(event)
@@ -6226,16 +6230,22 @@ class MonitoringService : Service() {
                 events.add(com.redeye.parentalmonitor.utils.UsageEventsSummary.Event(type, event.timeStamp, pkg))
             }
         } catch (_: Exception) {
-            return null
+            return null to 0L
         }
-        return com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
+        val summary = com.redeye.parentalmonitor.utils.UsageEventsSummary.build(events)
+        val firstToday = if (dayStartMs > 0L) com.redeye.parentalmonitor.utils.UsageEventsSummary.firstUnlockToday(events, dayStartMs) else 0L
+        return summary to firstToday
+    }
+
+    private fun startOfTodayMs(now: Long): Long {
+        val off = java.util.TimeZone.getDefault().getOffset(now)
+        return ((now + off) / 86_400_000L) * 86_400_000L - off
     }
 
     private fun firstUnlockTodayMs(now: Long): Long {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return 0L
         val manager = usageStatsManager ?: return 0L
-        val off = java.util.TimeZone.getDefault().getOffset(now)
-        val start = ((now + off) / 86_400_000L) * 86_400_000L - off
+        val start = startOfTodayMs(now)
         var first = 0L
         try {
             val cursor = manager.queryEvents(start, now) ?: return 0L
@@ -6255,7 +6265,11 @@ class MonitoringService : Service() {
     }
 
     private fun usageEventSummary(hours: Int): List<String> {
-        val summary = usageSummary(hours) ?: return emptyList()
+        return usageEventSummary(usageSummary(hours))
+    }
+
+    private fun usageEventSummary(summary: com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary?): List<String> {
+        if (summary == null) return emptyList()
         val out = mutableListOf<String>()
         if (summary.unlocks > 0) {
             out.add("HP dibuka: ${summary.unlocks}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(summary.firstUnlockAt)}")
@@ -6455,11 +6469,25 @@ class MonitoringService : Service() {
         val firstUnlockMs: Long
     )
 
-    private fun usageDayData(now: Long): UsageDayData {
+    private fun usageDayData(now: Long, firstUnlockOverride: Long? = null): UsageDayData {
         val rows = try { usageRows(24) } catch (_: Exception) { null }
         val a11yRows = a11yUsageRows()
-        val fu = try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
+        val fu = firstUnlockOverride ?: try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
         return UsageDayData(rows, a11yRows, fu)
+    }
+
+    private fun screenTimeSummaryFrom(data: UsageDayData): String? {
+        val rows = data.rows
+        if (rows == null || rows.isEmpty()) {
+            val a11y = data.a11yRows
+            if (a11y.isEmpty()) return null
+            val total = a11y.sumOf { it.millis }
+            val top = a11y.first()
+            return "Layar hari ini: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.label) + " " + ReportFormat.durationText(top.millis)
+        }
+        val total = rows.sumOf { it.second }
+        val top = rows.first()
+        return "Layar 24 jam: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.first) + " " + ReportFormat.durationText(top.second)
     }
 
     private fun digestHighlights(now: Long, data: UsageDayData): List<String> {
@@ -6580,7 +6608,9 @@ class MonitoringService : Service() {
         if (awaitingOwnerLogin()) return false
         try {
             val now = System.currentTimeMillis()
-            val dayData = usageDayData(now)
+            val eventScan = try { usageSummaryScan(24, startOfTodayMs(now)) } catch (_: Exception) { null to 0L }
+            val eventSummary = eventScan.first
+            val dayData = usageDayData(now, eventSummary?.let { eventScan.second })
             val since = now - 24 * 60 * 60_000L
             val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
             val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
@@ -6621,8 +6651,8 @@ class MonitoringService : Service() {
                 appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
-                try { screenTimeSummary(24)?.let { appendLine(it) } } catch (_: Exception) { }
-                try { usageEventSummary(24).forEach { appendLine(it) } } catch (_: Exception) { }
+                try { screenTimeSummaryFrom(dayData)?.let { appendLine(it) } } catch (_: Exception) { }
+                try { usageEventSummary(eventSummary).forEach { appendLine(it) } } catch (_: Exception) { }
                 try { trailDigestLines().forEach { appendLine(it) } } catch (_: Exception) { }
                 A11yMonitor.currentAppLabel().takeIf { it.isNotEmpty() }?.let { appendLine("Sekarang: " + Html.escape(it)) }
                 appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")

@@ -38,4 +38,14 @@ object UsageEventsSummary {
             .map { it.key to it.value }
         return Summary(unlocks, first, top)
     }
+
+    fun firstUnlockToday(events: List<Event>, dayStartMs: Long): Long {
+        if (dayStartMs <= 0L) return 0L
+        var first = 0L
+        for (e in events) {
+            if (e.type != TYPE_KEYGUARD_HIDDEN) continue
+            if (e.at >= dayStartMs && (first == 0L || e.at < first)) first = e.at
+        }
+        return first
+    }
 }
