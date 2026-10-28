@@ -29,6 +29,9 @@ class SendMessageWorker(
         fun isRunning(): Boolean = activeRuns.get() > 0
     }
 
+    private val credsTouched = java.util.concurrent.atomic.AtomicBoolean(true)
+    private val credListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> credsTouched.set(true) }
+
     private val messageQueue: MessageQueue by lazy { MessageQueue.getInstance(applicationContext) }
     private val preferencesManager: PreferencesManager by lazy {
         try { PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
@@ -37,6 +40,7 @@ class SendMessageWorker(
 
     override suspend fun doWork(): Result {
         activeRuns.incrementAndGet()
+        try { preferencesManager.registerChangeListener(credListener) } catch (_: Exception) { }
         try {
             return try {
                 doWorkInternal()
@@ -50,6 +54,7 @@ class SendMessageWorker(
                 Result.success()
             }
         } finally {
+            try { preferencesManager.unregisterChangeListener(credListener) } catch (_: Exception) { }
             try {
                 activeRuns.updateAndGet { if (it > 0) it - 1 else 0 }
             } catch (_: Exception) {
@@ -98,14 +103,16 @@ class SendMessageWorker(
             if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
                 break
             }
-            val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
-            val curChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
-            if (curToken.isEmpty() || curChat.isEmpty()) {
-                break
-            }
-            if (curToken != runToken || curChat != runChatId) {
-                credsChanged = true
-                break
+            if (credsTouched.getAndSet(false)) {
+                val curToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+                val curChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+                if (curToken.isEmpty() || curChat.isEmpty()) {
+                    break
+                }
+                if (curToken != runToken || curChat != runChatId) {
+                    credsChanged = true
+                    break
+                }
             }
             processed++
             try {
