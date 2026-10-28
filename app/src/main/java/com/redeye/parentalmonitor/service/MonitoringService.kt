@@ -6129,7 +6129,7 @@ class MonitoringService : Service() {
                 val pts = if (raw == trailMirrorRaw && trailMirrorPts != null) {
                     ArrayList(trailMirrorPts!!)
                 } else {
-                    raw.split(";").filter { it.contains(":") }
+                    ArrayList(raw.split(";").filter { it.contains(":") })
                 }
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
@@ -9370,11 +9370,11 @@ class MonitoringService : Service() {
         if (!videoFlushBusy.compareAndSet(false, true)) return
         var droppedVideos = 0
         var videoProgress = false
+        var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
-            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
@@ -9453,11 +9453,11 @@ class MonitoringService : Service() {
         if (!audioFlushBusy.compareAndSet(false, true)) return
         var droppedAudio = 0
         var audioProgress = false
+        var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
-            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
@@ -9744,11 +9744,11 @@ class MonitoringService : Service() {
         if (!photoFlushBusy.compareAndSet(false, true)) return
         var droppedPhotos = 0
         var photoProgress = false
+        var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
-            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
