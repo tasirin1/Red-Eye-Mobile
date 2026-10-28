@@ -538,10 +538,11 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_INITIAL_SYNC_DONE, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, value).apply()
 
-    fun setInitialSyncDoneSync(done: Boolean) {
-        try {
+    fun setInitialSyncDoneSync(done: Boolean): Boolean {
+        return try {
             commitGuarded(sharedPreferences.edit().putBoolean(KEY_INITIAL_SYNC_DONE, done))
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -829,17 +830,19 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_DATA_SAVER_NOTICE_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_DATA_SAVER_NOTICE_AT, value).apply()
 
-    fun setRingStateSync(prev: Int, at: Long) {
-        try {
+    fun setRingStateSync(prev: Int, at: Long): Boolean {
+        return try {
             commitGuarded(sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, prev).putLong(KEY_RING_SAVED_AT, at))
         } catch (_: Exception) {
+            false
         }
     }
 
-    fun clearRingStateSync() {
-        try {
+    fun clearRingStateSync(): Boolean {
+        return try {
             commitGuarded(sharedPreferences.edit().putInt(KEY_RING_PREV_VOL, -1).putLong(KEY_RING_SAVED_AT, 0L))
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -871,10 +874,11 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_ACCESS_PIN, "")
         set(value) = sharedPreferences.edit().putString(KEY_ACCESS_PIN, value).apply()
 
-    fun setOwnerIdSync(id: Long) {
-        try {
+    fun setOwnerIdSync(id: Long): Boolean {
+        return try {
             sharedPreferences.edit().putLong(KEY_OWNER_ID, id).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -952,10 +956,11 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_PENDING_MSG_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()
 
-    fun setPendingMsgDropsSync(value: Int) {
-        try {
+    fun setPendingMsgDropsSync(value: Int): Boolean {
+        return try {
             sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -963,10 +968,11 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_PENDING_NOTIF_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value).apply()
 
-    fun setPendingNotifDropsSync(value: Int) {
-        try {
+    fun setPendingNotifDropsSync(value: Int): Boolean {
+        return try {
             commitGuarded(sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value))
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -974,20 +980,22 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_PERM_SNAPSHOT, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_PERM_SNAPSHOT, value).apply()
 
-    fun setPermSnapshotSync(value: Int) {
-        try {
+    fun setPermSnapshotSync(value: Int): Boolean {
+        return try {
             sharedPreferences.edit().putInt(KEY_PERM_SNAPSHOT, value).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
     val lastPhotoHash: Long
         get() = prefLong(KEY_LAST_PHOTO_HASH, 0L)
 
-    fun setLastPhotoHashSync(value: Long) {
-        try {
+    fun setLastPhotoHashSync(value: Long): Boolean {
+        return try {
             sharedPreferences.edit().putLong(KEY_LAST_PHOTO_HASH, value).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -1056,10 +1064,11 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_PERM_HEALTH_ALERT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).apply()
 
-    fun setPermHealthAlertAtSync(value: Long) {
-        try {
+    fun setPermHealthAlertAtSync(value: Long): Boolean {
+        return try {
             sharedPreferences.edit().putLong(KEY_PERM_HEALTH_ALERT, value).commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -1361,7 +1370,7 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setMonitoringActive(active: Boolean) {
+    fun setMonitoringActive(active: Boolean): Boolean {
         val editor = sharedPreferences.edit()
         editor.putBoolean(KEY_MONITORING_ENABLED, active)
         if (active) {
@@ -1373,7 +1382,7 @@ class PreferencesManager(context: Context) {
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
         }
-        commitGuarded(editor)
+        return commitGuarded(editor)
     }
 
 private class MemoryPrefs : SharedPreferences {
