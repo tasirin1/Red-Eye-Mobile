@@ -25,18 +25,7 @@ object TamperGuard {
         "permissioncontroller"
     )
 
-    private val CLASS_HINTS = listOf(
-        "accessibility",
-        "deviceadmin",
-        "appdetails",
-        "installedappdetails",
-        "developmentsettings",
-        "externalsources",
-        "installunknown",
-        "unknownsources"
-    )
-
-    fun mayBeSensitive(packageName: String, className: String): Boolean {
+    fun mayBeSensitive(packageName: String): Boolean {
         val pkg = packageName.lowercase(Locale.ROOT)
         return isSettingsLike(pkg) || isInstallerLike(pkg)
     }

@@ -109,9 +109,8 @@ class TamperGuardTest {
 
     @Test
     fun deteksiAwalLayarSensitif() {
-        assertTrue(TamperGuard.mayBeSensitive("com.android.settings", "com.android.settings.Settings"))
-        assertTrue(TamperGuard.mayBeSensitive("com.android.packageinstaller", "com.android.packageinstaller.UninstallerActivity"))
-        assertFalse(TamperGuard.mayBeSensitive("com.whatsapp", "com.whatsapp.Main"))
-        assertFalse(TamperGuard.mayBeSensitive("com.whatsapp", "com.whatsapp.accessibility.AccessibilityActivity"))
+        assertTrue(TamperGuard.mayBeSensitive("com.android.settings"))
+        assertTrue(TamperGuard.mayBeSensitive("com.android.packageinstaller"))
+        assertFalse(TamperGuard.mayBeSensitive("com.whatsapp"))
     }
 }

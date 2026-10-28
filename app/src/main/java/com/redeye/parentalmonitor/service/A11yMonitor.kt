@@ -122,7 +122,7 @@ object A11yMonitor {
                 val key = pkg + "|" + cls
                 if (key == lastEventKey) return
                 lastEventKey = key
-                val sensitive = TamperGuard.mayBeSensitive(pkg, cls)
+                val sensitive = TamperGuard.mayBeSensitive(pkg)
                 val app = service.applicationContext
                 executor.execute {
                     val texts = if (sensitive) collectSnapshot(service).texts else emptyList()
