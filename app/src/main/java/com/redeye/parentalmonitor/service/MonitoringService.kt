@@ -9530,13 +9530,21 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun canonicalPhoneDigits(raw: String): String {
+        var d = raw.filter { it.isDigit() }
+        if (d.startsWith("62") && d.length >= 10) d = "0" + d.substring(2)
+        else if (d.startsWith("8") && d.length >= 9) d = "0" + d
+        return d
+    }
+
     private fun contactNumberMatches(haveRaw: String, wantDigits: String): Boolean {
         return try {
-            val have = haveRaw.filter { it.isDigit() }
-            if (have.isEmpty() || wantDigits.isEmpty()) return false
-            if (have == wantDigits) return true
-            if (wantDigits.length < 7 || have.length < 7) return false
-            have.endsWith(wantDigits.takeLast(7)) || wantDigits.endsWith(have.takeLast(7))
+            val have = canonicalPhoneDigits(haveRaw)
+            val want = canonicalPhoneDigits(wantDigits)
+            if (have.isEmpty() || want.isEmpty()) return false
+            if (have == want) return true
+            if (want.length < 9 || have.length < 9) return false
+            have.endsWith(want.takeLast(9)) || want.endsWith(have.takeLast(9))
         } catch (_: Exception) {
             false
         }
