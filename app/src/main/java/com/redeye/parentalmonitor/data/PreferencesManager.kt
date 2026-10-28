@@ -59,49 +59,59 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    private fun syncPrefsInto(from: SharedPreferences?, to: SharedPreferences, state: Map<String, Any?>): Boolean {
+        if (from == null) return false
+        return try {
+            val target = HashMap(to.all)
+            val editor = to.edit()
+            var changed = false
+            for ((key, value) in state) {
+                if (!target.containsKey(key) || target[key] != value) {
+                    putEntryInto(editor, key, value)
+                    changed = true
+                }
+            }
+            for (key in target.keys) {
+                if (!state.containsKey(key)) {
+                    editor.remove(key)
+                    changed = true
+                }
+            }
+            !changed || editor.commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun attemptUpgradeToPersistent(): Boolean {
         return try {
             val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
             val mem = sharedPreferences
-            var snap: Map<String, Any?> = emptyMap()
-            var stable = false
-            var attempts = 0
-            var adopt = false
-            while (!stable && attempts < 5) {
-                attempts++
-                snap = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                val target = try { HashMap(fresh.all) } catch (_: Exception) { HashMap<String, Any?>() }
-                if (snap.isEmpty() && target.isNotEmpty()) {
-                    adopt = true
-                    stable = true
-                } else {
-                    val editor = fresh.edit()
-                    var changed = false
-                    for ((key, value) in snap) {
-                        if (!target.containsKey(key) || target[key] != value) {
-                            putEntryInto(editor, key, value)
-                            changed = true
-                        }
-                    }
-                    if (changed && !editor.commit()) return false
-                    val after = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { HashMap<String, Any?>() }
-                    stable = after == snap
+            val firstSnap: Map<String, Any?> = try { HashMap(snapshot()) } catch (_: Exception) { emptyMap<String, Any?>() }
+            val firstTarget: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { HashMap<String, Any?>() }
+            val adopt = firstSnap.isEmpty() && firstTarget.isNotEmpty()
+            if (!adopt) {
+                var stable = false
+                var attempts = 0
+                while (!stable && attempts < 5) {
+                    attempts++
+                    val cur: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    if (!syncPrefsInto(mem, fresh, cur)) return false
+                    val after: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    stable = after == cur && freshNow == cur
                 }
+                if (!stable) return false
             }
             sharedPreferences = fresh
             if (!adopt) {
-                try {
-                    val after = HashMap(mem?.all ?: emptyMap<String, Any?>())
-                    if (after != snap) {
-                        val editor2 = fresh.edit()
-                        for ((key, value) in after) {
-                            if (!snap.containsKey(key) || snap[key] != value) {
-                                putEntryInto(editor2, key, value)
-                            }
-                        }
-                        if (!editor2.commit()) return false
-                    }
-                } catch (_: Exception) {
+                var guard = 0
+                while (guard < 5) {
+                    guard++
+                    val cur: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    if (cur == freshNow) break
+                    if (!syncPrefsInto(mem, fresh, cur)) break
                 }
             }
             synchronized(listenerLock) {
