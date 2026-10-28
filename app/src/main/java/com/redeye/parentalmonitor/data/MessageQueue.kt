@@ -189,11 +189,13 @@ class MessageQueue private constructor(context: Context) {
                 return volatileQueue.any { it === item }
             }
             val queue = readLocked().toMutableList()
-            queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt()))
+            val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
+            queue.add(item)
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            return persistLocked(queue, force = true, syncOnMain = true)
+            val persisted = persistLocked(queue, force = true, syncOnMain = true)
+            return persisted && queue.any { it === item }
         }
     }
 
@@ -215,14 +217,16 @@ class MessageQueue private constructor(context: Context) {
                 return added.any { item -> volatileQueue.any { it === item } }
             }
             val queue = readLocked().toMutableList()
-            for (message in messages) queue.add(QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()))
+            val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
+            queue.addAll(addedBatch)
             var evictedBatch = 0
             while (queue.size > cap) {
                 evictOldestLocked(queue, persist = false)
                 evictedBatch++
             }
             if (evictedBatch > 0) persistDropCountsLocked()
-            return persistLocked(queue, force = true, syncOnMain = true)
+            val persistedBatch = persistLocked(queue, force = true, syncOnMain = true)
+            return persistedBatch && addedBatch.any { item -> queue.any { it === item } }
         }
     }
 
