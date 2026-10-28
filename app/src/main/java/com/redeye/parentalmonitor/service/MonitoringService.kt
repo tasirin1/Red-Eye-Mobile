@@ -5309,7 +5309,7 @@ class MonitoringService : Service() {
                     val smsNotice = if (smsPreview.isEmpty()) "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian). Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel." else "\u26A0\uFE0F SMS terkirim sebagian (${okCount.get()}/$expected bagian) ke $number. Yang tertunda disimpan; cek ke penerima dulu sebelum coba lagi karena bisa terkirim dobel. Pratinjau teks: $smsPreview"
                     sendToTelegram(smsNotice)
                 } else {
-                    sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim. Yang tertunda disimpan, coba /smsconfirm lagi.")
+                    sendToTelegram("⚠️ SMS belum terkonfirmasi terkirim (timeout total). Yang tertunda disimpan; SMS-nya bisa jadi sebenarnya sudah sampai — cek ke penerima dulu sebelum /smsconfirm lagi karena bisa terkirim dobel.")
                 }
             } finally {
                 try {
