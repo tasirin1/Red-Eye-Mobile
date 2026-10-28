@@ -1960,10 +1960,10 @@ class MonitoringService : Service() {
             answerCallback(query.id)
             return
         }
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         val dupCallback = markSeen(handledCallbackIds, query.id)
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         val aksi = com.redeye.parentalmonitor.utils.MenuCallback.parse(query.data.orEmpty()) ?: return
         if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.Navigate) {
             if (!ownerOk) return
