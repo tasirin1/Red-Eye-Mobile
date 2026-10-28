@@ -130,7 +130,12 @@ object ShotA11yCapture {
         return try {
             val buffer = result.hardwareBuffer
             try {
-                Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)?.copy(Bitmap.Config.ARGB_8888, false)
+                val wrapped = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
+                try {
+                    wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                } finally {
+                    try { wrapped?.recycle() } catch (_: Exception) { }
+                }
             } finally {
                 try { buffer.close() } catch (_: Exception) { }
             }
