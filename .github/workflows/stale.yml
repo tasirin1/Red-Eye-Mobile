@@ -1,5 +1,9 @@
 name: Stale
 
+# Issue TIDAK pernah di-stale-kan di repo ini: daftar issue terbuka adalah
+# antrean kerja temuan audit (aturan issue-first) — menutupnya otomatis
+# menghilangkan temuan. Hanya PR yang di-stale-kan.
+
 on:
   schedule:
     - cron: "0 4 * * 1"
@@ -16,9 +20,9 @@ jobs:
     steps:
       - uses: actions/stale@v11
         with:
-          days-before-issue-stale: 45
+          days-before-issue-stale: -1
           days-before-pr-stale: 21
-          days-before-issue-close: 14
+          days-before-issue-close: -1
           days-before-pr-close: 14
           stale-issue-message: "Issue ini tidak ada aktivitas 45 hari dan ditandai stale. Balas di sini kalau masih relevan — bila 14 hari tidak ada respons, issue akan ditutup otomatis."
           stale-pr-message: "PR ini tidak ada aktivitas 21 hari dan ditandai stale. Push commit baru atau balas di sini kalau masih dikerjakan — bila 14 hari tidak ada respons, PR akan ditutup otomatis."
