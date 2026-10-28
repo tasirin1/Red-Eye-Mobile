@@ -3339,12 +3339,14 @@ class MonitoringService : Service() {
             )
             val order = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC, " +
                 android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " ASC"
-            contentResolver.query(uri, projection, null, null, order)?.use { c ->
+            val pagedOrder = order + " LIMIT " + pageSize + " OFFSET " + offset
+            contentResolver.query(uri, projection, null, null, pagedOrder)?.use { c ->
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 if (nameIdx < 0 || numIdx < 0) return@use
+                val honorLimit = c.count <= pageSize
                 while (c.moveToNext() && out.size < pageSize) {
-                    if (skipped < offset) {
+                    if (!honorLimit && skipped < offset) {
                         skipped++
                         continue
                     }
