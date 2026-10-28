@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.513] - 2026-10-28
+
 ### Fixed
 - Pemulihan jalur bisu tidak lagi berhenti permanen sesudah tahap 3 (issue #170, dugaan): `checkSilentLink` sebelumnya menyerah selamanya begitu `silentHealStage` mencapai maksimum (reset hanya oleh kirim sukses atau /sembuh manual), jadi akar bisu di luar tiga tahap membuat antrean tak pernah pulih sendiri. Kini bila tahap maksimum sudah tercapai tetapi upaya terakhir berusia ≥24 jam dan jalur masih bisu dengan antrean menunggu, tangga pemulihan direset ke tahap 1 dan dicoba lagi.
 - Duplikasi peta frekuensi pengirim disatukan (issue #169 bagian a): `batchFreqMap` dan `freqForNumbers` sebelumnya dua implementasi hampir identik; kini hanya ada `freqForNumbers(numbers?)` — argumen null menghitung semua pengirim (perilaku lama `batchFreqMap`, dipakai 3 situs), daftar nomor menghitung yang cocok saja. Bagian (b) issue ini — blok `when` hasil kirim media di 4 tempat — DITAHAN dengan alasan: isi cabangnya sudah sengaja berbeda per jenis (foto memperbarui hash + catatan lensa, screenshot memakai prune, audio/video flush + pesan berbeda), sehingga ekstraksi ke helper berlamba tidak mengurangi kode dan hanya memindahkan isi dengan risiko regresi di alur paling sensitif; kerangka `when`-nya sendiri hanya 3 baris per situs.
