@@ -64,12 +64,21 @@ class BootRestartWorker(
     }
 
     override suspend fun doWork(): Result {
-        return try {
-            doWorkInternal()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (_: Throwable) {
-            if (runAttemptCount < 5) Result.retry() else Result.success()
+        if (activeRuns.getAndIncrement() > 0) {
+            activeRuns.decrementAndGet()
+            return Result.success()
+        }
+        try {
+            return try {
+                doWorkInternal()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                android.util.Log.e("BootRestartWorker", "doWork failed", t)
+                if (runAttemptCount < 5) Result.retry() else Result.success()
+            }
+        } finally {
+            activeRuns.decrementAndGet()
         }
     }
 
@@ -202,6 +211,7 @@ class BootRestartWorker(
     }
 
     companion object {
+        private val activeRuns = java.util.concurrent.atomic.AtomicInteger(0)
         private const val NOTIF_ID = 2
         private const val RESUME_NOTIF_ID = 3
         private const val STORAGE_NOTIF_ID = 4
