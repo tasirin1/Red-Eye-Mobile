@@ -3446,7 +3446,7 @@ class MonitoringService : Service() {
                 sendToTelegram(message)
             } else {
                 val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-                val freqH = try { batchFreqMap() } catch (_: Exception) { null }
+                val freqH = try { freqForNumbers(null) } catch (_: Exception) { null }
                 if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
                 if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
                 if (callsResult.truncated || smsResult.truncated) {
@@ -4455,7 +4455,7 @@ class MonitoringService : Service() {
             sendToTelegram("💬 Tak ada SMS.")
         } else {
             val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-            val freqSms = try { batchFreqMap() } catch (_: Exception) { null }
+            val freqSms = try { freqForNumbers(null) } catch (_: Exception) { null }
             sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
         }
     }
@@ -5131,7 +5131,7 @@ class MonitoringService : Service() {
                 var smsCursor = lastSms
                 var smsDate = lastSmsTs
                 var smsSentAny = false
-                val freqMap = try { batchFreqMap() } catch (_: Exception) { null }
+                val freqMap = try { freqForNumbers(null) } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var smsHabis = true
                 for (part in smsPage.chunked(10)) {
@@ -6675,50 +6675,30 @@ class MonitoringService : Service() {
         return result
     }
 
-    private fun batchFreqMap(): Map<String, Int> {
+    private fun freqForNumbers(numbers: Collection<String>?): Map<String, Int> {
         val m = HashMap<String, Int>()
         try {
+            val keys: HashSet<String>? = numbers?.let { nums ->
+                val set = HashSet<String>()
+                for (n in nums) {
+                    val d = n.filter { it.isDigit() }.takeLast(10)
+                    if (d.length >= 7) set.add(d)
+                }
+                set
+            }
+            if (keys != null && keys.isEmpty()) return m
             val since = System.currentTimeMillis() - 24 * 60 * 60_000L
             try {
                 for (s in smsRepository.getRecentSmsSince(since, 200)) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
-                    if (d.length >= 7) m[d] = (m[d] ?: 0) + 1
+                    if (keys == null || d in keys) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
             try {
                 for (c in callLogRepository.getCallsSince(since, 200)) {
                     val d = c.number.filter { it.isDigit() }.takeLast(10)
-                    if (d.length >= 7) m[d] = (m[d] ?: 0) + 1
-                }
-            } catch (_: Exception) {
-            }
-        } catch (_: Exception) {
-        }
-        return m
-    }
-
-    private fun freqForNumbers(numbers: Collection<String>): Map<String, Int> {
-        val m = HashMap<String, Int>()
-        try {
-            val keys = HashSet<String>()
-            for (n in numbers) {
-                val d = n.filter { it.isDigit() }.takeLast(10)
-                if (d.length >= 7) keys.add(d)
-            }
-            if (keys.isEmpty()) return m
-            val since = System.currentTimeMillis() - 24 * 60 * 60_000L
-            try {
-                for (s in smsRepository.getRecentSmsSince(since, 200)) {
-                    val d = s.address.filter { it.isDigit() }.takeLast(10)
-                    if (d in keys) m[d] = (m[d] ?: 0) + 1
-                }
-            } catch (_: Exception) {
-            }
-            try {
-                for (c in callLogRepository.getCallsSince(since, 200)) {
-                    val d = c.number.filter { it.isDigit() }.takeLast(10)
-                    if (d in keys) m[d] = (m[d] ?: 0) + 1
+                    if (keys == null || d in keys) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
