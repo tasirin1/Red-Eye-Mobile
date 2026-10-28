@@ -1630,6 +1630,7 @@ class MonitoringService : Service() {
             }
         }
         if (response.code() == 401 || response.code() == 403) {
+            try { response.errorBody()?.close() } catch (_: Exception) { }
             val marked = preferencesManager.setCredentialErrorIfCredentialsMatch(
                 responseToken,
                 responseChat,
@@ -1644,6 +1645,7 @@ class MonitoringService : Service() {
             return false
         }
         if (response.code() == 409) {
+            try { response.errorBody()?.close() } catch (_: Exception) { }
             val now409 = android.os.SystemClock.elapsedRealtime()
             val selfConflict = now409 - lastLoopRestartAt < 60_000L
             android.util.Log.w("MonitoringService", "getUpdates conflict: another consumer is polling, backing off")
@@ -1696,6 +1698,7 @@ class MonitoringService : Service() {
             return false
         }
         if (response.code() == 408 || response.code() >= 500) {
+            try { response.errorBody()?.close() } catch (_: Exception) { }
             commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
             return false
         }
