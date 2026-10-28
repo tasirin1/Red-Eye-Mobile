@@ -132,6 +132,7 @@ class MainActivity : AppCompatActivity() {
         // Function buttons
         findViewById<android.widget.Button>(R.id.btnEquals)?.setOnClickListener { calculate() }
         findViewById<android.widget.Button>(R.id.btnClear)?.setOnClickListener { clear() }
+        findViewById<android.widget.Button>(R.id.btnBackspace)?.setOnClickListener { backspace() }
         findViewById<android.widget.Button>(R.id.btnToggleSign)?.setOnClickListener { toggleSign() }
         findViewById<android.widget.Button>(R.id.btnPercent)?.setOnClickListener { percent() }
 
@@ -260,6 +261,25 @@ class MainActivity : AppCompatActivity() {
             return String.format(java.util.Locale.US, "%.5E", result)
         }
         return plain
+    }
+
+    private fun backspace() {
+        if (currentNumber == "Error") {
+            clear()
+            return
+        }
+        if (justCalculated) return
+        if (entryReplaced) {
+            currentNumber = ""
+            entryReplaced = false
+            updateCalculatorDisplay()
+            return
+        }
+        currentNumber = when {
+            currentNumber.length <= 1 -> ""
+            else -> currentNumber.dropLast(1).removeSuffix("-")
+        }
+        updateCalculatorDisplay()
     }
 
     private fun clear() {
