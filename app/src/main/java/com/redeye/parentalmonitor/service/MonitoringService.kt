@@ -1743,8 +1743,10 @@ class MonitoringService : Service() {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Login dispatch error") {
-                            commandLock.withLock {
-                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                            controlLock.withLock {
+                                commandLock.withLock {
+                                    handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                                }
                             }
                         }
                         continue
@@ -1843,17 +1845,19 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             lock.withLock {
-                                val restoreHandled = privateOwner && message != null && handleRestoreIncoming(message, msgChatId)
+                                val ownerNow = isOwner(senderId)
+                                val privateNow = ownerNow && isPrivate
+                                val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
                                 if (!restoreHandled) {
-                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerOk, chatOk, senderId, isPrivate, msgChatId)
+                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId)
                                     if (!balasAngka && command.startsWith("/")) {
                                         val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                        handleTelegramCommand(input, messageDate, ownerOk, chatOk, senderId = senderId, privateChat = isPrivate)
+                                        handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate)
                                     } else if (!balasAngka) {
-                                        if (aliasInput != null && privateOwner) {
-                                            handleTelegramCommand(aliasInput, messageDate, ownerOk, chatOk, senderId, true)
-                                        } else if (intentInput != null && privateOwner) {
-                                            handleTelegramCommand(intentInput, messageDate, ownerOk, chatOk, senderId, true)
+                                        if (aliasInput != null && privateNow) {
+                                            handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true)
+                                        } else if (intentInput != null && privateNow) {
+                                            handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true)
                                         }
                                     }
                                 }
