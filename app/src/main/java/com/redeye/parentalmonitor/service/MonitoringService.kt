@@ -1838,7 +1838,7 @@ class MonitoringService : Service() {
                         val effective = (aliasInput ?: intentInput)?.substringBefore(" ") ?: command
                         val control = effective in CONTROL_COMMANDS
                         val isPrivate = msgChatId.isNotEmpty() && msgChatId == senderId
-                        val messageDate = if (message == null) 0L else if (message.editDate > message.date) message.editDate else message.date
+                        val messageDate = message?.date ?: 0L
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
