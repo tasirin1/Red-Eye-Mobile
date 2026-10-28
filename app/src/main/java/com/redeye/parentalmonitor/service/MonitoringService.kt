@@ -6636,7 +6636,7 @@ class MonitoringService : Service() {
     private var knownContactCacheAt = 0L
 
     private fun isKnownContact(number: String): Boolean {
-        val digits = number.filter { it.isDigit() }
+        val digits = canonicalPhoneDigits(number)
         if (digits.isEmpty()) return true
         val tail = digits.takeLast(7)
         if (tail.length < 7) return true
