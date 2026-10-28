@@ -456,6 +456,7 @@ object A11yMonitor {
                     if (!desc.isNullOrEmpty() && desc != text && desc.length <= 160) out.add(desc)
                     val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
                     for (i in 0 until count) {
+                        if (queue.size >= 160) break
                         try {
                             val child = node.getChild(i)
                             if (child != null) queue.add(child)
