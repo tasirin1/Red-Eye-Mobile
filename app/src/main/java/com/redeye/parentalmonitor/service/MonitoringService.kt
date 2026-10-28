@@ -124,6 +124,7 @@ class MonitoringService : Service() {
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
+    private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val activeMediaFiles = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<File, Boolean>()
@@ -5813,9 +5814,19 @@ class MonitoringService : Service() {
                 if (pkg == packageName) continue
                 val ms = stat.totalTimeInForeground
                 if (ms <= 0L) continue
-                val launchable = try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+                val cached = appLabelCache[pkg]
+                val launchable: Boolean
+                val label: String
+                if (cached != null) {
+                    launchable = cached.first
+                    label = cached.second
+                } else {
+                    launchable = try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+                    label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { pkg }
+                    if (appLabelCache.size > 300) appLabelCache.clear()
+                    appLabelCache[pkg] = launchable to label
+                }
                 if (!launchable) continue
-                val label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { pkg }
                 rows.add(label to ms)
             }
             rows.sortByDescending { it.second }
@@ -6187,7 +6198,8 @@ class MonitoringService : Service() {
                 val pkg = try { event.packageName } catch (_: Exception) { null }
                 if (pkg == packageName) continue
                 val at = event.timeStamp
-                if (at > 0L && (first == 0L || at < first)) first = at
+                if (at > 0L) return at
+                if (first == 0L || at < first) first = at
             }
         } catch (_: Exception) {
             return 0L
