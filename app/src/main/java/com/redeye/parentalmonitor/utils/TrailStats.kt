@@ -58,7 +58,7 @@ object TrailStats {
                 total += gap
             } else if (beforeInside != afterInside) {
                 val fraction = ((radiusM - before) / (after - before)).coerceIn(0.0, 1.0)
-                total += (gap * fraction).toLong()
+                total += (gap * (if (beforeInside) fraction else 1.0 - fraction)).toLong()
             }
         }
         return total

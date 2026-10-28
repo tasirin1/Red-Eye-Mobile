@@ -70,6 +70,16 @@ class TrailStatsTest {
     }
 
     @Test
+    fun segmenMasukRadiusDihitungDariTitikLintasan() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.2035972864, 106.800000),
+            TrailStats.Point(base + 10 * 60_000L, -6.2008993216, 106.800000)
+        )
+        val inside = TrailStats.millisInside(pts, -6.200000, 106.800000, 200f)
+        assertEquals(200_000L, inside, 3_000L)
+    }
+
+    @Test
     fun batasCelahMenentukanHitunganDiDalam() {
         val pts = listOf(
             TrailStats.Point(base, -6.200000, 106.800000),
