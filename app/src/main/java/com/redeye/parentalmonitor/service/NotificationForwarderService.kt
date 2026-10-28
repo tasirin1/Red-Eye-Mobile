@@ -1098,8 +1098,6 @@ class NotificationForwarderService : NotificationListenerService() {
                     return
                 }
             }
-            queue().addMessage(message)
-            MessageScheduler.scheduleMessageSend(this)
         } catch (e: kotlinx.coroutines.CancellationException) {
             try {
                 queue().addMessage(message)
