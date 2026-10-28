@@ -158,14 +158,11 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    private fun commitGuarded(editor: android.content.SharedPreferences.Editor) {
-        try {
-            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-                editor.apply()
-            } else {
-                editor.commit()
-            }
+    private fun commitGuarded(editor: android.content.SharedPreferences.Editor): Boolean {
+        return try {
+            editor.commit()
         } catch (_: Exception) {
+            false
         }
     }
 
@@ -627,7 +624,12 @@ class PreferencesManager(context: Context) {
                 val cur = sharedPreferences.getString(KEY_RESTORE_SECRET, "") ?: ""
                 if (cur.length == 64 && cur.all { it in '0'..'9' || it in 'a'..'f' }) return cur
                 val fresh = com.redeye.parentalmonitor.utils.RestoreCode.generateSecret()
-                sharedPreferences.edit().putString(KEY_RESTORE_SECRET, fresh).commit()
+                val saved = try {
+                    sharedPreferences.edit().putString(KEY_RESTORE_SECRET, fresh).commit()
+                } catch (_: Exception) {
+                    false
+                }
+                if (!saved) return ""
                 return fresh
             } catch (_: Exception) {
                 return ""
