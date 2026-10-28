@@ -2,6 +2,10 @@
 # Cek cepat pra-push tanpa toolchain Android (lihat AGENTS.md).
 # Gagal cepat sebelum push agar hemat menit CI.
 set -euo pipefail
+cd "$(cd "$(dirname "$0")/.." && pwd)" || { echo "GAGAL: tak bisa pindah ke root repo"; exit 1; }
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "GAGAL: cek-cepat harus berjalan di dalam repo git (root tidak valid)"; exit 1
+fi
 gagal=0
 # Kemampuan rg diuji eksekusi nyata (command -v menipu: shim mati tetap "ada").
 if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
