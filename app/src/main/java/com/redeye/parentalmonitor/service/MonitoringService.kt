@@ -1961,7 +1961,26 @@ class MonitoringService : Service() {
             answerCallback(query.id)
             return
         }
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) {
+            try { answerCallback(query.id) } catch (_: Exception) { }
+            val noticeKey = "authblock:$sender"
+            val noticeNow = android.os.SystemClock.elapsedRealtime()
+            val noticeLast = try { pairHintAt[noticeKey] ?: 0L } catch (_: Exception) { 0L }
+            if (noticeLast == 0L || noticeNow - noticeLast >= 3_600_000L) {
+                try {
+                    if (pairHintAt.size > 200) pairHintAt.clear()
+                    pairHintAt[noticeKey] = noticeNow
+                } catch (_: Exception) {
+                }
+                try {
+                    if (messageQueue.addMessage("⚠️ Sebuah tombol menu ditekan saat kredensial bot sedang diblokir (token ditolak Telegram), jadi tombol itu tidak dijalankan. Tunggu sampai blokir berakhir (maks ±30 menit sejak token ditolak), lalu tekan lagi.")) {
+                        MessageScheduler.scheduleMessageSend(this)
+                    }
+                } catch (_: Exception) {
+                }
+            }
+            return
+        }
         val dupCallback = markSeen(handledCallbackIds, query.id)
         try { answerCallback(query.id) } catch (_: Exception) { }
         if (dupCallback) return

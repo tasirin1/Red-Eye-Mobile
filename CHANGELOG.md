@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Tombol yang ditekan saat kredensial terblokir auth kini meninggalkan kabar (issue #175, sisa #130): callback yang tiba selama blokir token (30 menit) sebelumnya `return` diam-diam — sesudah #130 ID-nya memang tidak lagi dikonsumsi sebagai sudah-ditangani, tetapi offset update tetap maju lewat `dispatchTracked`, jadi aksi tombol hilang permanen tanpa penjelasan dan tidak pernah dicoba lagi. Kini callback dijawab best-effort (menghentikan penanda loading di Telegram) dan satu pemberitahuan diantrekan lewat antrean persisten — terkirim sesudah blokir berakhir — yang menjelaskan tombol itu tidak dijalankan dan meminta owner menekannya lagi; pemberitahuan di-throttle 1 jam per pengirim lewat peta throttle yang sama dengan petunjuk pairing agar antrean tidak dibanjiri selama blokir.
+
 ## [1.6.514] - 2026-10-28
 
 ### Fixed
