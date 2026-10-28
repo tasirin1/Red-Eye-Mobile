@@ -9635,6 +9635,7 @@ class MonitoringService : Service() {
             appsCacheAt = android.os.SystemClock.elapsedRealtime()
             return fresh.take(limit)
         }
+        if (cached.isNotEmpty()) return cached.take(limit)
         return emptyList()
     }
 
