@@ -65,4 +65,3 @@ sha256Hex
 fgsTypesText
 filterCallsByNumber
 fgsType
-openAppInfo
