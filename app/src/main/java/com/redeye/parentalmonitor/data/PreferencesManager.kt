@@ -83,6 +83,32 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    private fun mergeLateWritesInto(to: SharedPreferences, memNow: Map<String, Any?>, baseMem: Map<String, Any?>, baseFresh: Map<String, Any?>): Boolean {
+        return try {
+            val target = HashMap(to.all)
+            val editor = to.edit()
+            var changed = false
+            for ((key, value) in memNow) {
+                if (baseMem.containsKey(key) && baseMem[key] == value) continue
+                if (target.containsKey(key) && target[key] != baseFresh[key]) continue
+                if (!target.containsKey(key) || target[key] != value) {
+                    putEntryInto(editor, key, value)
+                    changed = true
+                }
+            }
+            for (key in target.keys) {
+                if (memNow.containsKey(key)) continue
+                if (!baseMem.containsKey(key)) continue
+                if (target[key] != baseFresh[key]) continue
+                editor.remove(key)
+                changed = true
+            }
+            !changed || editor.commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun attemptUpgradeToPersistent(): Boolean {
         return try {
             val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
@@ -103,15 +129,17 @@ class PreferencesManager(context: Context) {
                 }
                 if (!stable) return false
             }
+            val baseMem: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
+            val baseFresh: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
             sharedPreferences = fresh
             if (!adopt) {
                 var guard = 0
                 while (guard < 5) {
                     guard++
-                    val cur: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    val memNow: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    if (cur == freshNow) break
-                    if (!syncPrefsInto(mem, fresh, cur)) break
+                    if (memNow == freshNow) break
+                    if (!mergeLateWritesInto(fresh, memNow, baseMem, baseFresh)) break
                 }
             }
             synchronized(listenerLock) {
