@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- Automasi GitHub ditiru dari tasirin-download-manager: workflow CodeQL (analisis keamanan statis java-kotlin, mingguan + push/PR), Gitleaks (deteksi secret ter-commit), Stale (penanda + penutup otomatis issue/PR tak aktif), Labeler (label otomatis per path, konfigurasi `.github/labeler.yml`, label `app`/`ci`/`docs` dibuat di repo), dan Auto-merge khusus PR Dependabot non-Gradle sesudah CI hijau (deteksi berkas gagal-tertutup; PR dependensi Gradle diarahkan ke merge manual). Workflow build tidak berubah.
+
 ## [1.6.510] - 2026-10-27
 
 ### Fixed
