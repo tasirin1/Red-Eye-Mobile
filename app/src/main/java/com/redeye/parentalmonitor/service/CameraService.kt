@@ -39,7 +39,9 @@ class CameraService(private val context: Context) {
     private val stillArmed = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSizeCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Int, Int>>()
     private val characteristicsCache = java.util.concurrent.ConcurrentHashMap<String, CameraCharacteristics>()
+    @Volatile
     private var watchdogHandler: Handler? = null
+    private val threadLock = Any()
 
     private fun characteristicsOf(cameraManager: CameraManager, cameraId: String): CameraCharacteristics? {
         characteristicsCache[cameraId]?.let { return it }
@@ -60,13 +62,16 @@ class CameraService(private val context: Context) {
     }
 
     private fun mainHandler(): Handler? {
-        if (watchdogHandler == null) {
-            try {
-                watchdogHandler = Handler(android.os.Looper.getMainLooper())
-            } catch (_: Exception) {
+        watchdogHandler?.let { return it }
+        synchronized(threadLock) {
+            if (watchdogHandler == null) {
+                try {
+                    watchdogHandler = Handler(android.os.Looper.getMainLooper())
+                } catch (_: Exception) {
+                }
             }
+            return watchdogHandler
         }
-        return watchdogHandler
     }
 
     private val captureLock = Any()
@@ -138,6 +143,12 @@ class CameraService(private val context: Context) {
     }
 
     fun startBackgroundThread() {
+        synchronized(threadLock) {
+            startBackgroundThreadLocked()
+        }
+    }
+
+    private fun startBackgroundThreadLocked() {
         val old = backgroundThread
         if (old?.isAlive == true && backgroundHandler != null) return
         try {
@@ -167,6 +178,12 @@ class CameraService(private val context: Context) {
     }
 
     fun stopBackgroundThread() {
+        synchronized(threadLock) {
+            stopBackgroundThreadLocked()
+        }
+    }
+
+    private fun stopBackgroundThreadLocked() {
         val thread = backgroundThread
         val handler = backgroundHandler
         try { handler?.removeCallbacksAndMessages(null) } catch (_: Exception) { }
