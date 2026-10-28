@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Edisi digest periodik & heartbeat tidak lagi hilang saat menunggu login owner (issue #151): keduanya mencap waktu kirim SEBELUM mengirim (perlu, agar kegagalan transien yang diantrekan tak memicu kirim ulang), tetapi `sendToTelegram` saat `awaitingOwnerLogin` mengembalikan false TANPA mengantrekan — edisi itu hilang selamanya. Kini kedua fungsi berhenti lebih dulu saat login tertunda dan mencobanya lagi siklus berikutnya; jalur 400 permanen tetap tertangani fallback antrean di `sendStatus400`.
 - Jalur error polling kini menutup `errorBody` secara konsisten (issue #131): cabang 401/403, 409, dan 408/5xx sebelumnya return tanpa menyentuh badan error (jalur 400/429 membacanya), yang pada klien HTTP bersama berisiko membuang koneksi pool dan memaksa TLS ulang. Ketiga cabang kini menutup `errorBody` lebih dulu.
 - Callback tombol tidak lagi ditandai `markSeen` sebelum cek blokir auth (issue #130): urutan lama menelan aksi tombol secara permanen saat auth sedang diblokir — callback terlanjur dicatat sudah ditangani, lalu fungsi return tanpa kabar. Kini cek `isAuthBlocked` berjalan lebih dulu, sehingga callback yang datang saat blokir tidak dikonsumsi sebagai sudah-ditangani.
 - Loop monitoring dan loop kamera kini menangkap `Throwable`, bukan hanya `Exception` (issue #129): `Error` (mis. OutOfMemory) sebelumnya lolos dari kedua loop sehingga loop mati diam-diam sampai watchdog 5 menit membangunkannya; loop patroli dan polling sudah memakai `Throwable`. CoroutineCancellation tetap diteruskan lebih dulu.

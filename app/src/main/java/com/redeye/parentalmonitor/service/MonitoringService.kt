@@ -6063,6 +6063,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun maybeSendDigest() {
+        if (awaitingOwnerLogin()) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
         when (DigestSchedule.periodicDecision(last, now)) {
@@ -7038,6 +7039,7 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < hours * 3_600_000L) return
+        if (awaitingOwnerLogin()) return
         try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
         sendToTelegram(aliveReportText())
     }
