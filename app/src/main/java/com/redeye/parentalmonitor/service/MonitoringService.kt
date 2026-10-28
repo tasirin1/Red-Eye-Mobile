@@ -480,20 +480,7 @@ class MonitoringService : Service() {
             val pending = preferencesManager.pendingMsgDrops
             if (pending > 0) {
                 msgDropCount.addAndGet(pending)
-                synchronized(msgDropLock) {
-                    if (msgDropJob?.isActive != true) {
-                        msgDropJob = serviceScope.launch {
-                            try {
-                                delay(30_000L)
-                            } catch (_: Exception) {
-                            }
-                            try {
-                                flushMsgDropNotice()
-                            } catch (_: Exception) {
-                            }
-                        }
-                    }
-                }
+                scheduleMsgDropFlush()
             }
         } catch (_: Exception) {
         }
@@ -5479,15 +5466,11 @@ class MonitoringService : Service() {
         return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
     }
 
-    private fun noteDroppedMessage() {
-        msgDropCount.incrementAndGet()
-        try {
-            preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
-        } catch (_: Exception) {
-        }
+    private fun scheduleMsgDropFlush() {
         synchronized(msgDropLock) {
             if (msgDropJob?.isActive == true) return
-            msgDropJob = serviceScope.launch {
+            lateinit var job: Job
+            job = serviceScope.launch {
                 try {
                     delay(30_000L)
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -5498,8 +5481,22 @@ class MonitoringService : Service() {
                     flushMsgDropNotice()
                 } catch (_: Exception) {
                 }
+                synchronized(msgDropLock) {
+                    if (msgDropJob === job) msgDropJob = null
+                }
+                if (msgDropCount.get() > 0) scheduleMsgDropFlush()
             }
+            msgDropJob = job
         }
+    }
+
+    private fun noteDroppedMessage() {
+        msgDropCount.incrementAndGet()
+        try {
+            preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
+        } catch (_: Exception) {
+        }
+        scheduleMsgDropFlush()
     }
 
     private fun flushMsgDropNotice() {
