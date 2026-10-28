@@ -374,6 +374,10 @@ object A11yMonitor {
         val pkgLabel = labelFor(context, pkg)
         val launcherPkg = defaultLauncherPackage(context)
         val launchable = isLaunchable(context, pkg)
+        var persistSnapshot: Pair<String, String>? = null
+        var alertText: String? = null
+        var tamperReason: String? = null
+        var done = false
         synchronized(gate) {
             ensureLoadedLocked(context)
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
@@ -381,53 +385,82 @@ object A11yMonitor {
                 val setupGrace = reason == "aksesibilitas" && nowWall < manager.a11ySettingsGraceUntil
                 if (reason != null) {
                     if (!setupGrace) {
-                        blockTamper(context, reason)
+                        tamperReason = reason
                         finishSessionLocked(nowWall, nowElapsed)
-                        persistLocked(context, true)
+                        persistSnapshot = persistSnapshotLocked(true)
                     }
-                    return
+                    done = true
                 }
             }
-            if (!monitoringActive(manager)) {
+            if (!done && !monitoringActive(manager)) {
                 finishSessionLocked(nowWall, nowElapsed)
-                persistLocked(context, true)
-                return
+                persistSnapshot = persistSnapshotLocked(true)
+                done = true
             }
-            if (pkg == context.packageName || pkg == launcherPkg || !launchable) {
+            if (!done && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
                 finishSessionLocked(nowWall, nowElapsed)
-                persistLocked(context, true)
-                return
+                persistSnapshot = persistSnapshotLocked(true)
+                done = true
             }
-            if (pkg == currentPackage) return
-            finishSessionLocked(nowWall, nowElapsed)
-            currentPackage = pkg
-            currentLabel = pkgLabel
-            currentStartWall = nowWall
-            currentStartElapsed = nowElapsed
-            val row = usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }
-            row.label = currentLabel
-            row.launches += 1
-            row.lastAt = nowWall
-            val seeded = manager.a11yKnownSeeded
-            val firstOpen = manager.rememberA11yApp(pkg)
-            if (seeded && firstOpen && manager.a11yAppAlert) {
-                sendAlert(context, "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>")
-            } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
-                lastNightAlertElapsed = nowElapsed
-                sendAlert(context, "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n" + TimeFmt.short(nowWall))
+            if (!done && pkg != currentPackage) {
+                finishSessionLocked(nowWall, nowElapsed)
+                currentPackage = pkg
+                currentLabel = pkgLabel
+                currentStartWall = nowWall
+                currentStartElapsed = nowElapsed
+                val row = usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }
+                row.label = currentLabel
+                row.launches += 1
+                row.lastAt = nowWall
+                val seeded = manager.a11yKnownSeeded
+                val firstOpen = manager.rememberA11yApp(pkg)
+                if (seeded && firstOpen && manager.a11yAppAlert) {
+                    alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
+                } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
+                    lastNightAlertElapsed = nowElapsed
+                    alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n" + TimeFmt.short(nowWall)
+                }
+                persistSnapshot = persistSnapshotLocked(false)
             }
-            persistLocked(context, false)
+        }
+        tamperReason?.let { blockTamper(context, it) }
+        alertText?.let { sendAlert(context, it) }
+        writePersistSnapshot(persistSnapshot)
+    }
+
+    private fun persistSnapshotLocked(force: Boolean): Pair<String, String>? {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - lastPersistElapsed < PERSIST_INTERVAL_MS) return null
+        val day = TimeFmt.dayKey(System.currentTimeMillis())
+        if (day != loadedDay) return null
+        val json = try { gson.toJson(usage) } catch (_: Exception) { "" }
+        lastPersistElapsed = now
+        return day to json
+    }
+
+    private fun writePersistSnapshot(snapshot: Pair<String, String>?) {
+        if (snapshot == null) return
+        val manager = prefs ?: return
+        try {
+            manager.setA11yUsage(snapshot.first, snapshot.second)
+        } catch (_: Exception) {
         }
     }
 
     private fun blockTamper(context: Context, reason: String) {
         val now = SystemClock.elapsedRealtime()
-        val last = lastTamperAlert[reason] ?: 0L
         mainHandler.post {
             try { a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) } catch (_: Exception) { }
         }
-        if (now - last < TAMPER_ALERT_GAP_MS) return
-        lastTamperAlert[reason] = now
+        val allowed = synchronized(lastTamperAlert) {
+            val last = lastTamperAlert[reason] ?: 0L
+            if (now - last < TAMPER_ALERT_GAP_MS) false
+            else {
+                lastTamperAlert[reason] = now
+                true
+            }
+        }
+        if (!allowed) return
         sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + "\nTindakan: layar ditutup")
     }
 
