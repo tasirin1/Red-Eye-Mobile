@@ -12,7 +12,7 @@ object GeofenceLogic {
     }
 
     fun statusText(latE6: Long, lonE6: Long, radiusM: Int): String {
-        if (latE6 == Long.MIN_VALUE || radiusM <= 0) return "mati"
+        if (latE6 == Long.MIN_VALUE || lonE6 == Long.MIN_VALUE || radiusM <= 0) return "mati"
         return "${latE6 / 1_000_000.0},${lonE6 / 1_000_000.0} ±${radiusM}m"
     }
 
