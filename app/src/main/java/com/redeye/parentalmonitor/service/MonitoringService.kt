@@ -125,6 +125,8 @@ class MonitoringService : Service() {
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
     private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
+    @Volatile
+    private var curfewFetchFailAt = 0L
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val activeMediaFiles = java.util.Collections.newSetFromMap(
         java.util.concurrent.ConcurrentHashMap<File, Boolean>()
@@ -6967,11 +6969,15 @@ class MonitoringService : Service() {
             var pos = lastSentLatLon()
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             if (pos == null || locAge > 30 * 60_000L) {
+                val nowEl = android.os.SystemClock.elapsedRealtime()
+                if (curfewFetchFailAt != 0L && nowEl - curfewFetchFailAt < 15 * 60_000L) return
                 val fix = try { fetchLocation() } catch (_: Exception) { null }
                 if (fix == null) {
+                    curfewFetchFailAt = android.os.SystemClock.elapsedRealtime()
                     bumpLocFailCount()
                     return
                 }
+                curfewFetchFailAt = 0L
                 resetLocFailCount()
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
