@@ -370,10 +370,14 @@ object A11yMonitor {
         val manager = prefs ?: return
         val nowWall = System.currentTimeMillis()
         val nowElapsed = SystemClock.elapsedRealtime()
+        val selfLabel = labelFor(context, context.packageName)
+        val pkgLabel = labelFor(context, pkg)
+        val launcherPkg = defaultLauncherPackage(context)
+        val launchable = isLaunchable(context, pkg)
         synchronized(gate) {
             ensureLoadedLocked(context)
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
-                val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, labelFor(context, context.packageName))
+                val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, selfLabel)
                 val setupGrace = reason == "aksesibilitas" && nowWall < manager.a11ySettingsGraceUntil
                 if (reason != null) {
                     if (!setupGrace) {
@@ -389,7 +393,7 @@ object A11yMonitor {
                 persistLocked(context, true)
                 return
             }
-            if (pkg == context.packageName || pkg == defaultLauncherPackage(context) || !isLaunchable(context, pkg)) {
+            if (pkg == context.packageName || pkg == launcherPkg || !launchable) {
                 finishSessionLocked(nowWall, nowElapsed)
                 persistLocked(context, true)
                 return
@@ -397,7 +401,7 @@ object A11yMonitor {
             if (pkg == currentPackage) return
             finishSessionLocked(nowWall, nowElapsed)
             currentPackage = pkg
-            currentLabel = labelFor(context, pkg)
+            currentLabel = pkgLabel
             currentStartWall = nowWall
             currentStartElapsed = nowElapsed
             val row = usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }
