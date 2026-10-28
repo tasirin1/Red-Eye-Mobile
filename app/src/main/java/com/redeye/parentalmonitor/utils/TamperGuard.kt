@@ -38,8 +38,7 @@ object TamperGuard {
 
     fun mayBeSensitive(packageName: String, className: String): Boolean {
         val pkg = packageName.lowercase(Locale.ROOT)
-        val cls = className.lowercase(Locale.ROOT)
-        return isSettingsLike(pkg) || isInstallerLike(pkg) || CLASS_HINTS.any { cls.contains(it) }
+        return isSettingsLike(pkg) || isInstallerLike(pkg)
     }
 
     fun reason(packageName: String, className: String, texts: List<String>, selfPackage: String, selfLabel: String): String? {
