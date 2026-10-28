@@ -264,7 +264,8 @@ class SendMessageWorker(
         runChatId: String
     ): Result? {
         var authDropped = 0
-        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
+        val sameCreds = credsSame(runToken, runChatId)
+        if ((authCode != 0 || rateLimitedSecs > 0) && !queueCleared && failedIds.isNotEmpty() && sameCreds) {
             try {
                 if (NetworkUtils.isNetworkAvailable(applicationContext)) {
                     authDropped = messageQueue.registerTransientFailures(failedIds).first.size
@@ -284,7 +285,7 @@ class SendMessageWorker(
                 return Result.success()
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
-            if (authDropped > 0 && !queueCleared && credsSame(runToken, runChatId)) {
+            if (authDropped > 0 && !queueCleared && sameCreds) {
                 try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
@@ -300,7 +301,7 @@ class SendMessageWorker(
                 MessageScheduler.scheduleMessageSendNext(applicationContext, rateLimitedSecs * 1000L)
             } catch (_: Exception) {
             }
-            if (authDropped > 0 && !queueCleared && credsSame(runToken, runChatId)) {
+            if (authDropped > 0 && !queueCleared && sameCreds) {
                 try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                     MessageScheduler.scheduleMessageSend(applicationContext)
@@ -324,7 +325,8 @@ class SendMessageWorker(
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
         var dropSample = ""
-        if (!queueCleared && credsSame(runToken, runChatId)) {
+        val sameCreds = credsSame(runToken, runChatId)
+        if (!queueCleared && sameCreds) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
@@ -340,7 +342,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!queueCleared && failedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
+        if (!queueCleared && failedIds.isNotEmpty() && sameCreds) {
             val online = try {
                 NetworkUtils.isNetworkAvailable(applicationContext)
             } catch (_: Exception) {
@@ -351,7 +353,7 @@ class SendMessageWorker(
                     val droppedT = messageQueue.registerTransientFailures(failedIds)
                     val dropped = droppedT.first
                     transientMaxRetry = maxOf(transientMaxRetry, droppedT.second)
-                    if (dropped.isNotEmpty() && credsSame(runToken, runChatId)) {
+                    if (dropped.isNotEmpty() && sameCreds) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
                         dropTotal += dropped.size
                         dropParts.add("${dropped.size} setelah percobaan maksimal")
@@ -361,7 +363,7 @@ class SendMessageWorker(
             }
         }
 
-        if (!queueCleared && rejectedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
+        if (!queueCleared && rejectedIds.isNotEmpty() && sameCreds) {
             try {
                 dropSample = try {
                     queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
@@ -373,7 +375,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!queueCleared && dropTotal > 0 && credsSame(runToken, runChatId)) {
+        if (!queueCleared && dropTotal > 0 && sameCreds) {
             try {
                 sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
             } catch (_: Exception) {
