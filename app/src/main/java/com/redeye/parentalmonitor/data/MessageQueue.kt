@@ -549,10 +549,13 @@ class MessageQueue private constructor(context: Context) {
         if (parsedOk && json != null) {
             try {
                 val prefs = sharedPreferences
-                if (prefs != null && prefs.getString(KEY_QUEUE_BAK, null) != json) {
-                    val editor = prefs.edit()?.putString(KEY_QUEUE_BAK, json)
-                    if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) editor?.commit()
-                    else editor?.apply()
+                if (prefs != null) {
+                    synchronized(persistMutex) {
+                        val cur = try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
+                        if (cur != null && prefs.getString(KEY_QUEUE_BAK, null) != cur) {
+                            prefs.edit()?.putString(KEY_QUEUE_BAK, cur)?.commit()
+                        }
+                    }
                 }
             } catch (_: Exception) {
             }

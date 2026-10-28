@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penyegaran BAK saat baca antrean tidak lagi bisa memundurkan backup satu generasi (issue #188, sisa #101): penyegaran di `readLocked` sebelumnya berjalan di luar `persistMutex` dengan pola baca-periksa-tulis yang tidak atomik dan memakai `apply()` di main thread — rotasi tulis yang lebih baru bisa tertimpa nilai yang dibaca lebih dulu, sehingga pemulihan dari blob korup menghidupkan generasi antrean lama. Penyegaran kini dilakukan di dalam `persistMutex` (kunci yang sama dengan rotasi `writeSnapshot`), membaca ulang nilai `KEY_QUEUE` terbaru di dalam kunci, dan selalu `commit()` — BAK hanya bisa maju ke generasi terbaru yang sudah ter-commit.
+
 ## [1.6.515] - 2026-10-28
 
 ### Fixed
