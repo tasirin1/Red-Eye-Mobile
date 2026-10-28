@@ -34,7 +34,8 @@ import com.redeye.parentalmonitor.utils.ServiceStart
 
 class SetupActivity : AppCompatActivity() {
 
-    private lateinit var prefs: PreferencesManager
+    private val prefs: PreferencesManager
+        get() = PreferencesManager.peekInstance() ?: PreferencesManager.getInstance(this)
     private lateinit var botTokenInput: TextInputEditText
     private lateinit var chatIdInput: TextInputEditText
     private lateinit var accessPinInput: TextInputEditText
@@ -423,7 +424,6 @@ class SetupActivity : AppCompatActivity() {
             pendingRestoreAccessPin = ""
         }
 
-        prefs = PreferencesManager.getInstance(this)
         try {
             supportActionBar?.hide()
         } catch (_: Exception) {
@@ -447,7 +447,7 @@ class SetupActivity : AppCompatActivity() {
             } catch (_: Exception) {
             }
             try {
-                prefs = PreferencesManager.getInstance(this@SetupActivity)
+                PreferencesManager.getInstance(this@SetupActivity)
             } catch (_: Exception) {
             }
             val tokenMasked = try { prefs.botToken.isNotEmpty() } catch (_: Exception) { false }
@@ -700,7 +700,7 @@ class SetupActivity : AppCompatActivity() {
                 }
                 storageReset = outcome == PreferencesManager.StorageRecovery.RESET
                 if (storageReset) {
-                    try { prefs = PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
+                    try { PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
                 }
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -979,11 +979,20 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun showRestoreCodeDialog() {
-        val secret = try { prefs.ensureRestoreCodeSecret() } catch (_: Exception) { "" }
-        if (secret.isEmpty()) {
-            Toast.makeText(this, getString(R.string.setup_restore_code_fail), Toast.LENGTH_LONG).show()
-            return
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val secret = try { prefs.ensureRestoreCodeSecret() } catch (_: Exception) { "" }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                if (secret.isEmpty()) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_restore_code_fail), Toast.LENGTH_LONG).show()
+                } else {
+                    showRestoreCodeDialogReady(secret)
+                }
+            }
         }
+    }
+
+    private fun showRestoreCodeDialogReady(secret: String) {
         val now = System.currentTimeMillis()
         val code = com.redeye.parentalmonitor.utils.RestoreCode.current(secret, now)
         val until = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())

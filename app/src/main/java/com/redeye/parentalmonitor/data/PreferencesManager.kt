@@ -178,6 +178,8 @@ class PreferencesManager(context: Context) {
             }
         }
 
+        fun peekInstance(): PreferencesManager? = instance
+
         @Volatile
         private var sharedMasterKey: MasterKey? = null
 
