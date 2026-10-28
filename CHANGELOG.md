@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Antrean pesan kini benar-benar tertulis ke disk sebelum dilaporkan berhasil (issue #93): `addMessage`/`addMessages` di `MessageQueue` sebelumnya bisa mengembalikan `true` walau penulisan masih tertunda throttle 2 detik atau baru dijadwalkan dari thread utama, sementara pemanggil memajukan kursor SMS/panggilan atas dasar nilai itu — proses yang mati di jendela itu menghilangkan pesan secara permanen. Keduanya kini mempersistensikan secara paksa dan sinkron (`force` + `syncOnMain`) sehingga `true` berarti sudah di disk; jalur persist internal lain tetap memakai throttle seperti sebelumnya.
+
 ## [1.6.512] - 2026-10-28
 
 ### Added

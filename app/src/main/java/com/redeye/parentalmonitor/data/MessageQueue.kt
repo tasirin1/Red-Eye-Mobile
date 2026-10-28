@@ -191,7 +191,7 @@ class MessageQueue private constructor(context: Context) {
             while (queue.size > cap) {
                 evictOldestLocked(queue)
             }
-            return persistLocked(queue)
+            return persistLocked(queue, force = true, syncOnMain = true)
         }
     }
 
@@ -220,7 +220,7 @@ class MessageQueue private constructor(context: Context) {
                 evictedBatch++
             }
             if (evictedBatch > 0) persistDropCountsLocked()
-            return persistLocked(queue)
+            return persistLocked(queue, force = true, syncOnMain = true)
         }
     }
 
