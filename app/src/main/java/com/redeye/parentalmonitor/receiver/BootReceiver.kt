@@ -55,6 +55,10 @@ class BootReceiver : BroadcastReceiver() {
             val nowEvent = android.os.SystemClock.elapsedRealtime()
             synchronized(handleLock) { if (lastHandleAt != 0L && nowEvent - lastHandleAt < 60_000L) return }
             if (MonitoringService.isRunning) {
+                try {
+                    com.redeye.parentalmonitor.utils.Liveness.schedule(context.applicationContext)
+                } catch (_: Exception) {
+                }
                 markHandled(context, nowEvent)
                 try {
                     MessageScheduler.scheduleWatchdog(context.applicationContext)
