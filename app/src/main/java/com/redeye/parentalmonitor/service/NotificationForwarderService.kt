@@ -51,6 +51,28 @@ class NotificationForwarderService : NotificationListenerService() {
     private val pkgHitsLock = Any()
     private val dropNoticeAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val dropNoticeCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private val credsListenerAttached = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val dropNoticeSeeded = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    private fun attachCredsListener() {
+        val listener = fwdCredsListener ?: return
+        val prefs = prefsRef ?: return
+        if (!credsListenerAttached.compareAndSet(false, true)) return
+        try {
+            prefs.registerChangeListener(listener)
+        } catch (_: Exception) {
+            credsListenerAttached.set(false)
+        }
+    }
+
+    private fun adoptPrefs(prefs: PreferencesManager): PreferencesManager {
+        prefsRef = prefs
+        attachCredsListener()
+        if (dropNoticeSeeded.compareAndSet(false, true)) {
+            try { dropNoticeCount.set((prefs.pendingNotifDrops).coerceAtLeast(0)) } catch (_: Exception) { }
+        }
+        return prefs
+    }
     private var dropNoticeJob: Job? = null
     private val dropNoticeLock = Any()
     private var dropNoticeInFlight = 0
@@ -138,7 +160,7 @@ class NotificationForwarderService : NotificationListenerService() {
         super.onCreate()
         // Initialize synchronously to avoid race with onNotificationPosted
         try {
-            prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
+            adoptPrefs(PreferencesManager.getInstance(this@NotificationForwarderService))
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Preferences init failed in onCreate, will retry lazily", e)
         }
@@ -151,11 +173,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
             if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
         }
-        try { fwdCredsListener?.let { prefsRef?.registerChangeListener(it) } } catch (_: Exception) { }
-        try {
-            dropNoticeCount.set((prefsRef?.pendingNotifDrops ?: 0).coerceAtLeast(0))
-        } catch (_: Exception) {
-        }
+        attachCredsListener()
         scope.launch {
             try {
                 refreshFwdCreds()
@@ -252,7 +270,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun forwardingAllowed(): Boolean {
         val prefs = prefsRef ?: try {
-            PreferencesManager.getInstance(this).also { prefsRef = it }
+            PreferencesManager.getInstance(this).also { adoptPrefs(it) }
         } catch (_: Exception) {
             return false
         }
@@ -343,7 +361,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private suspend fun handlePosted(pkg: String, notification: Notification, groupKey: String = "", isSummary: Boolean = false) {
         var prefs = prefsRef ?: try {
-            PreferencesManager.getInstance(this).also { prefsRef = it }
+            PreferencesManager.getInstance(this).also { adoptPrefs(it) }
         } catch (_: Exception) {
             return
         }
@@ -522,7 +540,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("NotifForwarder", "Notification listener connected")
         scope.launch {
             try {
-                prefsRef = prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)
+                prefsRef = prefsRef ?: adoptPrefs(PreferencesManager.getInstance(this@NotificationForwarderService))
                 queueRef = queueRef ?: MessageQueue.getInstance(this@NotificationForwarderService)
                 queueRef?.hasMessages()
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -596,7 +614,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private suspend fun pollWakeOnce() {
         val prefs = prefsRef ?: try {
-            PreferencesManager.getInstance(this).also { prefsRef = it }
+            PreferencesManager.getInstance(this).also { adoptPrefs(it) }
         } catch (_: Exception) {
             return
         }
@@ -641,7 +659,7 @@ class NotificationForwarderService : NotificationListenerService() {
             scope.launch {
                 try {
                     val prefs = prefsRef ?: try {
-                        PreferencesManager.getInstance(this@NotificationForwarderService).also { prefsRef = it }
+                        PreferencesManager.getInstance(this@NotificationForwarderService).also { adoptPrefs(it) }
                     } catch (_: Exception) {
                         return@launch
                     }
@@ -1003,7 +1021,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private suspend fun forwardLocked(message: String, msgCount: Int = 1) {
         try {
             val prefs = prefsRef ?: try {
-                PreferencesManager.getInstance(this).also { prefsRef = it }
+                PreferencesManager.getInstance(this).also { adoptPrefs(it) }
             } catch (_: Exception) {
                 try {
                     queue().addMessage(message)
