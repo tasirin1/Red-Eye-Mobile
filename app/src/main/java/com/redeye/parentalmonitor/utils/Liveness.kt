@@ -27,6 +27,7 @@ object Liveness {
     private val lastWriteAt = java.util.concurrent.atomic.AtomicLong(0L)
     private val urgentUntilElapsed = java.util.concurrent.atomic.AtomicLong(0L)
     private val scheduledAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
+    private val alarmLock = Any()
 
     fun intervalMs(context: Context): Long {
         return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
@@ -87,28 +88,34 @@ object Liveness {
     }
 
     fun scheduleSoon(context: Context, delayMs: Long) {
-        try {
-            val now = SystemClock.elapsedRealtime()
-            val target = now + delayMs.coerceAtLeast(5_000L)
-            val existing = scheduledAtElapsed.get()
-            if (existing > now && existing <= target) return
-            if (!scheduledAtElapsed.compareAndSet(existing, target)) return
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                target,
-                pending(context)
-            )
-        } catch (_: Exception) {
+        synchronized(alarmLock) {
+            try {
+                val now = SystemClock.elapsedRealtime()
+                val target = now + delayMs.coerceAtLeast(5_000L)
+                while (true) {
+                    val existing = scheduledAtElapsed.get()
+                    if (existing > now && existing <= target) return
+                    if (scheduledAtElapsed.compareAndSet(existing, target)) break
+                }
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    target,
+                    pending(context)
+                )
+            } catch (_: Exception) {
+            }
         }
     }
 
     fun cancel(context: Context) {
-        scheduledAtElapsed.set(0L)
-        try {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            alarmManager.cancel(pending(context))
-        } catch (_: Exception) {
+        synchronized(alarmLock) {
+            scheduledAtElapsed.set(0L)
+            try {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                alarmManager.cancel(pending(context))
+            } catch (_: Exception) {
+            }
         }
     }
 
