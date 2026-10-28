@@ -8325,7 +8325,8 @@ class MonitoringService : Service() {
 
     private fun mediaRateLimitBackoff(errorFull: String, label: String): MediaSendOutcome {
         val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
-        mediaBackoffUntil = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+        val until = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
+        if (until > mediaBackoffUntil) mediaBackoffUntil = until
         NetworkUtils.noteRateLimited(minOf(waitSecs, 60L))
         android.util.Log.w("MonitoringService", "$label rate limited, backing off ${waitSecs}s without blocking")
         try {
