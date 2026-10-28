@@ -45,16 +45,19 @@ KATA_ALUR = {
 # (satu nama per baris, # = komentar): bila baris baru masih memanggilnya,
 # itu regresi hapusan. Tambahkan nama ke berkas itu tiap menghapus metode.
 def muat_bekas_hapusan():
+    berkas = os.path.join(AKAR, "tools", "bekas-hapusan.txt")
+    if not os.path.isfile(berkas):
+        print("GAGAL: tools/bekas-hapusan.txt tidak ada - gerbang regresi hapusan mati.")
+        sys.exit(1)
     nama = set()
-    try:
-        with open(os.path.join(AKAR, "tools", "bekas-hapusan.txt"),
-                  encoding="utf-8") as f:
-            for baris in f:
-                baris = baris.strip()
-                if baris and not baris.startswith("#"):
-                    nama.add(baris.split()[0])
-    except OSError:
-        pass
+    with open(berkas, encoding="utf-8") as f:
+        for baris in f:
+            baris = baris.strip()
+            if baris and not baris.startswith("#"):
+                nama.add(baris.split()[0])
+    if not nama:
+        print("GAGAL: tools/bekas-hapusan.txt kosong - gerbang regresi hapusan mati.")
+        sys.exit(1)
     return nama
 
 
