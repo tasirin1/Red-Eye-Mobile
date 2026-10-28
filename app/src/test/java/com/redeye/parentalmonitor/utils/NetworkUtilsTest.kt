@@ -32,7 +32,7 @@ class NetworkUtilsTest {
 
     @Test
     fun migrasiChatIdFallbackRegexDanLegacy() {
-        assertEquals("777", NetworkUtils.extractMigratedChatId("error migrate_to_chat_id\":777 di tengah"))
+        assertEquals("777", NetworkUtils.extractMigratedChatId("error \"migrate_to_chat_id\":777 di tengah"))
         assertEquals("-55", NetworkUtils.extractMigratedChatId("Bad Request: new chat id: -55"))
     }
 
