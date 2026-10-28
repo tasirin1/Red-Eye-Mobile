@@ -4908,7 +4908,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentSmsPart = sendFitted(message, queueOnFail = true)
+                    val sentSmsPart = sendFitted(message, queueOnFail = true, queuePriority = true)
                     if (sentSmsPart != SendStatus.DROPPED) {
                         val topPart = part.maxWithOrNull(compareBy({ it.date }, { it.id }))
                         val topPrev = smsTop
@@ -4962,7 +4962,7 @@ class MonitoringService : Service() {
                             appendLine("━━━━━━━━━━━━━━━━")
                         }
                     }
-                    val sentCallPart = sendFitted(message, queueOnFail = true)
+                    val sentCallPart = sendFitted(message, queueOnFail = true, queuePriority = true)
                     if (sentCallPart != SendStatus.DROPPED) {
                         val topPart = part.maxWithOrNull(compareBy({ it.date }, { it.id }))
                         val topPrev = callTop
@@ -5128,7 +5128,7 @@ class MonitoringService : Service() {
                         smsHabis = false
                         break
                     }
-                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true)
+                    val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true, queuePriority = true)
                     if (sentSms != SendStatus.DROPPED) {
                         smsCursor = part.last().id
                         smsDate = part.last().date
@@ -5171,7 +5171,7 @@ class MonitoringService : Service() {
                         callHabis = false
                         break
                     }
-                    val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true)
+                    val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true, queuePriority = true)
                     if (sentCall != SendStatus.DROPPED) {
                         try {
                             preferencesManager.setCallCursorSync(part.last().date, part.last().id)
@@ -5378,11 +5378,11 @@ class MonitoringService : Service() {
 
     private enum class SendStatus { SENT, QUEUED, DROPPED }
 
-    private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true): SendStatus {
+    private suspend fun sendFitted(message: String, replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null, queueOnFail: Boolean = true, queuePriority: Boolean = false): SendStatus {
         if (awaitingOwnerLogin()) return SendStatus.DROPPED
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             if (queueOnFail) {
-                val queued = messageQueue.addMessage(message)
+                val queued = messageQueue.addMessage(message, queuePriority)
                 if (queued) MessageScheduler.scheduleMessageSend(this)
                 return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
             }
@@ -5393,7 +5393,7 @@ class MonitoringService : Service() {
             if (sendToTelegram(message, replyMarkup, false) { permanent = true }) return SendStatus.SENT
             if (permanent) return SendStatus.DROPPED
             if (queueOnFail) {
-                val queued = messageQueue.addMessage(message)
+                val queued = messageQueue.addMessage(message, queuePriority)
                 if (replyMarkup != null) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
                 return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
@@ -5438,7 +5438,7 @@ class MonitoringService : Service() {
                 }
                 if (pending.isNotEmpty()) {
                     try {
-                        messageQueue.addMessages(pending)
+                        messageQueue.addMessages(pending, queuePriority)
                         MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {
                     }
@@ -5449,7 +5449,7 @@ class MonitoringService : Service() {
         if (permanentLoss) return SendStatus.DROPPED
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
-                val queued = messageQueue.addMessages(failed)
+                val queued = messageQueue.addMessages(failed, queuePriority)
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queued) MessageScheduler.scheduleMessageSend(this)
                 return if (queued) SendStatus.QUEUED else SendStatus.DROPPED
