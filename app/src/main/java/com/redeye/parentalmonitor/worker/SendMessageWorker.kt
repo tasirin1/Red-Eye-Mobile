@@ -613,7 +613,7 @@ class SendMessageWorker(
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
         if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
         if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
-        if (rejected > 0) return SendOutcome.Rejected
+        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
         return SendOutcome.Sent
     }
 
