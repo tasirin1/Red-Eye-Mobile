@@ -76,7 +76,7 @@ class TrailStatsTest {
             TrailStats.Point(base + 10 * 60_000L, -6.2008993216, 106.800000)
         )
         val inside = TrailStats.millisInside(pts, -6.200000, 106.800000, 200f)
-        assertEquals(200_000L, inside, 3_000L)
+        assertTrue("masuk $inside", inside in 197_000L..203_000L)
     }
 
     @Test
