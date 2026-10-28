@@ -6199,7 +6199,6 @@ class MonitoringService : Service() {
                 if (pkg == packageName) continue
                 val at = event.timeStamp
                 if (at > 0L) return at
-                if (first == 0L || at < first) first = at
             }
         } catch (_: Exception) {
             return 0L
