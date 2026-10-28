@@ -16,19 +16,23 @@ class ParentalMonitorApp : Application() {
     override fun onCreate() {
         try {
             super.onCreate()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("ParentalMonitorApp", "super.onCreate failed", e)
         }
         try {
             CrashReporter.install(this)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("ParentalMonitorApp", "CrashReporter install failed", e)
         }
         try {
             com.redeye.parentalmonitor.utils.NetworkUtils.init(this)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("ParentalMonitorApp", "NetworkUtils init failed", e)
         }
         try {
             createNotificationChannel()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("ParentalMonitorApp", "Notification channel creation failed", e)
         }
         try {
             com.redeye.parentalmonitor.utils.Background.runCritical {
