@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun calculate() {
-        if (!justCalculated && currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
+        if (!justCalculated && !entryReplaced && currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
             currentNumber = ""
             previousNumber = ""
