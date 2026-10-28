@@ -43,6 +43,10 @@ class CameraService(private val context: Context) {
     private var watchdogHandler: Handler? = null
     private val threadLock = Any()
 
+    private fun currentBackgroundHandler(): Handler? {
+        synchronized(threadLock) { return backgroundHandler }
+    }
+
     private fun characteristicsOf(cameraManager: CameraManager, cameraId: String): CameraCharacteristics? {
         characteristicsCache[cameraId]?.let { return it }
         return try {
@@ -56,7 +60,7 @@ class CameraService(private val context: Context) {
 
     private fun removeEverywhere(r: Runnable?) {
         if (r == null) return
-        try { backgroundHandler?.removeCallbacks(r) } catch (_: Exception) { }
+        try { currentBackgroundHandler()?.removeCallbacks(r) } catch (_: Exception) { }
         try { watchdogHandler?.removeCallbacks(r) } catch (_: Exception) { }
         try { mainHandler()?.removeCallbacks(r) } catch (_: Exception) { }
     }
@@ -107,7 +111,7 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             try {
-                backgroundHandler?.removeCallbacksAndMessages(null)
+                currentBackgroundHandler()?.removeCallbacksAndMessages(null)
             } catch (_: Exception) {
             }
             try {
@@ -252,7 +256,8 @@ class CameraService(private val context: Context) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Starting photo capture")
             onTrace("trace: starting capture")
             startBackgroundThread()
-            if (backgroundHandler == null) {
+            val flowHandler = currentBackgroundHandler()
+            if (flowHandler == null) {
                 finishWithError(Exception("Kamera tak tersedia (penangan latar belum siap)"))
                 return
             }
@@ -296,7 +301,7 @@ class CameraService(private val context: Context) {
                         dummyTexture.updateTexImage()
                     } catch (_: Exception) {
                     }
-                }, backgroundHandler)
+                }, flowHandler)
             } catch (_: Exception) {
             }
             val ownedSurface = android.view.Surface(dummyTexture)
@@ -348,7 +353,7 @@ class CameraService(private val context: Context) {
                     Log.e(TAG, "Error processing image", e)
                     finishWithError(e)
                 }
-            }, backgroundHandler)
+            }, flowHandler)
 
             val timeout = Runnable {
                 Log.e(TAG, "Capture timed out after ${timeoutMs}ms")
@@ -357,7 +362,7 @@ class CameraService(private val context: Context) {
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
-                val bg = backgroundHandler
+                val bg = flowHandler
                 if (bg != null) {
                     bg.postDelayed(timeout, timeoutMs)
                     true
@@ -443,7 +448,7 @@ class CameraService(private val context: Context) {
                         }
                     }
                 }
-            }, backgroundHandler)
+            }, flowHandler)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing photo", e)
@@ -550,7 +555,8 @@ class CameraService(private val context: Context) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Starting video capture")
             onTrace("trace: starting video capture")
             startBackgroundThread()
-            if (backgroundHandler == null) {
+            val flowHandler = currentBackgroundHandler()
+            if (flowHandler == null) {
                 finishWithError(Exception("Kamera tak tersedia (penangan latar belum siap)"))
                 return
             }
@@ -568,7 +574,7 @@ class CameraService(private val context: Context) {
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
-                backgroundHandler?.postDelayed(timeout, timeoutMs) ?: false
+                flowHandler?.postDelayed(timeout, timeoutMs) ?: false
             } catch (_: Exception) {
                 false
             }
@@ -652,7 +658,7 @@ class CameraService(private val context: Context) {
                                         captureSession = session
                                     }
                                     try {
-                                        session.setRepeatingRequest(builder.build(), null, backgroundHandler)
+                                        session.setRepeatingRequest(builder.build(), null, flowHandler)
                                     } catch (e: Exception) {
                                         finishWithError(Exception("Sesi rekaman gagal: " + e.message))
                                         return
@@ -691,7 +697,7 @@ class CameraService(private val context: Context) {
                                     }
                                     stopRunnable = stop
                                     val stopScheduled = try {
-                                        if (backgroundHandler?.postDelayed(stop, durationMs) == true) true
+                                        if (flowHandler?.postDelayed(stop, durationMs) == true) true
                                         else mainHandler()?.postDelayed(stop, durationMs) == true
                                     } catch (_: Exception) {
                                         false
@@ -706,7 +712,7 @@ class CameraService(private val context: Context) {
                                     finishWithError(Exception("Konfigurasi sesi rekaman gagal"))
                                 }
                             },
-                            backgroundHandler
+                            flowHandler
                         )
                     } catch (e: Exception) {
                         finishWithError(e)
@@ -753,7 +759,7 @@ class CameraService(private val context: Context) {
                         }
                     }
                 }
-            }, backgroundHandler)
+            }, flowHandler)
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing video", e)
             finishWithError(e)
@@ -791,6 +797,7 @@ class CameraService(private val context: Context) {
         onTrace: (String) -> Unit
     ) {
         val settled = java.util.concurrent.atomic.AtomicBoolean(false)
+        val flowHandler = currentBackgroundHandler()
         var fallback: Runnable? = null
 
         fun fireStill() {
@@ -807,7 +814,7 @@ class CameraService(private val context: Context) {
                             Log.e(TAG, "Still capture failed: ${failure.reason}")
                             onError(Exception("Pemotretan gagal (${failure.reason})"))
                         }
-                    }, backgroundHandler)
+                    }, flowHandler)
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture request sent")
                     onTrace("trace: capture request sent")
                 } catch (e: Exception) {
@@ -825,7 +832,7 @@ class CameraService(private val context: Context) {
             }
             val pending = fallback ?: return
             val meterScheduled = try {
-                backgroundHandler?.postDelayed(pending, 3_000L) == true || mainHandler()?.postDelayed(pending, 3_000L) == true
+                flowHandler?.postDelayed(pending, 3_000L) == true || mainHandler()?.postDelayed(pending, 3_000L) == true
             } catch (_: Exception) { false }
             if (!meterScheduled) { fireStill(); return }
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
@@ -851,7 +858,7 @@ class CameraService(private val context: Context) {
                         }
                     }
                 },
-                backgroundHandler
+                flowHandler
             )
             onTrace("trace: metering started")
         } catch (e: Exception) {
@@ -920,6 +927,7 @@ class CameraService(private val context: Context) {
         onError: (Exception) -> Unit,
         onTrace: (String) -> Unit = {}
     ) {
+        val flowHandler = currentBackgroundHandler()
         try {
             val surface = imageReader?.surface ?: run { onError(Exception("Kamera ditutup")); return }
             val meterSurface = meteringSurface ?: run { onError(Exception("Kamera ditutup")); return }
@@ -952,7 +960,7 @@ class CameraService(private val context: Context) {
                         onError(Exception("Konfigurasi sesi gagal"))
                     }
                 },
-                backgroundHandler
+                flowHandler
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error creating capture session", e)
