@@ -7232,8 +7232,17 @@ class MonitoringService : Service() {
         if (!hasNetwork()) return
         val hasWork = try { messageQueue.hasMessages() } catch (_: Exception) { false }
         if (!hasWork) return
-        val stage = try { preferencesManager.silentHealStage } catch (_: Exception) { 0 }
-        if (stage >= SILENT_MAX_STAGE) return
+        var stage = try { preferencesManager.silentHealStage } catch (_: Exception) { 0 }
+        if (stage >= SILENT_MAX_STAGE) {
+            val lastHealMax = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
+            val nowMax = System.currentTimeMillis()
+            if (lastHealMax > 0L && nowMax > lastHealMax && nowMax - lastHealMax >= 24 * 3_600_000L) {
+                try { preferencesManager.silentHealStage = 0 } catch (_: Exception) { }
+                stage = 0
+            } else {
+                return
+            }
+        }
         val now = System.currentTimeMillis()
         val lastHeal = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
         if (lastHeal > 0L && now > lastHeal && now - lastHeal < SILENT_HEAL_SPACING_MS) return
