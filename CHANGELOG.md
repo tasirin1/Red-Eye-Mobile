@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.515] - 2026-10-28
+
 ### Fixed
 - `jsonCache` kini dijaga satu kunci yang sama di semua situs (issue #187, regresi kecil #135): `clearQueue` sebelumnya membersihkan `HashMap` polos itu hanya di bawah `lock`, sementara `snapshotJson` bermutasi di bawah `persistMutex` — akses bersamaan keduanya bisa merusak struktur peta. Pembersihan di `clearQueue` kini dilakukan di dalam blok `persistMutex` yang sudah ada di fungsi yang sama, menyamai satu-satunya penulis lain (`writeSnapshot`/`snapshotJson`).
 - Dua jalur laten `true`-sebelum-disk ditutup (issue #186, sisa #93): `persistWithRetriesLocked` (dipakai `removeMessages` dan pencatat kegagalan transien) dan penggabungan antrean volatile di `tryRestorePersistent` sama-sama memanggil `persistLocked(force = true)` tanpa `syncOnMain` — dari main thread panggilan itu ditunda ke drain tetapi tetap mengembalikan `true`, sehingga rangkaian "coba ulang" berhenti di percobaan pertama dan pemulih volatile membersihkan antrean memorinya seolah data sudah di disk. Keduanya kini memakai `syncOnMain = true` seperti jalur `addMessage`, jadi `true` berarti commit benar-benar selesai di utas pemanggil mana pun. Cabang volatile murni `addMessage` tidak berubah: di sana memang tak ada penyimpanan yang bisa ditulisi, dan suksesnya berarti pesan tertahan di memori.
