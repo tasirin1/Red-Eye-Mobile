@@ -432,7 +432,6 @@ class MessageQueue private constructor(context: Context) {
     fun clearQueue(): Boolean {
         synchronized(lock) {
             generationCounter.incrementAndGet()
-            jsonCache.clear()
             cached = mutableListOf()
             persistDirty = false
             volatileQueue.clear()
@@ -450,6 +449,7 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences
             }
             val cleared = synchronized(persistMutex) {
+                jsonCache.clear()
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
