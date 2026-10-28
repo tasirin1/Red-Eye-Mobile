@@ -33,6 +33,7 @@ class MessageQueue private constructor(context: Context) {
     @Volatile
     private var persistVersion = 0L
     private var pendingSnapshot: Pair<Long, List<QueuedMessage>>? = null
+    private var drainFailCount = 0
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
     private var cached: MutableList<QueuedMessage>? = null
     private val arrayType = Array<QueuedMessage>::class.java
@@ -70,6 +71,7 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_PRIORITY_DROPS = "priority_drops"
         private const val MAX_QUEUE_SIZE = 100
         private const val MAX_TRANSIENT_RETRIES = 20
+        private const val MAX_DRAIN_RETRIES = 10
         private val gson = Gson()
 
 
@@ -585,10 +587,10 @@ class MessageQueue private constructor(context: Context) {
         return writeSnapshot(prefs, ArrayList(queue), version)
     }
 
-    private fun jadwalUlangDrain(): Boolean {
+    private fun jadwalUlangDrain(delayMs: Long): Boolean {
         return try {
             persistExecutor.execute {
-                try { Thread.sleep(1000L) } catch (_: Exception) { }
+                try { Thread.sleep(delayMs) } catch (_: Exception) { }
                 drainPersist()
             }
             true
@@ -670,18 +672,30 @@ class MessageQueue private constructor(context: Context) {
                 if (dropsDirty) persistDropCountsLocked()
             }
             if (!writeSnapshot(prefs, snapshot, version)) {
+                var delayMs = 0L
+                var giveUp = false
                 synchronized(lock) {
                     if (pendingSnapshot == null) {
                         pendingSnapshot = version to snapshot
                         persistDirty = true
                     }
+                    drainFailCount++
+                    if (drainFailCount > MAX_DRAIN_RETRIES) {
+                        giveUp = true
+                    } else {
+                        delayMs = (1000L shl (drainFailCount - 1)).coerceAtMost(60_000L)
+                    }
                 }
-                if (!jadwalUlangDrain()) {
+                if (giveUp) {
+                    persistQueued.set(false)
+                    android.util.Log.e("MessageQueue", "Persist drain giving up after $MAX_DRAIN_RETRIES retries; snapshot kept dirty for next mutation/flush")
+                } else if (!jadwalUlangDrain(delayMs)) {
                     persistQueued.set(false)
                 }
                 return
             }
             synchronized(lock) {
+                drainFailCount = 0
                 if (pendingSnapshot == null && !persistDirty) {
                     persistQueued.set(false)
                     return
