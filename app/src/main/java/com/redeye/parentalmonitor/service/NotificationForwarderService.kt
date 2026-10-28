@@ -137,8 +137,16 @@ class NotificationForwarderService : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         // Initialize synchronously to avoid race with onNotificationPosted
-        prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
-        queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
+        try {
+            prefsRef = PreferencesManager.getInstance(this@NotificationForwarderService)
+        } catch (e: Exception) {
+            android.util.Log.e("NotifForwarder", "Preferences init failed in onCreate, will retry lazily", e)
+        }
+        try {
+            queueRef = MessageQueue.getInstance(this@NotificationForwarderService)
+        } catch (e: Exception) {
+            android.util.Log.e("NotifForwarder", "Queue init failed in onCreate, will retry lazily", e)
+        }
         fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
             if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
