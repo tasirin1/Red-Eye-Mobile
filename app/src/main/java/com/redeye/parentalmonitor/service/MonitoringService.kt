@@ -114,6 +114,8 @@ class MonitoringService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
     private val commandLock = kotlinx.coroutines.sync.Mutex()
     private val controlLock = kotlinx.coroutines.sync.Mutex()
+    private var lastLoginJob: kotlinx.coroutines.Job? = null
+    private var lastLoginSender: String = ""
     private val cameraBusy = AtomicBoolean(false)
     private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
@@ -1737,7 +1739,8 @@ class MonitoringService : Service() {
                     if (loginOnly) {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         offsetDeferred = true
-                        dispatchTracked(update.updateId, "Login dispatch error") {
+                        lastLoginSender = senderId
+                        lastLoginJob = dispatchTracked(update.updateId, "Login dispatch error") {
                             commandLock.withLock {
                                 controlLock.withLock {
                                     handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
@@ -1755,7 +1758,10 @@ class MonitoringService : Service() {
                             continue
                         }
                     }
-                    if (awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
+                    val loginJobSnapshot = lastLoginJob
+                    val followsLogin = senderId.isNotEmpty() && senderId == lastLoginSender &&
+                        loginJobSnapshot != null && !loginJobSnapshot.isCompleted
+                    if (!followsLogin && awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
                         val hintTarget = senderId.ifEmpty { msgChatId }
                         val hintNow = android.os.SystemClock.elapsedRealtime()
                         val hintLast = try { pairHintAt["login:$hintTarget"] ?: 0L } catch (_: Exception) { 0L }
@@ -1825,7 +1831,7 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
-                    if (chatOk || ownerOk) {
+                    if (chatOk || ownerOk || followsLogin) {
                         val aliasInput = resolveAliasInput(command, arg)
                         val intentInput = if (aliasInput == null && !command.startsWith("/")) {
                             try { IntentParser.parse(rawText) } catch (_: Exception) { null }
@@ -1839,6 +1845,7 @@ class MonitoringService : Service() {
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
+                            if (followsLogin) loginJobSnapshot?.join()
                             lock.withLock {
                                 val ownerNow = isOwner(senderId)
                                 val privateNow = ownerNow && isPrivate
@@ -1879,8 +1886,8 @@ class MonitoringService : Service() {
 
     private val updateOffsetTracker = com.redeye.parentalmonitor.utils.UpdateOffsetTracker()
 
-    private fun dispatchTracked(updateId: Long, logTag: String, block: suspend () -> Unit) {
-        serviceScope.launch {
+    private fun dispatchTracked(updateId: Long, logTag: String, block: suspend () -> Unit): kotlinx.coroutines.Job {
+        return serviceScope.launch {
             var handled = false
             try {
                 try {
