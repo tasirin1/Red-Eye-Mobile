@@ -1759,7 +1759,17 @@ class MonitoringService : Service() {
                         }
                     }
                     if (awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
-                        sendDirect(senderId.ifEmpty { msgChatId }, loginHintText())
+                        val hintTarget = senderId.ifEmpty { msgChatId }
+                        val hintNow = android.os.SystemClock.elapsedRealtime()
+                        val hintLast = try { pairHintAt["login:$hintTarget"] ?: 0L } catch (_: Exception) { 0L }
+                        if (hintLast == 0L || hintNow - hintLast >= 3_600_000L) {
+                            try {
+                                if (pairHintAt.size > 200) pairHintAt.clear()
+                                pairHintAt["login:$hintTarget"] = hintNow
+                            } catch (_: Exception) {
+                            }
+                            sendDirect(hintTarget, loginHintText())
+                        }
                         offsetDeferred = true
                         finishUpdateTrack(update.updateId, true)
                         continue
