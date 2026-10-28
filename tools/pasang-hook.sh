@@ -76,11 +76,17 @@ fi
 pasang_kait "$HOOK_DST"
 
 if [ -x "$HOOK_DST" ]; then
-    echo "Kait pre-push terpasang dan bisa dieksekusi: $HOOK_DST"
-    if [ -n "$TERKONFIGURASI" ]; then
-        echo "  (dipakai Git lewat core.hooksPath = $TERKONFIGURASI)"
+    PROBE="$(dirname "$HOOK_DST")/.probe-exec-$$"
+    if printf '#!/bin/sh\nexit 0\n' > "$PROBE" 2>/dev/null && chmod +x "$PROBE" 2>/dev/null && "$PROBE" >/dev/null 2>&1; then
+        rm -f "$PROBE"
+        echo "Kait pre-push terpasang dan terbukti bisa dieksekusi: $HOOK_DST"
+        if [ -n "$TERKONFIGURASI" ]; then
+            echo "  (dipakai Git lewat core.hooksPath = $TERKONFIGURASI)"
+        fi
+        exit 0
     fi
-    exit 0
+    rm -f "$PROBE"
+    echo "PERINGATAN: bit eksekusi terbaca tetapi menjalankan berkas ditolak (mount noexec?): $HOOK_DST" >&2
 fi
 
 if [ -n "$TERKONFIGURASI" ]; then
