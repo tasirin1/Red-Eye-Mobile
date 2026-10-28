@@ -9342,6 +9342,7 @@ class MonitoringService : Service() {
         var videoProgress = false
         try {
             if (!hasNetwork()) return
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
             drain@ while (batches < 3) {
                 val pending = try {
@@ -9363,6 +9364,7 @@ class MonitoringService : Service() {
                         videoProgress = true
                         continue
                     }
+                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val videoOutcome = sendVideoFile(file)
                     if (videoOutcome == MediaSendOutcome.KEPT) break@drain
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -9420,6 +9422,7 @@ class MonitoringService : Service() {
         var audioProgress = false
         try {
             if (!hasNetwork()) return
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
             drain@ while (batches < 3) {
                 val pending = try {
@@ -9441,6 +9444,7 @@ class MonitoringService : Service() {
                         audioProgress = true
                         continue
                     }
+                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val audioOutcome = sendAudioFile(file)
                     if (audioOutcome == MediaSendOutcome.KEPT) break@drain
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -9697,6 +9701,7 @@ class MonitoringService : Service() {
         var photoProgress = false
         try {
             if (!hasNetwork()) return
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
             drain@ while (batches < 3) {
                 val pending = try {
@@ -9719,6 +9724,7 @@ class MonitoringService : Service() {
                         photoProgress = true
                         continue
                     }
+                    if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val photoOutcome = sendPhotoFile(file)
                     if (photoOutcome == MediaSendOutcome.KEPT) {
                         keptThisBatch++
