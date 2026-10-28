@@ -46,6 +46,11 @@ class InstantEventReceiver : BroadcastReceiver() {
                             } catch (_: Exception) {
                             }
                         }
+                    } else {
+                        try {
+                            com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
+                        } catch (_: Exception) {
+                        }
                     }
                 } finally {
                     try { pending?.finish() } catch (_: Exception) {
