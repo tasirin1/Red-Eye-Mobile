@@ -473,7 +473,7 @@ class CameraService(private val context: Context) {
         var stopRunnable: Runnable? = null
         var recorder: android.media.MediaRecorder? = null
         var videoSurface: android.view.Surface? = null
-        var recording = false
+        val recording = java.util.concurrent.atomic.AtomicBoolean(false)
         var pendingOut: java.io.File? = null
 
         fun releaseRecorder() {
@@ -492,12 +492,12 @@ class CameraService(private val context: Context) {
                     removeEverywhere(timeoutRunnable)
                     removeEverywhere(stopRunnable)
                     try {
-                        if (recording) {
+                        if (recording.get()) {
                             try { recorder?.stop() } catch (_: Exception) { }
                         }
                     } catch (_: Exception) {
                     }
-                    recording = false
+                    recording.set(false)
                     releaseRecorder()
                     releaseSurface()
                     try {
@@ -663,13 +663,13 @@ class CameraService(private val context: Context) {
                                         finishWithError(Exception("Mulai merekam gagal: " + e.message))
                                         return
                                     }
-                                    recording = true
+                                    recording.set(true)
                                     onTrace("trace: recording started")
                                     val stop = Runnable {
                                         try {
                                             var stopOk = true
                                             try { rec.stop() } catch (_: Exception) { stopOk = false }
-                                            recording = false
+                                            recording.set(false)
                                             captureSession?.close()
                                             captureSession = null
                                             cameraDevice?.close()
