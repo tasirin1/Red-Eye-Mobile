@@ -5401,6 +5401,7 @@ class MonitoringService : Service() {
             return SendStatus.DROPPED
         }
         var sentAny = false
+        var permanentLoss = false
         val failed = mutableListOf<String>()
         val chunks = mutableListOf<String>()
         var rest = message
@@ -5421,6 +5422,7 @@ class MonitoringService : Service() {
                         for (restIdx in idx + 1 until chunks.size) failed.add(chunks[restIdx])
                         break
                     }
+                    permanentLoss = true
                 } else {
                     lastSentIdx = idx
                     sentAny = true
@@ -5444,6 +5446,7 @@ class MonitoringService : Service() {
             }
             throw e
         }
+        if (permanentLoss) return SendStatus.DROPPED
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
                 val queued = messageQueue.addMessages(failed)
