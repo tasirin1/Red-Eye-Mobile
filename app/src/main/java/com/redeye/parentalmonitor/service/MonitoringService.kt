@@ -707,7 +707,7 @@ class MonitoringService : Service() {
                         }
                         try {
                             if (shouldAutoResume()) {
-                                MessageScheduler.scheduleBootRestart(this@MonitoringService)
+                                startMonitoring()
                             } else {
                                 if (needsCredsRetry()) {
                                     MessageScheduler.scheduleBootRestart(this@MonitoringService)
