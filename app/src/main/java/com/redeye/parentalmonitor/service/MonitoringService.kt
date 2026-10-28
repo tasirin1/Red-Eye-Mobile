@@ -9366,7 +9366,7 @@ class MonitoringService : Service() {
                     }
                     if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val videoOutcome = sendVideoFile(file)
-                    if (videoOutcome == MediaSendOutcome.KEPT) break@drain
+                    if (videoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     videoProgress = true
@@ -9446,7 +9446,7 @@ class MonitoringService : Service() {
                     }
                     if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val audioOutcome = sendAudioFile(file)
-                    if (audioOutcome == MediaSendOutcome.KEPT) break@drain
+                    if (audioOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     audioProgress = true
