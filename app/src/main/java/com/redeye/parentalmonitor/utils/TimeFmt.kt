@@ -33,10 +33,10 @@ object TimeFmt {
     private var tzFetchedAt: Long = 0L
 
     private fun currentTz(): TimeZone {
-        val now = android.os.SystemClock.elapsedRealtime()
         val tz = cachedTz
-        if (tz != null && now - tzFetchedAt < 60_000L) return tz
         return try {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (tz != null && now - tzFetchedAt < 60_000L) return tz
             val fresh = TimeZone.getDefault()
             cachedTz = fresh
             tzFetchedAt = now
