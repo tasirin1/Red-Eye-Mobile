@@ -1,6 +1,40 @@
 version: 2
 updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+    groups:
+      androidx:
+        patterns:
+          - "androidx*"
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx*"
+      jvm-libs:
+        patterns:
+          - "com.squareup*"
+          - "com.google.code.gson*"
+          - "junit*"
+    ignore:
+      # Major AGP/Kotlin ditangani manual bertahap, bukan PR otomatis.
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "org.jetbrains.kotlin.android"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns:
+          - "*"
