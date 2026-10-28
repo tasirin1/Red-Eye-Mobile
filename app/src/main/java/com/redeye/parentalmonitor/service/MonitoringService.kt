@@ -893,7 +893,7 @@ class MonitoringService : Service() {
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     android.util.Log.e("MonitoringService", "Error in monitoring loop: ${redactToken(e.message)}")
                     try {
                         delay(10_000L)
@@ -966,7 +966,7 @@ class MonitoringService : Service() {
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     android.util.Log.e("MonitoringService", "Error in camera loop: ${redactToken(e.message)}")
                     try {
                         delay(10_000L)
