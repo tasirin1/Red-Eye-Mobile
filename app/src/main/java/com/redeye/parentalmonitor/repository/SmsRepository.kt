@@ -110,6 +110,9 @@ class SmsRepository(private val context: Context) {
                 "${Telephony.Sms._ID} ASC",
                 ids.size
             )
+            if (cursor == null) {
+                android.util.Log.w("SmsRepository", "SMS body hydration query returned no cursor")
+            }
             cursor?.use { c ->
                 val idIdx = c.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val bodyIdx = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
@@ -119,12 +122,12 @@ class SmsRepository(private val context: Context) {
             }
         } catch (e: SecurityException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.w("SmsRepository", "SMS body hydration failed", e)
         }
-        if (bodies.isEmpty()) return result
         return NumberHistoryResult(result.items.map { item ->
             val body = bodies[item.id]
-            if (body == null) item else item.copy(body = body)
+            if (body != null) item.copy(body = body) else item.copy(body = "(isi pesan gagal dimuat)")
         }, result.truncated)
     }
 
