@@ -610,21 +610,25 @@ class NotificationForwarderService : NotificationListenerService() {
         val nowWake = android.os.SystemClock.elapsedRealtime()
         if (nowWake - lastWakeStartAt < WAKE_PING_COOLDOWN_MS) return
         lastWakeStartAt = nowWake
+        var started = false
         try {
             val restart = android.content.Intent(this, MonitoringService::class.java).apply {
                 action = MonitoringService.ACTION_START_MONITORING
             }
             ServiceStart.startForeground(this, restart)
+            started = true
         } catch (_: Exception) {
             android.util.Log.w("NotifForwarder", "Wake restart failed, retry via worker")
         }
-        try {
-            MessageScheduler.scheduleBootRestart(this)
-        } catch (_: Exception) {
-        }
-        try {
-            MessageScheduler.scheduleMessageSend(this)
-        } catch (_: Exception) {
+        if (!started) {
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleMessageSend(this)
+            } catch (_: Exception) {
+            }
         }
     }
 
