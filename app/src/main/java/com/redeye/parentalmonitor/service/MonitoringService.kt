@@ -5177,7 +5177,7 @@ class MonitoringService : Service() {
                         break
                     }
                 }
-                if (smsHabis && smsPage.size < 100) {
+                if (smsHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastSms, lastSmsTs, smsPage.map { it.id to it.date })
                     if (tuntas.first != smsCursor || tuntas.second != smsDate) {
                         try { preferencesManager.setSmsCursorSync(tuntas.first, tuntas.second) } catch (_: Exception) { }
@@ -5221,7 +5221,7 @@ class MonitoringService : Service() {
                         break
                     }
                 }
-                if (callHabis && callPage.size < 100) {
+                if (callHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastCallId, lastCallTs, callPage.map { it.id to it.date })
                     try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
                 }
