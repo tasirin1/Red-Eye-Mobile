@@ -29,6 +29,7 @@ class InstantEventReceiver : BroadcastReceiver() {
         try {
             executor.execute {
                 try {
+                    try { PreferencesManager.refreshInstance(appContext) } catch (_: Exception) { }
                     val active = try {
                         val prefs = PreferencesManager.getInstance(appContext)
                         prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && !prefs.monitoringPaused
