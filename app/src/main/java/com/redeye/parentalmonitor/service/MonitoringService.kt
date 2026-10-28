@@ -9747,7 +9747,6 @@ class MonitoringService : Service() {
                 if (pending.isEmpty()) break@drain
                 val now = System.currentTimeMillis()
                 var batchProgress = false
-                var keptThisBatch = 0
                 for (file in pending) {
                     if (isMediaActive(file)) continue
                     if (now - file.lastModified() < 10_000L) continue
@@ -9759,11 +9758,7 @@ class MonitoringService : Service() {
                     }
                     if (android.os.SystemClock.elapsedRealtime() > flushDeadline) break@drain
                     val photoOutcome = sendPhotoFile(file)
-                    if (photoOutcome == MediaSendOutcome.KEPT) {
-                        keptThisBatch++
-                        if (keptThisBatch >= 2) break@drain
-                        continue
-                    }
+                    if (photoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     photoProgress = true
