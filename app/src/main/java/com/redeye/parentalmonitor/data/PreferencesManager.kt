@@ -54,6 +54,9 @@ class PreferencesManager(context: Context) {
                     resetCachedMasterKey()
                 }
                 if (attemptUpgradeToPersistent()) return true
+                if (attempt < UPGRADE_ATTEMPTS) {
+                    try { Thread.sleep(150L) } catch (_: InterruptedException) { }
+                }
             }
             return false
         }
@@ -126,6 +129,9 @@ class PreferencesManager(context: Context) {
                     val after: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
                     stable = after == cur && freshNow == cur
+                    if (!stable && attempts < 5) {
+                        try { Thread.sleep(50L) } catch (_: InterruptedException) { }
+                    }
                 }
                 if (!stable) return false
             }
@@ -218,7 +224,7 @@ class PreferencesManager(context: Context) {
             get() = lastStorageError
 
         private const val OPEN_ATTEMPTS = 3
-        private const val UPGRADE_ATTEMPTS = 2
+        private const val UPGRADE_ATTEMPTS = 4
 
         fun getMasterKey(context: Context): MasterKey {
             return sharedMasterKey ?: synchronized(this) {
