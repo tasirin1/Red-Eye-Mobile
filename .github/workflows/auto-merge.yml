@@ -1,8 +1,9 @@
 name: Auto-merge dependabot
 
-# Hanya untuk PR Dependabot. Dependabot di repo ini hanya memantau
-# github-actions; PR yang menyentuh dependensi Gradle (bila kelak ekosistem
-# gradle ditambahkan) tetap manual. Pola ditiru dari tasirin-download-manager.
+# Hanya untuk PR Dependabot. Dependabot di repo ini memantau github-actions
+# dan gradle (sejak pemerataan sesi #336); PR yang menyentuh dependensi Gradle
+# tetap manual (hanya diberi komentar panduan), PR non-Gradle di-auto-merge
+# sesudah CI hijau. Pola ditiru dari tasirin-download-manager.
 on:
   pull_request_target:
     types: [opened, synchronize, labeled, ready_for_review]
