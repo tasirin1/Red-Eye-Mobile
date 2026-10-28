@@ -20,10 +20,17 @@ class SmsRepository(private val context: Context) {
         dateColumn = Telephony.Sms.DATE,
         idColumn = Telephony.Sms._ID,
         logTag = "SmsRepository",
-        query = { selection, args, sortOrder, limit -> querySms(selection, args, sortOrder, limit) },
+        query = { selection, args, sortOrder, limit -> querySms(selection, args, sortOrder, limit, light = true) },
         numberOf = { it.address },
         dateOf = { it.date },
         idOf = { it.id }
+    )
+
+    private val lightProjection = arrayOf(
+        Telephony.Sms._ID,
+        Telephony.Sms.ADDRESS,
+        Telephony.Sms.DATE,
+        Telephony.Sms.TYPE
     )
 
     fun getNewSms(afterId: Long, afterDate: Long = 0L): List<SmsData> {
@@ -86,7 +93,36 @@ class SmsRepository(private val context: Context) {
     }
 
     fun getSmsForNumber(digits: String, limit: Int = 50): NumberHistoryResult<SmsData> {
-        return numberSearch.search(digits, limit)
+        val result = numberSearch.search(digits, limit)
+        if (result.items.isEmpty()) return result
+        val bodies = HashMap<Long, String>()
+        try {
+            val ids = result.items.map { it.id }
+            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+                context.contentResolver,
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY),
+                "${Telephony.Sms._ID} IN (" + ids.joinToString(",") { "?" } + ")",
+                ids.map { it.toString() }.toTypedArray(),
+                null,
+                ids.size
+            )
+            cursor?.use { c ->
+                val idIdx = c.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val bodyIdx = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                while (c.moveToNext()) {
+                    bodies[c.getLong(idIdx)] = c.getString(bodyIdx) ?: "(empty message)"
+                }
+            }
+        } catch (e: SecurityException) {
+            throw e
+        } catch (_: Exception) {
+        }
+        if (bodies.isEmpty()) return result
+        return NumberHistoryResult(result.items.map { item ->
+            val body = bodies[item.id]
+            if (body == null) item else item.copy(body = body)
+        }, result.truncated)
     }
 
     fun getRecentSmsSince(sinceMillis: Long, limit: Int = 200): List<SmsData> {
@@ -110,14 +146,14 @@ class SmsRepository(private val context: Context) {
         )
     }
 
-    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<SmsData> {
+    private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false, light: Boolean = false): List<SmsData> {
         val result = mutableListOf<SmsData>()
         try {
-            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, projection, selection, args, sortOrder, limit, strict)
+            val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, if (light) lightProjection else projection, selection, args, sortOrder, limit, strict)
             cursor?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-                val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY)
                 val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val typeIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
                 while (cursor.moveToNext() && result.size < limit) {
@@ -149,7 +185,7 @@ class SmsRepository(private val context: Context) {
         return SmsData(
             id = cursor.getLong(idIndex),
             address = cursor.getString(addressIndex) ?: "Unknown",
-            body = cursor.getString(bodyIndex) ?: "(empty message)",
+            body = if (bodyIndex >= 0) cursor.getString(bodyIndex) ?: "(empty message)" else "",
             date = cursor.getLong(dateIndex),
             type = cursor.getInt(typeIndex)
         )
