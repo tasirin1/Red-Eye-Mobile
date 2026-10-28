@@ -8716,29 +8716,28 @@ class MonitoringService : Service() {
         val nowRestart = android.os.SystemClock.elapsedRealtime()
         if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return false
         lastLoopRestartAt = nowRestart
-        try {
-            monitoringJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            cameraJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            commandJob?.cancel()
-        } catch (_: Exception) {
-        }
-        try {
-            patrolJob?.cancel()
-        } catch (_: Exception) {
+        val oldJobs = listOfNotNull(monitoringJob, cameraJob, commandJob, patrolJob)
+        for (job in oldJobs) {
+            try {
+                job.cancel()
+            } catch (_: Exception) {
+            }
         }
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
-        startPeriodicLoops()
-        startCommandPolling()
-        startLoopWatchdog()
-        startInitialSync(force = true)
+        serviceScope.launch {
+            try {
+                kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+                    for (job in oldJobs) job.join()
+                }
+            } catch (_: Exception) {
+            }
+            startPeriodicLoops()
+            startCommandPolling()
+            startLoopWatchdog()
+            startInitialSync(force = true)
+        }
         return true
     }
 
