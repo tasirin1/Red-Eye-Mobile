@@ -7839,6 +7839,15 @@ class MonitoringService : Service() {
                     return@launch
                 }
                 try { wd.cancel() } catch (_: Exception) { }
+                val wdUp = serviceScope.launch {
+                    delay(660_000)
+                    if (shotAttempt.get() == shotSeq && shotBusy.compareAndSet(true, false)) {
+                        shotAttempt.incrementAndGet()
+                        android.util.Log.w("MonitoringService", "Screenshot watchdog: upload did not finish, flag reset")
+                        sendToTelegram("⚠️ Unggah tangkap layar tak menjawab (timeout). Coba /screenshot lagi.")
+                    }
+                }
+                shotWatchdog = wdUp
                 if (shotFile == null) {
                     clearShotBusy(shotSeq)
                     sendToTelegram(
@@ -7863,6 +7872,7 @@ class MonitoringService : Service() {
                 } finally {
                     clearMediaActive(shotFile)
                 }
+                try { wdUp.cancel() } catch (_: Exception) { }
                 clearShotBusy(shotSeq)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 clearShotBusy(shotSeq)
