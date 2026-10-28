@@ -107,7 +107,7 @@ class SmsRepository(private val context: Context) {
                 arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY),
                 "${Telephony.Sms._ID} IN (" + ids.joinToString(",") { "?" } + ")",
                 ids.map { it.toString() }.toTypedArray(),
-                null,
+                "${Telephony.Sms._ID} ASC",
                 ids.size
             )
             cursor?.use { c ->
