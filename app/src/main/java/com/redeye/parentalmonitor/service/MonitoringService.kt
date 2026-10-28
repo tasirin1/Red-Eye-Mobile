@@ -6306,8 +6306,8 @@ class MonitoringService : Service() {
                 val existing = days.firstOrNull { it.day == key }
                 val merged = when {
                     existing == null -> DailyFacts.Day(key, -1, -1, -1, if (arrive) minute else -1, if (arrive) -1 else minute)
-                    arrive -> existing.copy(arriveMin = minute)
-                    else -> existing.copy(departMin = minute)
+                    arrive -> if (existing.arriveMin >= 0) existing else existing.copy(arriveMin = minute)
+                    else -> if (existing.departMin >= 0) existing else existing.copy(departMin = minute)
                 }
                 preferencesManager.dailyFacts = DailyFacts.serialize(DailyFacts.upsert(days, merged))
             }
