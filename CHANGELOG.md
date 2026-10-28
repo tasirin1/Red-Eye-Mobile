@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Backup antrean `MessageQueue` kini diperbarui pada setiap penulisan (issue #101): `writeSnapshot` sebelumnya hanya menulis blob utama sedangkan `queued_messages_bak` hanya diperbarui saat baca, jadi blob utama yang korup memulihkan keadaan basi — pesan yang sudah terkirim terkirim ulang dan pesan baru hilang. Kini blob lama digeser menjadi backup dalam commit yang sama sebelum blob baru ditulis, sehingga pemulihan paling jauh tertinggal satu generasi tulis.
 - Antrean pesan kini benar-benar tertulis ke disk sebelum dilaporkan berhasil (issue #93): `addMessage`/`addMessages` di `MessageQueue` sebelumnya bisa mengembalikan `true` walau penulisan masih tertunda throttle 2 detik atau baru dijadwalkan dari thread utama, sementara pemanggil memajukan kursor SMS/panggilan atas dasar nilai itu — proses yang mati di jendela itu menghilangkan pesan secara permanen. Keduanya kini mempersistensikan secara paksa dan sinkron (`force` + `syncOnMain`) sehingga `true` berarti sudah di disk; jalur persist internal lain tetap memakai throttle seperti sebelumnya.
 
 ## [1.6.512] - 2026-10-28

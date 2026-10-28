@@ -634,8 +634,12 @@ class MessageQueue private constructor(context: Context) {
     private fun writeSnapshot(prefs: SharedPreferences, snapshot: List<QueuedMessage>, version: Long): Boolean {
         synchronized(persistMutex) {
             if (persistVersion != version) return true
+            val json = snapshotJson(snapshot)
             val saved = try {
-                prefs.edit()?.putString(KEY_QUEUE, snapshotJson(snapshot))?.commit() == true
+                val editor = prefs.edit()
+                val old = try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
+                if (editor != null && old != null && old != json) editor.putString(KEY_QUEUE_BAK, old)
+                editor?.putString(KEY_QUEUE, json)?.commit() == true
             } catch (_: Exception) {
                 false
             }
