@@ -61,9 +61,11 @@ object CrashReporter {
 
     fun clearPending(context: Context, sent: String? = null) {
         if (sent == null) {
-            try {
-                pendingFile(context.applicationContext).delete()
-            } catch (_: Exception) {
+            synchronized(saveLock) {
+                try {
+                    pendingFile(context.applicationContext).delete()
+                } catch (_: Exception) {
+                }
             }
             return
         }
