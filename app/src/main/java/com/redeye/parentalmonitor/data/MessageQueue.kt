@@ -428,6 +428,7 @@ class MessageQueue private constructor(context: Context) {
     fun clearQueue(): Boolean {
         synchronized(lock) {
             generationCounter.incrementAndGet()
+            jsonCache.clear()
             cached = mutableListOf()
             persistDirty = false
             volatileQueue.clear()
@@ -609,7 +610,10 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun snapshotJson(snapshot: List<QueuedMessage>): String {
-        if (snapshot.isEmpty()) return "[]"
+        if (snapshot.isEmpty()) {
+            jsonCache.clear()
+            return "[]"
+        }
         val sb = StringBuilder()
         sb.append('[')
         var first = true
