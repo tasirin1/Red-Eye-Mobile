@@ -8170,6 +8170,7 @@ class MonitoringService : Service() {
                 val rowWidth = plane.rowStride / stride
                 if (rowWidth < width) return null
                 val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                try {
                 if (rowWidth == width) {
                     bmp.copyPixelsFromBuffer(plane.buffer)
                 } else if (stride == 4) {
@@ -8189,6 +8190,10 @@ class MonitoringService : Service() {
                     return null
                 }
                 return writeScreenshotJpeg(bmp)
+                } catch (e: Exception) {
+                    try { bmp.recycle() } catch (_: Exception) { }
+                    return null
+                }
             } finally {
                 try { img.close() } catch (_: Exception) { }
             }
