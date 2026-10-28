@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.516] - 2026-10-28
+
 ### Fixed
 - Konfigurasi mati di workflow stale dibersihkan (issue #200): selama `days-before-issue-stale`/`days-before-issue-close` bernilai -1 (issue sengaja tidak pernah di-stale-kan karena daftar issue adalah antrean kerja audit), pesan `stale-issue-message`, `close-issue-message`, `exempt-issue-labels`, dan `stale-issue-label` tidak akan pernah terpakai dan hanya menyesatkan pemelihara — keempatnya dihapus, nilai -1 dipertahankan sebagai saklar penonaktifnya, dan nama job diluruskan menjadi "Tutup PR tidak aktif".
 - Cabang tidak-aktif `InstantEventReceiver` kini punya jalur cadangan, bukan membuang event proses dingin (issue #198, sisa #107): pembacaan "belum terkonfigurasi" sesaat saat proses dingin (penyimpanan terenkripsi belum siap) sebelumnya membuat event SMS/telepon dibuang permanen. Cabang itu kini menjadwalkan `scheduleBootRestart` — worker-nya menilai ulang semua syarat dari keadaan segar (instance di-refresh, penyimpanan terenkripsi, nonaktif/consent/konfigurasi) sebelum memulai service, jadi bacaan sesaat yang keliru mendapat kesempatan kedua dan service yang mulai akan memungut SMS/panggilan pemicu lewat polling kursornya; bila perangkat memang tidak aktif, worker berhenti bersih tanpa memulai apa pun, sama seperti jalur boot biasa.
