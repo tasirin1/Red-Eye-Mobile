@@ -41,6 +41,7 @@ object ScreenCapture {
         if (value != null) {
             resultCode = 0
             resultData = null
+            ended = false
         }
     }
 
@@ -59,7 +60,7 @@ object ScreenCapture {
     fun dropProjection() {
         val dead = projection
         projection = null
-        ended = true
+        ended = ended || dead != null
         try { dead?.stop() } catch (_: Exception) { }
     }
 
