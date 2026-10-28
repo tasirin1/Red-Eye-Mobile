@@ -589,7 +589,9 @@ class MessageQueue private constructor(context: Context) {
             schedulePersistLocked()
             return true
         }
-        return writeSnapshot(prefs, ArrayList(queue), version)
+        val saved = writeSnapshot(prefs, ArrayList(queue), version)
+        if (saved) drainFailCount = 0
+        return saved
     }
 
     private fun jadwalUlangDrain(delayMs: Long): Boolean {
