@@ -38,15 +38,18 @@ class ParentalMonitorApp : Application() {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(this@ParentalMonitorApp)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("ParentalMonitorApp", "PreferencesManager refresh failed", e)
                 }
                 try {
                     com.redeye.parentalmonitor.data.PreferencesManager.getInstance(this@ParentalMonitorApp)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("ParentalMonitorApp", "PreferencesManager init failed", e)
                 }
                 try {
                     com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@ParentalMonitorApp).tryRestorePersistent()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("ParentalMonitorApp", "MessageQueue restore failed", e)
                 }
             }
         } catch (_: Exception) {
