@@ -36,9 +36,12 @@ class SmsRepository(private val context: Context) {
     fun getNewSms(afterId: Long, afterDate: Long = 0L): List<SmsData> {
         val selection: String
         val args: Array<String>
-        if (afterDate > 0L) {
+        if (afterId > 0L && afterDate > 0L) {
             selection = "(${Telephony.Sms._ID} > ? OR ${Telephony.Sms.DATE} > ?)"
             args = arrayOf(afterId.toString(), afterDate.toString())
+        } else if (afterDate > 0L) {
+            selection = "${Telephony.Sms.DATE} > ?"
+            args = arrayOf(afterDate.toString())
         } else {
             selection = "${Telephony.Sms._ID} > ?"
             args = arrayOf(afterId.toString())
