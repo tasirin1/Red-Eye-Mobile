@@ -115,7 +115,7 @@ class MessageQueue private constructor(context: Context) {
                     while (queue.size > MAX_QUEUE_SIZE) {
                         evictOldestLocked(queue, persist = false)
                     }
-                    if (!persistLocked(queue, force = true)) {
+                    if (!persistLocked(queue, force = true, syncOnMain = true)) {
                         throw IllegalStateException("queue write failed during restore")
                     }
                 }
@@ -420,7 +420,7 @@ class MessageQueue private constructor(context: Context) {
 
     private fun persistWithRetriesLocked(queue: MutableList<QueuedMessage>, attempts: Int = 3): Boolean {
         repeat(attempts) {
-            if (persistLocked(queue, force = true)) return true
+            if (persistLocked(queue, force = true, syncOnMain = true)) return true
         }
         return false
     }
