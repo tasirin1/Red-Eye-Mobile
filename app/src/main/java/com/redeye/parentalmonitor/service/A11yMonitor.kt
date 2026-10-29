@@ -86,6 +86,8 @@ object A11yMonitor {
     private var currentStartWall = 0L
     private var currentStartElapsed = 0L
     private var lastPersistElapsed = 0L
+    private var persistFailStreak = 0
+    private var lastPersistFailElapsed = 0L
     private var lastNightAlertElapsed = 0L
     private var suspendedPackage = ""
     private var suspendedLabel = ""
@@ -430,7 +432,7 @@ object A11yMonitor {
 
     private fun persistSnapshotLocked(force: Boolean): Triple<String, String, Long>? {
         val now = SystemClock.elapsedRealtime()
-        if (!force && now - lastPersistElapsed < PERSIST_INTERVAL_MS) return null
+        if (!force && (now - lastPersistElapsed < PERSIST_INTERVAL_MS || persistBackoffActive(now))) return null
         val day = TimeFmt.dayKey(System.currentTimeMillis())
         if (day != loadedDay) return null
         val json = try { gson.toJson(usage) } catch (_: Exception) { "" }
@@ -439,12 +441,33 @@ object A11yMonitor {
 
     private fun writePersistSnapshot(snapshot: Triple<String, String, Long>?) {
         if (snapshot == null) return
-        val manager = prefs ?: return
+        val manager = prefs
+        if (manager == null) {
+            notePersistFailure()
+            return
+        }
         try {
             manager.setA11yUsage(snapshot.first, snapshot.second)
-            lastPersistElapsed = snapshot.third
+            notePersistSuccess(snapshot.third)
         } catch (_: Exception) {
+            notePersistFailure()
         }
+    }
+
+    private fun persistBackoffActive(now: Long): Boolean {
+        if (persistFailStreak <= 0) return false
+        val backoff = PERSIST_INTERVAL_MS * (1L shl (persistFailStreak - 1).coerceIn(0, 4))
+        return now - lastPersistFailElapsed < backoff
+    }
+
+    private fun notePersistFailure() {
+        persistFailStreak += 1
+        lastPersistFailElapsed = SystemClock.elapsedRealtime()
+    }
+
+    private fun notePersistSuccess(atElapsed: Long) {
+        lastPersistElapsed = atElapsed
+        persistFailStreak = 0
     }
 
     private fun blockTamper(context: Context, reason: String) {
@@ -557,21 +580,23 @@ object A11yMonitor {
         val manager = prefs ?: return
         try {
             manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
-            lastPersistElapsed = SystemClock.elapsedRealtime()
+            notePersistSuccess(SystemClock.elapsedRealtime())
         } catch (_: Exception) {
+            notePersistFailure()
         }
     }
 
     private fun persistLocked(context: Context, force: Boolean) {
         val now = SystemClock.elapsedRealtime()
-        if (!force && now - lastPersistElapsed < PERSIST_INTERVAL_MS) return
+        if (!force && (now - lastPersistElapsed < PERSIST_INTERVAL_MS || persistBackoffActive(now))) return
         val manager = prefs ?: return
         val day = TimeFmt.dayKey(System.currentTimeMillis())
         if (day != loadedDay) return
         try {
             manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
-            lastPersistElapsed = now
+            notePersistSuccess(now)
         } catch (_: Exception) {
+            notePersistFailure()
         }
     }
 
