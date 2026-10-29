@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.523] - 2026-10-29
+
 ### Fixed
 - `appLabelFor` kini memakai `appLabelCache` yang sudah ada (issue #226): sebelumnya setiap panggilan menembak PackageManager (`getApplicationInfo` + `getApplicationLabel`, dua panggilan IPC) padahal berkas yang sama sudah memelihara cache label yang dipakai jalur `usageRowsBetween` — dan pemanggil `appLabelFor` berbentuk loop atas banyak paket (daftar pantau, token pantau, ringkasan aplikasi paling sering dibuka), jadi satu perintah bisa memicu puluhan IPC berulang untuk paket yang sama antarperintah. Fungsi itu kini membaca cache lebih dulu dan mengisinya dengan cara yang persis sama seperti jalur usage (termasuk bendera launchable yang dihitung dengan cara yang sama dan penjaga ukuran cache yang sama), sehingga kedua jalur berbagi entri yang konsisten. Kesegaran label sama seperti jalur usage yang sudah berjalan: label boleh basi sesaat sampai cache dibersihkan penjaga ukurannya — tidak ada mekanisme invalidasi baru.
 - Timeout unggah video hasil rekaman kini konstanta bernama sendiri (issue #225, sisa kelas #221): batas unggah per berkas video yang baru direkam sebelumnya masih literal telanjang `600_000L` — satu-satunya sisa kelas #221 di jalur kirim media — padahal nilainya yang sama-sama 600 detik bermakna beda dari tenggat flush `MEDIA_FLUSH_DEADLINE_MS` maupun tenggat wake lock `MEDIA_UPLOAD_GRACE_MS`. Literal itu kini `VIDEO_UPLOAD_TIMEOUT_MS` di blok konstanta media, sejajar dengan saudara audionya `AUDIO_UPLOAD_TIMEOUT_MS`; nilai dan perilaku tidak berubah.
