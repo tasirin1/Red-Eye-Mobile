@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.522] - 2026-10-29
+
 ### Fixed
 - Dua jalur interaksi penanda `CalculatorState` kini terkunci uji JVM (issue #222): digit sesudah hasil persen (cabang `entryReplaced` di `appendNumber` membuang entri hasil persen dan memulai entri baru — sebelumnya hanya digit sesudah hasil `=` yang diuji) dan persen pada hasil `=` (`justCalculated` bertahan melewati `percent()`, sehingga hasil persen dari hasil hitung yang kebetulan sama dengan kode rahasia tetap terhalang dua lapis penanda). Kedua urutan ditambahkan ke `CalculatorStateTest` mengikuti harness penekan tombol yang ada, dengan nilai harapan yang dibuktikan lebih dulu lewat porting Python 1:1 — perubahan penanda berikutnya yang menggeser salah satu jalur ini kini menggagalkan CI, bukan menunggu audit manual seperti bypass #120 dan #174.
 - Tenggat flush media kini satu konstanta tersendiri (issue #221): nilai `600_000L` yang sama sebelumnya ditulis keras di tiga fungsi flush (`flushPendingVideos`/`flushPendingAudio`/`flushPendingPhotos`), sehingga penyetelan berikutnya bisa mengubah sebagian dan membiarkan sisanya diam-diam berbeda. Ketiganya kini memakai `MEDIA_FLUSH_DEADLINE_MS`. Konstanta ini sengaja terpisah dari `MEDIA_UPLOAD_GRACE_MS` yang nilainya kebetulan sama — yang satu tenggat flush, yang lain tenggat wake lock perekaman — karena kedua makna itu bisa perlu disetel berbeda kelak.
