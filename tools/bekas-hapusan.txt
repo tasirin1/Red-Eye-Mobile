@@ -74,3 +74,4 @@ heldPhotoHashes
 setHeldPhotoHashesSync
 heldPhotoHashesNow
 storeHeldPhotoHashes
+setPendingNotifDropsAndBatchSync

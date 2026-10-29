@@ -1111,18 +1111,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun setPendingNotifDropsAndBatchSync(value: Int, batch: String): Boolean {
-        return try {
-            commitGuarded(
-                sharedPreferences.edit()
-                    .putInt(KEY_PENDING_NOTIF_DROPS, value)
-                    .putString(KEY_DROP_NOTICE_BATCH, batch)
-            )
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     var pendingNotifDropsSince: Long
         get() = prefLong(KEY_PENDING_NOTIF_DROPS_SINCE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PENDING_NOTIF_DROPS_SINCE, value).apply()
