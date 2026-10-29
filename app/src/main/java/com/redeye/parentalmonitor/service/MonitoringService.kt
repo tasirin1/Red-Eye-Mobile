@@ -3796,7 +3796,7 @@ class MonitoringService : Service() {
                 resolveAppPackage(token)
             } else {
                 if (sharedPairs == null) sharedPairs = launchableAppPairs()
-                resolveAppPackage(token, sharedPairs)
+                resolveAppPackage(token, sharedPairs ?: emptyList())
             }
             if (pkg == null) {
                 failed.add(token)

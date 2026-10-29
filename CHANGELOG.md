@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perintah `/pantauapp` tidak lagi membayar dua pindai launcher penuh per token nama selama PackageManager gagal menetap (issue #260, sisa #249): hasil pindai bersama yang `null` sebelumnya tak terbedakan dari "belum memindai", sehingga `resolveAppPackage` memindai sekali lagi di dalam dirinya untuk token yang sama; token kini dinilai terhadap daftar kosong bila pindai yang baru saja dicoba gagal — tanpa memindai ulang — sedangkan snapshot bersama tetap `null` sehingga token berikutnya tetap mencoba memindai lagi seperti maksud #249, dan hasil sukses/kosong sungguhan tidak berubah.
 - Jalur kegagalan terancang `Liveness.handleWakeUp` kini berjejak di log release (issue #259, sisa #246): kegagalan refresh/getInstance prefs, kegagalan exception di dalam cek `allowed()`, dan penolakan start foreground service sebelumnya semuanya diubah menjadi `return`/`false` + fallback internal tanpa log, sehingga `Log.e` di `TimeChangeReceiver` praktis tak terjangkau; ketiga titik telan itu kini menulis `Log.e` masing-masing (satu log per sebab per pemanggilan), sedangkan hasil `allowed()` yang memang `false` secara sah tetap senyap dan alur fallback-nya tidak berubah.
 
 
