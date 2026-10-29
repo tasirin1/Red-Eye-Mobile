@@ -99,6 +99,7 @@ class SmsRepository(private val context: Context) {
         val result = numberSearch.search(digits, limit)
         if (result.items.isEmpty()) return result
         val bodies = HashMap<Long, String>()
+        var hydrationComplete = false
         try {
             val ids = result.items.map { it.id }
             val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
@@ -120,6 +121,7 @@ class SmsRepository(private val context: Context) {
                     bodies[c.getLong(idIdx)] = c.getString(bodyIdx) ?: "(empty message)"
                 }
             }
+            if (cursor != null) hydrationComplete = true
         } catch (e: SecurityException) {
             throw e
         } catch (e: Exception) {
@@ -127,7 +129,11 @@ class SmsRepository(private val context: Context) {
         }
         return NumberHistoryResult(result.items.map { item ->
             val body = bodies[item.id]
-            if (body != null) item.copy(body = body) else item.copy(body = "(isi pesan gagal dimuat)")
+            when {
+                body != null -> item.copy(body = body)
+                hydrationComplete -> item.copy(body = "(pesan sudah terhapus)")
+                else -> item.copy(body = "(isi pesan gagal dimuat)")
+            }
         }, result.truncated)
     }
 
