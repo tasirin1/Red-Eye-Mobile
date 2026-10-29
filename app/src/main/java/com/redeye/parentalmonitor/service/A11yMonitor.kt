@@ -315,7 +315,7 @@ object A11yMonitor {
         if (loaded && previousDay.isNotEmpty() && today != previousDay) {
             val nowWall = System.currentTimeMillis()
             val nowElapsed = SystemClock.elapsedRealtime()
-            val dayStart = dayStartWallMillis(nowWall)
+            val dayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             var splitAtMidnight = false
             if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall) {
                 val elapsedAtDayStart = nowElapsed - (nowWall - dayStart)
@@ -348,16 +348,6 @@ object A11yMonitor {
                 currentStartElapsed = if (resumeElapsed > 0L) resumeElapsed else SystemClock.elapsedRealtime()
             }
         }
-    }
-
-    private fun dayStartWallMillis(nowWall: Long): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = nowWall
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
     }
 
     private fun loadUsage(context: Context, today: String): MutableMap<String, AppUsage> {
