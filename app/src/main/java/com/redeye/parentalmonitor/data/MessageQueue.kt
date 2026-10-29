@@ -170,6 +170,7 @@ class MessageQueue private constructor(context: Context) {
             try {
                 sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 volatileOnly = false
+                restoreFailLogged = false
                 loadDropCountsLocked(add = false)
             } catch (e: Exception) {
                 sharedPreferences = null
