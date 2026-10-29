@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Laporan jumlah drop notifikasi tidak lagi bisa ganda bila proses mati keras tepat di celah flush (issue #315): `flushDropNotice` di `NotificationForwarderService` sebelumnya mengantrekan notice ke `MessageQueue` (persisten) lebih dulu, baru menolkan `pendingNotifDrops` di prefs — kematian proses di antara keduanya membuat proses berikutnya men-seed total lama yang sama dan mem-flush ulang, sehingga owner menerima "N notifikasi dibuang" yang sama dua kali untuk satu kejadian (arahnya gagal-aman, tetapi jumlah laporannya salah). Flush kini beridentitas batch persisten: sebelum mengantre, flush mencap penanda batch (`jumlah:capWaktu`) ke prefs; sesudah antre, total sisa dan penghapusan penanda ditulis dalam SATU commit atomik. Pada flush pertama tiap proses, penanda sisa dari proses yang mati direkonsiliasi: antrean diperiksa — notice batch itu masih ada (teks + cap waktu pembuatan cocok) berarti jumlahnya sudah terlaporkan, sehingga seed dikurangi tepat sebesar batch itu dan penanda dibersihkan; notice tidak ditemukan berarti batch belum sempat terantre, sehingga penanda dibersihkan dan jumlahnya dilaporkan oleh flush yang sedang berjalan. Arah gagal tetap melapor (bukan hilang): kegagalan antre tetap mengembalikan hitungan seperti sebelumnya, dan kegagalan commit akhir membuat penanda bertahan untuk direkonsiliasi proses berikutnya.
+
 
 ## [1.6.543] - 2026-10-30
 

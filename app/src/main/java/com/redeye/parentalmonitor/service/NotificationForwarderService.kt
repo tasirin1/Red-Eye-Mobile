@@ -82,6 +82,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private var dropPersistJob: Job? = null
     private val dropNoticeLock = Any()
     private var dropNoticeInFlight = 0
+    private val dropNoticeBatchReconciled = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var watchKeywordsRaw = ""
     @Volatile
@@ -988,13 +989,57 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun dropNoticeText(count: Int): String {
+        return if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
+            else "$count notifikasi dibuang (ditolak/antrean penuh)."
+    }
+
+    private fun reconcileDropNoticeBatch() {
+        val prefs = prefsRef ?: return
+        val batch = try { prefs.dropNoticeBatch } catch (_: Exception) { "" }
+        if (batch.isEmpty()) return
+        val n = batch.substringBefore(":").toIntOrNull() ?: 0
+        val ts = batch.substringAfter(":", "").toLongOrNull() ?: 0L
+        val found = n > 0 && try {
+            val expected = dropNoticeText(n)
+            queue().getQueue().any {
+                it.priority && it.message == expected &&
+                    it.timestamp >= ts - 5_000L && it.timestamp <= ts + 300_000L
+            }
+        } catch (_: Exception) {
+            false
+        }
+        var applied = false
+        val total = synchronized(dropNoticeLock) {
+            if (found) {
+                dropNoticeCount.set((dropNoticeCount.get() - n).coerceAtLeast(0))
+                applied = true
+            }
+            dropNoticeCount.get() + dropNoticeInFlight
+        }
+        val ok = try {
+            prefs.setPendingNotifDropsAndBatchSync(total, "")
+        } catch (_: Exception) {
+            false
+        }
+        if (!ok && applied) {
+            synchronized(dropNoticeLock) { dropNoticeCount.addAndGet(n) }
+        }
+    }
+
     private fun flushDropNotice() {
+        if (dropNoticeBatchReconciled.compareAndSet(false, true)) {
+            try { reconcileDropNoticeBatch() } catch (_: Exception) { }
+        }
         val count = synchronized(dropNoticeLock) {
             dropNoticeCount.getAndSet(0).also { dropNoticeInFlight += it }
         }
         if (count <= 0) return
-        val text = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
-            else "$count notifikasi dibuang (ditolak/antrean penuh)."
+        val text = dropNoticeText(count)
+        try {
+            prefsRef?.setDropNoticeBatchSync("$count:${System.currentTimeMillis()}")
+        } catch (_: Exception) {
+        }
         val queued = try {
             queue().addMessage(text, true)
         } catch (_: Exception) {
@@ -1006,7 +1051,7 @@ class NotificationForwarderService : NotificationListenerService() {
             dropNoticeCount.get()
         }
         try {
-            prefsRef?.setPendingNotifDropsSync(pendingDrops)
+            prefsRef?.setPendingNotifDropsAndBatchSync(pendingDrops, "")
         } catch (_: Exception) {
         }
         if (queued) MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)

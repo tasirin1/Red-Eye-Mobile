@@ -396,6 +396,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_OWNER_PAIR_AT = "owner_pair_at"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
+        private const val KEY_DROP_NOTICE_BATCH = "drop_notice_batch"
         private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
         private const val KEY_PERM_SNAPSHOT = "perm_snapshot"
         private const val KEY_LAST_PHOTO_HASH = "last_photo_hash"
@@ -1074,6 +1075,30 @@ class PreferencesManager(context: Context) {
     fun setPendingNotifDropsSync(value: Int): Boolean {
         return try {
             commitGuarded(sharedPreferences.edit().putInt(KEY_PENDING_NOTIF_DROPS, value))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    var dropNoticeBatch: String
+        get() = prefString(KEY_DROP_NOTICE_BATCH, "")
+        set(value) = sharedPreferences.edit().putString(KEY_DROP_NOTICE_BATCH, value).apply()
+
+    fun setDropNoticeBatchSync(batch: String): Boolean {
+        return try {
+            commitGuarded(sharedPreferences.edit().putString(KEY_DROP_NOTICE_BATCH, batch))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setPendingNotifDropsAndBatchSync(value: Int, batch: String): Boolean {
+        return try {
+            commitGuarded(
+                sharedPreferences.edit()
+                    .putInt(KEY_PENDING_NOTIF_DROPS, value)
+                    .putString(KEY_DROP_NOTICE_BATCH, batch)
+            )
         } catch (_: Exception) {
             false
         }
