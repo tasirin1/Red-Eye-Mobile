@@ -44,6 +44,7 @@ import com.redeye.parentalmonitor.utils.OwnerAccess
 import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
+import com.redeye.parentalmonitor.utils.NotificationPrivacy
 import com.redeye.parentalmonitor.utils.PatternBaseline
 import com.redeye.parentalmonitor.utils.PermReport
 import com.redeye.parentalmonitor.utils.PhotoFingerprint
@@ -327,8 +328,6 @@ class MonitoringService : Service() {
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
-        private val OTP_CODE_REGEX = Regex("\\b\\d{4,8}\\b")
-        private val OTP_KEYWORDS = arrayOf("otp", "kode", "verifikasi", "verification", "otentikasi", "aktivasi", "konfirmasi", "token", "password", "kata sandi")
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private const val RESTORE_TTL_MS = 10 * 60_000L
@@ -6465,9 +6464,9 @@ class MonitoringService : Service() {
             val lower = body.lowercase(java.util.Locale.ROOT)
             val watch = watchHit(body)
             if (watch != null) return "⚠️ Watch: " + Html.escape(watch)
-            val hasCode = OTP_CODE_REGEX.containsMatchIn(body)
+            val hasCode = NotificationPrivacy.hasCode(body)
             val digits = address.filter { it.isDigit() }
-            if (hasCode && (digits.isNotEmpty() && digits.length <= 6 || OTP_KEYWORDS.any { lower.contains(it) })) return "🔑 Kemungkinan OTP"
+            if (hasCode && (digits.isNotEmpty() && digits.length <= 6 || NotificationPrivacy.isOtp(body))) return "🔑 Kemungkinan OTP"
             if (PROMO_KEYWORDS.any { lower.contains(it) }) return "📢 Kemungkinan promo"
             ""
         } catch (_: Exception) {

@@ -15,6 +15,8 @@ object NotificationPrivacy {
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 
+    fun hasCode(text: String): Boolean = DIGIT_GROUPS.containsMatchIn(text)
+
     fun mask(text: String): String {
         return DIGIT_GROUPS.replace(text) { match ->
             match.value.map { if (it.isDigit()) '•' else it }.joinToString("")

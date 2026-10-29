@@ -18,6 +18,15 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun hasCodeDetectsPlainAndSeparatedDigitGroups() {
+        assertTrue(NotificationPrivacy.hasCode("Kode 123456"))
+        assertTrue(NotificationPrivacy.hasCode("PIN code is 123 456"))
+        assertTrue(NotificationPrivacy.hasCode("kode 123-456"))
+        assertFalse(NotificationPrivacy.hasCode("kode 123"))
+        assertFalse(NotificationPrivacy.hasCode("pesan biasa tanpa angka"))
+    }
+
+    @Test
     fun masksFourToTwelveDigitGroups() {
         val out = NotificationPrivacy.mask("Kode 123456, pin 4321, rekening 1234567890")
         assertEquals("Kode ••••••, pin ••••, rekening ••••••••••", out)

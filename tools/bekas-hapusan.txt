@@ -75,3 +75,5 @@ setHeldPhotoHashesSync
 heldPhotoHashesNow
 storeHeldPhotoHashes
 setPendingNotifDropsAndBatchSync
+OTP_CODE_REGEX
+OTP_KEYWORDS
