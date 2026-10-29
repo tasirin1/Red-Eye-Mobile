@@ -394,6 +394,7 @@ class MonitoringService : Service() {
         private const val VEHICLE_MIN_SPEED_MPS = 8.3f
         private const val VEHICLE_MAX_SPEED_MPS = 55f
         private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
+        private const val FENCE_ALERT_COOLDOWN_MS = 20 * 60_000L
         private const val LOCATION_GOOD_ACCURACY_M = 50f
         private const val LOCATION_LASTKNOWN_FRESH_MS = 120_000L
         private const val LOCATION_LASTKNOWN_MAX_MS = 24 * 60 * 60_000L
@@ -6573,16 +6574,30 @@ class MonitoringService : Service() {
                         if (ws != null) {
                             if (isHome) preferencesManager.homeState = ws else preferencesManager.schoolState = ws
                         }
-                        t.alert
+                        val alertNow = if (t.alert) {
+                            val nowWall = System.currentTimeMillis()
+                            val lastAlert = if (isHome) preferencesManager.homeAlertAt else preferencesManager.schoolAlertAt
+                            if (lastAlert > 0L && nowWall > lastAlert && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS) {
+                                false
+                            } else {
+                                if (isHome) preferencesManager.homeAlertAt = nowWall else preferencesManager.schoolAlertAt = nowWall
+                                true
+                            }
+                        } else {
+                            false
+                        }
+                        t.alert to alertNow
                     }
                 } catch (_: Exception) {
-                    false
+                    false to false
                 }
-                if (transition) {
-                    val name = if (isHome) "Rumah" else "Sekolah"
-                    val verb = if (inside) "masuk" else "keluar"
-                    sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                if (transition.first) {
                     if (isHome) recordFenceFact(inside)
+                    if (transition.second) {
+                        val name = if (isHome) "Rumah" else "Sekolah"
+                        val verb = if (inside) "masuk" else "keluar"
+                        sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                    }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {

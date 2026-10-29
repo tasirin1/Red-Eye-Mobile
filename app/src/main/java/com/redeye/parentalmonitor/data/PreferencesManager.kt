@@ -420,10 +420,12 @@ class PreferencesManager(context: Context) {
         private const val KEY_HOME_LON = "home_lon_e6"
         private const val KEY_HOME_RAD = "home_radius_m"
         private const val KEY_HOME_STATE = "home_state"
+        private const val KEY_HOME_ALERT_AT = "home_alert_at"
         private const val KEY_SCHOOL_LAT = "school_lat_e6"
         private const val KEY_SCHOOL_LON = "school_lon_e6"
         private const val KEY_SCHOOL_RAD = "school_radius_m"
         private const val KEY_SCHOOL_STATE = "school_state"
+        private const val KEY_SCHOOL_ALERT_AT = "school_alert_at"
         private const val KEY_NIGHT_DIGEST_DATE = "night_digest_date"
         private const val KEY_LAST_DATA_AT = "last_data_at"
         private const val KEY_LOC_FAIL_COUNT = "loc_fail_count"
@@ -1438,6 +1440,10 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_HOME_STATE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_HOME_STATE, value).apply()
 
+    var homeAlertAt: Long
+        get() = prefLong(KEY_HOME_ALERT_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_HOME_ALERT_AT, value).apply()
+
     var schoolLatE6: Long
         get() = prefLong(KEY_SCHOOL_LAT, Long.MIN_VALUE)
         set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_LAT, value).apply()
@@ -1454,6 +1460,10 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_SCHOOL_STATE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_STATE, value).apply()
 
+    var schoolAlertAt: Long
+        get() = prefLong(KEY_SCHOOL_ALERT_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_ALERT_AT, value).apply()
+
     fun setHomeFence(latE6: Long, lonE6: Long, radiusM: Int) {
         try {
             sharedPreferences.edit()
@@ -1461,6 +1471,7 @@ class PreferencesManager(context: Context) {
                 .putLong(KEY_HOME_LON, lonE6)
                 .putInt(KEY_HOME_RAD, radiusM)
                 .putInt(KEY_HOME_STATE, 0)
+                .putLong(KEY_HOME_ALERT_AT, 0L)
                 .apply()
         } catch (_: Exception) {
         }
@@ -1473,6 +1484,7 @@ class PreferencesManager(context: Context) {
                 .putLong(KEY_SCHOOL_LON, lonE6)
                 .putInt(KEY_SCHOOL_RAD, radiusM)
                 .putInt(KEY_SCHOOL_STATE, 0)
+                .putLong(KEY_SCHOOL_ALERT_AT, 0L)
                 .apply()
         } catch (_: Exception) {
         }
@@ -1483,6 +1495,7 @@ class PreferencesManager(context: Context) {
             sharedPreferences.edit()
                 .putInt(KEY_HOME_RAD, 0)
                 .putInt(KEY_HOME_STATE, 0)
+                .putLong(KEY_HOME_ALERT_AT, 0L)
                 .apply()
         } catch (_: Exception) {
         }
@@ -1493,6 +1506,7 @@ class PreferencesManager(context: Context) {
             sharedPreferences.edit()
                 .putInt(KEY_SCHOOL_RAD, 0)
                 .putInt(KEY_SCHOOL_STATE, 0)
+                .putLong(KEY_SCHOOL_ALERT_AT, 0L)
                 .apply()
         } catch (_: Exception) {
         }
