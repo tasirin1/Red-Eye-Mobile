@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.536] - 2026-10-29
+
 ### Fixed
 - Penjaga boot penuh 10 menit di `BootReceiver` tidak lagi menyala lintas reboot (issue #287, kelas penanda monoton persisten #275): penjaga `last_full_boot_elapsed` sebelumnya tidak memuat syarat boot-yang-sama yang dimiliki penjaga saudaranya `last_handle_elapsed` tepat di atasnya, sehingga sesudah reboot selisih `nowBoot - lastFullBoot` menjadi negatif — selalu lebih kecil dari 10 menit — dan setiap `handleBoot` yang tiba saat layanan sudah berjalan keluar tanpa `markHandled` selama uptime boot baru belum melampaui cap elapsed boot lama; penjaga kini mensyaratkan `nowBoot >= lastFullBoot` menyamai penjaga saudaranya, sedangkan perilaku dedup dalam boot yang sama tidak berubah.
 - Usia "terakhir aktif" di status Setup tidak lagi menyesatkan sesudah reboot (issue #286, kelas penanda monoton persisten #275): perhitungan sebelumnya selalu mendahulukan cabang `elapsedRealtime` setiap kali penanda `lastAliveElapsed` terisi, tanpa validasi boot — penanda itu persisten tetapi jam monoton ter-reset tiap reboot, sehingga sesudah reboot selisihnya negatif lalu dijepit ke nol dan status menampilkan "0 menit lalu" walau layanan terakhir hidup berjam-jam sebelum reboot (atau angkanya mengecil karena masa HP mati tidak terhitung); cabang elapsed kini hanya dipakai bila pasangan wall+elapsed tersimpan terbukti satu boot dengan pasangan kini lewat `BootClock.sameBoot` dari #285, selain itu usia dihitung dari jam dinding `lastAliveAt` seperti cabang cadangan yang sudah ada. Tampilan pada boot yang sama tidak berubah, dan nilai tampil tetap dijepit tidak negatif.
