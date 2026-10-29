@@ -37,37 +37,49 @@ object AppWatch {
     private val MATCH_SUFFIXES = setOf("nya", "an", "i", "s", "ing", "ed")
 
     private fun wordMatches(word: String, keyword: String): Boolean {
-        if (word == keyword) return true
-        val stems = ArrayList<String>(MATCH_PREFIXES.size + 1)
-        stems.add(word)
+        if (stemMatches(word, 0, keyword)) return true
         for (prefix in MATCH_PREFIXES) {
             if (word.length > prefix.length && word.startsWith(prefix)) {
-                stems.add(word.substring(prefix.length))
-            }
-        }
-        for (stem in stems) {
-            if (stem == keyword) return true
-            if (stem.length > keyword.length && stem.startsWith(keyword)) {
-                val rest = stem.substring(keyword.length)
-                if (rest in MATCH_SUFFIXES) return true
-                if (rest.all { it == keyword.last() }) return true
+                if (stemMatches(word, prefix.length, keyword)) return true
             }
         }
         return false
     }
 
+    private fun stemMatches(word: String, start: Int, keyword: String): Boolean {
+        val stemLen = word.length - start
+        if (stemLen < keyword.length) return false
+        if (!word.regionMatches(start, keyword, 0, keyword.length)) return false
+        if (stemLen == keyword.length) return true
+        val restStart = start + keyword.length
+        val restLen = stemLen - keyword.length
+        for (suffix in MATCH_SUFFIXES) {
+            if (suffix.length == restLen && word.regionMatches(restStart, suffix, 0, restLen)) return true
+        }
+        val last = keyword[keyword.length - 1]
+        var i = restStart
+        while (i < word.length) {
+            if (word[i] != last) return false
+            i++
+        }
+        return true
+    }
+
     fun hit(keywords: List<String>, text: String): String? {
         if (keywords.isEmpty() || text.isEmpty()) return null
         val lower = text.lowercase(Locale.ROOT)
-        val words = WORD_SPLIT.split(lower).filter { it.isNotEmpty() }
+        var words: List<String>? = null
         return keywords.firstOrNull { raw ->
             val keyword = raw.lowercase(Locale.ROOT)
             if (keyword.isEmpty()) {
                 false
             } else if (keyword.any { !it.isLetterOrDigit() }) {
                 lower.contains(keyword)
+            } else if (!lower.contains(keyword)) {
+                false
             } else {
-                words.any { wordMatches(it, keyword) }
+                val split = words ?: WORD_SPLIT.split(lower).filter { it.isNotEmpty() }.also { words = it }
+                split.any { wordMatches(it, keyword) }
             }
         }
     }

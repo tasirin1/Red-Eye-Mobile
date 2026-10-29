@@ -52,6 +52,17 @@ class AppWatchTest {
     }
 
     @Test
+    fun kasusTepiImbuhanGandaKataUlangDanBatangTersembunyi() {
+        assertNull(AppWatch.hit(listOf("judi"), "dia memperjudikan nasibnya"))
+        assertNull(AppWatch.hit(listOf("pergi"), "kepergiannya kemarin"))
+        assertNull(AppWatch.hit(listOf("main"), "memainkan bola"))
+        assertNull(AppWatch.hit(listOf("aman"), "amanah yang dijaga"))
+        assertEquals("bully", AppWatch.hit(listOf("bully"), "bully-bully itu berulang"))
+        assertEquals("aman", AppWatch.hit(listOf("aman"), "keamanan data terjaga"))
+        assertEquals("tidur", AppWatch.hit(listOf("tidur"), "ketiduran di kelas"))
+    }
+
+    @Test
     fun potonganKonteksDiSekitarKataCocok() {
         assertEquals("dia berjudi semalam", AppWatch.contextSnippet("judi", "dia berjudi semalam"))
         assertEquals("Kemarin dia BERJUDI di warung", AppWatch.contextSnippet("judi", "Kemarin dia BERJUDI di warung"))
