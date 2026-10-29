@@ -67,7 +67,11 @@ object AppWatch {
 
     fun hit(keywords: List<String>, text: String): String? {
         if (keywords.isEmpty() || text.isEmpty()) return null
-        val lower = text.lowercase(Locale.ROOT)
+        return hitLowered(keywords, text.lowercase(Locale.ROOT))
+    }
+
+    fun hitLowered(keywords: List<String>, lower: String): String? {
+        if (keywords.isEmpty() || lower.isEmpty()) return null
         var words: List<String>? = null
         return keywords.firstOrNull { raw ->
             val keyword = raw.lowercase(Locale.ROOT)

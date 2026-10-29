@@ -392,10 +392,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 try {
                     val nf = notifTitleText(notification)
                     if (nf.title.isNotEmpty() || nf.text.isNotEmpty()) {
-                        val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody) } catch (_: Exception) { false }
+                        val squeezedJoined = nf.rawTitle + "\n" + nf.rawBody
+                        val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody, squeezedJoined.lowercase(java.util.Locale.ROOT)) } catch (_: Exception) { false }
                         if (squeezedPriority && forwardingAllowed()) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
-                            emitPost(pkg, groupKey, squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), !isSummary && groupKey.isNotEmpty(), nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime, isSummary)
+                            emitPost(pkg, groupKey, squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), !isSummary && groupKey.isNotEmpty(), nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime, isSummary, squeezedJoined)
                         } else recordOverflow(pkg, nf.title, nf.text)
                     }
                 } catch (_: Exception) {
@@ -490,7 +491,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         val now = android.os.SystemClock.elapsedRealtime()
-        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), rawTitle = nf.rawTitle, rawBody = nf.rawBody, sbnKey = sbnKey, sbnPostTime = sbnPostTime, isSummary = isSummary)
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), rawTitle = nf.rawTitle, rawBody = nf.rawBody, sbnKey = sbnKey, sbnPostTime = sbnPostTime, isSummary = isSummary, keyJoined = nf.rawTitle + "\n" + nf.rawBody)
     }
 
     private fun notifIdHash(sbnKey: String, postTime: Long): String {
@@ -553,7 +554,8 @@ class NotificationForwarderService : NotificationListenerService() {
         rawBody: String = "",
         sbnKey: String = "",
         sbnPostTime: Long = 0L,
-        isSummary: Boolean = false
+        isSummary: Boolean = false,
+        keyJoined: String = ""
     ) {
         if (isSummary && groupKey.isNotEmpty()) {
             val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
@@ -589,7 +591,10 @@ class NotificationForwarderService : NotificationListenerService() {
             digest.update(bytes)
         }
         val key = android.util.Base64.encodeToString(digest.digest(), android.util.Base64.NO_WRAP)
-        val priority = try { isPriorityNotif(pkg, keyTitle, keyBody) } catch (_: Exception) { false }
+        val joined = if (rawTitle.isEmpty() && rawBody.isEmpty()) keyTitle + "\n" + keyBody else keyJoined.ifEmpty { keyTitle + "\n" + keyBody }
+        val lowerJoined = joined.lowercase(java.util.Locale.ROOT)
+        val maskedLower = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
+        val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
             if (prev > 0L && now - prev < 10_000L) true else {
@@ -612,7 +617,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (idHash.isNotEmpty()) markForwardedId(idHash)
                 if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
                 try {
-                    queue().addMessage("❗ " + buildNotifMessage(label, title, text))
+                    queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower))
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -631,7 +636,7 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
-        val message = buildNotifMessage(label, title, text)
+        val message = buildNotifMessage(label, title, text, maskedLower)
         record(label, title, text)
         if (idHash.isNotEmpty()) markForwardedId(idHash)
         if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
@@ -648,7 +653,7 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun buildNotifMessage(label: String, title: String, text: String): String {
+    private fun buildNotifMessage(label: String, title: String, text: String, lowerJoined: String): String {
         return buildString {
             appendLine("🔔 <b>Notifikasi</b>")
             try {
@@ -658,7 +663,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         watchKeywordsList = AppWatch.parseKeywords(raw)
                         watchKeywordsRaw = raw
                     }
-                    val hit = AppWatch.hit(watchKeywordsList, title + "\n" + text)
+                    val hit = AppWatch.hitLowered(watchKeywordsList, lowerJoined)
                     if (hit != null) appendLine("⚠️ Watch: " + Html.escape(hit))
                 }
             } catch (_: Exception) {
@@ -918,10 +923,9 @@ class NotificationForwarderService : NotificationListenerService() {
         return MessageQueue.getInstance(this).also { queueRef = it }
     }
 
-    private fun isPriorityNotif(pkg: String, title: String, text: String): Boolean {
+    private fun isPriorityNotif(pkg: String, title: String, text: String, lowText: String): Boolean {
         return try {
             val lowPkg = pkg.lowercase(java.util.Locale.ROOT)
-            val lowText = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
             try {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this)).watchKeywords
                 if (raw.isNotEmpty()) {
@@ -929,7 +933,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         watchKeywordsList = AppWatch.parseKeywords(raw)
                         watchKeywordsRaw = raw
                     }
-                    if (AppWatch.hit(watchKeywordsList, title + "\n" + text) != null) return true
+                    if (AppWatch.hitLowered(watchKeywordsList, lowText) != null) return true
                 }
             } catch (_: Exception) {
             }
