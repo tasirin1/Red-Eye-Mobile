@@ -441,11 +441,7 @@ object A11yMonitor {
 
     private fun writePersistSnapshot(snapshot: Triple<String, String, Long>?) {
         if (snapshot == null) return
-        val manager = prefs
-        if (manager == null) {
-            notePersistFailure()
-            return
-        }
+        val manager = prefs ?: return
         try {
             manager.setA11yUsage(snapshot.first, snapshot.second)
             notePersistSuccess(snapshot.third)
