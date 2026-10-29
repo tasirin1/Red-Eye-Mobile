@@ -860,6 +860,28 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_LIVE_TEST_BY_ALARM, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).apply()
 
+    fun beginLiveTest(startedElapsed: Long) {
+        try {
+            sharedPreferences.edit()
+                .putBoolean(KEY_LIVE_TEST_PENDING, true)
+                .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, startedElapsed)
+                .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearLiveTest() {
+        try {
+            sharedPreferences.edit()
+                .putBoolean(KEY_LIVE_TEST_PENDING, false)
+                .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
+                .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var liveTestLastSec: Int
         get() = prefInt(KEY_LIVE_TEST_LAST_SEC, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_LIVE_TEST_LAST_SEC, value).apply()

@@ -7538,9 +7538,7 @@ class MonitoringService : Service() {
 
     private fun runLivenessSelfTest() {
         try {
-            preferencesManager.liveTestPending = true
-            preferencesManager.liveTestStartedElapsed = android.os.SystemClock.elapsedRealtime()
-            preferencesManager.liveTestByAlarm = false
+            preferencesManager.beginLiveTest(android.os.SystemClock.elapsedRealtime())
         } catch (_: Exception) {
         }
         try {
@@ -7572,9 +7570,7 @@ class MonitoringService : Service() {
         if (!pending) return
         val startedElapsed = try { preferencesManager.liveTestStartedElapsed } catch (_: Exception) { 0L }
         val byAlarm = try { preferencesManager.liveTestByAlarm } catch (_: Exception) { false }
-        try { preferencesManager.liveTestPending = false } catch (_: Exception) { }
-        try { preferencesManager.liveTestStartedElapsed = 0L } catch (_: Exception) { }
-        try { preferencesManager.liveTestByAlarm = false } catch (_: Exception) { }
+        try { preferencesManager.clearLiveTest() } catch (_: Exception) { }
         if (startedElapsed <= 0L) return
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
         if (startedElapsed > nowElapsed) {
