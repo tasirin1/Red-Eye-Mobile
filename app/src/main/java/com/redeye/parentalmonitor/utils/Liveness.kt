@@ -90,10 +90,6 @@ object Liveness {
         }
     }
 
-    fun allowed(manager: PreferencesManager): Boolean {
-        return allowedCheck(manager) == AllowedCheck.ALLOWED
-    }
-
     fun schedule(context: Context) {
         scheduleSoon(context, intervalMs(context))
     }
