@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+### Fixed
+- Label aplikasi kosong dari `usageRowsBetween` tidak lagi masuk `appLabelCache` apa adanya (issue #248, sisa #237): label hasil resolusi kini dinormalkan menjadi nama paket dengan `.ifEmpty { pkg }` sebelum ditulis ke cache, sama seperti `appLabelFor`, sehingga ringkasan pemakaian dan pembaca cache lain tidak lagi menerima nama aplikasi kosong.
 
 ## [1.6.528] - 2026-10-29
 
