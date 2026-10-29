@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.520] - 2026-10-29
+
 ### Fixed
 - Perintah kontrol owner pra-adopsi yang mengikuti `/login` tidak lagi hilang ditolak gerbang (issue #215, sisa #201): pengecualian `join()` bagi perintah kontrol dari #201 membuat perintah semacam itu (`/lock`, `/stop`, dst. dari pengirim yang `cachedOwnerId`-nya masih 0) bisa menyalip fase putar `tryLock` login dari #202 dan tiba sebelum adopsi di `handleOwnerLogin` sempat berjalan — perintah dinilai non-owner, ditolak gerbang perintah mutasi, tetapi update-nya tetap ditandai selesai sehingga Telegram tidak pernah mengirimnya ulang; padahal urutan login-lalu-kunci adalah skenario darurat utama. Perintah kontrol yang mengikuti login kini menunggu — tanpa memegang kunci apa pun — sampai login dari pengirim yang sama mengadopsi pengirimnya atau job login berakhir, dan penilaian owner tetap dilakukan ulang di dalam kunci seperti sebelumnya: pengirim yang login-nya gagal (PIN salah/terkunci) tetap ditolak persis seperti dulu, perintah kontrol owner yang sudah terdaftar tidak menunggu sama sekali, dan yang ditunggu hanya tahap adopsi, bukan seluruh I/O login, jadi masalah #201 tidak kembali.
 
