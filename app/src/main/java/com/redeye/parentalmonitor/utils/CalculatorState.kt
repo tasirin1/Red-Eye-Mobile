@@ -45,6 +45,7 @@ class CalculatorState {
 
     }
 
+    @JvmName("applyOperator")
     fun setOperator(op: String) {
         justCalculated = false
         entryReplaced = false

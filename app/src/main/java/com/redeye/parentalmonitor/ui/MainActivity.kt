@@ -158,6 +158,7 @@ class MainActivity : AppCompatActivity() {
         updateCalculatorDisplay()
     }
 
+    @JvmName("setOperatorFromButton")
     private fun setOperator(op: String) {
         calcState.setOperator(op)
         updateCalculatorDisplay()
