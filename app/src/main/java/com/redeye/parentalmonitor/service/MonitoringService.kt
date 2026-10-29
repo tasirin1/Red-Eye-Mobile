@@ -116,6 +116,8 @@ class MonitoringService : Service() {
     private val controlLock = kotlinx.coroutines.sync.Mutex()
     private var lastLoginJob: kotlinx.coroutines.Job? = null
     private var lastLoginSender: String = ""
+    private val adoptionGateLock = Any()
+    private val adoptionWaiters = sortedSetOf<Long>()
     private val cameraBusy = AtomicBoolean(false)
     private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
@@ -1871,39 +1873,55 @@ class MonitoringService : Service() {
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             if (followsLogin && !control) loginJobSnapshot?.join()
                             var adoptionRejected = false
-                            if (followsLogin && control && !ownerOk) {
-                                val waitDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
-                                while (loginJobSnapshot?.isActive == true && !isOwner(senderId)) {
-                                    if (android.os.SystemClock.elapsedRealtime() >= waitDeadline) {
-                                        adoptionRejected = true
-                                        break
-                                    }
-                                    delay(50)
-                                }
-                                if (adoptionRejected && isOwner(senderId)) adoptionRejected = false
-                                if (adoptionRejected) {
-                                    android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
-                                    try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
-                                }
+                            val adoptionWait = followsLogin && control && !ownerOk
+                            if (adoptionWait) {
+                                synchronized(adoptionGateLock) { adoptionWaiters.add(update.updateId) }
                             }
-                            if (!adoptionRejected) lock.withLock {
-                                val ownerNow = isOwner(senderId)
-                                val privateNow = ownerNow && isPrivate
-                                val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
-                                if (!restoreHandled) {
-                                    val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId)
-                                    if (!balasAngka && command.startsWith("/")) {
-                                        val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                        handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate)
-                                    } else if (!balasAngka) {
-                                        if (aliasInput != null && privateNow) {
-                                            handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true)
-                                        } else if (intentInput != null && privateNow) {
-                                            handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true)
+                            try {
+                                if (adoptionWait) {
+                                    val waitDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                    while (true) {
+                                        val loginPending = loginJobSnapshot?.isActive == true && !isOwner(senderId)
+                                        val myTurn = synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull() == update.updateId }
+                                        if (!loginPending && myTurn) break
+                                        if (android.os.SystemClock.elapsedRealtime() >= waitDeadline) {
+                                            adoptionRejected = true
+                                            break
+                                        }
+                                        delay(50)
+                                    }
+                                    if (adoptionRejected && isOwner(senderId) &&
+                                        synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull() == update.updateId }) {
+                                        adoptionRejected = false
+                                    }
+                                    if (adoptionRejected) {
+                                        android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
+                                        try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
+                                    }
+                                }
+                                if (!adoptionRejected) lock.withLock {
+                                    val ownerNow = isOwner(senderId)
+                                    val privateNow = ownerNow && isPrivate
+                                    val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
+                                    if (!restoreHandled) {
+                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId)
+                                        if (!balasAngka && command.startsWith("/")) {
+                                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                            handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate)
+                                        } else if (!balasAngka) {
+                                            if (aliasInput != null && privateNow) {
+                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true)
+                                            } else if (intentInput != null && privateNow) {
+                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true)
+                                            }
                                         }
                                     }
+                                    Unit
                                 }
-                                Unit
+                            } finally {
+                                if (adoptionWait) {
+                                    synchronized(adoptionGateLock) { adoptionWaiters.remove(update.updateId) }
+                                }
                             }
                         }
                     }
