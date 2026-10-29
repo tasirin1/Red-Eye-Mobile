@@ -191,7 +191,7 @@ object Liveness {
         }
     }
 
-    fun handleWakeUp(context: Context) {
+    fun handleWakeUp(context: Context, fromAlarm: Boolean = false) {
         val manager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
@@ -220,7 +220,7 @@ object Liveness {
         noteKillDetected()
         schedule(context)
         try {
-            if (manager.liveTestPending) manager.liveTestByAlarm = true
+            if (fromAlarm && manager.liveTestPending) manager.liveTestByAlarm = true
         } catch (_: Exception) {
         }
         val started = try {

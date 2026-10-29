@@ -17,7 +17,7 @@ class LivenessReceiver : BroadcastReceiver() {
             null
         }
         Background.runReceiver(pendingResult) {
-            Liveness.handleWakeUp(appContext)
+            Liveness.handleWakeUp(appContext, fromAlarm = true)
         }
     }
 }
