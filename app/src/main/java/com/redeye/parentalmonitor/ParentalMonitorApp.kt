@@ -52,7 +52,8 @@ class ParentalMonitorApp : Application() {
                     android.util.Log.e("ParentalMonitorApp", "MessageQueue restore failed", e)
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("ParentalMonitorApp", "Background init dispatch failed", e)
         }
     }
 
