@@ -12,6 +12,7 @@ import com.redeye.parentalmonitor.R
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
 import com.redeye.parentalmonitor.utils.CalculatorFormat
+import com.redeye.parentalmonitor.utils.CalculatorState
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.BuildConfig
 import com.redeye.parentalmonitor.utils.ServiceStart
@@ -96,12 +97,25 @@ class MainActivity : AppCompatActivity() {
 
     private var calculatorDisplay: android.widget.TextView? = null
     private var calculatorHistory: android.widget.TextView? = null
-    private var currentNumber = ""
-    private var operator = ""
-    private var previousNumber = ""
-    private var lastExpression = ""
-    private var justCalculated = false
-    private var entryReplaced = false
+    private val calcState = CalculatorState()
+    private var currentNumber: String
+        get() = calcState.currentNumber
+        set(value) { calcState.currentNumber = value }
+    private var operator: String
+        get() = calcState.operator
+        set(value) { calcState.operator = value }
+    private var previousNumber: String
+        get() = calcState.previousNumber
+        set(value) { calcState.previousNumber = value }
+    private var lastExpression: String
+        get() = calcState.lastExpression
+        set(value) { calcState.lastExpression = value }
+    private var justCalculated: Boolean
+        get() = calcState.justCalculated
+        set(value) { calcState.justCalculated = value }
+    private var entryReplaced: Boolean
+        get() = calcState.entryReplaced
+        set(value) { calcState.entryReplaced = value }
 
     private fun initCalculator() {
         if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Initializing Calculator UI")
@@ -140,195 +154,43 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun appendNumber(number: String) {
-        if (entryReplaced) {
-            currentNumber = ""
-            entryReplaced = false
-        }
-        if (justCalculated) {
-            currentNumber = ""
-            previousNumber = ""
-            operator = ""
-            lastExpression = ""
-            justCalculated = false
-        }
-        if (currentNumber == "Error") {
-            currentNumber = ""
-            previousNumber = ""
-            operator = ""
-            lastExpression = ""
-        }
-        if (number == ".") {
-            if (currentNumber.contains(".")) return
-            when {
-                currentNumber.isEmpty() -> currentNumber = "0."
-                currentNumber == "-" -> currentNumber = "-0."
-                else -> currentNumber += "."
-            }
-        } else if (currentNumber == "0") {
-            currentNumber = number
-        } else if (currentNumber == "-0") {
-            currentNumber = "-$number"
-        } else {
-            if (currentNumber.count { it.isDigit() } >= 12) return
-            currentNumber += number
-        }
-
+        calcState.appendNumber(number)
         updateCalculatorDisplay()
     }
 
     private fun setOperator(op: String) {
-        justCalculated = false
-        entryReplaced = false
-        if (currentNumber == "Error") {
-            clear()
-            return
-        }
-        if (currentNumber.isEmpty() || currentNumber == "-") {
-            if (previousNumber.isNotEmpty()) {
-                operator = op
-                updateCalculatorDisplay()
-            }
-            return
-        }
-        if (previousNumber.isNotEmpty()) {
-            calculate()
-            if (currentNumber == "Error" || currentNumber.isEmpty()) return
-        }
-        operator = op
-        previousNumber = currentNumber
-        currentNumber = ""
-        justCalculated = false
+        calcState.setOperator(op)
         updateCalculatorDisplay()
     }
 
     private fun calculate() {
-        if (!justCalculated && !entryReplaced && currentNumber == "1234" && previousNumber.isEmpty() && operator.isEmpty()) {
+        if (calcState.calculate()) {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "SECRET CODE -> open SetupActivity")
-            currentNumber = ""
-            previousNumber = ""
-            operator = ""
-            lastExpression = ""
-            justCalculated = false
             updateCalculatorDisplay()
             openSetupPage()
             return
         }
-
-        if (previousNumber.isEmpty() || currentNumber.isEmpty() || currentNumber == "-") return
-
-        val currentStr = currentNumber
-        val num1 = previousNumber.toDoubleOrNull() ?: return
-        val num2 = currentStr.toDoubleOrNull() ?: return
-
-        val result = when (operator) {
-            "+" -> num1 + num2
-            "−" -> num1 - num2
-            "×" -> num1 * num2
-            "÷" -> if (num2 != 0.0) num1 / num2 else Double.NaN
-            else -> num2
-        }
-
-        currentNumber = formatResult(result)
-
-        lastExpression = "$previousNumber $operator $currentStr"
-        justCalculated = true
-        previousNumber = ""
-        operator = ""
         updateCalculatorDisplay()
     }
 
-    private fun formatResult(result: Double): String {
-        if (result.isNaN() || result.isInfinite()) return "Error"
-        val abs = kotlin.math.abs(result)
-        if (result == kotlin.math.floor(result) && abs < if (result < 0) 1e11 else 1e12) {
-            return result.toLong().toString()
-        }
-        val floored = kotlin.math.floor(abs)
-        val intDigits = if (floored < 1.0) 1 else java.math.BigDecimal.valueOf(floored).toPlainString().substringBefore('.').trimStart('-').trimStart('0').length.coerceAtLeast(1)
-        val signExtra = if (result < 0) 1 else 0
-        if (intDigits + signExtra > 12) {
-            return String.format(java.util.Locale.US, "%.5E", result)
-        }
-        val maxScale = (12 - intDigits - signExtra).coerceIn(0, 8)
-        val plain = java.math.BigDecimal.valueOf(result)
-            .setScale(maxScale, java.math.RoundingMode.HALF_UP)
-            .stripTrailingZeros()
-            .toPlainString()
-        if (result != 0.0 && plain.trimStart('-') == "0") {
-            return String.format(java.util.Locale.US, "%.5E", result)
-        }
-        if (plain.count { it.isDigit() } + (if (plain.startsWith("-")) 1 else 0) > 12) {
-            return String.format(java.util.Locale.US, "%.5E", result)
-        }
-        return plain
-    }
 
     private fun backspace() {
-        if (currentNumber == "Error") {
-            clear()
-            return
-        }
-        if (justCalculated) return
-        if (entryReplaced) {
-            currentNumber = ""
-            entryReplaced = false
-            updateCalculatorDisplay()
-            return
-        }
-        currentNumber = when {
-            currentNumber.length <= 1 -> ""
-            else -> currentNumber.dropLast(1).removeSuffix("-")
-        }
+        calcState.backspace()
         updateCalculatorDisplay()
     }
 
     private fun clear() {
-        currentNumber = ""
-        previousNumber = ""
-        operator = ""
-        lastExpression = ""
-        justCalculated = false
-        entryReplaced = false
+        calcState.clear()
         updateCalculatorDisplay()
     }
 
     private fun toggleSign() {
-        if (currentNumber == "Error") {
-            clear()
-            return
-        }
-        if (currentNumber.isEmpty()) {
-            if (operator.isNotEmpty()) {
-                currentNumber = "-"
-                updateCalculatorDisplay()
-            }
-            return
-        }
-        currentNumber = when {
-            currentNumber == "-" -> ""
-            currentNumber.startsWith("-") -> currentNumber.removePrefix("-")
-            currentNumber == "0" -> "0"
-            else -> "-$currentNumber"
-        }
+        calcState.toggleSign()
         updateCalculatorDisplay()
     }
 
     private fun percent() {
-        if (currentNumber == "Error") {
-            clear()
-            return
-        }
-        if (currentNumber.isEmpty() || currentNumber == "-") return
-        val value = currentNumber.toDoubleOrNull() ?: return
-        val base = previousNumber.toDoubleOrNull()
-        val result = if (operator.isNotEmpty() && base != null) {
-            base * value / 100.0
-        } else {
-            value / 100.0
-        }
-        currentNumber = formatResult(result)
-        lastExpression = ""
-        entryReplaced = true
+        calcState.percent()
         updateCalculatorDisplay()
     }
 
