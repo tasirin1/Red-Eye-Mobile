@@ -7916,13 +7916,16 @@ class MonitoringService : Service() {
             }
             if (files != null) {
                 val alive = HashSet<Long>()
+                var scanComplete = true
                 for (file in files) {
-                    try { alive.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
+                    try { alive.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { scanComplete = false }
                 }
-                val pruned = heldHashes.filter { it in alive }
-                if (pruned.size != heldHashes.size) {
-                    heldHashes = LinkedHashSet(pruned)
-                    storeHeldPhotoHashes(heldHashes)
+                if (scanComplete) {
+                    val pruned = heldHashes.filter { it in alive }
+                    if (pruned.size != heldHashes.size) {
+                        heldHashes = LinkedHashSet(pruned)
+                        storeHeldPhotoHashes(heldHashes)
+                    }
                 }
             }
         }
