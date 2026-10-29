@@ -5972,9 +5972,12 @@ class MonitoringService : Service() {
                     label = cached.second
                 } else {
                     launchable = try { pm.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
-                    label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { pkg }
-                    if (appLabelCache.size > 300) appLabelCache.clear()
-                    appLabelCache[pkg] = launchable to label
+                    var labelResolved = true
+                    label = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { labelResolved = false; pkg }
+                    if (labelResolved) {
+                        if (appLabelCache.size > 300) appLabelCache.clear()
+                        appLabelCache[pkg] = launchable to label
+                    }
                 }
                 if (!launchable) continue
                 rows.add(label to ms)
