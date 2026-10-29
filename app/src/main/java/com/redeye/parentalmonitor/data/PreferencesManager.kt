@@ -447,6 +447,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
         private const val KEY_A11Y_USAGE_DATE = "a11y_usage_date"
         private const val KEY_A11Y_USAGE_JSON = "a11y_usage_json"
+        private const val KEY_A11Y_OPEN_SESSION_PKG = "a11y_open_session_pkg"
+        private const val KEY_A11Y_OPEN_SESSION_START_WALL = "a11y_open_session_start_wall"
+        private const val KEY_A11Y_OPEN_SESSION_START_ELAPSED = "a11y_open_session_start_elapsed"
         private const val KEY_A11Y_KNOWN_APPS = "a11y_known_apps"
         private const val KEY_A11Y_KNOWN_SEEDED = "a11y_known_seeded"
         private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
@@ -1186,6 +1189,37 @@ class PreferencesManager(context: Context) {
             sharedPreferences.edit()
                 .putString(KEY_A11Y_USAGE_DATE, date)
                 .putString(KEY_A11Y_USAGE_JSON, json)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    val a11yOpenSessionPkg: String
+        get() = prefString(KEY_A11Y_OPEN_SESSION_PKG, "")
+
+    val a11yOpenSessionStartWall: Long
+        get() = prefLong(KEY_A11Y_OPEN_SESSION_START_WALL, 0L)
+
+    val a11yOpenSessionStartElapsed: Long
+        get() = prefLong(KEY_A11Y_OPEN_SESSION_START_ELAPSED, 0L)
+
+    fun setA11yOpenSession(pkg: String, startWall: Long, startElapsed: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_A11Y_OPEN_SESSION_PKG, pkg)
+                .putLong(KEY_A11Y_OPEN_SESSION_START_WALL, startWall)
+                .putLong(KEY_A11Y_OPEN_SESSION_START_ELAPSED, startElapsed)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearA11yOpenSession() {
+        try {
+            sharedPreferences.edit()
+                .remove(KEY_A11Y_OPEN_SESSION_PKG)
+                .remove(KEY_A11Y_OPEN_SESSION_START_WALL)
+                .remove(KEY_A11Y_OPEN_SESSION_START_ELAPSED)
                 .apply()
         } catch (_: Exception) {
         }

@@ -15,6 +15,7 @@ import com.redeye.parentalmonitor.data.MessageQueue
 import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.utils.A11yUsageMath
 import com.redeye.parentalmonitor.utils.AppWatch
+import com.redeye.parentalmonitor.utils.BootClock
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.TamperGuard
@@ -99,7 +100,57 @@ object A11yMonitor {
         val app = context.applicationContext
         prefs = try { PreferencesManager.getInstance(app) } catch (_: Exception) { null }
         if (context is AccessibilityService) a11yService = context
-        executor.execute { ensureLoaded(app) }
+        executor.execute {
+            ensureLoaded(app)
+            synchronized(gate) { restoreOpenSessionLocked(app) }
+        }
+    }
+
+    private fun refreshOpenSessionMarkerLocked(manager: PreferencesManager) {
+        try {
+            if (currentPackage.isNotEmpty() && currentStartElapsed > 0L) {
+                manager.setA11yOpenSession(currentPackage, currentStartWall, currentStartElapsed)
+            } else {
+                manager.clearA11yOpenSession()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun restoreOpenSessionLocked(context: Context) {
+        if (currentPackage.isNotEmpty()) return
+        val service = a11yService ?: return
+        val manager = prefs ?: return
+        val pkg = try { manager.a11yOpenSessionPkg } catch (_: Exception) { "" }
+        if (pkg.isEmpty()) return
+        val startWall = try { manager.a11yOpenSessionStartWall } catch (_: Exception) { 0L }
+        val startElapsed = try { manager.a11yOpenSessionStartElapsed } catch (_: Exception) { 0L }
+        val nowWall = System.currentTimeMillis()
+        val nowElapsed = SystemClock.elapsedRealtime()
+        var foreground = ""
+        try {
+            val root = service.rootInActiveWindow
+            if (root != null) {
+                foreground = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+                recycleNode(root)
+            }
+        } catch (_: Exception) {
+        }
+        val recoverable = startWall > 0L && startElapsed > 0L &&
+            TimeFmt.dayKey(startWall) == TimeFmt.dayKey(nowWall) &&
+            BootClock.sameBoot(startWall, startElapsed, nowWall, nowElapsed) &&
+            foreground == pkg &&
+            monitoringActive(manager) &&
+            isLaunchable(context, pkg)
+        if (!recoverable) {
+            try { manager.clearA11yOpenSession() } catch (_: Exception) { }
+            return
+        }
+        currentPackage = pkg
+        currentLabel = labelFor(context, pkg)
+        currentStartWall = startWall
+        currentStartElapsed = startElapsed
+        usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }.label = currentLabel
     }
 
     fun unbind(service: AccessibilityService? = null) {
@@ -270,6 +321,7 @@ object A11yMonitor {
                     suspendedLabel = ""
                     currentStartWall = nowWall
                     currentStartElapsed = nowElapsed
+                    try { manager.setA11yOpenSession(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
                     lastEventKey = ""
                     usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }.label = currentLabel
                 }
@@ -346,6 +398,7 @@ object A11yMonitor {
                 currentLabel = activeLabel.ifEmpty { labelFor(context, activePackage) }
                 currentStartWall = if (resumeWall > 0L) resumeWall else nowWall
                 currentStartElapsed = if (resumeElapsed > 0L) resumeElapsed else SystemClock.elapsedRealtime()
+                try { manager.setA11yOpenSession(currentPackage, currentStartWall, currentStartElapsed) } catch (_: Exception) { }
             }
         }
     }
@@ -430,6 +483,7 @@ object A11yMonitor {
                 currentLabel = pkgLabel
                 currentStartWall = nowWall
                 currentStartElapsed = nowElapsed
+                try { manager.setA11yOpenSession(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
                 val row = usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }
                 row.label = currentLabel
                 row.launches += 1
@@ -571,11 +625,13 @@ object A11yMonitor {
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) {
             currentPackage = ""
             currentStartElapsed = 0L
+            try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
             return
         }
         accrueSessionLocked(nowWall, nowElapsed)
         currentPackage = ""
         currentStartElapsed = 0L
+        try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
     }
 
     private fun requestPeriodicPersist(context: Context) {
@@ -611,6 +667,7 @@ object A11yMonitor {
         try {
             manager.setA11yUsage(day, try { gson.toJson(usage) } catch (_: Exception) { "" })
             notePersistSuccess(now)
+            refreshOpenSessionMarkerLocked(manager)
         } catch (_: Exception) {
             notePersistFailure()
         }
