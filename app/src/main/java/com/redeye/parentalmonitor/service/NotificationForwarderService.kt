@@ -470,7 +470,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val priority = try { isPriorityNotif(pkg, keyTitle, keyBody) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
-            if (now - prev < 10_000L) true else {
+            if (prev > 0L && now - prev < 10_000L) true else {
                 lastSent[key] = now
                 false
             }
