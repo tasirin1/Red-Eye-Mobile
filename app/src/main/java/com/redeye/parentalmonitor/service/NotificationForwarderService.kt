@@ -157,16 +157,15 @@ class NotificationForwarderService : NotificationListenerService() {
         fun recordDrop() {
             synchronized(historyLock) {
                 val now = System.currentTimeMillis()
-                val summaryIndex = history.indexOfLast { it.app == DROP_SUMMARY_APP }
-                if (summaryIndex >= 0 && now - dropSummaryAt < DROP_SUMMARY_WINDOW_MS) {
+                if (dropSummaryAt > 0L && now - dropSummaryAt < DROP_SUMMARY_WINDOW_MS) {
                     dropSummaryCount += 1
-                    history.removeAt(summaryIndex)
-                    history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur (antrean penuh)", now))
                 } else {
                     dropSummaryCount = 1
-                    history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "1 notifikasi gugur (antrean penuh)", now))
-                    while (history.size > MAX_HISTORY) history.removeFirst()
                 }
+                val summaryIndex = history.indexOfLast { it.app == DROP_SUMMARY_APP }
+                if (summaryIndex >= 0) history.removeAt(summaryIndex)
+                history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur (antrean penuh)", now))
+                while (history.size > MAX_HISTORY) history.removeFirst()
                 dropSummaryAt = now
             }
         }
