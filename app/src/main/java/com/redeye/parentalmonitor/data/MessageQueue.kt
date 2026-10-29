@@ -556,6 +556,23 @@ class MessageQueue private constructor(context: Context) {
                             val editor = prefs.edit()?.putString(KEY_QUEUE_BAK, cur)
                             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                                 editor?.apply()
+                                try {
+                                    persistExecutor.execute {
+                                        try {
+                                            val live = sharedPreferences
+                                            if (live != null) {
+                                                synchronized(persistMutex) {
+                                                    val nowMain = try { live.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
+                                                    if (nowMain != null && live.getString(KEY_QUEUE_BAK, null) != nowMain) {
+                                                        live.edit()?.putString(KEY_QUEUE_BAK, nowMain)?.commit()
+                                                    }
+                                                }
+                                            }
+                                        } catch (_: Exception) {
+                                        }
+                                    }
+                                } catch (_: Exception) {
+                                }
                             } else {
                                 editor?.commit()
                             }
