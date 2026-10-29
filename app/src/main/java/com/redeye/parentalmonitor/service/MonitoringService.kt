@@ -4906,6 +4906,8 @@ class MonitoringService : Service() {
                         }
                         try {
                             kotlinx.coroutines.withTimeoutOrNull(20_000L) { settled.await() }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
                         } catch (_: Exception) {
                         }
                         for (task in pending) {
@@ -4916,11 +4918,15 @@ class MonitoringService : Service() {
                         }
                         bestFix(collected.toList())
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     null
                 }
                 if (fix != null) return@withContext fix
                 if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }
