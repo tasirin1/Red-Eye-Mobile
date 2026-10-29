@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Anggaran umur mutasi 300 detik untuk perintah yang menunggu adopsi login kini dihitung dari selesainya adopsi, bukan dari tanggal pesan (issue #231): gerbang umur di `handleTelegramCommandInner` sebelumnya menghitung umur perintah mutasi dari `messageDate` asli, padahal loop tunggu adopsi (#215/#224) memang sengaja menunda eksekusi perintah kontrol pengikut sampai login selesai — login yang berhasil tetapi lambat (I/O jaringan `handleOwnerLogin`, ditambah antrean sesama penunggu) mudah menghabiskan seluruh anggaran 300 detik, sehingga perintah seperti `/lock` ditolak "kedaluwarsa" tepat sesudah lolos adopsi, pada momen yang paling butuh cepat. Jalur dispatch kini mencatat waktu selesainya adopsi (`adoptionDoneSec`) hanya bila pengirim terbukti mengikuti job login yang sama (`followsLogin` atas snapshot job login) DAN login itu terbukti berhasil (job selesai dan pengirim sudah owner saat penantian berakhir); umur mutasi untuk perintah itu dihitung dari titik tersebut. Perintah yang bukan pengikut login tidak pernah menerima nilai ini (parameter bawaan 0, jalur callback/ping tidak berubah) sehingga tetap dinilai dari tanggal pesan persis seperti sebelumnya, dan pengikut yang loginnya gagal tidak menjadi owner sehingga tidak menerima nilai ini dan tetap tertolak oleh gerbang yang sama seperti sebelumnya.
+
 ## [1.6.524] - 2026-10-29
 
 ### Fixed

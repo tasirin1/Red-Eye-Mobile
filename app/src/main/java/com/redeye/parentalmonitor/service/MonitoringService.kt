@@ -1872,7 +1872,13 @@ class MonitoringService : Service() {
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
-                            if (followsLogin && !control) loginJobSnapshot?.join()
+                            var adoptionDoneSec = 0L
+                            if (followsLogin && !control) {
+                                loginJobSnapshot?.join()
+                                if (loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
+                                    adoptionDoneSec = serverNowSec()
+                                }
+                            }
                             var adoptionRejected = false
                             val adoptionWait = followsLogin && control && !ownerOk
                             if (adoptionWait) {
@@ -1895,6 +1901,9 @@ class MonitoringService : Service() {
                                         synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull() == update.updateId }) {
                                         adoptionRejected = false
                                     }
+                                    if (!adoptionRejected && loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
+                                        adoptionDoneSec = serverNowSec()
+                                    }
                                     if (adoptionRejected) {
                                         android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
                                         try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
@@ -1905,15 +1914,15 @@ class MonitoringService : Service() {
                                     val privateNow = ownerNow && isPrivate
                                     val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
                                     if (!restoreHandled) {
-                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId)
+                                        val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId, adoptionDoneSec)
                                         if (!balasAngka && command.startsWith("/")) {
                                             val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                            handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate)
+                                            handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec)
                                         } else if (!balasAngka) {
                                             if (aliasInput != null && privateNow) {
-                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true)
+                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec)
                                             } else if (intentInput != null && privateNow) {
-                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true)
+                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec)
                                             }
                                         }
                                     }
@@ -2523,7 +2532,7 @@ class MonitoringService : Service() {
         sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
 
-    private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean, chatKey: String): Boolean {
+    private suspend fun consumePendingInput(text: String, sentAtSec: Long, ownerOk: Boolean, chatOk: Boolean, senderId: String, privateChat: Boolean, chatKey: String, adoptionDoneSec: Long = 0L): Boolean {
         if (!ownerOk) return false
         val bersih = text.trim()
         if (bersih.isEmpty()) return false
@@ -2579,7 +2588,7 @@ class MonitoringService : Service() {
                 }
             }
             if (!taken) return false
-            handleTelegramCommand(angka.command + " " + nilai, sentAtSec, ownerOk, chatOk, senderId, privateChat)
+            handleTelegramCommand(angka.command + " " + nilai, sentAtSec, ownerOk, chatOk, senderId, privateChat, adoptionDoneSec)
             return true
         }
         val teks = textInputFor(pending)
@@ -2606,11 +2615,11 @@ class MonitoringService : Service() {
             }
         }
         if (!taken) return false
-        handleTelegramCommand(teks.command + " " + bersih, sentAtSec, ownerOk, chatOk, senderId, privateChat)
+        handleTelegramCommand(teks.command + " " + bersih, sentAtSec, ownerOk, chatOk, senderId, privateChat, adoptionDoneSec)
         return true
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L) {
         val nowSec = serverNowSec()
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
@@ -2628,7 +2637,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -2642,9 +2651,13 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L) {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
-            val ageSec = if (sentAtSec <= 0L) 0L else serverNowSec() - sentAtSec
+            val ageSec = when {
+                adoptionDoneSec > 0L -> serverNowSec() - adoptionDoneSec
+                sentAtSec <= 0L -> 0L
+                else -> serverNowSec() - sentAtSec
+            }
             if (ageSec > MUTATING_MAX_AGE_SEC) {
                 sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
