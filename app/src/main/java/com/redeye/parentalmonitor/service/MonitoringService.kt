@@ -6931,14 +6931,14 @@ class MonitoringService : Service() {
             try {
                 for (s in smsRepository.getRecentSmsSince(since, 200)) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
-                    if (keys == null || d in keys) m[d] = (m[d] ?: 0) + 1
+                    if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
             try {
                 for (c in callLogRepository.getCallsSince(since, 200)) {
                     val d = c.number.filter { it.isDigit() }.takeLast(10)
-                    if (keys == null || d in keys) m[d] = (m[d] ?: 0) + 1
+                    if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
