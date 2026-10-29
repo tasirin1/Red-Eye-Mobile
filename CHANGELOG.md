@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+### Fixed
+- Cache konfigurasi penerusan notifikasi tidak lagi terbaca "segar" padahal belum pernah diisi, sehingga penerusan tidak mati total selama 10 detik pertama sejak boot (issue #302, kelas penanda-0 arah terbalik dari #299): `ensureCfgCache` di `NotificationForwarderService` sebelumnya hanya me-refresh bila `elapsedRealtime() - cfgCacheAt >= 10_000`, padahal `cfgCacheAt` mulai dari 0 dan `elapsedRealtime` adalah uptime — selama uptime di bawah 10 detik selisih itu selalu di bawah ambang, cache kosong dengan nilai awal `cfgCacheEnabled = false` dipakai apa adanya, dan `handlePosted` keluar sebelum mencatat riwayat: notifikasi pada jendela itu tidak diteruskan ke Telegram dan tidak tercatat di `/lastnotif`. Kesegaran kini mensyaratkan cache pernah terisi (penanda `cfgCacheFilled`): refresh pertama selalu terjadi pada panggilan pertama, invalidasi dari listener prefs membersihkan penanda itu (selain menolkan `cfgCacheAt`) sehingga refresh berikutnya terpaksa pada semua uptime, dan jendela kesegaran 10 detik untuk cache yang sudah terisi tidak berubah.
 
 ## [1.6.540] - 2026-10-29
 

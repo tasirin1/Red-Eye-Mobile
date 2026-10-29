@@ -107,6 +107,8 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var cfgCacheAt = 0L
     @Volatile
+    private var cfgCacheFilled = false
+    @Volatile
     private var cfgCacheEnabled = false
     @Volatile
     private var cfgCacheForward = true
@@ -197,8 +199,8 @@ class NotificationForwarderService : NotificationListenerService() {
             android.util.Log.e("NotifForwarder", "Queue init failed in onCreate, will retry lazily", e)
         }
         fwdCredsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L }
-            if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) cfgCacheAt = 0L
+            if (key == PreferencesManager.KEY_BOT_TOKEN || key == PreferencesManager.KEY_CHAT_ID) { refreshFwdCreds(); cfgCacheAt = 0L; cfgCacheFilled = false }
+            if (key == PreferencesManager.KEY_NOTIF_FORWARD || key == PreferencesManager.KEY_MONITORING_ENABLED || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_USER_DISABLED || key == PreferencesManager.KEY_USER_CONSENTED) { cfgCacheAt = 0L; cfgCacheFilled = false }
         }
         attachCredsListener()
         scope.launch {
@@ -288,11 +290,12 @@ class NotificationForwarderService : NotificationListenerService() {
             false
         }
         cfgCacheAt = now
+        cfgCacheFilled = true
     }
 
     private fun ensureCfgCache(prefs: PreferencesManager) {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - cfgCacheAt >= 10_000L) refreshCfgCache(prefs, now)
+        if (!cfgCacheFilled || now - cfgCacheAt >= 10_000L) refreshCfgCache(prefs, now)
     }
 
     private fun forwardingAllowed(): Boolean {
