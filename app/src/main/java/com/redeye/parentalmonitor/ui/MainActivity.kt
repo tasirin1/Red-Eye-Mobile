@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity() {
                 startMonitoringService()
                 if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "✓ Monitoring started in background!")
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}")
+                android.util.Log.e("MainActivity", "✗ Failed to start monitoring: ${e.message}", e)
                 try {
                     MessageScheduler.scheduleBootRestart(this)
                 } catch (_: Exception) {
@@ -274,7 +274,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             if (BuildConfig.DEBUG) android.util.Log.i("MainActivity", "Monitoring already running")
         }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "startMonitoringInBackground failed", e)
         }
     }
 
