@@ -1881,7 +1881,6 @@ class MonitoringService : Service() {
                         }
                     }
                     val ownerOk = isOwner(senderId)
-                    val privateOwner = ownerOk && msgChatId.isNotEmpty() && msgChatId == senderId
                     if (chatOk || ownerOk || followsLogin) {
                         val aliasInput = resolveAliasInput(command, arg)
                         val intentInput = if (aliasInput == null && !command.startsWith("/")) {

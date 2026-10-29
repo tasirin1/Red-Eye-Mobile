@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Removed
+- Variabel lokal mati `privateOwner` di jalur gerbang perintah dihapus (issue #341): nilai itu dihitung lalu tidak pernah dibaca (sensus token seluruh `app/src`: 0 rujukan selain baris definisinya), sementara predikat yang nyaris sama dihitung ulang sebagai `isPrivate` beberapa baris di bawahnya dan `isPrivate` itulah yang benar-benar dipakai jalur gerbang. Kode mati di jalur sensitif ini mengaburkan pembacaan — tampak seolah ada dua konsep privat yang berbeda padahal satu tak terpakai. Tidak ada perubahan perilaku; perhitungan `isPrivate` tetap.
 - API publik mati `PreferencesManager.setPendingNotifDropsAndBatchSync` dihapus (issue #340): metode ini sisa era #315/#321 yang sudah tergantikan `setDropNoticeStateSync` sebagai penulis atomik keadaan drop-notice yang benar-benar dipakai; sensus seluruh repo menunjukkan tepat satu kemunculan (definisinya sendiri, tanpa pemanggil di kode produksi maupun uji). Penghapusan mencegah perbaikan masa depan memilih penulis yang salah dari dua nama yang mirip dan mengira jalurnya teruji. Namanya tercatat di `tools/bekas-hapusan.txt` mengikuti pola repo. Tidak ada perubahan perilaku.
 
 ### Fixed
