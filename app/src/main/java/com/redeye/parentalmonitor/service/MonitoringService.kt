@@ -7046,6 +7046,8 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             try { sendToTelegram("\u26A0\uFE0F Laporan waspada gagal dibuat.") } catch (_: Exception) { }
         }
@@ -7145,6 +7147,8 @@ class MonitoringService : Service() {
             },
                 mainMenu()
             )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             try { sendToTelegram("\u26A0\uFE0F Laporan mingguan gagal dibuat.") } catch (_: Exception) { }
         }
