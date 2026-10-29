@@ -3847,6 +3847,10 @@ class MonitoringService : Service() {
     }
 
     private fun launchableAppPairs(): List<Pair<String, String>>? {
+        return scanLaunchableAppPairs()
+    }
+
+    private fun scanLaunchableAppPairs(): List<Pair<String, String>>? {
         return try {
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -9820,29 +9824,7 @@ class MonitoringService : Service() {
     }
 
     private fun listLaunchableAppsFresh(): List<String> {
-        return try {
-            val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-            val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                packageManager.queryIntentActivities(intent, android.content.pm.PackageManager.ResolveInfoFlags.of(0))
-            } else {
-                packageManager.queryIntentActivities(intent, 0)
-            }
-            infos.mapNotNull { r ->
-                try {
-                    val label = r.loadLabel(packageManager)?.toString() ?: return@mapNotNull null
-                    val pkg = try {
-                        r.activityInfo?.packageName
-                    } catch (_: Exception) {
-                        null
-                    } ?: return@mapNotNull null
-                    label to pkg
-                } catch (_: Exception) {
-                    null
-                }
-            }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }.map { it.first }
-        } catch (_: Exception) {
-            emptyList()
-        }
+        return scanLaunchableAppPairs()?.map { it.first } ?: emptyList()
     }
 
     private data class CacheStats(val bytes: Long, val photos: Int, val audios: Int, val videos: Int)
