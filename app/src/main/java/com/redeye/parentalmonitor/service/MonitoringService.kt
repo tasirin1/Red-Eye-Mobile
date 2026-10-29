@@ -6674,10 +6674,15 @@ class MonitoringService : Service() {
         val key = todayKey(now)
         val stored = try { DailyFacts.parse(preferencesManager.dailyFacts).firstOrNull { it.day == key } } catch (_: Exception) { null }
         var screenMin = -1
-        val rows = data.rows
         val a11yRows = data.a11yRows
-        if (rows != null && rows.isNotEmpty()) {
-            screenMin = (rows.sumOf { it.second } / 60_000L).toInt()
+        val dayRows = try {
+            usageRowsBetween(
+                com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now),
+                now
+            )
+        } catch (_: Exception) { null }
+        if (dayRows != null && dayRows.isNotEmpty()) {
+            screenMin = (dayRows.sumOf { it.second } / 60_000L).toInt()
         } else if (a11yRows.isNotEmpty()) {
             screenMin = (a11yRows.sumOf { it.millis } / 60_000L).toInt()
         }
