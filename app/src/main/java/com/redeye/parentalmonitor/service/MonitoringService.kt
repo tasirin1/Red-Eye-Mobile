@@ -2880,10 +2880,10 @@ class MonitoringService : Service() {
             val last = trail.takeLast(10)
             sendToTelegram(buildString {
                 appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
-                for ((ts, la, lo) in last) {
-                    appendLine("${TimeFmt.short(ts)} — $la,$lo")
+                for ((pt, _) in last) {
+                    appendLine("${TimeFmt.short(pt.at)} — ${pt.lat},${pt.lon}")
                 }
-                append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.second},${it.third}" })
+                append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.first.lat},${it.first.lon}" })
             })
         }
     }
@@ -6304,7 +6304,8 @@ class MonitoringService : Service() {
                 } else {
                     ArrayList(raw.split(";").filter { it.contains(":") })
                 }
-                pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}")
+                val accPart = if (accuracyM >= 0f) ",${accuracyM.toInt()}" else ""
+                pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}$accPart")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
                 if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
                 val joined = fresh.joinToString(";")
@@ -6317,7 +6318,8 @@ class MonitoringService : Service() {
     }
 
     private fun trailDigestLines(): List<String> {
-        val pts = trailList().map { com.redeye.parentalmonitor.utils.TrailStats.Point(it.first, it.second, it.third) }
+        val rawPts = trailList()
+        val pts = com.redeye.parentalmonitor.utils.TrailStats.dropCoarse(rawPts.map { it.first }, rawPts.map { it.second })
         if (pts.size < 2) return emptyList()
         val patrol = try { preferencesManager.patrolInterval } catch (_: Exception) { 30 }
         val maxGap = patrol.coerceIn(5, 180) * 60_000L + 10 * 60_000L
@@ -6419,16 +6421,17 @@ class MonitoringService : Service() {
         return out
     }
 
-    private fun trailList(): List<Triple<Long, Double, Double>> {
+    private fun trailList(): List<Pair<com.redeye.parentalmonitor.utils.TrailStats.Point, Int>> {
         return try {
             preferencesManager.trail24.split(";").mapNotNull { p ->
                 val ts = p.substringBefore(":").toLongOrNull() ?: return@mapNotNull null
                 val ll = p.substringAfter(":").split(",")
-                if (ll.size != 2) return@mapNotNull null
+                if (ll.size !in 2..3) return@mapNotNull null
                 val la = ll[0].toLongOrNull() ?: return@mapNotNull null
                 val lo = ll[1].toLongOrNull() ?: return@mapNotNull null
-                Triple(ts, la / 1_000_000.0, lo / 1_000_000.0)
-            }.filter { it.first > System.currentTimeMillis() - 24 * 60 * 60_000L }
+                val acc = if (ll.size == 3) ll[2].toIntOrNull() ?: -1 else -1
+                com.redeye.parentalmonitor.utils.TrailStats.Point(ts, la / 1_000_000.0, lo / 1_000_000.0) to acc
+            }.filter { it.first.at > System.currentTimeMillis() - 24 * 60 * 60_000L }
         } catch (_: Exception) {
             emptyList()
         }

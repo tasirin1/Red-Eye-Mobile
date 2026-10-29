@@ -6,6 +6,14 @@ object TrailStats {
 
     data class Stay(val lat: Double, val lon: Double, val millis: Long)
 
+    const val MAX_POINT_ACCURACY_M = 1000
+
+    fun dropCoarse(points: List<Point>, accuracies: List<Int>): List<Point> {
+        if (accuracies.size != points.size) return points
+        if (accuracies.none { it > MAX_POINT_ACCURACY_M }) return points
+        return points.filterIndexed { i, _ -> accuracies[i] <= MAX_POINT_ACCURACY_M }
+    }
+
     fun distanceMeters(points: List<Point>, maxGapMs: Long = 20 * 60_000L): Float {
         if (points.size < 2) return 0f
         var total = 0.0

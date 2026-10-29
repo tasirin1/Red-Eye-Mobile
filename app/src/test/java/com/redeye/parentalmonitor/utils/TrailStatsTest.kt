@@ -22,6 +22,85 @@ class TrailStatsTest {
     }
 
     @Test
+    fun titikKasarDiTengahTidakMenggelembungkanJarak() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 60_000L, -6.227000, 106.800000),
+            TrailStats.Point(base + 120_000L, -6.200000, 106.800000)
+        )
+        val kept = TrailStats.dropCoarse(pts, listOf(10, 3000, 10))
+        assertEquals(2, kept.size)
+        assertEquals(0f, TrailStats.distanceMeters(kept), 0.01f)
+    }
+
+    @Test
+    fun titikKasarDiUjungSegmenDibuang() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 60_000L, -6.201000, 106.800000)
+        )
+        val kept = TrailStats.dropCoarse(pts, listOf(10, 2500))
+        assertEquals(1, kept.size)
+        assertEquals(0f, TrailStats.distanceMeters(kept), 0.01f)
+    }
+
+    @Test
+    fun akurasiTepatDiPlafonTetapDihitung() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 60_000L, -6.201000, 106.800000)
+        )
+        val kept = TrailStats.dropCoarse(pts, listOf(1000, 1000))
+        assertEquals(2, kept.size)
+        val meters = TrailStats.distanceMeters(kept)
+        assertTrue("jarak $meters", meters in 105f..118f)
+    }
+
+    @Test
+    fun akurasiTakDiketahuiDanUkuranTakCocokTidakDibuang() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 60_000L, -6.201000, 106.800000),
+            TrailStats.Point(base + 120_000L, -6.202000, 106.800000)
+        )
+        assertEquals(3, TrailStats.dropCoarse(pts, listOf(-1, -1, -1)).size)
+        assertEquals(3, TrailStats.dropCoarse(pts, listOf(10)).size)
+        val meters = TrailStats.distanceMeters(TrailStats.dropCoarse(pts, listOf(-1, -1, -1)))
+        assertTrue("jarak $meters", meters in 215f..228f)
+    }
+
+    @Test
+    fun titikKasarTidakMemutusDiam() {
+        val pts = ArrayList<TrailStats.Point>()
+        val accs = ArrayList<Int>()
+        for (i in 0..60) {
+            pts.add(TrailStats.Point(base + i * 60_000L, -6.200000, 106.800000))
+            accs.add(10)
+        }
+        pts[30] = TrailStats.Point(base + 30 * 60_000L, -6.250000, 106.800000)
+        accs[30] = 5000
+        pts.add(TrailStats.Point(base + 61 * 60_000L, -6.250000, 106.800000))
+        accs.add(10)
+        pts.add(TrailStats.Point(base + 62 * 60_000L, -6.250000, 106.800000))
+        accs.add(10)
+        val stay = TrailStats.longestStay(TrailStats.dropCoarse(pts, accs))
+        assertTrue(stay != null)
+        assertTrue("diam ${stay!!.millis}", stay.millis >= 55 * 60_000L)
+        assertTrue(stay.millis <= 62 * 60_000L)
+    }
+
+    @Test
+    fun titikKasarTidakMembalikDurasiDiDalam() {
+        val pts = listOf(
+            TrailStats.Point(base, -6.200000, 106.800000),
+            TrailStats.Point(base + 10 * 60_000L, -6.400000, 106.800000),
+            TrailStats.Point(base + 20 * 60_000L, -6.200000, 106.800000)
+        )
+        val kept = TrailStats.dropCoarse(pts, listOf(10, 4000, 10))
+        assertEquals(20 * 60_000L, TrailStats.millisInside(kept, -6.200000, 106.800000, 200f))
+    }
+
+    @Test
     fun celahPanjangTidakDihitung() {
         val pts = listOf(
             TrailStats.Point(base, -6.200000, 106.800000),
