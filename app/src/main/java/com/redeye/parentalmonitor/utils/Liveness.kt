@@ -169,7 +169,8 @@ object Liveness {
                                     try { manager.livenessReportAt = nowWall } catch (_: Exception) { }
                                     try { manager.livenessKillsUnreported = 0 } catch (_: Exception) { }
                                 }
-                            } catch (_: Exception) {
+                            } catch (e: Exception) {
+                                android.util.Log.e("Liveness", "Failed to queue resurrection report", e)
                             }
                         }
                     }

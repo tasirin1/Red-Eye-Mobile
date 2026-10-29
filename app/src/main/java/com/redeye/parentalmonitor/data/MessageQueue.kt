@@ -58,7 +58,8 @@ class MessageQueue private constructor(context: Context) {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     tryRestorePersistent()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("MessageQueue", "Persistent queue restore failed during init", e)
                 }
             }
         }
@@ -124,7 +125,8 @@ class MessageQueue private constructor(context: Context) {
                 persistDropCountsLocked()
                 volatileQueue.clear()
                 true
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
                 overflowDrops.set(previousOverflowDrops)
                 expiredDrops.set(previousExpiredDrops)
                 priorityDrops.set(previousPriorityDrops)
@@ -166,13 +168,16 @@ class MessageQueue private constructor(context: Context) {
         if (!volatileOnly) return
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
             com.redeye.parentalmonitor.utils.Background.runCritical {
-                try { tryRestorePersistent() } catch (_: Exception) { }
+                try { tryRestorePersistent() } catch (e: Exception) {
+                    android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
+                }
             }
             return
         }
         try {
             tryRestorePersistent()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
         }
     }
 

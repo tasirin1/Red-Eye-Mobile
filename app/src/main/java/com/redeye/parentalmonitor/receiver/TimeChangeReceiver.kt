@@ -25,7 +25,8 @@ class TimeChangeReceiver : BroadcastReceiver() {
         Background.runCritical {
             try {
                 Liveness.handleWakeUp(appContext)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("TimeChangeReceiver", "Liveness wake-up failed", e)
             } finally {
                 try {
                     pendingResult?.finish()

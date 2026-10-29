@@ -447,7 +447,8 @@ class MonitoringService : Service() {
                     refreshCreds()
                     refreshLoopConfig()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                android.util.Log.e("MonitoringService", "refreshInstance failed during onCreate", e)
             }
         }
         credsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -710,7 +711,8 @@ class MonitoringService : Service() {
                                 refreshCreds()
                                 refreshLoopConfig()
                             }
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            android.util.Log.e("MonitoringService", "refreshInstance failed during onStartCommand", e)
                         }
                         try {
                             if (shouldAutoResume()) {

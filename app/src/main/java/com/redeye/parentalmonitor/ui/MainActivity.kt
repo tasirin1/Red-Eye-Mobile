@@ -60,15 +60,18 @@ class MainActivity : AppCompatActivity() {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
                     PreferencesManager.refreshInstance(appCtx)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "refreshInstance failed during startup", e)
                 }
                 try {
                     preferencesManager = PreferencesManager.getInstance(appCtx)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "PreferencesManager init failed during startup", e)
                 }
                 try {
                     startMonitoringInBackground()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Monitoring start failed during startup", e)
                 }
             }
         } catch (_: Exception) {
