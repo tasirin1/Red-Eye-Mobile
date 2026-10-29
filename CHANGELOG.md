@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.531] - 2026-10-29
+
 ### Fixed
 - Cache label/launchable `A11yMonitor` tidak lagi menyimpan hasil kegagalan PackageManager dan kini diinvalidasi saat paket berubah (issue #264): `isLaunchable` dan `labelFor` sebelumnya menulis hasil fallback dari catch exception (`false`/nama paket) ke cache permanen, dan `PackageChangeReceiver` hanya membersihkan cache milik `MonitoringService`; kini hanya hasil resolusi yang benar-benar berhasil yang disimpan ke cache (fallback tetap dipakai untuk panggilan itu), dan receiver juga memanggil `A11yMonitor.invalidatePackageCache(pkg)` untuk setiap perubahan paket, termasuk penggantian/update.
 - Sesi pemakaian A11y yang melewati tengah malam kini dipecah di batas hari (issue #263): rollover sebelumnya menyelesaikan seluruh sesi ke peta usage hari lama lebih dulu, sehingga porsi sesudah pukul 00:00 ikut terhitung sebagai kemarin dan hari baru kekurangan porsi yang sama; saat rollover kini sesi diakru hanya sampai tengah malam ke hari lama, disimpan, lalu sesi paket yang sama dilanjutkan mulai tengah malam ke peta hari baru — sesi yang tidak melewati tengah malam dan jalur muat pertama tidak berubah.
