@@ -88,25 +88,47 @@ class PreferencesManager(context: Context) {
 
     private fun mergeLateWritesInto(to: SharedPreferences, memNow: Map<String, Any?>, baseMem: Map<String, Any?>, baseFresh: Map<String, Any?>): Boolean {
         return try {
-            val target = HashMap(to.all)
-            val editor = to.edit()
-            var changed = false
-            for ((key, value) in memNow) {
-                if (baseMem.containsKey(key) && baseMem[key] == value) continue
-                if (target.containsKey(key) && target[key] != baseFresh[key]) continue
-                if (!target.containsKey(key) || target[key] != value) {
-                    putEntryInto(editor, key, value)
+            var result = false
+            var done = false
+            var tries = 0
+            while (!done) {
+                tries++
+                val target = HashMap(to.all)
+                val editor = to.edit()
+                var changed = false
+                val touched = mutableSetOf<String>()
+                for ((key, value) in memNow) {
+                    if (baseMem.containsKey(key) && baseMem[key] == value) continue
+                    if (target.containsKey(key) && target[key] != baseFresh[key]) continue
+                    if (!target.containsKey(key) || target[key] != value) {
+                        putEntryInto(editor, key, value)
+                        changed = true
+                        touched.add(key)
+                    }
+                }
+                for (key in target.keys) {
+                    if (memNow.containsKey(key)) continue
+                    if (!baseMem.containsKey(key)) continue
+                    if (target[key] != baseFresh[key]) continue
+                    editor.remove(key)
                     changed = true
+                    touched.add(key)
+                }
+                if (!changed) {
+                    result = true
+                    done = true
+                } else {
+                    val latest = HashMap(to.all)
+                    val drift = touched.any { key ->
+                        latest.containsKey(key) != target.containsKey(key) || latest[key] != target[key]
+                    }
+                    if (!drift || tries >= 3) {
+                        result = editor.commit()
+                        done = true
+                    }
                 }
             }
-            for (key in target.keys) {
-                if (memNow.containsKey(key)) continue
-                if (!baseMem.containsKey(key)) continue
-                if (target[key] != baseFresh[key]) continue
-                editor.remove(key)
-                changed = true
-            }
-            !changed || editor.commit()
+            result
         } catch (_: Exception) {
             false
         }
