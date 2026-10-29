@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pembungkus anti-telan pembatalan kini berlaku untuk semua cek berkala di loop pemantau (issue #271, sisa #265): `runPeriodicCheck` sebelumnya hanya membungkus `checkCurfew()` dan `checkGeofenceFallback()`, sedangkan sepuluh cek lain (`maybeSendHeartbeat`, `checkBatteryAlert`, `maybeSendDigest`, `maybeSendNightDigest`, `maybeRetryBotCommands`, `checkBegadang`, `checkQuietHealth`, `checkAccessibilityHealth`, `checkSilentLink`, `checkVehicle`) tetap memakai pembungkus inline `try { … } catch (_: Exception) { }` yang menelan `CancellationException` dari titik suspensi masing-masing cek, sehingga coroutine yang sudah dibatalkan tetap menjalankan sisa cek dalam iterasi yang sama sampai titik suspensi tak terbungkus berikutnya; kesepuluh cek itu kini dipanggil lewat `runPeriodicCheck` yang sama — exception biasa tetap tertelan senyap seperti sebelumnya, sedangkan pembatalan berhenti seketika di titiknya. Catatan: cek yang juga menelan `CancellationException` di catch internal badannya sendiri (mis. `maybeRetryBotCommands`) tidak berubah oleh langkah ini, karena penelanan itu terjadi di dalam badan cek sebelum pembungkus loop terlibat.
+
 
 ## [1.6.532] - 2026-10-29
 

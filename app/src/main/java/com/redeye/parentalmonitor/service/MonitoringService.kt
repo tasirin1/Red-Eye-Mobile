@@ -866,18 +866,18 @@ class MonitoringService : Service() {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
                     try { Liveness.markAlive(preferencesManager) } catch (_: Exception) { }
-                    try { maybeSendHeartbeat() } catch (_: Exception) { }
-                    try { checkBatteryAlert() } catch (_: Exception) { }
-                    try { maybeSendDigest() } catch (_: Exception) { }
-                    try { maybeSendNightDigest() } catch (_: Exception) { }
-                    try { maybeRetryBotCommands() } catch (_: Exception) { }
-                    try { checkBegadang() } catch (_: Exception) { }
+                    runPeriodicCheck { maybeSendHeartbeat() }
+                    runPeriodicCheck { checkBatteryAlert() }
+                    runPeriodicCheck { maybeSendDigest() }
+                    runPeriodicCheck { maybeSendNightDigest() }
+                    runPeriodicCheck { maybeRetryBotCommands() }
+                    runPeriodicCheck { checkBegadang() }
                     runPeriodicCheck { checkCurfew() }
                     runPeriodicCheck { checkGeofenceFallback() }
-                    try { checkQuietHealth() } catch (_: Exception) { }
-                    try { checkAccessibilityHealth() } catch (_: Exception) { }
-                    try { checkSilentLink() } catch (_: Exception) { }
-                    try { checkVehicle() } catch (_: Exception) { }
+                    runPeriodicCheck { checkQuietHealth() }
+                    runPeriodicCheck { checkAccessibilityHealth() }
+                    runPeriodicCheck { checkSilentLink() }
+                    runPeriodicCheck { checkVehicle() }
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
                         if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(3)
