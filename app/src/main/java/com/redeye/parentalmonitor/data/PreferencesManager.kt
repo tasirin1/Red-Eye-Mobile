@@ -971,10 +971,12 @@ class PreferencesManager(context: Context) {
                     if (at <= nowPairCode && nowPairCode - at < 24 * 60 * 60_000L) return cur
                 }
                 val code = (100000 + secureRandom.nextInt(900000)).toString()
-                try {
+                val saved = try {
                     sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).putLong(KEY_OWNER_PAIR_AT, System.currentTimeMillis()).commit()
                 } catch (_: Exception) {
+                    false
                 }
+                if (!saved) return ""
                 return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
             } catch (_: Exception) {
                 return ""
