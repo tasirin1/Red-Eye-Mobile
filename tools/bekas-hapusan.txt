@@ -70,3 +70,7 @@ allowed
 heldPhotoFileAlive
 transitionAdoptsStateWithoutAccuracyGate
 watchKeywordList
+heldPhotoHashes
+setHeldPhotoHashesSync
+heldPhotoHashesNow
+storeHeldPhotoHashes

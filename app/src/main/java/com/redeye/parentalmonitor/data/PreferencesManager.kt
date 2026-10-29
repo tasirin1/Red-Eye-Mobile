@@ -1236,27 +1236,12 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    val heldPhotoHashes: Set<Long>
-        get() {
-            val raw = prefString(KEY_HELD_PHOTO_HASHES, "")
-            if (raw.isEmpty()) return emptySet()
-            val out = LinkedHashSet<Long>()
-            var start = 0
-            while (start <= raw.length) {
-                val sep = raw.indexOf(',', start)
-                val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
-                val v = part.trim().toLongOrNull()
-                if (v != null && v != 0L) out.add(v)
-                if (sep < 0) break
-                start = sep + 1
-            }
-            return out
-        }
+    val heldPhotoEntriesRaw: String
+        get() = prefString(KEY_HELD_PHOTO_HASHES, "")
 
-    fun setHeldPhotoHashesSync(values: Set<Long>): Boolean {
+    fun setHeldPhotoEntriesRawSync(value: String): Boolean {
         return try {
-            val joined = values.filter { it != 0L }.joinToString(",")
-            sharedPreferences.edit().putString(KEY_HELD_PHOTO_HASHES, joined).commit()
+            sharedPreferences.edit().putString(KEY_HELD_PHOTO_HASHES, value).commit()
         } catch (_: Exception) {
             false
         }

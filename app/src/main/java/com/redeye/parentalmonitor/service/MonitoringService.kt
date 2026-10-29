@@ -28,6 +28,7 @@ import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.BootClock
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
+import com.redeye.parentalmonitor.utils.HeldPhotos
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.CurfewLogic
 import com.redeye.parentalmonitor.utils.DailyFacts
@@ -7917,8 +7918,8 @@ class MonitoringService : Service() {
             return
         }
         val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
-        var heldHashes = heldPhotoHashesNow()
-        if (heldHashes.isNotEmpty()) {
+        var heldEntries = heldPhotoEntriesNow()
+        if (heldEntries.isNotEmpty()) {
             val files = try {
                 cacheDir.listFiles { file ->
                     file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
@@ -7927,20 +7928,25 @@ class MonitoringService : Service() {
                 null
             }
             if (files != null) {
-                val alive = HashSet<Long>()
-                var scanComplete = true
-                for (file in files) {
-                    try { alive.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { scanComplete = false }
-                }
-                if (scanComplete) {
-                    val pruned = heldHashes.filter { it in alive }
-                    if (pruned.size != heldHashes.size) {
-                        heldHashes = LinkedHashSet(pruned)
-                        storeHeldPhotoHashes(heldHashes)
+                val existingNames = HashSet<String>()
+                for (file in files) existingNames.add(file.name)
+                var decoded: Map<String, Long>? = null
+                if (heldEntries.any { it.raw == null && it.name == null }) {
+                    var scanComplete = true
+                    val map = LinkedHashMap<String, Long>()
+                    for (file in files) {
+                        try { map[file.name] = PhotoFingerprint.analyze(file).second } catch (_: Exception) { scanComplete = false }
                     }
+                    if (scanComplete) decoded = map
+                }
+                val healed = HeldPhotos.heal(heldEntries, existingNames, decoded)
+                if (healed != heldEntries) {
+                    heldEntries = healed
+                    storeHeldPhotoEntries(heldEntries)
                 }
             }
         }
+        val heldHashes = HeldPhotos.hashesOf(heldEntries)
         val dupBaseline = photoHashNow != 0L && prevPhotoHash != 0L && PhotoFingerprint.hammingDistance(photoHashNow, prevPhotoHash) <= 6
         val dupHeld = photoHashNow != 0L && heldHashes.any { PhotoFingerprint.hammingDistance(photoHashNow, it) <= 6 }
         if (dupBaseline || dupHeld) {
@@ -7974,16 +7980,16 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun heldPhotoHashesNow(): LinkedHashSet<Long> {
-        val set = LinkedHashSet<Long>()
-        try { set.addAll(preferencesManager.heldPhotoHashes) } catch (_: Exception) { }
+    private fun heldPhotoEntriesNow(): List<HeldPhotos.Entry> {
+        val entries = ArrayList<HeldPhotos.Entry>()
+        try { entries.addAll(HeldPhotos.parse(preferencesManager.heldPhotoEntriesRaw)) } catch (_: Exception) { }
         val legacy = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
-        if (legacy != 0L) set.add(legacy)
-        return set
+        if (legacy != 0L && entries.none { it.raw == null && it.hash == legacy }) entries.add(HeldPhotos.Entry(null, legacy))
+        return entries
     }
 
-    private fun storeHeldPhotoHashes(values: Set<Long>) {
-        try { preferencesManager.setHeldPhotoHashesSync(values) } catch (_: Exception) { }
+    private fun storeHeldPhotoEntries(entries: List<HeldPhotos.Entry>) {
+        try { preferencesManager.setHeldPhotoEntriesRawSync(HeldPhotos.serialize(entries)) } catch (_: Exception) { }
         try { preferencesManager.setHeldPhotoHashSync(0L) } catch (_: Exception) { }
     }
 
@@ -7992,11 +7998,7 @@ class MonitoringService : Service() {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
                     try {
-                        val held = heldPhotoHashesNow()
-                        held.remove(photoHashNow)
-                        held.add(photoHashNow)
-                        while (held.size > MAX_PHOTO_KEPT) held.remove(held.first())
-                        storeHeldPhotoHashes(held)
+                        storeHeldPhotoEntries(HeldPhotos.withHeld(heldPhotoEntriesNow(), photoFile.name, photoHashNow, MAX_PHOTO_KEPT))
                     } catch (_: Exception) { }
                     android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
                     return@launch
@@ -10074,15 +10076,17 @@ class MonitoringService : Service() {
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
-                    val fileHashFlush = try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
-                    val fileIsHeld = fileHashFlush != 0L && fileHashFlush in heldPhotoHashesNow()
+                    val heldEntriesFlush = heldPhotoEntriesNow()
+                    val namedFlush = heldEntriesFlush.firstOrNull { it.name == file.name && it.hash != 0L }
+                    val fileHashFlush = namedFlush?.hash ?: try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
+                    val fileIsHeld = if (namedFlush != null) true else fileHashFlush != 0L && heldEntriesFlush.any { it.raw == null && it.hash == fileHashFlush }
                     attempted.add(file.absolutePath)
                     val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT) preferencesManager.setLastPhotoHashSync(fileHashFlush)
-                            storeHeldPhotoHashes(heldPhotoHashesNow().apply { remove(fileHashFlush) })
+                            storeHeldPhotoEntries(HeldPhotos.withoutHashes(heldEntriesFlush, setOf(fileHashFlush)))
                         } catch (_: Exception) {
                         }
                     }
@@ -10130,14 +10134,17 @@ class MonitoringService : Service() {
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
-            val heldSetPrune = heldPhotoHashesNow()
-            if (heldSetPrune.isNotEmpty()) {
-                val droppedHashes = HashSet<Long>()
-                for (file in dropped) {
-                    try { droppedHashes.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
+            val heldEntriesPrune = heldPhotoEntriesNow()
+            if (heldEntriesPrune.isNotEmpty()) {
+                var keptEntries = HeldPhotos.withoutNames(heldEntriesPrune, dropped.mapTo(HashSet()) { it.name })
+                if (keptEntries.any { it.raw == null && it.name == null }) {
+                    val droppedHashes = HashSet<Long>()
+                    for (file in dropped) {
+                        try { droppedHashes.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
+                    }
+                    keptEntries = HeldPhotos.withoutHashes(keptEntries, droppedHashes)
                 }
-                val keptHashes = heldSetPrune.filter { it !in droppedHashes }
-                if (keptHashes.size != heldSetPrune.size) storeHeldPhotoHashes(LinkedHashSet(keptHashes))
+                if (keptEntries != heldEntriesPrune) storeHeldPhotoEntries(keptEntries)
             }
             dropped.forEach { deleteQuietly(it) }
             try {
