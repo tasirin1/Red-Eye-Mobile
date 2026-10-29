@@ -2301,6 +2301,8 @@ class MonitoringService : Service() {
             if (failAt > now || now - failAt < 3_600_000L) return
             commandsRegFailAt = 0L
             registerBotCommands()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
