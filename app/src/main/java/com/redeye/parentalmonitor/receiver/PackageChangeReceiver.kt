@@ -17,6 +17,7 @@ class PackageChangeReceiver : BroadcastReceiver() {
         val pkg = intent.data?.schemeSpecificPart ?: return
         if (pkg.isEmpty() || pkg == context.packageName) return
         com.redeye.parentalmonitor.service.MonitoringService.invalidateAppLabel(pkg)
+        com.redeye.parentalmonitor.service.A11yMonitor.invalidatePackageCache(pkg)
         if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
         val appContext = context.applicationContext
         val pendingResult = try {

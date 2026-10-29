@@ -667,12 +667,17 @@ object A11yMonitor {
         synchronized(labels) {
             launchable[pkg]?.let { return it }
         }
+        var resolved = false
         val ok = try {
-            pkg != "com.android.systemui" && context.packageManager.getLaunchIntentForPackage(pkg) != null
+            val result = pkg != "com.android.systemui" && context.packageManager.getLaunchIntentForPackage(pkg) != null
+            resolved = true
+            result
         } catch (_: Exception) {
             false
         }
-        synchronized(labels) { launchable[pkg] = ok }
+        if (resolved) {
+            synchronized(labels) { launchable[pkg] = ok }
+        }
         return ok
     }
 
@@ -680,14 +685,29 @@ object A11yMonitor {
         synchronized(labels) {
             labels[pkg]?.let { return it }
         }
+        var resolved = false
         val label = try {
             val info = context.packageManager.getApplicationInfo(pkg, 0)
-            context.packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+            val result = context.packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+            resolved = true
+            result
         } catch (_: Exception) {
             pkg
         }
-        synchronized(labels) { labels[pkg] = label }
+        if (resolved) {
+            synchronized(labels) { labels[pkg] = label }
+        }
         return label
+    }
+
+    fun invalidatePackageCache(pkg: String) {
+        try {
+            synchronized(labels) {
+                labels.remove(pkg)
+                launchable.remove(pkg)
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun sendAlert(context: Context, text: String) {
