@@ -513,6 +513,10 @@ class MessageQueue private constructor(context: Context) {
         } catch (e: Exception) {
             android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${e.message}")
             volatileOnly = true
+            overflowDrops.set(0L)
+            expiredDrops.set(0L)
+            priorityDrops.set(0L)
+            dropsDirty = true
             cached = null
             try {
                 com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)

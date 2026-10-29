@@ -2,6 +2,7 @@
 
 ### Fixed
 - Pemulihan antrean korup tidak lagi menimpa cadangan baik dengan blob korup itu sendiri (issue #243): penulisan hasil pemulihan kini mengganti isi utama dan `BAK` dengan JSON hasil pemulihan yang sama, sedangkan rotasi cadangan pada jalur tulis biasa tidak berubah.
+- Penghitung drop tidak lagi terhitung ganda sesudah kegagalan baca yang mengubah antrean menjadi volatile (issue #244): penghitung yang sudah tercermin dari disk di-nol-kan tepat saat flip volatile, sehingga restore yang kemudian memuat nilai disk dengan penjumlahan hanya menambahkan drop yang benar-benar terjadi selama mode volatile; jalan masuk volatile dari kegagalan inisialisasi tetap memakai restore penjumlahan seperti sebelumnya.
 
 ## [1.6.527] - 2026-10-29
 
