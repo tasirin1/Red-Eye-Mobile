@@ -172,7 +172,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val summaryIndex = history.indexOfLast { it.app == DROP_SUMMARY_APP }
                 if (summaryIndex >= 0) history.removeAt(summaryIndex)
-                history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur (antrean penuh)", now))
+                history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur dalam 60 detik terakhir (antrean penuh)", now))
                 while (history.size > MAX_HISTORY) history.removeFirst()
                 dropSummaryAt = now
             }
@@ -1004,8 +1004,8 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun dropNoticeText(count: Int, firstAt: Long): String {
-        val base = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
-            else "$count notifikasi dibuang (ditolak/antrean penuh)."
+        val base = if (count == 1) "Total 1 notifikasi dibuang (ditolak/antrean penuh)."
+            else "Total $count notifikasi dibuang (ditolak/antrean penuh)."
         if (firstAt <= 0L) return base
         return base + " Terakumulasi sejak " +
             com.redeye.parentalmonitor.utils.TimeFmt.full(firstAt) + "."
