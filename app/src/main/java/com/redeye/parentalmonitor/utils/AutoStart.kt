@@ -111,11 +111,11 @@ object AutoStart {
     fun candidates(): List<String> {
         val brands = LinkedHashSet<String>()
         try {
-            brands.add(Build.MANUFACTURER.lowercase())
+            brands.add(Build.MANUFACTURER.lowercase(java.util.Locale.ROOT))
         } catch (_: Exception) {
         }
         try {
-            brands.add(Build.BRAND.lowercase())
+            brands.add(Build.BRAND.lowercase(java.util.Locale.ROOT))
         } catch (_: Exception) {
         }
         val flats = LinkedHashSet<String>()

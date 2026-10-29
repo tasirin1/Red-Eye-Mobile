@@ -683,6 +683,10 @@ def cek_locale_baru(gagal, diff):
             gagal.append("Baris baru toLower/UpperCase() tanpa Locale — bug locale "
                          "Turki + alokasi sia-sia; pakai varian Locale: %s"
                          % isi.strip()[:80])
+        if re.search(r"\.(lowercase|uppercase)\(\)", isi):
+            gagal.append("Baris baru lowercase()/uppercase() tanpa Locale — bug locale "
+                         "Turki; pakai varian Locale.ROOT: %s"
+                         % isi.strip()[:80])
 
 
 def argumen_format(isi):
