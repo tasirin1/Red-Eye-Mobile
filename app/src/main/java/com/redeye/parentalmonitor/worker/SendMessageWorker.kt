@@ -116,7 +116,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt, queuedMessage.priority)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -515,7 +515,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -534,7 +534,7 @@ class SendMessageWorker(
             if (android.os.SystemClock.elapsedRealtime() >= deadlineAt) {
                 if (idx == 0) return SendOutcome.Failed
                 val queued = try {
-                    messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                    messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                 } catch (_: Exception) {
                     false
                 }
@@ -557,7 +557,7 @@ class SendMessageWorker(
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         if (idx + 1 < parts.size) {
                             val queued = try {
-                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount + 1)
+                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                             } catch (_: Exception) {
                                 false
                             }
@@ -583,7 +583,7 @@ class SendMessageWorker(
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
                         remainderQueued = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                         } catch (_: Exception) {
                             false
                         }
@@ -607,7 +607,7 @@ class SendMessageWorker(
                 is SendOutcome.AuthFailed -> {
                     if (idx > 0 && !remainderQueued) {
                         remainderQueued = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                         } catch (_: Exception) {
                             false
                         }
@@ -632,7 +632,7 @@ class SendMessageWorker(
                     failed++
                     if (idx > 0 && !failedKept) {
                         failedKept = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                         } catch (_: Exception) {
                             false
                         }
@@ -649,7 +649,7 @@ class SendMessageWorker(
                     rejected++
                     if (idx > 0 && !failedKept) {
                         failedKept = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), retryCount = retryCount + 1)
+                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
                         } catch (_: Exception) {
                             false
                         }
@@ -774,7 +774,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false): SendOutcome {
         return try {
             val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
@@ -785,7 +785,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt) else sendPlainFallback(message, botToken, chatId)
+                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
