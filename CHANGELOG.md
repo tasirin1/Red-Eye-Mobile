@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.533] - 2026-10-29
+
 ### Fixed
 - Alert "admin perangkat dimatikan" kini tak bisa hilang senyap saat penyimpanan belum siap (issue #274): di dalam lambda `runReceiver` pada `AdminReceiver.onDisabled`, hanya `refreshInstance` yang terbungkus try, sedangkan `getInstance` beserta pemeriksaan konfigurasi dan pengiriman alert berjalan tanpa pelindung — exception apa pun dari jalur itu (mis. prefs terenkripsi belum bisa dibuka sesaat sesudah boot) lolos ke catch `runReceiver` yang menelan tanpa log, sehingga alert tamper paling kritis aplikasi ini hilang total tanpa jejak di build release; isi lambda sesudah `refreshInstance` kini terbungkus try/catch ber-`Log.e`, sedangkan perilaku sukses (pemeriksaan dan pesan yang dikirim) tidak berubah.
 - Pembungkus Boolean yatim pada cek izin liveness dihapus agar kontrak tiga keadaan menjadi satu-satunya jalur (issue #273, sisa desain #269): `Liveness.allowed()` memetakan hasil `allowedCheck()` menjadi Boolean sehingga `READ_FAILED` runtuh menjadi `false` — persis ambiguitas "gagal membaca prefs tak terbedakan dari tidak diizinkan" yang dihapus #269 — tetapi fungsi itu tidak mempunyai satu pun pemanggil (`handleWakeUp` sudah memakai `allowedCheck()` dengan `when` tiga keadaan); pembungkusnya kini dihapus, sehingga pemanggil masa depan tidak bisa menghidupkan kembali bug #269 lewat jalur yang tampak resmi.
