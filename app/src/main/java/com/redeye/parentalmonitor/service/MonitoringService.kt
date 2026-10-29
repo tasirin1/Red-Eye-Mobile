@@ -1873,10 +1873,15 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             var adoptionDoneSec = 0L
+                            var followFailedSilently = false
                             if (followsLogin && !control) {
                                 loginJobSnapshot?.join()
                                 if (loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
                                     adoptionDoneSec = serverNowSec()
+                                } else if (!ownerOk && loginJobSnapshot?.isCompleted == true && !isOwner(senderId) &&
+                                    (effective in MUTATING_COMMANDS || effective in SENSITIVE_COMMANDS)) {
+                                    followFailedSilently = true
+                                    android.util.Log.w("MonitoringService", "Perintah pengikut dilewati diam-diam: login yang diikuti selesai tanpa adopsi (kegagalan sudah diberitahukan oleh jalur login)")
                                 }
                             }
                             var adoptionRejected = false
@@ -1904,12 +1909,16 @@ class MonitoringService : Service() {
                                     if (!adoptionRejected && loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
                                         adoptionDoneSec = serverNowSec()
                                     }
+                                    if (!adoptionRejected && !isOwner(senderId) && loginJobSnapshot?.isCompleted == true) {
+                                        followFailedSilently = true
+                                        android.util.Log.w("MonitoringService", "Perintah kontrol dilewati diam-diam: login yang diikuti selesai tanpa adopsi (kegagalan sudah diberitahukan oleh jalur login)")
+                                    }
                                     if (adoptionRejected) {
                                         android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
                                         try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
                                     }
                                 }
-                                if (!adoptionRejected) lock.withLock {
+                                if (!adoptionRejected && !followFailedSilently) lock.withLock {
                                     val ownerNow = isOwner(senderId)
                                     val privateNow = ownerNow && isPrivate
                                     val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)

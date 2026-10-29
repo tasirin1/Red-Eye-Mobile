@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Satu kegagalan login kini menghasilkan tepat satu pemberitahuan penolakan (issue #232, sisa #223): sebelumnya, bila job login gugur oleh tenggat kuncinya, jalur login mengirim pemberitahuan penolakannya sendiri, tetapi perintah pengikut (kontrol lewat loop adopsi, dan perintah mutasi/sensitif non-kontrol lewat `join()`) tetap lanjut ke gerbang owner/umur di dalam kunci dan ditolak sekali lagi di sana — owner menerima dua pesan penolakan untuk kegagalan yang sama dan bisa mengira perintahnya yang gagal, bukan loginnya. Pengikut kini memeriksa hasil login yang ditunggunya: bila job login terbukti selesai tanpa mengadopsi pengirim (pengirim tetap bukan owner), perintah dilewati diam-diam dengan catatan log saja, karena kegagalan itu sudah diberitahukan oleh jalur login. Pengikut yang loginnya berhasil tidak berubah, dan penolakan oleh tenggat tunggu pengikut sendiri (login masih berjalan) tetap diberitahukan seperti sebelumnya.
+
 ## [1.6.525] - 2026-10-29
 
 ### Fixed
