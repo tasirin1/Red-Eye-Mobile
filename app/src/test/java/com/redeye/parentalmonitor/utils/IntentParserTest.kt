@@ -47,6 +47,7 @@ class IntentParserTest {
             "bot ini bisa apa saja" to "/help",
             "daftar perintah apa saja" to "/help",
             "tolong kirim foto sekarang" to "/photo",
+            "gadis kecil itu kirim foto dong" to "/photo",
             "kirim foto dong" to "/photo",
             "foto sekarang dong" to "/photo",
             "tolong foto" to "/photo",
@@ -89,6 +90,24 @@ class IntentParserTest {
             "terima kasih",
             "",
             "/location"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+    }
+
+    @Test
+    fun parseRejectsColloquialNegations() {
+        val cases = listOf(
+            "ga usah kirim foto",
+            "gausah kirim foto",
+            "ngga usah kirim foto",
+            "ngga perlu kirim foto",
+            "engga usah kirim screenshot",
+            "ga usah ambil screenshot",
+            "kagak usah ambil foto",
+            "jgn kirim foto",
+            "ga perlu ambil foto dia sekarang"
         )
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))

@@ -10,7 +10,10 @@ object IntentParser {
 
     private val WHITESPACE = Regex("\\s+")
 
-    private val NEGATIONS = setOf("jangan", "tidak", "nggak", "enggak", "gak", "bukan", "tak", "ndak")
+    private val NEGATIONS = setOf(
+        "jangan", "tidak", "nggak", "enggak", "gak", "bukan", "tak", "ndak",
+        "ga", "ngga", "engga", "gausah", "kagak", "jgn"
+    )
 
     private val INTENTS = listOf(
         Intent(
