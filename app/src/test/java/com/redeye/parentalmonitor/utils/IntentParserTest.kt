@@ -115,6 +115,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsReferencesToExistingPhoto() {
+        val cases = listOf(
+            "mana fotonya anak sekarang",
+            "foto yang diambil kemarin dong",
+            "fotonya kemarin bagus, kirim ulang dong"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+    }
+
+    @Test
     fun parseNeverReturnsMutatingCommands() {
         val allowed = setOf(
             "/location", "/battery", "/status", "/layar", "/digest", "/minggu", "/jejak",

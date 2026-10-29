@@ -116,6 +116,15 @@ object IntentParser {
         )
     )
 
+    private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
+        if (padded.contains(" kirim ulang ")) return true
+        for (token in tokens) {
+            if (token == "kemarin" || token == "fotonya") return true
+            if (tokenMatches(token, "diambil")) return true
+        }
+        return false
+    }
+
     private fun isNegation(token: String): Boolean {
         if (token in NEGATIONS) return true
         return NEGATIONS.any { it.length >= 4 && token.length - it.length in 1..3 && token.startsWith(it) }
@@ -153,8 +162,10 @@ object IntentParser {
         var tie = false
         for (intent in INTENTS) {
             var score = 0
-            for (group in intent.groups) {
-                if (groupHit(tokens, padded, group)) score++
+            if (intent.command != "/photo" || !isPhotoReference(tokens, padded)) {
+                for (group in intent.groups) {
+                    if (groupHit(tokens, padded, group)) score++
+                }
             }
             if (score > bestScore) {
                 best = intent.command
