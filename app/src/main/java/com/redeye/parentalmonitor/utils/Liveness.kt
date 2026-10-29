@@ -78,7 +78,8 @@ object Liveness {
     fun allowed(manager: PreferencesManager): Boolean {
         return try {
             manager.isMonitoringEnabled && manager.isConfigured() && !manager.userDisabledMonitoring && manager.userConsentedMonitoring && !manager.monitoringPaused
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("Liveness", "allowed check failed", e)
             false
         }
     }
@@ -192,7 +193,8 @@ object Liveness {
         val manager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("Liveness", "wake-up aborted: preferences unavailable", e)
             schedule(context)
             return
         }
@@ -217,7 +219,8 @@ object Liveness {
             }
             ServiceStart.startForeground(context, serviceIntent)
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("Liveness", "wake-up failed to start monitoring service", e)
             false
         }
         if (!started) {

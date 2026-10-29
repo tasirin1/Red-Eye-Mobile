@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Jalur kegagalan terancang `Liveness.handleWakeUp` kini berjejak di log release (issue #259, sisa #246): kegagalan refresh/getInstance prefs, kegagalan exception di dalam cek `allowed()`, dan penolakan start foreground service sebelumnya semuanya diubah menjadi `return`/`false` + fallback internal tanpa log, sehingga `Log.e` di `TimeChangeReceiver` praktis tak terjangkau; ketiga titik telan itu kini menulis `Log.e` masing-masing (satu log per sebab per pemanggilan), sedangkan hasil `allowed()` yang memang `false` secara sah tetap senyap dan alur fallback-nya tidak berubah.
+
 
 ## [1.6.530] - 2026-10-29
 
