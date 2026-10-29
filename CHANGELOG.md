@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Celah balapan penggabungan tulisan terlambat prefs dipersempit lagi sampai batas API-nya (issue #216, sisa #205): `mergeLateWritesInto` sebelumnya memaksa `commit()` pada percobaan ke-3 meski drift terdeteksi — kunci yang *terbukti* baru saja ditulis fresh tetap ditimpa hasil gabungan. Kunci yang terdeteksi balapan kini dikumpulkan lintas percobaan dan dikeluarkan dari editor berikutnya (nilai fresh selalu menang), dan percobaan terakhir diganti satu lintasan akhir yang hanya meng-commit kunci yang tidak pernah terdeteksi balapan. Jalur yang sama juga tidak lagi membangkitkan kunci yang sudah dihapus di penyimpanan fresh sejak snapshot dasar (absen di keadaan kini tetapi ada di `baseFresh`). Sisa yang memang tidak bisa ditutup: tulisan fresh yang mendarat tepat di antara pembacaan snapshot terakhir dan `commit()` pada lintasan akhir tidak pernah teramati, dan API `SharedPreferences` tidak menyediakan bandingkan-dan-tukar (CAS) untuk menutupnya — jendela itu kini hanya selebar dua operasi memori yang berurutan.
+
 ## [1.6.520] - 2026-10-29
 
 ### Fixed

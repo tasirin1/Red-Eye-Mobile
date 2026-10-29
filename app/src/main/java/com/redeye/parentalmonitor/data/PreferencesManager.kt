@@ -94,6 +94,8 @@ class PreferencesManager(context: Context) {
             var result = false
             var done = false
             var tries = 0
+            val raced = mutableSetOf<String>()
+            var finalPass = false
             while (!done) {
                 tries++
                 val target = HashMap(to.all)
@@ -101,8 +103,10 @@ class PreferencesManager(context: Context) {
                 var changed = false
                 val touched = mutableSetOf<String>()
                 for ((key, value) in memNow) {
+                    if (key in raced) continue
                     if (baseMem.containsKey(key) && baseMem[key] == value) continue
                     if (target.containsKey(key) && target[key] != baseFresh[key]) continue
+                    if (!target.containsKey(key) && baseFresh.containsKey(key)) continue
                     if (!target.containsKey(key) || target[key] != value) {
                         putEntryInto(editor, key, value)
                         changed = true
@@ -110,6 +114,7 @@ class PreferencesManager(context: Context) {
                     }
                 }
                 for (key in target.keys) {
+                    if (key in raced) continue
                     if (memNow.containsKey(key)) continue
                     if (!baseMem.containsKey(key)) continue
                     if (target[key] != baseFresh[key]) continue
@@ -120,14 +125,20 @@ class PreferencesManager(context: Context) {
                 if (!changed) {
                     result = true
                     done = true
+                } else if (finalPass) {
+                    result = editor.commit()
+                    done = true
                 } else {
                     val latest = HashMap(to.all)
-                    val drift = touched.any { key ->
+                    val drifted = touched.filter { key ->
                         latest.containsKey(key) != target.containsKey(key) || latest[key] != target[key]
                     }
-                    if (!drift || tries >= 3) {
+                    if (drifted.isEmpty()) {
                         result = editor.commit()
                         done = true
+                    } else {
+                        raced.addAll(drifted)
+                        if (tries >= 3) finalPass = true
                     }
                 }
             }
