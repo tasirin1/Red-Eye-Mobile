@@ -2354,7 +2354,7 @@ class MonitoringService : Service() {
             "lokasi" -> MenuScreen(
                 "\uD83D\uDCCD <b>Lokasi &amp; jejak</b>\nGeofence rumah/sekolah + jemput.",
                 papan(
-                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak hari ini", "x:jejak")),
+                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak 24 jam", "x:jejak")),
                     listOf(button("\uD83C\uDFE0 Jemput", "num:lokasi:jemput"), button("\uD83D\uDE97 Kendara", "x:kendara status")),
                     listOf(button("\uD83D\uDDFA\uFE0F Rumah", "i:lokasi:home"), button("\uD83C\uDFEB Sekolah", "i:lokasi:school")),
                     listOf(menuUtama)
