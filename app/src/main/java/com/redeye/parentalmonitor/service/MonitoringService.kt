@@ -1846,10 +1846,11 @@ class MonitoringService : Service() {
                                         startChat = startChat.substring(0, sep)
                                     }
                                 }
-                                val pairCode = try { preferencesManager.ensureOwnerPairCode() } catch (_: Exception) { "" }
+                                val pairCode = try { preferencesManager.currentOwnerPairCode() } catch (_: Exception) { "" }
                                 if (startChat == chatId && pairCode.isNotEmpty() && startCode == pairCode) {
                                     val learned = rememberOwner(senderId.toLongOrNull() ?: 0L)
                                     if (learned) {
+                                        try { preferencesManager.clearOwnerPairCodeSync() } catch (_: Exception) { }
                                         try { pairAttemptAt.remove(senderId) } catch (_: Exception) { }
                                         try { pairGlobalFails.set(0) } catch (_: Exception) { }
                                         registerBotCommands()

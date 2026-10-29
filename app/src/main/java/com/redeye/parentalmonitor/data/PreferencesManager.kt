@@ -1060,6 +1060,19 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearOwnerPairCodeSync(): Boolean {
+        synchronized(pairCodeLock) {
+            return try {
+                sharedPreferences.edit()
+                    .putString(KEY_OWNER_PAIR_CODE, "")
+                    .putLong(KEY_OWNER_PAIR_AT, 0L)
+                    .commit()
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     var pendingMsgDrops: Int
         get() = prefInt(KEY_PENDING_MSG_DROPS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).apply()

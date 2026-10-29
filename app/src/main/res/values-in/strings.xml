@@ -84,7 +84,7 @@
     <string name="setup_health_footer">Pakai tombol Berikan semua izin atau Anti-mati &amp; Autostart untuk membenahi item merah.</string>
     <string name="setup_pair_link">Salin link pairing</string>
     <string name="setup_pair_link_title">Link pairing</string>
-    <string name="setup_pair_link_body">Buka link ini dari akun Telegram kamu:\n\n%1$s\n\nBisa juga dibagikan.</string>
+    <string name="setup_pair_link_body">Buka link ini dari akun Telegram kamu sendiri:\n\n%1$s\n\nJaga kerahasiaan link ini: siapa pun yang membukanya lebih dulu menjadi pemilik bot. Jangan dibagikan ke siapa pun.</string>
     <string name="setup_pair_link_fail">Gagal membuat link pairing. Cek token/chat dan internet.</string>
     <string name="setup_pair_link_copied">Link pairing disalin.</string>
     <string name="setup_pair_link_share">Bagikan</string>
