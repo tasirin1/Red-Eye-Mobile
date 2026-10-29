@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.518] - 2026-10-29
+
 ### Fixed
 - Penanda hidrasi SMS tidak lagi menyalahkan kegagalan muat untuk pesan yang hilang wajar (issue #208, sisa #190): pemetaan akhir `getSmsForNumber` sebelumnya memberi penanda "(isi pesan gagal dimuat)" ke semua id yang absen dari peta hasil hidrasi — termasuk SMS yang memang terhapus di antara kueri pencarian dan kueri hidrasi. Kini kedua keadaan dibedakan: penanda gagal dimuat hanya dipakai bila hidrasi terbukti tidak selesai (kursor null atau pengecualian di tengah iterasi); bila kueri hidrasi selesai penuh dan id tetap absen, barisnya memang sudah tidak ada di penyimpanan dan tampil dengan penanda jujur "(pesan sudah terhapus)".
 - Jeda upgrade prefs kini hanya dibayar pada jalur yang memang tak stabil (issue #207, sisa #189): jeda 150 ms antarpercobaan sebelumnya dibayar sesudah SETIAP kegagalan percobaan, termasuk kegagalan keras (commit gagal/pengecualian) yang tidak ada hubungannya dengan ledakan tulisan — padahal fungsi jeda itu hanya untuk memberi kesempatan prefs mereda. `attemptUpgradeToPersistent` kini melaporkan hasil tiga nilai (`SUCCESS`/`UNSTABLE`/`FAILED`) dan jeda antarpercobaan hanya berjalan bila percobaan sebelumnya berakhir `UNSTABLE`. Biaya terburuk yang memang melekat pada jalur tak stabil penuh (jeda antarputaran 50 ms + antarpercobaan 150 ms) tidak berubah karena jeda itulah mekanisme stabilitas #189; yang hilang hanya biaya jeda pada jalur gagal keras, yang kini langsung mencoba lagi/gagal tanpa menunggu.
