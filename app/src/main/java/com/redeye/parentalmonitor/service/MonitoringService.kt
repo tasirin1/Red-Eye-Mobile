@@ -1939,6 +1939,7 @@ class MonitoringService : Service() {
                                 }
                                 if (control && !adoptionWait && !followFailedSilently && !followTimedOut) {
                                     val courtesyDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                    val courtesyStartMs = android.os.SystemClock.elapsedRealtime()
                                     var courtesyWaited = false
                                     while (synchronized(adoptionGateLock) { adoptionWaiters.any { it.second == senderId && it.first < update.updateId } }) {
                                         courtesyWaited = true
@@ -1949,7 +1950,12 @@ class MonitoringService : Service() {
                                         delay(50)
                                     }
                                     if (courtesyWaited && ownerOk && isOwner(senderId)) {
-                                        adoptionDoneSec = serverNowSec()
+                                        val waitedSec = (android.os.SystemClock.elapsedRealtime() - courtesyStartMs) / 1000L
+                                        adoptionDoneSec = if (messageDate > 0L) {
+                                            minOf(messageDate + waitedSec, serverNowSec())
+                                        } else {
+                                            serverNowSec()
+                                        }
                                     }
                                 }
                                 if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {

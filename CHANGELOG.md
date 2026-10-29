@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pengampunan umur mutasi untuk perintah kontrol yang menyelesaikan tunggu kesopanan kini dibatasi sebesar durasi tunggu aktual (issue #253, sisa #247): stempel segar sebelumnya menggantikan tanggal pesan sepenuhnya, sehingga keterlambatan pengiriman sebelum dispatch ikut terhapus sampai batas gerbang umum 900 detik; titik ukur kini digeser hanya sebanyak detik yang benar-benar dihabiskan menunggu gerbang (tanggal pesan + durasi tunggu, dibatasi waktu kini), sehingga umur pra-tunggu tetap dihitung seperti biasa dan jalur adopsi login #231 tidak berubah.
+
 
 ## [1.6.529] - 2026-10-29
 
