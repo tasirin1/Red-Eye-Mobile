@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Klasifikasi konflik-diri polling 409 tidak lagi salah selama 60 detik pertama sesudah boot (issue #292): `lastLoopRestartAt` — penanda yang dipakai cabang 409 `pollTelegramCommands` untuk membedakan konflik diri dari konflik asing — sebelumnya hanya dicap di `restartAllLoops()`, sehingga sejak layanan mulai sampai restart pertama nilainya masih 0 dan `now409 - 0 < 60_000` selalu benar selama uptime perangkat di bawah 60 detik; semua 409 pada jendela itu terbaca konflik diri (backoff 60 detik, bukan 300 detik) dan percobaan `clearStaleWebhook` — satu-satunya jalur pemulihan aktif konflik 409 — dilewati, sehingga pemulihan konflik asing tertunda sampai 409 berikutnya sesudah uptime melewati 60 detik. Penanda kini juga dicap di `startMonitoring()` tepat saat loop pertama diluncurkan, dengan semantik "restart terakhir atau mulai pertama, mana yang terbaru"; jendela 60 detik dan logika backoff tidak berubah.
+
 
 ## [1.6.537] - 2026-10-29
 

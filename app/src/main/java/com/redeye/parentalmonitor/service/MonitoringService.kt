@@ -829,6 +829,7 @@ class MonitoringService : Service() {
             }
         }
 
+        lastLoopRestartAt = android.os.SystemClock.elapsedRealtime()
         startInitialSync(force = false)
         startPeriodicLoops()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
