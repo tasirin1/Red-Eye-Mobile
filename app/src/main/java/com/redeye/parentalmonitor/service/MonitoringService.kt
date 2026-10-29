@@ -7238,6 +7238,7 @@ class MonitoringService : Service() {
                 curfewFetchFailAt = 0L
                 resetLocFailCount()
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
+                try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
             }
             if (needCurfew) {
