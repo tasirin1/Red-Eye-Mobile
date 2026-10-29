@@ -475,6 +475,9 @@ class MessageQueue private constructor(context: Context) {
             overflowDrops.set(0L)
             expiredDrops.set(0L)
             priorityDrops.set(0L)
+            persistedOverflowDrops = 0L
+            persistedExpiredDrops = 0L
+            persistedPriorityDrops = 0L
             dropsDirty = false
             val wipe = if (volatileOnly) {
                 try {
