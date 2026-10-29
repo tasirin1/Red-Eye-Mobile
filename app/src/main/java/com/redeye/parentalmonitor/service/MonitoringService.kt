@@ -6903,7 +6903,7 @@ class MonitoringService : Service() {
                 set
             }
             if (keys != null && keys.isEmpty()) return m
-            val since = System.currentTimeMillis() - 24 * 60 * 60_000L
+            val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis())
             try {
                 for (s in smsRepository.getRecentSmsSince(since, 200)) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
