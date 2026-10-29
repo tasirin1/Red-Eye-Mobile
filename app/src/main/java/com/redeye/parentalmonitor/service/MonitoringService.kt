@@ -1476,7 +1476,7 @@ class MonitoringService : Service() {
     @Volatile
     private var updateConflictNoticeAt = 0L
     @Volatile
-    private var webhookClearAt = 0L
+    private var webhookClearAtElapsed = 0L
     @Volatile
     private var webhookClearNoticeAt = 0L
     @Volatile
@@ -1672,9 +1672,8 @@ class MonitoringService : Service() {
             commandBackoffUntil = now409 + (if (selfConflict) 60_000L else 300_000L)
             idlePolls = 4
             if (!selfConflict) {
-                val nowClear = System.currentTimeMillis()
-                if (nowClear - webhookClearAt > 10 * 60_000L) {
-                    webhookClearAt = nowClear
+                if (now409 - webhookClearAtElapsed > 10 * 60_000L) {
+                    webhookClearAtElapsed = now409
                     serviceScope.launch {
                         try {
                             clearStaleWebhook(botToken)
