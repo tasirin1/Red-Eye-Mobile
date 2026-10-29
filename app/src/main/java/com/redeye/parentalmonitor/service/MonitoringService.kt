@@ -1919,8 +1919,13 @@ class MonitoringService : Service() {
                                         android.util.Log.w("MonitoringService", "Perintah kontrol dilewati diam-diam: login yang diikuti selesai tanpa adopsi (kegagalan sudah diberitahukan oleh jalur login)")
                                     }
                                     if (adoptionRejected) {
-                                        android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
-                                        try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
+                                        if (isOwner(senderId)) {
+                                            android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: tenggat tunggu habis di antrean sesama penunggu adopsi")
+                                            try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: antrean perintah sesudah login terlalu lama. Login sebenarnya sudah berhasil — kirim perintah lagi.") } catch (_: Exception) { }
+                                        } else {
+                                            android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
+                                            try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
+                                        }
                                     }
                                 }
                                 if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {
