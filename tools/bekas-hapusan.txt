@@ -69,3 +69,4 @@ screenTimeSummary
 allowed
 heldPhotoFileAlive
 transitionAdoptsStateWithoutAccuracyGate
+watchKeywordList

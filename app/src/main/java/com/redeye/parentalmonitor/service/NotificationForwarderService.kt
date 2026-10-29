@@ -9,6 +9,7 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.network.TelegramClient
 import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.NotificationPrivacy
@@ -535,38 +536,17 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun watchKeywordList(raw: String): List<String> {
-        if (raw == watchKeywordsRaw) return watchKeywordsList
-        val parsed = ArrayList<String>()
-        val token = StringBuilder()
-        for (ch in raw) {
-            if (ch == ',' || ch == ' ' || ch == ';') {
-                if (token.isNotEmpty()) {
-                    val t = token.toString().trim().lowercase(java.util.Locale.ROOT)
-                    if (t.length >= 3) parsed.add(t)
-                    token.setLength(0)
-                }
-            } else {
-                token.append(ch)
-            }
-        }
-        if (token.isNotEmpty()) {
-            val t = token.toString().trim().lowercase(java.util.Locale.ROOT)
-            if (t.length >= 3) parsed.add(t)
-        }
-        watchKeywordsRaw = raw
-        watchKeywordsList = parsed
-        return parsed
-    }
-
     private fun buildNotifMessage(label: String, title: String, text: String): String {
         return buildString {
             appendLine("🔔 <b>Notifikasi</b>")
             try {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this@NotificationForwarderService)).watchKeywords
                 if (raw.isNotEmpty()) {
-                    val low = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
-                    val hit = watchKeywordList(raw).firstOrNull { low.contains(it) }
+                    if (raw != watchKeywordsRaw) {
+                        watchKeywordsList = AppWatch.parseKeywords(raw)
+                        watchKeywordsRaw = raw
+                    }
+                    val hit = AppWatch.hit(watchKeywordsList, title + "\n" + text)
                     if (hit != null) appendLine("⚠️ Watch: " + Html.escape(hit))
                 }
             } catch (_: Exception) {
@@ -833,8 +813,11 @@ class NotificationForwarderService : NotificationListenerService() {
             try {
                 val raw = (prefsRef ?: PreferencesManager.getInstance(this)).watchKeywords
                 if (raw.isNotEmpty()) {
-                    val hit = watchKeywordList(raw).firstOrNull { lowText.contains(it) }
-                    if (hit != null) return true
+                    if (raw != watchKeywordsRaw) {
+                        watchKeywordsList = AppWatch.parseKeywords(raw)
+                        watchKeywordsRaw = raw
+                    }
+                    if (AppWatch.hit(watchKeywordsList, title + "\n" + text) != null) return true
                 }
             } catch (_: Exception) {
             }
