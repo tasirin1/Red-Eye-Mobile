@@ -44,6 +44,12 @@ class NotificationForwarderService : NotificationListenerService() {
             return size > MAX_FORWARDED_IDS
         }
     }
+    private val groupForwardedSeeded = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val groupForwarded = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > MAX_GROUP_FORWARDED
+        }
+    }
     @Volatile
     private var prefsRef: PreferencesManager? = null
     @Volatile
@@ -104,6 +110,22 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             } catch (_: Exception) { }
         }
+        if (!groupForwardedSeeded.get()) {
+            try {
+                val storedGroups = prefs.notifGroupForwarded
+                if (groupForwardedSeeded.compareAndSet(false, true)) {
+                    synchronized(groupForwarded) {
+                        for (entry in storedGroups) {
+                            val sep = entry.lastIndexOf(':')
+                            if (sep > 0) {
+                                val ts = entry.substring(sep + 1).toLongOrNull() ?: 0L
+                                if (ts > 0L) groupForwarded[entry.substring(0, sep)] = ts
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) { }
+        }
         return prefs
     }
     private var dropNoticeJob: Job? = null
@@ -156,6 +178,8 @@ class NotificationForwarderService : NotificationListenerService() {
 
     companion object {
         private const val MAX_FORWARDED_IDS = 100
+        private const val MAX_GROUP_FORWARDED = 50
+        private const val GROUP_SUMMARY_HOLD_MS = 30 * 60_000L
         private const val MAX_HISTORY = 20
         private const val MAX_QUEUED = 64
         private const val MAX_OVERFLOW_QUEUE = 8
@@ -371,7 +395,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody) } catch (_: Exception) { false }
                         if (squeezedPriority && forwardingAllowed()) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
-                            emitPost(pkg, "", squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), false, nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime)
+                            emitPost(pkg, groupKey, squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), !isSummary && groupKey.isNotEmpty(), nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime, isSummary)
                         } else recordOverflow(pkg, nf.title, nf.text)
                     }
                 } catch (_: Exception) {
@@ -466,14 +490,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         val now = android.os.SystemClock.elapsedRealtime()
-        if (isSummary && groupKey.isNotEmpty()) {
-            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
-            if (seenAt != null && now - seenAt < 120_000L) {
-                record(appLabel, title, text)
-                return
-            }
-        }
-        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), rawTitle = nf.rawTitle, rawBody = nf.rawBody, sbnKey = sbnKey, sbnPostTime = sbnPostTime)
+        emitPost(pkg, groupKey, appLabel, title, text, now, trackGroup = !isSummary && groupKey.isNotEmpty(), rawTitle = nf.rawTitle, rawBody = nf.rawBody, sbnKey = sbnKey, sbnPostTime = sbnPostTime, isSummary = isSummary)
     }
 
     private fun notifIdHash(sbnKey: String, postTime: Long): String {
@@ -486,6 +503,30 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun isForwardedId(idHash: String): Boolean {
         return synchronized(forwardedIds) { forwardedIds.containsKey(idHash) }
+    }
+
+    private fun groupKeyHash(groupKey: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        digest.update(groupKey.toByteArray(Charsets.UTF_8))
+        return android.util.Base64.encodeToString(digest.digest(), android.util.Base64.NO_WRAP)
+    }
+
+    private fun groupForwardedAt(groupKey: String): Long {
+        val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { return 0L }
+        return synchronized(groupForwarded) { groupForwarded[hash] } ?: 0L
+    }
+
+    private fun markGroupForwarded(groupKey: String) {
+        val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { return }
+        val snapshot: List<String>
+        synchronized(groupForwarded) {
+            groupForwarded[hash] = System.currentTimeMillis()
+            snapshot = groupForwarded.entries.map { it.key + ":" + it.value }
+        }
+        try {
+            (prefsRef ?: PreferencesManager.getInstance(this)).setNotifGroupForwardedSync(snapshot)
+        } catch (_: Exception) {
+        }
     }
 
     private fun markForwardedId(idHash: String) {
@@ -511,8 +552,25 @@ class NotificationForwarderService : NotificationListenerService() {
         rawTitle: String = "",
         rawBody: String = "",
         sbnKey: String = "",
-        sbnPostTime: Long = 0L
+        sbnPostTime: Long = 0L,
+        isSummary: Boolean = false
     ) {
+        if (isSummary && groupKey.isNotEmpty()) {
+            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
+            if (seenAt != null && now - seenAt < 120_000L) {
+                record(label, title, text)
+                return
+            }
+            val childAt = groupForwardedAt(groupKey)
+            if (childAt > 0L && System.currentTimeMillis() - childAt < GROUP_SUMMARY_HOLD_MS) {
+                record(label, title, text)
+                return
+            }
+            try {
+                synchronized(groupSeen) { groupSeen[groupKey] = now }
+            } catch (_: Exception) {
+            }
+        }
         val keyTitle = if (rawTitle.isEmpty() && rawBody.isEmpty()) title else rawTitle
         val keyBody = if (rawTitle.isEmpty() && rawBody.isEmpty()) text else rawBody
         if (trackGroup && groupKey.isNotEmpty()) {
@@ -552,6 +610,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (priority) {
                 record(label, title, text)
                 if (idHash.isNotEmpty()) markForwardedId(idHash)
+                if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
                 try {
                     queue().addMessage("❗ " + buildNotifMessage(label, title, text))
                     MessageScheduler.scheduleMessageSend(this)
@@ -575,6 +634,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val message = buildNotifMessage(label, title, text)
         record(label, title, text)
         if (idHash.isNotEmpty()) markForwardedId(idHash)
+        if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
         if (priority) {
             try {
                 forwardLocked("❗ " + message, 1)
