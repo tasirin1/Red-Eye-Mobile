@@ -119,10 +119,27 @@ class IntentParserTest {
         val cases = listOf(
             "mana fotonya anak sekarang",
             "foto yang diambil kemarin dong",
-            "fotonya kemarin bagus, kirim ulang dong"
+            "fotonya kemarin bagus, kirim ulang dong",
+            "kirim ulang foto yang tadi",
+            "mana foto yang diambil tadi",
+            "kirim fotonya sekarang dong"
         )
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))
+        }
+    }
+
+    @Test
+    fun parsePhotoReferenceVetoYieldsToCaptureVerbs() {
+        val cases = listOf(
+            "jepret fotonya sekarang",
+            "potret fotonya dong",
+            "tolong ambilkan fotonya sekarang",
+            "ambil fotonya sekarang",
+            "foto kemarin jelek, ambil foto baru sekarang"
+        )
+        for (text in cases) {
+            assertEquals("frasa: $text", "/photo", IntentParser.parse(text))
         }
     }
 

@@ -125,6 +125,18 @@ object IntentParser {
         return false
     }
 
+    private val CAPTURE_VERBS = setOf("jepret", "potret", "ambil")
+
+    private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
+        if (padded.contains(" foto baru ")) return true
+        for (token in tokens) {
+            for (verb in CAPTURE_VERBS) {
+                if (tokenMatches(token, verb)) return true
+            }
+        }
+        return false
+    }
+
     private fun isNegation(token: String): Boolean {
         if (token in NEGATIONS) return true
         return NEGATIONS.any { it.length >= 4 && token.length - it.length in 1..3 && token.startsWith(it) }
@@ -157,12 +169,13 @@ object IntentParser {
         if (tokens.isEmpty()) return null
         if (tokens.any { isNegation(it) }) return null
         val padded = " " + tokens.joinToString(" ") + " "
+        val photoVetoed = isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
         var best: String? = null
         var bestScore = 0
         var tie = false
         for (intent in INTENTS) {
             var score = 0
-            if (intent.command != "/photo" || !isPhotoReference(tokens, padded)) {
+            if (intent.command != "/photo" || !photoVetoed) {
                 for (group in intent.groups) {
                     if (groupHit(tokens, padded, group)) score++
                 }
