@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.526] - 2026-10-29
+
 ### Fixed
 - Daftar aplikasi launcher kini dipindai sekali per perintah `/pantauapp` untuk semua token nama (issue #238): `resolveAppPackage` sebelumnya memanggil `launchableAppPairs()` — kueri seluruh aplikasi launcher + `loadLabel` per aplikasi + sortir — secara segar untuk setiap token nama, jadi perintah tambah/hapus dengan 5 nama membayar 5 pindaian penuh yang identik. `updateAppWatchPackages` kini menghitung daftar pasangan itu sekali secara malas (hanya bila ada token nama non-paket) dan meneruskannya ke `resolveAppPackage` untuk semua token berikutnya; token berbentuk nama paket tidak menyentuh pindaian sama sekali, dan pemanggil lain `resolveAppPackage` mempertahankan perilaku lama lewat parameter bawaan kosong.
 - `usageRowsBetween` tidak lagi meng-cache hasil fallback resolusi label yang gagal (issue #237, sisa #226): jalur baris pemakaian sebelumnya tetap menulis cache walau `getApplicationLabel` melempar exception dan label jatuh ke nama paket mentah, sehingga kegagalan PackageManager sesaat membekukan label mentah itu sebagai entri otoritatif — termasuk bagi `appLabelFor`, yang sendiri sengaja tidak meng-cache kegagalan. Penulisan cache kini hanya terjadi bila resolusi label benar-benar berhasil, persis seperti `appLabelFor`; baris pemakaian untuk panggilan itu tetap memakai nama paket sebagai label tampil sementara, tetapi panggilan berikutnya mencoba resolusi ulang dan pulih begitu PackageManager sehat.
