@@ -75,13 +75,23 @@ object Liveness {
         }
     }
 
-    fun allowed(manager: PreferencesManager): Boolean {
+    enum class AllowedCheck { ALLOWED, DENIED, READ_FAILED }
+
+    fun allowedCheck(manager: PreferencesManager): AllowedCheck {
         return try {
-            manager.isMonitoringEnabled && manager.isConfigured() && !manager.userDisabledMonitoring && manager.userConsentedMonitoring && !manager.monitoringPaused
+            if (manager.isMonitoringEnabled && manager.isConfigured() && !manager.userDisabledMonitoring && manager.userConsentedMonitoring && !manager.monitoringPaused) {
+                AllowedCheck.ALLOWED
+            } else {
+                AllowedCheck.DENIED
+            }
         } catch (e: Exception) {
             android.util.Log.e("Liveness", "allowed check failed", e)
-            false
+            AllowedCheck.READ_FAILED
         }
+    }
+
+    fun allowed(manager: PreferencesManager): Boolean {
+        return allowedCheck(manager) == AllowedCheck.ALLOWED
     }
 
     fun schedule(context: Context) {
@@ -198,9 +208,17 @@ object Liveness {
             schedule(context)
             return
         }
-        if (!allowed(manager)) {
-            cancel(context)
-            return
+        when (allowedCheck(manager)) {
+            AllowedCheck.DENIED -> {
+                cancel(context)
+                return
+            }
+            AllowedCheck.READ_FAILED -> {
+                schedule(context)
+                return
+            }
+            AllowedCheck.ALLOWED -> {
+            }
         }
         if (MonitoringService.isRunning) {
             markAlive(manager)
