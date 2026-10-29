@@ -553,7 +553,12 @@ class MessageQueue private constructor(context: Context) {
                     synchronized(persistMutex) {
                         val cur = try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
                         if (cur != null && prefs.getString(KEY_QUEUE_BAK, null) != cur) {
-                            prefs.edit()?.putString(KEY_QUEUE_BAK, cur)?.commit()
+                            val editor = prefs.edit()?.putString(KEY_QUEUE_BAK, cur)
+                            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                                editor?.apply()
+                            } else {
+                                editor?.commit()
+                            }
                         }
                     }
                 }
