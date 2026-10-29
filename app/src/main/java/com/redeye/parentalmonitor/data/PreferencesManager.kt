@@ -632,6 +632,16 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_PHOTO_PAUSE_SOURCE, value).apply()
 
+    fun setPhotoPause(until: Long, source: Int) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_PHOTO_PAUSED_UNTIL, until)
+                .putInt(KEY_PHOTO_PAUSE_SOURCE, source)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var patrolEnabled: Boolean
         get() = prefBoolean(KEY_PATROL_ENABLED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_PATROL_ENABLED, value).apply()

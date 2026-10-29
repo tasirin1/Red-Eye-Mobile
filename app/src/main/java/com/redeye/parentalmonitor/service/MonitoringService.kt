@@ -4684,8 +4684,7 @@ class MonitoringService : Service() {
         if (minutes == null || minutes !in 1..480) {
             sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
         } else {
-            preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
-            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+            preferencesManager.setPhotoPause(System.currentTimeMillis() + minutes * 60_000L, PHOTO_PAUSE_NONE)
             sendToTelegram("⏸️ Foto otomatis dijeda $minutes mnt. (manual /photo tetap bisa)")
         }
     }
@@ -4694,8 +4693,7 @@ class MonitoringService : Service() {
         preferencesManager.monitoringPaused = false
         val photoPaused = isPhotoPaused()
         try {
-            preferencesManager.photoPausedUntil = 0L
-            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+            preferencesManager.setPhotoPause(0L, PHOTO_PAUSE_NONE)
         } catch (_: Exception) {
         }
         cachedPhotoPausedUntil = 0L
@@ -4734,8 +4732,7 @@ class MonitoringService : Service() {
         }
         if (stored - System.currentTimeMillis() > 1440 * 60_000L) {
             try {
-                preferencesManager.photoPausedUntil = 0L
-                preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+                preferencesManager.setPhotoPause(0L, PHOTO_PAUSE_NONE)
             } catch (_: Exception) {
             }
             return 0L
@@ -8459,8 +8456,7 @@ class MonitoringService : Service() {
                 return
             }
             val minutes = if (source == PHOTO_PAUSE_ADMIN) 120L else 15L
-            preferencesManager.photoPausedUntil = System.currentTimeMillis() + minutes * 60_000L
-            preferencesManager.photoPauseSource = source
+            preferencesManager.setPhotoPause(System.currentTimeMillis() + minutes * 60_000L, source)
             cachedPhotoPausedUntil = photoPausedElapsed()
         } catch (_: Exception) {
         }
@@ -8472,8 +8468,7 @@ class MonitoringService : Service() {
 
     private suspend fun resumePhotosAfterPolicyLift() {
         try {
-            preferencesManager.photoPausedUntil = 0L
-            preferencesManager.photoPauseSource = PHOTO_PAUSE_NONE
+            preferencesManager.setPhotoPause(0L, PHOTO_PAUSE_NONE)
             cachedPhotoPausedUntil = 0L
             sendToTelegram("✅ Blokir kamera dicabut — foto otomatis jalan lagi.")
         } catch (_: Exception) {
