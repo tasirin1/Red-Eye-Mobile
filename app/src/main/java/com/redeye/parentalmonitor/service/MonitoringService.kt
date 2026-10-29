@@ -379,6 +379,7 @@ class MonitoringService : Service() {
         private const val MAX_PHOTO_KEPT = 10
         private const val DATA_QUEUE_SOFT_LIMIT = 90
         private const val MEDIA_UPLOAD_GRACE_MS = 600_000L
+        private const val MEDIA_FLUSH_DEADLINE_MS = 600_000L
         private const val MEDIA_FLUSH_MIN_START_MS = 15_000L
         private const val AUDIO_UPLOAD_TIMEOUT_MS = 300_000L
         private const val PHOTO_PAUSE_NONE = 0
@@ -9436,7 +9437,7 @@ class MonitoringService : Service() {
         var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
-            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
             var batches = 0
             val attempted = HashSet<String>()
             drain@ while (batches < 3) {
@@ -9522,7 +9523,7 @@ class MonitoringService : Service() {
         var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
-            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
             var batches = 0
             val attempted = HashSet<String>()
             drain@ while (batches < 3) {
@@ -9816,7 +9817,7 @@ class MonitoringService : Service() {
         var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
-            val flushDeadline = android.os.SystemClock.elapsedRealtime() + 600_000L
+            val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
             var batches = 0
             val attempted = HashSet<String>()
             drain@ while (batches < 3) {

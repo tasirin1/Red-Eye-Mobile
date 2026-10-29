@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Tenggat flush media kini satu konstanta tersendiri (issue #221): nilai `600_000L` yang sama sebelumnya ditulis keras di tiga fungsi flush (`flushPendingVideos`/`flushPendingAudio`/`flushPendingPhotos`), sehingga penyetelan berikutnya bisa mengubah sebagian dan membiarkan sisanya diam-diam berbeda. Ketiganya kini memakai `MEDIA_FLUSH_DEADLINE_MS`. Konstanta ini sengaja terpisah dari `MEDIA_UPLOAD_GRACE_MS` yang nilainya kebetulan sama — yang satu tenggat flush, yang lain tenggat wake lock perekaman — karena kedua makna itu bisa perlu disetel berbeda kelak.
 - Notifikasi yang gugur di pintu overflow kedua `NotificationForwarderService` kini tercatat (issue #220): sebelumnya, saat antrean utama penuh DAN antrean overflow juga melewati `MAX_OVERFLOW_QUEUE`, kode langsung `return` tanpa pencatatan apa pun — angka notifikasi terbuang yang dilaporkan ke owner lebih kecil dari kenyataan justru pada banjir terburuk. Pintu kedua kini memanggil `noteDroppedNotification()` yang sama dengan pintu pertama (penghitung persisten + pemberitahuan terthrottle) dan menambahkan catatan ringkas ke riwayat (nama paket saja, tanpa ekstraksi isi dan tanpa resolusi label) agar jalur banjir tetap murah.
 
 ## [1.6.521] - 2026-10-29
