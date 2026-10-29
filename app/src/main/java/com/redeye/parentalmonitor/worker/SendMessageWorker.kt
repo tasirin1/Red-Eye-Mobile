@@ -188,9 +188,16 @@ class SendMessageWorker(
             }
         }
         if (!queueCleared && rejectedIds.isNotEmpty() && credsSame(runToken, runChatId)) {
-            try {
+            val removedRejected = try {
                 messageQueue.removeMessages(rejectedIds)
             } catch (_: Exception) {
+                false
+            }
+            if (removedRejected) {
+                try {
+                    messageQueue.noteRejectedDrops(rejectedIds.size.toLong())
+                } catch (_: Exception) {
+                }
             }
             android.util.Log.w("SendMessageWorker", "Dropped ${rejectedIds.size} permanently rejected message(s) (HTTP 4xx)")
         } else if (rejectedIds.isNotEmpty()) {
@@ -357,6 +364,8 @@ class SendMessageWorker(
         var expiredTaken = 0L
         var overflowTaken = 0L
         var prioTaken = 0L
+        var exhaustedTaken = 0L
+        var rejectedTaken = 0L
         val sameCreds = credsSame(runToken, runChatId)
         if (!queueCleared && sameCreds) {
             try {
@@ -390,23 +399,43 @@ class SendMessageWorker(
                     transientMaxRetry = maxOf(transientMaxRetry, droppedT.second)
                     if (dropped.isNotEmpty() && sameCreds) {
                         android.util.Log.w("SendMessageWorker", "Dropped ${dropped.size} message(s) after max retries")
-                        dropTotal += dropped.size
-                        dropParts.add("${dropped.size} setelah percobaan maksimal")
+                        try {
+                            messageQueue.noteExhaustedDrops(dropped.size.toLong())
+                        } catch (_: Exception) {
+                        }
                     }
                 } catch (_: Exception) {
                 }
             }
         }
 
-        if (!queueCleared && rejectedIds.isNotEmpty() && sameCreds) {
+        if (!queueCleared && sameCreds) {
             try {
-                dropSample = try {
-                    queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
-                } catch (_: Exception) {
-                    ""
+                val exhausted = messageQueue.takeExhaustedDrops()
+                if (exhausted > 0L) {
+                    exhaustedTaken = exhausted
+                    dropTotal += exhausted.toInt()
+                    dropParts.add("$exhausted setelah percobaan maksimal")
                 }
-                dropTotal += rejectedIds.size
-                dropParts.add("${rejectedIds.size} ditolak (HTTP 4xx)")
+            } catch (_: Exception) {
+            }
+        }
+
+        if (!queueCleared && sameCreds) {
+            try {
+                val rejected = messageQueue.takeRejectedDrops()
+                if (rejected > 0L) {
+                    rejectedTaken = rejected
+                    if (rejectedIds.isNotEmpty()) {
+                        dropSample = try {
+                            queue.firstOrNull { it.id in rejectedIds }?.message.orEmpty()
+                        } catch (_: Exception) {
+                            ""
+                        }
+                    }
+                    dropTotal += rejected.toInt()
+                    dropParts.add("$rejected ditolak (HTTP 4xx)")
+                }
             } catch (_: Exception) {
             }
         }
@@ -427,6 +456,14 @@ class SendMessageWorker(
                 }
                 try {
                     messageQueue.restorePriorityDrops(prioTaken)
+                } catch (_: Exception) {
+                }
+                try {
+                    messageQueue.restoreExhaustedDrops(exhaustedTaken)
+                } catch (_: Exception) {
+                }
+                try {
+                    messageQueue.restoreRejectedDrops(rejectedTaken)
                 } catch (_: Exception) {
                 }
             }

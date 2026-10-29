@@ -17,12 +17,16 @@ class MessageQueue private constructor(context: Context) {
     private val overflowDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val priorityDrops = java.util.concurrent.atomic.AtomicLong(0L)
     private val expiredDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val exhaustedDrops = java.util.concurrent.atomic.AtomicLong(0L)
+    private val rejectedDrops = java.util.concurrent.atomic.AtomicLong(0L)
 
     @Volatile
     private var dropsDirty = false
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
+    private var persistedExhaustedDrops = 0L
+    private var persistedRejectedDrops = 0L
     @Volatile
     private var restoreFailLogged = false
     private var restoringDrops = false
@@ -77,6 +81,8 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_OVERFLOW_DROPS = "overflow_drops"
         private const val KEY_EXPIRED_DROPS = "expired_drops"
         private const val KEY_PRIORITY_DROPS = "priority_drops"
+        private const val KEY_EXHAUSTED_DROPS = "exhausted_drops"
+        private const val KEY_REJECTED_DROPS = "rejected_drops"
         private const val MAX_QUEUE_SIZE = 100
         private const val MAX_TRANSIENT_RETRIES = 20
         private const val MAX_DRAIN_RETRIES = 10
@@ -100,6 +106,8 @@ class MessageQueue private constructor(context: Context) {
             val previousOverflowDrops = overflowDrops.get()
             val previousExpiredDrops = expiredDrops.get()
             val previousPriorityDrops = priorityDrops.get()
+            val previousExhaustedDrops = exhaustedDrops.get()
+            val previousRejectedDrops = rejectedDrops.get()
             val previousDropsDirty = dropsDirty
             return try {
                 val restored = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
@@ -145,6 +153,8 @@ class MessageQueue private constructor(context: Context) {
                 overflowDrops.set(previousOverflowDrops)
                 expiredDrops.set(previousExpiredDrops)
                 priorityDrops.set(previousPriorityDrops)
+                exhaustedDrops.set(previousExhaustedDrops)
+                rejectedDrops.set(previousRejectedDrops)
                 dropsDirty = previousDropsDirty
                 volatileQueue.clear()
                 volatileQueue.addAll(pending)
@@ -258,18 +268,26 @@ class MessageQueue private constructor(context: Context) {
             val overflow = sharedPreferences?.getLong(KEY_OVERFLOW_DROPS, 0L) ?: 0L
             val expired = sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L
             val priority = sharedPreferences?.getLong(KEY_PRIORITY_DROPS, 0L) ?: 0L
+            val exhausted = sharedPreferences?.getLong(KEY_EXHAUSTED_DROPS, 0L) ?: 0L
+            val rejected = sharedPreferences?.getLong(KEY_REJECTED_DROPS, 0L) ?: 0L
             persistedOverflowDrops = overflow
             persistedExpiredDrops = expired
             persistedPriorityDrops = priority
+            persistedExhaustedDrops = exhausted
+            persistedRejectedDrops = rejected
             if (add) {
                 overflowDrops.addAndGet(overflow)
                 expiredDrops.addAndGet(expired)
                 priorityDrops.addAndGet(priority)
+                exhaustedDrops.addAndGet(exhausted)
+                rejectedDrops.addAndGet(rejected)
                 dropsDirty = true
             } else {
                 overflowDrops.set(overflow)
                 expiredDrops.set(expired)
                 priorityDrops.set(priority)
+                exhaustedDrops.set(exhausted)
+                rejectedDrops.set(rejected)
                 dropsDirty = false
             }
         } catch (_: Exception) {
@@ -279,7 +297,7 @@ class MessageQueue private constructor(context: Context) {
     private fun persistDropCountsLocked() {
         if (volatileOnly) return
         try {
-            val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())
+            val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.putLong(KEY_EXHAUSTED_DROPS, exhaustedDrops.get())?.putLong(KEY_REJECTED_DROPS, rejectedDrops.get())
             val saved = if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                 editor?.apply()
                 editor != null
@@ -290,6 +308,8 @@ class MessageQueue private constructor(context: Context) {
                 persistedOverflowDrops = overflowDrops.get()
                 persistedExpiredDrops = expiredDrops.get()
                 persistedPriorityDrops = priorityDrops.get()
+                persistedExhaustedDrops = exhaustedDrops.get()
+                persistedRejectedDrops = rejectedDrops.get()
             }
             dropsDirty = !saved
         } catch (_: Exception) {
@@ -301,6 +321,8 @@ class MessageQueue private constructor(context: Context) {
         overflowDrops.set((overflowDrops.get() - persistedOverflowDrops).coerceAtLeast(0L))
         expiredDrops.set((expiredDrops.get() - persistedExpiredDrops).coerceAtLeast(0L))
         priorityDrops.set((priorityDrops.get() - persistedPriorityDrops).coerceAtLeast(0L))
+        exhaustedDrops.set((exhaustedDrops.get() - persistedExhaustedDrops).coerceAtLeast(0L))
+        rejectedDrops.set((rejectedDrops.get() - persistedRejectedDrops).coerceAtLeast(0L))
         dropsDirty = true
     }
 
@@ -476,9 +498,13 @@ class MessageQueue private constructor(context: Context) {
             overflowDrops.set(0L)
             expiredDrops.set(0L)
             priorityDrops.set(0L)
+            exhaustedDrops.set(0L)
+            rejectedDrops.set(0L)
             persistedOverflowDrops = 0L
             persistedExpiredDrops = 0L
             persistedPriorityDrops = 0L
+            persistedExhaustedDrops = 0L
+            persistedRejectedDrops = 0L
             dropsDirty = false
             val wipe = if (volatileOnly) {
                 try {
@@ -494,14 +520,15 @@ class MessageQueue private constructor(context: Context) {
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
-                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.commit() == true
+                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
                 removed || try {
                     wipe?.edit()?.putString(KEY_QUEUE, "[]")?.putString(KEY_QUEUE_BAK, "[]")
                         ?.putLong(KEY_OVERFLOW_DROPS, 0L)?.putLong(KEY_EXPIRED_DROPS, 0L)
-                        ?.putLong(KEY_PRIORITY_DROPS, 0L)?.commit() == true
+                        ?.putLong(KEY_PRIORITY_DROPS, 0L)?.putLong(KEY_EXHAUSTED_DROPS, 0L)
+                        ?.putLong(KEY_REJECTED_DROPS, 0L)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
@@ -849,6 +876,46 @@ class MessageQueue private constructor(context: Context) {
         if (by <= 0L) return
         synchronized(lock) {
             noteExpiredLocked(by)
+        }
+    }
+
+    fun noteExhaustedDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(exhaustedDrops, by, true)
+        }
+    }
+
+    fun noteRejectedDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(rejectedDrops, by, true)
+        }
+    }
+
+    fun takeExhaustedDrops(): Long {
+        synchronized(lock) {
+            return takeDropsLocked(exhaustedDrops)
+        }
+    }
+
+    fun takeRejectedDrops(): Long {
+        synchronized(lock) {
+            return takeDropsLocked(rejectedDrops)
+        }
+    }
+
+    fun restoreExhaustedDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(exhaustedDrops, by, true)
+        }
+    }
+
+    fun restoreRejectedDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(rejectedDrops, by, true)
         }
     }
 

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Seluruh komponen laporan drop di worker kirim kini failure-atomic, bukan hanya yang sudah berpenghitung (issue #309, sisa sekeluarga #305 di fungsi yang sama): perbaikan #305 membuat tiga komponen `reportDrops` (kedaluwarsa/overflow/prioritas) dikembalikan ke penghitung persistennya bila `sendDropNotice` gagal total, tetapi dua komponen lain dari notice yang sama — "setelah percobaan maksimal" (pesan habis percobaan yang dihapus `registerWithBudget`) dan "ditolak (HTTP 4xx)" (pesan yang dihapus loop drain) — hanya hidup sebagai angka lokal run itu, sehingga kegagalan total notice membuat keduanya lenyap permanen dari pembukuan dan tidak pernah dilaporkan di run mana pun. `MessageQueue` kini punya dua penghitung persisten baru (`exhaustedDrops`/`rejectedDrops`) mengikuti pola persis tiga penghitung yang ada (pasangan take/restore simetris, persist bersama, penggabungan mode volatil, dan pembersihan `clearQueue` yang sama); komponen habis-percobaan dicatat ke penghitungnya oleh `reportDrops` tepat sesudah `registerTransientFailures` membuangnya, dan komponen ditolak dicatat oleh loop drain tepat sesudah penghapusannya berhasil. `reportDrops` kini mengambil dan — bila notice gagal total — mengembalikan KELIMA komponen, sehingga seluruh isi notice selamat ke laporan run berikutnya. Teks notice dan urutan bahagia (notice terkirim/terantre) tidak berubah, dan komponen yang sudah dilaporkan sukses tidak tersisa di penghitung (tidak ada hitung ganda).
+
 
 ## [1.6.542] - 2026-10-30
 
