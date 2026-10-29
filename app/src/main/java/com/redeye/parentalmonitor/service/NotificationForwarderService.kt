@@ -614,13 +614,14 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
-                if (idHash.isNotEmpty()) markForwardedId(idHash)
                 if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
+                var queued = false
                 try {
-                    queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower))
+                    queued = queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower))
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
+                if (queued && idHash.isNotEmpty()) markForwardedId(idHash)
                 return
             }
             val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
@@ -638,17 +639,20 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val message = buildNotifMessage(label, title, text, maskedLower)
         record(label, title, text)
-        if (idHash.isNotEmpty()) markForwardedId(idHash)
         if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
         if (priority) {
-            try {
+            val delivered = try {
                 forwardLocked("❗ " + message, 1)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                true
             } catch (_: Exception) {
+                false
             }
+            if (delivered && idHash.isNotEmpty()) markForwardedId(idHash)
             return
         }
         try {
-            forwardToTelegram(message)
+            forwardToTelegram(message, idHash)
         } catch (_: Exception) {
         }
     }
@@ -841,10 +845,16 @@ class NotificationForwarderService : NotificationListenerService() {
                 items
             }
             if (leftover.isNotEmpty()) {
+                var queued = false
                 try {
-                    queue().addMessages(leftover)
+                    queued = queue().addMessages(leftover.map { it.first })
                     queue().flushSync()
                 } catch (_: Exception) {
+                }
+                if (queued) {
+                    for (item in leftover) {
+                        if (item.second.isNotEmpty()) markForwardedId(item.second)
+                    }
                 }
                 try {
                     MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
@@ -948,7 +958,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
 
     private val batchLock = Any()
-    private val batchBuf = ArrayDeque<String>()
+    private val batchBuf = ArrayDeque<Pair<String, String>>()
     private var batchJob: Job? = null
 
     private fun scheduleBatchLocked() {
@@ -971,19 +981,19 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardToTelegram(message: String) {
+    private suspend fun forwardToTelegram(message: String, idHash: String = "") {
         var overflowed = false
         synchronized(batchLock) {
             if (batchBuf.size >= MAX_BATCH) {
                 overflowed = true
             } else {
-                batchBuf.addLast(message)
+                batchBuf.addLast(message to idHash)
                 scheduleBatchLocked()
             }
         }
         if (overflowed) {
             try {
-                queue().addMessage(message)
+                if (queue().addMessage(message) && idHash.isNotEmpty()) markForwardedId(idHash)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -993,7 +1003,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun flushBatch() {
-        val items: List<String>
+        val items: List<Pair<String, String>>
         synchronized(batchLock) {
             if (batchBuf.isEmpty()) return
             items = batchBuf.toList()
@@ -1001,55 +1011,81 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         var cur = StringBuilder()
         var curCount = 0
+        var curHashes = ArrayList<String>()
         var index = 0
         suspend fun flushCur() {
             if (curCount <= 0) return
-            forwardLocked(cur.toString(), curCount)
+            val delivered = forwardLocked(cur.toString(), curCount)
+            if (delivered) {
+                for (hash in curHashes) markForwardedId(hash)
+            }
             cur = StringBuilder()
             curCount = 0
+            curHashes = ArrayList()
         }
         try {
             while (index < items.size) {
-                val msg = items[index]
+                val item = items[index]
                 index++
+                val msg = item.first
                 if (msg.length > 4000) {
                     flushCur()
                     var rest = msg
+                    var splitDelivered = true
                     while (rest.length > 4000) {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
                         cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                        forwardLocked(rest.substring(0, cut), 1)
+                        if (!forwardLocked(rest.substring(0, cut), 1)) splitDelivered = false
                         rest = rest.substring(cut).trimStart('\n')
                         if (rest.isEmpty()) break
                     }
-                    if (rest.isNotEmpty()) forwardLocked(rest, 1)
+                    if (rest.isNotEmpty() && !forwardLocked(rest, 1)) splitDelivered = false
+                    if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
                     continue
                 }
                 if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
                 if (curCount > 0) cur.append("\n\n")
                 cur.append(msg)
                 curCount++
+                if (item.second.isNotEmpty()) curHashes.add(item.second)
             }
             flushCur()
         } catch (t: Throwable) {
-            val leftover = ArrayList<String>()
-            if (curCount > 0) leftover.add(cur.toString())
-            while (index < items.size) leftover.add(items[index++])
-            if (leftover.isNotEmpty()) {
-                if (t is kotlinx.coroutines.CancellationException) {
+            val restItems = ArrayList<Pair<String, String>>()
+            while (index < items.size) restItems.add(items[index++])
+            if (t is kotlinx.coroutines.CancellationException) {
+                val texts = ArrayList<String>()
+                val hashes = ArrayList<String>()
+                if (curCount > 0) {
+                    texts.add(cur.toString())
+                    hashes.addAll(curHashes)
+                }
+                for (item in restItems) {
+                    texts.add(item.first)
+                    if (item.second.isNotEmpty()) hashes.add(item.second)
+                }
+                if (texts.isNotEmpty()) {
+                    var queued = false
                     try {
-                        queue().addMessages(leftover)
+                        queued = queue().addMessages(texts)
                         queue().flushSync()
                     } catch (_: Exception) {
+                    }
+                    if (queued) {
+                        for (hash in hashes) markForwardedId(hash)
                     }
                     try {
                         MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {
                     }
-                } else {
-                    synchronized(batchLock) {
-                        for (i in leftover.indices.reversed()) batchBuf.addFirst(leftover[i])
+                }
+            } else {
+                synchronized(batchLock) {
+                    for (i in restItems.indices.reversed()) batchBuf.addFirst(restItems[i])
+                    if (curCount > 0) {
+                        val onlyHash = if (curHashes.size == 1) curHashes[0] else ""
+                        batchBuf.addFirst(cur.toString() to onlyHash)
                     }
                 }
             }
@@ -1284,7 +1320,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private suspend fun forwardLocked(message: String, msgCount: Int = 1) {
+    private suspend fun forwardLocked(message: String, msgCount: Int = 1): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { adoptPrefs(it) }
@@ -1294,23 +1330,23 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
-                return
+                return true
             }
-            if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return
+            if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return false
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return true
             }
             try {
                 NetworkUtils.sweepAuthBlock(prefs)
                 if (prefs.credentialError.isNotEmpty()) {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
             } catch (_: Exception) {
             }
@@ -1318,7 +1354,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (rateRemain > 0L) {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSendNext(this, rateRemain)
-                return
+                return true
             }
             val nowNet = android.os.SystemClock.elapsedRealtime()
             if (nowNet - netCheckAt > 20_000L) {
@@ -1328,7 +1364,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (!netCached) {
                 queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return
+                return true
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
@@ -1336,50 +1372,50 @@ class NotificationForwarderService : NotificationListenerService() {
             when (outcome.kind) {
                 TelegramSendPolicy.Kind.SENT -> {
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L) } catch (_: Exception) { }
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.AUTH_FAILED -> {
                     android.util.Log.e("NotifForwarder", "Send rejected (${outcome.code}), queuing notification")
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.RATE_LIMITED -> {
                     NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.CHAT_MISSING -> {
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
                     if (outcome.code == 400) {
                         val plain = Html.unescape(message)
                         if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
-                            if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return
+                            if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return true
                         }
                         android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                         try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
-                        return
+                        return false
                     }
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
                 TelegramSendPolicy.Kind.TRANSIENT -> {
                     queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return
+                    return true
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1396,7 +1432,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
-            return
+            return true
         }
     }
 }
