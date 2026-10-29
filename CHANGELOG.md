@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Stempel throttle persist A11yMonitor kini dicatat sesudah tulis berhasil, bukan saat snapshot ditangkap (issue #209, sisa #192): jalur snapshot yang ditambahkan #192 mencatat `lastPersistElapsed` di dalam kunci saat snapshot diambil, lalu tulisan di luar kunci bisa gagal diam-diam (`prefs` belum siap / pengecualian ditelan) — jendela throttle 20 detik tetap terpakai walau data belum pernah tersimpan, dan event berikutnya tertahan satu interval. Snapshot kini membawa serta waktu tangkapnya (`Triple`), dan stempel hanya maju di `writePersistSnapshot` sesudah `setA11yUsage` berhasil — menyamai pola jalur `persistLocked` yang sudah benar. Kegagalan tulis kini membuat event berikutnya langsung mencoba lagi.
+
 ## [1.6.518] - 2026-10-29
 
 ### Fixed

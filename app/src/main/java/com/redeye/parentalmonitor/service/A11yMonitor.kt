@@ -374,7 +374,7 @@ object A11yMonitor {
         val pkgLabel = labelFor(context, pkg)
         val launcherPkg = defaultLauncherPackage(context)
         val launchable = isLaunchable(context, pkg)
-        var persistSnapshot: Pair<String, String>? = null
+        var persistSnapshot: Triple<String, String, Long>? = null
         var alertText: String? = null
         var tamperReason: String? = null
         var done = false
@@ -428,21 +428,21 @@ object A11yMonitor {
         writePersistSnapshot(persistSnapshot)
     }
 
-    private fun persistSnapshotLocked(force: Boolean): Pair<String, String>? {
+    private fun persistSnapshotLocked(force: Boolean): Triple<String, String, Long>? {
         val now = SystemClock.elapsedRealtime()
         if (!force && now - lastPersistElapsed < PERSIST_INTERVAL_MS) return null
         val day = TimeFmt.dayKey(System.currentTimeMillis())
         if (day != loadedDay) return null
         val json = try { gson.toJson(usage) } catch (_: Exception) { "" }
-        lastPersistElapsed = now
-        return day to json
+        return Triple(day, json, now)
     }
 
-    private fun writePersistSnapshot(snapshot: Pair<String, String>?) {
+    private fun writePersistSnapshot(snapshot: Triple<String, String, Long>?) {
         if (snapshot == null) return
         val manager = prefs ?: return
         try {
             manager.setA11yUsage(snapshot.first, snapshot.second)
+            lastPersistElapsed = snapshot.third
         } catch (_: Exception) {
         }
     }
