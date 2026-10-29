@@ -41,6 +41,7 @@ object A11yMonitor {
     private const val KEYWORD_ALERT_GAP_MS = 15 * 60_000L
     private const val MAX_KEYWORD_ALERTS_PER_DAY = 30
     private const val MAX_LABEL_CACHE = 160
+    private const val SCAN_TEXT_MAX_CHARS = 512
 
     private data class ScreenSnapshot(val texts: List<String>, val hasPassword: Boolean)
 
@@ -581,9 +582,9 @@ object A11yMonitor {
                 try {
                     if (try { node.isPassword } catch (_: Exception) { false }) hasPassword = true
                     val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
-                    if (!text.isNullOrEmpty() && text.length <= 160) out.add(text)
+                    if (!text.isNullOrEmpty()) out.add(text.take(SCAN_TEXT_MAX_CHARS))
                     val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
-                    if (!desc.isNullOrEmpty() && desc != text && desc.length <= 160) out.add(desc)
+                    if (!desc.isNullOrEmpty() && desc != text) out.add(desc.take(SCAN_TEXT_MAX_CHARS))
                     val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
                     for (i in 0 until count) {
                         if (queue.size >= 160) break
