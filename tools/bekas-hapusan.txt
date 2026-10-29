@@ -67,3 +67,4 @@ filterCallsByNumber
 fgsType
 screenTimeSummary
 allowed
+heldPhotoFileAlive

@@ -402,6 +402,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PERM_SNAPSHOT = "perm_snapshot"
         private const val KEY_LAST_PHOTO_HASH = "last_photo_hash"
         private const val KEY_HELD_PHOTO_HASH = "held_photo_hash"
+        private const val KEY_HELD_PHOTO_HASHES = "held_photo_hashes"
         private const val KEY_DIGEST_AT = "digest_at"
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
@@ -1163,6 +1164,32 @@ class PreferencesManager(context: Context) {
     fun setHeldPhotoHashSync(value: Long): Boolean {
         return try {
             sharedPreferences.edit().putLong(KEY_HELD_PHOTO_HASH, value).commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    val heldPhotoHashes: Set<Long>
+        get() {
+            val raw = prefString(KEY_HELD_PHOTO_HASHES, "")
+            if (raw.isEmpty()) return emptySet()
+            val out = LinkedHashSet<Long>()
+            var start = 0
+            while (start <= raw.length) {
+                val sep = raw.indexOf(',', start)
+                val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
+                val v = part.trim().toLongOrNull()
+                if (v != null && v != 0L) out.add(v)
+                if (sep < 0) break
+                start = sep + 1
+            }
+            return out
+        }
+
+    fun setHeldPhotoHashesSync(values: Set<Long>): Boolean {
+        return try {
+            val joined = values.filter { it != 0L }.joinToString(",")
+            sharedPreferences.edit().putString(KEY_HELD_PHOTO_HASHES, joined).commit()
         } catch (_: Exception) {
             false
         }
