@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Seeding `dropNoticeCount` tidak lagi kehilangan kesempatan karena benderanya terkonsumsi sebelum membaca (issue #210, sisa #196): `adoptPrefs` sebelumnya memenangkan CAS `dropNoticeSeeded` lebih dulu, lalu membaca `pendingNotifDrops` di dalam `try` yang menelan pengecualian — satu kegagalan baca sesaat (prefs terenkripsi belum siap) membuat seeding tak pernah dicoba lagi selama umur service dan hitungan notifikasi terbuang mulai dari 0. Nilai kini dibaca dulu, dan CAS hanya dimenangkan (lalu hitungan dipasang) sesudah bacaan berhasil; kegagalan baca membiarkan bendera tetap turun sehingga situs `adoptPrefs` berikutnya mencoba lagi — pola yang sama dengan gulung-balik bendera `attachCredsListener` di berkas yang sama.
 - Stempel throttle persist A11yMonitor kini dicatat sesudah tulis berhasil, bukan saat snapshot ditangkap (issue #209, sisa #192): jalur snapshot yang ditambahkan #192 mencatat `lastPersistElapsed` di dalam kunci saat snapshot diambil, lalu tulisan di luar kunci bisa gagal diam-diam (`prefs` belum siap / pengecualian ditelan) — jendela throttle 20 detik tetap terpakai walau data belum pernah tersimpan, dan event berikutnya tertahan satu interval. Snapshot kini membawa serta waktu tangkapnya (`Triple`), dan stempel hanya maju di `writePersistSnapshot` sesudah `setA11yUsage` berhasil — menyamai pola jalur `persistLocked` yang sudah benar. Kegagalan tulis kini membuat event berikutnya langsung mencoba lagi.
 
 ## [1.6.518] - 2026-10-29

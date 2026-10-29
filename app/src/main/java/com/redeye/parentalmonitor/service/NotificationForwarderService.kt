@@ -68,8 +68,13 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun adoptPrefs(prefs: PreferencesManager): PreferencesManager {
         prefsRef = prefs
         attachCredsListener()
-        if (dropNoticeSeeded.compareAndSet(false, true)) {
-            try { dropNoticeCount.set((prefs.pendingNotifDrops).coerceAtLeast(0)) } catch (_: Exception) { }
+        if (!dropNoticeSeeded.get()) {
+            try {
+                val seeded = (prefs.pendingNotifDrops).coerceAtLeast(0)
+                if (dropNoticeSeeded.compareAndSet(false, true)) {
+                    dropNoticeCount.set(seeded)
+                }
+            } catch (_: Exception) { }
         }
         return prefs
     }
