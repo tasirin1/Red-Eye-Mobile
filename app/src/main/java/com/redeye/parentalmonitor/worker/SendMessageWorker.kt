@@ -300,6 +300,10 @@ class SendMessageWorker(
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && sameCreds) {
+                try {
+                    messageQueue.noteExhaustedDrops(authDropped.toLong())
+                } catch (_: Exception) {
+                }
                 val queued = try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                 } catch (_: Exception) {
@@ -307,12 +311,12 @@ class SendMessageWorker(
                 }
                 if (queued) {
                     try {
-                        MessageScheduler.scheduleMessageSend(applicationContext)
+                        val taken = messageQueue.takeExhaustedDrops()
+                        if (taken > authDropped) messageQueue.restoreExhaustedDrops(taken - authDropped)
                     } catch (_: Exception) {
                     }
-                } else {
                     try {
-                        messageQueue.restoreOverflowDrops(authDropped.toLong())
+                        MessageScheduler.scheduleMessageSend(applicationContext)
                     } catch (_: Exception) {
                     }
                 }
@@ -327,6 +331,10 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             if (authDropped > 0 && !queueCleared && sameCreds) {
+                try {
+                    messageQueue.noteExhaustedDrops(authDropped.toLong())
+                } catch (_: Exception) {
+                }
                 val queued = try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
                 } catch (_: Exception) {
@@ -334,12 +342,12 @@ class SendMessageWorker(
                 }
                 if (queued) {
                     try {
-                        MessageScheduler.scheduleMessageSend(applicationContext)
+                        val taken = messageQueue.takeExhaustedDrops()
+                        if (taken > authDropped) messageQueue.restoreExhaustedDrops(taken - authDropped)
                     } catch (_: Exception) {
                     }
-                } else {
                     try {
-                        messageQueue.restoreOverflowDrops(authDropped.toLong())
+                        MessageScheduler.scheduleMessageSend(applicationContext)
                     } catch (_: Exception) {
                     }
                 }
