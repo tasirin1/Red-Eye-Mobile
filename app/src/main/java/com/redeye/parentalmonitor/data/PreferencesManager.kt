@@ -398,6 +398,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
         private const val KEY_PERM_SNAPSHOT = "perm_snapshot"
         private const val KEY_LAST_PHOTO_HASH = "last_photo_hash"
+        private const val KEY_HELD_PHOTO_HASH = "held_photo_hash"
         private const val KEY_DIGEST_AT = "digest_at"
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
@@ -1094,6 +1095,17 @@ class PreferencesManager(context: Context) {
     fun setLastPhotoHashSync(value: Long): Boolean {
         return try {
             sharedPreferences.edit().putLong(KEY_LAST_PHOTO_HASH, value).commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    val heldPhotoHash: Long
+        get() = prefLong(KEY_HELD_PHOTO_HASH, 0L)
+
+    fun setHeldPhotoHashSync(value: Long): Boolean {
+        return try {
+            sharedPreferences.edit().putLong(KEY_HELD_PHOTO_HASH, value).commit()
         } catch (_: Exception) {
             false
         }

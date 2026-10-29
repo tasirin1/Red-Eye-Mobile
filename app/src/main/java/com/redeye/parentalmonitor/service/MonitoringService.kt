@@ -7881,7 +7881,14 @@ class MonitoringService : Service() {
             return
         }
         val prevPhotoHash = try { preferencesManager.lastPhotoHash } catch (_: Exception) { 0L }
-        if (photoHashNow != 0L && prevPhotoHash != 0L && PhotoFingerprint.hammingDistance(photoHashNow, prevPhotoHash) <= 6) {
+        var heldHash = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
+        if (heldHash != 0L && !heldPhotoFileAlive(heldHash)) {
+            try { preferencesManager.setHeldPhotoHashSync(0L) } catch (_: Exception) { }
+            heldHash = 0L
+        }
+        val dupBaseline = photoHashNow != 0L && prevPhotoHash != 0L && PhotoFingerprint.hammingDistance(photoHashNow, prevPhotoHash) <= 6
+        val dupHeld = photoHashNow != 0L && heldHash != 0L && PhotoFingerprint.hammingDistance(photoHashNow, heldHash) <= 6
+        if (dupBaseline || dupHeld) {
             finishCaptureAttempt(wd)
             deleteQuietly(photoFile)
             if (reportResult) {
@@ -7912,11 +7919,24 @@ class MonitoringService : Service() {
         }
     }
 
+    private fun heldPhotoFileAlive(heldHash: Long): Boolean {
+        val files = try {
+            cacheDir.listFiles { file ->
+                file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
+            }
+        } catch (_: Exception) {
+            null
+        } ?: return true
+        return files.any { file ->
+            try { PhotoFingerprint.analyze(file).second == heldHash } catch (_: Exception) { false }
+        }
+    }
+
     private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long) {
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
-                    try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                    try { preferencesManager.setHeldPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                     android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
                     return@launch
                 }
@@ -9993,9 +10013,18 @@ class MonitoringService : Service() {
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
+                    val heldHashFlush = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
+                    val fileIsHeld = heldHashFlush != 0L && (try { PhotoFingerprint.analyze(file).second == heldHashFlush } catch (_: Exception) { false })
                     attempted.add(file.absolutePath)
                     val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
+                    if (fileIsHeld) {
+                        try {
+                            if (photoOutcome == MediaSendOutcome.SENT) preferencesManager.setLastPhotoHashSync(heldHashFlush)
+                            preferencesManager.setHeldPhotoHashSync(0L)
+                        } catch (_: Exception) {
+                        }
+                    }
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
                     photoProgress = true
@@ -10040,6 +10069,10 @@ class MonitoringService : Service() {
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
+            val heldHashPrune = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
+            if (heldHashPrune != 0L && dropped.any { file -> try { PhotoFingerprint.analyze(file).second == heldHashPrune } catch (_: Exception) { false } }) {
+                try { preferencesManager.setHeldPhotoHashSync(0L) } catch (_: Exception) { }
+            }
             dropped.forEach { deleteQuietly(it) }
             try {
                 messageQueue.addMessage("\u26A0\uFE0F ${dropped.size} berkas foto lama dibuang (cache penuh).", true)
