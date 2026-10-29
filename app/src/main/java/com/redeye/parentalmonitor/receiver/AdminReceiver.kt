@@ -59,10 +59,14 @@ class AdminReceiver : DeviceAdminReceiver() {
         val pending = try { goAsync() } catch (_: Exception) { null }
         com.redeye.parentalmonitor.utils.Background.runReceiver(pending) {
             try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
-            val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
-            if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
-                com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Admin perangkat dimatikan di HP ini. Proteksi hapus aplikasi MATI.", true)
-                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
+            try {
+                val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
+                if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Admin perangkat dimatikan di HP ini. Proteksi hapus aplikasi MATI.", true)
+                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AdminReceiver", "Admin disabled alert failed", e)
             }
         }
     }
