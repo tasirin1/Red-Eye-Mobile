@@ -74,6 +74,16 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun percentOnCalculatedResultDoesNotOpenSetup() {
+        val h = Harness()
+        h.run("123000", "+", "400", "=", "%", "=")
+        assertFalse(h.secret)
+        assertEquals("1234", h.state.currentNumber)
+        assertTrue(h.state.justCalculated)
+        assertTrue(h.state.entryReplaced)
+    }
+
+    @Test
     fun calculatedResultEqualToCodeDoesNotOpenSetup() {
         val h = Harness()
         h.run("1000", "+", "234", "=", "=")
@@ -90,6 +100,15 @@ class CalculatorStateTest {
         assertFalse(h.secret)
         assertEquals("5", h.state.currentNumber)
         assertFalse(h.state.justCalculated)
+    }
+
+    @Test
+    fun digitAfterPercentResultStartsFreshEntry() {
+        val h = Harness()
+        h.run("123400", "%", "5", "=")
+        assertFalse(h.secret)
+        assertEquals("5", h.state.currentNumber)
+        assertFalse(h.state.entryReplaced)
     }
 
     @Test
