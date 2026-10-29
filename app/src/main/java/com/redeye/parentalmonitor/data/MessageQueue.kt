@@ -28,6 +28,7 @@ class MessageQueue private constructor(context: Context) {
         Thread(runnable, "redeye-queue-persist").apply { isDaemon = true }
     }
     private val persistQueued = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val bakSyncQueued = java.util.concurrent.atomic.AtomicBoolean(false)
     private val persistMutex = Any()
     private val jsonCache = HashMap<String, Pair<QueuedMessage, String>>()
     @Volatile
@@ -556,22 +557,27 @@ class MessageQueue private constructor(context: Context) {
                             val editor = prefs.edit()?.putString(KEY_QUEUE_BAK, cur)
                             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                                 editor?.apply()
-                                try {
-                                    persistExecutor.execute {
-                                        try {
-                                            val live = sharedPreferences
-                                            if (live != null) {
-                                                synchronized(persistMutex) {
-                                                    val nowMain = try { live.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
-                                                    if (nowMain != null && live.getString(KEY_QUEUE_BAK, null) != nowMain) {
-                                                        live.edit()?.putString(KEY_QUEUE_BAK, nowMain)?.commit()
+                                if (bakSyncQueued.compareAndSet(false, true)) {
+                                    try {
+                                        persistExecutor.execute {
+                                            try {
+                                                val live = sharedPreferences
+                                                if (live != null) {
+                                                    synchronized(persistMutex) {
+                                                        val nowMain = try { live.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
+                                                        if (nowMain != null && live.getString(KEY_QUEUE_BAK, null) != nowMain) {
+                                                            live.edit()?.putString(KEY_QUEUE_BAK, nowMain)?.commit()
+                                                        }
                                                     }
                                                 }
+                                            } catch (_: Exception) {
+                                            } finally {
+                                                bakSyncQueued.set(false)
                                             }
-                                        } catch (_: Exception) {
                                         }
+                                    } catch (_: Exception) {
+                                        bakSyncQueued.set(false)
                                     }
-                                } catch (_: Exception) {
                                 }
                             } else {
                                 editor?.commit()

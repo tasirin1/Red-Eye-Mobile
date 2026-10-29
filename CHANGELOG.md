@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Tugas susulan penyegaran BAK `MessageQueue` kini punya bendera penggabungan (issue #227, sisa #217): sebelumnya setiap episode BAK-tertinggal dari jalur baca main thread mengantrekan satu tugas executor baru, dan tugas yang redundan tetap membayar dua pembacaan blob penuh (dekripsi) sambil memegang `persistMutex` di thread persist tunggal — menunda persist asli yang menunggu kunci yang sama. Tugas susulan kini dijaga `bakSyncQueued` dengan pola yang sama seperti `persistQueued` pada `schedulePersistLocked`: episode-episode yang tumpang tindih berbagi satu tugas, karena tugas itu membaca ulang blob utama yang hidup saat ia berjalan sehingga satu lintasan cukup menyamakan BAK untuk semuanya. Bendera dilepas saat tugas selesai atau gagal diantrekan, jadi episode berikutnya tetap bisa menjadwalkan tugas baru.
+
 ## [1.6.523] - 2026-10-29
 
 ### Fixed
