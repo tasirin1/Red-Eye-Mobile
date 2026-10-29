@@ -1,12 +1,14 @@
 ## [Unreleased]
 
+
+## [1.6.528] - 2026-10-29
+
 ### Fixed
 - Pemulihan antrean korup tidak lagi menimpa cadangan baik dengan blob korup itu sendiri (issue #243): penulisan hasil pemulihan kini mengganti isi utama dan `BAK` dengan JSON hasil pemulihan yang sama, sedangkan rotasi cadangan pada jalur tulis biasa tidak berubah.
 - Penghitung drop tidak lagi terhitung ganda sesudah kegagalan baca yang mengubah antrean menjadi volatile (issue #244): penghitung yang sudah tercermin dari disk di-nol-kan tepat saat flip volatile, sehingga restore yang kemudian memuat nilai disk dengan penjumlahan hanya menambahkan drop yang benar-benar terjadi selama mode volatile; jalan masuk volatile dari kegagalan inisialisasi tetap memakai restore penjumlahan seperti sebelumnya.
 - `ensureOwnerPairCode()` tidak lagi mengembalikan kode pairing yang belum tersimpan bila `commit()` melempar (issue #245): jalur exception kini diperlakukan sama seperti commit yang gagal—fungsi membaca ulang nilai dari penyimpanan dan mengembalikan string kosong bila tidak ada kode tersimpan yang bisa dibaca, bukan kode baru yang tak akan pernah cocok saat verifikasi.
 - Kegagalan kritis di dalam blok `runCritical` kini berjejak di lapis pemanggil, bukan hanya di `Background` (issue #246, sisa #241): restore `MessageQueue` (init, `ensureRestored`, dan badan restore itu sendiri), `refreshInstance` `MonitoringService` saat `onCreate`/`onStartCommand`, tiga langkah startup `MainActivity`, antrean laporan kebangkitan `Liveness`, dan `handleWakeUp` dari `TimeChangeReceiver` sekarang menulis `Log.e` pada catch internalnya. Catch bawahan yang memang best-effort sesudah pekerjaan utama (penjadwalan kirim dan penulisan penanda liveness) tetap senyap agar log tidak dibanjiri exception lanjutan yang rutin.
 - Perintah kontrol owner yang benar-benar menunggu di gerbang kesopanan kini menerima stempel umur segar yang sama seperti penunggu adopsi (issue #247, sisa #235/#231): sesudah tunggu kesopanan selesai atau tenggatnya dicapai, `adoptionDoneSec` disetel hanya bila pengirim memang owner yang sah dan masih owner saat diperiksa ulang, sehingga umur mutasi dihitung dari selesainya antrean buatan aplikasi sendiri; perintah yang tidak menunggu dan pengirim lain tidak mendapat kelonggaran apa pun.
-
 ## [1.6.527] - 2026-10-29
 
 ### Fixed
