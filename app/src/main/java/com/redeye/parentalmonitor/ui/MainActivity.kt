@@ -59,7 +59,9 @@ class MainActivity : AppCompatActivity() {
         try {
             com.redeye.parentalmonitor.utils.Background.runCritical {
                 try {
-                    PreferencesManager.refreshInstance(appCtx)
+                    if (!PreferencesManager.refreshInstance(appCtx)) {
+                        android.util.Log.e("MainActivity", "refreshInstance failed during startup: storage upgrade did not complete")
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("MainActivity", "refreshInstance failed during startup", e)
                 }
