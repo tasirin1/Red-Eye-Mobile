@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Notifikasi yang gugur di pintu overflow kedua `NotificationForwarderService` kini tercatat (issue #220): sebelumnya, saat antrean utama penuh DAN antrean overflow juga melewati `MAX_OVERFLOW_QUEUE`, kode langsung `return` tanpa pencatatan apa pun — angka notifikasi terbuang yang dilaporkan ke owner lebih kecil dari kenyataan justru pada banjir terburuk. Pintu kedua kini memanggil `noteDroppedNotification()` yang sama dengan pintu pertama (penghitung persisten + pemberitahuan terthrottle) dan menambahkan catatan ringkas ke riwayat (nama paket saja, tanpa ekstraksi isi dan tanpa resolusi label) agar jalur banjir tetap murah.
+
 ## [1.6.521] - 2026-10-29
 
 ### Fixed

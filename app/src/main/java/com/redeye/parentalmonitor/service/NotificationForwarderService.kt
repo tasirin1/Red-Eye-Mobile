@@ -299,6 +299,8 @@ class NotificationForwarderService : NotificationListenerService() {
             pendingPosts.decrementAndGet()
             if (pendingOverflow.incrementAndGet() > MAX_OVERFLOW_QUEUE) {
                 pendingOverflow.decrementAndGet()
+                try { noteDroppedNotification() } catch (_: Exception) { }
+                try { record(pkg, "", "") } catch (_: Exception) { }
                 return
             }
             scope.launch {
