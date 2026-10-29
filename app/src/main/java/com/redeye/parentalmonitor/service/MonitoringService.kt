@@ -1042,6 +1042,8 @@ class MonitoringService : Service() {
         ensureForegroundTypes()
         val location = try {
             fetchLocation()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             null
         }
@@ -2890,7 +2892,7 @@ class MonitoringService : Service() {
                 }
             }
         }
-        val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+        val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         if (loc != null) {
             val stale = isStaleFix(loc)
             if (!stale) {
@@ -3925,7 +3927,7 @@ class MonitoringService : Service() {
     private suspend fun handleDaruratCommand() {
         val level = batteryLevel()
         sendToTelegram("🚨 <b>Darurat</b>: ambil lokasi + foto…")
-        val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+        val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         if (loc != null) {
             val stale = isStaleFix(loc)
             if (!stale) {
@@ -6581,7 +6583,7 @@ class MonitoringService : Service() {
                 accuracyM = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
                 cached
             } else {
-                val fix = try { fetchLocation() } catch (_: Exception) { null } ?: return
+                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null } ?: return
                 accuracyM = fix.accuracy
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
@@ -7155,7 +7157,7 @@ class MonitoringService : Service() {
             if (pos == null || locAge > 30 * 60_000L) {
                 val nowEl = android.os.SystemClock.elapsedRealtime()
                 if (curfewFetchFailAt != 0L && nowEl - curfewFetchFailAt < 15 * 60_000L) return
-                val fix = try { fetchLocation() } catch (_: Exception) { null }
+                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
                 if (fix == null) {
                     curfewFetchFailAt = android.os.SystemClock.elapsedRealtime()
                     bumpLocFailCount()
@@ -7303,7 +7305,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleAdminAlert() {
         try {
-            val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+            val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
             if (loc != null) {
@@ -7363,7 +7365,7 @@ class MonitoringService : Service() {
             if (unlockAlertCount >= 3) return
             unlockAlertCount++
             lastUnlockAlertAt = now
-            val loc = try { fetchLocation(allowStale = true) } catch (_: Exception) { null }
+            val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
             val where = if (loc != null) {
