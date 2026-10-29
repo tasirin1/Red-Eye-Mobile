@@ -6,10 +6,16 @@ import com.redeye.parentalmonitor.data.PreferencesManager
 object RingVolume {
     private const val MAX_AGE_MS = 12 * 60 * 60_000L
 
+    fun isRestorable(previous: Int, savedAt: Long, now: Long, currentVolume: Int, maxVolume: Int): Boolean {
+        if (previous < 0 || savedAt <= 0L) return false
+        val age = now - savedAt
+        return age in 0..MAX_AGE_MS || (maxVolume > 0 && currentVolume >= maxVolume)
+    }
+
     fun restoreStuck(context: Context, prefs: PreferencesManager): Boolean {
         val previous = try { prefs.ringPrevVolume } catch (_: Exception) { -1 }
         val savedAt = try { prefs.ringSavedAt } catch (_: Exception) { 0L }
-        val age = System.currentTimeMillis() - savedAt
+        val now = System.currentTimeMillis()
         var restored = false
         val audioManager = try {
             context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
@@ -26,8 +32,7 @@ object RingVolume {
         } catch (_: Exception) {
             -1
         }
-        val usable = previous >= 0 && savedAt > 0L &&
-            (age in 0..MAX_AGE_MS || (maxVolume > 0 && currentVolume >= maxVolume))
+        val usable = isRestorable(previous, savedAt, now, currentVolume, maxVolume)
         if (usable && audioManager != null) {
             try {
                 audioManager.setStreamVolume(android.media.AudioManager.STREAM_ALARM, previous, 0)
