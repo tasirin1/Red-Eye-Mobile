@@ -1859,6 +1859,9 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             if (followsLogin && !control) loginJobSnapshot?.join()
+                            if (followsLogin && control && !ownerOk) {
+                                while (loginJobSnapshot?.isActive == true && !isOwner(senderId)) delay(50)
+                            }
                             lock.withLock {
                                 val ownerNow = isOwner(senderId)
                                 val privateNow = ownerNow && isPrivate
