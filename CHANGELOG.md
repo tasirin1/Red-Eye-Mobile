@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.530] - 2026-10-29
+
 ### Fixed
 - Kegagalan start monitoring dari `MainActivity` kini terlog di build release (issue #258, sisa #246): catch di dalam `startMonitoringInBackground` yang menelan penolakan start foreground service sebelumnya hanya mencatat bila build DEBUG, dan catch terluar fungsi itu senyap, sehingga `Log.e` pemanggil tidak pernah terpicu; kedua titik telan itu kini menulis `Log.e` (titik start menyertakan exception-nya), sedangkan alur pemulihan `scheduleBootRestart()` tidak berubah.
 - Kegagalan upgrade penyimpanan saat startup `MainActivity` kini terlog di build release (issue #257, sisa #246): `refreshInstance` melaporkan kegagalannya lewat nilai balik `false`, bukan exception, sehingga `Log.e` pemanggil sebelumnya tidak pernah terpicu; pemanggil kini memeriksa nilai balik itu dan menulis `Log.e` bila upgrade ke penyimpanan terenkripsi tidak selesai, sementara jalur exception tetap berjejak seperti sebelumnya.
