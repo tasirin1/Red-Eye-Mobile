@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penghitung kata pantau di laporan kini memakai pencocokan yang sama dengan label SMS live (issue #333): penghitung "Kena pantau" di ringkasan harian, "Watch hit 24 jam" di `/waspada`, dan penghitung laporan 7 hari sebelumnya masih memakai substring mentah (`lower.contains`) atas daftar `watchList()` yang sama, padahal label SMS live sudah memakai `AppWatch.hit` yang sadar batas kata sejak #330 — kelas positif-palsu #330 dengan demikian tetap hidup di permukaan laporan: SMS berisi "otomatis"/"matematika"/"matikan" dengan kata pantau "mati" terhitung kena pantau di laporan tetapi tidak berlabel "⚠️ Watch:" saat diteruskan, dan di `/waspada` tiap hit bernilai 25 poin sehingga satu-dua SMS jinak sudah menggelembungkan skor & vonis. Ketiga penghitung kini memanggil `AppWatch.hit` atas daftar yang sama, sehingga angka laporan dan label live konsisten: untuk kata pantau alfanumerik himpunan substring adalah superset ketat dari himpunan batas kata, jadi hitungan hanya bisa turun ke nilai yang benar (tidak pernah naik), dan kata pantau non-alfanumerik mempertahankan fallback substring di dalam `AppWatch.hit` sendiri. Skor & vonis `/waspada` mengikuti hitungan baru secara alami.
+
 
 ## [1.6.546] - 2026-10-30
 

@@ -6824,10 +6824,7 @@ class MonitoringService : Service() {
             var hits = 0
             for (s in sms) {
                 if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) hits++
-                else if (watch.isNotEmpty()) {
-                    val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
-                    if (watch.any { lower.contains(it) }) hits++
-                }
+                else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
             }
             try {
                 for (c in calls) if (watchNumberHit(c.number, watchNums) != null) hits++
@@ -7035,9 +7032,8 @@ class MonitoringService : Service() {
                 }
             }
             for (s in sms) {
-                val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
                 val numHit = watchNumberHit(s.address, watchNums) != null
-                if (numHit) hits++ else if (watch.isNotEmpty() && watch.any { lower.contains(it) }) hits++
+                if (numHit) hits++ else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
                 val h = hourOf(s.date)
                 if (h >= 23 || h in 0..4) nights++
                 if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
@@ -7165,9 +7161,8 @@ class MonitoringService : Service() {
                     hours[h]++
                     if (h >= 23 || h < 5) nights++
                 }
-                val lower = try { s.body.lowercase(java.util.Locale.ROOT) } catch (_: Exception) { "" }
                 if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) watchHits++
-                else if (watch.any { lower.contains(it) }) watchHits++
+                else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) watchHits++
             }
             for (c in calls) {
                 val d = c.number.filter { it.isDigit() }.takeLast(10)
