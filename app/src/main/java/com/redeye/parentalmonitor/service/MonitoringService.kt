@@ -6598,6 +6598,8 @@ class MonitoringService : Service() {
                 Pair(fix.latitude, fix.longitude)
             }
             checkGeofence(pos.first, pos.second, accuracyM)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -7192,6 +7194,8 @@ class MonitoringService : Service() {
                     sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -7323,6 +7327,8 @@ class MonitoringService : Service() {
                 sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat: " + locationFailureHint() + battery)
             }
             try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -7384,6 +7390,8 @@ class MonitoringService : Service() {
             }
             sendToTelegram("🔐 <b>Buka kunci gagal</b> (#$streak)\n$where$battery")
             try { captureAndSendPhoto(reportResult = false) } catch (_: Exception) { }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
