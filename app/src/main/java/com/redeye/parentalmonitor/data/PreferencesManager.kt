@@ -45,6 +45,8 @@ class PreferencesManager(context: Context) {
     private val smsPendingLock = Any()
     private val auditLock = Any()
 
+    private enum class UpgradeResult { SUCCESS, UNSTABLE, FAILED }
+
     fun upgradeToPersistent(): Boolean {
         if (storageEncrypted) return true
         synchronized(upgradeLock) {
@@ -53,8 +55,9 @@ class PreferencesManager(context: Context) {
                 if (attempt > 1) {
                     resetCachedMasterKey()
                 }
-                if (attemptUpgradeToPersistent()) return true
-                if (attempt < UPGRADE_ATTEMPTS) {
+                val result = attemptUpgradeToPersistent()
+                if (result == UpgradeResult.SUCCESS) return true
+                if (result == UpgradeResult.UNSTABLE && attempt < UPGRADE_ATTEMPTS) {
                     try { Thread.sleep(150L) } catch (_: InterruptedException) { }
                 }
             }
@@ -134,7 +137,7 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    private fun attemptUpgradeToPersistent(): Boolean {
+    private fun attemptUpgradeToPersistent(): UpgradeResult {
         return try {
             val fresh = openEncryptedPrefs(appContext, PREFS_NAME)
             val mem = sharedPreferences
@@ -147,7 +150,7 @@ class PreferencesManager(context: Context) {
                 while (!stable && attempts < 5) {
                     attempts++
                     val cur: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    if (!syncPrefsInto(mem, fresh, cur)) return false
+                    if (!syncPrefsInto(mem, fresh, cur)) return UpgradeResult.FAILED
                     val after: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
                     stable = after == cur && freshNow == cur
@@ -155,7 +158,7 @@ class PreferencesManager(context: Context) {
                         try { Thread.sleep(50L) } catch (_: InterruptedException) { }
                     }
                 }
-                if (!stable) return false
+                if (!stable) return UpgradeResult.UNSTABLE
             }
             val baseMem: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
             val baseFresh: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
@@ -177,10 +180,10 @@ class PreferencesManager(context: Context) {
             }
             clearStorageError()
             storageEncrypted = true
-            true
+            UpgradeResult.SUCCESS
         } catch (e: Exception) {
             markStorageError(describeStorageError(e))
-            false
+            UpgradeResult.FAILED
         }
     }
 
