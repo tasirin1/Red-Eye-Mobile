@@ -3160,6 +3160,7 @@ class MonitoringService : Service() {
             val download = TelegramMediaClient.api.downloadFile("https://api.telegram.org/file/bot$token/$safePath")
             val body = download.body()
             if (!download.isSuccessful || body == null) {
+                try { download.errorBody()?.close() } catch (_: Exception) { }
                 sendToTelegram("Gagal mengunduh file backup. Coba kirim ulang.")
                 return
             }
