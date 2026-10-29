@@ -1939,12 +1939,17 @@ class MonitoringService : Service() {
                                 }
                                 if (control && !adoptionWait && !followFailedSilently && !followTimedOut) {
                                     val courtesyDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                    var courtesyWaited = false
                                     while (synchronized(adoptionGateLock) { adoptionWaiters.any { it.second == senderId && it.first < update.updateId } }) {
+                                        courtesyWaited = true
                                         if (android.os.SystemClock.elapsedRealtime() >= courtesyDeadline) {
                                             android.util.Log.w("MonitoringService", "Perintah kontrol owner mendahului penunggu adopsi lama sesudah tenggat kesopanan gerbang")
                                             break
                                         }
                                         delay(50)
+                                    }
+                                    if (courtesyWaited && ownerOk && isOwner(senderId)) {
+                                        adoptionDoneSec = serverNowSec()
                                     }
                                 }
                                 if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {
