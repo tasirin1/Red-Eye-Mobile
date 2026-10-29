@@ -25,7 +25,7 @@ object PatternBaseline {
         if (history.size < 5) return emptyList()
         val out = ArrayList<Finding>()
         val screenVals = history.filter { it.screenMin >= 0 }.map { it.screenMin }
-        if (screenVals.size >= 3) {
+        if (screenVals.size >= 3 && today.screenMin >= 0) {
             val screenMedian = median(screenVals)
             if (screenMedian >= 60) {
                 val strong = today.screenMin * 2 >= screenMedian * 3 && today.screenMin - screenMedian >= 60

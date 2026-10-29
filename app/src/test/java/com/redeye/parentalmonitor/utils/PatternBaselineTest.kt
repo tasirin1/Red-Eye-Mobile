@@ -83,6 +83,20 @@ class PatternBaselineTest {
     }
 
     @Test
+    fun unknownTodayScreenIsSkipped() {
+        val got = PatternBaseline.assess(hist, day("20261025", s = -1, n = 10, f = 400, a = 1130, dep = 430))
+        assertEquals(
+            listOf(
+                PatternBaseline.Finding("NIGHT", "Malam 10 m — biasanya ±10 m", false),
+                PatternBaseline.Finding("FIRST", "Buka pertama 06.40 — biasanya 06.45", false),
+                PatternBaseline.Finding("ARRIVE", "Tiba di rumah 18.50 — biasanya 18.55", false),
+                PatternBaseline.Finding("DEPART", "Berangkat 07.10 — biasanya 07.10", false)
+            ),
+            got
+        )
+    }
+
+    @Test
     fun sparseMetricsAreSkipped() {
         val sparse = listOf(
             day("20261020", s = 180), day("20261021", s = 200), day("20261022", s = 190),

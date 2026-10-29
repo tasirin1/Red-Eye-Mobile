@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Cabang SCREEN pada penilaian pola kini mensyaratkan nilai layar hari ini terukur sehingga `/waspada` tidak bisa mencetak baris perbandingan layar palsu (issue #297): `PatternBaseline.assess` adalah satu-satunya cabang yang tidak memeriksa `today.screenMin >= 0` — empat cabang lain (NIGHT, FIRST, ARRIVE, DEPART) semuanya mensyaratkannya — sehingga bila `todayFacts` kosong (Usage Access mati dan baris A11y hari ini kosong) tetapi hari ini sudah punya rekaman placeholder dari transisi pagar (`screenMin = -1`), fallback `sendWaspada` memakai placeholder itu sebagai "hari ini" dan bagian "Dibanding pola biasanya" mencetak "Layar 0 m — biasanya ±…" seolah anak tidak memakai HP sama sekali, padahal nilainya tidak terukur. Cabang SCREEN kini memakai syarat yang sama dengan cabang lain; perilaku untuk nilai terukur tidak berubah. Terkunci uji JVM baru di `PatternBaselineTest` (hari ini tak terukur dengan riwayat valid: tidak ada temuan SCREEN, temuan lain tetap muncul).
+
 
 ## [1.6.539] - 2026-10-29
 
