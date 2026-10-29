@@ -429,8 +429,8 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val now = android.os.SystemClock.elapsedRealtime()
         if (isSummary && groupKey.isNotEmpty()) {
-            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] } ?: 0L
-            if (now - seenAt < 120_000L) {
+            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
+            if (seenAt != null && now - seenAt < 120_000L) {
                 record(appLabel, title, text)
                 return
             }
