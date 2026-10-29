@@ -73,6 +73,10 @@ class NotificationForwarderService : NotificationListenerService() {
                 val seeded = (prefs.pendingNotifDrops).coerceAtLeast(0)
                 if (dropNoticeSeeded.compareAndSet(false, true)) {
                     dropNoticeCount.set(seeded)
+                    if (seeded > 0) {
+                        val since = try { prefs.pendingNotifDropsSince } catch (_: Exception) { 0L }
+                        synchronized(dropNoticeLock) { dropNoticeFirstAt = since }
+                    }
                 }
             } catch (_: Exception) { }
         }
@@ -82,6 +86,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private var dropPersistJob: Job? = null
     private val dropNoticeLock = Any()
     private var dropNoticeInFlight = 0
+    private var dropNoticeFirstAt = 0L
     private val dropNoticeBatchReconciled = java.util.concurrent.atomic.AtomicBoolean(false)
     @Volatile
     private var watchKeywordsRaw = ""
@@ -758,8 +763,10 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onDestroy() {
         try {
-            val pendingDrops = synchronized(dropNoticeLock) { dropNoticeCount.get() + dropNoticeInFlight }
-            prefsRef?.setPendingNotifDropsSync(pendingDrops)
+            val pending = synchronized(dropNoticeLock) {
+                (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt
+            }
+            prefsRef?.setPendingNotifDropsSync(pending.first, pending.second)
         } catch (_: Exception) {
         }
         try {
@@ -943,7 +950,11 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun noteDroppedNotification(count: Int = 1) {
         synchronized(dropNoticeLock) {
-            dropNoticeCount.addAndGet(count.coerceAtLeast(0))
+            val add = count.coerceAtLeast(0)
+            if (add > 0 && dropNoticeFirstAt == 0L && dropNoticeCount.get() + dropNoticeInFlight == 0) {
+                dropNoticeFirstAt = System.currentTimeMillis()
+            }
+            dropNoticeCount.addAndGet(add)
             if (dropNoticeJob?.isActive != true) {
                 dropNoticeJob = scope.launch {
                     try {
@@ -964,9 +975,12 @@ class NotificationForwarderService : NotificationListenerService() {
                         var lastWritten = -1
                         var done = false
                         while (!done) {
-                            val snapshot = synchronized(dropNoticeLock) { dropNoticeCount.get() + dropNoticeInFlight }
+                            val snap = synchronized(dropNoticeLock) {
+                                (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt
+                            }
+                            val snapshot = snap.first
                             if (snapshot != lastWritten) {
-                                try { prefsRef?.setPendingNotifDropsSync(snapshot) } catch (_: Exception) { }
+                                try { prefsRef?.setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { }
                                 lastWritten = snapshot
                             } else {
                                 synchronized(dropNoticeLock) {
@@ -989,19 +1003,26 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun dropNoticeText(count: Int): String {
-        return if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
+    private fun dropNoticeText(count: Int, firstAt: Long): String {
+        val base = if (count == 1) "1 notifikasi dibuang (ditolak/antrean penuh)."
             else "$count notifikasi dibuang (ditolak/antrean penuh)."
+        if (firstAt <= 0L) return base
+        return base + " Terakumulasi sejak " +
+            com.redeye.parentalmonitor.utils.TimeFmt.full(firstAt) + "."
     }
 
     private fun reconcileDropNoticeBatch() {
         val prefs = prefsRef ?: return
         val batch = try { prefs.dropNoticeBatch } catch (_: Exception) { "" }
         if (batch.isEmpty()) return
-        val n = batch.substringBefore(":").toIntOrNull() ?: 0
-        val ts = batch.substringAfter(":", "").toLongOrNull() ?: 0L
+        val firstSep = batch.indexOf(':')
+        val n = (if (firstSep >= 0) batch.substring(0, firstSep) else batch).toIntOrNull() ?: 0
+        val rest = if (firstSep >= 0) batch.substring(firstSep + 1) else ""
+        val secondSep = rest.indexOf(':')
+        val ts = (if (secondSep >= 0) rest.substring(0, secondSep) else rest).toLongOrNull() ?: 0L
+        val batchFirstAt = (if (secondSep >= 0) rest.substring(secondSep + 1) else "").toLongOrNull() ?: 0L
         val found = n > 0 && try {
-            val expected = dropNoticeText(n)
+            val expected = dropNoticeText(n, batchFirstAt)
             queue().getQueue().any {
                 it.priority && it.message == expected &&
                     it.timestamp >= ts - 5_000L && it.timestamp <= ts + 300_000L
@@ -1010,20 +1031,30 @@ class NotificationForwarderService : NotificationListenerService() {
             false
         }
         var applied = false
-        val total = synchronized(dropNoticeLock) {
+        var oldFirstAt = 0L
+        val state = synchronized(dropNoticeLock) {
+            oldFirstAt = dropNoticeFirstAt
             if (found) {
                 dropNoticeCount.set((dropNoticeCount.get() - n).coerceAtLeast(0))
                 applied = true
+                if (dropNoticeCount.get() + dropNoticeInFlight == 0) {
+                    dropNoticeFirstAt = 0L
+                } else if (dropNoticeFirstAt > 0L && dropNoticeFirstAt <= ts) {
+                    dropNoticeFirstAt = ts
+                }
             }
-            dropNoticeCount.get() + dropNoticeInFlight
+            (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt
         }
         val ok = try {
-            prefs.setPendingNotifDropsAndBatchSync(total, "")
+            prefs.setDropNoticeStateSync(state.first, "", state.second)
         } catch (_: Exception) {
             false
         }
         if (!ok && applied) {
-            synchronized(dropNoticeLock) { dropNoticeCount.addAndGet(n) }
+            synchronized(dropNoticeLock) {
+                dropNoticeCount.addAndGet(n)
+                dropNoticeFirstAt = oldFirstAt
+            }
         }
     }
 
@@ -1031,13 +1062,17 @@ class NotificationForwarderService : NotificationListenerService() {
         if (dropNoticeBatchReconciled.compareAndSet(false, true)) {
             try { reconcileDropNoticeBatch() } catch (_: Exception) { }
         }
+        var firstAt = 0L
         val count = synchronized(dropNoticeLock) {
-            dropNoticeCount.getAndSet(0).also { dropNoticeInFlight += it }
+            val taken = dropNoticeCount.getAndSet(0).also { dropNoticeInFlight += it }
+            firstAt = dropNoticeFirstAt
+            taken
         }
         if (count <= 0) return
-        val text = dropNoticeText(count)
+        val batchTs = System.currentTimeMillis()
+        val text = dropNoticeText(count, firstAt)
         try {
-            prefsRef?.setDropNoticeBatchSync("$count:${System.currentTimeMillis()}")
+            prefsRef?.setDropNoticeBatchSync("$count:$batchTs:$firstAt")
         } catch (_: Exception) {
         }
         val queued = try {
@@ -1045,16 +1080,39 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             false
         }
-        val pendingDrops = synchronized(dropNoticeLock) {
+        val state = synchronized(dropNoticeLock) {
             dropNoticeInFlight = (dropNoticeInFlight - count).coerceAtLeast(0)
-            if (!queued) dropNoticeCount.addAndGet(count)
-            dropNoticeCount.get()
+            if (!queued) {
+                dropNoticeCount.addAndGet(count)
+            } else if (dropNoticeCount.get() > 0) {
+                dropNoticeFirstAt = batchTs
+            } else {
+                dropNoticeFirstAt = 0L
+            }
+            dropNoticeCount.get() to dropNoticeFirstAt
         }
         try {
-            prefsRef?.setPendingNotifDropsAndBatchSync(pendingDrops, "")
+            prefsRef?.setDropNoticeStateSync(state.first, "", state.second)
         } catch (_: Exception) {
         }
-        if (queued) MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+        if (queued) {
+            MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
+        } else {
+            synchronized(dropNoticeLock) {
+                dropNoticeJob = scope.launch {
+                    try {
+                        delay(60_000L)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        flushDropNotice()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
     }
 
     private fun adoptMigratedChat(prefs: PreferencesManager, errorBody: String?, currentChatId: String): Boolean {
