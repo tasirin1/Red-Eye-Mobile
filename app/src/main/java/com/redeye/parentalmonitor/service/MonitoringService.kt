@@ -3771,9 +3771,14 @@ class MonitoringService : Service() {
     }
 
     private fun appLabelFor(pkg: String): String {
+        appLabelCache[pkg]?.let { return it.second }
         return try {
             val info = packageManager.getApplicationInfo(pkg, 0)
-            packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+            val label = packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
+            val launchable = try { packageManager.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
+            if (appLabelCache.size > 300) appLabelCache.clear()
+            appLabelCache[pkg] = launchable to label
+            label
         } catch (_: Exception) {
             pkg
         }
