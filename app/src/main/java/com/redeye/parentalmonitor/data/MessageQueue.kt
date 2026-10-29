@@ -20,6 +20,9 @@ class MessageQueue private constructor(context: Context) {
 
     @Volatile
     private var dropsDirty = false
+    private var persistedOverflowDrops = 0L
+    private var persistedExpiredDrops = 0L
+    private var persistedPriorityDrops = 0L
     private var lastPersistAt = 0L
     @Volatile
     private var persistDirty = false
@@ -159,6 +162,7 @@ class MessageQueue private constructor(context: Context) {
             } catch (e: Exception) {
                 sharedPreferences = null
                 volatileOnly = true
+                keepUnpersistedDropsLocked()
                 android.util.Log.w("MessageQueue", "Queue reopen failed, using volatile: ${e.message}")
             }
         }
@@ -241,6 +245,9 @@ class MessageQueue private constructor(context: Context) {
             val overflow = sharedPreferences?.getLong(KEY_OVERFLOW_DROPS, 0L) ?: 0L
             val expired = sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L
             val priority = sharedPreferences?.getLong(KEY_PRIORITY_DROPS, 0L) ?: 0L
+            persistedOverflowDrops = overflow
+            persistedExpiredDrops = expired
+            persistedPriorityDrops = priority
             if (add) {
                 overflowDrops.addAndGet(overflow)
                 expiredDrops.addAndGet(expired)
@@ -266,10 +273,22 @@ class MessageQueue private constructor(context: Context) {
             } else {
                 editor?.commit() == true
             }
+            if (saved) {
+                persistedOverflowDrops = overflowDrops.get()
+                persistedExpiredDrops = expiredDrops.get()
+                persistedPriorityDrops = priorityDrops.get()
+            }
             dropsDirty = !saved
         } catch (_: Exception) {
             dropsDirty = true
         }
+    }
+
+    private fun keepUnpersistedDropsLocked() {
+        overflowDrops.set((overflowDrops.get() - persistedOverflowDrops).coerceAtLeast(0L))
+        expiredDrops.set((expiredDrops.get() - persistedExpiredDrops).coerceAtLeast(0L))
+        priorityDrops.set((priorityDrops.get() - persistedPriorityDrops).coerceAtLeast(0L))
+        dropsDirty = true
     }
 
     private fun noteOverflowLocked(by: Long = 1L, persist: Boolean = true) {
@@ -518,10 +537,7 @@ class MessageQueue private constructor(context: Context) {
         } catch (e: Exception) {
             android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${e.message}")
             volatileOnly = true
-            overflowDrops.set(0L)
-            expiredDrops.set(0L)
-            priorityDrops.set(0L)
-            dropsDirty = true
+            keepUnpersistedDropsLocked()
             cached = null
             try {
                 com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSendNext(appContext, 60_000L)

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Flip volatile `MessageQueue` tidak lagi menghapus kenaikan penghitung drop yang belum terpersist (issue #254, sisa #244): nilai terakhir yang terbukti tersimpan di disk kini dilacak terpisah, dan saat masuk mode volatile — baik dari kegagalan baca maupun dari kegagalan buka ulang sesudah reset penyimpanan — penghitung hanya dikurangi sebesar porsi yang sudah tercermin di disk, sehingga perlindungan anti-hitung-ganda #244 tetap utuh tetapi kenaikan yang hanya ada di memori bertahan dan ikut terlaporkan; laporan selama jendela volatile kini membaca kenaikan itu, bukan selalu nol.
 - Pengampunan umur mutasi untuk perintah kontrol yang menyelesaikan tunggu kesopanan kini dibatasi sebesar durasi tunggu aktual (issue #253, sisa #247): stempel segar sebelumnya menggantikan tanggal pesan sepenuhnya, sehingga keterlambatan pengiriman sebelum dispatch ikut terhapus sampai batas gerbang umum 900 detik; titik ukur kini digeser hanya sebanyak detik yang benar-benar dihabiskan menunggu gerbang (tanggal pesan + durasi tunggu, dibatasi waktu kini), sehingga umur pra-tunggu tetap dihitung seperti biasa dan jalur adopsi login #231 tidak berubah.
 
 
