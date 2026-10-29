@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Rantai tunggu adopsi login kini punya tenggat keseluruhan (issue #223, sisa #215): loop tunggu perintah kontrol pra-adopsi dan putaran `tryLock` login sebelumnya sama-sama bisa berputar tanpa batas selama job login hidup — update yang menggantung menahan persistensi offset (ekor batch bisa terkirim ulang dan perintah tereksekusi dobel bila proses mati), dan perintah darurat yang menunggu melewati gerbang umur 900 detik malah gugur sebagai kedaluwarsa sesudah menunggu selama itu. Kedua loop kini berhenti pada tenggat `ADOPTION_WAIT_DEADLINE_MS` (diselaraskan dengan gerbang umur perintah, 900 detik): login yang tidak kebagian kunci sampai tenggat ditolak berjejak (log + pemberitahuan ke pengirim untuk mengirim `/login` lagi), dan perintah kontrol yang adopsinya tidak selesai sampai tenggat ditolak berjejak dengan cara yang sama — dalam kedua kasus job dispatch tetap selesai normal sehingga offset update tuntas dipersistensikan dan tidak ada pengiriman ulang. Login yang berakhir sendiri (berhasil atau gagal) sebelum tenggat tidak berubah perilakunya: perintah tetap dinilai ulang di dalam kunci persis seperti sebelumnya.
+
 ## [1.6.522] - 2026-10-29
 
 ### Fixed

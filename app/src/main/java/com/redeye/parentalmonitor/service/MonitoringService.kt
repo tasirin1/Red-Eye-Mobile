@@ -357,6 +357,7 @@ class MonitoringService : Service() {
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "restore" to "/pulihkan")
         private const val COMMAND_MAX_AGE_SEC = 900L
+        private const val ADOPTION_WAIT_DEADLINE_MS = COMMAND_MAX_AGE_SEC * 1000L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val LOGIN_MAX_FAILS = 5
@@ -1744,6 +1745,7 @@ class MonitoringService : Service() {
                         lastLoginSender = senderId
                         lastLoginJob = dispatchTracked(update.updateId, "Login dispatch error") {
                             var locksHeld = false
+                            val lockDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
                             while (!locksHeld) {
                                 if (controlLock.tryLock()) {
                                     if (commandLock.tryLock()) {
@@ -1752,13 +1754,21 @@ class MonitoringService : Service() {
                                         controlLock.unlock()
                                     }
                                 }
-                                if (!locksHeld) delay(50)
+                                if (!locksHeld) {
+                                    if (android.os.SystemClock.elapsedRealtime() >= lockDeadline) break
+                                    delay(50)
+                                }
                             }
-                            try {
-                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
-                            } finally {
-                                commandLock.unlock()
-                                controlLock.unlock()
+                            if (!locksHeld) {
+                                android.util.Log.w("MonitoringService", "Login ditolak: kunci perintah sibuk melewati tenggat tunggu adopsi")
+                                try { sendDirect(senderId, "\u23F3\uFE0F Login belum bisa diproses (sistem sibuk terlalu lama). Kirim /login lagi.") } catch (_: Exception) { }
+                            } else {
+                                try {
+                                    handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                                } finally {
+                                    commandLock.unlock()
+                                    controlLock.unlock()
+                                }
                             }
                         }
                         continue
@@ -1860,10 +1870,23 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             if (followsLogin && !control) loginJobSnapshot?.join()
+                            var adoptionRejected = false
                             if (followsLogin && control && !ownerOk) {
-                                while (loginJobSnapshot?.isActive == true && !isOwner(senderId)) delay(50)
+                                val waitDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                while (loginJobSnapshot?.isActive == true && !isOwner(senderId)) {
+                                    if (android.os.SystemClock.elapsedRealtime() >= waitDeadline) {
+                                        adoptionRejected = true
+                                        break
+                                    }
+                                    delay(50)
+                                }
+                                if (adoptionRejected && isOwner(senderId)) adoptionRejected = false
+                                if (adoptionRejected) {
+                                    android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
+                                    try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
+                                }
                             }
-                            lock.withLock {
+                            if (!adoptionRejected) lock.withLock {
                                 val ownerNow = isOwner(senderId)
                                 val privateNow = ownerNow && isPrivate
                                 val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
