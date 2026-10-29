@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Flush media tidak lagi memulai unggahan dengan sisa tenggat nyaris nol (issue #204, sisa #180): tenggat keras 10 menit dari #180 hanya menolak memulai bila sisa waktu sudah habis, jadi unggahan bisa dimulai dengan sisa beberapa milidetik — hampir pasti timeout di tengah (byte parsial terbuang), berkasnya telanjur masuk himpunan `attempted` sehingga tak dicoba lagi pada putaran itu, dan ada peluang duplikat bila Telegram telanjur menerima berkasnya. Ketiga flush (video/audio/foto) kini berhenti memulai unggahan baru bila sisa tenggat di bawah ambang minimum 15 detik (`MEDIA_FLUSH_MIN_START_MS`); berkas yang belum dimulai tidak ditandai apa pun dan utuh menunggu siklus flush berikutnya.
+
 ### Removed
 - Kode mati `screenTimeSummary(hours)` dihapus (issue #203, sisa #179): sesudah digest beralih ke `screenTimeSummaryFrom(data)`, fungsi lama itu tidak punya satu pun pemanggil di seluruh repo (terverifikasi `grep` termasuk test) tetapi badannya tetap hidup dan bisa menyesatkan pemeliharaan — perubahan format ringkasan layar bisa keliru diterapkan ke fungsi yang tak pernah jalan. Namanya dicatat ke `tools/bekas-hapusan.txt` sesuai konvensi repo agar pemanggilan ulang tertangkap gerbang sebagai regresi hapusan.
 

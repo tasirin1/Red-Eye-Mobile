@@ -379,6 +379,7 @@ class MonitoringService : Service() {
         private const val MAX_PHOTO_KEPT = 10
         private const val DATA_QUEUE_SOFT_LIMIT = 90
         private const val MEDIA_UPLOAD_GRACE_MS = 600_000L
+        private const val MEDIA_FLUSH_MIN_START_MS = 15_000L
         private const val AUDIO_UPLOAD_TIMEOUT_MS = 300_000L
         private const val PHOTO_PAUSE_NONE = 0
         private const val PHOTO_PAUSE_ADMIN = 1
@@ -9458,7 +9459,7 @@ class MonitoringService : Service() {
                         continue
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
-                    if (remainMs <= 0L) break@drain
+                    if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
                     val videoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) } ?: MediaSendOutcome.KEPT
                     if (videoOutcome == MediaSendOutcome.KEPT) continue
@@ -9544,7 +9545,7 @@ class MonitoringService : Service() {
                         continue
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
-                    if (remainMs <= 0L) break@drain
+                    if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
                     val audioOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) } ?: MediaSendOutcome.KEPT
                     if (audioOutcome == MediaSendOutcome.KEPT) continue
@@ -9838,7 +9839,7 @@ class MonitoringService : Service() {
                         continue
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
-                    if (remainMs <= 0L) break@drain
+                    if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
                     val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
