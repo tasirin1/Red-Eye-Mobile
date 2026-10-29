@@ -310,8 +310,28 @@ object A11yMonitor {
         val previousDay = loadedDay
         val activePackage = currentPackage
         val activeLabel = currentLabel
+        var resumeWall = 0L
+        var resumeElapsed = 0L
         if (loaded && previousDay.isNotEmpty() && today != previousDay) {
-            finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+            val nowWall = System.currentTimeMillis()
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val dayStart = dayStartWallMillis(nowWall)
+            var splitAtMidnight = false
+            if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall) {
+                val elapsedAtDayStart = nowElapsed - (nowWall - dayStart)
+                if (elapsedAtDayStart > currentStartElapsed) {
+                    accrueSessionLocked(dayStart, elapsedAtDayStart)
+                    resumeWall = dayStart
+                    resumeElapsed = elapsedAtDayStart
+                    splitAtMidnight = true
+                }
+            }
+            if (splitAtMidnight) {
+                currentPackage = ""
+                currentStartElapsed = 0L
+            } else {
+                finishSessionLocked(nowWall, nowElapsed)
+            }
             saveUsageFor(context, previousDay)
         }
         loadedDay = today
@@ -324,10 +344,20 @@ object A11yMonitor {
                 val nowWall = System.currentTimeMillis()
                 currentPackage = activePackage
                 currentLabel = activeLabel.ifEmpty { labelFor(context, activePackage) }
-                currentStartWall = nowWall
-                currentStartElapsed = SystemClock.elapsedRealtime()
+                currentStartWall = if (resumeWall > 0L) resumeWall else nowWall
+                currentStartElapsed = if (resumeElapsed > 0L) resumeElapsed else SystemClock.elapsedRealtime()
             }
         }
+    }
+
+    private fun dayStartWallMillis(nowWall: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = nowWall
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
     }
 
     private fun loadUsage(context: Context, today: String): MutableMap<String, AppUsage> {
