@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Rekonsiliasi batch drop notifikasi kini berjalan sedini mungkin, tidak lagi kalah balapan dari worker pengirim (issue #321, sisa #315): mekanisme identitas batch dari #315 menutup celah mati-keras hanya bila notice batch masih berada di antrean saat rekonsiliasi berjalan, tetapi rekonsiliasi sebelumnya hanya dipanggil dari kepala `flushDropNotice` — dan pemicu flush pertama proses baru selalu tertunda 30 detik — sedangkan layanan utama menjadwalkan `SendMessageWorker` tanpa jeda awal pada tiap start, sehingga worker bisa mengirim dan menghapus notice batch lebih dulu; rekonsiliasi lalu tidak menemukannya, total `pendingNotifDrops` tidak dikoreksi, dan flush yang sama melaporkan jumlah drop yang sama sekali lagi. Rekonsiliasi kini dijalankan secara sinkron pada adopsi prefs pertama tiap proses (`adoptPrefs`, jalur yang sama dengan penyemaian penghitung di `onCreate`, sebelum penjadwalan apa pun) bila penanda batch tertunda ada, dan flush awal proses baru dalam keadaan itu berjalan tanpa jeda 30 detik (sisa yang belum terlaporkan dilaporkan segera, bukan menunggu). Urutan bahagia tidak berubah. Batas yang diterima dan dicatat jujur: penutupan ini tetap bersyarat proses NFS sempat tercipta sebelum worker mengosongkan antrean — bila sistem belum membuat instance layanan listener sama sekali saat worker menang, rekonsiliasi tertunda ke pembuatan layanan berikutnya dan duplikasi pada jendela sempit itu masih mungkin; arah gagalnya tetap melapor (bukan hilang), searah semantik at-least-once repo.
+
 
 ## [1.6.544] - 2026-10-30
 

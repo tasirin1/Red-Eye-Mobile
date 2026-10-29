@@ -77,6 +77,13 @@ class NotificationForwarderService : NotificationListenerService() {
                         val since = try { prefs.pendingNotifDropsSince } catch (_: Exception) { 0L }
                         synchronized(dropNoticeLock) { dropNoticeFirstAt = since }
                     }
+                    val batchPending = try { prefs.dropNoticeBatch.isNotEmpty() } catch (_: Exception) { false }
+                    if (batchPending) {
+                        dropBatchWasPending = true
+                        if (dropNoticeBatchReconciled.compareAndSet(false, true)) {
+                            try { reconcileDropNoticeBatch() } catch (_: Exception) { }
+                        }
+                    }
                 }
             } catch (_: Exception) { }
         }
@@ -88,6 +95,8 @@ class NotificationForwarderService : NotificationListenerService() {
     private var dropNoticeInFlight = 0
     private var dropNoticeFirstAt = 0L
     private val dropNoticeBatchReconciled = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile
+    private var dropBatchWasPending = false
     @Volatile
     private var watchKeywordsRaw = ""
     @Volatile
@@ -217,9 +226,10 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (dropNoticeCount.get() > 0) {
                         synchronized(dropNoticeLock) {
                             if (dropNoticeJob?.isActive != true) {
+                                val startDelay = if (dropBatchWasPending) 0L else 30_000L
                                 dropNoticeJob = scope.launch {
                                     try {
-                                        delay(30_000L)
+                                        delay(startDelay)
                                     } catch (e: kotlinx.coroutines.CancellationException) {
                                         throw e
                                     } catch (_: Exception) {
