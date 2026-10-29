@@ -79,6 +79,7 @@ class NotificationForwarderService : NotificationListenerService() {
         return prefs
     }
     private var dropNoticeJob: Job? = null
+    private var dropPersistJob: Job? = null
     private val dropNoticeLock = Any()
     private var dropNoticeInFlight = 0
     @Volatile
@@ -938,9 +939,8 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun noteDroppedNotification(count: Int = 1) {
-        val pendingDrops = synchronized(dropNoticeLock) {
+        synchronized(dropNoticeLock) {
             dropNoticeCount.addAndGet(count.coerceAtLeast(0))
-            val snapshot = dropNoticeCount.get() + dropNoticeInFlight
             if (dropNoticeJob?.isActive != true) {
                 dropNoticeJob = scope.launch {
                     try {
@@ -955,11 +955,34 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                 }
             }
-            snapshot
-        }
-        try {
-            prefsRef?.setPendingNotifDropsSync(pendingDrops)
-        } catch (_: Exception) {
+            if (dropPersistJob?.isActive != true) {
+                dropPersistJob = scope.launch {
+                    try {
+                        var lastWritten = -1
+                        var done = false
+                        while (!done) {
+                            val snapshot = synchronized(dropNoticeLock) { dropNoticeCount.get() + dropNoticeInFlight }
+                            if (snapshot != lastWritten) {
+                                try { prefsRef?.setPendingNotifDropsSync(snapshot) } catch (_: Exception) { }
+                                lastWritten = snapshot
+                            } else {
+                                synchronized(dropNoticeLock) {
+                                    val nowTotal = dropNoticeCount.get() + dropNoticeInFlight
+                                    if (nowTotal == lastWritten) {
+                                        dropPersistJob = null
+                                        done = true
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        synchronized(dropNoticeLock) { dropPersistJob = null }
+                        throw e
+                    } catch (_: Exception) {
+                        synchronized(dropNoticeLock) { dropPersistJob = null }
+                    }
+                }
+            }
         }
     }
 
