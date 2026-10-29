@@ -6273,7 +6273,8 @@ class MonitoringService : Service() {
         }
     }
 
-    private val prefsRmwLock = Any()
+    private val prefsRmwLock: Any
+        get() = preferencesManager.prefsRmwLock
 
     private fun bumpLocFailCount() {
         try {

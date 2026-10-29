@@ -683,7 +683,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
             val queueCleared = try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { false }
             try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
-            try { prefs.trail24 = "" } catch (_: Exception) { }
+            try { synchronized(prefs.prefsRmwLock) { prefs.trail24 = "" } } catch (_: Exception) { }
             try { prefs.homeLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
             try { prefs.homeLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
             try { prefs.homeRadiusM = 0 } catch (_: Exception) { }

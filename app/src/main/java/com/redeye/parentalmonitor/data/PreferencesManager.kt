@@ -37,6 +37,7 @@ class PreferencesManager(context: Context) {
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
 
+    val prefsRmwLock = Any()
     private val listenerLock = Any()
     private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()
 
