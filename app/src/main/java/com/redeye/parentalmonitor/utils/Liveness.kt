@@ -153,7 +153,7 @@ object Liveness {
             val nowWall = System.currentTimeMillis()
             val prevElapsed = try { manager.lastAliveElapsed } catch (_: Exception) { 0L }
             val prevWall = try { manager.lastAliveAt } catch (_: Exception) { 0L }
-            if (prevElapsed > 0L && nowElapsed > prevElapsed) {
+            if (prevElapsed > 0L && nowElapsed > prevElapsed && BootClock.sameBoot(prevWall, prevElapsed, nowWall, nowElapsed)) {
                 val downMs = nowElapsed - prevElapsed
                 if (downMs >= KILL_MIN_MS) {
                     noteKillDetected()
