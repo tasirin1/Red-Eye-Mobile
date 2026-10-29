@@ -808,6 +808,28 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_LIVENESS_REPORT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LIVENESS_REPORT_AT, value).apply()
 
+    fun incrementLivenessKills(): Int {
+        val unreported = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) + 1
+        try {
+            sharedPreferences.edit()
+                .putInt(KEY_LIVENESS_KILLS, prefInt(KEY_LIVENESS_KILLS, 0) + 1)
+                .putInt(KEY_LIVENESS_KILLS_UNREPORTED, unreported)
+                .apply()
+        } catch (_: Exception) {
+        }
+        return unreported
+    }
+
+    fun markLivenessReported(reportAt: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_LIVENESS_REPORT_AT, reportAt)
+                .putInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var heartbeatHours: Int
         get() = prefInt(KEY_HEARTBEAT_HOURS, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_HEARTBEAT_HOURS, value).apply()

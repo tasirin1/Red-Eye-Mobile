@@ -157,10 +157,7 @@ object Liveness {
                 val downMs = nowElapsed - prevElapsed
                 if (downMs >= KILL_MIN_MS) {
                     noteKillDetected()
-                    val kills = try { manager.livenessKills } catch (_: Exception) { 0 } + 1
-                    val unreported = try { manager.livenessKillsUnreported } catch (_: Exception) { 0 } + 1
-                    try { manager.livenessKills = kills } catch (_: Exception) { }
-                    try { manager.livenessKillsUnreported = unreported } catch (_: Exception) { }
+                    val unreported = try { manager.incrementLivenessKills() } catch (_: Exception) { 0 }
                     val lastReport = try { manager.livenessReportAt } catch (_: Exception) { 0L }
                     val significant = downMs >= STALE_GAP_MS || unreported >= KILLS_PER_REPORT
                     if (significant && reportDue(lastReport, nowWall)) {
@@ -173,8 +170,7 @@ object Liveness {
                                     .addMessage(resurrectionText(reportPrevWall, reportDownMs, reportUnreported))
                                 try { MessageScheduler.scheduleMessageSend(context) } catch (_: Exception) { }
                                 if (durable) {
-                                    try { manager.livenessReportAt = nowWall } catch (_: Exception) { }
-                                    try { manager.livenessKillsUnreported = 0 } catch (_: Exception) { }
+                                    try { manager.markLivenessReported(nowWall) } catch (_: Exception) { }
                                 }
                             } catch (e: Exception) {
                                 android.util.Log.e("Liveness", "Failed to queue resurrection report", e)
