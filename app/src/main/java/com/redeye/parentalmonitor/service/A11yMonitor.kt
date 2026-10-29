@@ -231,10 +231,17 @@ object A11yMonitor {
         keywordAlertCount++
         saveKeywordState(manager)
         val label = labelFor(context, pkg)
+        val snippet = try {
+            texts.firstNotNullOfOrNull { AppWatch.contextSnippet(hit, it) }
+        } catch (_: Exception) {
+            null
+        }
         sendAlert(
             context,
             "\uD83D\uDD0E <b>Kata pantau di aplikasi</b>\nApp: " + Html.escape(label) +
-                "\nKata: " + Html.escape(hit) + "\nWaktu: " + TimeFmt.short(nowWall) +
+                "\nKata: " + Html.escape(hit) +
+                (if (snippet != null) "\nKonteks: " + Html.escape(snippet) else "") +
+                "\nWaktu: " + TimeFmt.short(nowWall) +
                 "\nMatikan: /pantauapp off"
         )
     }

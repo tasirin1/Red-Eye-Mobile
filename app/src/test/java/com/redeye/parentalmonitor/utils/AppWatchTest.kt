@@ -52,6 +52,19 @@ class AppWatchTest {
     }
 
     @Test
+    fun potonganKonteksDiSekitarKataCocok() {
+        assertEquals("dia berjudi semalam", AppWatch.contextSnippet("judi", "dia berjudi semalam"))
+        assertEquals("Kemarin dia BERJUDI di warung", AppWatch.contextSnippet("judi", "Kemarin dia BERJUDI di warung"))
+        assertEquals("judinya ketahuan", AppWatch.contextSnippet("judi", "judinya ketahuan"))
+        assertEquals("baris satu berjudi baris tiga", AppWatch.contextSnippet("judi", "baris satu\nberjudi\nbaris tiga"))
+        assertNull(AppWatch.contextSnippet("mati", "belajar matematika di sekolah"))
+        assertNull(AppWatch.contextSnippet("judi", "main judol yuk"))
+        val panjang = AppWatch.contextSnippet("judi", "x".repeat(100) + " berjudi " + "y".repeat(100))
+        assertEquals(89, panjang?.length)
+        assertTrue(panjang!!.startsWith("\u2026") && panjang.endsWith("\u2026") && panjang.contains("berjudi"))
+    }
+
+    @Test
     fun paketSensitifDilewati() {
         assertTrue(AppWatch.isSensitivePackage("com.bca"))
         assertTrue(AppWatch.isSensitivePackage("com.gojek.app"))

@@ -30,6 +30,8 @@ object AppWatch {
 
     private val WORD_SPLIT = Regex("[^\\p{L}\\p{N}]+")
 
+    private val WORD_RUN = Regex("[\\p{L}\\p{N}]+")
+
     private val MATCH_PREFIXES = listOf("memper", "ber", "ter", "per", "me", "di", "pe", "ke")
 
     private val MATCH_SUFFIXES = setOf("nya", "an", "i", "s", "ing", "ed")
@@ -68,6 +70,36 @@ object AppWatch {
                 words.any { wordMatches(it, keyword) }
             }
         }
+    }
+
+    fun contextSnippet(keyword: String, text: String, radius: Int = 40): String? {
+        if (keyword.isEmpty() || text.isEmpty()) return null
+        val key = keyword.lowercase(Locale.ROOT)
+        val start: Int
+        val end: Int
+        if (key.any { !it.isLetterOrDigit() }) {
+            val idx = text.lowercase(Locale.ROOT).indexOf(key)
+            if (idx < 0) return null
+            start = idx
+            end = idx + key.length
+        } else {
+            var range: IntRange? = null
+            for (match in WORD_RUN.findAll(text)) {
+                if (wordMatches(match.value.lowercase(Locale.ROOT), key)) {
+                    range = match.range
+                    break
+                }
+            }
+            val found = range ?: return null
+            start = found.first
+            end = found.last + 1
+        }
+        val from = maxOf(0, start - radius)
+        val to = minOf(text.length, end + radius)
+        var snippet = text.substring(from, to).replace(Regex("\\s+"), " ").trim()
+        if (from > 0) snippet = "\u2026" + snippet
+        if (to < text.length) snippet += "\u2026"
+        return snippet
     }
 
     fun isSensitivePackage(packageName: String): Boolean {
