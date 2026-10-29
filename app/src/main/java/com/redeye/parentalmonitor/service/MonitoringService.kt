@@ -6643,15 +6643,21 @@ class MonitoringService : Service() {
         val a11yRows = data.a11yRows
         val rows = data.rows
         if (rows != null && rows.isNotEmpty()) {
-            todayMs = rows.sumOf { it.second }
-            val top = rows.firstOrNull()
-            if (top != null) {
-                topLabel = top.first
-                topMs = top.second
-                val rowsY = try { usageRowsBetween(now - 48 * 3_600_000L, now - 24 * 3_600_000L) } catch (_: Exception) { null }
+            val dayStart = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)
+            val dayRows = try { usageRowsBetween(dayStart, now) } catch (_: Exception) { null }
+            if (dayRows != null) {
+                todayMs = dayRows.sumOf { it.second }
+                val top = dayRows.firstOrNull()
+                if (top != null) {
+                    topLabel = top.first
+                    topMs = top.second
+                }
+                val rowsY = try { usageRowsBetween(dayStart - 24 * 3_600_000L, dayStart) } catch (_: Exception) { null }
                 if (rowsY != null) {
                     yesterdayMs = rowsY.sumOf { it.second }
-                    topYesterdayMs = rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
+                    if (topLabel.isNotEmpty()) {
+                        topYesterdayMs = rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
+                    }
                 }
             }
         } else if (a11yRows.isNotEmpty()) {
