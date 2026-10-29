@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Removed
+- Kode mati `screenTimeSummary(hours)` dihapus (issue #203, sisa #179): sesudah digest beralih ke `screenTimeSummaryFrom(data)`, fungsi lama itu tidak punya satu pun pemanggil di seluruh repo (terverifikasi `grep` termasuk test) tetapi badannya tetap hidup dan bisa menyesatkan pemeliharaan — perubahan format ringkasan layar bisa keliru diterapkan ke fungsi yang tak pernah jalan. Namanya dicatat ke `tools/bekas-hapusan.txt` sesuai konvensi repo agar pemanggilan ulang tertangkap gerbang sebagai regresi hapusan.
+
 ## [1.6.517] - 2026-10-29
 
 ### Fixed

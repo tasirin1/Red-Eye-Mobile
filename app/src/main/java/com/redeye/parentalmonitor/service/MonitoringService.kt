@@ -5930,20 +5930,6 @@ class MonitoringService : Service() {
         return try { A11yMonitor.todayUsage(this) } catch (_: Exception) { emptyList() }
     }
 
-    private fun screenTimeSummary(hours: Int): String? {
-        val rows = usageRows(hours)
-        if (rows == null || rows.isEmpty()) {
-            val a11y = a11yUsageRows()
-            if (a11y.isEmpty()) return null
-            val total = a11y.sumOf { it.millis }
-            val top = a11y.first()
-            return "Layar hari ini: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.label) + " " + ReportFormat.durationText(top.millis)
-        }
-        val total = rows.sumOf { it.second }
-        val top = rows.first()
-        return "Layar $hours jam: " + ReportFormat.durationText(total) + " · teratas " + Html.escape(top.first) + " " + ReportFormat.durationText(top.second)
-    }
-
     @Suppress("DEPRECATION")
     private fun lastCachedLocation(): android.location.Location? {
         if (!hasLocationPermission()) return null
