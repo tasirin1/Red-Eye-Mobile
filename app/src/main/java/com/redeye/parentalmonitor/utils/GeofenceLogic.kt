@@ -18,9 +18,10 @@ object GeofenceLogic {
 
     fun transition(state: Int, inside: Boolean, accuracyM: Float, radiusM: Int): Transition {
         val now = if (inside) 1 else 2
+        val accurate = accuracyM < 0f || accuracyM <= radiusM.toFloat()
         return when {
-            state !in 1..2 -> Transition(now, false)
-            state != now && (accuracyM < 0f || accuracyM <= radiusM.toFloat()) -> Transition(now, true)
+            state !in 1..2 -> if (accurate) Transition(now, false) else Transition(null, false)
+            state != now && accurate -> Transition(now, true)
             else -> Transition(null, false)
         }
     }

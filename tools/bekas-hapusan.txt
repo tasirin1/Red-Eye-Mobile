@@ -68,3 +68,4 @@ fgsType
 screenTimeSummary
 allowed
 heldPhotoFileAlive
+transitionAdoptsStateWithoutAccuracyGate

@@ -7,10 +7,12 @@ import org.junit.Test
 
 class GeofenceLogicTest {
     @Test
-    fun transitionAdoptsStateWithoutAccuracyGate() {
-        assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(0, true, 10_000f, 200))
+    fun transitionAdoptionRequiresAccuracyWithinRadius() {
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(0, true, 10_000f, 200))
         assertEquals(GeofenceLogic.Transition(2, false), GeofenceLogic.transition(3, false, -1f, 200))
-        assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(-1, true, 51f, 50))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(-1, true, 51f, 50))
+        assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(0, true, 200f, 200))
+        assertEquals(GeofenceLogic.Transition(2, false), GeofenceLogic.transition(0, false, 0f, 200))
     }
 
     @Test
