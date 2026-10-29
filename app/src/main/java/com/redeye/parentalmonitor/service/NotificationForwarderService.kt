@@ -148,6 +148,28 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         }
 
+        private const val DROP_SUMMARY_APP = "(gugur)"
+        private const val DROP_SUMMARY_WINDOW_MS = 60_000L
+        private var dropSummaryCount = 0
+        private var dropSummaryAt = 0L
+
+        fun recordDrop() {
+            synchronized(historyLock) {
+                val now = System.currentTimeMillis()
+                val last = history.lastOrNull()
+                if (last != null && last.app == DROP_SUMMARY_APP && now - dropSummaryAt < DROP_SUMMARY_WINDOW_MS) {
+                    dropSummaryCount += 1
+                    history.removeLast()
+                    history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur (antrean penuh)", now))
+                } else {
+                    dropSummaryCount = 1
+                    history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "1 notifikasi gugur (antrean penuh)", now))
+                    while (history.size > MAX_HISTORY) history.removeFirst()
+                }
+                dropSummaryAt = now
+            }
+        }
+
         fun history(): List<NotifRecord> {
             synchronized(historyLock) {
                 return history.toList()
@@ -300,7 +322,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (pendingOverflow.incrementAndGet() > MAX_OVERFLOW_QUEUE) {
                 pendingOverflow.decrementAndGet()
                 try { noteDroppedNotification() } catch (_: Exception) { }
-                try { record(pkg, "", "") } catch (_: Exception) { }
+                try { recordDrop() } catch (_: Exception) { }
                 return
             }
             scope.launch {
