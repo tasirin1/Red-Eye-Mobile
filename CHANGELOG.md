@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pelaporan drop di worker kirim kini failure-atomic sehingga angka pesan terbuang tidak hilang senyap (issue #305): `reportDrops` di `SendMessageWorker` sebelumnya mengambil penghitung drop persisten (kedaluwarsa/overflow/prioritas) lewat `take*Drops()` — yang langsung menolkan penghitung dan memersist nol itu — baru kemudian memanggil `sendDropNotice`, dan hasil antre cadangan di dalam `sendDropNotice` maupun di kedua situs pemberitahuan jalur auth/rate di `handleAuthOrRate` diabaikan; proses yang mati di antara pengambilan dan pengiriman, atau kirim langsung gagal sekaligus antre cadangan gagal, membuat angka drop hilang permanen dan run berikutnya melaporkan mulai dari 0. Kini mengikuti pola `flushMsgDropNotice` di `MonitoringService`: `sendDropNotice` melaporkan keberhasilan (terkirim langsung atau sungguh terantre), penghitung yang sudah diambil dikembalikan ke `MessageQueue` lewat API tambah-balik persisten baru (`restoreExpiredDrops`/`restoreOverflowDrops`/`restorePriorityDrops`, satu per jenis, mengikuti pola penghitung yang ada) bila kedua jalur gagal, dan kedua situs `handleAuthOrRate` mengembalikan jumlah drop-nya ke penghitung overflow antrean bila antre pemberitahuannya gagal — drop tetap terhitung pada laporan run berikutnya. Urutan bahagia (notice terkirim/terantre) tidak berubah dan tidak ada pelaporan ganda pada jalur sukses.
+
 
 ## [1.6.541] - 2026-10-30
 

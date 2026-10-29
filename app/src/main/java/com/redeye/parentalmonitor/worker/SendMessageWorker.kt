@@ -293,10 +293,21 @@ class SendMessageWorker(
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && sameCreds) {
-                try {
+                val queued = try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
-                    MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
+                    false
+                }
+                if (queued) {
+                    try {
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    try {
+                        messageQueue.restoreOverflowDrops(authDropped.toLong())
+                    } catch (_: Exception) {
+                    }
                 }
             }
             return Result.success()
@@ -309,10 +320,21 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             if (authDropped > 0 && !queueCleared && sameCreds) {
-                try {
+                val queued = try {
                     messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
-                    MessageScheduler.scheduleMessageSend(applicationContext)
                 } catch (_: Exception) {
+                    false
+                }
+                if (queued) {
+                    try {
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
+                    }
+                } else {
+                    try {
+                        messageQueue.restoreOverflowDrops(authDropped.toLong())
+                    } catch (_: Exception) {
+                    }
                 }
             }
             return Result.success()
@@ -332,18 +354,24 @@ class SendMessageWorker(
         val dropParts = mutableListOf<String>()
         var dropTotal = 0
         var dropSample = ""
+        var expiredTaken = 0L
+        var overflowTaken = 0L
+        var prioTaken = 0L
         val sameCreds = credsSame(runToken, runChatId)
         if (!queueCleared && sameCreds) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
                 if (expired > 0L) {
+                    expiredTaken = expired
                     dropTotal += expired.toInt()
                     dropParts.add("$expired kedaluwarsa (lebih dari 7 hari)")
                 }
                 val overflow = messageQueue.takeOverflowDrops()
                 if (overflow > 0L) {
+                    overflowTaken = overflow
                     dropTotal += overflow.toInt()
                     val prio = try { messageQueue.takePriorityDrops() } catch (_: Exception) { 0L }
+                    prioTaken = prio
                     dropParts.add("$overflow paling lama di antrean (antrean penuh saat offline)" + if (prio > 0L) ", termasuk $prio prioritas" else "")
                 }
             } catch (_: Exception) {
@@ -383,9 +411,24 @@ class SendMessageWorker(
             }
         }
         if (!queueCleared && dropTotal > 0 && sameCreds) {
-            try {
+            val reported = try {
                 sendDropNotice(dropTotal, runToken, runChatId, dropSample, dropParts.joinToString("; "))
             } catch (_: Exception) {
+                false
+            }
+            if (!reported) {
+                try {
+                    messageQueue.restoreExpiredDrops(expiredTaken)
+                } catch (_: Exception) {
+                }
+                try {
+                    messageQueue.restoreOverflowDrops(overflowTaken)
+                } catch (_: Exception) {
+                }
+                try {
+                    messageQueue.restorePriorityDrops(prioTaken)
+                } catch (_: Exception) {
+                }
             }
         }
         return transientMaxRetry
@@ -629,7 +672,7 @@ class SendMessageWorker(
         return SendOutcome.Sent
     }
 
-    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = "") {
+    private suspend fun sendDropNotice(count: Int, botToken: String, chatId: String, sample: String = "", detail: String = ""): Boolean {
         val clean = try {
             Html.unescape(sample).trim().take(120)
         } catch (_: Exception) {
@@ -647,13 +690,20 @@ class SendMessageWorker(
                 url,
                 TelegramMessage(chatId = chatId, text = text, parseMode = null)
             )
-            if (response.isSuccessful && response.body()?.ok == true) return
+            if (response.isSuccessful && response.body()?.ok == true) return true
         } catch (_: Exception) {
         }
-        try {
-            messageQueue.addMessage(text, true)
-            MessageScheduler.scheduleMessageSend(applicationContext)
+        return try {
+            val queued = messageQueue.addMessage(text, true)
+            if (queued) {
+                try {
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
+            }
+            queued
         } catch (_: Exception) {
+            false
         }
     }
 

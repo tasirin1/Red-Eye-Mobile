@@ -831,6 +831,27 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    fun restoreOverflowDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteOverflowLocked(by)
+        }
+    }
+
+    fun restorePriorityDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteDropLocked(priorityDrops, by, true)
+        }
+    }
+
+    fun restoreExpiredDrops(by: Long) {
+        if (by <= 0L) return
+        synchronized(lock) {
+            noteExpiredLocked(by)
+        }
+    }
+
     fun getQueueSize(): Int {
         synchronized(lock) {
             ensureRestored()
