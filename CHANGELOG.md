@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Restore antrean tidak lagi menghitung ganda penghitung drop bila antrean tersimpan memuat pesan kedaluwarsa (issue #266, sisa #254): `readLocked()` di dalam `tryRestorePersistent` sebelumnya mencatat kedaluwarsa dengan persist aktif sebelum riwayat disk dimuat, sehingga total disk lama tertimpa penghitung memori masa volatile lalu ditambahkan kembali oleh `loadDropCountsLocked(add = true)`; pencatatan drop selama fase baca restore kini hanya menandai kotor tanpa mempersist — persist tunggal sesudah pemuatan riwayat yang menulis total gabungan yang benar — sedangkan perilaku `readLocked()` di jalur normal tidak berubah.
 - Pembatalan coroutine dari cek berkala kini berhenti seketika di loop pemantau (issue #265, sisa #261): `checkCurfew()` dan `checkGeofenceFallback()` melempar ulang `CancellationException` dari `fetchLocation()` sejak #261, tetapi pembungkus selimut `try { … } catch (_: Exception) { }` per-cek di `startPeriodicLoops()` menelannya karena CE adalah subclass `Exception`, sehingga sisa siklus tetap berjalan sampai titik suspensi tak terbungkus berikutnya; kedua cek itu kini dipanggil lewat pembungkus yang melempar ulang CE sebelum catch umum, sedangkan penelanan exception biasa untuk kedua cek itu tidak berubah.
 
 

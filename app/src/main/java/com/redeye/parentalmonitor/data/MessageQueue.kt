@@ -25,6 +25,7 @@ class MessageQueue private constructor(context: Context) {
     private var persistedPriorityDrops = 0L
     @Volatile
     private var restoreFailLogged = false
+    private var restoringDrops = false
     private var lastPersistAt = 0L
     @Volatile
     private var persistDirty = false
@@ -116,7 +117,12 @@ class MessageQueue private constructor(context: Context) {
                         noteExpiredLocked(expired.toLong(), persist = false)
                         android.util.Log.w("MessageQueue", "Dropped $expired expired restore message(s)")
                     }
-                    val queue = readLocked().toMutableList()
+                    restoringDrops = true
+                    val queue = try {
+                        readLocked()
+                    } finally {
+                        restoringDrops = false
+                    }.toMutableList()
                     if (volatileOnly) throw IllegalStateException("queue read failed during restore")
                     queue.addAll(freshPending)
                     while (queue.size > MAX_QUEUE_SIZE) {
@@ -311,7 +317,7 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
         }
         dropsDirty = true
-        if (persist) persistDropCountsLocked()
+        if (persist && !restoringDrops) persistDropCountsLocked()
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {
