@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.532] - 2026-10-29
+
 ### Fixed
 - Logika titik awal hari untuk pemecah sesi tengah malam A11y kini terkunci uji JVM (issue #270): `dayStartWallMillis` sebelumnya adalah metode `private` di dalam `A11yMonitor` tanpa satu pun uji, padahal hanya memakai `java.util.Calendar`; fungsi itu kini dipindahkan apa adanya ke `A11yUsageMath` (pola ekstraksi #214/#242, tanpa perubahan perilaku — blok rollover memanggil fungsi yang sama) dan `A11yUsageMathTest` menambah uji kasus tepi berzona UTC: siang biasa, akhir hari, tepat tengah malam, satu milidetik sebelum/sesudah tengah malam, epoch nol, dan nilai negatif.
 - Kegagalan baca sesaat pada cek izin liveness tidak lagi membatalkan rantai alarm secara permanen (issue #269): `allowed()` sebelumnya menelan semua exception dari getter prefs menjadi `false` yang tak terbedakan dari "monitoring memang tidak diizinkan", dan `handleWakeUp()` menanggapinya dengan membatalkan alarm liveness tanpa jadwal pengganti — justru saat service mati dan alarm itu satu-satunya penghidup berkala; cek kini tiga keadaan (`allowedCheck`): hasil "tidak diizinkan" yang sah tetap membatalkan alarm seperti sebelumnya, sedangkan kegagalan baca menjadwalkan ulang alarm dan kembali (sama seperti cabang gagal refresh/getInstance), dengan `Log.e` dari #259 tetap tercatat di titik gagalnya.
