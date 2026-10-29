@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+### Fixed
+- Pembangkit ringkasan harian tidak lagi menelan pembatalan di catch selimut badannya sendiri (issue #279, sisa #277 lapis fungsi-bantuan): `sendDailyDigest` membungkus seluruh badannya dengan `catch (_: Exception)` tanpa klausa pembatalan, sehingga `CancellationException` dari satu-satunya titik suspensi pengirimannya (`sendToTelegram`, yang melempar ulang pembatalan di lapisannya sendiri) mati di catch badan itu — klausa lempar-ulang yang dipasang #277 di pemanggil berkala `maybeSendNightDigest` praktis tidak pernah menerima pembatalan dari rantai suspensi utamanya, dan pada jalur manual (`/digest`) catch yang sama bahkan mencoba mengirim pesan "Ringkasan harian gagal dibuat." pada job yang sudah batal; catch terluar `sendDailyDigest` kini melempar ulang `CancellationException` sebelum catch umumnya — pola yang sama dengan #272/#277 — sedangkan perilaku kegagalan biasa (termasuk pesan gagal untuk jalur manual dan nilai kembalian `false`) tidak berubah.
 
 ## [1.6.534] - 2026-10-29
 

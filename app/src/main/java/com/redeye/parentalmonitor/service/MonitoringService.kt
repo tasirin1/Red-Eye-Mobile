@@ -6811,6 +6811,8 @@ class MonitoringService : Service() {
                 try { preferencesManager.digestAt = now } catch (_: Exception) { }
             }
             return sent
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             if (manual) {
                 try { sendToTelegram("\u26A0\uFE0F Ringkasan harian gagal dibuat.") } catch (_: Exception) { }
