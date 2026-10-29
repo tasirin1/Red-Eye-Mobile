@@ -513,17 +513,20 @@ class SendMessageWorker(
                         delay(500)
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         if (idx + 1 < parts.size) {
-                            try {
+                            val queued = try {
                                 messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), retryCount = retryCount + 1)
                             } catch (_: Exception) {
+                                false
                             }
-                            try {
-                                if (origId != null) messageQueue.removeMessages(listOf(origId))
-                            } catch (_: Exception) {
-                            }
-                            try {
-                                MessageScheduler.scheduleMessageSend(applicationContext)
-                            } catch (_: Exception) {
+                            if (queued) {
+                                try {
+                                    if (origId != null) messageQueue.removeMessages(listOf(origId))
+                                } catch (_: Exception) {
+                                }
+                                try {
+                                    MessageScheduler.scheduleMessageSend(applicationContext)
+                                } catch (_: Exception) {
+                                }
                             }
                         } else {
                             try {
