@@ -163,6 +163,7 @@ class SmsRepository(private val context: Context) {
 
     private fun querySms(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false, light: Boolean = false): List<SmsData> {
         val result = mutableListOf<SmsData>()
+        var iterationError: Exception? = null
         try {
             val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, Telephony.Sms.CONTENT_URI, if (light) lightProjection else projection, selection, args, sortOrder, limit, strict)
             cursor?.use { cursor ->
@@ -171,7 +172,16 @@ class SmsRepository(private val context: Context) {
                 val bodyIndex = cursor.getColumnIndex(Telephony.Sms.BODY)
                 val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val typeIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
-                while (cursor.moveToNext() && result.size < limit) {
+                while (true) {
+                    val advanced = try {
+                        cursor.moveToNext()
+                    } catch (e: Exception) {
+                        android.util.Log.e("SmsRepository", "Cursor iteration failed mid-scan", e)
+                        iterationError = e
+                        break
+                    }
+                    if (!advanced) break
+                    if (result.size >= limit) break
                     try {
                         result.add(readSms(cursor, idIndex, addressIndex, bodyIndex, dateIndex, typeIndex))
                     } catch (e: Exception) {
@@ -186,6 +196,7 @@ class SmsRepository(private val context: Context) {
             android.util.Log.e("SmsRepository", "Error querying SMS", e)
             if (strict) throw e
         }
+        iterationError?.let { throw it }
         return result
     }
 

@@ -95,6 +95,7 @@ class CallLogRepository(private val context: Context) {
 
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<CallData> {
         val result = mutableListOf<CallData>()
+        var iterationError: Exception? = null
         try {
             val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(context.contentResolver, CallLog.Calls.CONTENT_URI, projection, selection, args, sortOrder, limit, strict)
             cursor?.use { cursor ->
@@ -104,7 +105,16 @@ class CallLogRepository(private val context: Context) {
                 val dateIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
                 val typeIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
-                while (cursor.moveToNext() && result.size < limit) {
+                while (true) {
+                    val advanced = try {
+                        cursor.moveToNext()
+                    } catch (e: Exception) {
+                        android.util.Log.e("CallLogRepository", "Cursor iteration failed mid-scan", e)
+                        iterationError = e
+                        break
+                    }
+                    if (!advanced) break
+                    if (result.size >= limit) break
                     try {
                         val number = cursor.getString(numberIndex) ?: "Unknown"
                         result.add(
@@ -129,6 +139,7 @@ class CallLogRepository(private val context: Context) {
             android.util.Log.e("CallLogRepository", "Error querying calls", e)
             if (strict) throw e
         }
+        iterationError?.let { throw it }
         return result
     }
 

