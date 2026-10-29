@@ -1874,9 +1874,14 @@ class MonitoringService : Service() {
                         dispatchTracked(update.updateId, "Command dispatch error") {
                             var adoptionDoneSec = 0L
                             var followFailedSilently = false
+                            var followTimedOut = false
                             if (followsLogin && !control) {
-                                loginJobSnapshot?.join()
-                                if (loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
+                                kotlinx.coroutines.withTimeoutOrNull(ADOPTION_WAIT_DEADLINE_MS) { loginJobSnapshot?.join() }
+                                if (loginJobSnapshot?.isCompleted != true) {
+                                    followTimedOut = true
+                                    android.util.Log.w("MonitoringService", "Perintah pengikut ditolak: join login melewati tenggat tunggu adopsi")
+                                    try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
+                                } else if (loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
                                     adoptionDoneSec = serverNowSec()
                                 } else if (!ownerOk && loginJobSnapshot?.isCompleted == true && !isOwner(senderId) &&
                                     (effective in MUTATING_COMMANDS || effective in SENSITIVE_COMMANDS)) {
@@ -1918,7 +1923,7 @@ class MonitoringService : Service() {
                                         try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
                                     }
                                 }
-                                if (!adoptionRejected && !followFailedSilently) lock.withLock {
+                                if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {
                                     val ownerNow = isOwner(senderId)
                                     val privateNow = ownerNow && isPrivate
                                     val restoreHandled = privateNow && message != null && handleRestoreIncoming(message, msgChatId)
