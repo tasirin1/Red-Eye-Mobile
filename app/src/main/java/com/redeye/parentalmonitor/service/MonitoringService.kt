@@ -3777,8 +3777,14 @@ class MonitoringService : Service() {
         val resolved = LinkedHashMap<String, String>()
         val failed = ArrayList<String>()
         val blocked = ArrayList<String>()
+        var sharedPairs: List<Pair<String, String>>? = null
         for (token in tokens) {
-            val pkg = resolveAppPackage(token)
+            val pkg = if (token.contains(".")) {
+                resolveAppPackage(token)
+            } else {
+                if (sharedPairs == null) sharedPairs = launchableAppPairs()
+                resolveAppPackage(token, sharedPairs)
+            }
             if (pkg == null) {
                 failed.add(token)
             } else if (add && AppWatch.isSensitivePackage(pkg)) {
@@ -3802,7 +3808,7 @@ class MonitoringService : Service() {
         }.trimEnd())
     }
 
-    private fun resolveAppPackage(input: String): String? {
+    private fun resolveAppPackage(input: String, precomputedPairs: List<Pair<String, String>>? = null): String? {
         val value = input.trim()
         if (value.isEmpty()) return null
         if (value.contains(".")) {
@@ -3814,7 +3820,7 @@ class MonitoringService : Service() {
             }
         }
         val lower = value.lowercase(java.util.Locale.ROOT)
-        val apps = launchableAppPairs()
+        val apps = precomputedPairs ?: launchableAppPairs()
         return apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT) == lower }?.second
             ?: apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT).contains(lower) }?.second
     }
