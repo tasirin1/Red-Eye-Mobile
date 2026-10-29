@@ -542,7 +542,7 @@ class MessageQueue private constructor(context: Context) {
                 android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${e.message}")
             }
             try {
-                persistLocked(recovered, force = true)
+                persistLocked(recovered, force = true, syncOnMain = true, replaceBackup = true)
             } catch (_: Exception) {
             }
             recovered
@@ -600,7 +600,7 @@ class MessageQueue private constructor(context: Context) {
         return loaded
     }
 
-    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false, syncOnMain: Boolean = false): Boolean {
+    private fun persistLocked(queue: MutableList<QueuedMessage>, force: Boolean = false, syncOnMain: Boolean = false, replaceBackup: Boolean = false): Boolean {
         cached = queue
         val prefs = sharedPreferences ?: return false
         val now = android.os.SystemClock.elapsedRealtime()
@@ -620,7 +620,7 @@ class MessageQueue private constructor(context: Context) {
             schedulePersistLocked()
             return true
         }
-        val saved = writeSnapshot(prefs, ArrayList(queue), version)
+        val saved = writeSnapshot(prefs, ArrayList(queue), version, replaceBackup)
         if (saved) drainFailCount = 0
         return saved
     }
@@ -674,14 +674,18 @@ class MessageQueue private constructor(context: Context) {
         return sb.toString()
     }
 
-    private fun writeSnapshot(prefs: SharedPreferences, snapshot: List<QueuedMessage>, version: Long): Boolean {
+    private fun writeSnapshot(prefs: SharedPreferences, snapshot: List<QueuedMessage>, version: Long, replaceBackup: Boolean = false): Boolean {
         synchronized(persistMutex) {
             if (persistVersion != version) return true
             val json = snapshotJson(snapshot)
             val saved = try {
                 val editor = prefs.edit()
                 val old = try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
-                if (editor != null && old != null && old != json) editor.putString(KEY_QUEUE_BAK, old)
+                if (editor != null && replaceBackup) {
+                    editor.putString(KEY_QUEUE_BAK, json)
+                } else if (editor != null && old != null && old != json) {
+                    editor.putString(KEY_QUEUE_BAK, old)
+                }
                 editor?.putString(KEY_QUEUE, json)?.commit() == true
             } catch (_: Exception) {
                 false

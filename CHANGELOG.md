@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pemulihan antrean korup tidak lagi menimpa cadangan baik dengan blob korup itu sendiri (issue #243): penulisan hasil pemulihan kini mengganti isi utama dan `BAK` dengan JSON hasil pemulihan yang sama, sedangkan rotasi cadangan pada jalur tulis biasa tidak berubah.
+
 ## [1.6.527] - 2026-10-29
 
 ### Fixed
