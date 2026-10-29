@@ -105,7 +105,28 @@ def baca(path):
         with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
             return f.read()
     except OSError:
-        return ""
+        return None
+
+
+def baca_teks(path):
+    return baca(path) or ""
+
+
+JALUR_STRINGS_WAJIB = (
+    "app/src/main/res/values/strings.xml",
+    "app/src/main/res/values-in/strings.xml",
+)
+_isi_strings_wajib = None
+
+
+def isi_strings_wajib(gagal):
+    global _isi_strings_wajib
+    if _isi_strings_wajib is None:
+        _isi_strings_wajib = {path: baca(path) for path in JALUR_STRINGS_WAJIB}
+        for path, teks in _isi_strings_wajib.items():
+            if teks is None:
+                gagal.append("Berkas strings wajib tidak ada: " + path)
+    return _isi_strings_wajib
 
 
 def kupas_komentar_xml(isi):
@@ -136,7 +157,7 @@ def himpun_definisi():
 
     akar_res = os.path.join(MAIN, "res")
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
-        isi = kupas_komentar_xml(baca(path))
+        isi = kupas_komentar_xml(baca_teks(path))
         for jenis, nama in pola_def.findall(isi):
             tambah(jenis, nama)
         for jenis, nama in pola_array.findall(isi):
@@ -179,7 +200,7 @@ def himpun_definisi():
     pemindai = [p for p in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",))]
     pemindai.append("app/src/main/AndroidManifest.xml")
     for path in pemindai:
-        isi = baca(path)
+        isi = baca_teks(path)
         if not isi:
             continue
         isi = pola_android.sub("", isi)
@@ -223,7 +244,7 @@ def cek_acuan_yatim(gagal):
 
 
 def namespace_aplikasi():
-    tetap = baca("app/build.gradle")
+    tetap = baca_teks("app/build.gradle")
     cocok = re.search(r'namespace\s*=\s*"([^"]+)"', tetap)
     if cocok:
         return cocok.group(1)
@@ -289,7 +310,7 @@ def cek_duplikat_definisi(gagal):
         if "/values" not in path.replace(os.sep, "/"):
             continue
         hitung = {}
-        for jenis, nama in pola.findall(kupas_komentar_xml(baca(path))):
+        for jenis, nama in pola.findall(kupas_komentar_xml(baca_teks(path))):
             kunci = jenis + "/" + nama
             hitung[kunci] = hitung.get(kunci, 0) + 1
         ganda = sorted(k for k, n in hitung.items() if n > 1)
@@ -320,7 +341,7 @@ def disebut_kata(nama, lewat=()):
     for path in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",)):
         if path in lewat:
             continue
-        for i, baris in enumerate(baca(path).splitlines(), 1):
+        for i, baris in enumerate(baca_teks(path).splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
                 if len(temu) >= 6:
@@ -412,7 +433,7 @@ def cek_kurung_kode(gagal, berubah):
         penuh = os.path.join(AKAR, path)
         if not os.path.isfile(penuh):
             continue  # berkas dihapus: ditangani cek lain
-        isi = kupas_kode(baca(path))
+        isi = kupas_kode(baca_teks(path))
         for buka, tutup, nama in (("{", "}", "kurawal"), ("(", ")", "lengkung"), ("[", "]", "siku")):
             selisih = isi.count(buka) - isi.count(tutup)
             if selisih:
@@ -487,20 +508,22 @@ def cek_pengingat_changelog(peringatan, berubah):
 
 
 def cek_sinkron_terjemah(gagal):
-    if not os.path.isfile(os.path.join(AKAR, "app/src/main/res/values-in/strings.xml")):
+    jalur = JALUR_STRINGS_WAJIB
+    isi = isi_strings_wajib(gagal)
+    if any(teks is None for teks in isi.values()):
         return
-    def nama_string(path):
-        return set(re.findall(r'<string\s+name="([^"]+)"', kupas_komentar_xml(baca(path))))
 
-    inggris = nama_string("app/src/main/res/values/strings.xml")
-    indonesia = nama_string("app/src/main/res/values-in/strings.xml")
-    if inggris and indonesia:
-        kurang = sorted(inggris - indonesia)
-        lebih = sorted(indonesia - inggris)
-        if kurang:
-            gagal.append("values-in kurang string: " + ", ".join(kurang[:10]))
-        if lebih:
-            gagal.append("values-in berlebih string: " + ", ".join(lebih[:10]))
+    def nama_string(path):
+        return set(re.findall(r'<string\s+name="([^"]+)"', kupas_komentar_xml(isi[path])))
+
+    inggris = nama_string(jalur[0])
+    indonesia = nama_string(jalur[1])
+    kurang = sorted(inggris - indonesia)
+    lebih = sorted(indonesia - inggris)
+    if kurang:
+        gagal.append("values-in kurang string: " + ", ".join(kurang[:10]))
+    if lebih:
+        gagal.append("values-in berlebih string: " + ", ".join(lebih[:10]))
 
 
 def cek_aturan_repo(gagal, berubah):
@@ -573,7 +596,7 @@ def masih_didefinisikan(nama):
         r"operator|open|final|abstract|sealed|tailrec|infix)\s+)*"
         r"fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?%s\s*\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "main", "java")):
-        if pola.search(baca(path)):
+        if pola.search(baca_teks(path)):
             return True
     return False
 
@@ -582,7 +605,7 @@ def pemanggil(nama):
     pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
     temu = []
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        for i, baris in enumerate(baca(path).splitlines(), 1):
+        for i, baris in enumerate(baca_teks(path).splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
                 if len(temu) >= 6:
@@ -668,19 +691,21 @@ def argumen_format(isi):
 
 def cek_paritas_resource(gagal):
     """Argumen format string Indonesia wajib sama dengan Inggris (cegah crash)."""
-    if not os.path.isfile(os.path.join(AKAR, "app/src/main/res/values-in/strings.xml")):
+    jalur = JALUR_STRINGS_WAJIB
+    isi = isi_strings_wajib(gagal)
+    if any(teks is None for teks in isi.values()):
         return
     pola = re.compile(r'<string\s+name="([^"]+)"[^>]*>(.*?)</string>', re.S)
-    inggris = dict(pola.findall(kupas_komentar_xml(baca("app/src/main/res/values/strings.xml"))))
-    indonesia = dict(pola.findall(kupas_komentar_xml(baca("app/src/main/res/values-in/strings.xml"))))
-    for nama, isi in sorted(indonesia.items()):
-        if nama in inggris and argumen_format(isi) != argumen_format(inggris[nama]):
+    inggris = dict(pola.findall(kupas_komentar_xml(isi[jalur[0]])))
+    indonesia = dict(pola.findall(kupas_komentar_xml(isi[jalur[1]])))
+    for nama, teks in sorted(indonesia.items()):
+        if nama in inggris and argumen_format(teks) != argumen_format(inggris[nama]):
             gagal.append("Argumen format beda di values-in: " + nama)
 
 
 def cek_ikon_launcher(gagal):
     """Ikon adaptive (mipmap-anydpi-v26) wajib punya cadangan non-v26 bila minSdk < 26."""
-    m = re.search(r"minSdk\s+(\d+)", baca("app/build.gradle"))
+    m = re.search(r"minSdk\s+(\d+)", baca_teks("app/build.gradle"))
     if not m or int(m.group(1)) >= 26:
         return
     akar_res = os.path.join(AKAR, "app", "src", "main", "res")
@@ -709,7 +734,7 @@ def cek_ikon_launcher(gagal):
 def cek_import_mati(gagal):
     """Import Kotlin/Java yang namanya tak dipakai di kode (GAGAL)."""
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        bersih = kupas_kode(baca(path))
+        bersih = kupas_kode(baca_teks(path))
         tanpa = re.sub(r"^\s*import\s+.*$", "", bersih, flags=re.M)
         for m in re.finditer(r"^\s*import\s+([\w.*]+)(\s+as\s+(\w+))?\s*;?\s*$",
                              bersih, flags=re.M):
@@ -724,7 +749,7 @@ def cek_import_mati(gagal):
 def disebut_di_uji(nama):
     pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "test")):
-        if pola.search(baca(path)):
+        if pola.search(baca_teks(path)):
             return True
     return False
 
