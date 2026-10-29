@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+### Fixed
+- Pendaftaran menu perintah bot tidak lagi mencatat pembatalan sebagai kegagalan registrasi (issue #283, sisa #281 lapis fungsi-bantuan): `registerBotCommands` membungkus seluruh badannya dengan `catch (e: Exception)` tanpa klausa pembatalan, sehingga `CancellationException` dari kedua panggilan jaringan `setMyCommands` tertangkap catch itu lebih dulu — klausa lempar-ulang yang dipasang #281 di pemanggil `maybeRetryBotCommands` tidak pernah terjangkau dari jalur ini, dan pembatalan ikut memasang `commandsRegFailAt` serta log "Command menu registration error" sehingga cooldown coba-ulang 1 jam terpicu oleh pembatalan, bukan oleh kegagalan jaringan; catch terluar fungsi ini kini melempar ulang `CancellationException` sebelum catch umumnya — pola yang sama dengan #272/#277/#281 — sedangkan perilaku kegagalan biasa (termasuk pemasangan `commandsRegFailAt` dan log untuk kegagalan sungguhan) tidak berubah.
 
 ## [1.6.535] - 2026-10-29
 

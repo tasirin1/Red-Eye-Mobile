@@ -2287,6 +2287,8 @@ class MonitoringService : Service() {
                 commandsRegFailAt = System.currentTimeMillis()
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${publicResp.code()}")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             commandsRegFailAt = System.currentTimeMillis()
             android.util.Log.w("MonitoringService", "Command menu registration error: ${redactToken(e.message)}")
