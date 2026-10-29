@@ -113,15 +113,18 @@ class SmsRepository(private val context: Context) {
             )
             if (cursor == null) {
                 android.util.Log.w("SmsRepository", "SMS body hydration query returned no cursor")
-            }
-            cursor?.use { c ->
-                val idIdx = c.getColumnIndexOrThrow(Telephony.Sms._ID)
-                val bodyIdx = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
-                while (c.moveToNext()) {
-                    bodies[c.getLong(idIdx)] = c.getString(bodyIdx) ?: "(empty message)"
+            } else {
+                try {
+                    val idIdx = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                    val bodyIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                    while (cursor.moveToNext()) {
+                        bodies[cursor.getLong(idIdx)] = cursor.getString(bodyIdx) ?: "(empty message)"
+                    }
+                    hydrationComplete = true
+                } finally {
+                    try { cursor.close() } catch (_: Exception) { }
                 }
             }
-            if (cursor != null) hydrationComplete = true
         } catch (e: SecurityException) {
             throw e
         } catch (e: Exception) {
@@ -131,7 +134,7 @@ class SmsRepository(private val context: Context) {
             val body = bodies[item.id]
             when {
                 body != null -> item.copy(body = body)
-                hydrationComplete -> item.copy(body = "(pesan sudah terhapus)")
+                hydrationComplete -> item.copy(body = "(pesan tidak ditemukan)")
                 else -> item.copy(body = "(isi pesan gagal dimuat)")
             }
         }, result.truncated)
