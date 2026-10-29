@@ -3899,11 +3899,9 @@ class MonitoringService : Service() {
         val sub = arg.trim()
         if (sub.equals("off", ignoreCase = true)) {
             if (command == "/home") {
-                preferencesManager.homeRadiusM = 0
-                preferencesManager.homeState = 0
+                preferencesManager.clearHomeFence()
             } else {
-                preferencesManager.schoolRadiusM = 0
-                preferencesManager.schoolState = 0
+                preferencesManager.clearSchoolFence()
             }
             sendToTelegram("📍 Geofence $name dimatikan.")
         } else if (sub.isEmpty() || sub.equals("status", ignoreCase = true)) {
@@ -3922,15 +3920,9 @@ class MonitoringService : Service() {
                     sendToTelegram("Koordinat/radius tak valid (lat -90..90, lon -180..180, radius 50-5000).")
                 } else {
                     if (command == "/home") {
-                        preferencesManager.homeLatE6 = (lat * 1_000_000).toLong()
-                        preferencesManager.homeLonE6 = (lon * 1_000_000).toLong()
-                        preferencesManager.homeRadiusM = rad
-                        preferencesManager.homeState = 0
+                        preferencesManager.setHomeFence((lat * 1_000_000).toLong(), (lon * 1_000_000).toLong(), rad)
                     } else {
-                        preferencesManager.schoolLatE6 = (lat * 1_000_000).toLong()
-                        preferencesManager.schoolLonE6 = (lon * 1_000_000).toLong()
-                        preferencesManager.schoolRadiusM = rad
-                        preferencesManager.schoolState = 0
+                        preferencesManager.setSchoolFence((lat * 1_000_000).toLong(), (lon * 1_000_000).toLong(), rad)
                     }
                     sendToTelegram("📍 Geofence $name aktif: $lat,$lon ±${rad} m.")
                 }

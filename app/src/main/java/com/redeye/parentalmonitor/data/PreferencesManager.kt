@@ -1266,6 +1266,50 @@ class PreferencesManager(context: Context) {
         get() = prefInt(KEY_SCHOOL_STATE, 0)
         set(value) = sharedPreferences.edit().putInt(KEY_SCHOOL_STATE, value).apply()
 
+    fun setHomeFence(latE6: Long, lonE6: Long, radiusM: Int) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_HOME_LAT, latE6)
+                .putLong(KEY_HOME_LON, lonE6)
+                .putInt(KEY_HOME_RAD, radiusM)
+                .putInt(KEY_HOME_STATE, 0)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setSchoolFence(latE6: Long, lonE6: Long, radiusM: Int) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_SCHOOL_LAT, latE6)
+                .putLong(KEY_SCHOOL_LON, lonE6)
+                .putInt(KEY_SCHOOL_RAD, radiusM)
+                .putInt(KEY_SCHOOL_STATE, 0)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearHomeFence() {
+        try {
+            sharedPreferences.edit()
+                .putInt(KEY_HOME_RAD, 0)
+                .putInt(KEY_HOME_STATE, 0)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearSchoolFence() {
+        try {
+            sharedPreferences.edit()
+                .putInt(KEY_SCHOOL_RAD, 0)
+                .putInt(KEY_SCHOOL_STATE, 0)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var nightDigestDate: String
         get() = prefString(KEY_NIGHT_DIGEST_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_NIGHT_DIGEST_DATE, value).apply()
