@@ -6838,6 +6838,8 @@ class MonitoringService : Service() {
                 try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
                 sendDailyDigest(manual = false)
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -6935,6 +6937,8 @@ class MonitoringService : Service() {
             if (notes.isEmpty()) return
             try { preferencesManager.healthAlertAt = now } catch (_: Exception) { }
             sendToTelegram("🩺 Health: " + notes.joinToString("; ") + ". Cek /status & /perms.")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -7072,6 +7076,8 @@ class MonitoringService : Service() {
             }
             sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola.")
             try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
@@ -7464,6 +7470,8 @@ class MonitoringService : Service() {
         val healed = try {
             healSilentLink(stage + 1)
             true
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             false
         }
@@ -8770,6 +8778,8 @@ class MonitoringService : Service() {
             if (now >= last && now - last < 6 * 60 * 60_000L) return
             preferencesManager.a11yDisabledAlertAt = now
             sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
