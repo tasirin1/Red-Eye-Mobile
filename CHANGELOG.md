@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penghitung "gagal lokasi beruntun" kini direset juga pada keberhasilan perintah lokasi sehingga catatan kesehatan tidak bisa mengklaim kegagalan berturut-turut yang tidak pernah terjadi (issue #295): penghitung persisten `locFailCount` sebelumnya hanya dinolkan oleh keberhasilan jalur berkala (`patrolRound`, `checkCurfew`) dan sesudah dilaporkan, padahal cabang gagal ketiga handler perintah (`/hilang`, `/darurat`, `/location`) ikut menaikkannya — kegagalan perintah yang diselingi keberhasilan tetap menumpuk sampai catatan "lokasi gagal N x beruntun" dari pemeriksaan kesehatan berkala terkirim walau tidak pernah ada dua kegagalan berurutan. Cabang sukses ketiga handler kini memanggil `resetLocFailCount()` — simetris dengan patroli dan curfew — sedangkan teks catatan dan ambang lapor (≥5) tidak berubah.
+
 
 ## [1.6.538] - 2026-10-29
 

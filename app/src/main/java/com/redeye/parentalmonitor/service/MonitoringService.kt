@@ -2908,6 +2908,7 @@ class MonitoringService : Service() {
         }
         val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         if (loc != null) {
+            resetLocFailCount()
             val stale = isStaleFix(loc)
             if (!stale) {
                 try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
@@ -3935,6 +3936,7 @@ class MonitoringService : Service() {
         sendToTelegram("🚨 <b>Darurat</b>: ambil lokasi + foto…")
         val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
         if (loc != null) {
+            resetLocFailCount()
             val stale = isStaleFix(loc)
             if (!stale) {
                 try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
@@ -4248,6 +4250,7 @@ class MonitoringService : Service() {
                 bumpLocFailCount()
                 sendToTelegram("⚠️ Lokasi tak didapat: " + locationFailureHint())
             } else {
+                resetLocFailCount()
                 val stale = isStaleFix(location)
                 val prev = if (stale) null else lastSentLatLon()
                 val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
