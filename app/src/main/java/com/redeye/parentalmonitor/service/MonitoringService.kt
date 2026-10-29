@@ -25,6 +25,7 @@ import com.redeye.parentalmonitor.network.TelegramMessage
 import com.redeye.parentalmonitor.network.TelegramPollClient
 import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.AppWatch
+import com.redeye.parentalmonitor.utils.BootClock
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.CrashReporter
@@ -7227,7 +7228,8 @@ class MonitoringService : Service() {
         val unreported = try { preferencesManager.livenessKillsUnreported } catch (_: Exception) { 0 }
         val beat = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
         val level = batteryLevel()
-        val beatAge = if (lastAliveElapsed > 0L) SystemClock.elapsedRealtime() - lastAliveElapsed
+        val nowElapsed = SystemClock.elapsedRealtime()
+        val beatAge = if (lastAliveElapsed > 0L && BootClock.sameBoot(lastAlive, lastAliveElapsed, now, nowElapsed)) nowElapsed - lastAliveElapsed
         else if (lastAlive > 0L) now - lastAlive else -1L
         return buildString {
             appendLine("💚 <b>Alive</b>")

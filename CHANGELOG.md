@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Usia denyut pada laporan `/alive` tidak lagi menyesatkan sesudah reboot (issue #288, sisa kelas penanda monoton persisten #275): `aliveReportText()` menghitung usia denyut terakhir dengan pola elapsed-didahulukan — selama penanda `lastAliveElapsed` terisi, cabang jam dinding `lastAliveAt` tidak pernah terjangkau dan tidak ada validasi boot — sehingga sesudah reboot selisih elapsed bisa negatif dan laporan menampilkan "Denyut terakhir: ?" padahal usia jam dinding yang benar tersedia, atau angkanya mengecil karena masa HP mati tidak terhitung; cabang elapsed kini hanya dipakai bila pasangan wall+elapsed tersimpan terbukti satu boot dengan pasangan kini lewat `BootClock.sameBoot` — pola yang sama dengan perbaikan status Setup pada #286 — selain itu usia dihitung dari jam dinding `lastAliveAt`. Tampilan pada boot yang sama tidak berubah.
+
 
 ## [1.6.536] - 2026-10-29
 
