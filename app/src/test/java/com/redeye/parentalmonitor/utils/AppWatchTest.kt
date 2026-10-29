@@ -26,6 +26,32 @@ class AppWatchTest {
     }
 
     @Test
+    fun batasKataMenolakPotonganKataUmum() {
+        assertNull(AppWatch.hit(listOf("mati"), "matikan"))
+        assertNull(AppWatch.hit(listOf("mati"), "mode otomatis aktif"))
+        assertNull(AppWatch.hit(listOf("mati"), "belajar matematika"))
+        assertNull(AppWatch.hit(listOf("judi"), "Judika tampil di TV"))
+        assertNull(AppWatch.hit(listOf("judi"), "main judol yuk"))
+        assertNull(AppWatch.hit(listOf("mati"), "suara yang mematikan"))
+        assertNull(AppWatch.hit(listOf("mati"), "hp dimatikan tadi"))
+    }
+
+    @Test
+    fun batasKataMenoleransiImbuhanDanPemanjangan() {
+        assertEquals("judi", AppWatch.hit(listOf("judi"), "dia berjudi semalam"))
+        assertEquals("judi", AppWatch.hit(listOf("judi"), "judinya ketahuan"))
+        assertEquals("judi", AppWatch.hit(listOf("judi"), "judiii seru katanya"))
+        assertEquals("judi", AppWatch.hit(listOf("judi"), "perjudian online marak"))
+        assertEquals("mati", AppWatch.hit(listOf("mati"), "kematian itu pasti"))
+        assertEquals("mati", AppWatch.hit(listOf("mati"), "dia bilang mau mati saja"))
+        assertEquals("judol", AppWatch.hit(listOf("judol"), "main judol yuk"))
+        assertEquals("judol", AppWatch.hit(listOf("judol"), "judolnya lagi viral"))
+        assertEquals("pinjol", AppWatch.hit(listOf("pinjol"), "pinjolnya sudah lunas"))
+        assertEquals("bully", AppWatch.hit(listOf("bully"), "dia dibully di sekolah"))
+        assertEquals("bully", AppWatch.hit(listOf("bully"), "bullying itu salah"))
+    }
+
+    @Test
     fun paketSensitifDilewati() {
         assertTrue(AppWatch.isSensitivePackage("com.bca"))
         assertTrue(AppWatch.isSensitivePackage("com.gojek.app"))
