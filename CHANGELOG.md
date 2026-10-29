@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- `CancellationSignal` permintaan lokasi API 30+ kini terhubung ke nasib Job coroutine penunggu (issue #239): pembatalan sinyal sebelumnya hanya digantungkan pada `invokeOnCompletion` deferred hasil lokasi, padahal pembatalan coroutine penunggu (timeout 20 detik induk, atau pembatalan tugas eksplisit) tidak pernah menyelesaikan deferred itu — `signal.cancel()` tidak pernah dipanggil dan permintaan `getCurrentLocation` tetap terdaftar di `LocationManager` lama sesudah pemanggil menyerah, bisa membangunkan callback ke proses yang sudah tidak menunggu. Sinyal kini juga dibatalkan di blok `finally` penantian hasil, yang berjalan pada semua jalan keluar penantian: selesai normal, exception, dan pembatalan Job oleh timeout/pembatal `coroutineScope` — berdampingan dengan `removeUpdates` jalur fallback yang sudah ada di `finally` yang sama.
+
 ## [1.6.526] - 2026-10-29
 
 ### Fixed

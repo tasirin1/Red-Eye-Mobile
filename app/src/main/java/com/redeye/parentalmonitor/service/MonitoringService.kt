@@ -4849,9 +4849,11 @@ class MonitoringService : Service() {
                                     override fun onProviderEnabled(providerName: String) {}
                                     override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
                                 }
+                                var locationSignal: android.os.CancellationSignal? = null
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                     try {
                                         val signal = android.os.CancellationSignal()
+                                        locationSignal = signal
                                         result.invokeOnCompletion { try { signal.cancel() } catch (_: Exception) { } }
                                         locationManager.getCurrentLocation(provider, signal, applicationContext.mainExecutor) { loc -> result.complete(loc) }
                                     } catch (_: Exception) {
@@ -4877,6 +4879,7 @@ class MonitoringService : Service() {
                                 } catch (_: Exception) {
                                     null
                                 } finally {
+                                    try { locationSignal?.cancel() } catch (_: Exception) { }
                                     try {
                                         locationManager.removeUpdates(listener)
                                     } catch (_: Exception) {
