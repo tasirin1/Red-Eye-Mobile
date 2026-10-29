@@ -2,6 +2,7 @@
 
 ### Fixed
 - Label aplikasi kosong dari `usageRowsBetween` tidak lagi masuk `appLabelCache` apa adanya (issue #248, sisa #237): label hasil resolusi kini dinormalkan menjadi nama paket dengan `.ifEmpty { pkg }` sebelum ditulis ke cache, sama seperti `appLabelFor`, sehingga ringkasan pemakaian dan pembaca cache lain tidak lagi menerima nama aplikasi kosong.
+- Snapshot launcher yang gagal dipindai sesaat tidak lagi terkunci sebagai daftar kosong untuk seluruh perintah `/pantauapp` (issue #249, sisa #238): `launchableAppPairs()` kini mengembalikan `null` khusus untuk kegagalan query, berbeda dari daftar kosong yang benar-benar sah; pemanggil membiarkan snapshot bersama tetap `null` sehingga token nama berikutnya mencoba memindai lagi, sedangkan hasil kosong sungguhan tetap dipakai ulang seperti sebelumnya.
 
 ## [1.6.528] - 2026-10-29
 

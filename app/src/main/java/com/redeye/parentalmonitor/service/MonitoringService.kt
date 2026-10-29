@@ -3827,7 +3827,7 @@ class MonitoringService : Service() {
             }
         }
         val lower = value.lowercase(java.util.Locale.ROOT)
-        val apps = precomputedPairs ?: launchableAppPairs()
+        val apps = precomputedPairs ?: launchableAppPairs() ?: return null
         return apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT) == lower }?.second
             ?: apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT).contains(lower) }?.second
     }
@@ -3846,7 +3846,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun launchableAppPairs(): List<Pair<String, String>> {
+    private fun launchableAppPairs(): List<Pair<String, String>>? {
         return try {
             val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER)
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -3864,7 +3864,7 @@ class MonitoringService : Service() {
                 }
             }.distinctBy { it.second }.sortedBy { it.first.lowercase(java.util.Locale.ROOT) }
         } catch (_: Exception) {
-            emptyList()
+            null
         }
     }
 
