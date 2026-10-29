@@ -365,15 +365,8 @@ class CameraService(private val context: Context) {
                 val bg = flowHandler
                 if (bg != null) {
                     bg.postDelayed(timeout, timeoutMs)
-                    true
                 } else {
-                    val mh = mainHandler()
-                    if (mh != null) {
-                        mh.postDelayed(timeout, timeoutMs)
-                        true
-                    } else {
-                        false
-                    }
+                    mainHandler()?.postDelayed(timeout, timeoutMs) ?: false
                 }
             } catch (_: Exception) {
                 false
