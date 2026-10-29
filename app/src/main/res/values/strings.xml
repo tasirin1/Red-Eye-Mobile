@@ -111,6 +111,7 @@
     <string name="restore_pin_short">PIN too short, minimum 4 characters</string>
     <string name="restore_done">Backup loaded, check then tap Save</string>
     <string name="restore_bad">Cannot open backup (wrong PIN or corrupt file)</string>
+    <string name="setup_restore_pin_lost">The restored access PIN is no longer available because the app was restarted. Import the backup again before saving.</string>
     <string name="setup_open_settings">Permission denied permanently, opening Settings to enable manually</string>
     <string name="setup_testing">Checking bot token &amp; chat…</string>
     <string name="setup_test_success">✅ Test successful! Bot token &amp; chat ID are valid.</string>

@@ -111,6 +111,7 @@
     <string name="restore_pin_short">PIN terlalu pendek, minimal 4 karakter</string>
     <string name="restore_done">Backup dimuat, periksa lalu tap Simpan</string>
     <string name="restore_bad">Backup tak bisa dibuka (PIN salah atau file rusak)</string>
+    <string name="setup_restore_pin_lost">PIN akses hasil restore tidak lagi tersedia karena aplikasi sempat dimulai ulang. Impor ulang backup sebelum menyimpan.</string>
     <string name="setup_open_settings">Izin ditolak permanen, buka Pengaturan untuk mengaktifkan manual</string>
     <string name="setup_testing">Memeriksa token bot &amp; chat…</string>
     <string name="setup_test_success">✅ Tes berhasil! Token bot &amp; chat ID valid.</string>

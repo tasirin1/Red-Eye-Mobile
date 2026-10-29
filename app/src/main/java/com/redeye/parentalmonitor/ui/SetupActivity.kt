@@ -58,6 +58,7 @@ class SetupActivity : AppCompatActivity() {
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
     private var pendingRestoreOwnerId = 0L
+    private var pendingRestorePinExpected = false
     private var pendingRestoreAccessPin: String
         get() = RestorePinHolder.value
         set(value) {
@@ -130,6 +131,7 @@ class SetupActivity : AppCompatActivity() {
                                 cameraIntervalInput.setText(data.cameraInterval.toString())
                                 pendingRestoreOwnerId = data.ownerId
                                 pendingRestoreAccessPin = data.accessPin
+                                pendingRestorePinExpected = data.accessPin.isNotEmpty()
                                 if (data.accessPin.isNotEmpty()) accessPinInput.setText(STORED_MASK)
                             } catch (_: Exception) {
                             }
@@ -234,6 +236,7 @@ class SetupActivity : AppCompatActivity() {
         private const val MIN_RESTORE_PIN = 4
         private const val MAX_BACKUP_BYTES = 1_000_000L
         private const val STATE_RESTORE_OWNER = "state_restore_owner"
+        private const val STATE_RESTORE_PIN = "state_restore_pin"
         private const val STATE_BACKUP_BLOB = "state_backup_blob"
 
         private object RestorePinHolder {
@@ -419,6 +422,7 @@ class SetupActivity : AppCompatActivity() {
         setContentView(R.layout.activity_setup)
 
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
+        pendingRestorePinExpected = savedInstanceState?.getBoolean(STATE_RESTORE_PIN, false) ?: false
         pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
         if (savedInstanceState == null) {
             pendingRestoreAccessPin = ""
@@ -532,6 +536,7 @@ class SetupActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
+        outState.putBoolean(STATE_RESTORE_PIN, pendingRestorePinExpected)
         outState.putString(STATE_BACKUP_BLOB, pendingBackupBlob)
     }
 
@@ -612,6 +617,7 @@ class SetupActivity : AppCompatActivity() {
             cameraIntervalInput.setText("1")
             pendingRestoreOwnerId = 0L
             pendingRestoreAccessPin = ""
+            pendingRestorePinExpected = false
         } catch (_: Exception) {
         }
         persistScope.launch(ioExceptionHandler) {
@@ -741,6 +747,10 @@ class SetupActivity : AppCompatActivity() {
         val accessPinCheck = if (rawAccessPin == STORED_MASK) "" else rawAccessPin
         if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
             Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+            return
+        }
+        if (rawAccessPin == STORED_MASK && pendingRestorePinExpected && pendingRestoreAccessPin.isEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_restore_pin_lost), Toast.LENGTH_LONG).show()
             return
         }
         val hasStored = loadedConfigured
@@ -882,6 +892,7 @@ class SetupActivity : AppCompatActivity() {
         }
         pendingRestoreOwnerId = 0L
         pendingRestoreAccessPin = ""
+        pendingRestorePinExpected = false
     }
 
     private fun showHealthDialog() {
@@ -1154,6 +1165,10 @@ class SetupActivity : AppCompatActivity() {
         val accessPinCheck = if (rawAccessPin == STORED_MASK) "" else rawAccessPin
         if (accessPinCheck.isNotEmpty() && !AccessPin.isValid(accessPinCheck)) {
             Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+            return
+        }
+        if (rawAccessPin == STORED_MASK && pendingRestorePinExpected && pendingRestoreAccessPin.isEmpty()) {
+            Toast.makeText(this, getString(R.string.setup_restore_pin_lost), Toast.LENGTH_LONG).show()
             return
         }
         val intervalParsed = syncIntervalInput.text.toString().trim().toIntOrNull()
