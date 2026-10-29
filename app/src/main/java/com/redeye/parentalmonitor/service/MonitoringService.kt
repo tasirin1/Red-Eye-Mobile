@@ -6564,6 +6564,8 @@ class MonitoringService : Service() {
                     if (isHome) recordFenceFact(inside)
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }
