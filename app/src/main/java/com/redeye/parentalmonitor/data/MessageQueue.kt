@@ -23,6 +23,8 @@ class MessageQueue private constructor(context: Context) {
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
+    @Volatile
+    private var restoreFailLogged = false
     private var lastPersistAt = 0L
     @Volatile
     private var persistDirty = false
@@ -127,9 +129,13 @@ class MessageQueue private constructor(context: Context) {
                 loadDropCountsLocked(add = true)
                 persistDropCountsLocked()
                 volatileQueue.clear()
+                restoreFailLogged = false
                 true
             } catch (e: Exception) {
-                android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
+                if (!restoreFailLogged) {
+                    restoreFailLogged = true
+                    android.util.Log.e("MessageQueue", "Persistent queue restore failed", e)
+                }
                 overflowDrops.set(previousOverflowDrops)
                 expiredDrops.set(previousExpiredDrops)
                 priorityDrops.set(previousPriorityDrops)
