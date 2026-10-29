@@ -117,7 +117,7 @@ class MonitoringService : Service() {
     private var lastLoginJob: kotlinx.coroutines.Job? = null
     private var lastLoginSender: String = ""
     private val adoptionGateLock = Any()
-    private val adoptionWaiters = sortedSetOf<Long>()
+    private val adoptionWaiters = java.util.TreeSet<Pair<Long, String>>(compareBy { it.first })
     private val cameraBusy = AtomicBoolean(false)
     private val smsBusy = AtomicBoolean(false)
     private val ringBusy = AtomicBoolean(false)
@@ -1892,14 +1892,14 @@ class MonitoringService : Service() {
                             var adoptionRejected = false
                             val adoptionWait = followsLogin && control && !ownerOk
                             if (adoptionWait) {
-                                synchronized(adoptionGateLock) { adoptionWaiters.add(update.updateId) }
+                                synchronized(adoptionGateLock) { adoptionWaiters.add(update.updateId to senderId) }
                             }
                             try {
                                 if (adoptionWait) {
                                     val waitDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
                                     while (true) {
                                         val loginPending = loginJobSnapshot?.isActive == true && !isOwner(senderId)
-                                        val myTurn = synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull() == update.updateId }
+                                        val myTurn = synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull()?.first == update.updateId }
                                         if (!loginPending && myTurn) break
                                         if (android.os.SystemClock.elapsedRealtime() >= waitDeadline) {
                                             adoptionRejected = true
@@ -1908,7 +1908,7 @@ class MonitoringService : Service() {
                                         delay(50)
                                     }
                                     if (adoptionRejected && isOwner(senderId) &&
-                                        synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull() == update.updateId }) {
+                                        synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull()?.first == update.updateId }) {
                                         adoptionRejected = false
                                     }
                                     if (!adoptionRejected && loginJobSnapshot?.isCompleted == true && isOwner(senderId)) {
@@ -1926,6 +1926,16 @@ class MonitoringService : Service() {
                                             android.util.Log.w("MonitoringService", "Perintah kontrol ditolak: adopsi login melewati tenggat tunggu")
                                             try { sendDirect(senderId, "\u23F3\uFE0F Perintah ditolak: login belum selesai terlalu lama. Pastikan /login berhasil, lalu kirim perintah lagi.") } catch (_: Exception) { }
                                         }
+                                    }
+                                }
+                                if (control && !adoptionWait && !followFailedSilently && !followTimedOut) {
+                                    val courtesyDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                    while (synchronized(adoptionGateLock) { adoptionWaiters.any { it.second == senderId && it.first < update.updateId } }) {
+                                        if (android.os.SystemClock.elapsedRealtime() >= courtesyDeadline) {
+                                            android.util.Log.w("MonitoringService", "Perintah kontrol owner mendahului penunggu adopsi lama sesudah tenggat kesopanan gerbang")
+                                            break
+                                        }
+                                        delay(50)
                                     }
                                 }
                                 if (!adoptionRejected && !followFailedSilently && !followTimedOut) lock.withLock {
@@ -1949,7 +1959,7 @@ class MonitoringService : Service() {
                                 }
                             } finally {
                                 if (adoptionWait) {
-                                    synchronized(adoptionGateLock) { adoptionWaiters.remove(update.updateId) }
+                                    synchronized(adoptionGateLock) { adoptionWaiters.removeAll { it.first == update.updateId } }
                                 }
                             }
                         }
