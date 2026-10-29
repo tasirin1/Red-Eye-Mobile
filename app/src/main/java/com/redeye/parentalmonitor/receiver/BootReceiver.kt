@@ -94,7 +94,7 @@ class BootReceiver : BroadcastReceiver() {
             if (!updated && !freshBoot && lastElapsed != 0L && nowBoot >= lastElapsed && nowBoot - lastElapsed < 60_000L) return
             // Additional guard: if we've handled a boot in the last 10 minutes AND service runs, skip (catches OEM duplicate >60s apart)
             val lastFullBoot = meta.getLong("last_full_boot_elapsed", 0L)
-            if (!updated && MonitoringService.isRunning && lastFullBoot != 0L && nowBoot - lastFullBoot < 10 * 60_000L) return
+            if (!updated && MonitoringService.isRunning && lastFullBoot != 0L && nowBoot >= lastFullBoot && nowBoot - lastFullBoot < 10 * 60_000L) return
         } catch (_: Exception) {
         }
         if (!updated && MonitoringService.isRunning) {
