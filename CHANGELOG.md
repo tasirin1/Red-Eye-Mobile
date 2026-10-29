@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Perintah kontrol tidak lagi ikut menunggu rantai login (issue #201, sisa #172): `join()` ke job login yang ditambahkan perbaikan #172 berlaku untuk semua perintah sesudah `/login` dalam satu batch, termasuk perintah kontrol (`/lock`, `/stop`, `/restart`, `/logout`) — padahal `controlLock` dipisah justru agar perintah darurat tidak menunggu, dan rantai login sendiri bisa mengantre di belakang perintah biasa yang sedang memegang `commandLock` (handler panjang s/d ±10 menit) ditambah I/O login. Perintah kontrol kini melewati `join()` itu dan langsung mengambil `controlLock`; penilaian owner tetap dilakukan ulang di dalam kunci seperti sebelumnya, jadi tidak ada jalur pintas otorisasi. Perintah biasa tetap `join()` agar dinilai dengan status owner sesudah login, persis jaminan #172.
+
 ## [1.6.516] - 2026-10-28
 
 ### Fixed

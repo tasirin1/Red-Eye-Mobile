@@ -1845,7 +1845,7 @@ class MonitoringService : Service() {
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
                         dispatchTracked(update.updateId, "Command dispatch error") {
-                            if (followsLogin) loginJobSnapshot?.join()
+                            if (followsLogin && !control) loginJobSnapshot?.join()
                             lock.withLock {
                                 val ownerNow = isOwner(senderId)
                                 val privateNow = ownerNow && isPrivate
