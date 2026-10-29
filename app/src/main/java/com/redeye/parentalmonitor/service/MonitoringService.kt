@@ -128,7 +128,6 @@ class MonitoringService : Service() {
     private val audioFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
-    private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
     @Volatile
     private var curfewFetchFailAt = 0L
     private var trailMirrorRaw: String? = null
@@ -409,6 +408,14 @@ class MonitoringService : Service() {
         private const val AUTH_NOTIF_ID = 5
         @Volatile
         var isRunning = false
+        private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
+
+        fun invalidateAppLabel(pkg: String) {
+            try {
+                appLabelCache.remove(pkg)
+            } catch (_: Exception) {
+            }
+        }
 
     }
 
