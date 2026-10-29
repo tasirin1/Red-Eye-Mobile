@@ -974,9 +974,8 @@ class PreferencesManager(context: Context) {
                 try {
                     sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, code).putLong(KEY_OWNER_PAIR_AT, System.currentTimeMillis()).commit()
                 } catch (_: Exception) {
-                    return code
                 }
-                return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: code } catch (_: Exception) { code }
+                return try { sharedPreferences.getString(KEY_OWNER_PAIR_CODE, "") ?: "" } catch (_: Exception) { "" }
             } catch (_: Exception) {
                 return ""
             }
