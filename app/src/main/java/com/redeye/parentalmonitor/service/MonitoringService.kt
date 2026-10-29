@@ -6139,7 +6139,7 @@ class MonitoringService : Service() {
         val level = batteryLevel()
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
         sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\nAkurasi: ±${fix.accuracy.toInt()} m$battery")
-        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
+        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
     }
 
     private fun isMeteredNetwork(): Boolean {
