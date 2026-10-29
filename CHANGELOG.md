@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pembatalan coroutine dari cek berkala kini berhenti seketika di loop pemantau (issue #265, sisa #261): `checkCurfew()` dan `checkGeofenceFallback()` melempar ulang `CancellationException` dari `fetchLocation()` sejak #261, tetapi pembungkus selimut `try { … } catch (_: Exception) { }` per-cek di `startPeriodicLoops()` menelannya karena CE adalah subclass `Exception`, sehingga sisa siklus tetap berjalan sampai titik suspensi tak terbungkus berikutnya; kedua cek itu kini dipanggil lewat pembungkus yang melempar ulang CE sebelum catch umum, sedangkan penelanan exception biasa untuk kedua cek itu tidak berubah.
+
 
 ## [1.6.531] - 2026-10-29
 

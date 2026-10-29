@@ -849,6 +849,15 @@ class MonitoringService : Service() {
         }
     }
 
+    private suspend fun runPeriodicCheck(block: suspend () -> Unit) {
+        try {
+            block.invoke()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+    }
+
     private fun startPeriodicLoops() {
         val monitoring = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
@@ -863,8 +872,8 @@ class MonitoringService : Service() {
                     try { maybeSendNightDigest() } catch (_: Exception) { }
                     try { maybeRetryBotCommands() } catch (_: Exception) { }
                     try { checkBegadang() } catch (_: Exception) { }
-                    try { checkCurfew() } catch (_: Exception) { }
-                    try { checkGeofenceFallback() } catch (_: Exception) { }
+                    runPeriodicCheck { checkCurfew() }
+                    runPeriodicCheck { checkGeofenceFallback() }
                     try { checkQuietHealth() } catch (_: Exception) { }
                     try { checkAccessibilityHealth() } catch (_: Exception) { }
                     try { checkSilentLink() } catch (_: Exception) { }
