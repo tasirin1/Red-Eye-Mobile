@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Redam 3 jam pengingat setup BootRestartWorker kini bertahan lintas reboot (issue #275): penanda persisten di `boot_meta` sebelumnya menyimpan nilai `elapsedRealtime` — jam monoton yang ter-reset ke nol tiap reboot — dan penjaganya mensyaratkan jam kini tidak lebih kecil dari penanda, sehingga sesudah reboot pemeriksaan persisten selalu terlewati dan pengingat yang baru tampil sesaat sebelum restart bisa tampil lagi semenit sesudah boot berikutnya; penanda persisten kini memakai jam dinding (`currentTimeMillis`) sehingga redam berlaku sama dalam satu boot maupun lintas reboot, sedangkan redam memori dalam satu proses tidak berubah. Jam dinding yang mundur sedikit (penanda sampai 3 jam di masa depan) dianggap redam masih berlaku agar pengingat tidak beruntun, penanda yang jauh di masa depan (jam pernah meloncat liar) diabaikan dan ditimpa ulang, dan penanda lama berbasis `elapsedRealtime` otomatis tertimpa nilai jam dinding pada penayangan berikutnya.
+
 
 ## [1.6.533] - 2026-10-29
 
