@@ -1782,8 +1782,10 @@ class SetupActivity : AppCompatActivity() {
             val lastAliveElapsed = try { prefs.lastAliveElapsed } catch (_: Exception) { 0L }
             val kills = try { prefs.livenessKills } catch (_: Exception) { 0 }
             val heartHours = try { prefs.heartbeatHours } catch (_: Exception) { 0 }
-            val aliveAgoMin = if (lastAliveElapsed > 0L) ((android.os.SystemClock.elapsedRealtime() - lastAliveElapsed) / 60_000L).coerceAtLeast(0L)
-            else if (lastAlive > 0L) ((System.currentTimeMillis() - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
+            val nowWallAgo = System.currentTimeMillis()
+            val nowElapsedAgo = android.os.SystemClock.elapsedRealtime()
+            val aliveAgoMin = if (lastAliveElapsed > 0L && com.redeye.parentalmonitor.utils.BootClock.sameBoot(lastAlive, lastAliveElapsed, nowWallAgo, nowElapsedAgo)) ((nowElapsedAgo - lastAliveElapsed) / 60_000L).coerceAtLeast(0L)
+            else if (lastAlive > 0L) ((nowWallAgo - lastAlive) / 60_000L).coerceAtLeast(0L) else -1L
             val testSec = try { prefs.liveTestLastSec } catch (_: Exception) { -1 }
             val testPending = try { prefs.liveTestPending } catch (_: Exception) { false }
             val testLine = if (testPending) getString(R.string.setup_status_selfcheck_running)
