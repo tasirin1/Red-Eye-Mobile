@@ -397,6 +397,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
         private const val KEY_DROP_NOTICE_BATCH = "drop_notice_batch"
+        private const val KEY_FORWARDED_NOTIF_IDS = "forwarded_notif_ids"
         private const val KEY_PENDING_NOTIF_DROPS_SINCE = "pending_notif_drops_since"
         private const val KEY_PERM_HEALTH_ALERT = "perm_health_alert_at"
         private const val KEY_PERM_SNAPSHOT = "perm_snapshot"
@@ -1145,6 +1146,31 @@ class PreferencesManager(context: Context) {
                     .putString(KEY_DROP_NOTICE_BATCH, batch)
                     .putLong(KEY_PENDING_NOTIF_DROPS_SINCE, since)
             )
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    val forwardedNotifIds: List<String>
+        get() {
+            val raw = prefString(KEY_FORWARDED_NOTIF_IDS, "")
+            if (raw.isEmpty()) return emptyList()
+            val out = ArrayList<String>()
+            var start = 0
+            while (start <= raw.length) {
+                val sep = raw.indexOf(',', start)
+                val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
+                val v = part.trim()
+                if (v.isNotEmpty()) out.add(v)
+                if (sep < 0) break
+                start = sep + 1
+            }
+            return out
+        }
+
+    fun setForwardedNotifIdsSync(values: List<String>): Boolean {
+        return try {
+            sharedPreferences.edit().putString(KEY_FORWARDED_NOTIF_IDS, values.joinToString(",")).commit()
         } catch (_: Exception) {
             false
         }
