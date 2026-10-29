@@ -6307,11 +6307,16 @@ class MonitoringService : Service() {
                 val accPart = if (accuracyM >= 0f) ",${accuracyM.toInt()}" else ""
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}$accPart")
                 var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
-                if (fresh.size > 300) fresh = fresh.subList(fresh.size - 300, fresh.size)
+                var trimmedFrom = if (raw.isEmpty()) 0L else (try { preferencesManager.trailTrimmedFrom } catch (_: Exception) { 0L })
+                if (fresh.size > 300) {
+                    val newestDiscarded = fresh[fresh.size - 301].substringBefore(":").toLongOrNull() ?: 0L
+                    if (newestDiscarded > trimmedFrom) trimmedFrom = newestDiscarded
+                    fresh = fresh.subList(fresh.size - 300, fresh.size)
+                }
                 val joined = fresh.joinToString(";")
                 trailMirrorRaw = joined
                 trailMirrorPts = fresh
-                preferencesManager.recordSentLocation(lat, lon, joined, accuracyM)
+                preferencesManager.recordSentLocation(lat, lon, joined, accuracyM, trimmedFrom)
             }
         } catch (_: Exception) {
         }
@@ -6344,6 +6349,15 @@ class MonitoringService : Service() {
                 if (inside >= 10 * 60_000L) out.add("Di sekolah: ${ReportFormat.durationText(inside)}")
             }
         } catch (_: Exception) {
+        }
+        if (out.isNotEmpty() && rawPts.isNotEmpty()) {
+            try {
+                val trimmedFrom = preferencesManager.trailTrimmedFrom
+                if (trimmedFrom >= System.currentTimeMillis() - 24 * 60 * 60_000L) {
+                    out.add("⚠ Jejak terpotong cap 300 titik — dihitung dari titik sejak ${TimeFmt.short(rawPts.first().first.at)}")
+                }
+            } catch (_: Exception) {
+            }
         }
         return out
     }

@@ -406,6 +406,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_LOC_AT = "last_loc_at"
         private const val KEY_LAST_LOC_ACC = "last_loc_acc_m"
         private const val KEY_TRAIL = "trail_24"
+        private const val KEY_TRAIL_TRIMMED_FROM = "trail_trimmed_from"
         private const val KEY_DAILY_FACTS = "daily_facts"
         private const val KEY_ANOMALY_ALERTS = "anomaly_alerts"
         private const val KEY_BEGADANG_DATE = "begadang_date"
@@ -1151,7 +1152,10 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_ANOMALY_ALERTS, "")
         set(value) = sharedPreferences.edit().putString(KEY_ANOMALY_ALERTS, value).apply()
 
-    fun recordSentLocation(lat: Double, lon: Double, trail: String?, accuracyM: Float = -1f) {
+    val trailTrimmedFrom: Long
+        get() = prefLong(KEY_TRAIL_TRIMMED_FROM, 0L)
+
+    fun recordSentLocation(lat: Double, lon: Double, trail: String?, accuracyM: Float = -1f, trimmedFrom: Long = -1L) {
         try {
             val editor = sharedPreferences.edit()
                 .putLong(KEY_LAST_LOC_LAT, (lat * 1_000_000).toLong())
@@ -1159,6 +1163,7 @@ class PreferencesManager(context: Context) {
                 .putLong(KEY_LAST_LOC_AT, System.currentTimeMillis())
             if (accuracyM >= 0f) editor.putFloat(KEY_LAST_LOC_ACC, accuracyM)
             if (trail != null) editor.putString(KEY_TRAIL, trail)
+            if (trimmedFrom >= 0L) editor.putLong(KEY_TRAIL_TRIMMED_FROM, trimmedFrom)
             editor.apply()
         } catch (_: Exception) {
         }
