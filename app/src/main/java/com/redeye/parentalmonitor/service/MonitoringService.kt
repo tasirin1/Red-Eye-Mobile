@@ -1741,10 +1741,22 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         lastLoginSender = senderId
                         lastLoginJob = dispatchTracked(update.updateId, "Login dispatch error") {
-                            commandLock.withLock {
-                                controlLock.withLock {
-                                    handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                            var locksHeld = false
+                            while (!locksHeld) {
+                                if (controlLock.tryLock()) {
+                                    if (commandLock.tryLock()) {
+                                        locksHeld = true
+                                    } else {
+                                        controlLock.unlock()
+                                    }
                                 }
+                                if (!locksHeld) delay(50)
+                            }
+                            try {
+                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                            } finally {
+                                commandLock.unlock()
+                                controlLock.unlock()
                             }
                         }
                         continue
