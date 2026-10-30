@@ -3612,7 +3612,7 @@ class MonitoringService : Service() {
                 sendToTelegram(message)
             } else {
                 val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-                val freqH = try { freqForNumbers(null) } catch (_: Exception) { null }
+                val freqH = try { freqForNumbers(calls.map { it.number } + sms.map { it.address }) } catch (_: Exception) { null }
                 if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
                 if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
                 if (callsResult.truncated || smsResult.truncated) {
@@ -4635,7 +4635,7 @@ class MonitoringService : Service() {
             sendToTelegram("💬 Tak ada SMS.")
         } else {
             val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-            val freqSms = try { freqForNumbers(null) } catch (_: Exception) { null }
+            val freqSms = try { freqForNumbers(sms.map { it.address }) } catch (_: Exception) { null }
             sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
         }
     }
@@ -5317,7 +5317,7 @@ class MonitoringService : Service() {
                 var smsCursor = lastSms
                 var smsDate = lastSmsTs
                 var smsSentAny = false
-                val freqMap = try { freqForNumbers(null) } catch (_: Exception) { null }
+                val freqMap = try { freqForNumbers(smsPage.map { it.address }) } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var smsHabis = true
                 for (part in smsPage.chunked(10)) {
@@ -6949,7 +6949,7 @@ class MonitoringService : Service() {
             if (keys != null && keys.isEmpty()) return m
             val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis())
             try {
-                for (s in smsRepository.getRecentSmsSince(since, 200)) {
+                for (s in smsRepository.getRecentSmsSinceLight(since, 200)) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }

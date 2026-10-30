@@ -150,6 +150,17 @@ class SmsRepository(private val context: Context) {
         )
     }
 
+    fun getRecentSmsSinceLight(sinceMillis: Long, limit: Int = 200): List<SmsData> {
+        val safeLimit = limit.coerceIn(1, 200)
+        return querySms(
+            selection = "${Telephony.Sms.DATE} >= ?",
+            args = arrayOf(sinceMillis.toString()),
+            sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
+            limit = safeLimit,
+            light = true
+        )
+    }
+
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
         val safeLimit = limit.coerceIn(1, 200)
