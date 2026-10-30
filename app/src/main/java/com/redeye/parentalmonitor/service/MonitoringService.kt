@@ -7408,6 +7408,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleAdminAlert() {
         try {
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
             val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
