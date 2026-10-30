@@ -2801,7 +2801,13 @@ class MonitoringService : Service() {
             }
             "/stop" -> {
                 preferencesManager.monitoringPaused = true
-                sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Kirim /resume untuk lanjut.")
+                val ringActive = try { ringJob?.isActive == true } catch (_: Exception) { false }
+                if (ringActive) {
+                    try { ringJob?.cancel() } catch (_: Exception) { }
+                    sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Dering yang sedang berjalan juga dihentikan. Kirim /resume untuk lanjut.")
+                } else {
+                    sendToTelegram("⏸️ Monitoring dijeda (panggilan, SMS, foto, dan teruskan notifikasi). Kirim /resume untuk lanjut.")
+                }
             }
             "/resume" -> handleResumeCommand()
             "/location" -> handleLocationCommand()

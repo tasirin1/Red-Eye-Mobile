@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Dering yang sedang berjalan kini bisa dihentikan dari Telegram lewat `/stop` (issue #366): sebelumnya tidak ada perintah Telegram yang bisa menghentikan dering yang sudah berbunyi — handler `/stop` hanya memasang `monitoringPaused`, dan satu-satunya pembatalan `ringJob` di luar durasinya adalah `teardownJobs` (layanan berhenti dari Setup/`onDestroy`), sementara `/ring` & `/hilang` baru selama dering berjalan ditolak CAS — sehingga dering hanya bisa berhenti dengan menunggu durasinya habis (maks 60 detik) atau mematikan seluruh layanan. Handler `/stop` kini ikut membatalkan `ringJob` bila memang sedang aktif; pembatalan itu aman karena `finally` `ringDevice` melepaskan pemutar dan memulihkan volume pada `CancellationException`, dan balasan `/stop` menyebutkan penghentian dering hanya bila dering sungguh sedang berjalan. Perilaku `/stop` tanpa dering berjalan tidak berubah sama sekali.
+
 
 ## [1.6.552] - 2026-10-30
 
