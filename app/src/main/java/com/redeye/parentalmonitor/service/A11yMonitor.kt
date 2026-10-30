@@ -91,6 +91,7 @@ object A11yMonitor {
     private var persistFailStreak = 0
     private var lastPersistFailElapsed = 0L
     private var lastNightAlertElapsed = 0L
+    private var nightAlertedPackage = ""
     private var suspendedPackage = ""
     private var suspendedLabel = ""
     private var launcherPackage = ""
@@ -510,6 +511,7 @@ object A11yMonitor {
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
                 } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
                     lastNightAlertElapsed = nowElapsed
+                    nightAlertedPackage = pkg
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n" + TimeFmt.short(nowWall)
                 }
                 persistSnapshot = persistSnapshotLocked(false)
@@ -638,6 +640,7 @@ object A11yMonitor {
     }
 
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {
+        nightAlertedPackage = ""
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) {
             currentPackage = ""
             currentStartElapsed = 0L
@@ -656,11 +659,24 @@ object A11yMonitor {
         lastSaveRequestElapsed = now
         val app = context.applicationContext
         executor.execute {
+            var crossAlert: String? = null
             synchronized(gate) {
                 ensureLoadedLocked(app)
-                accrueSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+                val nowWall = System.currentTimeMillis()
+                val nowElapsed = SystemClock.elapsedRealtime()
+                accrueSessionLocked(nowWall, nowElapsed)
+                val manager = prefs
+                if (manager != null && currentPackage.isNotEmpty() && currentPackage != nightAlertedPackage &&
+                    monitoringActive(manager) && manager.a11yAppAlert && isNightHour(nowWall) &&
+                    nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS
+                ) {
+                    lastNightAlertElapsed = nowElapsed
+                    nightAlertedPackage = currentPackage
+                    crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n" + TimeFmt.short(nowWall)
+                }
                 persistLocked(app, false)
             }
+            crossAlert?.let { sendAlert(app, it) }
         }
     }
 
