@@ -48,7 +48,8 @@ Dikirim dari akun owner yang sudah pairing/login. Daftar lengkap perintah + tomb
 |---|---|
 | `/photo`, `/screenshot` | Foto / screenshot sekarang |
 | `/location`, `/jejak` | Lokasi terakhir / jejak + rute peta |
-| `/lastcalls`, `/lastsms`, `/lastnotif` | 5 panggilan / SMS / notifikasi terakhir |
+| `/lastcalls`, `/lastsms` | 5 panggilan / SMS terakhir |
+| `/lastnotif` | 10 notifikasi terakhir |
 | `/layar` | Ringkasan pemakaian layar per aplikasi |
 | `/status`, `/battery`, `/alive` | Status monitoring, baterai, denyut service |
 | `/darurat` | Lokasi + foto + baterai sekaligus |
