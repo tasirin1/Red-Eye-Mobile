@@ -4484,13 +4484,13 @@ class MonitoringService : Service() {
                     else -> "volatil"
                 })
                 val camErr = try {
-                    preferencesManager.lastCameraErrorNotice
+                    preferencesManager.lastCameraErrorAt.takeIf { it > 0 } ?: preferencesManager.lastCameraErrorNotice
                 } catch (_: Exception) {
                     0L
                 }
                 appendLine("Galat kamera terakhir: " + if (camErr > 0) formatDate(camErr) else "tak ada")
                 val upErr = try {
-                    preferencesManager.lastUploadErrorNotice
+                    preferencesManager.lastUploadErrorAt.takeIf { it > 0 } ?: preferencesManager.lastUploadErrorNotice
                 } catch (_: Exception) {
                     0L
                 }
@@ -8786,6 +8786,7 @@ class MonitoringService : Service() {
             val policyError = ReportFormat.isCameraPolicyError(clean)
             if (policyError) autoPausePhotosOnPolicyBlock()
             val now = System.currentTimeMillis()
+            preferencesManager.lastCameraErrorAt = now
             val last = preferencesManager.lastCameraErrorNotice
             if (last > now) {
                 preferencesManager.lastCameraErrorNotice = now
@@ -8803,6 +8804,7 @@ class MonitoringService : Service() {
     private suspend fun notifyMediaSendFailure(jenis: String, detail: String) {
         try {
             val now = System.currentTimeMillis()
+            preferencesManager.lastUploadErrorAt = now
             val last = preferencesManager.lastUploadErrorNotice
             if (last > now) {
                 preferencesManager.lastUploadErrorNotice = now

@@ -367,6 +367,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
+        private const val KEY_LAST_CAM_ERR_AT = "last_cam_err_at"
+        private const val KEY_LAST_UPLOAD_ERR_AT = "last_upload_err_at"
         const val KEY_MONITORING_PAUSED = "monitoring_paused"
         const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         const val KEY_PHOTO_PAUSE_SOURCE = "photo_pause_source"
@@ -635,6 +637,14 @@ class PreferencesManager(context: Context) {
     var lastUploadErrorNotice: Long
         get() = prefLong(KEY_LAST_UPLOAD_ERR_NOTICE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPLOAD_ERR_NOTICE, value).apply()
+
+    var lastCameraErrorAt: Long
+        get() = prefLong(KEY_LAST_CAM_ERR_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_CAM_ERR_AT, value).apply()
+
+    var lastUploadErrorAt: Long
+        get() = prefLong(KEY_LAST_UPLOAD_ERR_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPLOAD_ERR_AT, value).apply()
 
     var monitoringPaused: Boolean
         get() = prefBoolean(KEY_MONITORING_PAUSED, false)
