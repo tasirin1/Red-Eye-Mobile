@@ -18,6 +18,19 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun detectsOtpKeywordsAttachedToDigitsAndCompounds() {
+        assertTrue(NotificationPrivacy.isOtp("OTP123456"))
+        assertTrue(NotificationPrivacy.isOtp("PIN1234 adalah rahasia"))
+        assertTrue(NotificationPrivacy.isOtp("KodeOTP: 123456"))
+        assertTrue(NotificationPrivacy.isOtp("kodeotp 998877"))
+        assertTrue(NotificationPrivacy.isOtp("KodeOTP123456"))
+        assertFalse(NotificationPrivacy.isOtp("pindah rumah besok"))
+        assertFalse(NotificationPrivacy.isOtp("tokenisasi aset digital"))
+        assertFalse(NotificationPrivacy.isOtp("kodeks etik profesi"))
+        assertFalse(NotificationPrivacy.isOtp("codename aplikasi rahasia"))
+    }
+
+    @Test
     fun hasCodeDetectsPlainAndSeparatedDigitGroups() {
         assertTrue(NotificationPrivacy.hasCode("Kode 123456"))
         assertTrue(NotificationPrivacy.hasCode("PIN code is 123 456"))

@@ -9,7 +9,9 @@ object NotificationPrivacy {
     private val OTP_PATTERN = Regex(
         "(?i)(?<![\\p{L}\\p{N}])(?:" +
             OTP_WORDS.joinToString("|") { Regex.escape(it) } +
-            ")(?![\\p{L}\\p{N}])"
+            ")(?:(?![\\p{L}\\p{N}])|(?=\\d)|(?:" +
+            OTP_WORDS.joinToString("|") { Regex.escape(it) } +
+            ")(?:(?![\\p{L}\\p{N}])|(?=\\d)))"
     )
     private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]*\\d){3,}(?![ .-]*\\d)")
     private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,10}(?![\\p{L}\\p{N}])")
