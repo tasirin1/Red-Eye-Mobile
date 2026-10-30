@@ -1089,7 +1089,7 @@ class MonitoringService : Service() {
                     rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
                     appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
                 }
-                appendLine("Akurasi: ±${location.accuracy.toInt()} m")
+                appendLine(ReportFormat.accuracyText(location.accuracy))
             } else {
                 bumpLocFailCount()
                 appendLine("Lokasi: tak didapat — " + locationFailureHint())
@@ -3969,7 +3969,7 @@ class MonitoringService : Service() {
             sendToTelegram(buildString {
                 appendLine("📍 <b>Lokasi darurat</b>")
                 appendLine("https://maps.google.com/?q=${loc.latitude},${loc.longitude}")
-                appendLine("Akurasi: ±${loc.accuracy.toInt()} m")
+                appendLine(ReportFormat.accuracyText(loc.accuracy))
                 val ageNote = fixAgeNote(loc)
                 if (ageNote.isNotEmpty()) appendLine(ageNote.trim())
                 appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
@@ -4282,7 +4282,7 @@ class MonitoringService : Service() {
                     try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
                 }
                 val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
-                sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\nAkurasi: ±${location.accuracy.toInt()} m$near" + fixAgeNote(location))
+                sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\n${ReportFormat.accuracyText(location.accuracy)}$near" + fixAgeNote(location))
             }
         }
     }
@@ -6162,7 +6162,7 @@ class MonitoringService : Service() {
         val kmh = (speed * 3.6f).toInt()
         val level = batteryLevel()
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
-        sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\nAkurasi: ±${fix.accuracy.toInt()} m$battery")
+        sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery")
         try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
     }
 
@@ -7414,7 +7414,7 @@ class MonitoringService : Service() {
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
             if (loc != null) {
-                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\n📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m$battery" + fixAgeNote(loc))
+                sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\n📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\n${ReportFormat.accuracyText(loc.accuracy)}$battery" + fixAgeNote(loc))
             } else {
                 sendToTelegram("🚨 <b>Percobaan mematikan Device Admin</b>\nLokasi tak didapat: " + locationFailureHint() + battery)
             }
@@ -7476,7 +7476,7 @@ class MonitoringService : Service() {
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
             val where = if (loc != null) {
-                "📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nAkurasi: ±${loc.accuracy.toInt()} m" + fixAgeNote(loc)
+                "📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\n${ReportFormat.accuracyText(loc.accuracy)}" + fixAgeNote(loc)
             } else {
                 "Lokasi tak didapat: " + locationFailureHint()
             }

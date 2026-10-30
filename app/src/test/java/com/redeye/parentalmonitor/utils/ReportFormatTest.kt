@@ -24,6 +24,15 @@ class ReportFormatTest {
     }
 
     @Test
+    fun formatsAccuracy() {
+        assertEquals("Akurasi: tak diketahui", ReportFormat.accuracyText(0f))
+        assertEquals("Akurasi: tak diketahui", ReportFormat.accuracyText(-1f))
+        assertEquals("Akurasi: ±12 m", ReportFormat.accuracyText(12.6f))
+        assertEquals("Akurasi: ±1000 m", ReportFormat.accuracyText(1000f))
+        assertEquals("Akurasi: ±5 m", ReportFormat.accuracyText(5f))
+    }
+
+    @Test
     fun detectsCameraPolicyErrors() {
         assertTrue(ReportFormat.isCameraPolicyError("CAMERA_DISABLED by admin"))
         assertTrue(ReportFormat.isCameraPolicyError("Camera disabled by policy"))

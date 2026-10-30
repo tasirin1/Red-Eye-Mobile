@@ -21,6 +21,10 @@ object ReportFormat {
         return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
+    fun accuracyText(accuracyM: Float): String {
+        return if (accuracyM > 0f) "Akurasi: ±${accuracyM.toInt()} m" else "Akurasi: tak diketahui"
+    }
+
     fun distanceMeters(aLat: Double, aLon: Double, bLat: Double, bLon: Double): Float {
         return try {
             val out = FloatArray(1)
