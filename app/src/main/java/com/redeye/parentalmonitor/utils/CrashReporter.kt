@@ -87,15 +87,15 @@ object CrashReporter {
         }
     }
 
-    fun saveNow(context: Context, thread: Thread, error: Throwable) {
+    fun saveNow(context: Context, thread: Thread, error: Throwable, background: Boolean = false) {
         try {
-            savePending(context.applicationContext, buildReport(context.applicationContext, thread, error))
+            savePending(context.applicationContext, buildReport(context.applicationContext, thread, error, background))
         } catch (_: Exception) {
         }
     }
 
-    fun saveNow(context: Context, error: Throwable) {
-        saveNow(context, Thread.currentThread(), error)
+    fun saveNow(context: Context, error: Throwable, background: Boolean = false) {
+        saveNow(context, Thread.currentThread(), error, background)
     }
 
     private fun pendingFile(context: Context): File {
@@ -339,7 +339,7 @@ object CrashReporter {
         return text.take(TextChunk.safeCut(text, max))
     }
 
-    private fun buildReport(context: Context, thread: Thread, error: Throwable): String {
+    private fun buildReport(context: Context, thread: Thread, error: Throwable, background: Boolean = false): String {
         val body = StringBuilder()
         body.append("v").append(BuildConfig.VERSION_NAME)
             .append(" api").append(Build.VERSION.SDK_INT)
@@ -368,10 +368,11 @@ object CrashReporter {
         raw = Redact.token(raw, *secrets)
         if (raw.length > MAX_CHARS) raw = safeTake(raw, MAX_CHARS)
         val escaped = Html.escape(raw)
-        val full = "<b>Force close</b>\n<pre>" + escaped + "</pre>"
+        val title = if (background) "<b>Kegagalan background (aplikasi tetap jalan)</b>" else "<b>Force close</b>"
+        val full = title + "\n<pre>" + escaped + "</pre>"
         if (full.length <= 4000) return full
-        val keep = TextChunk.safeCut(escaped, (4000 - 60).coerceAtLeast(500))
-        return "<b>Force close</b>\n<pre>" + safeTake(escaped, keep) + "</pre>"
+        val keep = TextChunk.safeCut(escaped, (4000 - title.length - 42).coerceAtLeast(500))
+        return title + "\n<pre>" + safeTake(escaped, keep) + "</pre>"
     }
 
 }

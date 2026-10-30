@@ -109,7 +109,7 @@ class MonitoringService : Service() {
 
     private val scopeErrorHandler = CoroutineExceptionHandler { _, error ->
         try {
-            CrashReporter.saveNow(this, error)
+            CrashReporter.saveNow(this, error, background = true)
         } catch (_: Exception) {
         }
         android.util.Log.e("MonitoringService", "Background failure recorded: ${redactToken(error.message)}")
