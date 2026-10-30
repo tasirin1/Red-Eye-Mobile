@@ -31,7 +31,6 @@ object PhotoFingerprint {
                 val luma = if (n == 0) 255 else (sum / n).toInt().coerceIn(0, 255)
 
                 val cell = IntArray(64)
-                var cellSum = 0L
                 for (cy in 0 until 8) {
                     for (cx in 0 until 8) {
                         val x = (((cx + 0.5) * bmp.width) / 8).toInt().coerceIn(0, bmp.width - 1)
@@ -39,22 +38,26 @@ object PhotoFingerprint {
                         val p = bmp.getPixel(x, y2)
                         val l = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
                         cell[cy * 8 + cx] = l
-                        cellSum += l
                     }
                 }
-                val avg = (cellSum / 64).toInt()
-                var bits = 0L
-                for (i in 0 until 64) {
-                    if (cell[i] > avg) bits = bits or (1L shl i)
-                }
-                if (bits == 0L) bits = 1L
-                luma to bits
+                luma to fingerprintBits(cell)
             } finally {
                 try { bmp.recycle() } catch (_: Exception) { }
             }
         } catch (_: Exception) {
             255 to 0L
         }
+    }
+
+    fun fingerprintBits(cell: IntArray): Long {
+        var sum = 0L
+        for (v in cell) sum += v
+        val avg = (sum / 64).toInt()
+        var bits = 0L
+        for (i in 0 until 64) {
+            if (cell[i] > avg) bits = bits or (1L shl i)
+        }
+        return bits
     }
 
     fun hammingDistance(a: Long, b: Long): Int {
