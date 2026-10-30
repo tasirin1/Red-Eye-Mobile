@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Petunjuk "layar statis/mati" pada kegagalan tangkap layar tidak lagi menempel pada kegagalan berikutnya yang sebabnya berbeda (issue #349): penanda kegagalan-tanpa-frame (`shotNoFrameFailAt`, ditambah #348) sebelumnya hanya pernah ditulis dan tidak pernah dinolkan, sehingga `screenshotFailureHint` memilih teksnya murni dari kebaruan penanda (≤120 detik) — kegagalan apa pun dalam jendela itu (bingkai tiba tetapi `planes` kosong, sesi gagal dibuat, penolakan `SecurityException`) ikut diberi teks "sistem tidak mengirim bingkai apa pun (layar mungkin statis atau mati)" yang mengarahkan diagnosis ke sebab yang salah. Penanda kini dinolkan pada tiga titik: saat tangkapan berhasil, saat kegagalan tercatat sebagai penolakan sistem (`SecurityException`), dan saat kegagalan hasil-null tidak mencap penanda baru selama panggilan itu (pemanggil membandingkan nilai penanda sebelum dan sesudah `takeScreenshotFrame` — satu-satunya penulis penanda adalah titik tanpa-frame di dalam fungsi itu, jadi nilai yang tak berubah membuktikan kegagalan terakhir bukan tanpa-frame). Petunjuk "layar statis/mati" kini hanya terpilih bila kegagalan terakhir yang dilaporkan memang kegagalan tanpa-frame.
+
 
 ## [1.6.549] - 2026-10-30
 

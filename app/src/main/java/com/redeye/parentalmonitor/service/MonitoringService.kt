@@ -8166,6 +8166,7 @@ class MonitoringService : Service() {
         serviceScope.launch {
             try {
                 ensureForegroundTypes()
+                val noFrameMarkBefore = shotNoFrameFailAt
                 val shotFile = try {
                     takeScreenshotFrame()
                 } catch (e: SecurityException) {
@@ -8174,6 +8175,7 @@ class MonitoringService : Service() {
                     }
                     try { wd.cancel() } catch (_: Exception) { }
                     clearShotBusy(shotSeq)
+                    shotNoFrameFailAt = 0L
                     android.util.Log.w("MonitoringService", "Tangkap layar ditolak sistem: " + redactToken(e.message))
                     sendToTelegram("⚠️ Tangkap layar ditolak sistem. " + screenshotFailureHint())
                     return@launch
@@ -8195,12 +8197,14 @@ class MonitoringService : Service() {
                 shotWatchdog = wdUp
                 if (shotFile == null) {
                     clearShotBusy(shotSeq)
+                    if (shotNoFrameFailAt == noFrameMarkBefore) shotNoFrameFailAt = 0L
                     sendToTelegram(
                         "⚠️ Tangkap layar gagal. " + screenshotFailureHint(),
                         if (!hasScreenshotConsent()) shotGrantMarkup() else null
                     )
                     return@launch
                 }
+                shotNoFrameFailAt = 0L
                 markMediaActive(shotFile)
                 try {
                     when (sendPhotoFile(shotFile)) {
