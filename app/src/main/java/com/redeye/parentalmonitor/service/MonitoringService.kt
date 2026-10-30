@@ -6254,6 +6254,7 @@ class MonitoringService : Service() {
     private suspend fun checkBatteryAlert() {
         val level = batteryLevel()
         if (level < 0 || level > LOW_BATTERY_LEVEL) return
+        if (isCharging()) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
         if (last > now) {

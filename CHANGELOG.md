@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Peringatan baterai rendah tidak lagi menembak saat HP sedang di-charge (issue #378): `checkBatteryAlert` sebelumnya menembak pada level 0..15 tanpa pengecualian keadaan charging, padahal fitur pasangannya `lowPowerActive()` mensyaratkan `!isCharging()` dan bingkai rancangan fiturnya (rilis 1.6.293) memang "saat baterai ≤15% dan HP tidak di-charge". Dua akibatnya: teks peringatan selalu menutup "Colok charger agar monitoring tak putus." — instruksi yang salah keadaan saat charger sudah tercolok — dan peringatan saat charging itu tetap mengecap `batteryAlertAt` (jatah throttle 24 jam terbakar) sementara `lowPowerNotified` tidak terpasang (karena `throttled == false`), sedangkan satu-satunya jalur penolkan cap adalah `syncLowPowerNotice` yang keluar lebih awal tepat karena `!lowPowerNotified`; jadi bila charger kemudian dicabut dan baterai turun lagi ke ≤15% dalam 24 jam yang sama, peringatan yang sesungguhnya dibutuhkan berhenti di throttle dan tidak terkirim. `checkBatteryAlert` kini kembali lebih awal saat `isCharging()` — sebelum menyentuh cap maupun penanda apa pun — sejajar syarat `lowPowerActive()`. Rangkaian sehat tidak berubah: penurunan saat tidak di-charge tetap diperingatkan 1×/24 jam dengan teks yang sama persis, pemulihan tetap menolkan cap dan mengirim kabar "baterai kembali normal" tepat sekali lewat `syncLowPowerNotice`, dan penurunan asli sesudah charger dicabut kini benar-benar terkirim karena cap tidak pernah terbakar selama charging.
+
 
 ## [1.6.559] - 2026-10-30
 
