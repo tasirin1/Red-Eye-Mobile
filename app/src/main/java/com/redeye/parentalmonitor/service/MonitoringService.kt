@@ -3632,7 +3632,13 @@ class MonitoringService : Service() {
                 if (callsFailed || smsFailed) {
                     val sisiGagal = if (callsFailed) "panggilan" else "SMS"
                     val sisiKosong = if (callsFailed) "SMS" else "panggilan"
-                    sendToTelegram("\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits, tetapi riwayat $sisiGagal gagal dicari. Coba lagi.")
+                    val kosongTruncated = if (callsFailed) smsResult.truncated else callsResult.truncated
+                    val pesan = if (kosongTruncated) {
+                        "\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits dalam 2.000 entri terbaru (pencarian dibatasi; riwayat lain mungkin belum diperiksa), tetapi riwayat $sisiGagal gagal dicari. Coba lagi."
+                    } else {
+                        "\uD83D\uDD0E Tak ada riwayat $sisiKosong untuk $digits, tetapi riwayat $sisiGagal gagal dicari. Coba lagi."
+                    }
+                    sendToTelegram(pesan)
                 } else {
                     val message = if (callsResult.truncated || smsResult.truncated) {
                         "⚠️ Nomor $digits tidak ditemukan dalam 2.000 entri terbaru. Pencarian dibatasi; riwayat lain mungkin belum diperiksa."

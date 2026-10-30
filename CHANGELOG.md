@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Cabang campuran `/history` kini juga menyebut batas pencarian (issue #384): perbaikan #381 membedakan kueri gagal dari hasil kosong per sisi, tetapi pada cabang satu sisi gagal dan sisi lain kosong, balasannya datar "🔎 Tak ada riwayat <sisi kosong> untuk nomor ini, tetapi riwayat <sisi gagal> gagal dicari" tanpa memeriksa apakah sisi yang berhasil itu kosong *karena terpotong* — padahal cabang kosong-tanpa-gagal dan cabang berisi pada handler yang sama sama-sama mengumumkan batas 2.000 entri. Bila sisi yang berhasil kosong dengan `truncated=true` (pemindaian 4×500 baris/365 hari tanpa kecocokan), pemilik menerima klaim datar "tak ada riwayat" padahal pencarian hanya menjangkau 2.000 entri terbaru. Cabang campuran kini membawa kualifikasi yang sama ("dalam 2.000 entri terbaru (pencarian dibatasi; riwayat lain mungkin belum diperiksa)") selain tetap menyebut sisi yang gagal dicari; semua cabang dan jalur lain tidak berubah.
+
 
 ## [1.6.562] - 2026-10-30
 
