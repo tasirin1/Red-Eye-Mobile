@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Tajuk balasan `/apps` kini mengungkapkan total himpunan dan pemotongannya (issue #402): argumen angka perintah ini selalu sebuah BATAS (`coerceIn(5, 50)`, bawaan 30, tanpa argumen halaman/offset) dan tajuk hanya mencetak jumlah yang DITAMPILKAN, `Aplikasi (${apps.size})` — sehingga di HP dengan 200 aplikasi terpasang, `/apps all 50` menjawab "Aplikasi (50) · semua terpasang" padahal 150 aplikasi tidak tampil dan tidak terjangkau oleh argumen apa pun (yang terpotong adalah ekor alfabet menurut urutan label), dan pemilik yang memeriksa apakah aplikasi tertentu terpasang bisa menyimpulkan aplikasi itu tidak ada, padahal hanya terpotong. Tajuk kedua mode kini mencetak "Aplikasi (50 dari 213)" bila terpotong dan angka persis bila semua tampil — total adalah ukuran himpunan penuh mode itu sebelum `take(limit)`: untuk mode `all` himpunan `getInstalledApplications` sesudah penyaringan paket aplikasi ini sendiri (penyaringan yang sama seperti sebelumnya, sehingga "semua" tidak pernah harfiah bahkan tanpa plafon), untuk mode bawaan daftar penuh dari cache/telusuran launcher. Keputusan yang dicatat: sufiks " · semua terpasang" PERTAHANKAN sebagai penanda cakupan mode (mode `all` = semua paket terpasang selain aplikasi ini sendiri, berlawanan dengan mode bawaan yang hanya aplikasi ber-launcher) — kelengkapan kini diatur oleh hitungan eksplisit "(tampil dari total)" di tajuk yang sama, sehingga tidak ada keadaan di mana tajuk dapat dibaca sebagai klaim bahwa semua yang terpasang sedang ditampilkan padahal terpotong. Plafon 5–50 (bawaan 30), cakupan kedua mode, dan pengurutan tidak berubah; ini kelas yang sama dengan pengungkapan "Kontak (10+)" pada #401.
+
 ## [1.6.569] - 2026-10-31
 
 ### Fixed

