@@ -9491,7 +9491,8 @@ class MonitoringService : Service() {
         } catch (e: Exception) {
             try { deleteQuietly(audioTmp) } catch (_: Exception) { }
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
-            sendToTelegram("\u26A0\uFE0F Gagal merekam.")
+            android.util.Log.e("MonitoringService", "✗ Audio record failed: ${redactToken(e.message)}")
+            sendToTelegram("\u26A0\uFE0F Gagal merekam: " + sanitizedCameraError(e.message) + ".")
         } finally {
             recorderActive.set(false)
             releaseOpWakeLock(audioLock)
