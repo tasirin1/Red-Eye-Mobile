@@ -39,7 +39,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext) } catch (_: Exception) { }
                 try {
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
-                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
                         com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage("🔐 <b>Percobaan buka kunci gagal</b>\nAda $attempts percobaan PIN salah tercatat di HP ini.", true)
                         com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(appContext)
                     }
@@ -61,7 +61,7 @@ class AdminReceiver : DeviceAdminReceiver() {
             try { com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(context.applicationContext) } catch (_: Exception) { }
             try {
                 val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(context.applicationContext)
-                if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                if (prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
                     com.redeye.parentalmonitor.data.MessageQueue.getInstance(context.applicationContext).addMessage("\u26A0\uFE0F Admin perangkat dimatikan di HP ini. Proteksi hapus aplikasi MATI.", true)
                     com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(context.applicationContext)
                 }
@@ -86,7 +86,7 @@ class AdminReceiver : DeviceAdminReceiver() {
                 try {
                     com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext)
                     val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
-                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
                         com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage(
                             "🚨 <b>Ada percobaan mematikan Device Admin</b>\nProteksi hapus aplikasi sebentar lagi mati. Foto + lokasi saya siapkan.",
                             true

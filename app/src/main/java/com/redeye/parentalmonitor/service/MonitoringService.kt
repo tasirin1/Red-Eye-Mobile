@@ -7408,7 +7408,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleAdminAlert() {
         try {
-            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
             val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
@@ -7459,7 +7459,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleUnlockFailed(attempts: Int) {
         try {
-            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
             val streak = attempts.coerceAtLeast(1)
             if (streak != 1 && streak % 3 != 0) return
             val now = android.os.SystemClock.elapsedRealtime()
