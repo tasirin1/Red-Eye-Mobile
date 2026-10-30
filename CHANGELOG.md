@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Teks persetujuan penyiapan kini lengkap dan akurat soal cakupannya (issue #391): `setup_consent_text` — satu-satunya teks yang menjadi dasar persetujuan pemilik (`userConsentedMonitoring`) — sebelumnya mendaftar pantauan hanya sebagai "SMS, log panggilan, lokasi (termasuk latar), jepretan kamera, dan notifikasi", tanpa menyebut rekaman audio (padahal `RECORD_AUDIO` adalah izin wajib yang digerbang `hasAll` sebelum monitoring bisa mulai dan fitur /record memang ada) maupun tangkapan layar; dan kalimat "Admin Perangkat dan pengecualian baterai hanya dipakai agar monitoring tetap jalan" keliru untuk admin, karena penjelasan admin milik aplikasi sendiri (`admin_description`) dan kebijakan `device_admin.xml` (`<force-lock/>`) menunjukkan Admin Perangkat juga dipakai untuk proteksi uninstall dan perintah kunci layar jarak jauh `/lock`. Daftar pantauan kini menyebut juga tangkapan layar dan rekaman audio, dan klaimnya dipisahkan mengikuti `admin_description`: pengecualian baterai memang hanya untuk menjaga monitoring tetap jalan, sedangkan Admin Perangkat disebut dipakai untuk menjaga monitoring, proteksi uninstall, dan kunci layar jarak jauh lewat perintah `/lock`. Kedua berkas bahasa (`values` dan `values-in`) diubah selaras; hanya teks string yang berubah — dialog, mesin persetujuan, dan perilaku tidak berubah.
+
 
 ## [1.6.565] - 2026-10-30
 
