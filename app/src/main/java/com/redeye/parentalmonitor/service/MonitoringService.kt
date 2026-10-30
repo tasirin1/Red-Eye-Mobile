@@ -445,6 +445,19 @@ class MonitoringService : Service() {
         if (!startForegroundImmediate()) {
             return
         }
+        invalidateKnownContactCache()
+        try {
+            if (contactObserver == null) {
+                val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                    override fun onChange(selfChange: Boolean) {
+                        invalidateKnownContactCache()
+                    }
+                }
+                contentResolver.registerContentObserver(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, observer)
+                contactObserver = observer
+            }
+        } catch (_: Exception) {
+        }
         com.redeye.parentalmonitor.utils.Background.runCritical {
             try {
                 if (PreferencesManager.refreshInstance(this)) {
@@ -6897,6 +6910,14 @@ class MonitoringService : Service() {
 
     private val knownContactCache = HashMap<String, Boolean>()
     private var knownContactCacheAt = 0L
+    private var contactObserver: android.database.ContentObserver? = null
+
+    private fun invalidateKnownContactCache() {
+        synchronized(knownContactCache) {
+            knownContactCache.clear()
+            knownContactCacheAt = System.currentTimeMillis()
+        }
+    }
 
     private fun isKnownContact(number: String): Boolean {
         val digits = canonicalPhoneDigits(number)
@@ -7765,6 +7786,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try { credsListener?.let { preferencesManager.unregisterChangeListener(it) } } catch (_: Exception) { }
+        try { contactObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) { }
+        contactObserver = null
         try {
             flushMsgDropNotice()
         } catch (_: Exception) {
