@@ -3492,24 +3492,25 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Izin Kontak belum diberikan. Buka Setup dan berikan izin Kontak.")
             return
         }
-        val page = ContactsPaging.pageArg(arg)
-        if (page != null) {
-            showContactsPage(page)
-            return
+        when (ContactsPaging.argKind(arg)) {
+            ContactsPaging.ArgKind.PAGE -> {
+                showContactsPage(ContactsPaging.pageArg(arg) ?: 1)
+                return
+            }
+            ContactsPaging.ArgKind.PAGE_HINT -> {
+                sendToTelegram("Halaman kontak 1-999. Contoh: /contacts 2")
+                return
+            }
+            ContactsPaging.ArgKind.NUMBER_SEARCH, ContactsPaging.ArgKind.SEARCH -> Unit
         }
-        val trimmedArg = arg.trim()
-        if (trimmedArg.isNotEmpty() && trimmedArg.all { it.isDigit() }) {
-            sendToTelegram("Halaman kontak 1-999. Contoh: /contacts 2")
-            return
-        }
-        val query = trimmedArg.take(40)
+        val query = arg.trim().take(40)
         if (query.isEmpty()) {
-            sendToTelegram("Cara pakai: /contacts &lt;nama&gt;")
+            sendToTelegram("Cara pakai: /contacts &lt;nama/nomor&gt;")
             return
         }
         val found = searchContacts(query)
         if (found.isEmpty()) {
-            sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama itu.")
+            sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama/nomor itu.")
         } else {
             sendToTelegram(
                 buildString {
