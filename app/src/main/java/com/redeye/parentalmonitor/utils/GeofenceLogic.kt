@@ -11,6 +11,10 @@ object GeofenceLogic {
         return jemputRadiusM > 0 && distM <= jemputRadiusM && (accuracyM < 0f || accuracyM <= jemputRadiusM.toFloat())
     }
 
+    fun judgedOutside(distM: Float, radiusM: Int, accuracyM: Float): Boolean {
+        return distM >= 0f && distM > radiusM && (accuracyM < 0f || accuracyM <= radiusM.toFloat())
+    }
+
     fun statusText(latE6: Long, lonE6: Long, radiusM: Int): String {
         if (latE6 == Long.MIN_VALUE || lonE6 == Long.MIN_VALUE || radiusM <= 0) return "mati"
         return "${latE6 / 1_000_000.0},${lonE6 / 1_000_000.0} ±${radiusM}m"

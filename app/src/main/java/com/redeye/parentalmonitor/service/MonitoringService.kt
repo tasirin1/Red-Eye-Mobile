@@ -7386,6 +7386,7 @@ class MonitoringService : Service() {
             val needSchool = inSchool && schoolDone != key
             if (!needCurfew && !needSchool) return
             var pos = lastSentLatLon()
+            var posAccuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             if (pos == null || locAge > 30 * 60_000L) {
                 val nowEl = android.os.SystemClock.elapsedRealtime()
@@ -7401,10 +7402,11 @@ class MonitoringService : Service() {
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
+                posAccuracy = fix.accuracy
             }
             if (needCurfew) {
                 val dist = ReportFormat.distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
-                if (dist >= 0f && dist > homeRad) {
+                if (GeofenceLogic.judgedOutside(dist, homeRad, posAccuracy)) {
                     try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
                     sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")
                     return
@@ -7412,7 +7414,7 @@ class MonitoringService : Service() {
             }
             if (needSchool) {
                 val dist = ReportFormat.distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
-                if (dist >= 0f && dist > schoolRad) {
+                if (GeofenceLogic.judgedOutside(dist, schoolRad, posAccuracy)) {
                     try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
                     sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
                 }

@@ -41,6 +41,17 @@ class GeofenceLogicTest {
     }
 
     @Test
+    fun judgedOutsideAccuracyGate() {
+        assertFalse(GeofenceLogic.judgedOutside(150f, 100, 800f))
+        assertTrue(GeofenceLogic.judgedOutside(150f, 100, 50f))
+        assertTrue(GeofenceLogic.judgedOutside(150f, 100, -1f))
+        assertTrue(GeofenceLogic.judgedOutside(150f, 100, 100f))
+        assertFalse(GeofenceLogic.judgedOutside(150f, 100, 101f))
+        assertFalse(GeofenceLogic.judgedOutside(90f, 100, 10f))
+        assertFalse(GeofenceLogic.judgedOutside(-1f, 100, 10f))
+    }
+
+    @Test
     fun statusTextFormatting() {
         assertEquals("-6.180058,107.384718 ±150m", GeofenceLogic.statusText(-6_180_058L, 107_384_718L, 150))
         assertEquals("mati", GeofenceLogic.statusText(Long.MIN_VALUE, 107_384_718L, 150))
