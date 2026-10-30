@@ -8,14 +8,25 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import com.redeye.parentalmonitor.R
+import com.redeye.parentalmonitor.data.MessageQueue
+import com.redeye.parentalmonitor.data.PreferencesManager
 import com.redeye.parentalmonitor.service.MonitoringService
+import com.redeye.parentalmonitor.utils.Background
+import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.ScreenCapture
 import com.redeye.parentalmonitor.utils.ServiceStart
 
 class ShotConsentActivity : Activity() {
 
     private val safetyHandler = Handler(Looper.getMainLooper())
-    private val safetyFinish = Runnable { finishQuietly() }
+    private var outcomeHandled = false
+    private val safetyFinish = Runnable {
+        if (!outcomeHandled && consentInFlight) {
+            outcomeHandled = true
+            reportConsentFailure(timeout = true)
+        }
+        finishQuietly()
+    }
     private var consentInFlight = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +73,8 @@ class ShotConsentActivity : Activity() {
             return
         }
         val granted = resultCode == RESULT_OK && data != null
+        val firstOutcome = !outcomeHandled
+        outcomeHandled = true
         try {
             if (granted) ScreenCapture.grant(resultCode, data)
         } catch (_: Exception) {
@@ -75,6 +88,7 @@ class ShotConsentActivity : Activity() {
         } catch (_: Exception) {
         }
         if (granted) continueScreenshot()
+        else if (firstOutcome) reportConsentFailure(timeout = false)
         finishQuietly()
     }
 
@@ -82,6 +96,29 @@ class ShotConsentActivity : Activity() {
         try { safetyHandler.removeCallbacks(safetyFinish) } catch (_: Exception) {
         }
         super.onDestroy()
+    }
+
+    private fun reportConsentFailure(timeout: Boolean) {
+        try {
+            val appContext = applicationContext
+            val text = if (timeout) {
+                "⌛ <b>Izin tangkap layar tidak dijawab</b>\nDialog izin di HP ini dibiarkan sampai batas 5 menit tanpa jawaban, jadi tangkapan layar tidak bisa diambil."
+            } else {
+                "🚫 <b>Izin tangkap layar ditolak</b>\nDialog izin di HP ini ditutup tanpa persetujuan, jadi tangkapan layar tidak bisa diambil."
+            }
+            Background.runCritical {
+                try {
+                    PreferencesManager.refreshInstance(appContext)
+                    val prefs = PreferencesManager.getInstance(appContext)
+                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring) {
+                        MessageQueue.getInstance(appContext).addMessage(text, true)
+                        MessageScheduler.scheduleMessageSend(appContext)
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun continueScreenshot() {

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penolakan/kedaluwarsa izin tangkap layar pada alur Telegram kini berkabar ke pemilik (issue #376): `ShotConsentActivity` — yang hanya diluncurkan alur jarak jauh (`requestShotGrant` dari `/izinshot`/tombol "Beri izin sekali") — sebelumnya hanya berkabar pada cabang persetujuan (`continueScreenshot` → `ACTION_AFTER_SHOT_GRANT` → "✅ Izin tangkap layar diterima — mengambil layar…"), sedangkan cabang tidak-diberikan hanya menampilkan Toast `setup_shot_denied` di perangkat lalu selesai, dan jalur batas aman 5 menit (`safetyFinish`) juga menutup aktivitas tanpa kabar apa pun: pemilik yang memicu dari Telegram tidak bisa membedakan "izin ditolak pemegang HP" dari "dialog belum dijawab", dan penolakan yang disengaja berulang tidak pernah terlihat olehnya. Kedua jalan keluar kini mengantrekan kabar lewat jalur pesan persisten yang sama seperti receiver mandiri (`MessageQueue.addMessage` prioritas + `MessageScheduler.scheduleMessageSend`, digerbangi `isConfigured() && !userDisabledMonitoring`), sehingga kabar tetap terantre walau layanan sedang mati, dengan teks yang membedakan sebabnya secara jujur: penolakan eksplisit berbunyi "🚫 Izin tangkap layar ditolak", sedangkan dialog yang dibiarkan sampai batas 5 menit berbunyi "⌛ Izin tangkap layar tidak dijawab" (tidak mengklaim "ditolak" untuk kedaluwarsa). Bendera satu-kali `outcomeHandled` menjamin tepat satu kabar per dialog: jalur mana pun yang tiba duluan (hasil dialog atau pemicu batas aman) yang melapor, termasuk bila dialog dijawab tepat di batas 5 menit. Toast lokal di perangkat tidak berubah, dan penolakan pada alur Setup lokal (jalur `ActivityResult` tersendiri di `SetupActivity`, tidak memakai aktivitas ini) tetap lokal seperti sebelumnya.
+
 
 ## [1.6.557] - 2026-10-30
 
