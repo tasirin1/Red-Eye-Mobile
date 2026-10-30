@@ -3842,6 +3842,7 @@ class MonitoringService : Service() {
     private fun pruneAppWatchPackages(): MutableSet<String> {
         val packages = try { preferencesManager.a11yAppWatchPackageSet() } catch (_: Exception) { HashSet() }
         val alive = packages.filter { pkg ->
+            if (pkg == packageName) return@filter false
             try {
                 packageManager.getApplicationInfo(pkg, 0)
                 true
@@ -3917,6 +3918,7 @@ class MonitoringService : Service() {
         val resolved = LinkedHashMap<String, String>()
         val failed = ArrayList<String>()
         val blocked = ArrayList<String>()
+        val skippedOwn = ArrayList<String>()
         var sharedPairs: List<Pair<String, String>>? = null
         for (token in tokens) {
             val pkg = if (token.contains(".")) {
@@ -3927,6 +3929,8 @@ class MonitoringService : Service() {
             }
             if (pkg == null) {
                 failed.add(token)
+            } else if (add && pkg == packageName) {
+                skippedOwn.add(appLabelFor(pkg))
             } else if (add && AppWatch.isSensitivePackage(pkg)) {
                 blocked.add(appLabelFor(pkg))
             } else {
@@ -3951,6 +3955,7 @@ class MonitoringService : Service() {
             }
             if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
             if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
+            if (skippedOwn.isNotEmpty()) appendLine("Dilewati (aplikasi ini sendiri): " + skippedOwn.joinToString(", ") { Html.escape(it) })
             appendLine("Total: ${packages.size} app")
             appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /pantauapp on")
         }.trimEnd())
