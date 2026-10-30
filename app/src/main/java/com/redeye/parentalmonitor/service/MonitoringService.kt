@@ -3756,10 +3756,12 @@ class MonitoringService : Service() {
             val rows = a11yUsageRows()
             val total = rows.sumOf { it.millis }
             val now = A11yMonitor.currentAppLabel()
+            val a11yOff = on && !ShotAccessibilityService.isEnabled(this)
             sendToTelegram(buildString {
                 appendLine("\uD83D\uDCF1 <b>Alert aplikasi</b>")
                 appendLine("Status: " + if (on) "nyala" else "mati")
-                appendLine("Mencakup: app baru dibuka, app dibuka malam, pasang & hapus aplikasi")
+                appendLine("Mencakup: " + if (a11yOff) "pasang & hapus aplikasi" else "app baru dibuka, app dibuka malam, pasang & hapus aplikasi")
+                if (a11yOff) appendLine("Aksesibilitas MATI — alert app dibuka/malam butuh Aksesibilitas. Aktifkan di Setup agar semua alert bisa jalan.")
                 appendLine("Sekarang: " + if (now.isEmpty()) "-" else Html.escape(now))
                 appendLine("Hari ini: " + ReportFormat.durationText(total) + " \u00b7 " + rows.size + " app")
                 appendLine("Atur: /appalert on|off")
