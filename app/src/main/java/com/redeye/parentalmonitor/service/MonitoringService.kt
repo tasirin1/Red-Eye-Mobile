@@ -3509,13 +3509,15 @@ class MonitoringService : Service() {
             return
         }
         val found = searchContacts(query)
+        val truncated = found.size > 10
+        val shown = if (truncated) found.take(10) else found
         if (found.isEmpty()) {
             sendToTelegram("\uD83D\uDC64 Tak ada kontak yang cocok dengan nama/nomor itu.")
         } else {
             sendToTelegram(
                 buildString {
-                    appendLine("\uD83D\uDC64 <b>Kontak (${found.size})</b>")
-                    for (entry in found) {
+                    appendLine("\uD83D\uDC64 <b>Kontak (${if (truncated) "10+" else shown.size.toString()})</b>")
+                    for (entry in shown) {
                         appendLine("\u2022 " + Html.escape(entry.first) + " \u2014 " + Html.escape(entry.second))
                     }
                 }
@@ -10128,7 +10130,7 @@ class MonitoringService : Service() {
                         putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? ESCAPE '\\' OR " + android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ? ESCAPE '\\'")
                         putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("%$escaped%", numArg))
                         putString(android.content.ContentResolver.QUERY_ARG_SQL_SORT_ORDER, android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")
-                        putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, if (useTail) 50 else 10)
+                        putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, if (useTail) 50 else 11)
                     }
                     contentResolver.query(uri, projection, bundle, null)
                 } else {
@@ -10157,7 +10159,7 @@ class MonitoringService : Service() {
                 val nameIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = c.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
                 if (nameIdx >= 0 && numIdx >= 0) {
-                    while (c.moveToNext() && out.size < 10) {
+                    while (c.moveToNext() && out.size < 11) {
                         try {
                             val nm = c.getString(nameIdx) ?: ""
                             val nb = c.getString(numIdx) ?: ""
