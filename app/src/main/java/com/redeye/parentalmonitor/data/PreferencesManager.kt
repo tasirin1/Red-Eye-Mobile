@@ -364,6 +364,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_INITIAL_SYNC_DONE = "initial_sync_done"
         const val KEY_CAMERA_INTERVAL = "camera_interval"
         private const val KEY_LAST_UPDATE_ID = "last_update_id"
+        private const val KEY_CREDENTIAL_GENERATION = "credential_generation"
         private const val KEY_LAST_PHOTO_TIME = "last_photo_time"
         private const val KEY_LAST_CAM_ERR_NOTICE = "last_cam_err_notice"
         private const val KEY_LAST_UPLOAD_ERR_NOTICE = "last_upload_err_notice"
@@ -625,6 +626,9 @@ class PreferencesManager(context: Context) {
     fun setLastUpdateIdSync(id: Long): Boolean {
         return commitWithRetry { it.putLong(KEY_LAST_UPDATE_ID, id) }
     }
+
+    val credentialGeneration: Long
+        get() = prefLong(KEY_CREDENTIAL_GENERATION, 0L)
 
     var lastPhotoTime: Long
         get() = prefLong(KEY_LAST_PHOTO_TIME, 0L)
@@ -1681,6 +1685,7 @@ class PreferencesManager(context: Context) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
             editor.putString(KEY_OWNER_PAIR_CODE, "")
             editor.remove(KEY_LAST_UPDATE_ID)
+            editor.putLong(KEY_CREDENTIAL_GENERATION, credentialGeneration + 1)
             editor.remove(KEY_INITIAL_SYNC_DONE)
             editor.putLong(KEY_LAST_SMS_ID, 0L)
             editor.putLong(KEY_LAST_SMS_TIMESTAMP, 0L)

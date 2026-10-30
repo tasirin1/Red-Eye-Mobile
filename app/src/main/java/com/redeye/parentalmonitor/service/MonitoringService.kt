@@ -255,8 +255,6 @@ class MonitoringService : Service() {
     private var pendingRestore: PendingRestore? = null
     @Volatile
     private var ownerEpoch = 0
-    @Volatile
-    private var skipUpdateOffsetOnce = false
     private val offsetPersistLock = Any()
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
@@ -1647,6 +1645,7 @@ class MonitoringService : Service() {
         val (botToken, chatId) = sendCreds()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
+        var responseGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { 0L }
         val offset = preferencesManager.lastUpdateId + 1
         val url = updatesUrl(botToken, offset)
 
@@ -1669,6 +1668,7 @@ class MonitoringService : Service() {
             if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
                 responseToken = freshToken
                 responseChat = freshChat
+                responseGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { responseGeneration }
                 val retryUrl = updatesUrl(freshToken, offset)
                 response = try {
                     TelegramPollClient.api.getUpdates(retryUrl)
@@ -1762,7 +1762,7 @@ class MonitoringService : Service() {
             if (seen) {
                 continue
             }
-            beginUpdateTrack(update.updateId)
+            beginUpdateTrack(update.updateId, responseGeneration)
             var offsetDeferred = false
             var delivered = true
             try {
@@ -2044,6 +2044,7 @@ class MonitoringService : Service() {
     }
 
     private val updateOffsetTracker = com.redeye.parentalmonitor.utils.UpdateOffsetTracker()
+    private val updateTrackGenerations = java.util.concurrent.ConcurrentHashMap<Long, Long>()
 
     private fun dispatchTracked(updateId: Long, logTag: String, block: suspend () -> Unit): kotlinx.coroutines.Job {
         return serviceScope.launch {
@@ -2069,20 +2070,25 @@ class MonitoringService : Service() {
     }
 
 
-    private fun beginUpdateTrack(updateId: Long) {
+    private fun beginUpdateTrack(updateId: Long, generation: Long) {
+        updateTrackGenerations[updateId] = generation
         updateOffsetTracker.begin(updateId)
     }
 
     private fun finishUpdateTrack(updateId: Long, delivered: Boolean) {
+        val generation = updateTrackGenerations.remove(updateId)
+        val currentGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
+        if (generation != null && generation != currentGeneration) {
+            updateOffsetTracker.forget(updateId)
+            return
+        }
         updateOffsetTracker.finish(updateId, delivered)?.let { persistUpdateOffset(it) }
     }
 
     private fun persistUpdateOffset(updateId: Long) {
         synchronized(offsetPersistLock) {
             try {
-                if (skipUpdateOffsetOnce) {
-                    skipUpdateOffsetOnce = false
-                } else if (updateId > preferencesManager.lastUpdateId) {
+                if (updateId > preferencesManager.lastUpdateId) {
                     preferencesManager.setLastUpdateIdSync(updateId)
                     if (preferencesManager.lastUpdateId < updateId) {
                         commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
@@ -3433,7 +3439,6 @@ class MonitoringService : Service() {
         if (data.accessPin.isNotEmpty()) {
             try { preferencesManager.accessPin = data.accessPin } catch (_: Exception) { }
         }
-        if (oldToken != newToken || oldChat != newChat) skipUpdateOffsetOnce = true
         audit("restore diterapkan", "private")
         refreshCreds()
         serviceScope.launch {

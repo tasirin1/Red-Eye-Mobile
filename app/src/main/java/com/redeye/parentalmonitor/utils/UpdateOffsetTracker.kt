@@ -11,6 +11,13 @@ class UpdateOffsetTracker {
     }
 
     @Synchronized
+    fun forget(updateId: Long) {
+        pending.remove(updateId)
+        confirmed.remove(updateId)
+        failed.remove(updateId)
+    }
+
+    @Synchronized
     fun finish(updateId: Long, delivered: Boolean): Long? {
         pending.remove(updateId)
         if (!delivered) {

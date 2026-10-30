@@ -78,6 +78,29 @@ class UpdateOffsetTrackerTest {
     }
 
     @Test
+    fun lupakanTertundaBasiMembebaskanKemajuan() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(1)
+        tracker.begin(2)
+        tracker.begin(3)
+        assertNull(tracker.finish(2, true))
+        tracker.forget(1)
+        assertEquals(3L, tracker.finish(3, true))
+    }
+
+    @Test
+    fun lupakanGagalBasiMembebaskanKemajuan() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(5)
+        assertNull(tracker.finish(5, false))
+        tracker.begin(6)
+        assertNull(tracker.finish(6, true))
+        tracker.forget(5)
+        tracker.begin(7)
+        assertEquals(7L, tracker.finish(7, true))
+    }
+
+    @Test
     fun selesaiLebihDuluLaluYangAwal() {
         val tracker = UpdateOffsetTracker()
         tracker.begin(20)
