@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.557] - 2026-10-30
+
 ### Fixed
 - Alert percobaan mematikan Device Admin kini tunduk pada gerbang keadaan yang sama seperti jalur peringatan keamanan lainnya (issue #375): `handleAdminAlert` sebelumnya tidak punya gerbang keadaan di badannya, dan pemicunya memang tak tergerbang di titik kirim — `AdminReceiver.onDisableRequested` memulai layanan dengan `ACTION_ADMIN_ALERT` tanpa syarat (gerbang `isConfigured() && !userDisabledMonitoring` di receiver itu hanya menggerbangi pesan antrean pendampingnya), dan cabang dispatch `ACTION_ADMIN_ALERT` tetap menjalankan handler-nya bahkan sesudah `shouldAutoResume()` gagal. Akibatnya pemilik yang sudah mematikan monitoring dari Setup (atau keadaan belum terkonfigurasi) tetap menerima lokasi + foto "🚨 Percobaan mematikan Device Admin" hanya karena layar penonaktifan admin dibuka — data lokasi & foto terkirim walau monitoring diminta mati, tidak seperti jalur kembarnya (`handleUnlockFailed`, `checkSimIdentity`, dan ketiga titik AdminReceiver) yang semuanya berhenti pada keadaan itu. Badan `handleAdminAlert` kini membuka dengan gerbang yang sama persis (`if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring) return`, di dalam try yang sama seperti kedua kembarnya di layanan), yang menahan kedua jalur pemanggilan cabang dispatch (layanan berjalan maupun sesudah-gagal-resume) karena handler hanya dipanggil dari cabang itu. Perilaku saat monitoring aktif tidak berubah sama sekali: gerbang lolos dan alur lokasi + foto berjalan identik.
 
