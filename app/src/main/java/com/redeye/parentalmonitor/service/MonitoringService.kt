@@ -415,10 +415,19 @@ class MonitoringService : Service() {
         @Volatile
         var isRunning = false
         private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
+        @Volatile
+        private var appsCacheAt = 0L
+        @Volatile
+        private var appsCache: List<String> = emptyList()
 
         fun invalidateAppLabel(pkg: String) {
             try {
                 appLabelCache.remove(pkg)
+            } catch (_: Exception) {
+            }
+            try {
+                appsCache = emptyList()
+                appsCacheAt = 0L
             } catch (_: Exception) {
             }
         }
@@ -10175,11 +10184,6 @@ class MonitoringService : Service() {
         }
         return out
     }
-
-    @Volatile
-    private var appsCacheAt = 0L
-    @Volatile
-    private var appsCache: List<String> = emptyList()
 
     private fun listLaunchableApps(limit: Int): Pair<List<String>, Int> {
         val cached = appsCache
