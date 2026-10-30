@@ -11,7 +11,8 @@ object NotificationPrivacy {
             OTP_WORDS.joinToString("|") { Regex.escape(it) } +
             ")(?![\\p{L}\\p{N}])"
     )
-    private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]?\\d){3,}(?![ .-]?\\d)")
+    private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]*\\d){3,}(?![ .-]*\\d)")
+    private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,10}(?![\\p{L}\\p{N}])")
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 
@@ -20,6 +21,10 @@ object NotificationPrivacy {
     private val MASK_TOKEN = "••••"
 
     fun mask(text: String): String {
-        return DIGIT_GROUPS.replace(text, MASK_TOKEN)
+        val digitsMasked = DIGIT_GROUPS.replace(text, MASK_TOKEN)
+        return CODE_TOKENS.replace(digitsMasked) { match ->
+            val token = match.value
+            if (token.any { it.isLetter() } && token.any { it.isDigit() }) MASK_TOKEN else token
+        }
     }
 }

@@ -40,6 +40,29 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun masksAlphanumericCodesAndIrregularSeparators() {
+        assertEquals("Kode verifikasi Anda: ••••", NotificationPrivacy.mask("Kode verifikasi Anda: X7K9P2"))
+        assertEquals("Your verification code is ••••, valid 5 minutes", NotificationPrivacy.mask("Your verification code is A1B2C3, valid 5 minutes"))
+        assertEquals("token ••••", NotificationPrivacy.mask("token 9F8E7D"))
+        assertEquals("kode ••••", NotificationPrivacy.mask("kode AB12CD34EF"))
+        assertEquals("Kode OTP ••••", NotificationPrivacy.mask("Kode OTP 123  456"))
+        assertEquals("kode ••••", NotificationPrivacy.mask("kode 123 - 456"))
+    }
+
+    @Test
+    fun leavesPlainSentencesAndLongTokensUntouched() {
+        assertEquals(
+            "Kode verifikasi sudah dikirim ke aplikasi Anda",
+            NotificationPrivacy.mask("Kode verifikasi sudah dikirim ke aplikasi Anda")
+        )
+        assertEquals("kode AB12CD34EF5", NotificationPrivacy.mask("kode AB12CD34EF5"))
+        assertEquals(
+            "ID transaksi TRXAB12CD34EF56GH selesai",
+            NotificationPrivacy.mask("ID transaksi TRXAB12CD34EF56GH selesai")
+        )
+    }
+
+    @Test
     fun leavesNonOtpTextUntouched() {
         val text = "Pesan biasa tanpa angka"
         assertEquals(text, NotificationPrivacy.mask(text))
