@@ -211,6 +211,8 @@ class MonitoringService : Service() {
     private var shotCallbackProjection: MediaProjection? = null
     private var shotWidth = 0
     private var shotHeight = 0
+    @Volatile
+    private var shotNoFrameFailAt = 0L
 
     private enum class MediaSendOutcome {
         SENT, KEPT, DROPPED
@@ -8075,6 +8077,10 @@ class MonitoringService : Service() {
         if (shotViaAccessibility()) {
             return "Jalur Aksesibilitas aktif tapi pengambilan gagal \u2014 coba /screenshot lagi; bila terus gagal, buka Setup lalu matikan-nyalakan lagi layanan Aksesibilitasnya."
         }
+        val noFrameAt = shotNoFrameFailAt
+        if (noFrameAt > 0L && android.os.SystemClock.elapsedRealtime() - noFrameAt < 120_000L) {
+            return "Sesi tangkap layar tercatat masih aktif, tetapi sistem tidak mengirim bingkai apa pun (layar mungkin statis atau mati). Bangunkan/buka layar lalu coba /screenshot lagi; bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
+        }
         val types = FgsTypes.describe(appliedFgsTypes)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !screenshotTypeActive()) {
             "Tipe latar 'screen' belum aktif (kini: $types). Buka aplikasi sekali agar layanan memulihkan tipe latar di depan, lalu kirim /screenshot lagi. Bila tetap gagal, berikan izinnya sekali lagi: Setup → Capture Screen."
@@ -8470,14 +8476,33 @@ class MonitoringService : Service() {
             return null
         }
         try {
-            try { reader.acquireLatestImage()?.close() } catch (_: Exception) { }
+            val stale = try { reader.acquireLatestImage() } catch (_: Exception) { null }
             var image: android.media.Image? = null
-            for (i in 0 until 20) {
-                image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
-                if (image != null) break
-                kotlinx.coroutines.delay(100)
+            try {
+                for (i in 0 until 20) {
+                    image = try { reader.acquireLatestImage() } catch (_: Exception) { null }
+                    if (image != null) break
+                    kotlinx.coroutines.delay(100)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                if (image == null) {
+                    try { stale?.close() } catch (_: Exception) { }
+                }
+                throw e
             }
-            val img = image ?: return null
+            val fresh = image
+            val img: android.media.Image
+            if (fresh != null) {
+                if (stale != null && stale !== fresh) {
+                    try { stale.close() } catch (_: Exception) { }
+                }
+                img = fresh
+            } else if (stale != null) {
+                img = stale
+            } else {
+                shotNoFrameFailAt = android.os.SystemClock.elapsedRealtime()
+                return null
+            }
             try {
                 val planes = try { img.planes } catch (_: Exception) { null }
                 if (planes == null || planes.isEmpty()) return null
