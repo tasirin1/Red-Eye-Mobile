@@ -10207,9 +10207,9 @@ class MonitoringService : Service() {
                 try {
                     if (file.isFile) {
                         bytes += file.length()
-                        if ((file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")) photos++
-                        if (file.name.startsWith("audio_") && file.name.endsWith(".m4a")) audios++
-                        if (file.name.startsWith("video_") && file.name.endsWith(".mp4")) videos++
+                        if ((file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && (file.name.endsWith(".jpg") || file.name.endsWith(".tmp"))) photos++
+                        if (file.name.startsWith("audio_") && (file.name.endsWith(".m4a") || file.name.endsWith(".tmp"))) audios++
+                        if (file.name.startsWith("video_") && (file.name.endsWith(".mp4") || file.name.endsWith(".tmp"))) videos++
                     }
                 } catch (_: Exception) {
                 }
