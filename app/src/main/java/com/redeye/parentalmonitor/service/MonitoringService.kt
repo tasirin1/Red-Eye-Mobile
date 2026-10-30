@@ -3075,7 +3075,8 @@ class MonitoringService : Service() {
             "📥 <b>Pulihkan setelan</b>\n" +
                 "🔔 Permintaan restore dimulai. Kalau bukan Anda, kirim /pulihkan batal sekarang.\n\n" +
                 "Kirim file backup <code>.redeyebak</code> sebagai dokumen di chat ini, lalu balas PIN backup-nya.\n\n" +
-                "File berisi token bot, Chat ID, owner ID, interval sync, dan interval foto. " +
+                "File berisi token bot, Chat ID, owner ID, PIN akses, interval sync, dan interval foto. " +
+                "PIN akses: bila cadangan membawa PIN, PIN perangkat ini diganti dari cadangan; bila cadangan tidak membawa PIN, PIN perangkat ini tetap dipakai. " +
                 "Sebelum restore, buka bot baru dan kirim /start sekali dari chat tujuan agar bot baru boleh mengirim ke sana. " +
                 "Setelan baru hanya dipakai setelah token, chat, dan tes kirim lolos, lalu ada jeda batal 60 detik. " +
                 "Kalau gagal, setelan lama tetap. Sesi berlaku 10 menit.\n\n" +
@@ -3351,9 +3352,11 @@ class MonitoringService : Service() {
         serviceScope.launch {
             try { registerBotCommands(force = true) } catch (_: Exception) { }
         }
+        val pinNote = if (data.accessPin.isNotEmpty()) "PIN akses diganti dari cadangan." else "PIN akses tidak ada di cadangan — PIN perangkat ini tetap dipakai."
         sendToTelegram(
             "✅ <b>Setelan dipulihkan</b>\n" +
                 "Token bot, Chat ID, owner ID, interval sync, dan interval foto sudah diganti.\n" +
+                pinNote + "\n" +
                 "Bot lama tidak dipakai lagi. Kirim /status untuk memastikan."
         )
         if (oldToken.isNotEmpty() && oldChat.isNotEmpty() && (oldToken != newToken || oldChat != newChat)) {
