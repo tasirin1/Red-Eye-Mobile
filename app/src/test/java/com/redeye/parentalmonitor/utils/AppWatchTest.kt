@@ -85,4 +85,29 @@ class AppWatchTest {
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
         assertFalse(AppWatch.isSensitivePackage("org.telegram.messenger"))
     }
+
+    @Test
+    fun paketBankNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("ovo.id"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.bri.brimo"))
+        assertTrue(AppWatch.isSensitivePackage("com.bca.mybca"))
+        assertTrue(AppWatch.isSensitivePackage("id.dana"))
+        assertTrue(AppWatch.isSensitivePackage("com.gojek.gopay"))
+        assertTrue(AppWatch.isSensitivePackage("com.shopee.id"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.linkaja"))
+        assertTrue(AppWatch.isSensitivePackage("com.jago.digitalBanking"))
+        assertTrue(AppWatch.isSensitivePackage("com.btpn.dc"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.seabank"))
+        assertTrue(AppWatch.isSensitivePackage("src.com.bni"))
+        assertTrue(AppWatch.isSensitivePackage("id.bni.wondr"))
+        assertTrue(AppWatch.isSensitivePackage("id.bmri.livin"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.cimbniaga.mobile.android"))
+        assertTrue(AppWatch.isSensitivePackage("com.dbank.mobile"))
+        assertTrue(AppWatch.isSensitivePackage("com.permatabank"))
+        assertFalse(AppWatch.isSensitivePackage("com.grabtaxi.passenger"))
+        assertFalse(AppWatch.isSensitivePackage("com.mobile.legends"))
+        assertFalse(AppWatch.isSensitivePackage("com.netflix.mediaclient"))
+        assertFalse(AppWatch.isSensitivePackage("com.google.android.youtube"))
+        assertFalse(AppWatch.isSensitivePackage("com.tokopedia.tkpd"))
+    }
 }
