@@ -9557,7 +9557,13 @@ class MonitoringService : Service() {
                     false
                 }
                 keepForRetry = finalized && try { audioFile.exists() && audioFile.length() > 0L } catch (_: Exception) { false }
-                if (!keepForRetry) {
+                if (keepForRetry) {
+                    try {
+                        messageQueue.addMessage("\u26A0\uFE0F Rekaman terputus di tengah (layanan dibatalkan/dihentikan). Berkas disimpan untuk dikirim otomatis; durasinya mungkin lebih pendek dari ${seconds} dtk yang diminta.")
+                        MessageScheduler.scheduleMessageSend(this)
+                    } catch (_: Exception) {
+                    }
+                } else {
                     try { deleteQuietly(audioTmp) } catch (_: Exception) { }
                 }
             }
