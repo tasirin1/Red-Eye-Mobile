@@ -4185,7 +4185,7 @@ class MonitoringService : Service() {
                 buildString {
                     appendLine("\uD83D\uDD14 <b>Notifikasi terakhir</b>")
                     for (item in items.takeLast(10)) {
-                        appendLine("\u2022 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
+                        appendLine("\u2022 " + formatDate(item.at) + " \u00B7 " + Html.escape(item.app) + ": " + Html.escape(item.title).let { it.take(safeCut(it, 80)) } + " \u2014 " + Html.escape(item.text).let { it.take(safeCut(it, 120)) })
                     }
                 }
             )
