@@ -9218,6 +9218,19 @@ class MonitoringService : Service() {
                 audioManager.setStreamVolume(stream, audioManager.getStreamMaxVolume(stream), 0)
             } catch (_: Exception) {
             }
+            val maxVolume = try { audioManager.getStreamMaxVolume(stream) } catch (_: Exception) { -1 }
+            val raisedVolume = try { audioManager.getStreamVolume(stream) } catch (_: Exception) { -1 }
+            val volumeShort = maxVolume > 0 && raisedVolume in 0 until maxVolume
+            val totalSilence = try {
+                val nm = getSystemService(android.app.NotificationManager::class.java)
+                nm?.currentInterruptionFilter == android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+            } catch (_: Exception) {
+                false
+            }
+            if (totalSilence) {
+                sendToTelegram("⚠️ Mode Jangan Ganggu hening total aktif di perangkat ini — dering tak akan terdengar, /ring dibatalkan.")
+                return
+            }
             val uri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
             val ringEndAt = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
             var usePlayer = false
@@ -9260,10 +9273,11 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 ringtone?.play()
+                var everPlaying = try { ringtone?.isPlaying == true } catch (_: Exception) { false }
                 val ringEndFallback = android.os.SystemClock.elapsedRealtime() + seconds * 1000L
                 while (android.os.SystemClock.elapsedRealtime() < ringEndFallback) {
                     try {
-                        if (ringtone?.isPlaying != true) ringtone?.play()
+                        if (ringtone?.isPlaying == true) everPlaying = true else ringtone?.play()
                     } catch (_: Exception) {
                     }
                     try {
@@ -9275,12 +9289,24 @@ class MonitoringService : Service() {
                     currentCoroutineContext().ensureActive()
                 }
                 try {
-                    sendToTelegram(finishedRingText())
+                    if (ringtone?.isPlaying == true) everPlaying = true
+                } catch (_: Exception) {
+                }
+                try {
+                    if (everPlaying) {
+                        sendToTelegram(if (volumeShort) finishedRingText() + " (volume alarm tak mencapai maks di perangkat ini.)" else finishedRingText())
+                    } else {
+                        sendToTelegram("⚠️ Gagal berdering (suara alarm tak pernah terdengar di perangkat ini).")
+                    }
                 } catch (_: Exception) {
                 }
                 return
             }
-            sendToTelegram("\uD83D\uDD14 Berdering $seconds dtk\u2026")
+            if (volumeShort) {
+                sendToTelegram("\uD83D\uDD14 Berdering $seconds dtk\u2026 (volume alarm tak bisa dimaksimalkan di perangkat ini — terbaca $raisedVolume dari maks $maxVolume.)")
+            } else {
+                sendToTelegram("\uD83D\uDD14 Berdering $seconds dtk\u2026")
+            }
             kotlinx.coroutines.delay(seconds * 1000L)
             currentCoroutineContext().ensureActive()
             sendToTelegram(finishedRingText())
