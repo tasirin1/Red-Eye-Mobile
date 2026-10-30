@@ -377,6 +377,7 @@ class MonitoringService : Service() {
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
         private const val VIDEO_BYTES_PER_SEC = 300_000L
         private const val MAX_VIDEO_BYTES = 48L * 1024L * 1024L
+        private const val MAX_VIDEO_SECONDS = MAX_VIDEO_BYTES / VIDEO_BYTES_PER_SEC
         private const val CAMERA_WAKE_FRESH_MS = 10 * 60_000L
         private const val CAMERA_WAKE_NOTIFY_GAP_MS = 6 * 60 * 60_000L
         private const val NOTIFICATION_ID = 1
@@ -2456,7 +2457,7 @@ class MonitoringService : Service() {
         NumberInput("/pause", "⏸️ Jeda foto", "1-480", "menit", true, "Jeda foto otomatis sekian menit; foto manual /photo tetap bisa."),
         NumberInput("/syncinterval", "\uD83D\uDD04 Interval sinkron", "1-1440", "menit", true, "Atur jeda putaran sinkronisasi data ke Telegram."),
         NumberInput("/record", "\uD83C\uDF99 Rekam audio", "5-600", "detik", true, "Rekam suara sekitar HP sekian detik lalu kirim ke sini."),
-        NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-180", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
+        NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-$MAX_VIDEO_SECONDS", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
         NumberInput("/ring", "\uD83D\uDD14 Bunyi HP", "5-60", "detik", false, "Bunyikan HP sekian detik (bawaan 15)."),
         NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "0-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
         NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home). Ketik /jemput off untuk mematikan, /jemput untuk status.")
@@ -4131,10 +4132,10 @@ class MonitoringService : Service() {
 
     private suspend fun handleRecordVideoCommand(arg: String) {
         val seconds = arg.toIntOrNull()
-        if (seconds == null || seconds !in 5..180) {
-            sendToTelegram("Cara pakai: /recordvideo &lt;5-180&gt; (seconds)")
+        if (seconds == null || seconds !in 5..MAX_VIDEO_SECONDS.toInt()) {
+            sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (seconds)")
         } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
-            val maxSecs = (MAX_VIDEO_BYTES / VIDEO_BYTES_PER_SEC).toInt().coerceIn(5, 180)
+            val maxSecs = MAX_VIDEO_SECONDS.toInt().coerceAtLeast(5)
             sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * VIDEO_BYTES_PER_SEC) / (1024L * 1024L)} MB, melebihi batas ${MAX_VIDEO_BYTES / (1024L * 1024L)} MB. Coba ≤$maxSecs dtk.")
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             sendToTelegram("\u26A0\uFE0F Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
