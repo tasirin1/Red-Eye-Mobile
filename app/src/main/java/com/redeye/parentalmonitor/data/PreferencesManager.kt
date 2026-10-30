@@ -1677,7 +1677,7 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int): Boolean {
+    fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int, ownerIdOverride: Long? = null): Boolean {
         if (!storageEncrypted) {
             val upgraded = try { upgradeToPersistent() } catch (_: Exception) { false }
             if (!upgraded || !storageEncrypted) return false
@@ -1686,6 +1686,7 @@ class PreferencesManager(context: Context) {
             try {
                 val editor = sharedPreferences.edit()
                 putCredentialState(editor, newToken, newChatId)
+                if (ownerIdOverride != null) editor.putLong(KEY_OWNER_ID, ownerIdOverride)
                 editor.putString(KEY_BOT_TOKEN, newToken)
                 editor.putString(KEY_CHAT_ID, newChatId)
                 editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)

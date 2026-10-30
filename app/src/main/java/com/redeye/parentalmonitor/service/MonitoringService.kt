@@ -3331,8 +3331,9 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Validasi ulang gagal (jaringan?). Setelan lama tetap dipakai.")
             return
         }
+        val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
         val saved = try {
-            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval)
+            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval, targetOwner)
         } catch (_: Exception) {
             false
         }
@@ -3346,10 +3347,6 @@ class MonitoringService : Service() {
         }
         if (oldToken != newToken || oldChat != newChat) skipUpdateOffsetOnce = true
         audit("restore diterapkan", "private")
-        val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
-        if (targetOwner > 0L) {
-            try { preferencesManager.setOwnerIdSync(targetOwner) } catch (_: Exception) { }
-        }
         refreshCreds()
         serviceScope.launch {
             try { registerBotCommands(force = true) } catch (_: Exception) { }
