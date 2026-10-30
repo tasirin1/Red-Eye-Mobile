@@ -652,6 +652,8 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.pendingSmsText = "" } catch (_: Exception) { }
             try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
             try { prefs.pendingSmsOwner = "" } catch (_: Exception) { }
+            try { prefs.pendingPromptCmd = "" } catch (_: Exception) { }
+            try { prefs.pendingPromptAt = 0L } catch (_: Exception) { }
             try { prefs.clearRingStateSync() } catch (_: Exception) { }
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
