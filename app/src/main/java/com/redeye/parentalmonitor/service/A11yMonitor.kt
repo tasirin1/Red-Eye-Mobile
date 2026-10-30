@@ -512,7 +512,7 @@ object A11yMonitor {
                 } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
                     lastNightAlertElapsed = nowElapsed
                     nightAlertedPackage = pkg
-                    alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n" + TimeFmt.short(nowWall)
+                    alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)
                 }
                 persistSnapshot = persistSnapshotLocked(false)
             }
@@ -672,7 +672,7 @@ object A11yMonitor {
                 ) {
                     lastNightAlertElapsed = nowElapsed
                     nightAlertedPackage = currentPackage
-                    crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n" + TimeFmt.short(nowWall)
+                    crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n<code>" + currentPackage + "</code>\n" + TimeFmt.short(nowWall)
                 }
                 persistLocked(app, false)
             }
