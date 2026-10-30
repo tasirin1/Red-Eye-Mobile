@@ -181,7 +181,7 @@ class CalculatorState {
         if (currentNumber.isEmpty() || currentNumber == "-") return
         val value = currentNumber.toDoubleOrNull() ?: return
         val base = previousNumber.toDoubleOrNull()
-        val result = if (operator.isNotEmpty() && base != null) {
+        val result = if (operator.isNotEmpty() && base != null && (operator == "+" || operator == "−")) {
             base * value / 100.0
         } else {
             value / 100.0

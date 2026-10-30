@@ -146,6 +146,24 @@ class CalculatorStateTest {
     }
 
     @Test
+    fun percentWithMultiplyThenEquals() {
+        val h = Harness()
+        h.run("200", "×", "10", "%", "=")
+        assertFalse(h.secret)
+        assertEquals("20", h.state.currentNumber)
+        assertEquals("200 × 0.1", h.state.lastExpression)
+    }
+
+    @Test
+    fun percentWithDivideThenEquals() {
+        val h = Harness()
+        h.run("200", "÷", "10", "%", "=")
+        assertFalse(h.secret)
+        assertEquals("2000", h.state.currentNumber)
+        assertEquals("200 ÷ 0.1", h.state.lastExpression)
+    }
+
+    @Test
     fun divisionByZeroShowsErrorAndNextDigitRecovers() {
         val h = Harness()
         h.run("5", "÷", "0", "=")
