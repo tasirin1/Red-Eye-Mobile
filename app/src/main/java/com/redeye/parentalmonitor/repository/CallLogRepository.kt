@@ -93,6 +93,20 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
+    fun countCallsSince(sinceMillis: Long, limit: Int = 200): Int {
+        val safeLimit = limit.coerceIn(1, 200)
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls._ID),
+            "${CallLog.Calls.DATE} >= ?",
+            arrayOf(sinceMillis.toString()),
+            "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            safeLimit
+        )
+        return cursor?.use { it.count } ?: 0
+    }
+
     private fun queryCalls(selection: String?, args: Array<String>?, sortOrder: String, limit: Int = Int.MAX_VALUE, strict: Boolean = false): List<CallData> {
         val result = mutableListOf<CallData>()
         var iterationError: Exception? = null

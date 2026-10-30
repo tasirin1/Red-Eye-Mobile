@@ -161,6 +161,20 @@ class SmsRepository(private val context: Context) {
         )
     }
 
+    fun countSmsSince(sinceMillis: Long, limit: Int = 200): Int {
+        val safeLimit = limit.coerceIn(1, 200)
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.DATE} >= ?",
+            arrayOf(sinceMillis.toString()),
+            "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
+            safeLimit
+        )
+        return cursor?.use { it.count } ?: 0
+    }
+
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
         val safeLimit = limit.coerceIn(1, 200)

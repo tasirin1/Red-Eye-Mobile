@@ -6260,8 +6260,8 @@ class MonitoringService : Service() {
             DigestSchedule.Verdict.SEND -> try { preferencesManager.digestAt = now } catch (_: Exception) { }
         }
         val since = now - 6 * 60 * 60_000L
-        val smsCount = try { smsRepository.getRecentSmsSince(since, 200).size } catch (_: Exception) { -1 }
-        val callCount = try { callLogRepository.getCallsSince(since, 200).size } catch (_: Exception) { -1 }
+        val smsCount = try { smsRepository.countSmsSince(since, 200) } catch (_: Exception) { -1 }
+        val callCount = try { callLogRepository.countCallsSince(since, 200) } catch (_: Exception) { -1 }
         val level = batteryLevel()
         sendToTelegram(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
