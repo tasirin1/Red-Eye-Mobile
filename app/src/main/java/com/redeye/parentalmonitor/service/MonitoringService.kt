@@ -6403,15 +6403,10 @@ class MonitoringService : Service() {
         return summary to firstToday
     }
 
-    private fun startOfTodayMs(now: Long): Long {
-        val off = java.util.TimeZone.getDefault().getOffset(now)
-        return ((now + off) / 86_400_000L) * 86_400_000L - off
-    }
-
     private fun firstUnlockTodayMs(now: Long): Long {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return 0L
         val manager = usageStatsManager ?: return 0L
-        val start = startOfTodayMs(now)
+        val start = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)
         var first = 0L
         try {
             val cursor = manager.queryEvents(start, now) ?: return 0L
@@ -6808,7 +6803,7 @@ class MonitoringService : Service() {
         if (awaitingOwnerLogin()) return false
         try {
             val now = System.currentTimeMillis()
-            val eventScan = try { usageSummaryScan(24, startOfTodayMs(now)) } catch (_: Exception) { null to 0L }
+            val eventScan = try { usageSummaryScan(24, com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)) } catch (_: Exception) { null to 0L }
             val eventSummary = eventScan.first
             val dayData = usageDayData(now, eventSummary?.let { eventScan.second })
             val since = now - 24 * 60 * 60_000L

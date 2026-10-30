@@ -77,3 +77,4 @@ storeHeldPhotoHashes
 setPendingNotifDropsAndBatchSync
 OTP_CODE_REGEX
 OTP_KEYWORDS
+startOfTodayMs

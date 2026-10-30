@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Awal hari untuk fakta buka-kunci pertama & ringkasan pemakaian kini memakai kalender, bukan offset zona tetap (issue #361): `startOfTodayMs` sebelumnya menurunkan tengah malam setempat dari offset zona pada saat sekarang — pada hari transisi DST offset itu berbeda 1 jam dari offset tengah malam sebenarnya, sehingga pada hari spring-forward awal hari terhitung 1 jam terlalu awal (23:00 hari sebelumnya) dan pada hari fall-back 1 jam terlalu akhir (01:00), sementara baris laporan tetangga di digest yang sama sudah memakai helper kalender eksak — satu laporan bisa memakai dua awal hari berbeda. Kedua pemanggil (`firstUnlockTodayMs` dan `usageSummaryScan` di digest harian) kini memakai helper yang sama dengan jalur tetangga, `A11yUsageMath.dayStartWallMillis` (terkunci uji JVM), dan fungsi lama dihapus. Pada zona tanpa DST hasilnya identik milidetik dengan rumus lama, jadi perubahan perilaku hanya terjadi tepat pada hari transisi DST. Dengan perbaikan ini kelas "-24 jam tetap untuk hari kalender" tertutup: inventaris putaran-48 menyatakan semua situs lain sudah kalender eksak atau jendela bergulir yang memang benar.
+
 
 ## [1.6.551] - 2026-10-30
 
