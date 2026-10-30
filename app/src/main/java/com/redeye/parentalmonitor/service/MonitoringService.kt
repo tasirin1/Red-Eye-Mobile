@@ -6651,14 +6651,23 @@ class MonitoringService : Service() {
     private class UsageDayData(
         val rows: List<Pair<String, Long>>?,
         val a11yRows: List<A11yMonitor.AppUsage>,
-        val firstUnlockMs: Long
-    )
+        val firstUnlockMs: Long,
+        dayRowsProvider: () -> List<Pair<String, Long>>?
+    ) {
+        val dayRows: List<Pair<String, Long>>? by lazy { dayRowsProvider() }
+    }
 
     private fun usageDayData(now: Long, firstUnlockOverride: Long? = null): UsageDayData {
         val rows = try { usageRows(24) } catch (_: Exception) { null }
         val a11yRows = a11yUsageRows()
         val fu = firstUnlockOverride ?: try { firstUnlockTodayMs(now) } catch (_: Exception) { 0L }
-        return UsageDayData(rows, a11yRows, fu)
+        return UsageDayData(rows, a11yRows, fu) {
+            try {
+                usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now), now)
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     private fun screenTimeSummaryFrom(data: UsageDayData): String? {
@@ -6685,7 +6694,7 @@ class MonitoringService : Service() {
         val rows = data.rows
         if (rows != null && rows.isNotEmpty()) {
             val dayStart = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now)
-            val dayRows = try { usageRowsBetween(dayStart, now) } catch (_: Exception) { null }
+            val dayRows = data.dayRows
             if (dayRows != null) {
                 todayMs = dayRows.sumOf { it.second }
                 val top = dayRows.firstOrNull()
@@ -6722,12 +6731,7 @@ class MonitoringService : Service() {
         val stored = try { DailyFacts.parse(preferencesManager.dailyFacts).firstOrNull { it.day == key } } catch (_: Exception) { null }
         var screenMin = -1
         val a11yRows = data.a11yRows
-        val dayRows = try {
-            usageRowsBetween(
-                com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(now),
-                now
-            )
-        } catch (_: Exception) { null }
+        val dayRows = data.dayRows
         if (dayRows != null && dayRows.isNotEmpty()) {
             screenMin = (dayRows.sumOf { it.second } / 60_000L).toInt()
         } else if (a11yRows.isNotEmpty()) {
