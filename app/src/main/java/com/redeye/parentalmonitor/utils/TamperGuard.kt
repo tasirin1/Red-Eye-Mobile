@@ -25,6 +25,14 @@ object TamperGuard {
         "permissioncontroller"
     )
 
+    fun inSetupGrace(reason: String?, nowWall: Long, settingsGraceUntil: Long, adminGraceUntil: Long): Boolean {
+        return when (reason) {
+            "aksesibilitas" -> nowWall < settingsGraceUntil
+            "admin perangkat" -> nowWall < adminGraceUntil
+            else -> false
+        }
+    }
+
     fun mayBeSensitive(packageName: String): Boolean {
         val pkg = packageName.lowercase(Locale.ROOT)
         return isSettingsLike(pkg) || isInstallerLike(pkg)

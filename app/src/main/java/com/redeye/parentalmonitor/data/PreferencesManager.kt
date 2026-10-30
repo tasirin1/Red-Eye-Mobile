@@ -465,6 +465,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
         private const val KEY_A11Y_TAMPER = "a11y_tamper"
         private const val KEY_A11Y_SETTINGS_GRACE = "a11y_settings_grace"
+        private const val KEY_A11Y_ADMIN_GRACE = "a11y_admin_grace"
         private const val KEY_A11Y_APP_WATCH = "a11y_app_watch"
         private const val KEY_A11Y_APP_WATCH_PACKAGES = "a11y_app_watch_packages"
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
@@ -1403,6 +1404,10 @@ class PreferencesManager(context: Context) {
     var a11ySettingsGraceUntil: Long
         get() = prefLong(KEY_A11Y_SETTINGS_GRACE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE, value).apply()
+
+    var a11yAdminGraceUntil: Long
+        get() = prefLong(KEY_A11Y_ADMIN_GRACE, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE, value).apply()
 
     var a11yAppWatchEnabled: Boolean
         get() = prefBoolean(KEY_A11Y_APP_WATCH, false)

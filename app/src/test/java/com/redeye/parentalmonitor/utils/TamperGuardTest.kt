@@ -108,6 +108,33 @@ class TamperGuardTest {
     }
 
     @Test
+    fun tenggangAksesibilitasDariJendelaAksesibilitas() {
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 1120L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1120L, 1120L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 0L, 0L))
+    }
+
+    @Test
+    fun tenggangAdminDariJendelaAdmin() {
+        assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 1120L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1120L, 0L, 1120L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 2000L, 0L, 1120L))
+    }
+
+    @Test
+    fun tenggangTidakMenularAntarAlasan() {
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1000L, 5000L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 2000L, 1120L, 5000L))
+    }
+
+    @Test
+    fun alasanLainDanTanpaAlasanTidakPernahBebas() {
+        assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L))
+        assertFalse(TamperGuard.inSetupGrace("sumber tak dikenal", 1000L, 5000L, 5000L))
+        assertFalse(TamperGuard.inSetupGrace(null, 1000L, 5000L, 5000L))
+    }
+
+    @Test
     fun deteksiAwalLayarSensitif() {
         assertTrue(TamperGuard.mayBeSensitive("com.android.settings"))
         assertTrue(TamperGuard.mayBeSensitive("com.android.packageinstaller"))

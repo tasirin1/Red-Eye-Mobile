@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Aktivasi admin perangkat dari Setup tidak lagi ditutup proteksi tamper sendiri (issue #374): gerbang masa tenggang tamper sebelumnya hanya membebaskan alasan "aksesibilitas" selama 120 detik sesudah Setup membuka setelan Aksesibilitas, sedangkan alur `activateDeviceAdmin` meluncurkan layar aktivasi admin sistem (`ACTION_ADD_DEVICE_ADMIN`) tanpa masa tenggang apa pun — dan pola `TamperGuard` untuk alasan "admin perangkat" secara konstruksi tidak bisa membedakan layar aktivasi dari layar penonaktifan (sinyal kelas/teksnya sama). Akibatnya pemilik yang mengaktifkan kembali admin perangkat lewat Setup saat Aksesibilitas + proteksi tamper hidup mendapati layar admin ditutup ke Home pada setiap percobaan disertai kabar Telegram "Percobaan: admin perangkat" — aktivasi yang sah dilaporkan sebagai percobaan tamper, dan jalan keluarnya (mematikan proteksi dulu dari Telegram) tidak disinggung teks mana pun. `activateDeviceAdmin` kini menulis masa tenggangnya sendiri (120 detik, pref terpisah `a11yAdminGraceUntil`) tepat sebelum meluncurkan layar aktivasi, dan keputusan tenggang di gerbang dipindah ke fungsi murni `TamperGuard.inSetupGrace` yang ketat per-alasan: tenggang yang dibuka satu alur tidak pernah membebaskan alasan lain (tenggang Aksesibilitas tidak membebaskan layar admin, dan sebaliknya), alasan tamper lain tetap ditutup walau sedang ada jendela terbuka, dan penonaktifan admin di luar jendela yang dibuka Setup sendiri berperilaku persis seperti sebelumnya. Keputusan tenggang kini terkunci uji JVM termasuk isolasi antar- alasannya.
+
 
 ## [1.6.555] - 2026-10-30
 

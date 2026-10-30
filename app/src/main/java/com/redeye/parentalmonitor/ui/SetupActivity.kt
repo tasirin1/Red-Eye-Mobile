@@ -1749,6 +1749,10 @@ class SetupActivity : AppCompatActivity() {
                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
                 putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.admin_description))
             }
+            try {
+                prefs.a11yAdminGraceUntil = System.currentTimeMillis() + 120_000L
+            } catch (_: Exception) {
+            }
             deviceAdminLauncher.launch(intent)
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.msg_action_failed), Toast.LENGTH_SHORT).show()
