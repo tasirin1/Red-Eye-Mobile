@@ -39,4 +39,13 @@ class RestoreRulesTest {
         assertEquals(7L, RestoreRules.ownerFallback(0L, "-1001234567890", 7L))
         assertEquals(0L, RestoreRules.ownerFallback(0L, "-1001234567890", 0L))
     }
+
+    @Test
+    fun ownerOutcomeClassifiesBackupChatAndKept() {
+        assertEquals(RestoreRules.OwnerOutcome.FROM_BACKUP, RestoreRules.ownerOutcome(42L, 42L, 7L))
+        assertEquals(RestoreRules.OwnerOutcome.FROM_BACKUP, RestoreRules.ownerOutcome(42L, 42L, 42L))
+        assertEquals(RestoreRules.OwnerOutcome.FROM_CHAT, RestoreRules.ownerOutcome(0L, 123456789L, 7L))
+        assertEquals(RestoreRules.OwnerOutcome.KEPT, RestoreRules.ownerOutcome(0L, 7L, 7L))
+        assertEquals(RestoreRules.OwnerOutcome.KEPT, RestoreRules.ownerOutcome(0L, 0L, 0L))
+    }
 }

@@ -20,4 +20,11 @@ object RestoreRules {
         val chatNumber = newChat.trim().toLongOrNull()
         return if (chatNumber != null && chatNumber > 0L) chatNumber else oldOwner
     }
+
+    enum class OwnerOutcome { FROM_BACKUP, FROM_CHAT, KEPT }
+
+    fun ownerOutcome(backupOwner: Long, targetOwner: Long, oldOwner: Long): OwnerOutcome {
+        if (backupOwner > 0L) return OwnerOutcome.FROM_BACKUP
+        return if (targetOwner == oldOwner) OwnerOutcome.KEPT else OwnerOutcome.FROM_CHAT
+    }
 }

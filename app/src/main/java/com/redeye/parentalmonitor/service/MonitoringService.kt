@@ -3430,9 +3430,15 @@ class MonitoringService : Service() {
             try { registerBotCommands(force = true) } catch (_: Exception) { }
         }
         val pinNote = if (data.accessPin.isNotEmpty()) "PIN akses diganti dari cadangan." else "PIN akses tidak ada di cadangan — PIN perangkat ini tetap dipakai."
+        val ownerNote = when (RestoreRules.ownerOutcome(data.ownerId, targetOwner, oldOwner)) {
+            RestoreRules.OwnerOutcome.FROM_BACKUP -> "Owner ID diganti dari cadangan."
+            RestoreRules.OwnerOutcome.FROM_CHAT -> "Owner ID diganti mengikuti Chat ID baru."
+            RestoreRules.OwnerOutcome.KEPT -> "Owner ID tidak ada di cadangan — owner perangkat ini tetap dipakai."
+        }
         sendToTelegram(
             "✅ <b>Setelan dipulihkan</b>\n" +
-                "Token bot, Chat ID, owner ID, interval sync, dan interval foto sudah diganti.\n" +
+                "Token bot, Chat ID, interval sync, dan interval foto sudah diganti.\n" +
+                ownerNote + "\n" +
                 pinNote + "\n" +
                 "Bot lama tidak dipakai lagi. Kirim /status untuk memastikan."
         )

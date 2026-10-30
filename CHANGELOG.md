@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Teks sukses `/pulihkan` kini menyebut hasil owner per cabang (issue #388): pesan "✅ Setelan dipulihkan" sebelumnya selalu mengklaim "owner ID … sudah diganti" tanpa syarat, padahal `RestoreRules.ownerFallback` punya tiga hasil dan salah satunya mempertahankan owner lama persis — bila owner di cadangan 0 (cadangan memang bisa dibuat sebelum owner teradopsi; ekspor Setup hanya mensyaratkan token/chat non-kosong) dan Chat ID baru bukan angka positif (chat `@username` atau grup ber-ID negatif), owner hasil adalah owner lama perangkat itu juga, tetapi teksnya tetap menyatakan sudah diganti. Klaim daftar kini hanya menyebut token, Chat ID, interval sync, dan interval foto, dan hasil owner disebut dalam kalimatnya sendiri mengikuti pola `pinNote` di pesan yang sama: "Owner ID diganti dari cadangan." / "Owner ID diganti mengikuti Chat ID baru." / "Owner ID tidak ada di cadangan — owner perangkat ini tetap dipakai." Cabangnya ditentukan dari hasil `ownerFallback` yang sebenarnya lewat fungsi murni baru `RestoreRules.ownerOutcome` (klasifikasi dari owner hasil dibanding masukan, tanpa menduplikasi syarat `ownerFallback`, sehingga tidak bisa menyimpang darinya) dan teruji JVM; perilaku `ownerFallback`, commit kredensial, dan teks medan lain tidak berubah.
+
 
 ## [1.6.563] - 2026-10-30
 
