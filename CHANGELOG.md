@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Potongan batch notifikasi tidak lagi terantre dua kali bila flush dibatalkan di tengah kirim (issue #345): tangkapan `CancellationException` di `forwardLocked` sebelumnya mengantrekan teks yang sedang dikirim lalu melempar ulang, dan penyelamatan pembatalan `flushBatch` mengantrekan potongan yang sama sekali lagi (penghitung potongan belum sempat dinolkan karena pengecualian merambat dari `flushCur`), sehingga sesudah layanan pulih `SendMessageWorker` mengirim batch gabungan yang sama dua kali. Pemilik penyelamatan kini tunggal: `forwardLocked` menerima parameter `queueOnCancel` (bawaan `true` — perilaku lama untuk pemanggilan langsung, yang pemanggilnya menghitung pembatalan sebagai terkirim persis karena antrean mandiri ini), sedangkan ketiga situs pemanggilan di dalam `flushBatch` (potongan gabungan dan kedua pemanggilan pecahan pesan raksasa) melewatkan `queueOnCancel = false` sehingga pada pembatalan hanya penyelamatan `flushBatch` yang mengantrekan — tepat satu kali. Perilaku cap dedup #343 tidak berubah: penyelamatan batch tetap mencap hash hanya sesudah antrean persisten sungguh menerima.
+
 
 ## [1.6.548] - 2026-10-30
 

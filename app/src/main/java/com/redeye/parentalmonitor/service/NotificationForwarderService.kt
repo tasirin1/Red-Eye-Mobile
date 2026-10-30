@@ -1015,7 +1015,7 @@ class NotificationForwarderService : NotificationListenerService() {
         var index = 0
         suspend fun flushCur() {
             if (curCount <= 0) return
-            val delivered = forwardLocked(cur.toString(), curCount)
+            val delivered = forwardLocked(cur.toString(), curCount, queueOnCancel = false)
             if (delivered) {
                 for (hash in curHashes) markForwardedId(hash)
             }
@@ -1036,11 +1036,11 @@ class NotificationForwarderService : NotificationListenerService() {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
                         cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
-                        if (!forwardLocked(rest.substring(0, cut), 1)) splitDelivered = false
+                        if (!forwardLocked(rest.substring(0, cut), 1, queueOnCancel = false)) splitDelivered = false
                         rest = rest.substring(cut).trimStart('\n')
                         if (rest.isEmpty()) break
                     }
-                    if (rest.isNotEmpty() && !forwardLocked(rest, 1)) splitDelivered = false
+                    if (rest.isNotEmpty() && !forwardLocked(rest, 1, queueOnCancel = false)) splitDelivered = false
                     if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
                     continue
                 }
@@ -1320,7 +1320,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
 
-    private suspend fun forwardLocked(message: String, msgCount: Int = 1): Boolean {
+    private suspend fun forwardLocked(message: String, msgCount: Int = 1, queueOnCancel: Boolean = true): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { adoptPrefs(it) }
@@ -1419,10 +1419,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
-            try {
-                queue().addMessage(message)
-                MessageScheduler.scheduleMessageSend(this)
-            } catch (_: Exception) {
+            if (queueOnCancel) {
+                try {
+                    queue().addMessage(message)
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
             }
             throw e
         } catch (e: Exception) {
