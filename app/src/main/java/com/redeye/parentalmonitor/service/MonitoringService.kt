@@ -4112,7 +4112,7 @@ class MonitoringService : Service() {
         if (sub.isEmpty() || sub == "status") {
             if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
             val cur = watchNumbers()
-            sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnomor 0812,62813)" else "📵 Watch nomor: " + cur.joinToString(", "))
+            sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnomor 08123456789,08129876543)" else "📵 Watch nomor: " + cur.joinToString(", "))
         } else if (sub == "off" || sub == "clear") {
             preferencesManager.watchNumbers = ""
             sendToTelegram("📵 Watch nomor dimatikan.")

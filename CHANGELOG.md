@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Contoh perintah di balasan status `/watchnomor` kini memenuhi aturan perintahnya sendiri (issue #398): balasan status kosong `handleWatchNomorCommand` sebelumnya memberi contoh "/watchnomor 0812,62813" — kedua fragmen contoh itu di bawah syarat minimum perintah ini sendiri (4 dan 5 digit), sedangkan penyaring di jalur set maupun jalur baca `watchNumbers()` membuang semua entri < 7 digit dan teks cara pakai perintah yang sama menyatakan "min 7 digit"; menyalin contoh itu persis menghasilkan daftar kosong dan hanya dijawab pesan cara pakai, tidak pernah mengaktifkan apa pun. Contoh kini memakai dua nomor contoh ≥7 digit dengan format daftar-berkoma yang sama ("/watchnomor 08123456789,08129876543"), mengikuti gaya contoh prompt tombol perintah yang sama. Sapuan permukaan lain perintah ini bersih: contoh prompt tombol memang sudah 11 digit, teks cara pakai memakai penampung `<nomor1,nomor2>` (bukan contoh angka), dan README tidak memuat contoh `/watchnomor`. Aturan dan saringan tidak berubah.
+
 ## [1.6.567] - 2026-10-31
 
 ### Fixed
