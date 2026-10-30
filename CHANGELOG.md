@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Kunci "kemarin" untuk susulan digest malam kini diturunkan lewat kalender, bukan mundur tetap 24 jam (issue #355): `maybeSendNightDigest` sebelumnya menghitung kunci susulan sebagai `todayKey(now - 86_400_000L)` — pada zona waktu DST, pukul 00:00–01:00 sesudah hari spring-forward (hari 23 jam), titik itu jatuh di dua hari lalu, sehingga bila penanda `nightDigestDate` berisi kunci yang salah itu (keadaan normal sesudah digest dua hari lalu terkirim dan digest kemarin terlewat), `DigestSchedule.nightCatchUpDue` menilai susulan belum perlu dikirim dan digest malam yang terlewat tertunda sampai ±1 jam, sampai kunci terhitung benar sesudah pukul 01:00. Kunci kemarin kini berasal dari awal hari kemarin kalender lewat helper yang sama dengan perbaikan #354 (`A11yUsageMath.previousDayStartWallMillis`), terkunci uji JVM baru untuk jendela 00:00–01:00 sesudah spring-forward America/New_York (nilai harapan dibuktikan lewat perhitungan zona waktu independen: rumus lama memberi kunci dua-hari-lalu pada jendela itu). Pada zona tanpa DST hasilnya identik dengan rumus lama — kemarin kalender adalah hari yang sama dengan yang ditunjuk mundur-24-jam dari titik mana pun di hari ini — jadi perubahan perilaku hanya terjadi tepat pada jendela transisi DST itu. Situs `todayKey` lain dan jendela bergulir 24 jam yang memang berlabel bergulir tidak diubah.
+
 
 ## [1.6.550] - 2026-10-30
 

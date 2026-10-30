@@ -90,4 +90,17 @@ class A11yUsageMathTest {
             java.util.TimeZone.setDefault(original)
         }
     }
+
+    @Test
+    fun awalKemarinPadaJendelaSesudahSpringForward() {
+        val original = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/New_York"))
+            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_028_800_000L))
+            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_030_600_000L))
+            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_032_399_999L))
+        } finally {
+            java.util.TimeZone.setDefault(original)
+        }
+    }
 }
