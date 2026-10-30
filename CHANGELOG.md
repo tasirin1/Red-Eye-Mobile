@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- `/history` kini membedakan kueri yang gagal dari hasil yang sungguh kosong (issue #381): di `handleHistoryCommand`, kedua panggilan repositori (`callLogRepository.getCallsForNumber` dan `smsRepository.getSmsForNumber`) sebelumnya dibungkus catch-all yang mengganti eksepsi apa pun — termasuk `SecurityException` yang sengaja diteruskan kedua repositori dari provider dan diteruskan juga oleh `ContentQuery.query` — dengan hasil kosong bertanda tidak terpotong, sehingga kegagalan kueri (izin dicabut di antara cek izin di kepala handler dan kueri, atau provider OEM yang melempar sesaat) tampil sebagai klaim faktual "🔎 Tak ada riwayat untuk nomor ini", dan kegagalan satu sisi tidak pernah diumumkan padahal hasil sisi yang berhasil tersaji sebagai lengkap. Kegagalan kini dilacak per sisi: bila kedua sisi gagal, balasannya pesan gagal mengikuti konvensi perintah kembar untuk kegagalan yang sama persis ("⚠️ Gagal membaca riwayat panggilan dan SMS. Coba lagi.", sejajar `/lastcalls` dan `/lastsms`); bila satu sisi gagal dan sisi lain sungguh kosong, balasan menyatakan sisi yang kosong apa adanya sambil menyebut sisi yang gagal dicari; bila satu sisi gagal tetapi sisi lain berisi, hasil sisi yang berhasil tetap tampil ditambah catatan sisi mana yang gagal dicari. Jalur sukses penuh — termasuk pengumuman pencarian terpotong — tidak berubah, dan repositori serta `ContentQuery` tidak disentuh.
+
 
 ## [1.6.561] - 2026-10-30
 
