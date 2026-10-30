@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Alert buka-pertama pada malam hari kini ikut mengecap penanda anti-dobel alert malam (issue #412): cabang "📦 Aplikasi baru dibuka" di `A11yMonitor.handleWindow` membentuk alertnya tanpa menulis satu pun penanda yang dipakai rancangan anti-dobel #410 — `lastNightAlertElapsed` dan `nightAlertedPackage` hanya ditulis cabang alert malam pergantian dan jalur lintasan — sehingga untuk aplikasi yang pertama kali pernah dibuka pada jam malam, alert buka-pertama terkirim, lalu pada tick persist berkala berikutnya (±20 detik, selama aplikasi tetap di latar depan) penilaian lintasan lolos semua syarat (penanda per-sesi tidak disetel, cap jeda global tidak dicap) dan mengirim "🌙 Aplikasi masih dipakai malam" kedua untuk peristiwa buka yang sama. Kedua teks itu harfiah benar; cacatnya redundansi persis sekelas yang hendak dicegah rancangan anti-dobel #410 — satu cabang alert ketiga di permukaan yang sama tidak ikut tercakup penandanya. Cabang buka-pertama kini, bila peristiwanya terjadi pada jam malam (`isNightHour`), ikut mengecap kedua penanda bersama pembentukan alertnya — pengecapan hanya terjadi di dalam cabang yang sudah mensyaratkan sakelar `a11yAppAlert`, jadi hanya saat alert sungguh terbit — sehingga rancangan anti-dobel mencakup ketiga cabang alert di permukaan ini: penilaian lintasan melewati sesi itu dan jeda global berjalan sejak alert buka-pertama. Buka-pertama di luar jam malam berperilaku persis seperti sebelumnya (penanda tidak disentuh), dan syarat maupun isi semua alert tidak berubah.
+
 ## [1.6.572] - 2026-10-31
 
 ### Fixed

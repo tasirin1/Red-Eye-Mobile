@@ -508,6 +508,10 @@ object A11yMonitor {
                 val seeded = manager.a11yKnownSeeded
                 val firstOpen = manager.rememberA11yApp(pkg)
                 if (seeded && firstOpen && manager.a11yAppAlert) {
+                    if (isNightHour(nowWall)) {
+                        lastNightAlertElapsed = nowElapsed
+                        nightAlertedPackage = pkg
+                    }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
                 } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
                     lastNightAlertElapsed = nowElapsed
