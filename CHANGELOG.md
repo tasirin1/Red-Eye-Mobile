@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Teks `/hematdata` kini menyatakan pengecualian media perintah langsung — janji penahanan tidak lagi tanpa syarat (issue #370): balasan "nyala" dan teks bantuan sebelumnya menyatakan foto/video/rekaman ditahan saat pakai data seluler tanpa pengecualian apa pun (daftar pengecualian di bantuan hanya menyebut SMS/lokasi/notifikasi, terbaca sebagai daftar tuntas), padahal media dari permintaan langsung (`/photo`, `/screenshot`, `/record`, `/recordvideo`) selalu dikirim seketika — penahanan hanya berlaku di ketiga jalur flush dan pada tangkapan foto otomatis. Pengecualian rancangan itu sebelumnya hanya hidup di klarifikasi CHANGELOG lama yang merujuk README, dan klarifikasi README-nya sendiri sudah hilang, sehingga tidak ada teks yang bisa dibaca pengguna yang menyatakannya: pemilik yang menyalakan hemat kuota untuk melindungi kuota kecil lalu mengirim `/recordvideo` di data seluler akan mendapati media terbesar justru terkirim memakai kuota yang dikira dilindungi, atau menguji dengan `/photo` dan menyimpulkan fitur rusak karena foto tiba seketika. Kedua teks kini menyebut pengecualiannya secara eksplisit (yang ditahan adalah media otomatis; permintaan langsung tetap dikirim segera), sejajar klarifikasi cakupan yang dulu terdokumentasi. Perilaku pengiriman tidak berubah sama sekali — yang diperbaiki hanya janjinya. (Vonis gugur putaran-50 atas kandidat ini terbalik sesudah audit-atas-audit putaran-51: kelasnya sama dengan temuan teks/janji #347/#360/#363.)
+
 
 ## [1.6.553] - 2026-10-30
 

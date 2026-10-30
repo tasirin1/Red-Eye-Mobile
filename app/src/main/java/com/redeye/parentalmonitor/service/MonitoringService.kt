@@ -4233,14 +4233,14 @@ class MonitoringService : Service() {
         when (arg.lowercase(java.util.Locale.ROOT).trim()) {
             "on", "nyala" -> {
                 preferencesManager.dataSaverEnabled = true
-                sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi.")
+                sendToTelegram("📶 Hemat kuota: nyala. Foto/video/rekaman otomatis ditahan saat pakai data seluler, dikirim otomatis begitu tersambung Wi-Fi. Permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera.")
             }
             "off", "mati" -> {
                 preferencesManager.dataSaverEnabled = false
                 sendToTelegram("📶 Hemat kuota: mati (semua media dikirim kapan saja).")
             }
             "status" -> sendToTelegram("📶 Hemat kuota: " + if (preferencesManager.dataSaverEnabled) "nyala" else "mati")
-            else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman hanya dikirim saat tidak pakai kuota (Wi-Fi); SMS/lokasi/notifikasi tetap jalan seperti biasa.")
+            else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman otomatis hanya dikirim saat tidak pakai kuota (Wi-Fi); permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera; SMS/lokasi/notifikasi tetap jalan seperti biasa.")
         }
         try { refreshLoopConfig() } catch (_: Exception) { }
     }
