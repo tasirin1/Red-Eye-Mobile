@@ -56,7 +56,16 @@ class PackageChangeReceiver : BroadcastReceiver() {
             }
             "📦 <b>Aplikasi baru dipasang</b>\n" + android.text.Html.escapeHtml(label) + "\n<code>" + pkg + "</code>"
         } else {
-            "🗑️ <b>Aplikasi dihapus</b>\n<code>" + pkg + "</code>"
+            val lastLabel = try {
+                com.redeye.parentalmonitor.service.A11yMonitor.lastRecordedLabel(context, pkg)
+            } catch (_: Exception) {
+                ""
+            }
+            if (lastLabel.isNotEmpty() && lastLabel != pkg) {
+                "🗑️ <b>Aplikasi dihapus</b>\n" + android.text.Html.escapeHtml(lastLabel) + "\n<code>" + pkg + "</code>"
+            } else {
+                "🗑️ <b>Aplikasi dihapus</b>\n<code>" + pkg + "</code>"
+            }
         }
         try {
             MessageQueue.getInstance(context).addMessage(text, true)

@@ -341,6 +341,14 @@ object A11yMonitor {
         synchronized(gate) { return if (currentPackage.isEmpty()) "" else currentLabel }
     }
 
+    fun lastRecordedLabel(context: Context, pkg: String): String {
+        val manager = try { PreferencesManager.getInstance(context) } catch (_: Exception) { return "" }
+        val raw = try { manager.a11yUsageJson } catch (_: Exception) { "" }
+        if (raw.isEmpty()) return ""
+        val parsed: MutableMap<String, AppUsage>? = try { gson.fromJson(raw, usageType) } catch (_: Exception) { null }
+        return parsed?.get(pkg)?.label?.trim().orEmpty()
+    }
+
     fun todayUsage(context: Context): List<AppUsage> {
         val app = context.applicationContext
         ensurePrefs(app)
