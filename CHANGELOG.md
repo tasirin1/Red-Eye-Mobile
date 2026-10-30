@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Alert pasang/hapus aplikasi kini punya sakelar — `/appalert` menggerbangi kedua mesin alert aplikasi (issue #372): `PackageChangeReceiver` sebelumnya hanya digerbangi keadaan monitoring umum (terkonfigurasi, monitoring nyala, tidak dijeda, tidak dimatikan pengguna, persetujuan ada) tanpa sakelar fitur apa pun, sedangkan `/appalert` hanya mengendalikan `a11yAppAlert` untuk alert A11y "aplikasi baru dibuka"/"dibuka malam" — pemilik yang mematikan satu-satunya perintah bernama alert aplikasi menyangka semua alert aplikasi berhenti, lalu tetap menerima "📦 Aplikasi baru dipasang" dan "🗑️ Aplikasi dihapus" seolah perintahnya diabaikan, dan satu-satunya cara menghentikannya adalah menjeda/mematikan seluruh monitoring (kerancuan bertambah karena judul kedua mesin beremoji sama dan redaksinya hampir identik). Receiver kini ikut digerbangi `a11yAppAlert` — satu sakelar "alert aplikasi" untuk kedua mesin, sesuai model mental pemilik — dan balasan `/appalert` (status/on/off) kini menyatakan cakupannya terang-terangan: app baru dibuka, app dibuka malam, dan pasang & hapus aplikasi; balasan "nyala" saat Aksesibilitas mati juga diluruskan (kabar pasang/hapus tetap jalan, yang butuh Aksesibilitas hanya alert app dibuka/malam). Bawaan pref tetap nyala, jadi perilaku bagi pengguna yang tak menyentuh sakelar tidak berubah.
+
 
 ## [1.6.554] - 2026-10-30
 

@@ -41,7 +41,7 @@ class PackageChangeReceiver : BroadcastReceiver() {
             return
         }
         val active = try {
-            prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+            prefs.isConfigured() && prefs.isMonitoringEnabled && !prefs.monitoringPaused && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && prefs.a11yAppAlert
         } catch (_: Exception) {
             false
         }

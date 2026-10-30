@@ -3675,6 +3675,7 @@ class MonitoringService : Service() {
             sendToTelegram(buildString {
                 appendLine("\uD83D\uDCF1 <b>Alert aplikasi</b>")
                 appendLine("Status: " + if (on) "nyala" else "mati")
+                appendLine("Mencakup: app baru dibuka, app dibuka malam, pasang & hapus aplikasi")
                 appendLine("Sekarang: " + if (now.isEmpty()) "-" else Html.escape(now))
                 appendLine("Hari ini: " + ReportFormat.durationText(total) + " \u00b7 " + rows.size + " app")
                 appendLine("Atur: /appalert on|off")
@@ -3683,10 +3684,10 @@ class MonitoringService : Service() {
             val on = sub == "on"
             preferencesManager.a11yAppAlert = on
             if (on && !ShotAccessibilityService.isEnabled(this)) {
-                sendToTelegram("\uD83D\uDCF1 Alert app nyala, tetapi Aksesibilitas MATI. Aktifkan di Setup agar alert bisa jalan.")
+                sendToTelegram("\uD83D\uDCF1 Alert app nyala (termasuk kabar pasang/hapus aplikasi), tetapi Aksesibilitas MATI — alert app dibuka/malam butuh Aksesibilitas. Aktifkan di Setup agar semua alert bisa jalan.")
                 return
             }
-            sendToTelegram(if (on) "\uD83D\uDCF1 Alert app baru dan app malam nyala." else "\uD83D\uDCF1 Alert app dimatikan.")
+            sendToTelegram(if (on) "\uD83D\uDCF1 Alert app nyala: app baru dibuka, app malam, dan pasang/hapus aplikasi." else "\uD83D\uDCF1 Alert app dimatikan (app dibuka, app malam, dan pasang/hapus aplikasi).")
         } else {
             sendToTelegram("Cara pakai: /appalert on|off|status")
         }
