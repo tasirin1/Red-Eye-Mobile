@@ -3880,10 +3880,11 @@ class MonitoringService : Service() {
             sendToTelegram("\uD83D\uDD75\uFE0F Isi kata pantau dulu: /watch judi,pinjol,bully")
             return
         }
-        val packages = preferencesManager.a11yAppWatchPackageSet()
+        var packages = pruneAppWatchPackages()
         if (packages.isEmpty()) {
             packages.addAll(DEFAULT_APP_WATCH_PACKAGES)
             preferencesManager.setA11yAppWatchPackageSet(packages)
+            packages = pruneAppWatchPackages()
         }
         preferencesManager.a11yAppWatchEnabled = true
         val a11y = ShotAccessibilityService.isEnabled(this)
@@ -3945,6 +3946,7 @@ class MonitoringService : Service() {
             if (hit) changed.add(label) else unchanged.add(label)
         }
         preferencesManager.setA11yAppWatchPackageSet(packages)
+        val total = pruneAppWatchPackages().size
         sendToTelegram(buildString {
             appendLine("\uD83D\uDD75\uFE0F <b>Pantau app</b>")
             if (changed.isNotEmpty()) {
@@ -3956,7 +3958,7 @@ class MonitoringService : Service() {
             if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
             if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
             if (skippedOwn.isNotEmpty()) appendLine("Dilewati (aplikasi ini sendiri): " + skippedOwn.joinToString(", ") { Html.escape(it) })
-            appendLine("Total: ${packages.size} app")
+            appendLine("Total: $total app")
             appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /pantauapp on")
         }.trimEnd())
     }
