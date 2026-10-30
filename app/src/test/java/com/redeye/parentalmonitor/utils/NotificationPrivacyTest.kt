@@ -27,16 +27,16 @@ class NotificationPrivacyTest {
     }
 
     @Test
-    fun masksFourToTwelveDigitGroups() {
+    fun masksDigitGroupsWithFixedLengthToken() {
         val out = NotificationPrivacy.mask("Kode 123456, pin 4321, rekening 1234567890")
-        assertEquals("Kode ••••••, pin ••••, rekening ••••••••••", out)
+        assertEquals("Kode ••••, pin ••••, rekening ••••", out)
     }
 
     @Test
     fun masksSeparatedCodesAndLongNumbers() {
         val out = NotificationPrivacy.mask("OTP 123 456, kode 123-456, nomor 123456789, panjang 1234567890123")
-        assertEquals("OTP ••• •••, kode •••-•••, nomor •••••••••, panjang •••••••••••••", out)
-        assertEquals("kartu •••• •••• •••• ••••", NotificationPrivacy.mask("kartu 1234 5678 9012 3456"))
+        assertEquals("OTP ••••, kode ••••, nomor ••••, panjang ••••", out)
+        assertEquals("kartu ••••", NotificationPrivacy.mask("kartu 1234 5678 9012 3456"))
     }
 
     @Test

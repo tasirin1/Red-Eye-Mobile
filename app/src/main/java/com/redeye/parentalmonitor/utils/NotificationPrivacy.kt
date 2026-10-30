@@ -17,9 +17,9 @@ object NotificationPrivacy {
 
     fun hasCode(text: String): Boolean = DIGIT_GROUPS.containsMatchIn(text)
 
+    private val MASK_TOKEN = "••••"
+
     fun mask(text: String): String {
-        return DIGIT_GROUPS.replace(text) { match ->
-            match.value.map { if (it.isDigit()) '•' else it }.joinToString("")
-        }
+        return DIGIT_GROUPS.replace(text, MASK_TOKEN)
     }
 }
