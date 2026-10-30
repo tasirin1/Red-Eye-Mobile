@@ -1013,6 +1013,8 @@ class NotificationForwarderService : NotificationListenerService() {
         var curCount = 0
         var curHashes = ArrayList<String>()
         var index = 0
+        var splitRest: String? = null
+        var splitHash = ""
         suspend fun flushCur() {
             if (curCount <= 0) return
             val delivered = forwardLocked(cur.toString(), curCount, queueOnCancel = false)
@@ -1032,15 +1034,24 @@ class NotificationForwarderService : NotificationListenerService() {
                     flushCur()
                     var rest = msg
                     var splitDelivered = true
+                    splitRest = rest
+                    splitHash = item.second
                     while (rest.length > 4000) {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
                         cut = com.redeye.parentalmonitor.utils.TextChunk.safeCut(rest, cut)
+                        splitRest = rest
                         if (!forwardLocked(rest.substring(0, cut), 1, queueOnCancel = false)) splitDelivered = false
                         rest = rest.substring(cut).trimStart('\n')
+                        splitRest = rest
                         if (rest.isEmpty()) break
                     }
-                    if (rest.isNotEmpty() && !forwardLocked(rest, 1, queueOnCancel = false)) splitDelivered = false
+                    if (rest.isNotEmpty()) {
+                        splitRest = rest
+                        if (!forwardLocked(rest, 1, queueOnCancel = false)) splitDelivered = false
+                    }
+                    splitRest = null
+                    splitHash = ""
                     if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
                     continue
                 }
@@ -1060,6 +1071,11 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (curCount > 0) {
                     texts.add(cur.toString())
                     hashes.addAll(curHashes)
+                }
+                val pendingSplit = splitRest
+                if (!pendingSplit.isNullOrEmpty()) {
+                    texts.add(pendingSplit)
+                    if (splitHash.isNotEmpty()) hashes.add(splitHash)
                 }
                 for (item in restItems) {
                     texts.add(item.first)
@@ -1083,6 +1099,8 @@ class NotificationForwarderService : NotificationListenerService() {
             } else {
                 synchronized(batchLock) {
                     for (i in restItems.indices.reversed()) batchBuf.addFirst(restItems[i])
+                    val pendingSplit = splitRest
+                    if (!pendingSplit.isNullOrEmpty()) batchBuf.addFirst(pendingSplit to splitHash)
                     if (curCount > 0) {
                         val onlyHash = if (curHashes.size == 1) curHashes[0] else ""
                         batchBuf.addFirst(cur.toString() to onlyHash)
