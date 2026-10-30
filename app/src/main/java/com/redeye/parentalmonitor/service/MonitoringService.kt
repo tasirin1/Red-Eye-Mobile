@@ -6196,7 +6196,10 @@ class MonitoringService : Service() {
             val a11y = a11yUsageRows()
             if (a11y.isNotEmpty()) {
                 val night = a11y.sumOf { it.nightMillis }
-                if (night > 0L) appendLine("Malam ini (aksesibilitas): " + ReportFormat.durationText(night))
+                if (night > 0L) {
+                    appendLine("Malam ini (aksesibilitas): " + ReportFormat.durationText(night))
+                    appendLine("Catatan: baris malam (aksesibilitas) dihitung sejak 00:00, bukan $hours jam terakhir.")
+                }
             }
             val now = A11yMonitor.currentAppLabel()
             if (now.isNotEmpty()) appendLine("Sekarang: " + Html.escape(now))
