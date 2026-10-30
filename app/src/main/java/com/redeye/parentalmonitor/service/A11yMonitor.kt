@@ -180,7 +180,7 @@ object A11yMonitor {
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
                 val app = service.applicationContext
                 executor.execute {
-                    val texts = if (sensitive) collectSnapshot(service).texts else emptyList()
+                    val texts = if (sensitive) collectSnapshot(service, pkg).texts else emptyList()
                     handleWindow(app, pkg, cls, texts)
                 }
                 scanWatchedContent(service, pkg)
@@ -210,7 +210,7 @@ object A11yMonitor {
         if (keywords.isEmpty()) return
         val app = service.applicationContext
         executor.execute {
-            val snapshot = collectSnapshot(service)
+            val snapshot = collectSnapshot(service, pkg)
             if (snapshot.hasPassword || snapshot.texts.isEmpty()) return@execute
             handleContent(app, pkg, snapshot.texts, keywords)
         }
@@ -589,8 +589,13 @@ object A11yMonitor {
         try { node.recycle() } catch (_: Exception) { }
     }
 
-    private fun collectSnapshot(service: AccessibilityService): ScreenSnapshot {
+    private fun collectSnapshot(service: AccessibilityService, expectedPackage: String): ScreenSnapshot {
         val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false)
+        val rootPackage = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+        if (rootPackage != expectedPackage) {
+            recycleNode(root)
+            return ScreenSnapshot(emptyList(), false)
+        }
         val out = ArrayList<String>()
         var hasPassword = false
         val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
