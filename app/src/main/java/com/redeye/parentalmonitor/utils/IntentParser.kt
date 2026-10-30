@@ -137,9 +137,17 @@ object IntentParser {
         return false
     }
 
+    private val NEGATION_SUFFIXES = setOf("lah", "kan", "kah")
+
     private fun isNegation(token: String): Boolean {
         if (token in NEGATIONS) return true
-        return NEGATIONS.any { it.length >= 4 && token.length - it.length in 1..3 && token.startsWith(it) }
+        return NEGATIONS.any { base ->
+            when {
+                base.length >= 4 -> token.length - base.length in 1..3 && token.startsWith(base)
+                base.length == 3 -> NEGATION_SUFFIXES.any { token == base + it }
+                else -> false
+            }
+        }
     }
 
     private fun tokenMatches(token: String, keyword: String): Boolean {
