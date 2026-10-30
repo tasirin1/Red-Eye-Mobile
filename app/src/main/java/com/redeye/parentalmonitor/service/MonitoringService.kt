@@ -7218,7 +7218,7 @@ class MonitoringService : Service() {
             val schoolFence = GeofenceLogic.configured(schoolLat, schoolLon, schoolRad)
             val inSchool = schoolFence && CurfewLogic.schoolHours(day, h)
             if (!(inCurfew && homeFence) && !inSchool) return
-            val key = todayKey(if (h < 5) now - 24 * 60 * 60_000L else now)
+            val key = todayKey(if (h < 5) com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now) else now)
             if (key.isEmpty()) return
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
             val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
