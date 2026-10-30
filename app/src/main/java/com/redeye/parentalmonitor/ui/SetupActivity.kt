@@ -812,7 +812,7 @@ class SetupActivity : AppCompatActivity() {
                     val offSaved: Boolean? = configMutex.withLock {
                         if (mySave != saveSeq.get()) return@withLock null
                         try {
-                            prefs.saveCredentials(token, chatId, interval, cameraInterval)
+                            prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null)
                         } catch (_: Exception) {
                             false
                         }
@@ -822,7 +822,7 @@ class SetupActivity : AppCompatActivity() {
                         loadedConfigured = true
                         loadedSyncInterval = interval
                         loadedCameraInterval = cameraInterval
-                        applyPendingRestoreOwner()
+                        clearPendingRestore()
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
@@ -840,7 +840,7 @@ class SetupActivity : AppCompatActivity() {
             val persistOutcome: Boolean? = configMutex.withLock {
                 if (mySave != saveSeq.get()) return@withLock null
                 try {
-                    prefs.saveCredentials(token, chatId, interval, cameraInterval)
+                    prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null)
                 } catch (_: Exception) {
                     false
                 }
@@ -852,7 +852,7 @@ class SetupActivity : AppCompatActivity() {
                 loadedConfigured = true
                 loadedSyncInterval = interval
                 loadedCameraInterval = cameraInterval
-                applyPendingRestoreOwner()
+                clearPendingRestore()
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -885,11 +885,7 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun applyPendingRestoreOwner() {
-        try {
-            if (pendingRestoreOwnerId > 0L) prefs.setOwnerIdSync(pendingRestoreOwnerId)
-        } catch (_: Exception) {
-        }
+    private fun clearPendingRestore() {
         pendingRestoreOwnerId = 0L
         pendingRestoreAccessPin = ""
         pendingRestorePinExpected = false
@@ -1271,10 +1267,10 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
+            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null) } catch (_: Exception) { false }
             if (saved) {
                 try { prefs.accessPin = accessPin } catch (_: Exception) { }
-                applyPendingRestoreOwner()
+                clearPendingRestore()
             }
             saved
         }
