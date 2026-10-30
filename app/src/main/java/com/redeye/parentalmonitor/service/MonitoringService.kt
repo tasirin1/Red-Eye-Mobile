@@ -6933,7 +6933,7 @@ class MonitoringService : Service() {
         }
         val result = try {
             val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-            val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%$tail%"), null) ?: return true
+            val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%" + tail.toCharArray().joinToString("%") + "%"), null) ?: return true
             var found = false
             c.use { cur ->
                 while (cur.moveToNext()) {
@@ -9974,7 +9974,7 @@ class MonitoringService : Service() {
             val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             val qdigits = query.filter { it.isDigit() }
             val useTail = qdigits.length >= 7
-            val numArg = if (useTail) "%" + qdigits.takeLast(7) + "%" else "%$escaped%"
+            val numArg = if (useTail) "%" + qdigits.takeLast(7).toCharArray().joinToString("%") + "%" else "%$escaped%"
             val cursor = try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                     val bundle = android.os.Bundle().apply {
