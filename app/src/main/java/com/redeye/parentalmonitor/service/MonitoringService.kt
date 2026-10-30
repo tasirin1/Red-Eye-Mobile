@@ -4058,9 +4058,8 @@ class MonitoringService : Service() {
                 } catch (e: Throwable) {
                     recordBusy.set(false)
                     recorderActive.set(false)
-                    throw e
-                } finally {
                     recordingKind = ""
+                    throw e
                 }
             }
         }
@@ -7352,6 +7351,7 @@ class MonitoringService : Service() {
         ringBusy.set(false)
         recordBusy.set(false)
         recorderActive.set(false)
+        recordingKind = ""
         audioFlushBusy.set(false)
         photoFlushBusy.set(false)
         videoFlushBusy.set(false)
@@ -9518,6 +9518,7 @@ class MonitoringService : Service() {
     private fun recordAndSendVideo(seconds: Int) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
             recordBusy.set(false)
+            recordingKind = ""
             serviceScope.launch {
                 sendToTelegram("Token ditolak — video ditahan sampai token diperbaiki di Setup.")
             }
@@ -9525,6 +9526,7 @@ class MonitoringService : Service() {
         }
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) {
             recordBusy.set(false)
+            recordingKind = ""
             serviceScope.launch {
                 sendToTelegram("Dibatasi Telegram (rate limit) — video ditahan lalu dicoba lagi.")
             }
@@ -9533,6 +9535,7 @@ class MonitoringService : Service() {
         ensureForegroundTypes()
         if (!hasCameraPermission()) {
             recordBusy.set(false)
+            recordingKind = ""
             serviceScope.launch {
                 sendToTelegram("⚠️ Izin Kamera belum diberikan. Buka Setup dan berikan izin Kamera.")
             }
@@ -9540,6 +9543,7 @@ class MonitoringService : Service() {
         }
         if (!hasMicPermission()) {
             recordBusy.set(false)
+            recordingKind = ""
             serviceScope.launch {
                 sendToTelegram("⚠️ Izin Mikrofon belum diberikan. Buka Setup dan berikan izin Mikrofon.")
             }
@@ -9547,6 +9551,7 @@ class MonitoringService : Service() {
         }
         if (cameraBusy.get()) {
             recordBusy.set(false)
+            recordingKind = ""
             serviceScope.launch {
                 sendToTelegram("⚠️ Kamera sedang dipakai untuk foto, coba /recordvideo lagi sebentar.")
             }
@@ -9554,6 +9559,7 @@ class MonitoringService : Service() {
         }
         if (isCameraDisabledByPolicy()) {
             recordBusy.set(false)
+            recordingKind = ""
             autoPausePhotosOnPolicyBlock()
             val blockers = cameraBlockingAdmins()
             serviceScope.launch {
@@ -9568,6 +9574,7 @@ class MonitoringService : Service() {
             }
             if (pendingVideoCount() >= MAX_VIDEO_KEPT) {
                 recordBusy.set(false)
+                recordingKind = ""
                 serviceScope.launch {
                     if (videoFlushBusy.get()) {
                         sendToTelegram("⏳ Sedang mengirim video tertunda, coba lagi sebentar.")
@@ -9586,6 +9593,7 @@ class MonitoringService : Service() {
             delay(seconds * 1000L + 120_000L)
             if (videoAttempt.get() == attempt && recordBusy.compareAndSet(true, false)) {
                 recorderActive.set(false)
+                recordingKind = ""
                 videoAttempt.incrementAndGet()
                 try { cameraService.forceReset() } catch (_: Exception) { }
                 releaseVideoWakeLock(videoLock)
@@ -9634,6 +9642,7 @@ class MonitoringService : Service() {
                             clearMediaActive(videoFile)
                             releaseVideoWakeLock(videoLock)
                             recordBusy.set(false)
+                            recordingKind = ""
                         }
                     }
                 },
@@ -9644,6 +9653,7 @@ class MonitoringService : Service() {
                     releaseVideoWakeLock(videoLock)
                     recordBusy.set(false)
                     recorderActive.set(false)
+                    recordingKind = ""
                     serviceScope.launch {
                         sendToTelegram("⚠️ Gagal merekam video: " + sanitizedCameraError(e.message))
                     }
@@ -9656,6 +9666,7 @@ class MonitoringService : Service() {
             releaseVideoWakeLock(videoLock)
             recordBusy.set(false)
             recorderActive.set(false)
+            recordingKind = ""
             android.util.Log.e("MonitoringService", "✗ Error in recordAndSendVideo: ${redactToken(e.message)}")
             serviceScope.launch {
                 sendToTelegram("⚠️ Gagal merekam video.")
