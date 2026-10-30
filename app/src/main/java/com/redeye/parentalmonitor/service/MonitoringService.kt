@@ -371,6 +371,7 @@ class MonitoringService : Service() {
         private const val LOGIN_ATTEMPT_THROTTLE_MS = 1_500L
         private const val MUTATING_MAX_AGE_SEC = 300L
         private const val NUMBER_INPUT_TTL_MS = 300_000L
+        private const val PENDING_PROMPT_REPORT_MAX_AGE_MS = 30L * 60L * 1000L
         private val NO_MARKUP = com.redeye.parentalmonitor.network.InlineKeyboardMarkup(emptyList())
         private const val PING_RATE_WINDOW_MS = 120_000L
         private const val PING_RESTART_COOLDOWN_MS = 300_000L
@@ -520,6 +521,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         restoreRingVolumeIfStuck()
+        reportLostPendingPrompt()
         try { A11yMonitor.attach(this) } catch (_: Exception) { }
         coreInitialized = true
     }
@@ -1409,6 +1411,7 @@ class MonitoringService : Service() {
         pendingInputCommand = ""
         pendingInputAt = 0L
         pendingInputChat = ""
+        clearPendingPromptMarker()
         ownerEpoch++
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
@@ -2470,6 +2473,38 @@ class MonitoringService : Service() {
 
     private val inputLock = Any()
 
+    private fun markPendingPrompt(command: String) {
+        try {
+            preferencesManager.pendingPromptCmd = command
+            preferencesManager.pendingPromptAt = System.currentTimeMillis()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun clearPendingPromptMarker() {
+        try {
+            preferencesManager.pendingPromptCmd = ""
+            preferencesManager.pendingPromptAt = 0L
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun reportLostPendingPrompt() {
+        try {
+            val cmd = preferencesManager.pendingPromptCmd
+            val at = preferencesManager.pendingPromptAt
+            if (cmd.isEmpty()) return
+            preferencesManager.pendingPromptCmd = ""
+            preferencesManager.pendingPromptAt = 0L
+            val age = System.currentTimeMillis() - at
+            if (at > 0L && age >= 0L && age <= PENDING_PROMPT_REPORT_MAX_AGE_MS) {
+                messageQueue.addMessage("\u231B\uFE0F Prompt $cmd hilang karena layanan dimulai ulang sebelum sempat dijawab. Tekan tombolnya lagi atau ketik perintah lengkapnya.")
+                MessageScheduler.scheduleMessageSend(this)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private fun numberInputFor(command: String): NumberInput? {
         val head = command.trim().substringBefore(" ").lowercase(java.util.Locale.ROOT)
         return numberInputs.firstOrNull { it.command == head }
@@ -2599,6 +2634,7 @@ class MonitoringService : Service() {
                 pendingInputAt = android.os.SystemClock.elapsedRealtime()
                 pendingInputChat = chatKey
             }
+            markPendingPrompt(angka.command)
             val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view)
             sendToTelegram(numberInputPrompt(angka), menuScreen(layar).markup)
             return
@@ -2609,6 +2645,7 @@ class MonitoringService : Service() {
             pendingInputAt = android.os.SystemClock.elapsedRealtime()
             pendingInputChat = chatKey
         }
+        markPendingPrompt(teks.command)
         val layar = com.redeye.parentalmonitor.utils.MenuCallback.viewName(view.ifEmpty { teks.view })
         sendToTelegram(textInputPrompt(teks), menuScreen(layar).markup)
     }
@@ -2617,22 +2654,33 @@ class MonitoringService : Service() {
         if (!ownerOk) return false
         val bersih = text.trim()
         if (bersih.isEmpty()) return false
+        var promptExpired = false
         val pending = synchronized(inputLock) {
             val current = pendingInputCommand
-            if (current.isEmpty()) return false
-            if (android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS) {
-                pendingInputCommand = ""
-                pendingInputChat = ""
-                return false
+            when {
+                current.isEmpty() -> ""
+                android.os.SystemClock.elapsedRealtime() - pendingInputAt > NUMBER_INPUT_TTL_MS -> {
+                    pendingInputCommand = ""
+                    pendingInputChat = ""
+                    clearPendingPromptMarker()
+                    promptExpired = true
+                    ""
+                }
+                pendingInputChat.isNotEmpty() && pendingInputChat != chatKey -> ""
+                else -> current
             }
-            if (pendingInputChat.isNotEmpty() && pendingInputChat != chatKey) return false
-            current
         }
+        if (promptExpired) {
+            sendToTelegram("\u231B\uFE0F Prompt sudah kedaluwarsa \u2014 tekan tombolnya lagi atau ketik perintah lengkapnya.")
+            return false
+        }
+        if (pending.isEmpty()) return false
         if (bersih.startsWith("/")) {
             synchronized(inputLock) {
                 if (pendingInputCommand == pending) {
                     pendingInputCommand = ""
                     pendingInputChat = ""
+                    clearPendingPromptMarker()
                 }
             }
             return false
@@ -2647,14 +2695,20 @@ class MonitoringService : Service() {
             val nilai = com.redeye.parentalmonitor.utils.NumberReply.parse(bersih)
             if (nilai == null) {
                 synchronized(inputLock) {
-                    if (pendingInputCommand == pending) pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                    if (pendingInputCommand == pending) {
+                        pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                        markPendingPrompt(pending)
+                    }
                 }
                 sendToTelegram("Kirim angkanya saja, contoh <code>" + numberInputExample(angka) + "</code>.\nBalas <code>help</code> untuk keterangan.", mainMenu())
                 return true
             }
             if (!com.redeye.parentalmonitor.utils.NumberReply.inRange(nilai, angka.range)) {
                 synchronized(inputLock) {
-                    if (pendingInputCommand == pending) pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                    if (pendingInputCommand == pending) {
+                        pendingInputAt = android.os.SystemClock.elapsedRealtime()
+                        markPendingPrompt(pending)
+                    }
                 }
                 sendToTelegram("Angka " + nilai + " di luar jangkauan (" + angka.range + " " + angka.unit + "). Kirim lagi, contoh <code>" + numberInputExample(angka) + "</code>.", mainMenu())
                 return true
@@ -2665,6 +2719,7 @@ class MonitoringService : Service() {
                 } else {
                     pendingInputCommand = ""
                     pendingInputChat = ""
+                    clearPendingPromptMarker()
                     true
                 }
             }
@@ -2678,6 +2733,7 @@ class MonitoringService : Service() {
                 if (pendingInputCommand == pending) {
                     pendingInputCommand = ""
                     pendingInputChat = ""
+                    clearPendingPromptMarker()
                 }
             }
             return false
@@ -2692,6 +2748,7 @@ class MonitoringService : Service() {
             } else {
                 pendingInputCommand = ""
                 pendingInputChat = ""
+                clearPendingPromptMarker()
                 true
             }
         }

@@ -385,6 +385,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
         private const val KEY_RING_PREV_VOL = "ring_prev_volume"
         private const val KEY_RING_SAVED_AT = "ring_saved_at"
+        private const val KEY_PENDING_PROMPT_CMD = "pending_prompt_cmd"
+        private const val KEY_PENDING_PROMPT_AT = "pending_prompt_at"
         private const val KEY_PENDING_SMS_NUMBER = "pending_sms_number"
         private const val KEY_PENDING_SMS_TEXT = "pending_sms_text"
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
@@ -955,6 +957,14 @@ class PreferencesManager(context: Context) {
             false
         }
     }
+
+    var pendingPromptCmd: String
+        get() = prefString(KEY_PENDING_PROMPT_CMD, "")
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_PROMPT_CMD, value).apply()
+
+    var pendingPromptAt: Long
+        get() = prefLong(KEY_PENDING_PROMPT_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_PROMPT_AT, value).apply()
 
     var pendingSmsNumber: String
         get() = prefString(KEY_PENDING_SMS_NUMBER, "")
