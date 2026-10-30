@@ -597,10 +597,7 @@ class NotificationForwarderService : NotificationListenerService() {
         val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
         val dup = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
-            if (prev > 0L && now - prev < 10_000L) true else {
-                lastSent[key] = now
-                false
-            }
+            prev > 0L && now - prev < 10_000L
         }
         if (dup) {
             record(label, title, text)
@@ -611,6 +608,7 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
+        synchronized(lastSent) { lastSent[key] = now }
         if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
