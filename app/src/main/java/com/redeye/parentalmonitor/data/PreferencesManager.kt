@@ -392,7 +392,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
         private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
-        private const val KEY_OWNER_ID = "owner_user_id"
+        const val KEY_OWNER_ID = "owner_user_id"
         const val KEY_ACCESS_PIN = "access_pin"
         private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
         private const val KEY_OWNER_PAIR_AT = "owner_pair_at"

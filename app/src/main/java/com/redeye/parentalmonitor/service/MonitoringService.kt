@@ -483,13 +483,14 @@ class MonitoringService : Service() {
                         synchronized(handledCallbackIds) { handledCallbackIds.clear() }
                     } catch (_: Exception) {
                     }
-                    serviceScope.launch { registerBotCommands() }
                 }
+                serviceScope.launch { registerBotCommands() }
             }
             if (key == PreferencesManager.KEY_ACCESS_PIN) serviceScope.launch {
                 refreshCreds()
                 registerBotCommands(force = true)
             }
+            if (key == PreferencesManager.KEY_OWNER_ID) serviceScope.launch { registerBotCommands() }
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL || key == PreferencesManager.KEY_SYNC_INTERVAL || key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL) refreshLoopConfig()
             if (key == PreferencesManager.KEY_CAMERA_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED || key == PreferencesManager.KEY_PHOTO_PAUSED_UNTIL) restartCameraLoop()
             if (key == PreferencesManager.KEY_PATROL_ENABLED || key == PreferencesManager.KEY_PATROL_INTERVAL || key == PreferencesManager.KEY_MONITORING_PAUSED) restartPatrolLoop()
