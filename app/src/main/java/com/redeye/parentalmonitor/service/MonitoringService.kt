@@ -9068,7 +9068,7 @@ class MonitoringService : Service() {
             hasSendSmsPermission(),
             hasCameraPermission(),
             hasMicPermission(),
-            hasLocationPermission(),
+            hasFineLocation(),
             hasBackgroundLocation(),
             !notifEnabled || isNotifForwarding(),
             isBatteryExempt()
