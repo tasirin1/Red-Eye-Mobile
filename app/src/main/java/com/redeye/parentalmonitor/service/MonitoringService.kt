@@ -7090,7 +7090,10 @@ class MonitoringService : Service() {
                     locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
                 } else if (la != Long.MIN_VALUE && rad > 0 &&
                     ReportFormat.distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
-                ) score += 10
+                ) {
+                    score += 10
+                    locNote = "\nDi luar rumah: ya (+10)"
+                }
             } catch (_: Exception) {
             }
             score = score.coerceIn(0, 100)
