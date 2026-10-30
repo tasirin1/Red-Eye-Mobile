@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.565] - 2026-10-30
+
 ### Fixed
 - Status `/appalert` kini menyatakan kualifikasi Aksesibilitas (issue #390, sisa #372): cabang status `handleAppAlertCommand` sebelumnya selalu membalas "Mencakup: app baru dibuka, app dibuka malam, pasang & hapus aplikasi" tanpa menyebut keadaan Aksesibilitas, padahal alert app dibuka dan app malam diproduksi satu-satunya oleh `A11yMonitor` yang hanya berjalan bila layanan Aksesibilitas sistem aktif — hanya pasang & hapus aplikasi (receiver) yang hidup tanpanya. Cabang menyalakan di handler yang sama sudah mengungkapkannya eksplisit ("…tetapi Aksesibilitas MATI — alert app dibuka/malam butuh Aksesibilitas. Aktifkan di Setup agar semua alert bisa jalan."), tetapi cabang status tidak, sehingga pemilik yang Aksesibilitasnya mati membaca cakupan penuh padahal dua dari empat alert bisu total. Cabang status kini membaca keadaan Aksesibilitas dengan pemeriksaan yang sama seperti cabang "on" (`ShotAccessibilityService.isEnabled`): bila sakelar nyala tetapi Aksesibilitas mati, baris cakupan hanya menyebut "pasang & hapus aplikasi" dan ditambah baris "Aksesibilitas MATI — alert app dibuka/malam butuh Aksesibilitas. Aktifkan di Setup agar semua alert bisa jalan." mengikuti redaksi cabang "on". Bila Aksesibilitas aktif, teks status byte-identik dengan sebelumnya. Bila sakelar mati, teks juga tidak berubah dan kualifikasi memang sengaja tidak ditambah: semua alert mati karena sakelar itu sendiri, jadi menyebut Aksesibilitas sebagai penghalang akan menyesatkan. Baris status lain (Status, Sekarang, Hari ini, Atur) dan cabang on/off tidak berubah.
 
