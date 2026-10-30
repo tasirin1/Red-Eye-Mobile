@@ -10199,7 +10199,7 @@ class MonitoringService : Service() {
     }
 
     private fun listLaunchableAppsFresh(): List<String> {
-        return scanLaunchableAppPairs()?.map { it.first } ?: emptyList()
+        return scanLaunchableAppPairs()?.map { "${it.first} (${it.second})" } ?: emptyList()
     }
 
     private data class CacheStats(val bytes: Long, val photos: Int, val audios: Int, val videos: Int)
