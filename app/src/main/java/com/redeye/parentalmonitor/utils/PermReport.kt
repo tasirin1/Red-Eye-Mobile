@@ -1,8 +1,12 @@
 package com.redeye.parentalmonitor.utils
 
 object PermReport {
+    private const val LAYOUT_BIT = 1 shl 30
+
+    fun hasCurrentLayout(stored: Int): Boolean = stored != -1 && (stored and LAYOUT_BIT) != 0
+
     fun mask(raw: BooleanArray, notifEnabled: Boolean, stored: Int): Int {
-        var mask = 0
+        var mask = LAYOUT_BIT
         for (i in raw.indices) {
             var g = raw[i]
             if (i == 7 && !raw[6]) g = if (stored == -1) true else (stored and (1 shl 7)) != 0
@@ -14,7 +18,7 @@ object PermReport {
 
     fun missingLabels(mask: Int, labels: Array<String>): ArrayList<String> {
         val out = ArrayList<String>()
-        for (i in arrayOf(0, 1, 2, 3, 4, 5, 8, 9)) if ((mask and (1 shl i)) == 0) out.add(labels[i].lowercase(java.util.Locale.ROOT))
+        for (i in arrayOf(0, 1, 2, 3, 4, 5, 8, 9, 10)) if ((mask and (1 shl i)) == 0) out.add(labels[i].lowercase(java.util.Locale.ROOT))
         if ((mask and (1 shl 6)) == 0) out.add(labels[6].lowercase(java.util.Locale.ROOT))
         else if ((mask and (1 shl 7)) == 0) out.add(labels[7].lowercase(java.util.Locale.ROOT))
         return out

