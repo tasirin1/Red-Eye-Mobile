@@ -6189,6 +6189,10 @@ class MonitoringService : Service() {
             appendLine("📱 <b>Ringkasan layar</b> ($hours jam terakhir)")
             appendLine("Total: " + ReportFormat.durationText(total))
             for (row in rows.take(6)) appendLine("• " + Html.escape(row.first) + " — " + ReportFormat.durationText(row.second))
+            if (rows.size > 6) {
+                val shown = rows.take(6).sumOf { it.second }
+                appendLine("dan " + (rows.size - 6) + " aplikasi lain: " + ReportFormat.durationText(total - shown))
+            }
             val a11y = a11yUsageRows()
             if (a11y.isNotEmpty()) {
                 val night = a11y.sumOf { it.nightMillis }
@@ -6208,6 +6212,10 @@ class MonitoringService : Service() {
             for (row in rows.take(6)) {
                 appendLine("• " + Html.escape(row.label) + " — " + ReportFormat.durationText(row.millis) +
                     if (row.nightMillis > 0L) " · malam " + ReportFormat.durationText(row.nightMillis) else "")
+            }
+            if (rows.size > 6) {
+                val shown = rows.take(6).sumOf { it.millis }
+                appendLine("dan " + (rows.size - 6) + " aplikasi lain: " + ReportFormat.durationText(total - shown))
             }
             if (night > 0L) appendLine("Pemakaian malam: " + ReportFormat.durationText(night))
             val now = A11yMonitor.currentAppLabel()

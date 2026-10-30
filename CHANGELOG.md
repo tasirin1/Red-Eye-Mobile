@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Daftar per-aplikasi pada laporan `/layar` kini mengungkapkan pemotongannya (issue #408): kedua varian laporan mencetak "Total" dari jumlah SELURUH baris, tetapi hanya menampilkan 6 baris teratas (`take(6)`) tanpa penanda apa pun — pemilik yang menjumlahkan baris yang terlihat selalu mendapat angka di bawah Total tanpa penjelasan, dan aplikasi peringkat 7 ke bawah tidak terlihat sama sekali, tanpa tanda bahwa mereka ada (kontrasnya, permukaan digest satu-baris untuk data yang sama berlabel eksplisit "· teratas …"). Kedua varian kini menambahkan baris sisa "dan N aplikasi lain: <durasi>" bila daftar sungguh terpotong (baris > 6), dengan durasi sisa = Total − jumlah yang tampil, dihitung dari data yang sama. Bila daftar ≤ 6 baris, keluaran persis seperti sebelumnya. Total, pengurutan durasi menurun, dan isi tiap baris tidak berubah; ini kelas pengungkapan yang sama dengan "Kontak (10+)" pada #401 dan "Aplikasi (50 dari 213)" pada #402.
+
 ## [1.6.571] - 2026-10-31
 
 ### Fixed
