@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+
+## [1.6.561] - 2026-10-30
+
 ### Fixed
 - Skor `/waspada` kini menyebut faktor "di luar rumah" saat ia sungguh menyumbang (issue #380): di `sendWaspada`, faktor +10 untuk posisi terakhir yang masih segar (≤6 jam) dan berada di luar radius rumah sebelumnya tidak pernah disebut di laporan saat ia berlaku — `locNote` hanya terisi pada cabang posisi basi/hilang ("Posisi tak segar — skor luar rumah diabaikan."), sedangkan cabang segar & di luar radius hanya menjalankan `score += 10` dengan `locNote` tetap kosong, padahal tiga faktor lain selalu tampil hitungannya. Faktor ini terungkap hanya saat ia tidak menyumbang dan disembunyikan tepat saat ia menyumbang, dan ia bisa membalik label sendirian: faktor terlihat yang hanya menjumlah ≤20 poin (di bawah ambang "🟡 Pantau" 21) ditambah 10 poin tak terlihat menjadi 30, sehingga pemilik menerima "🟡 Pantau" dengan rincian yang tidak bisa menghasilkan angka itu dan tidak pernah tahu perangkatnya sedang di luar radius rumah. Cabang yang menyumbang kini mengisi `locNote` menjadi "Di luar rumah: ya (+10)", tertempel pada baris laporan yang sama seperti catatan lamanya. Cabang posisi basi/hilang tidak berubah. Cabang posisi segar tetapi di dalam radius sengaja tetap tanpa catatan: faktornya menyumbang 0 poin sehingga tidak ada poin tersembunyi yang perlu dijelaskan — cacatnya adalah sumbangan yang tak terlihat, bukan ketiadaan simetri rincian. Penghitungan skor, plafon tiap faktor, dan ambang label tidak berubah sama sekali; ini murni perbaikan teks laporan.
 
