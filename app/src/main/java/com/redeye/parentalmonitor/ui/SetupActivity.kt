@@ -1273,10 +1273,7 @@ class SetupActivity : AppCompatActivity() {
             if (myTest != testSeq.get()) return@withLock null
             val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval) } catch (_: Exception) { false }
             if (saved) {
-                val keepPin = accessPin.isEmpty() && (try { prefs.accessPin.isNotEmpty() } catch (_: Exception) { false })
-                if (!keepPin) {
-                    try { prefs.accessPin = accessPin } catch (_: Exception) { }
-                }
+                try { prefs.accessPin = accessPin } catch (_: Exception) { }
                 applyPendingRestoreOwner()
             }
             saved
