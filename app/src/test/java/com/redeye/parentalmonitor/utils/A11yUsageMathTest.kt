@@ -71,4 +71,23 @@ class A11yUsageMathTest {
         assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-1L))
         assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-86_400_000L))
     }
+
+    @Test
+    fun awalKemarinSamaDenganAwalHariKurangSehariDiZonaTanpaDst() {
+        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_281_530_123L))
+        assertEquals(1_793_145_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_232_000_000L))
+        assertEquals(1_793_059_200_000L, A11yUsageMath.previousDayStartWallMillis(1_793_231_999_999L))
+    }
+
+    @Test
+    fun awalKemarinMengikutiKalenderPadaTransisiDst() {
+        val original = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/New_York"))
+            assertEquals(1_772_946_000_000L, A11yUsageMath.previousDayStartWallMillis(1_773_084_600_000L))
+            assertEquals(1_793_505_600_000L, A11yUsageMath.previousDayStartWallMillis(1_793_628_900_000L))
+        } finally {
+            java.util.TimeZone.setDefault(original)
+        }
+    }
 }

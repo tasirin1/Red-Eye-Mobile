@@ -36,6 +36,13 @@ object A11yUsageMath {
         return cal.timeInMillis
     }
 
+    fun previousDayStartWallMillis(nowWall: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = dayStartWallMillis(nowWall)
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        return cal.timeInMillis
+    }
+
     private fun nextHourBoundary(timestamp: Long, offsetMs: Int): Long {
         val hourMs = 3_600_000L
         val shifted = timestamp + offsetMs

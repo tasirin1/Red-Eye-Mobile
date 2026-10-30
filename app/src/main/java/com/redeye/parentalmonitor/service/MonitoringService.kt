@@ -6702,7 +6702,7 @@ class MonitoringService : Service() {
                     topLabel = top.first
                     topMs = top.second
                 }
-                val rowsY = try { usageRowsBetween(dayStart - 24 * 3_600_000L, dayStart) } catch (_: Exception) { null }
+                val rowsY = try { usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now), dayStart) } catch (_: Exception) { null }
                 if (rowsY != null) {
                     yesterdayMs = rowsY.sumOf { it.second }
                     if (topLabel.isNotEmpty()) {
