@@ -631,6 +631,14 @@ class PreferencesManager(context: Context) {
         return commitWithRetry { it.putLong(KEY_LAST_UPDATE_ID, id) }
     }
 
+    fun setLastUpdateIdIfGenerationSync(id: Long, generation: Long): Boolean {
+        return synchronized(credentialLock) {
+            if (credentialGeneration != generation) return@synchronized false
+            if (id <= lastUpdateId) return@synchronized true
+            setLastUpdateIdSync(id) && lastUpdateId >= id
+        }
+    }
+
     val credentialGeneration: Long
         get() = prefLong(KEY_CREDENTIAL_GENERATION, 0L)
 

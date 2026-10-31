@@ -2118,17 +2118,20 @@ class MonitoringService : Service() {
             updateOffsetTracker.forget(updateId, generation)
             return
         }
-        updateOffsetTracker.finish(updateId, generation, delivered)?.let { persistUpdateOffset(it) }
+        updateOffsetTracker.finish(updateId, generation, delivered)?.let { persistUpdateOffset(it, generation) }
     }
 
-    private fun persistUpdateOffset(updateId: Long) {
+    private fun persistUpdateOffset(updateId: Long, generation: Long) {
         synchronized(offsetPersistLock) {
             try {
                 if (updateId > preferencesManager.lastUpdateId) {
-                    preferencesManager.setLastUpdateIdSync(updateId)
-                    if (preferencesManager.lastUpdateId < updateId) {
-                        commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
-                        android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
+                    val applied = preferencesManager.setLastUpdateIdIfGenerationSync(updateId, generation)
+                    if (!applied) {
+                        val generationNow = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
+                        if (generationNow == generation && preferencesManager.lastUpdateId < updateId) {
+                            commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + 60_000L)
+                            android.util.Log.w("MonitoringService", "offset persist not sticking, backing off polling")
+                        }
                     }
                 }
                 Unit
