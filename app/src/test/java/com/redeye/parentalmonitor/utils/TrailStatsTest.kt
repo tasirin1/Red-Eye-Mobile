@@ -122,6 +122,24 @@ class TrailStatsTest {
     }
 
     @Test
+    fun diamBerjangkarTengahTidakTerlewat() {
+        val pts = listOf(
+            TrailStats.Point(base, 0.0008, 0.0009),
+            TrailStats.Point(base + 10 * 60_000L, 0.0, 0.0),
+            TrailStats.Point(base + 20 * 60_000L, 0.0009, 0.0009),
+            TrailStats.Point(base + 30 * 60_000L, 0.0009, -0.0009),
+            TrailStats.Point(base + 40 * 60_000L, -0.0009, 0.0009),
+            TrailStats.Point(base + 50 * 60_000L, -0.0009, -0.0009),
+            TrailStats.Point(base + 60 * 60_000L, 0.0, 0.00127)
+        )
+        val stay = TrailStats.longestStay(pts)
+        assertTrue(stay != null)
+        assertEquals(50 * 60_000L, stay!!.millis)
+        assertEquals(0.0, stay.lat, 0.0)
+        assertEquals(0.0, stay.lon, 0.0)
+    }
+
+    @Test
     fun diamNullBilaTitikKurang() {
         assertNull(TrailStats.longestStay(listOf(TrailStats.Point(base, 0.0, 0.0))))
     }

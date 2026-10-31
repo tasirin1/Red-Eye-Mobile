@@ -40,7 +40,7 @@ object TrailStats {
             }
             val millis = endAt - points[i].at
             if (millis > (best?.millis ?: 0L)) best = Stay(points[i].lat, points[i].lon, millis)
-            i = if (j > i + 1) j - 1 else i + 1
+            i += 1
         }
         return best
     }
