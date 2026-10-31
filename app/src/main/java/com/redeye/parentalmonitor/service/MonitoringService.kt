@@ -7288,6 +7288,7 @@ class MonitoringService : Service() {
                 appendLine("Watch hit 24 jam: $hits")
                 appendLine("Nomor baru: ${unknown.size}")
                 appendLine("Begadang (23–05): $nights$locNote")
+                if (sms.size >= 200 || calls.size >= 200) appendLine("(dari 200 data terakhir per sumber)")
                 try {
                     val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
                     val todayF = todayFacts(now, usageDayData(now)) ?: allDays.firstOrNull { it.day == todayKey(now) }
@@ -7321,15 +7322,20 @@ class MonitoringService : Service() {
             if (try { preferencesManager.begadangDate } catch (_:Exception) { "" } == key) return
             val since = now - 24 * 60 * 60_000L
             var nights = 0
+            var capped = false
             try {
-                for (s in smsRepository.getRecentSmsSince(since, 200)) {
+                val recentSms = smsRepository.getRecentSmsSince(since, 200)
+                if (recentSms.size >= 200) capped = true
+                for (s in recentSms) {
                     val hh = hourOf(s.date)
                     if (hh >= 23 || hh in 0..4) nights++
                 }
             } catch (_: Exception) {
             }
             try {
-                for (c in callLogRepository.getCallsSince(since, 200)) {
+                val recentCalls = callLogRepository.getCallsSince(since, 200)
+                if (recentCalls.size >= 200) capped = true
+                for (c in recentCalls) {
                     val hh = hourOf(c.date)
                     if (hh >= 23 || hh in 0..4) nights++
                 }
@@ -7339,7 +7345,7 @@ class MonitoringService : Service() {
                 try { preferencesManager.begadangDate = key } catch (_: Exception) { }
                 return
             }
-            sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola.")
+            sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "")
             try { preferencesManager.begadangDate = key } catch (_: Exception) { }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
