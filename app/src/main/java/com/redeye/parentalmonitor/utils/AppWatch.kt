@@ -15,7 +15,7 @@ object AppWatch {
         "id.co.seabank", "com.bca", "com.bni", "id.bni", "co.bri", "com.mandiri", "bmri",
         "com.cimb", "cimbniaga", "btpn", "com.danamon", "com.permatabank", "com.bankbkemobile",
         "com.bsm", "permatamobilex", "id.com.uiux", "ocbc", "alloapp", "panin", "muamalat", "hsbc",
-        "com.isaku", "com.indodana"
+        "com.isaku", "com.indodana", "com.bibit", "com.stockbit", "ajaib.co.id"
     )
 
     fun parseKeywords(raw: String): List<String> {
