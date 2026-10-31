@@ -1,6 +1,8 @@
 package com.redeye.parentalmonitor.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PhotoFingerprintTest {
@@ -20,6 +22,31 @@ class PhotoFingerprintTest {
         val single = IntArray(64)
         single[0] = 255
         assertEquals(1L, PhotoFingerprint.fingerprintBits(single))
+    }
+
+    @Test
+    fun duplicateRuleSkipsZeroAndOneOnEitherSide() {
+        val patterned = 0x5555555555555555L
+        val skewed = 0x7FL
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(0L, patterned))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(patterned, 0L))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(0L, 0L))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(1L, 1L))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(1L, patterned))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(patterned, 1L))
+        assertEquals(6, PhotoFingerprint.hammingDistance(skewed, 1L))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(skewed, 1L))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(1L, skewed))
+    }
+
+    @Test
+    fun duplicateRuleComparesPatternedHashes() {
+        val patterned = 0x5555555555555555L
+        val skewed = 0x7FL
+        assertTrue(PhotoFingerprint.isDuplicateFingerprint(patterned, patterned))
+        assertTrue(PhotoFingerprint.isDuplicateFingerprint(patterned, patterned xor 1L))
+        assertTrue(PhotoFingerprint.isDuplicateFingerprint(skewed, skewed))
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(patterned, patterned.inv()))
     }
 
     @Test

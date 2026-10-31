@@ -60,6 +60,11 @@ object PhotoFingerprint {
         return bits
     }
 
+    fun isDuplicateFingerprint(now: Long, other: Long): Boolean {
+        if (now == 0L || now == 1L || other == 0L || other == 1L) return false
+        return hammingDistance(now, other) <= 6
+    }
+
     fun hammingDistance(a: Long, b: Long): Int {
         var x = a xor b
         var n = 0

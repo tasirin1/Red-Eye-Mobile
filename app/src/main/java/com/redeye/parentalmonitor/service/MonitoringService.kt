@@ -8133,8 +8133,8 @@ class MonitoringService : Service() {
             }
         }
         val heldHashes = HeldPhotos.hashesOf(heldEntries)
-        val dupBaseline = photoHashNow != 0L && prevPhotoHash != 0L && PhotoFingerprint.hammingDistance(photoHashNow, prevPhotoHash) <= 6
-        val dupHeld = photoHashNow != 0L && heldHashes.any { PhotoFingerprint.hammingDistance(photoHashNow, it) <= 6 }
+        val dupBaseline = PhotoFingerprint.isDuplicateFingerprint(photoHashNow, prevPhotoHash)
+        val dupHeld = heldHashes.any { PhotoFingerprint.isDuplicateFingerprint(photoHashNow, it) }
         if (dupBaseline || dupHeld) {
             finishCaptureAttempt(wd)
             deleteQuietly(photoFile)
