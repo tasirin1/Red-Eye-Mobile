@@ -197,12 +197,13 @@ object A11yMonitor {
     }
 
     private fun scanWatchedContent(service: AccessibilityService, pkg: String) {
-        if (pkg.isEmpty() || pkg == service.packageName || AppWatch.isSensitivePackage(pkg)) return
-        val manager = prefs ?: return
-        if (!manager.a11yAppWatchEnabled) return
+        if (pkg.isEmpty() || pkg == service.packageName) return
         val now = SystemClock.elapsedRealtime()
         val last = lastContentScan[pkg] ?: 0L
         if (last > 0L && now - last < CONTENT_SCAN_GAP_MS) return
+        if (AppWatch.isSensitivePackage(pkg)) return
+        val manager = prefs ?: return
+        if (!manager.a11yAppWatchEnabled) return
         if (lastContentScan.size > 120) lastContentScan.clear()
         lastContentScan[pkg] = now
         if (pkg !in manager.a11yAppWatchPackageSet()) return
