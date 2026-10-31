@@ -7226,11 +7226,11 @@ class MonitoringService : Service() {
             var locNote = ""
             try {
                 val pos = lastSentLatLon()
-                val ageH = (now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }) / 3_600_000L
+                val ageMs = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
                 val la = preferencesManager.homeLatE6
                 val lo = preferencesManager.homeLonE6
                 val rad = preferencesManager.homeRadiusM
-                if (pos == null || ageH > 6) {
+                if (pos == null || ageMs > 6 * 3_600_000L) {
                     locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
                 } else if (la != Long.MIN_VALUE && rad > 0 &&
                     ReportFormat.distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
