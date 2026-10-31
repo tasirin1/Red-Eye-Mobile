@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.577] - 2026-10-31
+
 ### Fixed
 - Dua kode mati hasil sensus putaran-77 dihapus (issue #515): field `PendingRestore.data` di `MonitoringService` ditulis saat konstruksi sesi konfirmasi restore tetapi tak pernah dibaca (jalur terapan 60 detik memakai variabel lokal yang ditangkap lambda `applyRestoredSettings(data)`), dan getter properti `ownerPairCode` di `PreferencesManager` tak punya pembaca (fungsi internal membaca kunci prefs langsung). Sensus ulang memastikan 0 pembaca untuk keduanya sebelum penghapusan; properti `ownerPairCode` diganti fungsi tulis-saja `setOwnerPairCode` dan satu-satunya pemakai setter-nya (jalur hapus kredensial di `SetupActivity`) disesuaikan. Keduanya kelas privat in-memory/properti prefs — bukan DTO Gson dan tak dirujuk refleksi — sehingga nol perubahan perilaku.
 - Dua penulisan prefs no-op per kirim sukses kini dilewati/di-throttle (issue #514): (a) `setCredentialErrorIfCredentialsMatch` di `PreferencesManager` menulis ulang `credentialError`/`credentialErrorAt` pada SETIAP kirim sukses walau nilainya sudah sama — kini penulisan dilewati bila keadaan sudah sesuai target (di dalam `credentialLock` yang sama, sesudah cek kecocokan kredensial); (b) `noteSendOk` di `MonitoringService` menulis penanda kirim-ok pada setiap kirim tanpa throttle — kini di-throttle 30 detik dalam memori, persis pola `noteSendOk` milik `SendMessageWorker` untuk penanda yang sama (granularitas penanda memang sudah diterima di sana; pembaca `silentLinkAgeMs` menoleransi selisih itu).
