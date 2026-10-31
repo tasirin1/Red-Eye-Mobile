@@ -201,8 +201,24 @@ object IntentParser {
 
     private val COLLAPSE_FALSE_FRIENDS = setOf("bukaan")
 
+    private fun isCollapseFalseFriend(token: String): Boolean {
+        val runChars = StringBuilder()
+        val runCounts = ArrayList<Int>()
+        for (c in token) {
+            if (runChars.isNotEmpty() && runChars[runChars.length - 1] == c) {
+                runCounts[runCounts.size - 1] = runCounts[runCounts.size - 1] + 1
+            } else {
+                runChars.append(c)
+                runCounts.add(1)
+            }
+        }
+        if (runChars.toString() != "bukan") return false
+        return runCounts[3] >= 2
+    }
+
     private fun isNegation(token: String): Boolean {
         if (token in COLLAPSE_FALSE_FRIENDS) return false
+        if (isCollapseFalseFriend(token)) return false
         if (token in NEGATIONS) return true
         if (NEGATIONS.any { base -> negationForm(token, base) }) return true
         val collapsed = collapseRuns(token)
