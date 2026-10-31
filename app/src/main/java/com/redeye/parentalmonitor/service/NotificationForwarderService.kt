@@ -612,13 +612,13 @@ class NotificationForwarderService : NotificationListenerService() {
         if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
-                if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
                 var queued = false
                 try {
                     queued = queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower))
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
+                if (queued && trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
                 if (queued && idHash.isNotEmpty()) markForwardedId(idHash)
                 return
             }
@@ -637,7 +637,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val message = buildNotifMessage(label, title, text, maskedLower)
         record(label, title, text)
-        if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
         if (priority) {
             val delivered = try {
                 forwardLocked("❗ " + message, 1)
@@ -646,11 +645,13 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 false
             }
+            if (delivered && trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
             if (delivered && idHash.isNotEmpty()) markForwardedId(idHash)
             return
         }
         try {
             forwardToTelegram(message, idHash)
+            if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
         } catch (_: Exception) {
         }
     }
