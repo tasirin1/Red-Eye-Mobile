@@ -114,6 +114,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.panin.mobilepanin"))
         assertTrue(AppWatch.isSensitivePackage("com.muamalatdin"))
         assertTrue(AppWatch.isSensitivePackage("id.hsbc.hsbcindonesia"))
+        assertTrue(AppWatch.isSensitivePackage("com.isaku.app"))
+        assertTrue(AppWatch.isSensitivePackage("com.indodana.app"))
         assertFalse(AppWatch.isSensitivePackage("com.grabtaxi.passenger"))
         assertFalse(AppWatch.isSensitivePackage("com.mobile.legends"))
         assertFalse(AppWatch.isSensitivePackage("com.netflix.mediaclient"))
