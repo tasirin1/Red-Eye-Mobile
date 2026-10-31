@@ -43,6 +43,14 @@ object A11yUsageMath {
         return cal.timeInMillis
     }
 
+    fun splitBoundaryWallMillis(sessionStartWall: Long, todayStartWall: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = dayStartWallMillis(sessionStartWall)
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        val nextDayStart = cal.timeInMillis
+        return if (nextDayStart < todayStartWall) nextDayStart else todayStartWall
+    }
+
     private fun nextHourBoundary(timestamp: Long, offsetMs: Int): Long {
         val hourMs = 3_600_000L
         val shifted = timestamp + offsetMs

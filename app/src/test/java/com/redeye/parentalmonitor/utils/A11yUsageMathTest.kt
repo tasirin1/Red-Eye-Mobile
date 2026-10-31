@@ -66,6 +66,17 @@ class A11yUsageMathTest {
     }
 
     @Test
+    fun batasBelahMemilihTengahMalamPertama() {
+        val day0 = 1_793_232_000_000L
+        val hour = 3_600_000L
+        val day = 86_400_000L
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + day))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 23 * hour, day0 + 2 * day))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0 + 1_800_000L, day0 + 2 * day))
+        assertEquals(day0 + day, A11yUsageMath.splitBoundaryWallMillis(day0, day0 + day))
+    }
+
+    @Test
     fun awalHariNilaiEkstremAman() {
         assertEquals(0L, A11yUsageMath.dayStartWallMillis(0L))
         assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-1L))

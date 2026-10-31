@@ -387,9 +387,11 @@ object A11yMonitor {
             val dayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             var splitAtMidnight = false
             if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall) {
+                val splitWall = A11yUsageMath.splitBoundaryWallMillis(currentStartWall, dayStart)
+                val elapsedAtSplit = nowElapsed - (nowWall - splitWall)
                 val elapsedAtDayStart = nowElapsed - (nowWall - dayStart)
-                if (elapsedAtDayStart > currentStartElapsed) {
-                    accrueSessionLocked(dayStart, elapsedAtDayStart)
+                if (elapsedAtSplit > currentStartElapsed) {
+                    accrueSessionLocked(splitWall, elapsedAtSplit)
                     resumeWall = dayStart
                     resumeElapsed = elapsedAtDayStart
                     splitAtMidnight = true
