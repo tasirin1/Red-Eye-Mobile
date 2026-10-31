@@ -6381,7 +6381,7 @@ class MonitoringService : Service() {
             lowPowerNotified = false
             val noticeAt = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
             val now = System.currentTimeMillis()
-            if (noticeAt > 0L && now > noticeAt && now - noticeAt < 24 * 60 * 60_000L) {
+            if (noticeAt > 0L && now > noticeAt) {
                 try { preferencesManager.batteryAlertAt = 0L } catch (_: Exception) { }
                 sendToTelegram("🔋 Baterai kembali normal — foto otomatis & patroli berjalan seperti biasa.")
             }
