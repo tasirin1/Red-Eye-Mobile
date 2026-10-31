@@ -7021,9 +7021,6 @@ class MonitoringService : Service() {
                 mainMenu()
             )
             try { recordDailyFacts(now, dayData) } catch (_: Exception) { }
-            if (manual && sent) {
-                try { preferencesManager.digestAt = now } catch (_: Exception) { }
-            }
             return sent
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
