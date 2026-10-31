@@ -6645,6 +6645,7 @@ class MonitoringService : Service() {
 
     private fun trailList(): List<Pair<com.redeye.parentalmonitor.utils.TrailStats.Point, Int>> {
         return try {
+            val now = System.currentTimeMillis()
             preferencesManager.trail24.split(";").mapNotNull { p ->
                 val ts = p.substringBefore(":").toLongOrNull() ?: return@mapNotNull null
                 val ll = p.substringAfter(":").split(",")
@@ -6653,7 +6654,7 @@ class MonitoringService : Service() {
                 val lo = ll[1].toLongOrNull() ?: return@mapNotNull null
                 val acc = if (ll.size == 3) ll[2].toIntOrNull() ?: -1 else -1
                 com.redeye.parentalmonitor.utils.TrailStats.Point(ts, la / 1_000_000.0, lo / 1_000_000.0) to acc
-            }.filter { it.first.at > System.currentTimeMillis() - 24 * 60 * 60_000L }
+            }.filter { it.first.at > now - 24 * 60 * 60_000L && it.first.at <= now }
         } catch (_: Exception) {
             emptyList()
         }
