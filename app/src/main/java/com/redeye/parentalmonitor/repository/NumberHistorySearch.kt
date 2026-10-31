@@ -25,12 +25,12 @@ class NumberHistorySearch<T>(
         }
         val exactRows = query("(" + variants.joinToString(" OR ") { "${numberColumn} = ?" } + ") AND ${dateColumn} <= ?", (variants + now.toString()).toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val exactMatched = filterByNumber(exactRows, norm, wantAlt)
-        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
+        if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit), truncated = exactRows.size >= safeLimit)
         if (norm.length < 10) return NumberHistoryResult(emptyList())
         val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
         val rows = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ?", arrayOf(fuzzy, now.toString()), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val matched = filterByNumber(rows, norm, wantAlt)
-        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
+        if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit), truncated = rows.size >= safeLimit)
         val cutoff = now - 365L * 24 * 60 * 60_000L
         var upperDate = now
         var upperId = Long.MAX_VALUE
@@ -38,7 +38,7 @@ class NumberHistorySearch<T>(
             val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
             if (page.isEmpty()) return NumberHistoryResult(emptyList())
             val pageMatched = filterByNumber(page, norm, wantAlt)
-            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit))
+            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit), truncated = pageMatched.size > safeLimit)
             if (page.size < 500) return NumberHistoryResult(emptyList())
             val oldest = page.last()
             if (dateOf(oldest) <= cutoff) return NumberHistoryResult(emptyList())

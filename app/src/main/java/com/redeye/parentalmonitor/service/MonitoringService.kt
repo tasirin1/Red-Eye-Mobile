@@ -3793,9 +3793,11 @@ class MonitoringService : Service() {
                 if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
                 if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
                 if (callsResult.items.size > 5 || smsResult.items.size > 5) {
-                    sendToTelegram("⚠️ Hanya 5 riwayat terbaru per jenis yang ditampilkan; pada pencarian ini ditemukan ${callsResult.items.size} panggilan dan ${smsResult.items.size} SMS untuk nomor ini.")
+                    val callsLabel = callsResult.items.size.toString() + if (callsResult.truncated) "+" else ""
+                    val smsLabel = smsResult.items.size.toString() + if (smsResult.truncated) "+" else ""
+                    sendToTelegram("⚠️ Hanya 5 riwayat terbaru per jenis yang ditampilkan; pada pencarian ini ditemukan $callsLabel panggilan dan $smsLabel SMS untuk nomor ini.")
                 }
-                if (callsResult.truncated || smsResult.truncated) {
+                if ((callsResult.truncated && callsResult.items.isEmpty()) || (smsResult.truncated && smsResult.items.isEmpty())) {
                     sendToTelegram("⚠️ Pencarian berhenti setelah 2.000 entri terbaru; mungkin masih ada riwayat yang lebih lama.")
                 }
                 if (callsFailed) sendToTelegram("⚠️ Riwayat panggilan gagal dicari.")
