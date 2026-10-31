@@ -255,11 +255,25 @@ object IntentParser {
         return isNumberAttemptHead(head)
     }
 
+    private val PHOTO_LENS_WORDS = setOf("depan", "belakang", "front", "back")
+
+    private fun mergeAliasArgs(parsed: String, aliasInput: String): String {
+        val parts = aliasInput.split(WHITESPACE, limit = 2)
+        if (parts.size != 2 || parts[0] != parsed) return parsed
+        val first = parts[1].split(WHITESPACE).firstOrNull()?.lowercase(Locale.ROOT).orEmpty()
+        if (parsed == "/photo" && first in PHOTO_LENS_WORDS) return "$parsed $first"
+        if (parsed == "/layar") {
+            val hours = first.toIntOrNull()
+            if (hours != null && hours in 1..24) return "$parsed $hours"
+        }
+        return parsed
+    }
+
     fun intentOrAlias(text: String, aliasInput: String?): String? {
         val parsed = parse(text)
         if (aliasInput == null) return parsed
         if (isSmsSendForm(aliasInput)) return aliasInput
-        if (parsed != null) return parsed
+        if (parsed != null) return mergeAliasArgs(parsed, aliasInput)
         val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
         if (words.size > 2) return null
         val tk = tokenize(text)

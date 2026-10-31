@@ -225,6 +225,21 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasParserWinMergesRelevantAliasArgs() {
+        val cases: List<Triple<String, String?, String?>> = listOf(
+            Triple("foto depan dong", "/photo depan dong", "/photo depan"),
+            Triple("foto belakang dong", "/photo belakang dong", "/photo belakang"),
+            Triple("layar 6 jam", "/layar 6 jam", "/layar 6"),
+            Triple("layar 25 jam", "/layar 25 jam", "/layar"),
+            Triple("foto sekarang dong", "/photo sekarang dong", "/photo"),
+            Triple("tolong kirim foto sekarang", "/help kirim foto sekarang", "/photo")
+        )
+        for ((text, alias, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
+        }
+    }
+
+    @Test
     fun intentOrAliasSmsGateAlignsWithDownstreamParser() {
         val cases: List<Triple<String, String?, String?>> = listOf(
             Triple("sms 123 terakhir dari siapa", "/sms 123 terakhir dari siapa", "/lastsms"),
