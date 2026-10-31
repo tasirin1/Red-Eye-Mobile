@@ -54,6 +54,30 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun kepalaPesanDuaDigitTidakTerserapNomorBerspasi() {
+        val parsed = SmsCommandParser.parse("0812 3456 7890 22 orang")
+        assertEquals("0812 3456 7890", parsed?.number)
+        assertEquals("081234567890", parsed?.normalized)
+        assertEquals("22 orang", parsed?.text)
+    }
+
+    @Test
+    fun kepalaPesanDuaDigitTidakTerserapNomorInternasional() {
+        val parsed = SmsCommandParser.parse("+62 812 3456 7890 22 orang")
+        assertEquals("+62 812 3456 7890", parsed?.number)
+        assertEquals("+6281234567890", parsed?.normalized)
+        assertEquals("22 orang", parsed?.text)
+    }
+
+    @Test
+    fun nomorPendekBerakhiranDuaDigitTetapUtuh() {
+        val parsed = SmsCommandParser.parse("0812 3456 78 halo")
+        assertEquals("0812 3456 78", parsed?.number)
+        assertEquals("0812345678", parsed?.normalized)
+        assertEquals("halo", parsed?.text)
+    }
+
+    @Test
     fun tanpaSpasiDitolak() {
         assertNull(SmsCommandParser.parse("08123456789"))
     }
