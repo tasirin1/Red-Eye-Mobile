@@ -33,6 +33,8 @@ object CommandSuggest {
         return true
     }
 
+    private val MUTATING_COMMANDS = setOf("/lock", "/stop", "/restart", "/logout", "/clearqueue", "/pause", "/record", "/recordvideo", "/sms", "/photo", "/screenshot", "/camera", "/ring", "/pulihkan", "/bersihkan", "/flush")
+
     fun suggestCommand(typed: String): String? {
         var best: String? = null
         var bestDist = Int.MAX_VALUE
@@ -47,6 +49,11 @@ object CommandSuggest {
             try { if (transposedEquals(typed, best)) bestDist = 1 } catch (_: Exception) { }
         }
         val limit = if (typed.length <= 5) 1 else 2
-        return if (best != null && bestDist in 1..limit) best else null
+        if (best == null || bestDist !in 1..limit) return null
+        if (best in MUTATING_COMMANDS && !best.startsWith(typed)) {
+            val others = KNOWN_COMMANDS.filter { it != best && it.startsWith(typed) }
+            if (others.isNotEmpty()) return if (others.size == 1) others[0] else null
+        }
+        return best
     }
 }

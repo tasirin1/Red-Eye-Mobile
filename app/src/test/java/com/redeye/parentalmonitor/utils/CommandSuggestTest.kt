@@ -50,4 +50,13 @@ class CommandSuggestTest {
         assertEquals("/night", CommandSuggest.suggestCommand("/nigth"))
         assertEquals("/battery", CommandSuggest.suggestCommand("/batery"))
     }
+
+    @Test
+    fun suggestCommandNeverPointsAbbreviationAtMutatingCommand() {
+        assertEquals("/location", CommandSuggest.suggestCommand("/loca"))
+        assertEquals("/log", CommandSuggest.suggestCommand("/loc"))
+        assertEquals("/pause", CommandSuggest.suggestCommand("/paus"))
+        assertEquals("/photo", CommandSuggest.suggestCommand("/phot"))
+        assertEquals("/lock", CommandSuggest.suggestCommand("/lockk"))
+    }
 }
