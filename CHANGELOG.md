@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penaikan `credentialGeneration` kini atomik antar semua jalur tulis kredensial (issue #490): empat jalur owner di `PreferencesManager` (setter `ownerUserId`, `setOwnerIdSync`, `adoptOwnerChatSync`, `clearOwnerSync`) memanggil `bumpCredentialGeneration` tanpa `synchronized(credentialLock)` yang dipegang jalur token/chat, sehingga dua penulis bersamaan dapat sama-sama membaca generasi `G` dan men-stage `G+1` (kenaikan hilang), atau commit telat menimpa generasi yang lebih baru (generasi mundur) — mengancam jangkar jepretan #446 dan penjaga offset #465. Keempat jalur kini dibungkus `credentialLock` yang sama (kunci daun di dalam `PreferencesManager`; pola setter token/chat yang sudah ada), dan sensus memastikan satu-satunya penulis kunci generasi adalah helper itu dengan kesembilan situs pemanggilnya berada di bawah kunci.
 - Veto rujukan parser kini toleran elongasi seperti mesin niatnya (issue #489): penanda lampau (`kemarin`, `tadi`, `terakhir`, `barusan`, `fotonya`), kata benda hasil (`jepretan`, `ambilan`, `potretan`), dan penanda lampau pada `hasFirmCaptureIntent` dicocokkan lewat helper `markerMatches` (toleransi awalan `tokenMatches` atau kesetaraan sesudah pelipatan run), sehingga "hilang kemarinn" tak lagi memicu mode hilang, "kunci kemarinn" tak lagi mengunci, dan "kirim jepretann dong" tak lagi memotret baru. Kata sah "bukaan" tetap lolos seperti keputusan #473. Dibuktikan porting 1:1 atas matriks parser bersama putaran ini: seluruh kasus uji lama tidak berubah.
 
 ### Changed

@@ -1007,9 +1007,11 @@ class PreferencesManager(context: Context) {
     var ownerUserId: Long
         get() = prefLong(KEY_OWNER_ID, 0L)
         set(value) {
-            val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, value)
-            if (value != ownerUserId) bumpCredentialGeneration(editor)
-            editor.apply()
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, value)
+                if (value != ownerUserId) bumpCredentialGeneration(editor)
+                editor.apply()
+            }
         }
 
     var accessPin: String
@@ -1018,9 +1020,11 @@ class PreferencesManager(context: Context) {
 
     fun setOwnerIdSync(id: Long): Boolean {
         return try {
-            val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, id)
-            if (id != ownerUserId) bumpCredentialGeneration(editor)
-            editor.commit()
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, id)
+                if (id != ownerUserId) bumpCredentialGeneration(editor)
+                editor.commit()
+            }
         } catch (_: Exception) {
             false
         }
@@ -1029,15 +1033,17 @@ class PreferencesManager(context: Context) {
     fun adoptOwnerChatSync(ownerId: Long, newChatId: String): Boolean {
         if (ownerId == 0L || newChatId.isEmpty()) return false
         return try {
-            val editor = sharedPreferences.edit()
-                .putLong(KEY_OWNER_ID, ownerId)
-                .putString(KEY_CHAT_ID, newChatId)
-                .putString(KEY_OWNER_PAIR_CODE, "")
-                .putString(KEY_COMMANDS_TOKEN_HASH, "")
-                .putString(KEY_CRED_ERROR, "")
-                .putLong(KEY_CRED_ERROR_AT, 0L)
-            if (ownerId != ownerUserId || newChatId != chatId) bumpCredentialGeneration(editor)
-            editor.commit()
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit()
+                    .putLong(KEY_OWNER_ID, ownerId)
+                    .putString(KEY_CHAT_ID, newChatId)
+                    .putString(KEY_OWNER_PAIR_CODE, "")
+                    .putString(KEY_COMMANDS_TOKEN_HASH, "")
+                    .putString(KEY_CRED_ERROR, "")
+                    .putLong(KEY_CRED_ERROR_AT, 0L)
+                if (ownerId != ownerUserId || newChatId != chatId) bumpCredentialGeneration(editor)
+                editor.commit()
+            }
         } catch (_: Exception) {
             false
         }
@@ -1045,13 +1051,15 @@ class PreferencesManager(context: Context) {
 
     fun clearOwnerSync(): Boolean {
         return try {
-            val editor = sharedPreferences.edit()
-                .putLong(KEY_OWNER_ID, 0L)
-                .putString(KEY_OWNER_PAIR_CODE, "")
-                .putLong(KEY_OWNER_PAIR_AT, 0L)
-                .putString(KEY_COMMANDS_TOKEN_HASH, "")
-            if (ownerUserId != 0L) bumpCredentialGeneration(editor)
-            editor.commit()
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit()
+                    .putLong(KEY_OWNER_ID, 0L)
+                    .putString(KEY_OWNER_PAIR_CODE, "")
+                    .putLong(KEY_OWNER_PAIR_AT, 0L)
+                    .putString(KEY_COMMANDS_TOKEN_HASH, "")
+                if (ownerUserId != 0L) bumpCredentialGeneration(editor)
+                editor.commit()
+            }
         } catch (_: Exception) {
             false
         }
