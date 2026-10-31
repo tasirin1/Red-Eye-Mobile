@@ -201,4 +201,21 @@ object IntentParser {
         }
         return if (bestScore < 2 || tie) null else best
     }
+
+    private val SMS_NUMBER_HEAD = Regex("^\\+?\\d[\\d-]*$")
+
+    private fun isSmsSendForm(aliasInput: String): Boolean {
+        if (!aliasInput.startsWith("/sms ")) return false
+        val head = aliasInput.substring(5).split(WHITESPACE).firstOrNull().orEmpty()
+        return SMS_NUMBER_HEAD.matches(head)
+    }
+
+    fun intentOrAlias(text: String, aliasInput: String?): String? {
+        val parsed = parse(text)
+        if (aliasInput == null) return parsed
+        if (isSmsSendForm(aliasInput)) return aliasInput
+        if (parsed != null) return parsed
+        val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
+        return if (words.size <= 2) aliasInput else null
+    }
 }

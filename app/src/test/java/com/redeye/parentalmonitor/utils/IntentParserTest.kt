@@ -167,4 +167,44 @@ class IntentParserTest {
             assertEquals(true, got == null || got in allowed)
         }
     }
+
+    @Test
+    fun intentOrAliasLetsParserJudgeNaturalSentences() {
+        val cases: List<Triple<String, String?, String?>> = listOf(
+            Triple("tolong kirim foto sekarang", "/help kirim foto sekarang", "/photo"),
+            Triple("tolong foto", "/help foto", "/photo"),
+            Triple("sms terakhir dari siapa", "/sms terakhir dari siapa", "/lastsms"),
+            Triple("laporan hari ini", "/minggu hari ini", "/digest"),
+            Triple("minggu depan ada acara apa", "/minggu depan ada acara apa", null),
+            Triple("lokasi baterai di gudang", "/location baterai di gudang", null),
+            Triple("foto sekarang dong", "/photo sekarang dong", "/photo"),
+            Triple("foto yang diambil kemarin dong", "/photo yang diambil kemarin dong", null),
+            Triple("kunci perangkat dari jauh sekarang", "/lock perangkat dari jauh sekarang", null),
+            Triple("lanjut pemantauan yang kemarin", "/resume pemantauan yang kemarin", null),
+            Triple("tolong kunci hp", "/help kunci hp", null),
+            Triple("kirim foto dong", null, "/photo"),
+            Triple("halo", null, null)
+        )
+        for ((text, alias, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
+        }
+    }
+
+    @Test
+    fun intentOrAliasKeepsPureAliasForms() {
+        val cases: List<Triple<String, String?, String?>> = listOf(
+            Triple("kunci", "/lock", "/lock"),
+            Triple("kunci sekarang", "/lock sekarang", "/lock"),
+            Triple("tolong", "/help", "/help"),
+            Triple("foto", "/photo", "/photo"),
+            Triple("foto depan", "/photo depan", "/photo depan"),
+            Triple("foto belakang", "/photo belakang", "/photo belakang"),
+            Triple("sms 0812 halo", "/sms 0812 halo", "/sms 0812 halo"),
+            Triple("sms 0812 3456 7890 apa kabar", "/sms 0812 3456 7890 apa kabar", "/sms 0812 3456 7890 apa kabar"),
+            Triple("sms +62812 3456 7890 sampai jumpa", "/sms +62812 3456 7890 sampai jumpa", "/sms +62812 3456 7890 sampai jumpa")
+        )
+        for ((text, alias, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
+        }
+    }
 }

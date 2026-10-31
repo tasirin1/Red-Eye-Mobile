@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Kalimat bahasa alami berawalan kata alias kini dinilai `IntentParser`, bukan ditelan alias kata-pertama (issue #454): dispatch sebelumnya memanggil `resolveAliasInput` lebih dulu dan parser hanya berjalan bila alias tak cocok, sehingga kalimat apa pun yang kata pertamanya ada di `ALIAS_COMMANDS` tak pernah mencapai parser beserta seluruh veto/negasinya — "tolong kirim foto sekarang" menjadi `/help` (janji `IntentParserTest` = `/photo` mati di produksi), "sms terakhir dari siapa" menjadi argumen `/sms` yang gagal, "laporan hari ini" menjadi `/minggu`, "minggu depan ada acara apa" tetap terkirim sebagai `/minggu`, "foto yang diambil kemarin dong" kalah veto sebelum jalan, dan jalur mutating "kunci <kalimat apa pun>" mengunci perangkat. Keputusan yang dicatat (penilaian kini fungsi murni `IntentParser.intentOrAlias`, teruji JVM dua arah sesudah dibuktikan porting 1:1 atas parser + rute — 108 kasus uji lama persis, 40 kasus rute baru): (1) bentuk kirim-SMS (alias `/sms` yang sisa kalimatnya diawali token nomor) tetap dimenangkan alias, karena isi SMS sah memang kalimat panjang berawalan nomor dan parser dapat salah membacanya sebagai tanya SMS terakhir; (2) bila parser menghasilkan perintah, parser yang menang; (3) bila parser menolak, alias hanya menang untuk bentuk murni satu-dua kata ("kunci", "foto depan", "tolong") — kalimat panjang yang ditolak parser kini diabaikan, tidak lagi diteruskan sebagai argumen perintah yang handler-nya membuang argumen. Alias perintah garis miring ("/foto") dan semua perilaku parser itu sendiri tidak berubah.
+
 ## [1.6.574] - 2026-10-31
 
 ### Fixed

@@ -1911,9 +1911,9 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk || followsLogin) {
-                        val aliasInput = resolveAliasInput(command, arg)
-                        val intentInput = if (aliasInput == null && !command.startsWith("/")) {
-                            try { IntentParser.parse(rawText) } catch (_: Exception) { null }
+                        val aliasInput = if (command.startsWith("/")) resolveAliasInput(command, arg) else null
+                        val intentInput = if (!command.startsWith("/")) {
+                            try { IntentParser.intentOrAlias(rawText, resolveAliasInput(command, arg)) } catch (_: Exception) { null }
                         } else {
                             null
                         }
