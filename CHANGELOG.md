@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- UangMe (`com.cmcm.uangme`) kini dikenali sebagai aplikasi sensitif (issue #542): petunjuk `cmcm.uangme` ditambahkan (petunjuk telanjang `uangme` ditolak — terbukti menabrak `com.ruangmebel.furniture`) — terverifikasi halaman Play Store resmi dan uji `contains` dua arah.
 - PinjamanGo (`com.pinjamango`) kini dikenali sebagai aplikasi sensitif (issue #541): petunjuk `pinjamango` ditambahkan — terverifikasi halaman Play Store resmi dan uji `contains` dua arah (tidak menangkap `com.mangolanguages.app`).
 - RupiahCepat kini dikenali sebagai aplikasi sensitif (issue #540): petunjuk `dana.rupiah` (segmen ekor khas merek; petunjuk lama `id.dana` tak cocok dengan paketnya) ditambahkan — terverifikasi halaman Play Store resmi dan uji `contains` dua arah (tidak menangkap `id.danarupiah` tanpa titik).
 - Nanovest (`com.nanovest.prod`) kini dikenali sebagai aplikasi sensitif (issue #539): petunjuk `nanovest` ditambahkan ke `SENSITIVE_HINTS` — terverifikasi halaman Play Store resmi dan uji `contains` dua arah (menangkap target, tidak menangkap `com.innovest.education`/`com.flipboard.app`).
