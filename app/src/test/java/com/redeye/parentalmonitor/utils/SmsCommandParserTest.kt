@@ -94,6 +94,14 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun nomorDuaBelasDigitGrupAkhirDuaTidakTerpotong() {
+        val a = SmsCommandParser.parse("+62 8123 4567 89 halo")
+        assertEquals("+62 8123 4567 89", a?.number)
+        assertEquals("+628123456789", a?.normalized)
+        assertEquals("halo", a?.text)
+    }
+
+    @Test
     fun kepalaPesanDuaDigitSesudahNomorUtuhTetapIsi() {
         val a = SmsCommandParser.parse("08123456789 22 orang")
         assertEquals("08123456789", a?.number)

@@ -22,7 +22,9 @@ object SmsCommandParser {
             val lastGroup = candidate.takeLastWhile { !it.isWhitespace() }
             val lastDigits = lastGroup.count { it.isDigit() }
             val totalDigits = normalized.count { it.isDigit() }
-            if (lastDigits >= 3 || (lastDigits == 2 && totalDigits <= 11)) spacedComplete = parsed
+            val baseDigits = totalDigits - lastDigits
+            val minBaseDigits = if (normalized.removePrefix("+").startsWith("62")) 11 else 10
+            if (lastDigits >= 3 || (lastDigits == 2 && baseDigits < minBaseDigits)) spacedComplete = parsed
             val firstToken = candidate.takeWhile { !it.isWhitespace() }
             if (firstTokenNumber == null && firstToken.count { it.isDigit() } >= 7) {
                 firstTokenNumber = parsed
