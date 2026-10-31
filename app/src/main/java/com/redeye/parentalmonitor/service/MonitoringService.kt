@@ -1763,14 +1763,14 @@ class MonitoringService : Service() {
             if (seen) {
                 continue
             }
-            beginUpdateTrack(update.updateId, responseGeneration)
+            beginUpdateTrack(update.updateId)
             var offsetDeferred = false
             var delivered = true
             try {
                 val callback = update.callbackQuery
                 if (callback != null) {
                     offsetDeferred = true
-                    dispatchTracked(update.updateId, "Callback dispatch error") {
+                    dispatchTracked(update.updateId, responseGeneration, "Callback dispatch error") {
                         try {
                             handleCallbackQuery(callback)
                         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1798,7 +1798,7 @@ class MonitoringService : Service() {
                         val accessPin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
                         offsetDeferred = true
                         lastLoginSender = senderId
-                        lastLoginJob = dispatchTracked(update.updateId, "Login dispatch error") {
+                        lastLoginJob = dispatchTracked(update.updateId, responseGeneration, "Login dispatch error") {
                             var locksHeld = false
                             val lockDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
                             while (!locksHeld) {
@@ -1833,7 +1833,7 @@ class MonitoringService : Service() {
                         if (cachedOwnerId == 0L && senderId.isNotEmpty() && msgChatId == senderId && accessPin.isNotEmpty()) {
                             sendDirect(senderId, "\uD83D\uDD11 PIN akses aktif. Kirim /login <PIN> untuk masuk.")
                             offsetDeferred = true
-                            finishUpdateTrack(update.updateId, true)
+                            finishUpdateTrack(update.updateId, responseGeneration, true)
                             continue
                         }
                     }
@@ -1853,7 +1853,7 @@ class MonitoringService : Service() {
                             sendDirect(hintTarget, loginHintText())
                         }
                         offsetDeferred = true
-                        finishUpdateTrack(update.updateId, true)
+                        finishUpdateTrack(update.updateId, responseGeneration, true)
                         continue
                     }
                     if (senderId.isNotEmpty() && msgChatId == senderId && senderId != chatId && command == "/start" && arg.isNotEmpty()) {
@@ -1923,7 +1923,7 @@ class MonitoringService : Service() {
                         val messageDate = message?.date ?: 0L
                         val lock = if (control) controlLock else commandLock
                         offsetDeferred = true
-                        dispatchTracked(update.updateId, "Command dispatch error") {
+                        dispatchTracked(update.updateId, responseGeneration, "Command dispatch error") {
                             var adoptionDoneSec = 0L
                             var followFailedSilently = false
                             var followTimedOut = false
@@ -2037,7 +2037,7 @@ class MonitoringService : Service() {
             } finally {
                 if (!offsetDeferred) {
                     if (!delivered) forgetSeen(update.updateId)
-                    finishUpdateTrack(update.updateId, delivered)
+                    finishUpdateTrack(update.updateId, responseGeneration, delivered)
                 }
             }
         }
@@ -2045,9 +2045,8 @@ class MonitoringService : Service() {
     }
 
     private val updateOffsetTracker = com.redeye.parentalmonitor.utils.UpdateOffsetTracker()
-    private val updateTrackGenerations = java.util.concurrent.ConcurrentHashMap<Long, Long>()
 
-    private fun dispatchTracked(updateId: Long, logTag: String, block: suspend () -> Unit): kotlinx.coroutines.Job {
+    private fun dispatchTracked(updateId: Long, generation: Long, logTag: String, block: suspend () -> Unit): kotlinx.coroutines.Job {
         return serviceScope.launch {
             var handled = false
             try {
@@ -2065,21 +2064,19 @@ class MonitoringService : Service() {
                 android.util.Log.e("MonitoringService", "$logTag: ${redactToken(e.message)}")
             } finally {
                 if (!handled) forgetSeen(updateId)
-                finishUpdateTrack(updateId, handled)
+                finishUpdateTrack(updateId, generation, handled)
             }
         }
     }
 
 
-    private fun beginUpdateTrack(updateId: Long, generation: Long) {
-        updateTrackGenerations[updateId] = generation
+    private fun beginUpdateTrack(updateId: Long) {
         updateOffsetTracker.begin(updateId)
     }
 
-    private fun finishUpdateTrack(updateId: Long, delivered: Boolean) {
-        val generation = updateTrackGenerations.remove(updateId)
+    private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
         val currentGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
-        if (generation != null && generation != currentGeneration) {
+        if (generation != currentGeneration) {
             updateOffsetTracker.forget(updateId)
             return
         }
