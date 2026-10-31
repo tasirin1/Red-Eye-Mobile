@@ -166,6 +166,17 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsBareResultNounsWithPastMarkers() {
+        val phrases = listOf(
+            "kirim potret yang tadi dong",
+            "kirim jepret kemarin dong"
+        )
+        for (phrase in phrases) {
+            assertNull("frasa: $phrase", IntentParser.parse(phrase))
+        }
+    }
+
+    @Test
     fun parsePhotoReferenceVetoYieldsToCaptureVerbs() {
         val cases = listOf(
             "jepret fotonya sekarang",

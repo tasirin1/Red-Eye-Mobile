@@ -136,12 +136,17 @@ object IntentParser {
 
     private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan", "potretan")
 
+    private val PAST_MARKERS = setOf("tadi", "kemarin", "barusan", "terakhir")
+
     private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" foto baru ")) return true
+        val hasPastMarker = tokens.any { it in PAST_MARKERS }
         for (token in tokens) {
             if (token in CAPTURE_RESULT_NOUNS) continue
             for (verb in CAPTURE_VERBS) {
-                if (tokenMatches(token, verb)) return true
+                if (!tokenMatches(token, verb)) continue
+                if (hasPastMarker && token == verb && (verb == "potret" || verb == "jepret")) continue
+                return true
             }
         }
         return false
