@@ -219,6 +219,12 @@ object CrashReporter {
                 false
             }
             if (awaitingLogin) return
+            val monitoringOff = try {
+                prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled
+            } catch (_: Exception) {
+                false
+            }
+            if (monitoringOff) return
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
                 val savedElapsed = savedElapsed0
