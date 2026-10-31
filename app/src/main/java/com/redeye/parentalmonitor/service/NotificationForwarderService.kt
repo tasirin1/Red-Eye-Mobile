@@ -51,6 +51,10 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
     @Volatile
+    private var forwardedIdsView: Set<String> = emptySet()
+    @Volatile
+    private var groupForwardedView: Map<String, Long> = emptyMap()
+    @Volatile
     private var prefsRef: PreferencesManager? = null
     @Volatile
     private var queueRef: MessageQueue? = null
@@ -106,6 +110,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (forwardedIdsSeeded.compareAndSet(false, true)) {
                     synchronized(forwardedIds) {
                         for (id in stored) forwardedIds[id] = true
+                        forwardedIdsView = HashSet(forwardedIds.keys)
                     }
                 }
             } catch (_: Exception) { }
@@ -122,6 +127,7 @@ class NotificationForwarderService : NotificationListenerService() {
                                 if (ts > 0L) groupForwarded[entry.substring(0, sep)] = ts
                             }
                         }
+                        groupForwardedView = HashMap(groupForwarded)
                     }
                 }
             } catch (_: Exception) { }
@@ -504,7 +510,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun isForwardedId(idHash: String): Boolean {
-        return synchronized(forwardedIds) { forwardedIds.containsKey(idHash) }
+        return forwardedIdsView.contains(idHash)
     }
 
     private fun groupKeyHash(groupKey: String): String {
@@ -515,7 +521,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun groupForwardedAt(groupKey: String): Long {
         val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { return 0L }
-        return synchronized(groupForwarded) { groupForwarded[hash] } ?: 0L
+        return groupForwardedView[hash] ?: 0L
     }
 
     private fun markGroupForwarded(groupKey: String) {
@@ -530,6 +536,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { continue }
                 groupForwarded[hash] = now
             }
+            groupForwardedView = HashMap(groupForwarded)
             val snapshot = groupForwarded.entries.map { it.key + ":" + it.value }
             try {
                 (prefsRef ?: PreferencesManager.getInstance(this)).setNotifGroupForwardedSync(snapshot)
@@ -548,6 +555,8 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (hash != null) groupForwarded[hash] = now
                 }
                 if (idHash.isNotEmpty()) forwardedIds[idHash] = true
+                groupForwardedView = HashMap(groupForwarded)
+                forwardedIdsView = HashSet(forwardedIds.keys)
                 val groupSnapshot = groupForwarded.entries.map { it.key + ":" + it.value }
                 val idSnapshot = forwardedIds.keys.toList()
                 try {
@@ -566,6 +575,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (idHashes.isEmpty()) return
         synchronized(forwardedIds) {
             for (idHash in idHashes) forwardedIds[idHash] = true
+            forwardedIdsView = HashSet(forwardedIds.keys)
             val snapshot = forwardedIds.keys.toList()
             try {
                 (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedNotifIdsSync(snapshot)
