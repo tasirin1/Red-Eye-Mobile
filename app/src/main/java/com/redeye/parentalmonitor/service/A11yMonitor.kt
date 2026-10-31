@@ -641,7 +641,7 @@ object A11yMonitor {
             val chunk = minOf(remaining, MAX_SESSION_MS)
             val row = usage.getOrPut(currentPackage) { AppUsage(packageName = currentPackage, label = currentLabel) }
             row.millis += chunk
-            row.nightMillis += minOf(chunk, A11yUsageMath.nightOverlapMs(wallStart, wallStart + chunk, offsetAt(wallStart)))
+            row.nightMillis += minOf(chunk, A11yUsageMath.nightOverlapMs(wallStart, wallStart + chunk) { ts -> offsetAt(ts) })
             row.lastAt = wallStart + chunk
             wallStart += chunk
             remaining -= chunk

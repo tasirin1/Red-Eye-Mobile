@@ -12,18 +12,35 @@ object A11yUsageMath {
         return (inDay / 3_600_000L).toInt()
     }
 
-    fun nightOverlapMs(startMs: Long, endMs: Long, offsetMs: Int): Long {
+    fun nightOverlapMs(startMs: Long, endMs: Long, offsetAt: (Long) -> Int): Long {
         if (endMs <= startMs) return 0L
         var total = 0L
         var cursor = startMs
         while (cursor < endMs) {
+            val offsetMs = offsetAt(cursor)
             val hour = localHour(cursor, offsetMs)
-            val next = nextHourBoundary(cursor, offsetMs)
-            val segmentEnd = if (next <= cursor) endMs else minOf(endMs, next)
+            var segmentEnd = minOf(endMs, nextHourBoundary(cursor, offsetMs))
+            if (segmentEnd <= cursor) segmentEnd = endMs
+            val endOffset = if (segmentEnd > cursor + 1) offsetAt(segmentEnd - 1) else offsetMs
+            if (endOffset != offsetMs) {
+                val changeAt = firstOffsetChange(cursor, segmentEnd, offsetMs, offsetAt)
+                if (changeAt != null) segmentEnd = changeAt
+            }
             if (hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR) total += segmentEnd - cursor
             cursor = segmentEnd
         }
         return total
+    }
+
+    private fun firstOffsetChange(fromMs: Long, untilMs: Long, baseOffset: Int, offsetAt: (Long) -> Int): Long? {
+        var lo = fromMs + 1
+        var hi = untilMs - 1
+        if (offsetAt(hi) == baseOffset) return null
+        while (lo < hi) {
+            val mid = lo + (hi - lo) / 2
+            if (offsetAt(mid) == baseOffset) lo = mid + 1 else hi = mid
+        }
+        return lo
     }
 
     fun dayStartWallMillis(nowWall: Long): Long {

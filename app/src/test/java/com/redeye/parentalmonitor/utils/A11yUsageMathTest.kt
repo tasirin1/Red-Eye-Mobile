@@ -28,24 +28,30 @@ class A11yUsageMathTest {
 
     @Test
     fun malamMelewatiTengahMalam() {
-        assertEquals(8 * hour, A11yUsageMath.nightOverlapMs(22 * hour, 30 * hour, 0))
+        assertEquals(8 * hour, A11yUsageMath.nightOverlapMs(22 * hour, 30 * hour) { 0 })
     }
 
     @Test
     fun malamHanyaMenghitungBagianMalam() {
-        assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(21L * hour + 30 * 60_000L, 22L * hour + 30 * 60_000L, 0))
-        assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(5L * hour + 30 * 60_000L, 6L * hour + 30 * 60_000L, 0))
+        assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(21L * hour + 30 * 60_000L, 22L * hour + 30 * 60_000L) { 0 })
+        assertEquals(30 * 60_000L, A11yUsageMath.nightOverlapMs(5L * hour + 30 * 60_000L, 6L * hour + 30 * 60_000L) { 0 })
+    }
+
+    @Test
+    fun malamMengikutiPerubahanOffsetDiTengahRentang() {
+        val offsetAt: (Long) -> Int = { ts -> if (ts < 5 * hour) hour.toInt() else 0 }
+        assertEquals(2 * hour, A11yUsageMath.nightOverlapMs(4 * hour, 7 * hour, offsetAt))
     }
 
     @Test
     fun siangTidakDihitung() {
-        assertEquals(0L, A11yUsageMath.nightOverlapMs(12 * hour, 13 * hour, 0))
+        assertEquals(0L, A11yUsageMath.nightOverlapMs(12 * hour, 13 * hour) { 0 })
     }
 
     @Test
     fun rentangKosongAtauTerbalikAman() {
-        assertEquals(0L, A11yUsageMath.nightOverlapMs(10 * hour, 10 * hour, 0))
-        assertEquals(0L, A11yUsageMath.nightOverlapMs(11 * hour, 10 * hour, 0))
+        assertEquals(0L, A11yUsageMath.nightOverlapMs(10 * hour, 10 * hour) { 0 })
+        assertEquals(0L, A11yUsageMath.nightOverlapMs(11 * hour, 10 * hour) { 0 })
     }
 
     @Test
