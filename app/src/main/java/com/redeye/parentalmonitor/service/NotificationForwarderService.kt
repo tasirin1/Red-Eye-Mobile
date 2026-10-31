@@ -1163,7 +1163,13 @@ class NotificationForwarderService : NotificationListenerService() {
                     try {
                         var lastWritten = -1
                         var done = false
+                        var firstPass = true
                         while (!done) {
+                            if (firstPass) {
+                                firstPass = false
+                            } else {
+                                delay(1_000L)
+                            }
                             val snap = synchronized(dropNoticeLock) {
                                 (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt
                             }
