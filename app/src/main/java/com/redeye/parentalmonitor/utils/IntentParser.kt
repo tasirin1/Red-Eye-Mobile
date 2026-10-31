@@ -174,7 +174,10 @@ object IntentParser {
         return sb.toString()
     }
 
+    private val COLLAPSE_FALSE_FRIENDS = setOf("bukaan")
+
     private fun isNegation(token: String): Boolean {
+        if (token in COLLAPSE_FALSE_FRIENDS) return false
         if (token in NEGATIONS) return true
         if (NEGATIONS.any { base -> negationForm(token, base) }) return true
         val collapsed = collapseRuns(token)

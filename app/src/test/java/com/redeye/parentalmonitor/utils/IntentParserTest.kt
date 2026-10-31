@@ -127,6 +127,12 @@ class IntentParserTest {
     }
 
     @Test
+    fun validWordBukaanIsNotNegationWhileElongatedBukanStillIs() {
+        assertEquals("/photo", IntentParser.parse("foto bukaan dong"))
+        assertNull(IntentParser.parse("bukann ambil foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsCliticAfterElongatedNegationBase() {
         val phrases = listOf(
             "nggaklahh kirim foto sekarang",
