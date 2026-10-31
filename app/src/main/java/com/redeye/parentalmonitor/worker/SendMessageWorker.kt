@@ -100,6 +100,10 @@ class SendMessageWorker(
             if (ownerLoginPending()) {
                 break
             }
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                rescheduleIn30Min(true)
+                break
+            }
             if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
                 break
             }
@@ -252,6 +256,10 @@ class SendMessageWorker(
             return Result.success()
         }
         if (preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || !preferencesManager.isMonitoringEnabled) {
+            return Result.success()
+        }
+        if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+            rescheduleIn30Min(true)
             return Result.success()
         }
         if (NetworkUtils.isAuthBlocked(preferencesManager)) {
