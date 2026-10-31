@@ -7746,6 +7746,7 @@ class MonitoringService : Service() {
         }
     }
 
+    @Volatile
     private var lastSendOkNoteAt = 0L
 
     private fun noteSendOk() {
