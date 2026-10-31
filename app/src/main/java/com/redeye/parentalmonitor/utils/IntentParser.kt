@@ -116,20 +116,25 @@ object IntentParser {
         )
     )
 
+    private fun markerMatches(token: String, marker: String): Boolean {
+        if (tokenMatches(token, marker)) return true
+        return collapseRuns(token) == collapseRuns(marker)
+    }
+
     private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" kirim ulang ")) return true
         for (token in tokens) {
-            if (token == "kemarin" || token == "fotonya") return true
-            if (token == "tadi" || token == "terakhir" || token == "barusan") return true
-            if (token in CAPTURE_RESULT_NOUNS) return true
-            if (tokenMatches(token, "diambil")) return true
+            if (markerMatches(token, "kemarin") || markerMatches(token, "fotonya")) return true
+            if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true
+            if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) return true
+            if (markerMatches(token, "diambil")) return true
         }
         return false
     }
 
     private fun isScreenshotReference(tokens: List<String>, padded: String): Boolean {
         if (isPhotoReference(tokens, padded)) return true
-        return tokens.any { it == "screenshotnya" }
+        return tokens.any { markerMatches(it, "screenshotnya") }
     }
 
     private val CAPTURE_VERBS = setOf("jepret", "potret", "ambil")
@@ -140,9 +145,9 @@ object IntentParser {
 
     private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" foto baru ")) return true
-        val hasPastMarker = tokens.any { it in PAST_MARKERS }
+        val hasPastMarker = tokens.any { token -> PAST_MARKERS.any { markerMatches(token, it) } }
         for (token in tokens) {
-            if (token in CAPTURE_RESULT_NOUNS) continue
+            if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) continue
             for (verb in CAPTURE_VERBS) {
                 if (!tokenMatches(token, verb)) continue
                 if (hasPastMarker && token == verb && (verb == "potret" || verb == "jepret")) continue

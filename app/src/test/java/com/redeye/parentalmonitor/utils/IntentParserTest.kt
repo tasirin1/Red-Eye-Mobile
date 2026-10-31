@@ -172,6 +172,23 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsElongatedReferenceMarkers() {
+        val cases = listOf(
+            "kirim foto kemarinn dong",
+            "kirim jepretann dong",
+            "kirim potret yang tadii dong",
+            "kirim foto barusann dong"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+        assertNull(IntentParser.intentOrAlias("hilang kemarinn", "/hilang kemarinn"))
+        assertNull(IntentParser.intentOrAlias("hilang tadii", "/hilang tadii"))
+        assertNull(IntentParser.intentOrAlias("hilang barusann", "/hilang barusann"))
+        assertNull(IntentParser.intentOrAlias("kunci kemarinn", "/lock kemarinn"))
+    }
+
+    @Test
     fun parseRejectsBareResultNounsWithPastMarkers() {
         val phrases = listOf(
             "kirim potret yang tadi dong",

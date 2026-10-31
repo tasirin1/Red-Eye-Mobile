@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Veto rujukan parser kini toleran elongasi seperti mesin niatnya (issue #489): penanda lampau (`kemarin`, `tadi`, `terakhir`, `barusan`, `fotonya`), kata benda hasil (`jepretan`, `ambilan`, `potretan`), dan penanda lampau pada `hasFirmCaptureIntent` dicocokkan lewat helper `markerMatches` (toleransi awalan `tokenMatches` atau kesetaraan sesudah pelipatan run), sehingga "hilang kemarinn" tak lagi memicu mode hilang, "kunci kemarinn" tak lagi mengunci, dan "kirim jepretann dong" tak lagi memotret baru. Kata sah "bukaan" tetap lolos seperti keputusan #473. Dibuktikan porting 1:1 atas matriks parser bersama putaran ini: seluruh kasus uji lama tidak berubah.
+
 ### Changed
 - Badan GitHub Release kini memuat seksi `CHANGELOG.md` untuk versi yang dirilis, bukan lagi hanya tautan Full Changelog dari catatan otomatis GitHub (permintaan owner 2026-10-31): job rilis di `.github/workflows/build.yml` mengambil sumber tag, mengekstrak seksi `## [versi]` dari `CHANGELOG.md` menjadi `release-notes.md`, dan menerbitkannya sebagai badan rilis (`body_path`); tautan Full Changelog tetap ditambahkan di akhir catatan. Rilis lama yang badannya hanya berisi tautan itu juga dibersihkan owner pada hari yang sama (semua rilis selain yang terbaru dihapus dari GitHub; tag git dipertahankan).
 
