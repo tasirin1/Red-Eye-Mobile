@@ -21,6 +21,10 @@ class ReportFormatTest {
         assertEquals("1.0 KB", ReportFormat.formatBytes(1024))
         assertEquals("1.5 MB", ReportFormat.formatBytes(1024L * 1024 + 512 * 1024))
         assertEquals("2.00 GB", ReportFormat.formatBytes(2L * 1024 * 1024 * 1024))
+        assertEquals("1.0 MB", ReportFormat.formatBytes(1_048_575))
+        assertEquals("1.00 GB", ReportFormat.formatBytes(1_073_741_823))
+        assertEquals("999.9 KB", ReportFormat.formatBytes(1_023_897))
+        assertEquals("1023.9 KB", ReportFormat.formatBytes(1_048_473))
     }
 
     @Test

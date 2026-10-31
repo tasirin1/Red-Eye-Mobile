@@ -15,9 +15,11 @@ object ReportFormat {
     fun formatBytes(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
         val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(java.util.Locale.US, "%.1f KB", kb)
+        val kbRounded = Math.round(kb * 10) / 10.0
+        if (kb < 1024 && kbRounded < 1024.0) return String.format(java.util.Locale.US, "%.1f KB", kb)
         val mb = kb / 1024.0
-        if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
+        val mbRounded = Math.round(mb * 10) / 10.0
+        if (mb < 1024 && mbRounded < 1024.0) return String.format(java.util.Locale.US, "%.1f MB", mb)
         return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
     }
 
