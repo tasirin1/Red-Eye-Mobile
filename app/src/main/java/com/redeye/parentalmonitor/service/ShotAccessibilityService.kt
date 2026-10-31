@@ -22,6 +22,7 @@ class ShotAccessibilityService : AccessibilityService() {
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> A11yMonitor.screenOff(this@ShotAccessibilityService)
                 Intent.ACTION_SCREEN_ON -> A11yMonitor.screenOn(this@ShotAccessibilityService)
+                Intent.ACTION_USER_PRESENT -> A11yMonitor.screenOn(this@ShotAccessibilityService)
             }
         }
     }
@@ -36,6 +37,7 @@ class ShotAccessibilityService : AccessibilityService() {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
                 addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
             }
             ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         } catch (_: Exception) {
