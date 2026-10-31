@@ -1366,6 +1366,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 return true
             }
             if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return false
+            if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) return false
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
