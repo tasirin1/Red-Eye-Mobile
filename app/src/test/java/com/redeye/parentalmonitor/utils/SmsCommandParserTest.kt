@@ -15,6 +15,14 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun nomorDiakhiriKomaTetapUtuh() {
+        val parsed = SmsCommandParser.parse("0812.3456.7890, halo")
+        assertEquals("0812.3456.7890,", parsed?.number)
+        assertEquals("081234567890", parsed?.normalized)
+        assertEquals("halo", parsed?.text)
+    }
+
+    @Test
     fun nomorBerspasiTetapUtuh() {
         val parsed = SmsCommandParser.parse("0812 3456 7890 Halo")
         assertEquals("0812 3456 7890", parsed?.number)

@@ -262,7 +262,7 @@ object IntentParser {
         if (head.isEmpty()) return false
         val digits = head.count { it.isDigit() }
         if (digits == 0) return false
-        if (!head.all { it.isDigit() || it in "+().-" }) return false
+        if (!head.all { it.isDigit() || it in "+().,-" }) return false
         return head[0] == '0' || head[0] == '+' || head[0] == '(' || digits >= 7
     }
 

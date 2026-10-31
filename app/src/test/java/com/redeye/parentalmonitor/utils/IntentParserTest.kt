@@ -172,6 +172,12 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasKeepsSmsFormWithCommaHead() {
+        assertEquals("/sms 0812, halo apa kabar", IntentParser.intentOrAlias("sms 0812, halo apa kabar", "/sms 0812, halo apa kabar"))
+        assertEquals("/sms 0812, halo", IntentParser.intentOrAlias("sms 0812, halo", "/sms 0812, halo"))
+    }
+
+    @Test
     fun intentOrAliasMergesArgsDespitePunctuation() {
         assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan, dong", "/photo depan, dong"))
         assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6, jam", "/layar 6, jam"))

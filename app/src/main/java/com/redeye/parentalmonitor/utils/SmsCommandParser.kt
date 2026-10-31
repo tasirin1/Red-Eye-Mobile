@@ -51,7 +51,7 @@ object SmsCommandParser {
                     plusCount++
                     if (!candidate.startsWith("+") || plusCount > 1) return null
                 }
-                c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' -> Unit
+                c == ' ' || c == '-' || c == '(' || c == ')' || c == '.' || c == ',' -> Unit
                 else -> return null
             }
         }
