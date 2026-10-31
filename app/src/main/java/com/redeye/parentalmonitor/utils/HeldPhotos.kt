@@ -72,7 +72,7 @@ object HeldPhotos {
     }
 
     fun withHeld(entries: List<Entry>, name: String, hash: Long, max: Int): List<Entry> {
-        if (hash == 0L) return entries
+        if (!PhotoFingerprint.isComparableFingerprint(hash)) return entries
         val out = ArrayList<Entry>()
         for (entry in entries) {
             val sameHash = entry.raw == null && entry.hash == hash

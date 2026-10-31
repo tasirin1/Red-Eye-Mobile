@@ -8188,7 +8188,7 @@ class MonitoringService : Service() {
                 }
                 when (sendPhotoFile(photoFile)) {
                     MediaSendOutcome.SENT -> {
-                        try { if (photoHashNow != 0L) preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                        try { if (PhotoFingerprint.isComparableFingerprint(photoHashNow)) preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                         try {
                             val used = cameraService.lastLensFacing
                             val asked = selectedLensFacing()
@@ -10368,7 +10368,7 @@ class MonitoringService : Service() {
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     if (fileIsHeld) {
                         try {
-                            if (photoOutcome == MediaSendOutcome.SENT) preferencesManager.setLastPhotoHashSync(fileHashFlush)
+                            if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)
                             storeHeldPhotoEntries(HeldPhotos.withoutHashes(heldEntriesFlush, setOf(fileHashFlush)))
                         } catch (_: Exception) {
                         }

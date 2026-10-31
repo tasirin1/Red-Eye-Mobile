@@ -25,6 +25,15 @@ class PhotoFingerprintTest {
     }
 
     @Test
+    fun comparableRuleExcludesZeroAndOne() {
+        assertFalse(PhotoFingerprint.isComparableFingerprint(0L))
+        assertFalse(PhotoFingerprint.isComparableFingerprint(1L))
+        assertTrue(PhotoFingerprint.isComparableFingerprint(2L))
+        assertTrue(PhotoFingerprint.isComparableFingerprint(0b1010L))
+        assertTrue(PhotoFingerprint.isComparableFingerprint(-1L))
+    }
+
+    @Test
     fun duplicateRuleSkipsZeroAndOneOnEitherSide() {
         val patterned = 0x5555555555555555L
         val skewed = 0x7FL

@@ -60,8 +60,10 @@ object PhotoFingerprint {
         return bits
     }
 
+    fun isComparableFingerprint(hash: Long): Boolean = hash != 0L && hash != 1L
+
     fun isDuplicateFingerprint(now: Long, other: Long): Boolean {
-        if (now == 0L || now == 1L || other == 0L || other == 1L) return false
+        if (!isComparableFingerprint(now) || !isComparableFingerprint(other)) return false
         return hammingDistance(now, other) <= 6
     }
 

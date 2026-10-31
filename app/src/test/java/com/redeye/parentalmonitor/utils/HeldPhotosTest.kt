@@ -93,6 +93,13 @@ class HeldPhotosTest {
     }
 
     @Test
+    fun withHeldMenolakSidikTakTerbandingkan() {
+        val base = listOf(named("camera_1.jpg", 2), legacy(3))
+        assertEquals(base, HeldPhotos.withHeld(base, "camera_2.jpg", 0, 10))
+        assertEquals(base, HeldPhotos.withHeld(base, "camera_2.jpg", 1, 10))
+    }
+
+    @Test
     fun withoutNamesDanHashesSelektif() {
         val entries = HeldPhotos.parse("camera_1.jpg=1,2,aneh")
         assertEquals(
