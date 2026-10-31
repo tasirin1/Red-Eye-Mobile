@@ -17,7 +17,7 @@ object AppWatch {
         "com.bsm", "permatamobilex", "id.com.uiux", "ocbc", "alloapp", "panin", "muamalat", "hsbc",
         "com.isaku", "com.indodana", "com.bibit", "com.stockbit", "ajaib.co.id",
         "emasdigi", "com.valar.pintu", "indopremier", "bareksa", "koinworks", "rekeningku", "tanamduit",
-        "pegadaiandigital", "myhomecredit"
+        "pegadaiandigital", "myhomecredit", "com.krom"
     )
 
     fun parseKeywords(raw: String): List<String> {

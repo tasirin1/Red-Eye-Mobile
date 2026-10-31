@@ -142,6 +142,13 @@ class AppWatchTest {
     }
 
     @Test
+    fun paketKromNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("com.krom.android"))
+        assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
+        assertFalse(AppWatch.isSensitivePackage("com.grabtaxi.passenger"))
+    }
+
+    @Test
     fun paketGadaiDanKreditNyataDikenali() {
         assertTrue(AppWatch.isSensitivePackage("com.pegadaiandigital"))
         assertTrue(AppWatch.isSensitivePackage("id.co.myhomecredit"))
