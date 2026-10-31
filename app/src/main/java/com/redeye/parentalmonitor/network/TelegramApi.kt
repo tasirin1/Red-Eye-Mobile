@@ -73,7 +73,6 @@ data class TelegramFile(
 )
 
 data class TelegramFileResponse(
-    @SerializedName("ok") val ok: Boolean,
     @SerializedName("result") val result: TelegramFile?
 )
 

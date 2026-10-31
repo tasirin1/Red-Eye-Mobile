@@ -25,12 +25,10 @@ import java.util.concurrent.Executors
 object A11yMonitor {
 
     data class AppUsage(
-        var packageName: String = "",
         var label: String = "",
         var millis: Long = 0L,
         var nightMillis: Long = 0L,
-        var launches: Int = 0,
-        var lastAt: Long = 0L
+        var launches: Int = 0
     )
 
     private const val MAX_SESSION_MS = 4 * 60 * 60_000L
@@ -152,7 +150,7 @@ object A11yMonitor {
         currentLabel = labelFor(context, pkg)
         currentStartWall = startWall
         currentStartElapsed = startElapsed
-        usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }.label = currentLabel
+        usage.getOrPut(pkg) { AppUsage(label = currentLabel) }.label = currentLabel
     }
 
     fun unbind(service: AccessibilityService? = null) {
@@ -333,7 +331,7 @@ object A11yMonitor {
                     currentStartElapsed = nowElapsed
                     try { manager.setA11yOpenSession(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
                     lastEventKey = ""
-                    usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }.label = currentLabel
+                    usage.getOrPut(pkg) { AppUsage(label = currentLabel) }.label = currentLabel
                 }
             }
         }
@@ -504,10 +502,9 @@ object A11yMonitor {
                 currentStartWall = nowWall
                 currentStartElapsed = nowElapsed
                 try { manager.setA11yOpenSession(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
-                val row = usage.getOrPut(pkg) { AppUsage(packageName = pkg, label = currentLabel) }
+                val row = usage.getOrPut(pkg) { AppUsage(label = currentLabel) }
                 row.label = currentLabel
                 row.launches += 1
-                row.lastAt = nowWall
                 val seeded = manager.a11yKnownSeeded
                 val firstOpen = manager.rememberA11yApp(pkg)
                 if (seeded && firstOpen && manager.a11yAppAlert) {
@@ -640,10 +637,9 @@ object A11yMonitor {
         var wallStart = currentStartWall
         while (remaining > 0L) {
             val chunk = minOf(remaining, MAX_SESSION_MS)
-            val row = usage.getOrPut(currentPackage) { AppUsage(packageName = currentPackage, label = currentLabel) }
+            val row = usage.getOrPut(currentPackage) { AppUsage(label = currentLabel) }
             row.millis += chunk
             row.nightMillis += minOf(chunk, A11yUsageMath.nightOverlapMs(wallStart, wallStart + chunk) { ts -> offsetAt(ts) })
-            row.lastAt = wallStart + chunk
             wallStart += chunk
             remaining -= chunk
         }
