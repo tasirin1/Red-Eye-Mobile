@@ -52,7 +52,6 @@ class CommandSuggestTest {
     }
 
     @Test
-    @Test
     fun suggestCommandTranspositionWinsDistanceTwoTie() {
         assertEquals("/lock", CommandSuggest.suggestCommand("/lcok"))
         assertEquals("/lock", CommandSuggest.suggestCommand("/lokc"))
