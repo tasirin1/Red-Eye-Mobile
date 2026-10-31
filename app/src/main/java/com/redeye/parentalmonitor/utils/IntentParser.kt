@@ -288,11 +288,48 @@ object IntentParser {
         return parsed
     }
 
+    private fun stripEdgePunct(token: String): String {
+        return token.trimEnd(',', '.', '!', '?', ':', ';', ')')
+    }
+
+    private val PHOTO_KEYWORDS = setOf("foto", "potret", "jepret", "photo")
+    private val LAYAR_KEYWORDS = setOf("layar", "screentime")
+
+    private fun mergeTextArgs(text: String, parsed: String?): String? {
+        if (parsed == null) return null
+        val tokens = text.trim().lowercase(Locale.ROOT).split(WHITESPACE).filter { it.isNotEmpty() }
+        if (parsed == "/photo") {
+            val start = tokens.indexOfFirst { token -> PHOTO_KEYWORDS.any { tokenMatches(token, it) } }
+            if (start >= 0) {
+                for (i in start + 1 until tokens.size) {
+                    val word = stripEdgePunct(tokens[i])
+                    if (word in PHOTO_LENS_WORDS) return "$parsed $word"
+                }
+            }
+            return parsed
+        }
+        if (parsed == "/layar") {
+            val start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) } }
+            if (start >= 0) {
+                for (i in start + 1 until tokens.size - 1) {
+                    val hours = stripEdgePunct(tokens[i]).toIntOrNull()
+                    if (hours != null && hours in 1..24 && stripEdgePunct(tokens[i + 1]) == "jam") return "$parsed $hours"
+                }
+            }
+            return parsed
+        }
+        return parsed
+    }
+
     fun intentOrAlias(text: String, aliasInput: String?): String? {
         val parsed = parse(text)
-        if (aliasInput == null) return parsed
+        if (aliasInput == null) return mergeTextArgs(text, parsed)
         if (isSmsSendForm(aliasInput)) return aliasInput
-        if (parsed != null) return mergeAliasArgs(parsed, aliasInput)
+        if (parsed != null) {
+            val merged = mergeAliasArgs(parsed, aliasInput)
+            if (merged != parsed) return merged
+            return mergeTextArgs(text, parsed)
+        }
         val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
         if (words.size > 2) return null
         val tk = tokenize(text)

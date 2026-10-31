@@ -172,6 +172,16 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasMergesArgsFromParsedText() {
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("tolong kirim foto depan sekarang", "/help kirim foto depan sekarang"))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
+        assertEquals("/photo", IntentParser.intentOrAlias("tolong kirim foto sekarang", null))
+        assertEquals("/layar", IntentParser.intentOrAlias("layar 25 jam", "/layar 25 jam"))
+    }
+
+    @Test
     fun parseRejectsElongatedReferenceMarkers() {
         val cases = listOf(
             "kirim foto kemarinn dong",
