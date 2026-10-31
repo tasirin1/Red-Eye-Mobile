@@ -217,7 +217,8 @@ class SendMessageWorker(
         if (sentIds.isNotEmpty() && credsSameNow) {
             preferencesManager.setCredentialErrorIfCredentialsMatch(runToken, runChatId, "", 0L)
         }
-        val transientMaxRetry = reportDrops(failedIds, rejectedIds, queueCleared, queue, runToken, runChatId)
+        val pausedAtTail = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
+        val transientMaxRetry = if (pausedAtTail) 0 else reportDrops(failedIds, rejectedIds, queueCleared, queue, runToken, runChatId)
         if (messageQueue.getQueueSize() > 0) {
             try {
                 val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
