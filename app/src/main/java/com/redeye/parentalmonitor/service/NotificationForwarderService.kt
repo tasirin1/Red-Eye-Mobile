@@ -1135,6 +1135,14 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun persistDropCountFinal() {
+        try {
+            val snap = synchronized(dropNoticeLock) { (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt }
+            prefsRef?.setPendingNotifDropsSync(snap.first, snap.second)
+        } catch (_: Exception) {
+        }
+    }
+
     private fun noteDroppedNotification(count: Int = 1) {
         synchronized(dropNoticeLock) {
             val add = count.coerceAtLeast(0)
@@ -1173,8 +1181,9 @@ class NotificationForwarderService : NotificationListenerService() {
                             }
                             val snapshot = snap.first
                             if (snapshot != lastWritten) {
-                                try { prefsRef?.setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { }
-                                lastWritten = snapshot
+                                val prefs = prefsRef
+                                val written = if (prefs == null) true else try { prefs.setPendingNotifDropsSync(snapshot, snap.second) } catch (_: Exception) { false }
+                                if (written) lastWritten = snapshot
                             } else {
                                 synchronized(dropNoticeLock) {
                                     val nowTotal = dropNoticeCount.get() + dropNoticeInFlight
@@ -1186,9 +1195,11 @@ class NotificationForwarderService : NotificationListenerService() {
                             }
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
+                        persistDropCountFinal()
                         synchronized(dropNoticeLock) { dropPersistJob = null }
                         throw e
                     } catch (_: Exception) {
+                        persistDropCountFinal()
                         synchronized(dropNoticeLock) { dropPersistJob = null }
                     }
                 }
