@@ -2570,7 +2570,7 @@ class MonitoringService : Service() {
         TextInput("/sms", "komu", "Kirim <b>nomor</b> lalu <b>isi pesannya</b>.", "08123456789 Halo", "Kirim SMS dari HP ini. Nomor minimal 7 digit."),
         TextInput("/contacts", "komu", "Kirim nama/nomor kontak, atau angka halaman untuk daftar semua.", "budi", "Cari kontak; ketik 1 untuk halaman pertama daftar semua (butuh izin Kontak)."),
         TextInput("/history", "komu", "Kirim nomor telepon (7-20 digit).", "08123456789", "Tampilkan 5 panggilan + 5 SMS terakhir nomor itu."),
-        TextInput("/layar", "info", "Kirim jumlah jam 1-24 (kosongkan untuk 24 jam).", "6", "Ringkasan pemakaian layar per aplikasi."),
+        TextInput("/layar", "info", "Kirim jumlah jam 1-24 (ketik 24 untuk sehari penuh).", "6", "Ringkasan pemakaian layar per aplikasi."),
         TextInput("/watch", "pantau", "Kirim kata yang diawasi (pisahkan koma, min 3 huruf).", "judol,pinjol", "Pantau kata terlarang. Ketik /watch off untuk mematikan."),
         TextInput("/watchnomor", "pantau", "Kirim nomor yang diawasi (pisahkan koma, min 7 digit).", "08123456789", "Kabar bila nomor itu muncul. Ketik /watchnomor off untuk mematikan."),
         TextInput("/jampulang", "pantau", "Kirim jam format HH:MM.", "21:30", "Kabar bila di luar rumah lewat jam itu. Ketik /jampulang off untuk mematikan."),
