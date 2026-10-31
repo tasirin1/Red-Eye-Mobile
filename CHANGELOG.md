@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- `mergeTextArgs` tak lagi menyuntik argumen dari kata tak berkaitan (issue #517): pencarian kata lensa / pola "N jam" di jalur teks kini dibatasi dua token sesudah kata kunci foto/layar (toleransi satu kata sisipan seperti kasus terkunci "foto dong depan" tetap utuh), sehingga "di depan rumah" tak lagi mengubah lensa kamera — yang sebelumnya tersimpan persisten — dan "main 6 jam" tak lagi mengubah jendela /layar. Dibuktikan porting Python 1:1 atas matriks terkunci + kasus suntikan.
 - Penanda rujukan berelongasi + imbuhan tak lagi lolos veto (issue #516): `markerMatches` kini punya lapis ketiga lipatan-run + imbuhan `-lah/-kan/-kah` (meniru lapis ketiga sisi negasi), dan frasa `kirim ulang` dikenali toleran per token — "hilang kemarinnlah" terveto seperti "hilang kemarinn", bukan lagi memicu mode hilang/kunci/foto baru. Dibuktikan porting Python 1:1: seluruh kasus uji terkunci tetap hijau dan semua kasus gabungan baru terveto.
 
 ## [1.6.577] - 2026-10-31

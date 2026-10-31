@@ -309,7 +309,7 @@ object IntentParser {
         if (parsed == "/photo") {
             val start = tokens.indexOfFirst { token -> PHOTO_KEYWORDS.any { tokenMatches(token, it) } }
             if (start >= 0) {
-                for (i in start + 1 until tokens.size) {
+                for (i in start + 1 until minOf(start + 3, tokens.size)) {
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) return "$parsed $word"
                 }
@@ -319,7 +319,7 @@ object IntentParser {
         if (parsed == "/layar") {
             val start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) } }
             if (start >= 0) {
-                for (i in start + 1 until tokens.size - 1) {
+                for (i in start + 1 until minOf(start + 3, tokens.size - 1)) {
                     val hours = stripEdgePunct(tokens[i]).toIntOrNull()
                     if (hours != null && hours in 1..24 && stripEdgePunct(tokens[i + 1]) == "jam") return "$parsed $hours"
                 }

@@ -216,6 +216,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasDoesNotMergeDistantArgs() {
+        assertEquals("/photo", IntentParser.intentOrAlias("kirim foto sekarang, anak lagi di depan rumah dong", null))
+        assertEquals("/photo", IntentParser.intentOrAlias("kirim foto sekarang, yang belakang itu adiknya dong", null))
+        assertEquals("/layar", IntentParser.intentOrAlias("cek layar kemarin, anak main 6 jam dong", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
+    }
+
+    @Test
     fun parseRejectsElongatedReferenceMarkers() {
         val cases = listOf(
             "kirim foto kemarinn dong",
