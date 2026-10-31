@@ -129,6 +129,19 @@ class UpdateOffsetTrackerTest {
     }
 
     @Test
+    fun sisaTerkonfirmasiGenerasiLamaTidakMemajukanOffsetBotBaru() {
+        val tracker = UpdateOffsetTracker()
+        tracker.begin(10, 1L)
+        tracker.begin(11, 1L)
+        assertNull(tracker.finish(11, 1L, true))
+        tracker.forget(10, 1L)
+        tracker.begin(5, 2L)
+        assertEquals(5L, tracker.finish(5, 2L, true))
+        tracker.begin(12, 2L)
+        assertEquals(12L, tracker.finish(12, 2L, true))
+    }
+
+    @Test
     fun lupakanBasiTidakMenghapusTerkonfirmasiBotBaru() {
         val tracker = UpdateOffsetTracker()
         tracker.begin(3, 2L)

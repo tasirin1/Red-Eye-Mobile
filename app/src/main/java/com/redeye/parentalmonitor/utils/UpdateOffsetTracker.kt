@@ -22,18 +22,24 @@ class UpdateOffsetTracker {
         if (pending[updateId] != generation) return null
         pending.remove(updateId)
         if (!delivered) {
-            confirmed.remove(updateId)
+            if (confirmed[updateId] == generation) confirmed.remove(updateId)
             failed[updateId] = generation
             return null
         }
-        failed.remove(updateId)
+        if (failed[updateId] == generation) failed.remove(updateId)
         confirmed[updateId] = generation
         var advanceTo: Long? = null
         while (true) {
             val next = confirmed.keys.firstOrNull() ?: break
-            val pendingMin = pending.keys.firstOrNull()
+            val entryGeneration = confirmed.getValue(next)
+            if (entryGeneration < generation) {
+                confirmed.remove(next)
+                continue
+            }
+            if (entryGeneration > generation) break
+            val pendingMin = pending.entries.firstOrNull { it.value == generation }?.key
             if (pendingMin != null && pendingMin < next) break
-            val failedMin = failed.keys.firstOrNull()
+            val failedMin = failed.entries.firstOrNull { it.value == generation }?.key
             if (failedMin != null && failedMin <= next) break
             confirmed.remove(next)
             advanceTo = next
