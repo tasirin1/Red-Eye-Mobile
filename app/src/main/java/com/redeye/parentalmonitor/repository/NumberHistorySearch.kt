@@ -15,6 +15,7 @@ class NumberHistorySearch<T>(
         val safeLimit = limit.coerceIn(1, 100)
         val norm = digits.filter { it.isDigit() }
         if (norm.isEmpty()) return NumberHistoryResult(emptyList())
+        val now = System.currentTimeMillis()
         val wantAlt = com.redeye.parentalmonitor.utils.PhoneNumbers.altVariant(norm)
         val variants = mutableListOf(norm, "+$norm")
         if (wantAlt != null) {
@@ -22,16 +23,16 @@ class NumberHistorySearch<T>(
             val altPlus = "+$wantAlt"
             if (altPlus !in variants) variants.add(altPlus)
         }
-        val exactRows = query(variants.joinToString(" OR ") { "${numberColumn} = ?" }, variants.toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
+        val exactRows = query("(" + variants.joinToString(" OR ") { "${numberColumn} = ?" } + ") AND ${dateColumn} <= ?", (variants + now.toString()).toTypedArray(), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val exactMatched = filterByNumber(exactRows, norm, wantAlt)
         if (exactMatched.isNotEmpty()) return NumberHistoryResult(exactMatched.take(safeLimit))
         if (norm.length < 10) return NumberHistoryResult(emptyList())
         val fuzzy = com.redeye.parentalmonitor.utils.PhoneNumbers.fuzzyLikePattern(norm)
-        val rows = query("${numberColumn} LIKE ? ESCAPE '\\'", arrayOf(fuzzy), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
+        val rows = query("${numberColumn} LIKE ? ESCAPE '\\' AND ${dateColumn} <= ?", arrayOf(fuzzy, now.toString()), "${dateColumn} DESC, ${idColumn} DESC", safeLimit)
         val matched = filterByNumber(rows, norm, wantAlt)
         if (matched.isNotEmpty()) return NumberHistoryResult(matched.take(safeLimit))
-        val cutoff = System.currentTimeMillis() - 365L * 24 * 60 * 60_000L
-        var upperDate = Long.MAX_VALUE
+        val cutoff = now - 365L * 24 * 60 * 60_000L
+        var upperDate = now
         var upperId = Long.MAX_VALUE
         for (pageIndex in 0 until 4) {
             val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
