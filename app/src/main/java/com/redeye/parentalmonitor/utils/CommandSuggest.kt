@@ -39,6 +39,7 @@ object CommandSuggest {
         var best: String? = null
         var bestDist = Int.MAX_VALUE
         var transposed: String? = null
+        var tieDisplaced = false
         for (known in KNOWN_COMMANDS) {
             val d = try { editDistance(typed, known) } catch (_: Exception) { Int.MAX_VALUE }
             if (d < bestDist) {
@@ -46,6 +47,7 @@ object CommandSuggest {
                 best = known
             } else if (d == bestDist && best != null && best in MUTATING_COMMANDS && known !in MUTATING_COMMANDS) {
                 best = known
+                tieDisplaced = true
             }
             if (transposed == null) {
                 try { if (transposedEquals(typed, known)) transposed = known } catch (_: Exception) { }
@@ -54,8 +56,12 @@ object CommandSuggest {
         if (best != null && bestDist == 2) {
             val winner = transposed
             if (winner != null) {
-                best = winner
-                bestDist = 1
+                if (winner in MUTATING_COMMANDS && best !in MUTATING_COMMANDS && tieDisplaced) {
+                    bestDist = 1
+                } else {
+                    best = winner
+                    bestDist = 1
+                }
             }
         }
         val limit = if (typed.length <= 5) 1 else 2

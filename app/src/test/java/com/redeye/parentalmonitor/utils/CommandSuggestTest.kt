@@ -58,6 +58,14 @@ class CommandSuggestTest {
     }
 
     @Test
+    fun suggestCommandTranspositionDoesNotOverrideDisplacingTie() {
+        assertEquals("/ping", CommandSuggest.suggestCommand("/irng"))
+        assertEquals("/apps", CommandSuggest.suggestCommand("/apuse"))
+        assertEquals("/start", CommandSuggest.suggestCommand("/erstart"))
+        assertEquals("/start", CommandSuggest.suggestCommand("/rsetart"))
+    }
+
+    @Test
     fun suggestCommandTranspositionWinsDistanceTwoTie() {
         assertEquals("/lock", CommandSuggest.suggestCommand("/lcok"))
         assertEquals("/lock", CommandSuggest.suggestCommand("/lokc"))
