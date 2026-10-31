@@ -6717,11 +6717,11 @@ class MonitoringService : Service() {
     private fun resolveAliasInput(cmd: String, arg: String): String? {
         return try {
             if (cmd.startsWith("/")) {
-                val bare = cmd.substring(1).lowercase(java.util.Locale.ROOT)
+                val bare = cmd.substring(1).trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', '?', '!', '.', ',', ':', ';').lowercase(java.util.Locale.ROOT)
                 val mapped = ALIAS_COMMANDS[bare] ?: return null
                 if (arg.isEmpty()) mapped else "$mapped $arg"
             } else {
-                val bare = cmd.trim().trimEnd('?', '!', '.', ',', ':', ';', ')').lowercase(java.util.Locale.ROOT)
+                val bare = cmd.trim().trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', '?', '!', '.', ',', ':', ';').lowercase(java.util.Locale.ROOT)
                 if (bare.isEmpty()) return null
                 val mapped = ALIAS_COMMANDS[bare] ?: return null
                 if (arg.isEmpty()) mapped else "$mapped $arg"
