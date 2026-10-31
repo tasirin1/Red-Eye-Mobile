@@ -524,17 +524,16 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun markGroupsForwarded(groupKeys: Collection<String>) {
         if (groupKeys.isEmpty()) return
         val now = System.currentTimeMillis()
-        val snapshot: List<String>
         synchronized(groupForwarded) {
             for (groupKey in groupKeys) {
                 val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { continue }
                 groupForwarded[hash] = now
             }
-            snapshot = groupForwarded.entries.map { it.key + ":" + it.value }
-        }
-        try {
-            (prefsRef ?: PreferencesManager.getInstance(this)).setNotifGroupForwardedSync(snapshot)
-        } catch (_: Exception) {
+            val snapshot = groupForwarded.entries.map { it.key + ":" + it.value }
+            try {
+                (prefsRef ?: PreferencesManager.getInstance(this)).setNotifGroupForwardedSync(snapshot)
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -544,14 +543,13 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun markForwardedIds(idHashes: Collection<String>) {
         if (idHashes.isEmpty()) return
-        val snapshot: List<String>
         synchronized(forwardedIds) {
             for (idHash in idHashes) forwardedIds[idHash] = true
-            snapshot = forwardedIds.keys.toList()
-        }
-        try {
-            (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedNotifIdsSync(snapshot)
-        } catch (_: Exception) {
+            val snapshot = forwardedIds.keys.toList()
+            try {
+                (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedNotifIdsSync(snapshot)
+            } catch (_: Exception) {
+            }
         }
     }
 
