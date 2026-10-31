@@ -366,10 +366,19 @@ object IntentParser {
         return true
     }
 
+    private fun smsFormHijacksParser(text: String, aliasInput: String, parsed: String?): Boolean {
+        if (parsed != "/lastsms" && parsed != "/lastcalls") return false
+        val arg = aliasInput.removePrefix("/sms ")
+        val head = arg.split(WHITESPACE).firstOrNull().orEmpty()
+        if (head.count { it.isDigit() } >= 7) return false
+        val tk = tokenize(text) ?: return false
+        return tk.first.any { it == "terakhir" || it == "terbaru" }
+    }
+
     fun intentOrAlias(text: String, aliasInput: String?): String? {
         val parsed = parse(text)
         if (aliasInput == null) return mergeTextArgs(text, parsed)
-        if (isSmsSendForm(aliasInput)) return aliasInput
+        if (isSmsSendForm(aliasInput) && !smsFormHijacksParser(text, aliasInput, parsed)) return aliasInput
         if (parsed != null) {
             val merged = mergeAliasArgs(parsed, aliasInput)
             if (merged != parsed) return merged

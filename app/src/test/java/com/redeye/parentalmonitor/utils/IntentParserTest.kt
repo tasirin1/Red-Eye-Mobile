@@ -196,6 +196,14 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasSmsGateDoesNotHijackHistoryQuestions() {
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terakhir dari siapa", "/sms 0812, terakhir dari siapa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0,5 terakhir dari siapa", "/sms 0,5 terakhir dari siapa"))
+        assertEquals("/sms 0812, halo apa kabar", IntentParser.intentOrAlias("sms 0812, halo apa kabar", "/sms 0812, halo apa kabar"))
+        assertEquals("/sms 08123456789 terakhir dari siapa", IntentParser.intentOrAlias("sms 08123456789 terakhir dari siapa", "/sms 08123456789 terakhir dari siapa"))
+    }
+
+    @Test
     fun intentOrAliasKeepsSmsFormWithCommaHead() {
         assertEquals("/sms 0812, halo apa kabar", IntentParser.intentOrAlias("sms 0812, halo apa kabar", "/sms 0812, halo apa kabar"))
         assertEquals("/sms 0812, halo", IntentParser.intentOrAlias("sms 0812, halo", "/sms 0812, halo"))
