@@ -120,6 +120,8 @@ object IntentParser {
         if (padded.contains(" kirim ulang ")) return true
         for (token in tokens) {
             if (token == "kemarin" || token == "fotonya") return true
+            if (token == "tadi" || token == "terakhir" || token == "barusan") return true
+            if (token in CAPTURE_RESULT_NOUNS) return true
             if (tokenMatches(token, "diambil")) return true
         }
         return false
