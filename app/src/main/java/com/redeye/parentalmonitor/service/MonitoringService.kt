@@ -6528,7 +6528,10 @@ class MonitoringService : Service() {
                 }
                 val accPart = if (accuracyM >= 0f) ",${accuracyM.toInt()}" else ""
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}$accPart")
-                var fresh = pts.filter { (it.substringBefore(":").toLongOrNull() ?: 0L) >= cutoff }
+                var fresh = pts.filter {
+                    val ts = it.substringBefore(":").toLongOrNull() ?: 0L
+                    ts >= cutoff && ts <= now
+                }
                 var trimmedFrom = if (raw.isEmpty()) 0L else (try { preferencesManager.trailTrimmedFrom } catch (_: Exception) { 0L })
                 if (fresh.size > 300) {
                     val newestDiscarded = fresh[fresh.size - 301].substringBefore(":").toLongOrNull() ?: 0L
