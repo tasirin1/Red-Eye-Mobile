@@ -38,15 +38,23 @@ object CommandSuggest {
     fun suggestCommand(typed: String): String? {
         var best: String? = null
         var bestDist = Int.MAX_VALUE
+        var transposed: String? = null
         for (known in KNOWN_COMMANDS) {
             val d = try { editDistance(typed, known) } catch (_: Exception) { Int.MAX_VALUE }
             if (d < bestDist) {
                 bestDist = d
                 best = known
             }
+            if (transposed == null) {
+                try { if (transposedEquals(typed, known)) transposed = known } catch (_: Exception) { }
+            }
         }
         if (best != null && bestDist == 2) {
-            try { if (transposedEquals(typed, best)) bestDist = 1 } catch (_: Exception) { }
+            val winner = transposed
+            if (winner != null) {
+                best = winner
+                bestDist = 1
+            }
         }
         val limit = if (typed.length <= 5) 1 else 2
         if (best == null || bestDist !in 1..limit) return null

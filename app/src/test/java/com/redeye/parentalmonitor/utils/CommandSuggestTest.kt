@@ -52,6 +52,14 @@ class CommandSuggestTest {
     }
 
     @Test
+    @Test
+    fun suggestCommandTranspositionWinsDistanceTwoTie() {
+        assertEquals("/lock", CommandSuggest.suggestCommand("/lcok"))
+        assertEquals("/lock", CommandSuggest.suggestCommand("/lokc"))
+        assertEquals("/ping", CommandSuggest.suggestCommand("/ipng"))
+    }
+
+    @Test
     fun suggestCommandNeverPointsAbbreviationAtMutatingCommand() {
         assertEquals("/location", CommandSuggest.suggestCommand("/loca"))
         assertEquals("/log", CommandSuggest.suggestCommand("/loc"))
