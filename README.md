@@ -1,23 +1,60 @@
+<div align="center">
+
 # Red Eye Mobile
 
-Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa. Buat orang tua memantau HP anaknya sendiri — bukan buat iseng.
+**Aplikasi monitoring HP anak via Telegram, tampilannya kalkulator biasa.**
+
+[![Build APK](https://github.com/tasirin1/Red-Eye-Mobile/actions/workflows/build.yml/badge.svg)](https://github.com/tasirin1/Red-Eye-Mobile/actions/workflows/build.yml)
+[![Rilis terbaru](https://img.shields.io/github/v/release/tasirin1/Red-Eye-Mobile)](https://github.com/tasirin1/Red-Eye-Mobile/releases)
+[![Lisensi: MIT](https://img.shields.io/badge/lisensi-MIT-green.svg)](LICENSE)
+
+</div>
+
+Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, aplikasi ini kalkulator yang benar-benar berfungsi; di baliknya, orang tua menerima laporan dan bisa memberi perintah lewat bot Telegram.
 
 > Build JANGAN lokal. Semua APK dibangun di GitHub Actions.
 > `builder.sh` / `builder.bat` itu LEGACY dan sudah dihentikan — kalau dijalankan, keduanya berhenti sendiri tanpa mengubah berkas apa pun.
 >
 > Panduan langkah demi langkah, FAQ, dan skenario harian ada di [Wiki](https://github.com/tasirin1/Red-Eye-Mobile/wiki).
 
-## Fitur inti
+## Daftar Isi
+
+- [Fitur](#fitur)
+- [Ambil APK-nya](#ambil-apk-nya)
+- [Bikin Bot Telegram](#bikin-bot-telegram)
+- [Pasang & Setup](#pasang--setup)
+- [Perintah Telegram](#perintah-telegram)
+- [Kalau Error](#kalau-error)
+- [Aturan Main](#aturan-main)
+- [Lisensi & Legal](#lisensi--legal)
+
+## Fitur
+
+**Pemantauan & media**
 
 - Log SMS & panggilan, foto berkala/manual, screenshot, rekam audio & video kamera
+
+**Lokasi & pola harian**
+
 - Lokasi + jejak, geofence rumah/sekolah, jam malam, digest harian/mingguan, skor waspada
+
+**Notifikasi & aplikasi**
+
 - Teruskan notifikasi HP anak ke Telegram; ringkasan pemakaian layar per aplikasi (`/layar`)
-- Kabar aplikasi dipasang/dihapus, anti-mati (hidup lagi sendiri habis reboot atau dibunuh sistem), proteksi uninstall via Device Admin
+- Kabar aplikasi dipasang/dihapus
+
+**Ketahanan, keamanan & cadangan**
+
+- Anti-mati (hidup lagi sendiri habis reboot atau dibunuh sistem), proteksi uninstall via Device Admin
 - Antrean offline: pesan dikirim begitu online lagi; masking OTP/bank otomatis
 - Backup/pulihkan setelan terenkripsi (file `.redeyebak`), termasuk pulihkan lewat bot (`/pulihkan`) dan mode restore ketat berkode 6 digit
 - Akses owner aman: link pairing dari Setup, atau `/login <PIN>`; `/logout` mengunci semua perintah sampai login lagi
 
 ## Ambil APK-nya
+
+**Pengguna biasa:** unduh APK terbaru dari halaman [Releases](https://github.com/tasirin1/Red-Eye-Mobile/releases) — ambil `redeye-vX.Y.Z-release.apk`.
+
+Bagi pengelola repo, APK diterbitkan dengan dua cara:
 
 1. Cara rilis: `push` tag `vX.Y.Z` → muncul di halaman Releases sebagai `redeye-vX.Y.Z-debug.apk` dan `redeye-vX.Y.Z-release.apk` (signed; wajib keystore rilis di Secrets, kalau tidak build tag gagal tegas).
 2. Cara coba cepat: tab Actions > Build APK > Run workflow (atau `push` ke `main`) → unduh dari artifacts `apks`: `redeye-debug.apk` + `redeye-release.apk` (tanpa keystore rilis, varian release memakai debug key).
