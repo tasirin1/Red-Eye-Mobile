@@ -195,7 +195,7 @@ object IntentParser {
         return false
     }
 
-    fun parse(text: String): String? {
+    private fun tokenize(text: String): Pair<List<String>, String>? {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || trimmed.startsWith("/")) return null
         val lower = trimmed.lowercase(Locale.ROOT)
@@ -203,8 +203,18 @@ object IntentParser {
         for (c in lower) sb.append(if (c.isLetterOrDigit()) c else ' ')
         val tokens = sb.toString().split(WHITESPACE).filter { it.isNotEmpty() }
         if (tokens.isEmpty()) return null
+        return tokens to " " + tokens.joinToString(" ") + " "
+    }
+
+    private fun isVetoed(tokens: List<String>, padded: String): Boolean {
+        if (tokens.any { isNegation(it) }) return true
+        if (hasFirmCaptureIntent(tokens, padded)) return false
+        return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
+    }
+
+    fun parse(text: String): String? {
+        val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
-        val padded = " " + tokens.joinToString(" ") + " "
         val photoVetoed = isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
         val shotVetoed = isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
         var best: String? = null
@@ -243,6 +253,9 @@ object IntentParser {
         if (isSmsSendForm(aliasInput)) return aliasInput
         if (parsed != null) return parsed
         val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
-        return if (words.size <= 2) aliasInput else null
+        if (words.size > 2) return null
+        val tk = tokenize(text)
+        if (tk != null && isVetoed(tk.first, tk.second)) return null
+        return aliasInput
     }
 }

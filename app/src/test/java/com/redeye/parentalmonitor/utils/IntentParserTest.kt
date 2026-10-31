@@ -208,6 +208,23 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasFallbackRespectsParserVeto() {
+        val cases: List<Triple<String, String?, String?>> = listOf(
+            Triple("kunci tidak", "/lock tidak", null),
+            Triple("hilang kemarin", "/hilang kemarin", null),
+            Triple("hilang tadi", "/hilang tadi", null),
+            Triple("sembuh sekarang", "/sembuh sekarang", "/sembuh sekarang"),
+            Triple("darurat sekarang", "/darurat sekarang", "/darurat sekarang"),
+            Triple("hilang hpku", "/hilang hpku", "/hilang hpku"),
+            Triple("kunci sekarang", "/lock sekarang", "/lock sekarang"),
+            Triple("foto depan", "/photo depan", "/photo depan")
+        )
+        for ((text, alias, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
+        }
+    }
+
+    @Test
     fun intentOrAliasKeepsPureAliasForms() {
         val cases: List<Triple<String, String?, String?>> = listOf(
             Triple("kunci", "/lock", "/lock"),
