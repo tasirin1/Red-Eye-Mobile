@@ -44,6 +44,8 @@ object CommandSuggest {
             if (d < bestDist) {
                 bestDist = d
                 best = known
+            } else if (d == bestDist && best != null && best in MUTATING_COMMANDS && known !in MUTATING_COMMANDS) {
+                best = known
             }
             if (transposed == null) {
                 try { if (transposedEquals(typed, known)) transposed = known } catch (_: Exception) { }

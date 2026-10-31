@@ -8,6 +8,12 @@ import org.junit.Test
 
 class CommandSuggestTest {
     @Test
+    fun suggestPrefersNonMutatingOnDistanceTie() {
+        assertEquals("/ping", CommandSuggest.suggestCommand("/ing"))
+        assertEquals("/lock", CommandSuggest.suggestCommand("/lcok"))
+    }
+
+    @Test
     fun editDistanceKnownValues() {
         assertEquals(0, CommandSuggest.editDistance("", ""))
         assertEquals(3, CommandSuggest.editDistance("abc", ""))
