@@ -421,6 +421,7 @@ class MonitoringService : Service() {
         private var appsCache: List<String> = emptyList()
         private val appsCacheGen = java.util.concurrent.atomic.AtomicLong(0L)
         private val appsCacheLock = Any()
+        private var appsCacheWriteSeq = 0L
 
         fun invalidateAppLabel(pkg: String) {
             synchronized(appsCacheLock) {
@@ -10261,20 +10262,23 @@ class MonitoringService : Service() {
     }
 
     private fun listLaunchableApps(limit: Int): Pair<List<String>, Int> {
-        val cached = appsCache
-        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - appsCacheAt < 10 * 60_000L) return Pair(cached.take(limit), cached.size)
-        val genAtStart = appsCacheGen.get()
+        val snapshot = synchronized(appsCacheLock) { appsCache to appsCacheAt }
+        val cached = snapshot.first
+        if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - snapshot.second < 10 * 60_000L) return Pair(cached.take(limit), cached.size)
+        val startStamp = synchronized(appsCacheLock) { appsCacheGen.get() to appsCacheWriteSeq }
         val fresh = listLaunchableAppsFresh()
         if (fresh.isNotEmpty()) {
             synchronized(appsCacheLock) {
-                if (appsCacheGen.get() == genAtStart) {
+                if (appsCacheGen.get() == startStamp.first && appsCacheWriteSeq == startStamp.second) {
                     appsCache = fresh
                     appsCacheAt = android.os.SystemClock.elapsedRealtime()
+                    appsCacheWriteSeq++
                 }
             }
             return Pair(fresh.take(limit), fresh.size)
         }
-        if (cached.isNotEmpty()) return Pair(cached.take(limit), cached.size)
+        val fallback = synchronized(appsCacheLock) { appsCache }
+        if (fallback.isNotEmpty()) return Pair(fallback.take(limit), fallback.size)
         return Pair(emptyList(), 0)
     }
 
