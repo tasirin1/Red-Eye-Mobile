@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Retry 401/403 poll kini memakai offset segar bersama kredensial baru (issue #433): pada cabang retry `pollTelegramCommands`, generasi kredensial dibaca ulang sesudah `refreshCreds` tetapi `retryUrl` masih dibangun dengan `offset` yang dibaca sekali di awal poll dari bot LAMA. Karena `putCredentialState` menghapus `last_update_id` saat token/chat berubah (generasi yang sama yang melindungi jalur persist sejak #414), offset basi itu menunjuk jauh melewati counter update bot baru: `getUpdates` dengan offset tersebut mengonfirmasi & membuang update bot baru ber-ID lebih kecil yang masih tertunda — perintah yang owner kirim ke bot baru selama jendela peralihan hilang senyap tanpa error. Keputusan yang dicatat (dua bentuk dinilai): retry kini membaca ulang `lastUpdateId + 1` bersama generasi segar — aman karena token melekat di URL permintaan itu sendiri sehingga Telegram menjawab per-bot dan klien poll tak menyimpan konteks per-bot apa pun; sesudah ganti kredensial bacaan segar itu bernilai 0 → offset 1 → yang kembali persis update tertunda bot baru (sama dengan yang akan diambil putaran poll berikutnya), dan tak ada persist generasi lain yang dapat memajukannya lebih dulu karena penyelesaian generasi basi dibuang `finishUpdateTrack`. Bentuk alternatif (lewati retry bila kredensial berubah) ditolak: respons yang diteruskan ke penanda galat kredensial di bawahnya masih respons 401 bot lama sementara token yang tercatat sudah token baru, sehingga penanda itu akan menyalahkan kredensial BARU, selain menunda penerimaan perintah satu putaran penuh tanpa keuntungan keamanan.
+
 ## [1.6.573] - 2026-10-31
 
 ### Fixed

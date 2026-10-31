@@ -1669,7 +1669,8 @@ class MonitoringService : Service() {
                 responseToken = freshToken
                 responseChat = freshChat
                 responseGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { responseGeneration }
-                val retryUrl = updatesUrl(freshToken, offset)
+                val retryOffset = (try { preferencesManager.lastUpdateId } catch (_: Exception) { 0L }) + 1
+                val retryUrl = updatesUrl(freshToken, retryOffset)
                 response = try {
                     TelegramPollClient.api.getUpdates(retryUrl)
                 } catch (e: kotlinx.coroutines.CancellationException) {
