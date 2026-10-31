@@ -26,11 +26,18 @@ class DailyFactsTest {
     }
 
     @Test
+    fun upsertDropsFutureDays() {
+        val stored = listOf(day("20261026", s = 100), day("20261031", s = 999))
+        val out = DailyFacts.upsert(stored, day("20261027", s = 50))
+        assertEquals(listOf("20261026", "20261027"), out.map { it.day })
+    }
+
+    @Test
     fun upsertReplacesAndKeepsNewest14() {
         val base = (10..23).map { day("202610" + it.toString().padStart(2, '0'), s = 100) }
         val replaced = DailyFacts.upsert(base, day("20261015", s = 999))
         assertEquals(999, replaced.first { it.day == "20261015" }.screenMin)
-        assertEquals(14, replaced.size)
+        assertEquals(6, replaced.size)
         val extended = DailyFacts.upsert(base, day("20261024", s = 1))
         assertEquals(14, extended.size)
         assertEquals("20261011", extended.first().day)

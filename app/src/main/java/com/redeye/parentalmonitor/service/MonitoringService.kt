@@ -7012,7 +7012,7 @@ class MonitoringService : Service() {
             try { preferencesManager.dailyFacts = DailyFacts.serialize(upd) } catch (_: Exception) { }
             upd
         }
-        val history = updated.filter { it.day != today.day }
+        val history = updated.filter { it.day < today.day }
         val strong = PatternBaseline.assess(history, today).filter { it.strong }
         if (strong.isEmpty()) return
         val fresh = synchronized(prefsRmwLock) {
@@ -7359,7 +7359,7 @@ class MonitoringService : Service() {
                 try {
                     val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
                     val todayF = todayFacts(now, usageDayData(now)) ?: allDays.firstOrNull { it.day == todayKey(now) }
-                    val hist = allDays.filter { it.day != todayKey(now) }
+                    val hist = allDays.filter { it.day < todayKey(now) }
                     val temuan = if (todayF != null) PatternBaseline.assess(hist, todayF) else emptyList()
                     if (temuan.isNotEmpty()) {
                         appendLine("📊 <b>Dibanding pola biasanya</b> (${hist.size} hari)")
