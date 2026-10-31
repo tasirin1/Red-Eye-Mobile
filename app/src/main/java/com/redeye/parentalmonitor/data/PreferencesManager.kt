@@ -516,7 +516,9 @@ class PreferencesManager(context: Context) {
         fun resetEncryptedStorage(context: Context): StorageRecovery {
             var current: PreferencesManager? = null
             var reopened = false
+            var preservedGeneration = 0L
             synchronized(this) {
+                preservedGeneration = try { instance?.credentialGeneration ?: 0L } catch (_: Exception) { 0L }
                 try {
                     val app = context.applicationContext
                     app.deleteSharedPreferences(PREFS_NAME)
@@ -537,6 +539,9 @@ class PreferencesManager(context: Context) {
             }
             return try {
                 val ok = if (current != null) reopened else getInstance(context).isStorageEncrypted
+                if (ok && preservedGeneration > 0L) {
+                    try { (current ?: instance)?.seedCredentialGeneration(preservedGeneration) } catch (_: Exception) { }
+                }
                 if (ok) {
                     try {
                         MessageQueue.getInstance(context).reopenAfterStorageReset()
@@ -636,6 +641,17 @@ class PreferencesManager(context: Context) {
             if (credentialGeneration != generation) return@synchronized false
             if (id <= lastUpdateId) return@synchronized true
             setLastUpdateIdSync(id) && lastUpdateId >= id
+        }
+    }
+
+    fun seedCredentialGeneration(value: Long) {
+        synchronized(credentialLock) {
+            if (value > credentialGeneration) {
+                try {
+                    sharedPreferences.edit().putLong(KEY_CREDENTIAL_GENERATION, value).commit()
+                } catch (_: Exception) {
+                }
+            }
         }
     }
 
