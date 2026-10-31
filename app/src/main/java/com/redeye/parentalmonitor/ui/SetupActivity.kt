@@ -657,7 +657,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.clearRingStateSync() } catch (_: Exception) { }
             try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
             try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
-            try { prefs.ownerPairCode = "" } catch (_: Exception) { }
+            try { prefs.setOwnerPairCode("") } catch (_: Exception) { }
             try { prefs.accessPin = "" } catch (_: Exception) { }
             try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
             try { prefs.cameraInterval = 1 } catch (_: Exception) { }

@@ -1090,9 +1090,9 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var ownerPairCode: String
-        get() = prefString(KEY_OWNER_PAIR_CODE, "")
-        set(value) = sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+    fun setOwnerPairCode(value: String) {
+        sharedPreferences.edit().putString(KEY_OWNER_PAIR_CODE, value).apply()
+    }
 
     fun ensureOwnerPairCode(): String {
         synchronized(pairCodeLock) {

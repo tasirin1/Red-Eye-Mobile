@@ -250,8 +250,7 @@ class MonitoringService : Service() {
         var stage: Int,
         var blob: String? = null,
         var at: Long = SystemClock.elapsedRealtime(),
-        var attempts: Int = 0,
-        var data: SettingsBackup.BackupData? = null
+        var attempts: Int = 0
     )
     @Volatile
     private var pendingRestore: PendingRestore? = null
@@ -3392,7 +3391,7 @@ class MonitoringService : Service() {
             audit("restore dibatalkan setelah logout", "private")
             return
         }
-        val confirm = PendingRestore(RESTORE_STAGE_CONFIRM, data = data)
+        val confirm = PendingRestore(RESTORE_STAGE_CONFIRM)
         pendingRestore = confirm
         audit("restore validasi lolos", "private")
         sendToTelegram(
