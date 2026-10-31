@@ -118,11 +118,19 @@ object IntentParser {
 
     private fun markerMatches(token: String, marker: String): Boolean {
         if (tokenMatches(token, marker)) return true
-        return collapseRuns(token) == collapseRuns(marker)
+        if (collapseRuns(token) == collapseRuns(marker)) return true
+        val collapsedToken = collapseRuns(token)
+        val collapsedMarker = collapseRuns(marker)
+        return collapsedMarker.length >= 3 && collapsedToken.length > collapsedMarker.length &&
+            collapsedToken.startsWith(collapsedMarker) &&
+            collapsedToken.substring(collapsedMarker.length) in NEGATION_SUFFIXES
     }
 
     private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" kirim ulang ")) return true
+        for (i in 0 until tokens.size - 1) {
+            if (markerMatches(tokens[i], "kirim") && markerMatches(tokens[i + 1], "ulang")) return true
+        }
         for (token in tokens) {
             if (markerMatches(token, "kemarin") || markerMatches(token, "fotonya")) return true
             if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true

@@ -233,6 +233,25 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsElongationPlusSuffixReferences() {
+        val cases = listOf(
+            "kirim foto kemarinnlah dong",
+            "kirim foto kemarinnkan dong",
+            "kirim foto tadiilah dong",
+            "kirim foto barusannkah dong",
+            "kirim foto terakhirrkan dong",
+            "kirim foto yang diambillkan dong",
+            "kirim ulangg foto itu dong"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+        assertNull(IntentParser.intentOrAlias("hilang kemarinnlah", "/hilang kemarinnlah"))
+        assertNull(IntentParser.intentOrAlias("kunci kemarinnlah", "/lock kemarinnlah"))
+        assertTrue(IntentParser.isVetoedText("hilang kemarinnlah", "/hilang kemarinnlah"))
+    }
+
+    @Test
     fun parseRejectsBareResultNounsWithPastMarkers() {
         val phrases = listOf(
             "kirim potret yang tadi dong",

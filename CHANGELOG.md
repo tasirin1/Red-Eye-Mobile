@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penanda rujukan berelongasi + imbuhan tak lagi lolos veto (issue #516): `markerMatches` kini punya lapis ketiga lipatan-run + imbuhan `-lah/-kan/-kah` (meniru lapis ketiga sisi negasi), dan frasa `kirim ulang` dikenali toleran per token — "hilang kemarinnlah" terveto seperti "hilang kemarinn", bukan lagi memicu mode hilang/kunci/foto baru. Dibuktikan porting Python 1:1: seluruh kasus uji terkunci tetap hijau dan semua kasus gabungan baru terveto.
+
 ## [1.6.577] - 2026-10-31
 
 ### Fixed
