@@ -13,7 +13,8 @@ object AppWatch {
         "id.dana", "ovo.id", "com.gojek.app", "com.gojek.gopay", "com.shopee.id",
         "id.co.linkaja", "id.flip", "com.kredivo", "com.akulaku", "com.jago", "com.jenius",
         "id.co.seabank", "com.bca", "com.bni", "id.bni", "co.bri", "com.mandiri", "bmri",
-        "com.cimb", "cimbniaga", "btpn", "com.danamon", "com.permatabank", "com.bankbkemobile"
+        "com.cimb", "cimbniaga", "btpn", "com.danamon", "com.permatabank", "com.bankbkemobile",
+        "com.bsm", "permatamobilex", "id.com.uiux", "ocbc", "alloapp", "panin", "muamalat", "hsbc"
     )
 
     fun parseKeywords(raw: String): List<String> {
