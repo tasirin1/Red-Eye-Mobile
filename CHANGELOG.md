@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.576] - 2026-10-31
+
 ### Fixed
 - Tiga field tak terbaca dihapus (issue #488): `TelegramFileResponse.ok` (satu-satunya pemakai `getFile` hanya membaca `result.filePath` dan keberhasilan HTTP), serta `AppUsage.packageName` dan `AppUsage.lastAt` pada `A11yMonitor` (ditulis di empat/dua situs tetapi tak pernah dibaca — kunci peta pemakaian sudah membawa nama paket, dan laporan hanya membaca label/durasi/malam/luncuran). Sensus ulang memastikan 0 pembaca di kode dan tes sebelum penghapusan; argumen bernama pada keempat situs konstruksi dan kedua penulisan `lastAt` ikut dibuang. Data JSON lama tetap terbaca karena Gson mengabaikan field yang tak dikenal.
 - Pegadaian Digital dan Home Credit kini dikenali sebagai paket sensitif oleh `AppWatch` (issue #487): seperti keluarga #486, `com.pegadaiandigital` dan `id.co.myhomecredit` tak menabrak pola mana pun pada daftar lama padahal keduanya memproses login, OTP, dan data kredit/pinjaman. Petunjuk terjangkar `pegadaiandigital` dan `myhomecredit` ditambahkan; dibuktikan porting 1:1 dua arah bersama matriks #486 — kedua paket tertangkap dan seluruh negatif tetap lolos.
