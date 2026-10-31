@@ -1951,7 +1951,15 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk || followsLogin) {
-                        val rawAliasInput = if (command.startsWith("/")) resolveAliasInput(command, arg) else null
+                        val rawAliasInput = if (command.startsWith("/")) {
+                            resolveAliasInput(command, arg) ?: if (command == "/screenshot" || command == "/photo") {
+                                if (arg.isEmpty()) command else "$command $arg"
+                            } else {
+                                null
+                            }
+                        } else {
+                            null
+                        }
                         val slashVetoed = rawAliasInput != null && try {
                             IntentParser.isVetoedText(command.substring(1) + (if (arg.isEmpty()) "" else " $arg"), rawAliasInput)
                         } catch (_: Exception) {
