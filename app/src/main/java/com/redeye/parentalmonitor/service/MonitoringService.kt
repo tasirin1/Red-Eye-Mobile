@@ -969,9 +969,8 @@ class MonitoringService : Service() {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
                     cameraBeatAt = android.os.SystemClock.elapsedRealtime()
-                    val minutes = cachedCameraInterval.coerceIn(0, 60)
                     val lowPower = lowPowerActive()
-                    val effMinutes = if (lowPower) (minutes * 2).coerceAtMost(60) else minutes
+                    val effMinutes = com.redeye.parentalmonitor.utils.PowerSave.cameraIntervalEff(cachedCameraInterval, lowPower)
                     try { syncLowPowerNotice(lowPower) } catch (_: Exception) { }
                     val paused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     if (!cachedMonitoringPaused && !paused && !isNightPaused() && effMinutes > 0) {
@@ -1039,9 +1038,8 @@ class MonitoringService : Service() {
             while (isActive && (patrolJob == null || patrolJob === self)) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
                 try {
-                    val minutes = cachedPatrolInterval.coerceIn(5, 180)
                     val lowPower = lowPowerActive()
-                    val effMinutes = if (lowPower) (minutes * 2).coerceAtMost(180) else minutes
+                    val effMinutes = com.redeye.parentalmonitor.utils.PowerSave.patrolIntervalEff(cachedPatrolInterval, lowPower)
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     val sleepMs = if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
                         patrolRound()
@@ -6138,6 +6136,13 @@ class MonitoringService : Service() {
         return level in 0..LOW_BATTERY_LEVEL && !isCharging()
     }
 
+    private fun lowPowerSlowedMask(): Int {
+        var mask = 0
+        if (com.redeye.parentalmonitor.utils.PowerSave.cameraSlowed(cachedCameraInterval)) mask = mask or 1
+        if (com.redeye.parentalmonitor.utils.PowerSave.patrolSlowed(cachedPatrolInterval)) mask = mask or 2
+        return mask
+    }
+
     private fun usageRows(hours: Int): List<Pair<String, Long>>? {
         val end = System.currentTimeMillis()
         val start = end - hours.coerceIn(1, 24) * 60 * 60_000L
@@ -6396,8 +6401,14 @@ class MonitoringService : Service() {
         try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
         val throttled = lowPowerActive()
         if (throttled) lowPowerNotified = true
+        val slowedNote = if (throttled) when (lowPowerSlowedMask()) {
+            3 -> " Foto otomatis & patroli diperlambat sampai di-charge."
+            1 -> " Foto otomatis diperlambat sampai di-charge."
+            2 -> " Patroli diperlambat sampai di-charge."
+            else -> ""
+        } else ""
         sendToTelegram("🔋 Baterai perangkat tinggal $level%." +
-            (if (throttled) " Foto otomatis & patroli diperlambat sampai di-charge." else "") +
+            slowedNote +
             " Colok charger agar monitoring tak putus.")
     }
 
@@ -7460,7 +7471,12 @@ class MonitoringService : Service() {
             appendLine("Heartbeat: ${if (beat > 0) "tiap $beat jam" else "mati (/heartbeat)"}")
             appendLine("Tipe FGS aktif: " + FgsTypes.describe(appliedFgsTypes))
             if (level in 0..100) appendLine("Baterai: $level%" +
-                (if (lowPowerActive()) " (hemat daya: foto/patroli diperlambat)" else ""))
+                (if (lowPowerActive()) when (lowPowerSlowedMask()) {
+                    3 -> " (hemat daya: foto/patroli diperlambat)"
+                    1 -> " (hemat daya: foto diperlambat)"
+                    2 -> " (hemat daya: patroli diperlambat)"
+                    else -> ""
+                } else ""))
         }
     }
 
