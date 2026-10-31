@@ -6562,7 +6562,7 @@ class MonitoringService : Service() {
             try {
                 val trimmedFrom = preferencesManager.trailTrimmedFrom
                 if (trimmedFrom >= System.currentTimeMillis() - 24 * 60 * 60_000L) {
-                    out.add("⚠ Jejak terpotong cap 300 titik — dihitung dari titik sejak ${TimeFmt.short(rawPts.first().first.at)}")
+                    out.add("⚠ Jejak terpotong cap 300 titik — dihitung dari titik sejak ${TimeFmt.short(pts.first().at)}")
                 }
             } catch (_: Exception) {
             }
