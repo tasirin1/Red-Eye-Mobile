@@ -186,6 +186,28 @@ jobs:
       contents: write
       actions: read
     steps:
+      - name: Ambil sumber tag untuk CHANGELOG
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Susun catatan rilis dari CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          versi="${GITHUB_REF_NAME#v}"
+          awk -v v="$versi" '
+            index($0, "## [" v "]") == 1 { f = 1; print; next }
+            f && /^## \[/ { exit }
+            f { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            printf '## [%s]\n' "$versi" > release-notes.md
+          fi
+          prev="$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)"
+          if [ -n "$prev" ] && [ "$prev" != "$GITHUB_REF_NAME" ]; then
+            printf '\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' "$GITHUB_REPOSITORY" "$prev" "$GITHUB_REF_NAME" >> release-notes.md
+          fi
+
       - name: Unduh artefak APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -198,4 +220,4 @@ jobs:
           files: |
             release-assets/redeye-*.apk
           fail_on_unmatched_files: true
-          generate_release_notes: true
+          body_path: release-notes.md
