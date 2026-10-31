@@ -6681,7 +6681,7 @@ class MonitoringService : Service() {
                 val mapped = ALIAS_COMMANDS[bare] ?: return null
                 if (arg.isEmpty()) mapped else "$mapped $arg"
             } else {
-                val bare = cmd.trim().trimEnd('?', '!', '.').lowercase(java.util.Locale.ROOT)
+                val bare = cmd.trim().trimEnd('?', '!', '.', ',').lowercase(java.util.Locale.ROOT)
                 if (bare.isEmpty()) return null
                 val mapped = ALIAS_COMMANDS[bare] ?: return null
                 if (arg.isEmpty()) mapped else "$mapped $arg"
