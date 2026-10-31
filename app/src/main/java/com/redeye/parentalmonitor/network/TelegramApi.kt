@@ -59,21 +59,17 @@ data class TelegramIncomingMessage(
     @SerializedName("text") val text: String?,
     @SerializedName("caption") val caption: String? = null,
     @SerializedName("document") val document: TelegramDocument? = null,
-    @SerializedName("date") val date: Long = 0,
-    @SerializedName("edit_date") val editDate: Long = 0
+    @SerializedName("date") val date: Long = 0
 )
 
 data class TelegramDocument(
     @SerializedName("file_id") val fileId: String,
     @SerializedName("file_name") val fileName: String? = null,
-    @SerializedName("file_size") val fileSize: Long = 0L,
-    @SerializedName("mime_type") val mimeType: String? = null
+    @SerializedName("file_size") val fileSize: Long = 0L
 )
 
 data class TelegramFile(
-    @SerializedName("file_id") val fileId: String,
-    @SerializedName("file_path") val filePath: String? = null,
-    @SerializedName("file_size") val fileSize: Long = 0L
+    @SerializedName("file_path") val filePath: String? = null
 )
 
 data class TelegramFileResponse(
