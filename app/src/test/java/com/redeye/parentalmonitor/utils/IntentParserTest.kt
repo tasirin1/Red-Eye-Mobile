@@ -172,6 +172,12 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasMergesArgsDespitePunctuation() {
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan, dong", "/photo depan, dong"))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6, jam", "/layar 6, jam"))
+    }
+
+    @Test
     fun intentOrAliasRecognizesPhotoKeyword() {
         assertEquals("/photo depan", IntentParser.intentOrAlias("photo depan dong", "/photo depan dong"))
         assertEquals("/photo", IntentParser.intentOrAlias("photo sekarang dong", "/photo sekarang dong"))

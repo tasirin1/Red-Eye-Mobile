@@ -279,7 +279,7 @@ object IntentParser {
     private fun mergeAliasArgs(parsed: String, aliasInput: String): String {
         val parts = aliasInput.split(WHITESPACE, limit = 2)
         if (parts.size != 2 || parts[0] != parsed) return parsed
-        val first = parts[1].split(WHITESPACE).firstOrNull()?.lowercase(Locale.ROOT).orEmpty()
+        val first = parts[1].split(WHITESPACE).firstOrNull()?.lowercase(Locale.ROOT)?.let { stripEdgePunct(it) }.orEmpty()
         if (parsed == "/photo" && first in PHOTO_LENS_WORDS) return "$parsed $first"
         if (parsed == "/layar") {
             val hours = first.toIntOrNull()
