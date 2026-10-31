@@ -6462,6 +6462,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun maybeSendDigest() {
+        if (cachedMonitoringPaused) return
         if (awaitingOwnerLogin()) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
@@ -7085,6 +7086,7 @@ class MonitoringService : Service() {
 
     private suspend fun maybeSendNightDigest() {
         try {
+            if (cachedMonitoringPaused) return
             val now = System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
             val h = DigestSchedule.localHour(now, off.toLong())
@@ -7335,6 +7337,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkBegadang() {
         try {
+            if (cachedMonitoringPaused) return
             val now = System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
             val h = DigestSchedule.localHour(now, off.toLong())
@@ -7440,6 +7443,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkCurfew() {
         try {
+            if (cachedMonitoringPaused) return
             val now = System.currentTimeMillis()
             val cal = java.util.Calendar.getInstance()
             val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
