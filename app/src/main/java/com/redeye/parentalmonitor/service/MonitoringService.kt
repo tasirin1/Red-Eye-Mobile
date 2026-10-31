@@ -7258,7 +7258,7 @@ class MonitoringService : Service() {
                 val la = preferencesManager.homeLatE6
                 val lo = preferencesManager.homeLonE6
                 val rad = preferencesManager.homeRadiusM
-                if (pos == null || ageMs > 6 * 3_600_000L) {
+                if (pos == null || ageMs < 0L || ageMs > 6 * 3_600_000L) {
                     locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
                 } else if (la != Long.MIN_VALUE && rad > 0 &&
                     GeofenceLogic.judgedOutside(
@@ -7433,7 +7433,7 @@ class MonitoringService : Service() {
             var pos = lastSentLatLon()
             var posAccuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
             val locAge = now - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
-            if (pos == null || locAge > 30 * 60_000L) {
+            if (pos == null || locAge < 0L || locAge > 30 * 60_000L) {
                 val nowEl = android.os.SystemClock.elapsedRealtime()
                 if (curfewFetchFailAt != 0L && nowEl - curfewFetchFailAt < 15 * 60_000L) return
                 val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
