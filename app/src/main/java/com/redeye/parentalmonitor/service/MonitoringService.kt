@@ -417,8 +417,10 @@ class MonitoringService : Service() {
         private var appsCacheAt = 0L
         @Volatile
         private var appsCache: List<String> = emptyList()
+        private val appsCacheGen = java.util.concurrent.atomic.AtomicLong(0L)
 
         fun invalidateAppLabel(pkg: String) {
+            appsCacheGen.incrementAndGet()
             try {
                 appLabelCache.remove(pkg)
             } catch (_: Exception) {
@@ -10225,10 +10227,13 @@ class MonitoringService : Service() {
     private fun listLaunchableApps(limit: Int): Pair<List<String>, Int> {
         val cached = appsCache
         if (cached.isNotEmpty() && android.os.SystemClock.elapsedRealtime() - appsCacheAt < 10 * 60_000L) return Pair(cached.take(limit), cached.size)
+        val genAtStart = appsCacheGen.get()
         val fresh = listLaunchableAppsFresh()
         if (fresh.isNotEmpty()) {
-            appsCache = fresh
-            appsCacheAt = android.os.SystemClock.elapsedRealtime()
+            if (appsCacheGen.get() == genAtStart) {
+                appsCache = fresh
+                appsCacheAt = android.os.SystemClock.elapsedRealtime()
+            }
             return Pair(fresh.take(limit), fresh.size)
         }
         if (cached.isNotEmpty()) return Pair(cached.take(limit), cached.size)
