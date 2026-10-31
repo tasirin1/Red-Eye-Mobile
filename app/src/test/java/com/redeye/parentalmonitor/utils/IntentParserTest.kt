@@ -1,7 +1,9 @@
 package com.redeye.parentalmonitor.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IntentParserTest {
@@ -169,6 +171,20 @@ class IntentParserTest {
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))
         }
+    }
+
+    @Test
+    fun isVetoedTextCoversSlashAliases() {
+        assertTrue(IntentParser.isVetoedText("foto kemarin", "/photo kemarin"))
+        assertTrue(IntentParser.isVetoedText("kunci tidak", "/lock tidak"))
+        assertTrue(IntentParser.isVetoedText("foto yang diambil kemarin dong", "/photo yang diambil kemarin dong"))
+        assertTrue(IntentParser.isVetoedText("hilang kemarinn", "/hilang kemarinn"))
+        assertFalse(IntentParser.isVetoedText("jejak kemarin", "/jejak kemarin"))
+        assertFalse(IntentParser.isVetoedText("layar kemarin", "/layar kemarin"))
+        assertFalse(IntentParser.isVetoedText("sms 0812 jangan lupa", "/sms 0812 jangan lupa"))
+        assertFalse(IntentParser.isVetoedText("kuota bulan ini habis", "/hematdata bulan ini habis"))
+        assertFalse(IntentParser.isVetoedText("foto bukaan dong", "/photo bukaan dong"))
+        assertFalse(IntentParser.isVetoedText("waspada tadi malam", "/waspada tadi malam"))
     }
 
     @Test

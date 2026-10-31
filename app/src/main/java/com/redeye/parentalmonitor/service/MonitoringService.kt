@@ -1951,7 +1951,13 @@ class MonitoringService : Service() {
                     }
                     val ownerOk = isOwner(senderId)
                     if (chatOk || ownerOk || followsLogin) {
-                        val aliasInput = if (command.startsWith("/")) resolveAliasInput(command, arg) else null
+                        val rawAliasInput = if (command.startsWith("/")) resolveAliasInput(command, arg) else null
+                        val slashVetoed = rawAliasInput != null && try {
+                            IntentParser.isVetoedText(command.substring(1) + (if (arg.isEmpty()) "" else " $arg"), rawAliasInput)
+                        } catch (_: Exception) {
+                            false
+                        }
+                        val aliasInput = if (slashVetoed) null else rawAliasInput
                         val intentInput = if (!command.startsWith("/")) {
                             try { IntentParser.intentOrAlias(rawText, resolveAliasInput(command, arg)) } catch (_: Exception) { null }
                         } else {
@@ -2048,8 +2054,10 @@ class MonitoringService : Service() {
                                     if (!restoreHandled) {
                                         val balasAngka = consumePendingInput(rawText, messageDate, ownerNow, chatOk, senderId, isPrivate, msgChatId, adoptionDoneSec)
                                         if (!balasAngka && command.startsWith("/")) {
-                                            val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                            handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec)
+                                            if (!slashVetoed) {
+                                                val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
+                                                handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec)
+                                            }
                                         } else if (!balasAngka) {
                                             if (aliasInput != null && privateNow) {
                                                 handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec)

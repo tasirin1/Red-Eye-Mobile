@@ -321,6 +321,15 @@ object IntentParser {
         return parsed
     }
 
+    fun isVetoedText(text: String, aliasInput: String): Boolean {
+        if (isSmsSendForm(aliasInput)) return false
+        val tk = tokenize(text) ?: return false
+        if (!isVetoed(tk.first, tk.second)) return false
+        val parsed = parse(text)
+        if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
+        return true
+    }
+
     fun intentOrAlias(text: String, aliasInput: String?): String? {
         val parsed = parse(text)
         if (aliasInput == null) return mergeTextArgs(text, parsed)
