@@ -11,7 +11,7 @@ object AppWatch {
         "1password", "lastpass", "bitwarden", "keepass", "crypto", "bitcoin", "binance",
         "browser", "chrome", "firefox", "opera", "duckduckgo", "settings", "systemui", "emmx", "ucmobile",
         "id.dana", "ovo.id", "com.gojek.app", "com.gojek.gopay", "com.shopee.id",
-        "id.co.linkaja", "com.kredivo", "com.akulaku", "com.jago", "com.jenius",
+        "id.co.linkaja", "id.flip", "com.kredivo", "com.akulaku", "com.jago", "com.jenius",
         "id.co.seabank", "com.bca", "com.bni", "id.bni", "co.bri", "com.mandiri", "bmri",
         "com.cimb", "cimbniaga", "btpn", "com.danamon", "com.permatabank", "com.bankbkemobile"
     )

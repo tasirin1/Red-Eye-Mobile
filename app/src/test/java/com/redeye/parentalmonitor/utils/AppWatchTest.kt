@@ -95,6 +95,7 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.gojek.gopay"))
         assertTrue(AppWatch.isSensitivePackage("com.shopee.id"))
         assertTrue(AppWatch.isSensitivePackage("id.co.linkaja"))
+        assertTrue(AppWatch.isSensitivePackage("id.flip"))
         assertTrue(AppWatch.isSensitivePackage("com.jago.digitalBanking"))
         assertTrue(AppWatch.isSensitivePackage("com.btpn.dc"))
         assertTrue(AppWatch.isSensitivePackage("id.co.seabank"))
@@ -109,5 +110,6 @@ class AppWatchTest {
         assertFalse(AppWatch.isSensitivePackage("com.netflix.mediaclient"))
         assertFalse(AppWatch.isSensitivePackage("com.google.android.youtube"))
         assertFalse(AppWatch.isSensitivePackage("com.tokopedia.tkpd"))
+        assertFalse(AppWatch.isSensitivePackage("flipboard.app"))
     }
 }
