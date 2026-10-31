@@ -78,6 +78,32 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun nomorBerspasiLengkapMengalahkanTokenPertama() {
+        val a = SmsCommandParser.parse("0812345 6789 halo")
+        assertEquals("0812345 6789", a?.number)
+        assertEquals("08123456789", a?.normalized)
+        assertEquals("halo", a?.text)
+        val b = SmsCommandParser.parse("08123456 7890 sampai jumpa")
+        assertEquals("08123456 7890", b?.number)
+        assertEquals("081234567890", b?.normalized)
+        assertEquals("sampai jumpa", b?.text)
+        val c = SmsCommandParser.parse("+628123456 7890 halo")
+        assertEquals("+628123456 7890", c?.number)
+        assertEquals("+6281234567890", c?.normalized)
+        assertEquals("halo", c?.text)
+    }
+
+    @Test
+    fun kepalaPesanDuaDigitSesudahNomorUtuhTetapIsi() {
+        val a = SmsCommandParser.parse("08123456789 22 orang")
+        assertEquals("08123456789", a?.number)
+        assertEquals("22 orang", a?.text)
+        val b = SmsCommandParser.parse("+628123456789 22 orang")
+        assertEquals("+628123456789", b?.number)
+        assertEquals("22 orang", b?.text)
+    }
+
+    @Test
     fun tanpaSpasiDitolak() {
         assertNull(SmsCommandParser.parse("08123456789"))
     }

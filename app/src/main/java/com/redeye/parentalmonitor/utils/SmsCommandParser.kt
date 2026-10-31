@@ -28,7 +28,14 @@ object SmsCommandParser {
                 firstTokenNumber = parsed
             }
         }
-        return firstTokenNumber ?: spacedComplete ?: spaced
+        val complete = spacedComplete
+        val first = firstTokenNumber
+        if (complete != null &&
+            (first == null || complete.normalized.count { it.isDigit() } > first.normalized.count { it.isDigit() })
+        ) {
+            return complete
+        }
+        return first ?: complete ?: spaced
     }
 
     private fun normalize(candidate: String): String? {
