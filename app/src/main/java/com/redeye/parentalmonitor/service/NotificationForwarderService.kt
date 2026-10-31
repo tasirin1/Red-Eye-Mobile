@@ -1382,6 +1382,11 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return false
             if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) return false
+            if (prefs.monitoringPaused) {
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+                return true
+            }
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
