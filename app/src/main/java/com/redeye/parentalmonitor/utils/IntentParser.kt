@@ -127,7 +127,7 @@ object IntentParser {
 
     private val CAPTURE_VERBS = setOf("jepret", "potret", "ambil")
 
-    private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan")
+    private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan", "potretan")
 
     private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" foto baru ")) return true
