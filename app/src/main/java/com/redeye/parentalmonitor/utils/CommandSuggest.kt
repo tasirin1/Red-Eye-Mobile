@@ -33,7 +33,7 @@ object CommandSuggest {
         return true
     }
 
-    private val MUTATING_COMMANDS = setOf("/lock", "/stop", "/restart", "/logout", "/clearqueue", "/pause", "/record", "/recordvideo", "/sms", "/photo", "/screenshot", "/camera", "/ring", "/pulihkan", "/bersihkan", "/flush")
+    val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp", "/photo", "/screenshot")
 
     fun suggestCommand(typed: String): String? {
         var best: String? = null

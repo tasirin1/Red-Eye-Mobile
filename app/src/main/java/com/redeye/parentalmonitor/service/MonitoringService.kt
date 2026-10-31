@@ -339,7 +339,7 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
         private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
-        private val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp")
+        private val MUTATING_COMMANDS = CommandSuggest.MUTATING_COMMANDS
         private val DEFAULT_APP_WATCH_PACKAGES = listOf(
             "com.whatsapp",
             "org.telegram.messenger",

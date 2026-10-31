@@ -59,6 +59,11 @@ class CommandSuggestTest {
     }
 
     @Test
+    fun suggestCommandSharesCanonicalMutatingList() {
+        assertEquals("/jampulang", CommandSuggest.suggestCommand("/jampu"))
+    }
+
+    @Test
     fun suggestCommandNeverPointsAbbreviationAtMutatingCommand() {
         assertEquals("/location", CommandSuggest.suggestCommand("/loca"))
         assertEquals("/log", CommandSuggest.suggestCommand("/loc"))
