@@ -53,7 +53,7 @@ object DigestHighlights {
             out.add(Candidate(35, 3, "⏰ HP pertama dibuka $hh.$mm"))
         }
         if (!pctDone && today >= 360 * 60_000L) {
-            out.add(Candidate(30, 4, "📱 Layar " + ReportFormat.durationText(today) + " dalam 24 jam terakhir"))
+            out.add(Candidate(30, 4, "📱 Layar " + ReportFormat.durationText(today) + " hari ini"))
         }
         return out.sortedWith(compareByDescending<Candidate> { it.score }.thenBy { it.order }).take(3).map { it.text }
     }

@@ -43,7 +43,7 @@ class DigestHighlightsTest {
             DigestHighlights.build(facts(today = 50 * min, yesterday = 30 * min))
         )
         assertEquals(
-            listOf("📱 Layar 6 h 40 m dalam 24 jam terakhir"),
+            listOf("📱 Layar 6 h 40 m hari ini"),
             DigestHighlights.build(facts(today = 400 * min, yesterday = 20 * min))
         )
     }
