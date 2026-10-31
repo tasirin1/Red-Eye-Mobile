@@ -4990,7 +4990,8 @@ class MonitoringService : Service() {
     }
 
     private fun isStaleFix(location: android.location.Location): Boolean {
-        return System.currentTimeMillis() - location.time > LOCATION_STALE_MS
+        val age = System.currentTimeMillis() - location.time
+        return age < 0L || age > LOCATION_STALE_MS
     }
 
     private fun fixAgeNote(location: android.location.Location): String {
@@ -6290,7 +6291,8 @@ class MonitoringService : Service() {
                 if (best == null || loc.time > best.time) best = loc
             }
             val fix = best ?: return null
-            if (System.currentTimeMillis() - fix.time > 30 * 60_000L) return null
+            val fixAge = System.currentTimeMillis() - fix.time
+            if (fixAge < 0L || fixAge > 30 * 60_000L) return null
             fix
         } catch (_: Exception) {
             null
@@ -6301,7 +6303,8 @@ class MonitoringService : Service() {
         if (!cachedVehicleEnabled || cachedMonitoringPaused) return
         val fix = lastCachedLocation() ?: return
         val now = System.currentTimeMillis()
-        if (now - fix.time > 10 * 60_000L) {
+        val fixAge = now - fix.time
+        if (fixAge < 0L || fixAge > 10 * 60_000L) {
             vehicleFastSamples = 0
             return
         }
