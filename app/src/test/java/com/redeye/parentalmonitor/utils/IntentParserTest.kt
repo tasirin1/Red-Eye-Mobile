@@ -202,6 +202,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasMergesArgsWrappedInQuotesBracketsOrStars() {
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto (depan) dong", "/photo (depan) dong"))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto *depan* dong", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar (6) jam dong", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar \"6\" jam", null))
+    }
+
+    @Test
     fun intentOrAliasMergesArgsDespitePunctuation() {
         assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan, dong", "/photo depan, dong"))
         assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6, jam", "/layar 6, jam"))

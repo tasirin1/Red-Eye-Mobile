@@ -325,7 +325,7 @@ object IntentParser {
     }
 
     private fun stripEdgePunct(token: String): String {
-        return token.trimEnd(',', '.', '!', '?', ':', ';', ')')
+        return token.trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', ',', '.', '!', '?', ':', ';')
     }
 
     private val PHOTO_KEYWORDS = setOf("foto", "potret", "jepret", "photo")
