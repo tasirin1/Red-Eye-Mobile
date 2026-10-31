@@ -119,6 +119,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.bibit.bibitid"))
         assertTrue(AppWatch.isSensitivePackage("com.stockbit.android"))
         assertTrue(AppWatch.isSensitivePackage("ajaib.co.id"))
+        assertTrue(AppWatch.isSensitivePackage("com.nanovest.prod"))
+        assertFalse(AppWatch.isSensitivePackage("com.innovest.education"))
         assertFalse(AppWatch.isSensitivePackage("id.bibitku.tanam"))
         assertFalse(AppWatch.isSensitivePackage("com.grabtaxi.passenger"))
         assertFalse(AppWatch.isSensitivePackage("com.mobile.legends"))
