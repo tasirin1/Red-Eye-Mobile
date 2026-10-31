@@ -127,4 +127,17 @@ class AppWatchTest {
         assertFalse(AppWatch.isSensitivePackage("com.tokopedia.tkpd"))
         assertFalse(AppWatch.isSensitivePackage("flipboard.app"))
     }
+
+    @Test
+    fun paketInvestasiKriptoNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("com.EmasDigi"))
+        assertTrue(AppWatch.isSensitivePackage("com.valar.pintu"))
+        assertTrue(AppWatch.isSensitivePackage("com.indopremier.ipot"))
+        assertTrue(AppWatch.isSensitivePackage("com.bareksa"))
+        assertTrue(AppWatch.isSensitivePackage("com.koinworks"))
+        assertTrue(AppWatch.isSensitivePackage("com.rekeningku"))
+        assertTrue(AppWatch.isSensitivePackage("com.tanamduit"))
+        assertFalse(AppWatch.isSensitivePackage("id.bibitku.tanam"))
+        assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
+    }
 }
