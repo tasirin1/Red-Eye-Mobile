@@ -7261,7 +7261,11 @@ class MonitoringService : Service() {
                 if (pos == null || ageMs > 6 * 3_600_000L) {
                     locNote = "\nPosisi tak segar — skor luar rumah diabaikan."
                 } else if (la != Long.MIN_VALUE && rad > 0 &&
-                    ReportFormat.distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second) > rad
+                    GeofenceLogic.judgedOutside(
+                        ReportFormat.distanceMeters(la / 1_000_000.0, lo / 1_000_000.0, pos.first, pos.second),
+                        rad,
+                        try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+                    )
                 ) {
                     score += 10
                     locNote = "\nDi luar rumah: ya (+10)"
