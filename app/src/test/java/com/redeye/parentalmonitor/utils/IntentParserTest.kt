@@ -194,7 +194,7 @@ class IntentParserTest {
     fun intentOrAliasKeepsPureAliasForms() {
         val cases: List<Triple<String, String?, String?>> = listOf(
             Triple("kunci", "/lock", "/lock"),
-            Triple("kunci sekarang", "/lock sekarang", "/lock"),
+            Triple("kunci sekarang", "/lock sekarang", "/lock sekarang"),
             Triple("tolong", "/help", "/help"),
             Triple("foto", "/photo", "/photo"),
             Triple("foto depan", "/photo depan", "/photo depan"),
