@@ -142,6 +142,18 @@ class AppWatchTest {
     }
 
     @Test
+    fun paketPinjolBerizinNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("com.fintopia.idnEasycash.google"))
+        assertTrue(AppWatch.isSensitivePackage("com.kreditpintar"))
+        assertTrue(AppWatch.isSensitivePackage("com.adakami.dana.kredit.pinjaman"))
+        assertTrue(AppWatch.isSensitivePackage("com.amarthaplus.amarthabeyond"))
+        assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
+        assertFalse(AppWatch.isSensitivePackage("org.telegram.messenger"))
+        assertFalse(AppWatch.isSensitivePackage("com.tokopedia.tkpd"))
+        assertFalse(AppWatch.isSensitivePackage("id.bibitku.tanam"))
+    }
+
+    @Test
     fun paketKromNyataDikenali() {
         assertTrue(AppWatch.isSensitivePackage("com.krom.android"))
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
