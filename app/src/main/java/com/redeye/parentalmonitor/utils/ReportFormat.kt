@@ -20,7 +20,10 @@ object ReportFormat {
         val mb = kb / 1024.0
         val mbRounded = Math.round(mb * 10) / 10.0
         if (mb < 1024 && mbRounded < 1024.0) return String.format(java.util.Locale.US, "%.1f MB", mb)
-        return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
+        val gb = mb / 1024.0
+        val gbRounded = Math.round(gb * 100) / 100.0
+        if (gb < 1024 && gbRounded < 1024.0) return String.format(java.util.Locale.US, "%.2f GB", gb)
+        return String.format(java.util.Locale.US, "%.2f TB", gb / 1024.0)
     }
 
     fun accuracyText(accuracyM: Float): String {
