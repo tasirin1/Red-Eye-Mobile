@@ -826,6 +826,7 @@ class PreferencesManager(context: Context) {
     fun setCredentialErrorIfCredentialsMatch(token: String, chat: String, code: String, at: Long): Boolean {
         return synchronized(credentialLock) {
             if (botToken != token || chatId != chat) return@synchronized false
+            if (credentialError == code && credentialErrorAt == at) return@synchronized true
             try {
                 sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
                 true

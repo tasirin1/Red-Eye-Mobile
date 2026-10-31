@@ -7730,10 +7730,16 @@ class MonitoringService : Service() {
         }
     }
 
+    private var lastSendOkNoteAt = 0L
+
     private fun noteSendOk() {
-        try {
-            preferencesManager.setLastSendOkMarker(android.os.SystemClock.elapsedRealtime())
-        } catch (_: Exception) {
+        val nowElapsed = android.os.SystemClock.elapsedRealtime()
+        if (nowElapsed - lastSendOkNoteAt >= 30_000L) {
+            lastSendOkNoteAt = nowElapsed
+            try {
+                preferencesManager.setLastSendOkMarker(nowElapsed)
+            } catch (_: Exception) {
+            }
         }
         try {
             if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
