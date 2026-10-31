@@ -239,12 +239,20 @@ object IntentParser {
         return if (bestScore < 2 || tie) null else best
     }
 
-    private val SMS_NUMBER_HEAD = Regex("^\\+?\\d[\\d-]*$")
+    private fun isNumberAttemptHead(head: String): Boolean {
+        if (head.isEmpty()) return false
+        val digits = head.count { it.isDigit() }
+        if (digits == 0) return false
+        if (!head.all { it.isDigit() || it in "+().-" }) return false
+        return head[0] == '0' || head[0] == '+' || head[0] == '(' || digits >= 7
+    }
 
     private fun isSmsSendForm(aliasInput: String): Boolean {
         if (!aliasInput.startsWith("/sms ")) return false
-        val head = aliasInput.substring(5).split(WHITESPACE).firstOrNull().orEmpty()
-        return SMS_NUMBER_HEAD.matches(head)
+        val arg = aliasInput.substring(5)
+        if (SmsCommandParser.parse(arg) != null) return true
+        val head = arg.split(WHITESPACE).firstOrNull().orEmpty()
+        return isNumberAttemptHead(head)
     }
 
     fun intentOrAlias(text: String, aliasInput: String?): String? {

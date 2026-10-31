@@ -225,6 +225,22 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasSmsGateAlignsWithDownstreamParser() {
+        val cases: List<Triple<String, String?, String?>> = listOf(
+            Triple("sms 123 terakhir dari siapa", "/sms 123 terakhir dari siapa", "/lastsms"),
+            Triple("sms 2024 terakhir dari siapa", "/sms 2024 terakhir dari siapa", "/lastsms"),
+            Triple("sms 0812.3456.7890 halo", "/sms 0812.3456.7890 halo", "/sms 0812.3456.7890 halo"),
+            Triple("sms 0812.3456.7890 halo apa kabar", "/sms 0812.3456.7890 halo apa kabar", "/sms 0812.3456.7890 halo apa kabar"),
+            Triple("sms (0812) 3456-7890 halo", "/sms (0812) 3456-7890 halo", "/sms (0812) 3456-7890 halo"),
+            Triple("sms 0812 halo", "/sms 0812 halo", "/sms 0812 halo"),
+            Triple("sms 1234567 halo", "/sms 1234567 halo", "/sms 1234567 halo")
+        )
+        for ((text, alias, expected) in cases) {
+            assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
+        }
+    }
+
+    @Test
     fun intentOrAliasKeepsPureAliasForms() {
         val cases: List<Triple<String, String?, String?>> = listOf(
             Triple("kunci", "/lock", "/lock"),
