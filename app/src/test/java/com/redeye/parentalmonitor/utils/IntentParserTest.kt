@@ -127,6 +127,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsCliticAfterElongatedNegationBase() {
+        val phrases = listOf(
+            "nggaklahh kirim foto sekarang",
+            "enggaklahh ambil foto",
+            "nggaklahh kirim screenshot"
+        )
+        for (phrase in phrases) {
+            assertNull("frasa: $phrase", IntentParser.parse(phrase))
+        }
+    }
+
+    @Test
     fun parseRejectsReferencesToExistingPhoto() {
         val cases = listOf(
             "mana fotonya anak sekarang",

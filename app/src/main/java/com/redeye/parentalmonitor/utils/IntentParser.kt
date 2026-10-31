@@ -175,6 +175,12 @@ object IntentParser {
         val collapsed = collapseRuns(token)
         if (collapsed == token) return false
         if (NEGATIONS.any { base -> collapseRuns(base) == collapsed }) return true
+        if (NEGATIONS.any { base ->
+                val collapsedBase = collapseRuns(base)
+                collapsedBase.length >= 3 && collapsed.startsWith(collapsedBase) &&
+                    collapsed.substring(collapsedBase.length) in NEGATION_SUFFIXES
+            }
+        ) return true
         return NEGATIONS.any { base -> negationForm(collapsed, base) }
     }
 
