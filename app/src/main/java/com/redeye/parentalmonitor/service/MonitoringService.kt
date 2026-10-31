@@ -3776,6 +3776,9 @@ class MonitoringService : Service() {
                 val freqH = try { freqForNumbers(calls.map { it.number } + sms.map { it.address }) } catch (_: Exception) { null }
                 if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
                 if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
+                if (callsResult.items.size > 5 || smsResult.items.size > 5) {
+                    sendToTelegram("⚠️ Hanya 5 riwayat terbaru per jenis yang ditampilkan; pada pencarian ini ditemukan ${callsResult.items.size} panggilan dan ${smsResult.items.size} SMS untuk nomor ini.")
+                }
                 if (callsResult.truncated || smsResult.truncated) {
                     sendToTelegram("⚠️ Pencarian berhenti setelah 2.000 entri terbaru; mungkin masih ada riwayat yang lebih lama.")
                 }
@@ -5688,10 +5691,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: Map<String, Int>? = null, knownMap: Map<String, Boolean>? = null): String {
+    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: FreqResult? = null, knownMap: Map<String, Boolean>? = null): String {
         val watchNums = watchNumbers()
         val todayCounts = HashMap<String, Int>()
-        var freqFallback: Map<String, Int>? = null
+        var freqFallback: FreqResult? = null
         return buildString {
             appendLine("💬 <b>SMS baru (${smsList.size})</b>")
             appendLine()
@@ -5706,11 +5709,10 @@ class MonitoringService : Service() {
                 }
                 try {
                     val key = sms.address.filter { it.isDigit() }.takeLast(10)
-                    val freq = freqMap?.get(key) ?: run {
-                        val exact = freqFallback ?: freqForNumbers(smsList.map { it.address }).also { freqFallback = it }
-                        todayCounts.getOrPut(key) { exact[key] ?: 0 }
-                    }
-                    if (freq >= 3) appendLine("🔁 $freq x hari ini")
+                    val fromMap = freqMap?.counts?.get(key)
+                    val freqInfo = freqMap?.takeIf { fromMap != null } ?: freqFallback ?: freqForNumbers(smsList.map { it.address }).also { freqFallback = it }
+                    val freq = fromMap ?: todayCounts.getOrPut(key) { freqInfo.counts[key] ?: 0 }
+                    if (freq >= 3) appendLine("🔁 $freq${if (freqInfo.capped) "+" else ""} x hari ini")
                     val known = knownMap?.get(sms.address) ?: isKnownContact(sms.address)
                     if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
                 } catch (_: Exception) {
@@ -6478,7 +6480,7 @@ class MonitoringService : Service() {
         sendToTelegram(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
             appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}${if (smsCount >= 200) " (dari 200 terakhir)" else ""}")
-            appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}")
+            appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}${if (callCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
         })
@@ -7155,8 +7157,11 @@ class MonitoringService : Service() {
         return result
     }
 
-    private fun freqForNumbers(numbers: Collection<String>?): Map<String, Int> {
+    private data class FreqResult(val counts: Map<String, Int>, val capped: Boolean)
+
+    private fun freqForNumbers(numbers: Collection<String>?): FreqResult {
         val m = HashMap<String, Int>()
+        var capped = false
         try {
             val keys: HashSet<String>? = numbers?.let { nums ->
                 val set = HashSet<String>()
@@ -7166,17 +7171,21 @@ class MonitoringService : Service() {
                 }
                 set
             }
-            if (keys != null && keys.isEmpty()) return m
+            if (keys != null && keys.isEmpty()) return FreqResult(m, false)
             val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis())
             try {
-                for (s in smsRepository.getRecentSmsSinceLight(since, 200)) {
+                val rows = smsRepository.getRecentSmsSinceLight(since, 200)
+                if (rows.size >= 200) capped = true
+                for (s in rows) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
             try {
-                for (c in callLogRepository.getCallsSince(since, 200)) {
+                val rows = callLogRepository.getCallsSince(since, 200)
+                if (rows.size >= 200) capped = true
+                for (c in rows) {
                     val d = c.number.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
@@ -7184,7 +7193,7 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
-        return m
+        return FreqResult(m, capped)
     }
 
     private suspend fun checkQuietHealth() {
