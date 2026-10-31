@@ -151,13 +151,25 @@ object IntentParser {
 
     private val PAST_MARKERS = setOf("tadi", "kemarin", "barusan", "terakhir")
 
+    private fun firmPairMatches(token: String, marker: String): Boolean {
+        val collapsedToken = collapseRuns(token)
+        val collapsedMarker = collapseRuns(marker)
+        if (collapsedToken == collapsedMarker) return true
+        return collapsedMarker.length >= 3 && collapsedToken.length > collapsedMarker.length &&
+            collapsedToken.startsWith(collapsedMarker) &&
+            collapsedToken.substring(collapsedMarker.length) in NEGATION_SUFFIXES
+    }
+
     private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" foto baru ")) return true
+        for (i in 0 until tokens.size - 1) {
+            if (firmPairMatches(tokens[i], "foto") && firmPairMatches(tokens[i + 1], "baru")) return true
+        }
         val hasPastMarker = tokens.any { token -> PAST_MARKERS.any { markerMatches(token, it) } }
         for (token in tokens) {
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) continue
             for (verb in CAPTURE_VERBS) {
-                if (!tokenMatches(token, verb)) continue
+                if (!markerMatches(token, verb)) continue
                 if (hasPastMarker && token == verb && (verb == "potret" || verb == "jepret")) continue
                 return true
             }

@@ -272,6 +272,13 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseFirmCaptureIntentToleratesElongation() {
+        assertEquals("/photo", IntentParser.parse("tolong jepretlahh fotonya sekarang"))
+        assertEquals("/photo", IntentParser.parse("foto kemarin jelek, jepret foto baruu sekarang"))
+        assertNull(IntentParser.parse("kirim foto barusan dong"))
+    }
+
+    @Test
     fun parsePhotoReferenceVetoYieldsToCaptureVerbs() {
         val cases = listOf(
             "jepret fotonya sekarang",
