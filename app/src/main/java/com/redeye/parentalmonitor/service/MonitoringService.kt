@@ -8191,7 +8191,7 @@ class MonitoringService : Service() {
                 }
                 when (sendPhotoFile(photoFile)) {
                     MediaSendOutcome.SENT -> {
-                        try { preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
+                        try { if (photoHashNow != 0L) preferencesManager.setLastPhotoHashSync(photoHashNow) } catch (_: Exception) { }
                         try {
                             val used = cameraService.lastLensFacing
                             val asked = selectedLensFacing()
