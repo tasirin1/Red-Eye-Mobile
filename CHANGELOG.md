@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.575] - 2026-10-31
+
 ### Fixed
 - Empat field DTO Telegram yang mati dihapus (issue #461): `TelegramIncomingMessage.editDate`, `TelegramDocument.mimeType`, serta `TelegramFile.fileId` dan `TelegramFile.fileSize` tidak pernah dibaca di mana pun — sensus ulang sebelum penghapusan memastikan nol pembaca (satu-satunya pemakaian `.fileId`/`.fileSize` yang ada adalah milik `TelegramDocument` di jalur pulihkan, dan dari `TelegramFile` hanya `.filePath` yang dipakai); ketiganya murni beban deserialisasi Gson yang menyesatkan pembaca kode seolah datanya dipakai. Karena ketiganya kelas respons yang dibentuk Gson dari JSON (tidak pernah dibangun langsung oleh kode aplikasi), penghapusan aman: field JSON yang tak dikenal memang diabaikan Gson. Field hidup via serialisasi seperti `callbackData` tidak tersentuh.
 - Teks prompt tombol `/layar` tak lagi menjanjikan tindakan yang mustahil di alur balas (issue #460): prompt berbunyi "Kirim jumlah jam 1-24 (kosongkan untuk 24 jam)", tetapi di alur tombol → balas-prompt "mengosongkan" tidak bisa dilakukan — Telegram tidak dapat mengirim pesan kosong dan konsumsi masukan tertunda mensyaratkan teks; bawaan 24 jam hanya tercapai lewat `/layar` polos di luar alur itu. Teks kini berbunyi "Kirim jumlah jam 1-24 (ketik 24 untuk sehari penuh)" — hasil yang sama dan benar-benar bisa dilakukan dari permukaan yang menampilkannya (penangan `/layar` menerima 1–24 dan nilai 24 berarti sehari penuh; bawaan perintah polos tidak berubah).
