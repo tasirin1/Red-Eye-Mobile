@@ -75,9 +75,10 @@ class CallLogRepository(private val context: Context) {
     }
 
     fun getAllCalls(limit: Int = 200): List<CallData> {
+        val now = System.currentTimeMillis()
         return queryCalls(
-            selection = null,
-            args = null,
+            selection = "${CallLog.Calls.DATE} <= ?",
+            args = arrayOf(now.toString()),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = limit.coerceIn(1, 200)
         )

@@ -181,9 +181,10 @@ class SmsRepository(private val context: Context) {
 
     fun getRecentSms(limit: Int = 20): List<SmsData> {
         val safeLimit = limit.coerceIn(1, 200)
+        val now = System.currentTimeMillis()
         return querySms(
-            selection = null,
-            args = null,
+            selection = "${Telephony.Sms.DATE} <= ?",
+            args = arrayOf(now.toString()),
             sortOrder = "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
             limit = safeLimit
         )
