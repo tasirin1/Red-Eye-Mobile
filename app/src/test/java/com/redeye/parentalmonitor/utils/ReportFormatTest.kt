@@ -28,6 +28,9 @@ class ReportFormatTest {
         assertEquals("1023.99 GB", ReportFormat.formatBytes(1_099_500_000_000))
         assertEquals("1.00 TB", ReportFormat.formatBytes(1_099_511_627_775))
         assertEquals("1.00 TB", ReportFormat.formatBytes(1_099_511_627_776))
+        assertEquals("1023.99 TB", ReportFormat.formatBytes(1_125_888_911_726_346))
+        assertEquals("1.00 PB", ReportFormat.formatBytes(1_125_899_906_842_624))
+        assertEquals("2.00 PB", ReportFormat.formatBytes(2_251_799_813_685_248))
     }
 
     @Test
