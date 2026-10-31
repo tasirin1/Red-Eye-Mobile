@@ -1793,7 +1793,7 @@ class MonitoringService : Service() {
             if (seen) {
                 continue
             }
-            beginUpdateTrack(update.updateId)
+            beginUpdateTrack(update.updateId, responseGeneration)
             var offsetDeferred = false
             var delivered = true
             try {
@@ -2100,17 +2100,17 @@ class MonitoringService : Service() {
     }
 
 
-    private fun beginUpdateTrack(updateId: Long) {
-        updateOffsetTracker.begin(updateId)
+    private fun beginUpdateTrack(updateId: Long, generation: Long) {
+        updateOffsetTracker.begin(updateId, generation)
     }
 
     private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
         val currentGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
         if (generation != currentGeneration) {
-            updateOffsetTracker.forget(updateId)
+            updateOffsetTracker.forget(updateId, generation)
             return
         }
-        updateOffsetTracker.finish(updateId, delivered)?.let { persistUpdateOffset(it) }
+        updateOffsetTracker.finish(updateId, generation, delivered)?.let { persistUpdateOffset(it) }
     }
 
     private fun persistUpdateOffset(updateId: Long) {
