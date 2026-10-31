@@ -7718,7 +7718,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleUnlockFailed(attempts: Int) {
         try {
-            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring) return
+            if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || !preferencesManager.userConsentedMonitoring || preferencesManager.monitoringPaused) return
             val streak = attempts.coerceAtLeast(1)
             if (streak != 1 && streak % 3 != 0) return
             val now = android.os.SystemClock.elapsedRealtime()

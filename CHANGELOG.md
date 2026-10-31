@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Alert gagal buka kunci tak lagi mengirim lokasi + foto selama jeda /stop (issue #519): gerbang `handleUnlockFailed` kini menyertakan `monitoringPaused`, sejajar gerbang konsen #377 — satu kali salah PIN selama jeda tak lagi memicu foto + lokasi.
 - Alert percobaan mematikan Device Admin tak lagi mengirim lokasi + foto selama jeda /stop (issue #520): gerbang `handleAdminAlert` kini menyertakan `monitoringPaused`, sejajar gerbang konsen #377 dan keluarga tamper A11y yang sudah bergerbang jeda penuh.
 - Sinkronisasi awal kini menghormati jeda /stop (issue #518): `startInitialSync` tak lagi meluncurkan sinkron saat `monitoringPaused`, dan `sendInitialData` memeriksa jeda di pintu masuk, sebelum pesan pembuka, dan di kepala tiap potongan SMS/panggilan — jeda yang tiba di tengah sinkron menghentikan sisa halaman (kursor per potongan yang sudah terkirim tetap maju, sisanya dilanjutkan otomatis lewat cap coba-lagi 60 detik sesudah jeda berakhir) alih-alih membuang seluruh riwayat selama jeda.
 - `mergeTextArgs` tak lagi menyuntik argumen dari kata tak berkaitan (issue #517): pencarian kata lensa / pola "N jam" di jalur teks kini dibatasi dua token sesudah kata kunci foto/layar (toleransi satu kata sisipan seperti kasus terkunci "foto dong depan" tetap utuh), sehingga "di depan rumah" tak lagi mengubah lensa kamera — yang sebelumnya tersimpan persisten — dan "main 6 jam" tak lagi mengubah jendela /layar. Dibuktikan porting Python 1:1 atas matriks terkunci + kasus suntikan.
