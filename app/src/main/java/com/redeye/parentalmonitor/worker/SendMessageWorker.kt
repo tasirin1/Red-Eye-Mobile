@@ -88,6 +88,7 @@ class SendMessageWorker(
         var flushedSent = 0
 
         var queueCleared = false
+        var pausedMidLoop = false
         val runDeadlineAt = android.os.SystemClock.elapsedRealtime() + 8 * 60_000L
         for (queuedMessage in queue) {
             try {
@@ -101,6 +102,7 @@ class SendMessageWorker(
                 break
             }
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                pausedMidLoop = true
                 rescheduleIn30Min(true)
                 break
             }
@@ -220,10 +222,12 @@ class SendMessageWorker(
         val pausedAtTail = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
         val transientMaxRetry = if (pausedAtTail) 0 else reportDrops(failedIds, rejectedIds, queueCleared, queue, runToken, runChatId)
         if (messageQueue.getQueueSize() > 0) {
-            try {
-                val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
-                MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
-            } catch (_: Exception) {
+            if (!pausedMidLoop) {
+                try {
+                    val backoffMs = if (failedIds.isNotEmpty() && !queueCleared) (60_000L shl transientMaxRetry.coerceIn(0, 3)).coerceAtMost(900_000L) else 0L
+                    MessageScheduler.scheduleMessageSendNext(applicationContext, backoffMs)
+                } catch (_: Exception) {
+                }
             }
             return Result.success()
         }

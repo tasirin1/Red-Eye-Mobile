@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Deteksi jeda di tengah loop `SendMessageWorker` tak lagi menjadwalkan dua penerus (issue #522): cabang jeda menandai `pausedMidLoop` dan ekor fungsi melewati penjadwalan penerus tanpa jeda dalam keadaan itu — penerus +30 menit dari cabang jeda adalah satu-satunya penerus untuk satu kejadian jeda, menutup sisa #503.
 - Pemberitahuan drop di ekor `SendMessageWorker` tak lagi memulai kiriman sesudah jeda (issue #521): bila `monitoringPaused` berlaku saat ekor `doWorkInternal` dicapai, `reportDrops` dilewati sepenuhnya — penghitung drop di antrean tak disentuh (dilaporkan putaran worker berikutnya sesudah jeda berakhir) dan tak ada cuplikan isi pesan yang dikirim selama jeda, menutup sisa #503.
 - Alert gagal buka kunci tak lagi mengirim lokasi + foto selama jeda /stop (issue #519): gerbang `handleUnlockFailed` kini menyertakan `monitoringPaused`, sejajar gerbang konsen #377 — satu kali salah PIN selama jeda tak lagi memicu foto + lokasi.
 - Alert percobaan mematikan Device Admin tak lagi mengirim lokasi + foto selama jeda /stop (issue #520): gerbang `handleAdminAlert` kini menyertakan `monitoringPaused`, sejajar gerbang konsen #377 dan keluarga tamper A11y yang sudah bergerbang jeda penuh.
