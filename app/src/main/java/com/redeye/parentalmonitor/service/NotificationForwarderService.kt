@@ -595,20 +595,18 @@ class NotificationForwarderService : NotificationListenerService() {
         val lowerJoined = joined.lowercase(java.util.Locale.ROOT)
         val maskedLower = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
         val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
-        val dup = synchronized(lastSent) {
-            val prev = lastSent[key] ?: 0L
-            prev > 0L && now - prev < 10_000L
-        }
-        if (dup) {
-            record(label, title, text)
-            return
-        }
         val idHash = if (sbnKey.isNotEmpty()) try { notifIdHash(sbnKey, sbnPostTime) } catch (_: Exception) { "" } else ""
-        if (idHash.isNotEmpty() && isForwardedId(idHash)) {
+        val alreadyHandled = synchronized(lastSent) {
+            val prev = lastSent[key] ?: 0L
+            val dupContent = prev > 0L && now - prev < 10_000L
+            val dupId = idHash.isNotEmpty() && isForwardedId(idHash)
+            if (!dupContent && !dupId) lastSent[key] = now
+            dupContent || dupId
+        }
+        if (alreadyHandled) {
             record(label, title, text)
             return
         }
-        synchronized(lastSent) { lastSent[key] = now }
         if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
