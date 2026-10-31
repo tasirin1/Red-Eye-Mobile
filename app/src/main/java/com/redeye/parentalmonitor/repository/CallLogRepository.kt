@@ -85,9 +85,10 @@ class CallLogRepository(private val context: Context) {
 
     fun getCallsSince(sinceMillis: Long, limit: Int = 200): List<CallData> {
         val safeLimit = limit.coerceIn(1, 200)
+        val now = System.currentTimeMillis()
         return queryCalls(
-            selection = "${CallLog.Calls.DATE} >= ?",
-            args = arrayOf(sinceMillis.toString()),
+            selection = "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} <= ?",
+            args = arrayOf(sinceMillis.toString(), now.toString()),
             sortOrder = "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             limit = safeLimit
         )
@@ -95,12 +96,13 @@ class CallLogRepository(private val context: Context) {
 
     fun countCallsSince(sinceMillis: Long, limit: Int = 200): Int {
         val safeLimit = limit.coerceIn(1, 200)
+        val now = System.currentTimeMillis()
         val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
             context.contentResolver,
             CallLog.Calls.CONTENT_URI,
             arrayOf(CallLog.Calls._ID),
-            "${CallLog.Calls.DATE} >= ?",
-            arrayOf(sinceMillis.toString()),
+            "${CallLog.Calls.DATE} >= ? AND ${CallLog.Calls.DATE} <= ?",
+            arrayOf(sinceMillis.toString(), now.toString()),
             "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
             safeLimit
         )
