@@ -537,6 +537,26 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
+    private fun markGroupAndIdForwarded(groupKey: String, idHash: String) {
+        if (groupKey.isEmpty() && idHash.isEmpty()) return
+        val now = System.currentTimeMillis()
+        synchronized(groupForwarded) {
+            synchronized(forwardedIds) {
+                if (groupKey.isNotEmpty()) {
+                    val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { null }
+                    if (hash != null) groupForwarded[hash] = now
+                }
+                if (idHash.isNotEmpty()) forwardedIds[idHash] = true
+                val groupSnapshot = groupForwarded.entries.map { it.key + ":" + it.value }
+                val idSnapshot = forwardedIds.keys.toList()
+                try {
+                    (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedMarkersSync(groupSnapshot, idSnapshot)
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
     private fun markForwardedId(idHash: String) {
         markForwardedIds(listOf(idHash))
     }
@@ -627,8 +647,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
-                if (queued && trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
-                if (queued && idHash.isNotEmpty()) markForwardedId(idHash)
+                if (queued) markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
                 return
             }
             val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
@@ -654,8 +673,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 false
             }
-            if (delivered && trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
-            if (delivered && idHash.isNotEmpty()) markForwardedId(idHash)
+            if (delivered) markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
             return
         }
         try {
@@ -1000,8 +1018,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (overflowed) {
             try {
                 if (queue().addMessage(message)) {
-                    if (idHash.isNotEmpty()) markForwardedId(idHash)
-                    if (groupKey.isNotEmpty()) markGroupForwarded(groupKey)
+                    markGroupAndIdForwarded(groupKey, idHash)
                 }
                 MessageScheduler.scheduleMessageSend(this)
             } catch (e: kotlinx.coroutines.CancellationException) {

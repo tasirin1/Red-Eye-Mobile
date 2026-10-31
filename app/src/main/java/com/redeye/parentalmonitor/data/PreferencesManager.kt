@@ -1259,6 +1259,17 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>): Boolean {
+        return try {
+            sharedPreferences.edit()
+                .putString(KEY_NOTIF_GROUP_FORWARDED, groupValues.joinToString(","))
+                .putString(KEY_FORWARDED_NOTIF_IDS, idValues.joinToString(","))
+                .commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     var permSnapshot: Int
         get() = prefInt(KEY_PERM_SNAPSHOT, -1)
         set(value) = sharedPreferences.edit().putInt(KEY_PERM_SNAPSHOT, value).apply()
