@@ -140,4 +140,12 @@ class AppWatchTest {
         assertFalse(AppWatch.isSensitivePackage("id.bibitku.tanam"))
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
     }
+
+    @Test
+    fun paketGadaiDanKreditNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("com.pegadaiandigital"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.myhomecredit"))
+        assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
+        assertFalse(AppWatch.isSensitivePackage("com.mobile.legends"))
+    }
 }
