@@ -650,8 +650,7 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         try {
-            forwardToTelegram(message, idHash)
-            if (trackGroup && groupKey.isNotEmpty()) markGroupForwarded(groupKey)
+            forwardToTelegram(message, idHash, if (trackGroup) groupKey else "")
         } catch (_: Exception) {
         }
     }
@@ -854,6 +853,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     for (item in leftover) {
                         if (item.second.isNotEmpty()) markForwardedId(item.second)
                     }
+                    for (group in leftover.map { it.third }.filter { it.isNotEmpty() }.distinct()) markGroupForwarded(group)
                 }
                 try {
                     MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
@@ -957,7 +957,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
 
     private val batchLock = Any()
-    private val batchBuf = ArrayDeque<Pair<String, String>>()
+    private val batchBuf = ArrayDeque<Triple<String, String, String>>()
     private var batchJob: Job? = null
 
     private fun scheduleBatchLocked() {
@@ -980,19 +980,22 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardToTelegram(message: String, idHash: String = "") {
+    private suspend fun forwardToTelegram(message: String, idHash: String = "", groupKey: String = "") {
         var overflowed = false
         synchronized(batchLock) {
             if (batchBuf.size >= MAX_BATCH) {
                 overflowed = true
             } else {
-                batchBuf.addLast(message to idHash)
+                batchBuf.addLast(Triple(message, idHash, groupKey))
                 scheduleBatchLocked()
             }
         }
         if (overflowed) {
             try {
-                if (queue().addMessage(message) && idHash.isNotEmpty()) markForwardedId(idHash)
+                if (queue().addMessage(message)) {
+                    if (idHash.isNotEmpty()) markForwardedId(idHash)
+                    if (groupKey.isNotEmpty()) markGroupForwarded(groupKey)
+                }
                 MessageScheduler.scheduleMessageSend(this)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -1002,7 +1005,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private suspend fun flushBatch() {
-        val items: List<Pair<String, String>>
+        val items: List<Triple<String, String, String>>
         synchronized(batchLock) {
             if (batchBuf.isEmpty()) return
             items = batchBuf.toList()
@@ -1011,18 +1014,22 @@ class NotificationForwarderService : NotificationListenerService() {
         var cur = StringBuilder()
         var curCount = 0
         var curHashes = ArrayList<String>()
+        var curGroups = ArrayList<String>()
         var index = 0
         var splitRest: String? = null
         var splitHash = ""
+        var splitGroup = ""
         suspend fun flushCur() {
             if (curCount <= 0) return
             val delivered = forwardLocked(cur.toString(), curCount, queueOnCancel = false)
             if (delivered) {
                 for (hash in curHashes) markForwardedId(hash)
+                for (group in curGroups.distinct()) markGroupForwarded(group)
             }
             cur = StringBuilder()
             curCount = 0
             curHashes = ArrayList()
+            curGroups = ArrayList()
         }
         try {
             while (index < items.size) {
@@ -1035,6 +1042,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     var splitDelivered = true
                     splitRest = rest
                     splitHash = item.second
+                    splitGroup = item.third
                     while (rest.length > 4000) {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
@@ -1051,7 +1059,9 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                     splitRest = null
                     splitHash = ""
+                    splitGroup = ""
                     if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
+                    if (splitDelivered && item.third.isNotEmpty()) markGroupForwarded(item.third)
                     continue
                 }
                 if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
@@ -1059,26 +1069,31 @@ class NotificationForwarderService : NotificationListenerService() {
                 cur.append(msg)
                 curCount++
                 if (item.second.isNotEmpty()) curHashes.add(item.second)
+                if (item.third.isNotEmpty()) curGroups.add(item.third)
             }
             flushCur()
         } catch (t: Throwable) {
-            val restItems = ArrayList<Pair<String, String>>()
+            val restItems = ArrayList<Triple<String, String, String>>()
             while (index < items.size) restItems.add(items[index++])
             if (t is kotlinx.coroutines.CancellationException) {
                 val texts = ArrayList<String>()
                 val hashes = ArrayList<String>()
+                val groups = ArrayList<String>()
                 if (curCount > 0) {
                     texts.add(cur.toString())
                     hashes.addAll(curHashes)
+                    groups.addAll(curGroups)
                 }
                 val pendingSplit = splitRest
                 if (!pendingSplit.isNullOrEmpty()) {
                     texts.add(pendingSplit)
                     if (splitHash.isNotEmpty()) hashes.add(splitHash)
+                    if (splitGroup.isNotEmpty()) groups.add(splitGroup)
                 }
                 for (item in restItems) {
                     texts.add(item.first)
                     if (item.second.isNotEmpty()) hashes.add(item.second)
+                    if (item.third.isNotEmpty()) groups.add(item.third)
                 }
                 if (texts.isNotEmpty()) {
                     var queued = false
@@ -1089,6 +1104,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     }
                     if (queued) {
                         for (hash in hashes) markForwardedId(hash)
+                        for (group in groups.distinct()) markGroupForwarded(group)
                     }
                     try {
                         MessageScheduler.scheduleMessageSend(this)
@@ -1099,10 +1115,12 @@ class NotificationForwarderService : NotificationListenerService() {
                 synchronized(batchLock) {
                     for (i in restItems.indices.reversed()) batchBuf.addFirst(restItems[i])
                     val pendingSplit = splitRest
-                    if (!pendingSplit.isNullOrEmpty()) batchBuf.addFirst(pendingSplit to splitHash)
+                    if (!pendingSplit.isNullOrEmpty()) batchBuf.addFirst(Triple(pendingSplit, splitHash, splitGroup))
                     if (curCount > 0) {
                         val onlyHash = if (curHashes.size == 1) curHashes[0] else ""
-                        batchBuf.addFirst(cur.toString() to onlyHash)
+                        val distinctGroups = curGroups.distinct()
+                        val onlyGroup = if (distinctGroups.size == 1) distinctGroups[0] else ""
+                        batchBuf.addFirst(Triple(cur.toString(), onlyHash, onlyGroup))
                     }
                 }
             }
