@@ -103,7 +103,7 @@ object IntentParser {
         Intent(
             "/photo",
             listOf(
-                Group(setOf("foto", "potret", "jepret"), emptySet()),
+                Group(setOf("foto", "potret", "jepret", "photo"), emptySet()),
                 Group(setOf("kirim", "ambil", "minta", "tolong", "sekarang", "dong", "coba", "cepetan"), emptySet())
             )
         ),

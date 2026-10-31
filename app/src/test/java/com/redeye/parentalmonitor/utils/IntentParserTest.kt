@@ -172,6 +172,12 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasRecognizesPhotoKeyword() {
+        assertEquals("/photo depan", IntentParser.intentOrAlias("photo depan dong", "/photo depan dong"))
+        assertEquals("/photo", IntentParser.intentOrAlias("photo sekarang dong", "/photo sekarang dong"))
+    }
+
+    @Test
     fun intentOrAliasMergesArgsFromParsedText() {
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
         assertEquals("/photo depan", IntentParser.intentOrAlias("tolong kirim foto depan sekarang", "/help kirim foto depan sekarang"))
