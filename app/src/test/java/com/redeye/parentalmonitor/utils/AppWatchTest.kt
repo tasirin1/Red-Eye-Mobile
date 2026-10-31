@@ -142,6 +142,19 @@ class AppWatchTest {
     }
 
     @Test
+    fun paketInvestasiEmasNyataDikenali() {
+        assertTrue(AppWatch.isSensitivePackage("id.co.triv"))
+        assertTrue(AppWatch.isSensitivePackage("com.simas.siminvest"))
+        assertTrue(AppWatch.isSensitivePackage("com.lakuemas.app"))
+        assertTrue(AppWatch.isSensitivePackage("io.tr8.gotradeindo.android"))
+        assertTrue(AppWatch.isSensitivePackage("id.co.miraeasset.stock"))
+        assertTrue(AppWatch.isSensitivePackage("com.bmoney.android"))
+        assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
+        assertFalse(AppWatch.isSensitivePackage("com.grabtaxi.passenger"))
+        assertFalse(AppWatch.isSensitivePackage("flipboard.app"))
+    }
+
+    @Test
     fun paketPinjolBerizinNyataDikenali() {
         assertTrue(AppWatch.isSensitivePackage("com.fintopia.idnEasycash.google"))
         assertTrue(AppWatch.isSensitivePackage("com.kreditpintar"))
