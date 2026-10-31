@@ -1482,9 +1482,11 @@ class MonitoringService : Service() {
     }
 
     private fun bestFix(candidates: List<android.location.Location>): android.location.Location? {
+        val fresh = candidates.filter { !isStaleFix(it) }
+        val pool = if (fresh.isNotEmpty()) fresh else candidates
         var best: android.location.Location? = null
         var bestScore = Float.MAX_VALUE
-        for (candidate in candidates) {
+        for (candidate in pool) {
             val score = if (candidate.accuracy > 0f) candidate.accuracy else Float.MAX_VALUE
             if (best == null || score < bestScore) {
                 bestScore = score
@@ -4999,6 +5001,7 @@ class MonitoringService : Service() {
 
     private fun fixAgeNote(location: android.location.Location): String {
         val age = System.currentTimeMillis() - location.time
+        if (age < 0L) return "\n\u26a0\ufe0f Data bertanggal masa depan"
         if (age <= LOCATION_STALE_MS) return ""
         val mins = age / 60_000L
         return if (mins < 60L) "\n\u26a0\ufe0f Data lama: ${mins} menit lalu" else "\n\u26a0\ufe0f Data lama: ${mins / 60L} jam lalu"
@@ -5130,7 +5133,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     null
                 }
-                if (fix != null) return@withContext fix
+                if (fix != null && (allowStale || !isStaleFix(fix))) return@withContext fix
                 if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
