@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Nilai akhir penghitung drop NFS tak lagi hilang di cabang pembatalan/pengecualian (issue #523): `persistDropCountFinal` kini menghormati Boolean hasil tulis dan mengulang sampai 3 kali dengan jepretan segar tiap percobaan (prefs null diperlakukan tertulis-virtual, sejajar loop utama) — menutup sisa #511 yang menilai cabang keluar akhir hanya satu percobaan dan hasilnya dibuang.
 - Deteksi jeda di tengah loop `SendMessageWorker` tak lagi menjadwalkan dua penerus (issue #522): cabang jeda menandai `pausedMidLoop` dan ekor fungsi melewati penjadwalan penerus tanpa jeda dalam keadaan itu — penerus +30 menit dari cabang jeda adalah satu-satunya penerus untuk satu kejadian jeda, menutup sisa #503.
 - Pemberitahuan drop di ekor `SendMessageWorker` tak lagi memulai kiriman sesudah jeda (issue #521): bila `monitoringPaused` berlaku saat ekor `doWorkInternal` dicapai, `reportDrops` dilewati sepenuhnya — penghitung drop di antrean tak disentuh (dilaporkan putaran worker berikutnya sesudah jeda berakhir) dan tak ada cuplikan isi pesan yang dikirim selama jeda, menutup sisa #503.
 - Alert gagal buka kunci tak lagi mengirim lokasi + foto selama jeda /stop (issue #519): gerbang `handleUnlockFailed` kini menyertakan `monitoringPaused`, sejajar gerbang konsen #377 — satu kali salah PIN selama jeda tak lagi memicu foto + lokasi.

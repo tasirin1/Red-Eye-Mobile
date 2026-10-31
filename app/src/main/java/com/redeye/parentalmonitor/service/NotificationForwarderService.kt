@@ -1153,10 +1153,15 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun persistDropCountFinal() {
-        try {
-            val snap = synchronized(dropNoticeLock) { (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt }
-            prefsRef?.setPendingNotifDropsSync(snap.first, snap.second)
-        } catch (_: Exception) {
+        val prefs = prefsRef ?: return
+        for (attempt in 1..3) {
+            val written = try {
+                val snap = synchronized(dropNoticeLock) { (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt }
+                prefs.setPendingNotifDropsSync(snap.first, snap.second)
+            } catch (_: Exception) {
+                false
+            }
+            if (written) return
         }
     }
 
