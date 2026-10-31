@@ -7167,6 +7167,7 @@ class MonitoringService : Service() {
             }
             knownContactCache[digits]?.let { return it }
         }
+        var scanCapped = false
         val result = try {
             val uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
             val c = contentResolver.query(uri, arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER), android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?", arrayOf("%" + tail.toCharArray().joinToString("%") + "%"), null) ?: return true
@@ -7175,7 +7176,10 @@ class MonitoringService : Service() {
             c.use { cur ->
                 while (cur.moveToNext()) {
                     examined++
-                    if (examined > 200) break
+                    if (examined > 200) {
+                        scanCapped = true
+                        break
+                    }
                     val nb = try { cur.getString(0) ?: "" } catch (_: Exception) { "" }
                     if (contactNumberMatches(nb, digits)) {
                         found = true
@@ -7189,17 +7193,19 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             return true
         }
-        synchronized(knownContactCache) {
-            if (knownContactCache.size >= 512) {
-                val iter = knownContactCache.keys.iterator()
-                var evict = 128
-                while (evict > 0 && iter.hasNext()) {
-                    iter.next()
-                    iter.remove()
-                    evict--
+        if (result || !scanCapped) {
+            synchronized(knownContactCache) {
+                if (knownContactCache.size >= 512) {
+                    val iter = knownContactCache.keys.iterator()
+                    var evict = 128
+                    while (evict > 0 && iter.hasNext()) {
+                        iter.next()
+                        iter.remove()
+                        evict--
+                    }
                 }
+                knownContactCache[digits] = result
             }
-            knownContactCache[digits] = result
         }
         return result
     }
