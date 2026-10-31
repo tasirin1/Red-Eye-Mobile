@@ -556,7 +556,9 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_BOT_TOKEN, "")
         set(value) {
             synchronized(credentialLock) {
-                sharedPreferences.edit().putString(KEY_BOT_TOKEN, value).apply()
+                val editor = sharedPreferences.edit().putString(KEY_BOT_TOKEN, value)
+                if (value != botToken) bumpCredentialGeneration(editor)
+                editor.apply()
             }
         }
 
@@ -564,7 +566,9 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_CHAT_ID, "")
         set(value) {
             synchronized(credentialLock) {
-                sharedPreferences.edit().putString(KEY_CHAT_ID, value).apply()
+                val editor = sharedPreferences.edit().putString(KEY_CHAT_ID, value)
+                if (value != chatId) bumpCredentialGeneration(editor)
+                editor.apply()
             }
         }
 
@@ -1002,7 +1006,11 @@ class PreferencesManager(context: Context) {
 
     var ownerUserId: Long
         get() = prefLong(KEY_OWNER_ID, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_OWNER_ID, value).apply()
+        set(value) {
+            val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, value)
+            if (value != ownerUserId) bumpCredentialGeneration(editor)
+            editor.apply()
+        }
 
     var accessPin: String
         get() = prefString(KEY_ACCESS_PIN, "")
@@ -1010,7 +1018,9 @@ class PreferencesManager(context: Context) {
 
     fun setOwnerIdSync(id: Long): Boolean {
         return try {
-            sharedPreferences.edit().putLong(KEY_OWNER_ID, id).commit()
+            val editor = sharedPreferences.edit().putLong(KEY_OWNER_ID, id)
+            if (id != ownerUserId) bumpCredentialGeneration(editor)
+            editor.commit()
         } catch (_: Exception) {
             false
         }
@@ -1019,14 +1029,15 @@ class PreferencesManager(context: Context) {
     fun adoptOwnerChatSync(ownerId: Long, newChatId: String): Boolean {
         if (ownerId == 0L || newChatId.isEmpty()) return false
         return try {
-            sharedPreferences.edit()
+            val editor = sharedPreferences.edit()
                 .putLong(KEY_OWNER_ID, ownerId)
                 .putString(KEY_CHAT_ID, newChatId)
                 .putString(KEY_OWNER_PAIR_CODE, "")
                 .putString(KEY_COMMANDS_TOKEN_HASH, "")
                 .putString(KEY_CRED_ERROR, "")
                 .putLong(KEY_CRED_ERROR_AT, 0L)
-                .commit()
+            if (ownerId != ownerUserId || newChatId != chatId) bumpCredentialGeneration(editor)
+            editor.commit()
         } catch (_: Exception) {
             false
         }
@@ -1034,12 +1045,13 @@ class PreferencesManager(context: Context) {
 
     fun clearOwnerSync(): Boolean {
         return try {
-            sharedPreferences.edit()
+            val editor = sharedPreferences.edit()
                 .putLong(KEY_OWNER_ID, 0L)
                 .putString(KEY_OWNER_PAIR_CODE, "")
                 .putLong(KEY_OWNER_PAIR_AT, 0L)
                 .putString(KEY_COMMANDS_TOKEN_HASH, "")
-                .commit()
+            if (ownerUserId != 0L) bumpCredentialGeneration(editor)
+            editor.commit()
         } catch (_: Exception) {
             false
         }
@@ -1678,6 +1690,10 @@ class PreferencesManager(context: Context) {
         return commitWithRetry { it.putLong(KEY_LAST_SMS_SEND_AT, now) }
     }
 
+    private fun bumpCredentialGeneration(editor: android.content.SharedPreferences.Editor) {
+        editor.putLong(KEY_CREDENTIAL_GENERATION, credentialGeneration + 1)
+    }
+
     private fun putCredentialState(editor: android.content.SharedPreferences.Editor, newToken: String, newChatId: String) {
         val tokenChanged = try { newToken != botToken } catch (_: Exception) { true }
         val chatChanged = try { newChatId != chatId } catch (_: Exception) { true }
@@ -1685,7 +1701,7 @@ class PreferencesManager(context: Context) {
             editor.putString(KEY_COMMANDS_TOKEN_HASH, "")
             editor.putString(KEY_OWNER_PAIR_CODE, "")
             editor.remove(KEY_LAST_UPDATE_ID)
-            editor.putLong(KEY_CREDENTIAL_GENERATION, credentialGeneration + 1)
+            bumpCredentialGeneration(editor)
             editor.remove(KEY_INITIAL_SYNC_DONE)
             editor.putLong(KEY_LAST_SMS_ID, 0L)
             editor.putLong(KEY_LAST_SMS_TIMESTAMP, 0L)
@@ -1700,7 +1716,9 @@ class PreferencesManager(context: Context) {
     fun setChatIdSync(newChatId: String): Boolean {
         return try {
             synchronized(credentialLock) {
-                sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId).commit()
+                val editor = sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId)
+                if (newChatId != chatId) bumpCredentialGeneration(editor)
+                editor.commit()
             }
         } catch (_: Exception) {
             false
@@ -1716,7 +1734,10 @@ class PreferencesManager(context: Context) {
             try {
                 val editor = sharedPreferences.edit()
                 putCredentialState(editor, newToken, newChatId)
-                if (ownerIdOverride != null) editor.putLong(KEY_OWNER_ID, ownerIdOverride)
+                if (ownerIdOverride != null) {
+                    editor.putLong(KEY_OWNER_ID, ownerIdOverride)
+                    if (ownerIdOverride != ownerUserId) bumpCredentialGeneration(editor)
+                }
                 editor.putString(KEY_BOT_TOKEN, newToken)
                 editor.putString(KEY_CHAT_ID, newChatId)
                 editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
