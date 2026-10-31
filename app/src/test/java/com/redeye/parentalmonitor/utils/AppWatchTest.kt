@@ -122,7 +122,7 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.nanovest.prod"))
         assertFalse(AppWatch.isSensitivePackage("com.innovest.education"))
         assertTrue(AppWatch.isSensitivePackage("com.loan.cash.credit.easy.kilat.cepat.pinjam.uang.dana.rupiah"))
-        assertFalse(AppWatch.isSensitivePackage("id.danarupiah"))
+        assertFalse(AppWatch.isSensitivePackage("com.danarupiah"))
         assertTrue(AppWatch.isSensitivePackage("com.pinjamango"))
         assertFalse(AppWatch.isSensitivePackage("com.mangolanguages.app"))
         assertTrue(AppWatch.isSensitivePackage("com.cmcm.uangme"))
