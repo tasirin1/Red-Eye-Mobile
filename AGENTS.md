@@ -61,5 +61,6 @@ Aturan kerja untuk semua agen/kontributor di repo ini. Lingkup: seluruh tree rep
 
 - Setiap perbaikan/bugfix yang selesai LANGSUNG `commit` + `push` ke `main` tanpa menunggu perintah eksplisit per langkah.
 - Lalu LANGSUNG rilis: bump `versionCode`/`versionName` di `app/build.gradle`, pindahkan entri `[Unreleased]` ke seksi versi baru di `CHANGELOG.md` (format `## [X.Y.Z] - YYYY-MM-DD`), commit, `push` tag `vX.Y.Z` — workflow otomatis build + terbitkan GitHub Release.
+- Khusus maraton: seluruh perbaikan dalam satu maraton dikumpulkan dulu (commit + push per temuan seperti biasa), lalu dirilis sebagai SATU versi di akhir maraton — bump versi + tag hanya sekali per maraton, bukan satu versi per perbaikan (aturan owner 2026-10-31).
 - Penomoran versi: angka patch TIDAK mencapai 1000 — setelah `1.6.999` lanjutannya `1.7.0` (minor naik, patch mulai dari 0), bukan `1.6.1000` (aturan owner 2026-10-27).
 - Pengecualian docs-only: perubahan yang hanya menyentuh `*.md`/`LICENSE` (CI otomatis skip via `paths-ignore`) cukup commit + push, tanpa bump/tag rilis.
