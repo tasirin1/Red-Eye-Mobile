@@ -1217,7 +1217,9 @@ class MonitoringService : Service() {
             }
             val stored = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
             if (stored != id) return false
-            cachedOwnerId = id
+            synchronized(credsLock) {
+                cachedOwnerId = id
+            }
         }
         return true
     }
@@ -1394,8 +1396,10 @@ class MonitoringService : Service() {
                     false
                 }
                 if (stored) {
-                    cachedChatId = senderId
-                    cachedOwnerId = ownerId
+                    synchronized(credsLock) {
+                        cachedChatId = senderId
+                        cachedOwnerId = ownerId
+                    }
                 }
                 stored
             }
