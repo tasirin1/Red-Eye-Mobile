@@ -143,7 +143,10 @@ class IntentParserTest {
             "tolong kirim jepretan tadi",
             "kirim foto tadi dong",
             "kirim foto terakhir dong",
-            "kirim foto barusan dong"
+            "kirim foto barusan dong",
+            "screenshot yang diambil kemarin, kirim ulang dong",
+            "kirim ulang screenshot kemarin",
+            "kirim screenshotnya dong"
         )
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))

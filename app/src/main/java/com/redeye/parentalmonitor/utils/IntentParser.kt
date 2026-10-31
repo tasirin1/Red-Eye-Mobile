@@ -127,6 +127,11 @@ object IntentParser {
         return false
     }
 
+    private fun isScreenshotReference(tokens: List<String>, padded: String): Boolean {
+        if (isPhotoReference(tokens, padded)) return true
+        return tokens.any { it == "screenshotnya" }
+    }
+
     private val CAPTURE_VERBS = setOf("jepret", "potret", "ambil")
 
     private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan", "potretan")
@@ -201,12 +206,14 @@ object IntentParser {
         if (tokens.any { isNegation(it) }) return null
         val padded = " " + tokens.joinToString(" ") + " "
         val photoVetoed = isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
+        val shotVetoed = isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
         var best: String? = null
         var bestScore = 0
         var tie = false
         for (intent in INTENTS) {
             var score = 0
-            if (intent.command != "/photo" || !photoVetoed) {
+            val suppressed = (intent.command == "/photo" && photoVetoed) || (intent.command == "/screenshot" && shotVetoed)
+            if (!suppressed) {
                 for (group in intent.groups) {
                     if (groupHit(tokens, padded, group)) score++
                 }
