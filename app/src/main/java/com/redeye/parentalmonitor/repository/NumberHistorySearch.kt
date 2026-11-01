@@ -38,7 +38,7 @@ class NumberHistorySearch<T>(
             val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
             if (page.isEmpty()) return NumberHistoryResult(emptyList())
             val pageMatched = filterByNumber(page, norm, wantAlt)
-            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit), truncated = pageMatched.size > safeLimit)
+            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit), truncated = pageMatched.size > safeLimit || page.size >= 500)
             if (page.size < 500) return NumberHistoryResult(emptyList())
             val oldest = page.last()
             if (dateOf(oldest) <= cutoff) return NumberHistoryResult(emptyList())
