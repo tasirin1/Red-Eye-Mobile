@@ -287,14 +287,20 @@ object IntentParser {
         return false
     }
 
+    private val DIGIT_UNIT = Regex("^([0-9]+)([a-z]+)$")
+
     private fun tokenize(text: String): Pair<List<String>, String>? {
         val trimmed = text.trim()
         if (trimmed.isEmpty() || trimmed.startsWith("/")) return null
         val lower = trimmed.lowercase(Locale.ROOT)
         val sb = StringBuilder()
         for (c in lower) sb.append(if (c.isLetterOrDigit()) c else ' ')
-        val tokens = sb.toString().split(WHITESPACE).filter { it.isNotEmpty() }
-        if (tokens.isEmpty()) return null
+        val rawTokens = sb.toString().split(WHITESPACE).filter { it.isNotEmpty() }
+        if (rawTokens.isEmpty()) return null
+        val tokens = rawTokens.flatMap { token ->
+            val m = DIGIT_UNIT.matchEntire(token)
+            if (m != null) listOf(m.groupValues[1], m.groupValues[2]) else listOf(token)
+        }
         return tokens to " " + tokens.joinToString(" ") + " "
     }
 
@@ -387,9 +393,12 @@ object IntentParser {
         if (parsed == "/layar") {
             val start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) } }
             if (start >= 0) {
-                for (i in start + 1 until minOf(start + 3, tokens.size - 1)) {
-                    val hours = stripEdgePunct(tokens[i]).toIntOrNull()
-                    if (hours != null && hours in 1..24 && stripEdgePunct(tokens[i + 1]) == "jam") return "$parsed $hours"
+                for (i in start + 1 until minOf(start + 3, tokens.size)) {
+                    val word = stripEdgePunct(tokens[i])
+                    val attachedHours = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam").toIntOrNull() else null
+                    if (attachedHours != null && attachedHours in 1..24) return "$parsed $attachedHours"
+                    val hours = word.toIntOrNull()
+                    if (hours != null && hours in 1..24 && i + 1 < tokens.size && stripEdgePunct(tokens[i + 1]) == "jam") return "$parsed $hours"
                 }
             }
             return parsed

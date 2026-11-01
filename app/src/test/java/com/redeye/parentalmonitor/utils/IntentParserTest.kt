@@ -120,6 +120,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseToleratesAttachedDigitUnitTokens() {
+        // #617: angka+satuan yang menempel dikenali seperti bentuk berspasi.
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6jam dong", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6jam", "/layar 6jam"))
+        assertEquals("/minggu", IntentParser.parse("7hari terakhir"))
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseToleratesNyaClitic() {
         // #600: klitik -nya pada kata kunci pendek & kata akhir frasa tidak lagi
         // menggugurkan intent yang sah.
