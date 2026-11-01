@@ -23,9 +23,6 @@ class SendMessageWorker(
         @Volatile
         private var lastSendOkNoteAt = 0L
 
-        @Volatile
-        private var healStageCleared = false
-
         fun isRunning(): Boolean = activeRuns.get() > 0
     }
 
@@ -821,12 +818,9 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
         }
-        if (!healStageCleared) {
-            try {
-                if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
-                healStageCleared = true
-            } catch (_: Exception) {
-            }
+        try {
+            if (preferencesManager.silentHealStage != 0) preferencesManager.silentHealStage = 0
+        } catch (_: Exception) {
         }
     }
 
