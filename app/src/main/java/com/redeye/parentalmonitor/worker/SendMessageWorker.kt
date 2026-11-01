@@ -103,6 +103,11 @@ class SendMessageWorker(
                 rescheduleIn30Min(true)
                 break
             }
+            val rateRemainMs = try { NetworkUtils.rateLimitedRemainMs() } catch (_: Exception) { 0L }
+            if (rateRemainMs > 0L) {
+                rateLimitedSecs = (rateRemainMs + 999L) / 1000L
+                break
+            }
             if (processed >= 20 || android.os.SystemClock.elapsedRealtime() >= runDeadlineAt) {
                 break
             }
@@ -652,6 +657,11 @@ class SendMessageWorker(
                             NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
                         } catch (_: Exception) {
                         }
+                        try {
+                            if (origId != null) messageQueue.removeMessages(listOf(origId))
+                        } catch (_: Exception) {
+                        }
+                        rateAfter = outcome.retryAfterSecs
                         break
                     }
                     rateAfter = outcome.retryAfterSecs
@@ -717,9 +727,9 @@ class SendMessageWorker(
                 }
             }
         }
+        if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
         if (remainderQueued) return SendOutcome.Sent
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
-        if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
         if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
         if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
         return SendOutcome.Sent
