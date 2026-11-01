@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Makmur (`id.makmur`, investasi berizin OJK) kini dikenali sebagai aplikasi sensitif (issue #561): petunjuk `id.makmur` ditambahkan (bentuk telanjang `makmur` ditolak — terbukti menangkap contoh terkonstruksi `com.makmurjaya.food`). Terverifikasi uji `contains` dua arah atas daftar petunjuk penuh.
 - PinjamDuit (`com.stanfordtek.pinjamduit`, pinjol berizin OJK) kini dikenali sebagai aplikasi sensitif (issue #560): petunjuk `pinjamduit` ditambahkan — segmen "pinjamduit" tidak cocok dengan petunjuk `pinjamango` milik aplikasi lain. Terverifikasi uji `contains` dua arah atas daftar petunjuk penuh.
 - FinPlus (`com.finplus.android`, pinjol berizin OJK) kini dikenali sebagai aplikasi sensitif (issue #559): petunjuk `finplus` ditambahkan — paketnya tidak tertangkap satu pun dari 83 petunjuk lama (nama "finplus" tidak mengandung "finance"). Terverifikasi uji `contains` dua arah atas daftar petunjuk penuh.
 - Pengungkapan sampel `/minggu` kini jujur soal statistik turunannya (issue #558): bila SMS/panggilan 7 hari mencapai cap 200 per sumber, statistik Teratas/Jam tersibuk/sparkline/Begadang/Kena pantau dihitung dari 200 data terbaru saja (rentang efektif bisa jauh lebih pendek dari 7 hari), tetapi sebelumnya hanya diungkap baris kaki "(dari 200 data terakhir)" tanpa "per sumber" dan tanpa menyebut penyusutan rentang. Baris kaki kini: "(statistik dari 200 data terakhir per sumber; rentang efektif bisa lebih pendek dari 7 hari)".

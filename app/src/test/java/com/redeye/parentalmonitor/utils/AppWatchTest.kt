@@ -128,6 +128,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.cmcm.uangme"))
         assertTrue(AppWatch.isSensitivePackage("com.finplus.android"))
         assertTrue(AppWatch.isSensitivePackage("com.stanfordtek.pinjamduit"))
+        assertTrue(AppWatch.isSensitivePackage("id.makmur"))
+        assertFalse(AppWatch.isSensitivePackage("com.makmurjaya.food"))
         assertFalse(AppWatch.isSensitivePackage("id.co.pinjamonline"))
         assertFalse(AppWatch.isSensitivePackage("com.google.android.gm"))
         assertFalse(AppWatch.isSensitivePackage("com.ruangmebel.furniture"))
