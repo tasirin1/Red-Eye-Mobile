@@ -120,6 +120,19 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseToleratesNyaClitic() {
+        // #600: klitik -nya pada kata kunci pendek & kata akhir frasa tidak lagi
+        // menggugurkan intent yang sah.
+        assertEquals("/location", IntentParser.parse("hpnya dimana"))
+        assertEquals("/screenshot", IntentParser.parse("kirim tangkapan layarnya sekarang"))
+        assertEquals("/layar", IntentParser.parse("anak main hpnya berapa lama hari ini"))
+        assertEquals("/lastsms", IntentParser.parse("smsnya terakhir apa"))
+        assertEquals("/jejak", IntentParser.parse("riwayat lokasinya kemarin"))
+        assertEquals("/status", IntentParser.parse("status hpnya sekarang"))
+        assertNull(IntentParser.parse("hp rusak"))
+    }
+
+    @Test
     fun aliasFallbackRejectsFutureTimeWords() {
         // Kata masa depan pada alias mutating = niat menjadwalkan, bukan eksekusi sekarang.
         assertNull(IntentParser.intentOrAlias("kunci besok", "/lock besok"))

@@ -265,6 +265,7 @@ object IntentParser {
 
     private fun tokenMatches(token: String, keyword: String): Boolean {
         if (token == keyword) return true
+        if (token == keyword + "nya") return true
         return keyword.length >= 4 && token.length - keyword.length in 1..3 && token.startsWith(keyword)
     }
 
@@ -277,7 +278,9 @@ object IntentParser {
         }
         for (phrase in group.phrases) {
             if (padded.contains(" $phrase ")) return true
+            if (padded.contains(" ${phrase}nya ")) return true
             if (collapseLetterRuns(padded).contains(" ${collapseLetterRuns(phrase)} ")) return true
+            if (collapseLetterRuns(padded).contains(" ${collapseLetterRuns(phrase)}nya ")) return true
         }
         return false
     }
