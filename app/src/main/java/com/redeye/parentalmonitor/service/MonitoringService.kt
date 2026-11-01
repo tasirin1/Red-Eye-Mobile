@@ -4777,6 +4777,7 @@ class MonitoringService : Service() {
                 appendLine("Monitoring: ${if (preferencesManager.monitoringPaused) "JEDA" else "JALAN"}")
                 appendLine("Sync terakhir: $lastSyncStr")
                 appendLine("Antrean: ${messageQueue.getQueueSize()}")
+                if (try { messageQueue.isVolatileOnly() } catch (_: Exception) { false }) appendLine("⚠️ Antrean di memori saja (penyimpanan terenkripsi tak tersedia) — pesan tertunda bisa hilang bila aplikasi mati.")
                 val effMin = effectiveSyncMillis() / 60_000L
                 appendLine("Interval data: tiap ${preferencesManager.syncInterval} mnt" + if (idleDataCycles > 0 && effMin > preferencesManager.syncInterval) " (sepi adaptif, kini tiap $effMin mnt)" else "")
                 appendLine("Foto: $photoState")

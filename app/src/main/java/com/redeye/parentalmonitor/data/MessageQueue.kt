@@ -208,6 +208,8 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    fun isVolatileOnly(): Boolean = volatileOnly
+
     fun addMessage(message: String, priority: Boolean = false, retryCount: Int = 0): Boolean {
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
