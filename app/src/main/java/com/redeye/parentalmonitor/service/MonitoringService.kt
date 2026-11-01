@@ -7606,6 +7606,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun maybeSendHeartbeat() {
+        if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
         val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
         if (hours <= 0) return
         val now = System.currentTimeMillis()
