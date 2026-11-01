@@ -6459,6 +6459,7 @@ class MonitoringService : Service() {
 
     private suspend fun syncLowPowerNotice(lowPower: Boolean) {
         try {
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             if (lowPower || !lowPowerNotified) return
             lowPowerNotified = false
             val noticeAt = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
@@ -6472,6 +6473,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun checkBatteryAlert() {
+        if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
         val level = batteryLevel()
         if (level < 0 || level > LOW_BATTERY_LEVEL) return
         if (isCharging()) return
