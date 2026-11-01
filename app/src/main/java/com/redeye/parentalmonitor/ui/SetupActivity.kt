@@ -601,12 +601,23 @@ class SetupActivity : AppCompatActivity() {
             confirmClearCredentials()
             return
         }
+        val lockUntil = try { prefs.restorePinLockoutUntil } catch (_: Exception) { 0L }
+        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(lockUntil, System.currentTimeMillis())) {
+            Toast.makeText(this, getString(R.string.restore_pin_locked), Toast.LENGTH_LONG).show()
+            return
+        }
         askPin(getString(R.string.setup_clear_title), false) { pin ->
             if (pin == null) return@askPin
-            if (pin != storedPin) {
-                Toast.makeText(this, getString(R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
+            if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
+                val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
+                val (newCount, newLock) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
+                try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
+                if (newLock > 0L) try { prefs.restorePinLockoutUntil = newLock } catch (_: Exception) { }
+                Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
                 return@askPin
             }
+            try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
+            try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
             confirmClearCredentials()
         }
     }

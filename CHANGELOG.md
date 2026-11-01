@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Dialog PIN hapus kredensial lokal kini tergerbang dan konstan-waktu (issue #606, sisa #573): sebelumnya PIN akses dibandingkan polos (`!=`) tanpa batas percobaan dan dialog bisa dibuka ulang tanpa henti. Kini memakai gerbang persisten yang sama dengan jalur impor/Telegram (`RestorePinGate`: 3 kali salah → kunci 15 menit, penghitung dipakai bersama karena PIN-nya sama) dan perbandingan `AccessPin.verify` berbasis `MessageDigest.isEqual`.
 - Aplikasi Modal Nasional kini dikenali sensitif (issue #605): petunjuk `modalnasional` ditambahkan agar paket `com.modalnasional.fintech` (pinjol) memicu peringatan aplikasi sensitif; paket mirip non-keuangan `com.lagunasional.radio` terverifikasi tidak ikut tertangkap.
 - Aplikasi Modalku kini dikenali sensitif (issue #604): petunjuk `modalku` ditambahkan agar paket `id.co.modalku.danacepat` dan `id.co.modalku.investor` (P2P lending) memicu peringatan aplikasi sensitif; paket mirip non-keuangan `id.modalkata.belajar` terverifikasi tidak ikut tertangkap.
 - Aplikasi UATAS kini dikenali sensitif (issue #603): petunjuk terjangkar `com.uatas` ditambahkan agar paket `com.uatas.android` memicu peringatan aplikasi sensitif; bentuk polos `uatas` sengaja tidak dipakai karena terverifikasi menangkap `com.kuatas.hitung` (kuatas = lembar kertas), yang kini teruji tidak tertangkap.
