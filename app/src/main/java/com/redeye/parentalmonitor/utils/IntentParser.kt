@@ -199,6 +199,17 @@ object IntentParser {
         return sb.toString()
     }
 
+    private fun collapseLetterRuns(token: String): String {
+        val sb = StringBuilder()
+        var prev = '\u0000'
+        for (c in token) {
+            if (c == prev && c.isLetter()) continue
+            sb.append(c)
+            prev = c
+        }
+        return sb.toString()
+    }
+
     private val COLLAPSE_FALSE_FRIENDS = setOf("bukaan")
 
     private fun isCollapseFalseFriend(token: String): Boolean {
@@ -259,12 +270,12 @@ object IntentParser {
         for (token in tokens) {
             for (keyword in group.tokens) {
                 if (tokenMatches(token, keyword)) return true
-                if (collapseRuns(token) == collapseRuns(keyword)) return true
+                if (collapseLetterRuns(token) == collapseLetterRuns(keyword)) return true
             }
         }
         for (phrase in group.phrases) {
             if (padded.contains(" $phrase ")) return true
-            if (collapseRuns(padded).contains(" ${collapseRuns(phrase)} ")) return true
+            if (collapseLetterRuns(padded).contains(" ${collapseLetterRuns(phrase)} ")) return true
         }
         return false
     }
