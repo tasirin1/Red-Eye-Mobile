@@ -19,7 +19,7 @@ object AppWatch {
         "emasdigi", "com.valar.pintu", "indopremier", "bareksa", "koinworks", "rekeningku", "tanamduit",
         "pegadaiandigital", "myhomecredit", "com.krom", "fintopia", "kreditpintar", "com.adakami", "amartha",
         "id.co.triv", "siminvest", "lakuemas", "gotrade", "miraeasset", "com.bmoney",
-        "nanovest", "dana.rupiah", "pinjamango", "cmcm.uangme", "finplus", "pinjamduit", "id.makmur", "shopintar", "indosk", "cairin", "sucor", "mncsecurities", "tunaiku", "com.uatas"
+        "nanovest", "dana.rupiah", "pinjamango", "cmcm.uangme", "finplus", "pinjamduit", "id.makmur", "shopintar", "indosk", "cairin", "sucor", "mncsecurities", "tunaiku", "com.uatas", "modalku"
     )
 
     fun parseKeywords(raw: String): List<String> {
