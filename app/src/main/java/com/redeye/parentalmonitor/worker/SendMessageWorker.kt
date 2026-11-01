@@ -528,7 +528,7 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 classify400(response, chatId) ?: SendOutcome.Rejected
             } else {
-                SendOutcome.Failed
+                SendOutcome.Rejected
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -562,7 +562,7 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else {
-                SendOutcome.Failed
+                SendOutcome.Rejected
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
