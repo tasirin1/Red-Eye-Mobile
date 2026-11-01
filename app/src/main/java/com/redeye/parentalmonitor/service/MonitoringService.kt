@@ -9026,7 +9026,7 @@ class MonitoringService : Service() {
         val waitSecs = NetworkUtils.parseRetryAfter(errorFull).coerceIn(1L, 3600L)
         val until = android.os.SystemClock.elapsedRealtime() + waitSecs * 1000L
         if (until > mediaBackoffUntil) mediaBackoffUntil = until
-        NetworkUtils.noteRateLimited(minOf(waitSecs, 60L))
+        NetworkUtils.noteRateLimited(waitSecs)
         android.util.Log.w("MonitoringService", "$label rate limited, backing off ${waitSecs}s without blocking")
         try {
             MessageScheduler.scheduleMessageSendNext(this, waitSecs * 1000L)
