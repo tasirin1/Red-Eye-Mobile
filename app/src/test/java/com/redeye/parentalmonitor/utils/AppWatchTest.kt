@@ -132,6 +132,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("id.co.shopintar"))
         assertTrue(AppWatch.isSensitivePackage("com.indosk.sensid"))
         assertFalse(AppWatch.isSensitivePackage("com.indosat.ooredoo"))
+        assertTrue(AppWatch.isSensitivePackage("com.iss.client.cairin"))
+        assertFalse(AppWatch.isSensitivePackage("com.chairin.app"))
         assertFalse(AppWatch.isSensitivePackage("id.co.shopee"))
         assertFalse(AppWatch.isSensitivePackage("id.co.shop"))
         assertFalse(AppWatch.isSensitivePackage("com.makmurjaya.food"))

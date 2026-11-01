@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Aplikasi Cairin kini dikenali sensitif (issue #585): petunjuk `cairin` ditambahkan agar paket `com.iss.client.cairin` memicu peringatan aplikasi sensitif; paket mirip non-keuangan terverifikasi tidak ikut tertangkap.
 - Aplikasi Indosaku kini dikenali sensitif (issue #584): petunjuk `indosk` ditambahkan agar paket `com.indosk.sensid` memicu peringatan aplikasi sensitif; paket mirip yang bukan keuangan (mis. `com.indosat.ooredoo`) terverifikasi tidak ikut tertangkap.
 - Gerbang rate-limit global kini menerima retry_after media yang sebenarnya (issue #583): `mediaRateLimitBackoff` meneruskan hanya `minOf(tunggu, 60)` ke `NetworkUtils.noteRateLimited` padahal backoff media lokal memakai tunggu penuh sampai 3600 detik — pengiriman teks tetap menembus gerbang selama sisa tunggu. Kini nilai penuh diteruskan (gerbang global sendiri sudah menjepit ke 3600).
 - Klasifikasi 4xx non-400/401/403 di worker kini selaras kebijakan kirim (issue #582): `TelegramSendPolicy` menggolongkan kode lain (mis. 404) sebagai REJECTED permanen, tetapi dua penggolong tangan di `SendMessageWorker` mengembalikannya sebagai Failed sementara sehingga pesan ditahan sampai 20× percobaan ulang. Keduanya kini Rejected, sama seperti jalur layanan yang memang memakai kebijakan bersama.
