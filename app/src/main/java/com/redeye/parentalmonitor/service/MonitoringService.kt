@@ -2110,13 +2110,7 @@ class MonitoringService : Service() {
         return serviceScope.launch {
             var handled = false
             try {
-                try {
-                    block()
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    android.util.Log.e("MonitoringService", "$logTag: ${redactToken(e.message)}")
-                }
+                block()
                 handled = true
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
