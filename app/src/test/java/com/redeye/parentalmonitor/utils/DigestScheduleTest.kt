@@ -46,4 +46,13 @@ class DigestScheduleTest {
         assertFalse(DigestSchedule.nightCatchUpDue("", "2026-10-26", "2026-10-27"))
         assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "", "2026-10-27"))
     }
+
+    @Test
+    fun clockRollbackDoesNotRearm() {
+        // #601: jam dimundurkan sehari -> kunci selesai yang lebih baru dari "hari ini"
+        // tidak boleh mempersenjatai ulang digest malam maupun tangkapannya.
+        assertFalse(DigestSchedule.nightDue(21, "2026-10-28", "2026-10-27"))
+        assertFalse(DigestSchedule.nightDue(23, "2026-10-28", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-27", "2026-10-25", "2026-10-26"))
+    }
 }

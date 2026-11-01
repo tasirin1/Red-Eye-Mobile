@@ -7089,7 +7089,7 @@ class MonitoringService : Service() {
         val fresh = synchronized(prefsRmwLock) {
             val stamp = try { preferencesManager.anomalyAlerts } catch (_: Exception) { "" }
             val stampDay = stamp.substringBefore(":", "")
-            val already = if (stampDay == today.day) {
+            val already = if (stampDay >= today.day) {
                 stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
             } else {
                 emptySet()
@@ -7465,7 +7465,7 @@ class MonitoringService : Service() {
             if (h !in 5..11) return
             val key = todayKey()
             if (key.isEmpty()) return
-            if (try { preferencesManager.begadangDate } catch (_:Exception) { "" } == key) return
+            if (try { preferencesManager.begadangDate } catch (_:Exception) { "" } >= key) return
             val since = now - 24 * 60 * 60_000L
             var nights = 0
             var capped = false
@@ -7585,8 +7585,8 @@ class MonitoringService : Service() {
             if (key.isEmpty()) return
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
             val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
-            val needCurfew = inCurfew && homeFence && curfewDone != key
-            val needSchool = inSchool && schoolDone != key
+            val needCurfew = inCurfew && homeFence && curfewDone < key
+            val needSchool = inSchool && schoolDone < key
             if (!needCurfew && !needSchool) return
             var pos = lastSentLatLon()
             var posAccuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
