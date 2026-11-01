@@ -16,10 +16,15 @@ import com.redeye.parentalmonitor.utils.TimeFmt
 
 class CameraService(private val context: Context) {
 
+    @Volatile
     private var cameraDevice: CameraDevice? = null
+    @Volatile
     private var captureSession: CameraCaptureSession? = null
+    @Volatile
     private var imageReader: ImageReader? = null
+    @Volatile
     private var meteringTexture: android.graphics.SurfaceTexture? = null
+    @Volatile
     private var meteringSurface: android.view.Surface? = null
     @Volatile
     private var backgroundHandler: Handler? = null
@@ -1035,16 +1040,18 @@ class CameraService(private val context: Context) {
     }
 
     private fun teardownDevice() {
-        try { captureSession?.close() } catch (_: Exception) { }
-        captureSession = null
-        try { cameraDevice?.close() } catch (_: Exception) { }
-        cameraDevice = null
-        try { imageReader?.close() } catch (_: Exception) { }
-        imageReader = null
-        try { meteringSurface?.release() } catch (_: Exception) { }
-        meteringSurface = null
-        try { meteringTexture?.release() } catch (_: Exception) { }
-        meteringTexture = null
+        synchronized(captureLock) {
+            try { captureSession?.close() } catch (_: Exception) { }
+            captureSession = null
+            try { cameraDevice?.close() } catch (_: Exception) { }
+            cameraDevice = null
+            try { imageReader?.close() } catch (_: Exception) { }
+            imageReader = null
+            try { meteringSurface?.release() } catch (_: Exception) { }
+            meteringSurface = null
+            try { meteringTexture?.release() } catch (_: Exception) { }
+            meteringTexture = null
+        }
         stopBackgroundThread()
     }
 
