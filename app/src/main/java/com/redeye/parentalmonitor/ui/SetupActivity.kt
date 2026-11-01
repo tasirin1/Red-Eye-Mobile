@@ -547,6 +547,13 @@ class SetupActivity : AppCompatActivity() {
         updateStatus()
     }
 
+    override fun onDestroy() {
+        if (isFinishing) {
+            try { pendingRestoreAccessPin = "" } catch (_: Exception) { }
+        }
+        super.onDestroy()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
