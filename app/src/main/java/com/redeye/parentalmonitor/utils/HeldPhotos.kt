@@ -81,7 +81,13 @@ object HeldPhotos {
         }
         out.add(Entry(name, hash))
         while (out.size > max) {
-            val idx = out.indexOfFirst { it.raw == null }
+            var idx = -1
+            for (i in 0 until out.size - 1) {
+                if (out[i].raw == null) {
+                    idx = i
+                    break
+                }
+            }
             out.removeAt(if (idx >= 0) idx else 0)
         }
         return out

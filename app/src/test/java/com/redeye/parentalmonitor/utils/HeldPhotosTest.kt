@@ -93,6 +93,15 @@ class HeldPhotosTest {
     }
 
     @Test
+    fun withHeldTidakMengusirEntriBaruSaatSemuaLamaRaw() {
+        val rawOnly = listOf(HeldPhotos.Entry(null, 0L, "aneh"), HeldPhotos.Entry(null, 0L, "ganjil"))
+        assertEquals(
+            listOf(HeldPhotos.Entry(null, 0L, "ganjil"), named("camera_9.jpg", 7)),
+            HeldPhotos.withHeld(rawOnly, "camera_9.jpg", 7, 2)
+        )
+    }
+
+    @Test
     fun withHeldMenolakSidikTakTerbandingkan() {
         val base = listOf(named("camera_1.jpg", 2), legacy(3))
         assertEquals(base, HeldPhotos.withHeld(base, "camera_2.jpg", 0, 10))
