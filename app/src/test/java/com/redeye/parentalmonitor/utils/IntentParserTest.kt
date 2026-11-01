@@ -413,6 +413,14 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseFirmCaptureIntentToleratesStackedSuffix() {
+        // #616: imbuhan bertumpuk -kanlah pada kata kerja tangkap tetap niat tegas.
+        assertEquals("/photo", IntentParser.parse("ambilkanlah fotonya sekarang"))
+        assertEquals("/photo", IntentParser.parse("jepretkanlah fotonya sekarang"))
+        assertEquals("/photo", IntentParser.parse("potretkanlah fotonya dong"))
+    }
+
+    @Test
     fun parsePhotoReferenceVetoYieldsToCaptureVerbs() {
         val cases = listOf(
             "jepret fotonya sekarang",

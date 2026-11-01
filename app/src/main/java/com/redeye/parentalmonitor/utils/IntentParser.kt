@@ -116,6 +116,8 @@ object IntentParser {
         )
     )
 
+    private val MARKER_SUFFIXES = setOf("lah", "kan", "kah", "kanlah")
+
     private fun markerMatches(token: String, marker: String): Boolean {
         if (tokenMatches(token, marker)) return true
         if (collapseRuns(token) == collapseRuns(marker)) return true
@@ -123,7 +125,7 @@ object IntentParser {
         val collapsedMarker = collapseRuns(marker)
         return collapsedMarker.length >= 3 && collapsedToken.length > collapsedMarker.length &&
             collapsedToken.startsWith(collapsedMarker) &&
-            collapsedToken.substring(collapsedMarker.length) in NEGATION_SUFFIXES
+            collapsedToken.substring(collapsedMarker.length) in MARKER_SUFFIXES
     }
 
     private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
@@ -159,7 +161,7 @@ object IntentParser {
         if (collapsedToken == collapsedMarker) return true
         return collapsedMarker.length >= 3 && collapsedToken.length > collapsedMarker.length &&
             collapsedToken.startsWith(collapsedMarker) &&
-            collapsedToken.substring(collapsedMarker.length) in NEGATION_SUFFIXES
+            collapsedToken.substring(collapsedMarker.length) in MARKER_SUFFIXES
     }
 
     private fun hasFirmCaptureIntent(tokens: List<String>, padded: String): Boolean {
