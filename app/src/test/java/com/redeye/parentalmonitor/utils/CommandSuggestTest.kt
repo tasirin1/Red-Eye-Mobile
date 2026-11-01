@@ -92,6 +92,22 @@ class CommandSuggestTest {
     }
 
     @Test
+    fun suggestCommandPrefixGuardDoesNotOverrideDistanceOneBest() {
+        // #618 (sisa #552): ketikan yang memperpanjang kandidat jarak-1 adalah typo
+        // kandidat itu sendiri, bukan singkatan perintah panjang lain.
+        assertEquals("/sms", CommandSuggest.suggestCommand("/smsc"))
+        assertEquals("/photo", CommandSuggest.suggestCommand("/photoi"))
+        assertEquals("/record", CommandSuggest.suggestCommand("/recordv"))
+        assertEquals("/watch", CommandSuggest.suggestCommand("/watchn"))
+        assertEquals("/patrol", CommandSuggest.suggestCommand("/patroli"))
+        // Singkatan ambigu: ekstensi bersarang non-mutating dari kandidat menang
+        // (/ringkas adalah ekstensi /ring; /storage bukan ekstensi /stop).
+        assertEquals("/ringkas", CommandSuggest.suggestCommand("/rin"))
+        assertEquals("/stop", CommandSuggest.suggestCommand("/sto"))
+        assertEquals("/photo", CommandSuggest.suggestCommand("/phot"))
+    }
+
+    @Test
     fun suggestCommandNeverPointsAbbreviationAtMutatingCommand() {
         assertEquals("/location", CommandSuggest.suggestCommand("/loca"))
         assertEquals("/log", CommandSuggest.suggestCommand("/loc"))

@@ -67,13 +67,19 @@ object CommandSuggest {
         val limit = if (typed.length <= 5) 1 else 2
         if (best == null || bestDist !in 1..limit) return null
         if (best in MUTATING_COMMANDS && !best.startsWith(typed)) {
-            val others = KNOWN_COMMANDS.filter { it != best && it.startsWith(typed) }
-            if (others.isNotEmpty()) return if (others.size == 1) others[0] else null
+            if (!typed.startsWith(best)) {
+                val others = KNOWN_COMMANDS.filter { it != best && it.startsWith(typed) }
+                if (others.isNotEmpty()) return if (others.size == 1) others[0] else null
+            }
             val subsequents = KNOWN_COMMANDS.filter {
                 it !in MUTATING_COMMANDS && it.length - typed.length in 1..2 &&
                     editDistance(typed, it) <= 2 && isSubsequence(typed, it)
             }
             if (subsequents.isNotEmpty()) return if (subsequents.size == 1) subsequents[0] else null
+        }
+        if (best in MUTATING_COMMANDS && best.startsWith(typed) && typed.length < best.length) {
+            val nested = KNOWN_COMMANDS.filter { it != best && it.startsWith(typed) && it.startsWith(best) && it !in MUTATING_COMMANDS }
+            if (nested.size == 1) return nested[0]
         }
         return best
     }
