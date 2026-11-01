@@ -41,8 +41,12 @@ object DailyFacts {
     }
 
     fun upsert(days: List<Day>, newDay: Day, keep: Int = 14): List<Day> {
+        val limit = keep.coerceAtLeast(1)
         val out = days.filter { it.day != newDay.day }.toMutableList()
         out.add(newDay)
-        return out.sortedBy { it.day }.takeLast(keep.coerceAtLeast(1))
+        val sorted = out.sortedBy { it.day }
+        val past = sorted.filter { it.day <= newDay.day }.takeLast(limit)
+        val future = sorted.filter { it.day > newDay.day }.takeLast(limit)
+        return past + future
     }
 }

@@ -37,6 +37,16 @@ class DailyFactsTest {
     }
 
     @Test
+    fun upsertFutureDaysDoNotEvictRecentWindow() {
+        val real = (17..30).map { day("202610" + it.toString().padStart(2, '0'), s = 100) }
+        val stored = real + listOf(day("20261105", s = 1), day("20261106", s = 1), day("20261107", s = 1))
+        val out = DailyFacts.upsert(stored, day("20261031", s = 7))
+        assertEquals(14, out.count { it.day <= "20261031" })
+        assertEquals("20261018", out.first { it.day <= "20261031" }.day)
+        assertEquals(listOf("20261105", "20261106", "20261107"), out.filter { it.day > "20261031" }.map { it.day })
+    }
+
+    @Test
     fun upsertReplacesAndKeepsNewest14() {
         val base = (10..23).map { day("202610" + it.toString().padStart(2, '0'), s = 100) }
         val replaced = DailyFacts.upsert(base, day("20261015", s = 999))
