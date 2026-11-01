@@ -99,6 +99,25 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsCompoundNegations() {
+        // #544: negasi yang ditempel kata penuh usah/perlu adalah satu token negasi.
+        val cases = listOf(
+            "nggakusah kirim foto sekarang",
+            "tidakusah kirim foto sekarang",
+            "enggakusah ambil foto",
+            "gaperlu kirim foto sekarang",
+            "tidakperlu kirim screenshot sekarang",
+            "nggakperlu ambil foto"
+        )
+        for (text in cases) {
+            assertNull("frasa: $text", IntentParser.parse(text))
+        }
+        assertNull(IntentParser.intentOrAlias("kunci tidakusah", "/lock tidakusah"))
+        // Kata ekornya saja bukan negasi: "perlu" telanjang tetap perintah positif.
+        assertEquals("/photo", IntentParser.parse("perlu kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

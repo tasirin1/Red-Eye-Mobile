@@ -216,13 +216,30 @@ object IntentParser {
         return runCounts[3] >= 2
     }
 
+    private val NEGATION_COMPOUND_TAILS = setOf("usah", "perlu")
+
+    private fun isNegationCompound(token: String): Boolean {
+        for (tail in NEGATION_COMPOUND_TAILS) {
+            if (token.length <= tail.length || !token.endsWith(tail)) continue
+            val head = token.dropLast(tail.length)
+            if (head in NEGATIONS) return true
+            if (NEGATIONS.any { base -> negationForm(head, base) }) return true
+            val collapsedHead = collapseRuns(head)
+            if (NEGATIONS.any { base -> collapseRuns(base) == collapsedHead }) return true
+            if (NEGATIONS.any { base -> negationForm(collapsedHead, base) }) return true
+        }
+        return false
+    }
+
     private fun isNegation(token: String): Boolean {
         if (token in COLLAPSE_FALSE_FRIENDS) return false
         if (isCollapseFalseFriend(token)) return false
         if (token in NEGATIONS) return true
         if (NEGATIONS.any { base -> negationForm(token, base) }) return true
+        if (isNegationCompound(token)) return true
         val collapsed = collapseRuns(token)
         if (collapsed == token) return false
+        if (isNegationCompound(collapsed)) return true
         if (NEGATIONS.any { base -> collapseRuns(base) == collapsed }) return true
         if (NEGATIONS.any { base ->
                 val collapsedBase = collapseRuns(base)

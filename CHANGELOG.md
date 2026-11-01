@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Negasi gabung kata penuh kini dikenali (issue #544): token negasi yang ditempel kata penuh "usah"/"perlu" — "nggakusah", "tidakusah", "enggakusah", "gaperlu", "tidakperlu" — sebelumnya lolos veto karena kata penuh 4 huruf berada di luar jendela imbuhan 1–3 huruf, sehingga "nggakusah kirim foto" tetap memicu foto dan alias "kunci tidakusah" tetap mengunci. `isNegation` kini juga menerima bentuk gabungan (kepala negasi + ekor usah/perlu, termasuk varian lipatan run); kata ekor telanjang ("perlu", "usah") tetap BUKAN negasi. Dibuktikan porting Python 1:1 atas `isNegation` (36 kasus: gabungan + terkunci + kontrol).
 - Pengaman penanda masa lalu untuk kata kerja tangkap kini sejalan dengan pencocok niatnya (issue #543, sisa #527): kata kerja berelongasi/berimbuhan ("potrett", "jepretlah") yang lolos `markerMatches` tidak lagi lolos pengaman hanya karena tidak sama persis dengan kata kerja — "potrett kemarin kirim dong" kini terveto sebagai rujukan foto lama, bukan memicu foto baru. Dibuktikan porting Python 1:1 atas `hasFirmCaptureIntent` (kasus terkunci utuh, hanya kasus issue yang berubah).
 
 ## [1.6.578] - 2026-11-01
