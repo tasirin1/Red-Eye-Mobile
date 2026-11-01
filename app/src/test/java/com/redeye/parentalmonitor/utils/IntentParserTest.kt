@@ -223,6 +223,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasSmsGateSparesCompleteNumberForms() {
+        // #546: formulir yang ter-parse jadi nomor lengkap adalah kirim sungguhan,
+        // walau isinya memuat "terakhir"; pertanyaan berelongasi tetap terbajak.
+        assertEquals(
+            "/sms 0812 3456 7890, ini terakhir kalinya",
+            IntentParser.intentOrAlias("sms 0812 3456 7890, ini terakhir kalinya", "/sms 0812 3456 7890, ini terakhir kalinya")
+        )
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terakhirr dari siapa", "/sms 0812, terakhirr dari siapa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terbaruu dari siapa", "/sms 0812, terbaruu dari siapa"))
+    }
+
+    @Test
     fun intentOrAliasKeepsSmsFormWithCommaHead() {
         assertEquals("/sms 0812, halo apa kabar", IntentParser.intentOrAlias("sms 0812, halo apa kabar", "/sms 0812, halo apa kabar"))
         assertEquals("/sms 0812, halo", IntentParser.intentOrAlias("sms 0812, halo", "/sms 0812, halo"))

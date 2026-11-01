@@ -388,8 +388,10 @@ object IntentParser {
         val arg = aliasInput.removePrefix("/sms ")
         val head = arg.split(WHITESPACE).firstOrNull().orEmpty()
         if (head.count { it.isDigit() } >= 7) return false
+        val smsParsed = SmsCommandParser.parse(arg)
+        if (smsParsed != null && smsParsed.normalized.count { it.isDigit() } >= 10) return false
         val tk = tokenize(text) ?: return false
-        return tk.first.any { it == "terakhir" || it == "terbaru" }
+        return tk.first.any { markerMatches(it, "terakhir") || markerMatches(it, "terbaru") }
     }
 
     fun intentOrAlias(text: String, aliasInput: String?): String? {
