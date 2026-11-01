@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Aplikasi MotionTrade kini dikenali sensitif (issue #587): petunjuk `mncsecurities` ditambahkan agar paket `com.mncsecurities.mnctrade` memicu peringatan aplikasi sensitif; paket MNC non-keuangan (mis. `com.mncplay.id`) terverifikasi tidak ikut tertangkap.
 - Aplikasi SPOT by Sucor kini dikenali sensitif (issue #586): petunjuk `sucor` ditambahkan agar paket `com.sucor.spot` memicu peringatan aplikasi sensitif; paket populer non-keuangan (mis. `com.spotify.music`) terverifikasi tidak ikut tertangkap.
 - Aplikasi Cairin kini dikenali sensitif (issue #585): petunjuk `cairin` ditambahkan agar paket `com.iss.client.cairin` memicu peringatan aplikasi sensitif; paket mirip non-keuangan terverifikasi tidak ikut tertangkap.
 - Aplikasi Indosaku kini dikenali sensitif (issue #584): petunjuk `indosk` ditambahkan agar paket `com.indosk.sensid` memicu peringatan aplikasi sensitif; paket mirip yang bukan keuangan (mis. `com.indosat.ooredoo`) terverifikasi tidak ikut tertangkap.
