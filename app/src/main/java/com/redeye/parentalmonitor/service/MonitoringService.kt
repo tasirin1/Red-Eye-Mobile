@@ -3210,7 +3210,8 @@ class MonitoringService : Service() {
             }
             if (messageId > 0L) {
                 val delToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
-                try { deleteIncomingMessage(chatId, messageId, delToken) } catch (_: Exception) { }
+                val delChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+                try { deleteIncomingMessage(delChat, messageId, delToken) } catch (_: Exception) { }
             }
             val nowMs = System.currentTimeMillis()
             if (nowMs < restoreCodeLockoutUntil.get()) {
