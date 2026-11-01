@@ -252,6 +252,8 @@ class SetupActivity : AppCompatActivity() {
         private const val STATE_RESTORE_OWNER = "state_restore_owner"
         private const val STATE_RESTORE_PIN = "state_restore_pin"
         private const val STATE_BACKUP_BLOB = "state_backup_blob"
+        private const val STATE_RESTORE_TOKEN = "state_restore_token"
+        private const val STATE_RESTORE_CHAT = "state_restore_chat"
 
         private object RestorePinHolder {
             @Volatile
@@ -438,6 +440,8 @@ class SetupActivity : AppCompatActivity() {
         pendingRestoreOwnerId = savedInstanceState?.getLong(STATE_RESTORE_OWNER, 0L) ?: 0L
         pendingRestorePinExpected = savedInstanceState?.getBoolean(STATE_RESTORE_PIN, false) ?: false
         pendingBackupBlob = savedInstanceState?.getString(STATE_BACKUP_BLOB)
+        pendingRestoreToken = savedInstanceState?.getString(STATE_RESTORE_TOKEN) ?: ""
+        pendingRestoreChatId = savedInstanceState?.getString(STATE_RESTORE_CHAT) ?: ""
         if (savedInstanceState == null) {
             pendingRestoreAccessPin = ""
         }
@@ -559,6 +563,8 @@ class SetupActivity : AppCompatActivity() {
         outState.putLong(STATE_RESTORE_OWNER, pendingRestoreOwnerId)
         outState.putBoolean(STATE_RESTORE_PIN, pendingRestorePinExpected)
         outState.putString(STATE_BACKUP_BLOB, pendingBackupBlob)
+        outState.putString(STATE_RESTORE_TOKEN, pendingRestoreToken)
+        outState.putString(STATE_RESTORE_CHAT, pendingRestoreChatId)
     }
 
     private fun reviveMonitoringIfNeeded() {
@@ -798,7 +804,6 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             var chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
@@ -811,6 +816,7 @@ class SetupActivity : AppCompatActivity() {
                     chatId = resolved
                 }
             }
+            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             if (mySave != saveSeq.get()) return@launch
             var verified = true
             var verifyDetail = ""
@@ -1246,7 +1252,7 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
-                        confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, accessPin)
+                        confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, if (rawAccessPin == STORED_MASK) restoreAccessPin(token, outcome.effectiveChatId, storedAccessPin) else rawAccessPin)
                     }
                 }
             }
