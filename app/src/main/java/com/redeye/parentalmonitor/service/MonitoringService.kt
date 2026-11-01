@@ -1772,17 +1772,15 @@ class MonitoringService : Service() {
                 val body = response.errorBody()?.string()?.lowercase(java.util.Locale.ROOT).orEmpty()
                 if (body.contains("offset")) {
                     offsetFailCount++
+                    var backoffMs = 30_000L
                     if (offsetFailCount >= 3) {
                         offsetFailCount = 0
-                        try {
-                            preferencesManager.setLastUpdateIdSync(0L)
-                        } catch (_: Exception) {
-                        }
-                        android.util.Log.w("MonitoringService", "getUpdates offset rejected 3x, resynced offset to 0")
+                        backoffMs = 300_000L
+                        android.util.Log.w("MonitoringService", "getUpdates offset rejected 3x, keeping confirmed offset and backing off")
                     } else {
                         android.util.Log.w("MonitoringService", "getUpdates offset rejected, backing off without offset reset")
                     }
-                    commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 30_000L
+                    commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + backoffMs
                 }
             } catch (_: Exception) {
             }
