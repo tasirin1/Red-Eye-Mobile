@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Jalur utama worker kini juga menggolongkan 4xx lain sebagai Rejected permanen (issue #588, sisa #582): perbaikan putaran lalu hanya menyentuh fallback teks polos dan pengirim per-potongan; `sendMessage` di `SendMessageWorker` (jalur yang dilalui tiap pesan antrean) masih mengembalikan Failed sementara untuk kode seperti 404, sehingga pesan ditahan dan diulang sampai budget percobaan habis. Cabang else-nya kini Rejected, selaras kedua saudaranya.
+
 ## [1.6.580] - 2026-11-01
 
 ### Fixed
