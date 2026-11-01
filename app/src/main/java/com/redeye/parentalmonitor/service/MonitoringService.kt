@@ -4970,11 +4970,12 @@ class MonitoringService : Service() {
             return migrated
         }
         if (stored - System.currentTimeMillis() > 1440 * 60_000L) {
+            val clamped = System.currentTimeMillis() + 480 * 60_000L
             try {
-                preferencesManager.setPhotoPause(0L, PHOTO_PAUSE_NONE)
+                preferencesManager.photoPausedUntil = clamped
             } catch (_: Exception) {
             }
-            return 0L
+            return clamped
         }
         return stored
     }
