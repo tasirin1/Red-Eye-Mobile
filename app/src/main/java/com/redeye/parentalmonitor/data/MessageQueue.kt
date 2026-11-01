@@ -86,6 +86,7 @@ class MessageQueue private constructor(context: Context) {
         private const val MAX_QUEUE_SIZE = 100
         private const val MAX_TRANSIENT_RETRIES = 20
         private const val MAX_DRAIN_RETRIES = 10
+        private const val GIVE_UP_RETRY_MS = 300_000L
         private val gson = Gson()
 
 
@@ -797,13 +798,16 @@ class MessageQueue private constructor(context: Context) {
                     drainFailCount++
                     if (drainFailCount > MAX_DRAIN_RETRIES) {
                         giveUp = true
+                        drainFailCount = 0
                     } else {
                         delayMs = (1000L shl (drainFailCount - 1)).coerceAtMost(60_000L)
                     }
                 }
                 if (giveUp) {
-                    persistQueued.set(false)
-                    android.util.Log.e("MessageQueue", "Persist drain giving up after $MAX_DRAIN_RETRIES retries; snapshot kept dirty for next mutation/flush")
+                    if (!jadwalUlangDrain(GIVE_UP_RETRY_MS)) {
+                        persistQueued.set(false)
+                    }
+                    android.util.Log.e("MessageQueue", "Persist drain retries exhausted; snapshot kept dirty, slow retry scheduled")
                 } else if (!jadwalUlangDrain(delayMs)) {
                     persistQueued.set(false)
                 }
