@@ -250,10 +250,14 @@ class NotificationForwarderService : NotificationListenerService() {
         private val dropWriteLock = Any()
 
         @Volatile
+        private var dropResetGeneration = 0L
+
+        @Volatile
         private var activeInstance: NotificationForwarderService? = null
 
         fun resetDropCounters(prefs: PreferencesManager) {
             synchronized(dropWriteLock) {
+                dropResetGeneration++
                 val inst = activeInstance
                 if (inst != null) {
                     synchronized(inst.dropNoticeLock) {
@@ -1184,11 +1188,12 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private fun persistDropCountFinal() {
+    private fun persistDropCountFinal(expectedGeneration: Long) {
         val prefs = prefsRef ?: return
         for (attempt in 1..3) {
             val written = try {
                 synchronized(dropWriteLock) {
+                    if (dropResetGeneration != expectedGeneration) return
                     val snap = synchronized(dropNoticeLock) { (dropNoticeCount.get() + dropNoticeInFlight) to dropNoticeFirstAt }
                     prefs.setPendingNotifDropsSync(snap.first, snap.second)
                 }
@@ -1221,6 +1226,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
             if (dropPersistJob?.isActive != true) {
+                val genAtSchedule = dropResetGeneration
                 dropPersistJob = scope.launch {
                     try {
                         var lastWritten = -1
@@ -1253,11 +1259,11 @@ class NotificationForwarderService : NotificationListenerService() {
                             }
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) {
-                        persistDropCountFinal()
+                        persistDropCountFinal(genAtSchedule)
                         synchronized(dropNoticeLock) { dropPersistJob = null }
                         throw e
                     } catch (_: Exception) {
-                        persistDropCountFinal()
+                        persistDropCountFinal(genAtSchedule)
                         synchronized(dropNoticeLock) { dropPersistJob = null }
                     }
                 }
