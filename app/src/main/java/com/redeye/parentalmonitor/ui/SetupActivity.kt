@@ -58,6 +58,8 @@ class SetupActivity : AppCompatActivity() {
     private val ioExceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
     private var pendingBackupBlob: String? = null
     private var pendingRestoreOwnerId = 0L
+    private var pendingRestoreToken = ""
+    private var pendingRestoreChatId = ""
     private var pendingRestorePinExpected = false
     private var pendingRestoreAccessPin: String
         get() = RestorePinHolder.value
@@ -130,6 +132,8 @@ class SetupActivity : AppCompatActivity() {
                                 syncIntervalInput.setText(data.syncInterval.toString())
                                 cameraIntervalInput.setText(data.cameraInterval.toString())
                                 pendingRestoreOwnerId = data.ownerId
+                                pendingRestoreToken = data.token
+                                pendingRestoreChatId = data.chatId
                                 pendingRestoreAccessPin = data.accessPin
                                 pendingRestorePinExpected = data.accessPin.isNotEmpty()
                                 if (data.accessPin.isNotEmpty()) accessPinInput.setText(STORED_MASK)
@@ -616,6 +620,8 @@ class SetupActivity : AppCompatActivity() {
             syncIntervalInput.setText(com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL.toString())
             cameraIntervalInput.setText("1")
             pendingRestoreOwnerId = 0L
+            pendingRestoreToken = ""
+            pendingRestoreChatId = ""
             pendingRestoreAccessPin = ""
             pendingRestorePinExpected = false
         } catch (_: Exception) {
@@ -775,7 +781,7 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             var chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = if (rawAccessPin == STORED_MASK) pendingRestoreAccessPin.ifEmpty { storedAccessPin } else rawAccessPin
+            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             if (chatId.startsWith("@")) {
                 val resolved = resolveChatId(token, chatId)
                 if (resolved.isEmpty()) {
@@ -814,7 +820,7 @@ class SetupActivity : AppCompatActivity() {
                     val offSaved: Boolean? = configMutex.withLock {
                         if (mySave != saveSeq.get()) return@withLock null
                         try {
-                            prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin)
+                            prefs.saveCredentials(token, chatId, interval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin)
                         } catch (_: Exception) {
                             false
                         }
@@ -841,7 +847,7 @@ class SetupActivity : AppCompatActivity() {
             val persistOutcome: Boolean? = configMutex.withLock {
                 if (mySave != saveSeq.get()) return@withLock null
                 try {
-                    prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin)
+                    prefs.saveCredentials(token, chatId, interval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin)
                 } catch (_: Exception) {
                     false
                 }
@@ -887,8 +893,22 @@ class SetupActivity : AppCompatActivity() {
 
     private fun clearPendingRestore() {
         pendingRestoreOwnerId = 0L
+        pendingRestoreToken = ""
+        pendingRestoreChatId = ""
         pendingRestoreAccessPin = ""
         pendingRestorePinExpected = false
+    }
+
+    private fun restoreBindingIntact(token: String, chatId: String): Boolean {
+        return pendingRestoreToken.isNotEmpty() && token == pendingRestoreToken && chatId == pendingRestoreChatId
+    }
+
+    private fun restoreOwnerOverride(token: String, chatId: String): Long? {
+        return if (pendingRestoreOwnerId > 0L && restoreBindingIntact(token, chatId)) pendingRestoreOwnerId else null
+    }
+
+    private fun restoreAccessPin(token: String, chatId: String, storedAccessPin: String): String {
+        return (if (restoreBindingIntact(token, chatId)) pendingRestoreAccessPin else "").ifEmpty { storedAccessPin }
     }
 
     private fun showHealthDialog() {
@@ -1188,7 +1208,7 @@ class SetupActivity : AppCompatActivity() {
             val token = input.token
             val chatId = input.chatId
             val storedAccessPin = try { prefs.accessPin } catch (_: Exception) { "" }
-            val accessPin = if (rawAccessPin == STORED_MASK) pendingRestoreAccessPin.ifEmpty { storedAccessPin } else rawAccessPin
+            val accessPin = if (rawAccessPin == STORED_MASK) restoreAccessPin(token, chatId, storedAccessPin) else rawAccessPin
             when (val outcome = verifyCredentials(token, chatId) { myTest != testSeq.get() }) {
                 is VerifyOutcome.Stale -> return@launch
                 is VerifyOutcome.HttpError -> {
@@ -1267,7 +1287,7 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin) } catch (_: Exception) { false }
+            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin) } catch (_: Exception) { false }
             if (saved) {
                 clearPendingRestore()
             }
