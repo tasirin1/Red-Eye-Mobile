@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pasangan kredensial + PIN akses kini ditulis atomik dalam satu commit (issue #564): sebelumnya `saveCredentials` ter-commit atomik (keputusan #446) tetapi PIN akses ditulis terpisah via `apply()` asinkron di luar `credentialLock`, menyisakan jendela kredensial baru + PIN lama bila proses mati atau dua simpan berjalan bersamaan. `saveCredentials` kini menerima PIN opsional dan menulisnya di editor/commit yang sama; keempat situs pasangan (restore Telegram + 3 jalur Simpan/tes Setup) memakainya. PIN kosong pada restore tetap berarti "pertahankan PIN perangkat" seperti sebelumnya.
 - Pesan penutup sinkron awal tak lagi hilang permanen bila jeda dimulai tepat di ekor (issue #563, sisa #548): perbaikan #548 menahan pesan "Sinkron riwayat selesai" saat jeda tetapi tetap menandai sinkron selesai, sehingga pesan tak pernah terkirim sesudah jeda dibuka. Kini cabang sukses yang terjedakan menunda finalisasi (cap coba-lagi 60 detik, tanpa menandai selesai) — sinkron berjalan lagi sesudah jeda berakhir, tidak mengirim ulang riwayat (kursor sudah di ujung), dan menutup dengan pesan selesai seperti biasa.
 
 ## [1.6.579] - 2026-11-01

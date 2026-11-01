@@ -814,13 +814,12 @@ class SetupActivity : AppCompatActivity() {
                     val offSaved: Boolean? = configMutex.withLock {
                         if (mySave != saveSeq.get()) return@withLock null
                         try {
-                            prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null)
+                            prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin)
                         } catch (_: Exception) {
                             false
                         }
                     }
                     if (offSaved == true) {
-                        try { prefs.accessPin = accessPin } catch (_: Exception) { }
                         loadedConfigured = true
                         loadedSyncInterval = interval
                         loadedCameraInterval = cameraInterval
@@ -842,7 +841,7 @@ class SetupActivity : AppCompatActivity() {
             val persistOutcome: Boolean? = configMutex.withLock {
                 if (mySave != saveSeq.get()) return@withLock null
                 try {
-                    prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null)
+                    prefs.saveCredentials(token, chatId, interval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin)
                 } catch (_: Exception) {
                     false
                 }
@@ -850,7 +849,6 @@ class SetupActivity : AppCompatActivity() {
             if (persistOutcome == null) return@launch
             val persisted = persistOutcome
             if (persisted) {
-                try { prefs.accessPin = accessPin } catch (_: Exception) { }
                 loadedConfigured = true
                 loadedSyncInterval = interval
                 loadedCameraInterval = cameraInterval
@@ -1269,9 +1267,8 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun persistTestSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String): Boolean {
         val outcome: Boolean? = configMutex.withLock {
             if (myTest != testSeq.get()) return@withLock null
-            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null) } catch (_: Exception) { false }
+            val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, if (pendingRestoreOwnerId > 0L) pendingRestoreOwnerId else null, accessPin) } catch (_: Exception) { false }
             if (saved) {
-                try { prefs.accessPin = accessPin } catch (_: Exception) { }
                 clearPendingRestore()
             }
             saved

@@ -3484,7 +3484,7 @@ class MonitoringService : Service() {
         }
         val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
         val saved = try {
-            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval, targetOwner)
+            preferencesManager.saveCredentials(newToken, newChat, data.syncInterval, data.cameraInterval, targetOwner, data.accessPin.ifEmpty { null })
         } catch (_: Exception) {
             false
         }
@@ -3492,9 +3492,6 @@ class MonitoringService : Service() {
             audit("restore simpan gagal", "private")
             sendToTelegram("⚠️ Gagal menyimpan setelan baru. Setelan lama tetap dipakai.")
             return
-        }
-        if (data.accessPin.isNotEmpty()) {
-            try { preferencesManager.accessPin = data.accessPin } catch (_: Exception) { }
         }
         audit("restore diterapkan", "private")
         refreshCreds()
