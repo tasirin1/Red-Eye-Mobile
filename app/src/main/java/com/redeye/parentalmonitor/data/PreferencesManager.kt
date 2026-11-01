@@ -177,11 +177,19 @@ class PreferencesManager(context: Context) {
             sharedPreferences = fresh
             if (!adopt) {
                 var guard = 0
-                while (guard < 5) {
+                var stablePasses = 0
+                while (guard < 10 && stablePasses < 2) {
                     guard++
                     val memNow: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    if (memNow == freshNow) break
+                    if (memNow == freshNow) {
+                        stablePasses++
+                        if (stablePasses < 2) {
+                            try { Thread.sleep(50L) } catch (_: InterruptedException) { }
+                        }
+                        continue
+                    }
+                    stablePasses = 0
                     if (!mergeLateWritesInto(fresh, memNow, baseMem, baseFresh)) break
                 }
             }
