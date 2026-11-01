@@ -235,6 +235,16 @@ class IntentParserTest {
         assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0,5 terakhir dari siapa", "/sms 0,5 terakhir dari siapa"))
         assertEquals("/sms 0812, halo apa kabar", IntentParser.intentOrAlias("sms 0812, halo apa kabar", "/sms 0812, halo apa kabar"))
         assertEquals("/sms 08123456789 terakhir dari siapa", IntentParser.intentOrAlias("sms 08123456789 terakhir dari siapa", "/sms 08123456789 terakhir dari siapa"))
+        // #596: pertanyaan riwayat berkosa kata tanya lain (tadi/siapa) juga pertanyaan,
+        // bukan formulir kirim, walau nomornya lengkap terpisah-pisah spasi.
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812 3456 7890 tadi isinya apa", "/sms 0812 3456 7890 tadi isinya apa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, tadi dari siapa", "/sms 0812, tadi dari siapa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812 barusan masuk dari siapa", "/sms 0812 barusan masuk dari siapa"))
+        // Kontrol: isi kirim yang menyebut "tadi" tanpa kata tanya tetap formulir.
+        assertEquals(
+            "/sms 0812 3456 7890 tadi malam berangkat",
+            IntentParser.intentOrAlias("sms 0812 3456 7890 tadi malam berangkat", "/sms 0812 3456 7890 tadi malam berangkat")
+        )
     }
 
     @Test

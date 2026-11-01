@@ -405,10 +405,14 @@ object IntentParser {
         val head = arg.split(WHITESPACE).firstOrNull().orEmpty()
         if (head.count { it.isDigit() } >= 7) return false
         val smsParsed = SmsCommandParser.parse(arg)
-        if (smsParsed != null && smsParsed.normalized.count { it.isDigit() } >= 10) return false
-        if (smsParsed != null && smsParsed.number.contains(" ") && smsParsed.normalized.count { it.isDigit() } >= 7) return false
         val tk = tokenize(text) ?: return false
-        return tk.first.any { markerMatches(it, "terakhir") || markerMatches(it, "terbaru") }
+        if (smsParsed != null && smsParsed.normalized.count { it.isDigit() } >= 10) {
+            val hasTadi = tk.first.any { markerMatches(it, "tadi") }
+            val hasQuestion = tk.first.any { markerMatches(it, "apa") || markerMatches(it, "siapa") || markerMatches(it, "isinya") }
+            return hasTadi && hasQuestion
+        }
+        if (smsParsed != null && smsParsed.number.contains(" ") && smsParsed.normalized.count { it.isDigit() } >= 7) return false
+        return tk.first.any { markerMatches(it, "terakhir") || markerMatches(it, "terbaru") || markerMatches(it, "tadi") || markerMatches(it, "siapa") }
     }
 
     fun intentOrAlias(text: String, aliasInput: String?): String? {
