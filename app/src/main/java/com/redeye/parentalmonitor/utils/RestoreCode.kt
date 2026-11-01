@@ -41,7 +41,10 @@ object RestoreCode {
     fun isValid(secretHex: String, code: String, now: Long): Boolean {
         val value = code.trim()
         if (value.length != 6 || value.any { it !in '0'..'9' }) return false
-        return value == current(secretHex, now) || value == current(secretHex, now - WINDOW_MS)
+        val given = value.toByteArray(Charsets.UTF_8)
+        val matchCurrent = java.security.MessageDigest.isEqual(given, current(secretHex, now).toByteArray(Charsets.UTF_8))
+        val matchPrevious = java.security.MessageDigest.isEqual(given, current(secretHex, now - WINDOW_MS).toByteArray(Charsets.UTF_8))
+        return matchCurrent || matchPrevious
     }
 
     fun windowEnd(now: Long): Long = (now / WINDOW_MS + 1L) * WINDOW_MS

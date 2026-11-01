@@ -365,6 +365,8 @@ class MonitoringService : Service() {
         private const val PAIR_NOTICE_COOLDOWN_MS = 600_000L
         private const val LOGIN_MAX_FAILS = 5
         private const val LOGIN_LOCK_MS = 15 * 60_000L
+        private const val RESTORE_CODE_MAX_FAILS = 5
+        private const val RESTORE_CODE_LOCK_MS = 15 * 60_000L
         private const val LOGIN_GLOBAL_MAX_FAILS = 50
         private const val LOGIN_GLOBAL_LOCK_MS = 10 * 60_000L
         private const val LOGIN_ATTEMPT_THROTTLE_MS = 1_500L
@@ -1235,6 +1237,8 @@ class MonitoringService : Service() {
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
+    private val restoreCodeFailCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private val restoreCodeLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -2062,7 +2066,7 @@ class MonitoringService : Service() {
                                         if (!balasAngka && command.startsWith("/")) {
                                             if (!slashVetoed) {
                                                 val input = aliasInput ?: if (arg.isEmpty()) command else "$command $arg"
-                                                handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec)
+                                                handleTelegramCommand(input, messageDate, ownerNow, chatOk, senderId = senderId, privateChat = isPrivate, adoptionDoneSec = adoptionDoneSec, messageId = message?.messageId ?: 0L)
                                             }
                                         } else if (!balasAngka) {
                                             if (aliasInput != null && privateNow) {
@@ -2829,7 +2833,7 @@ class MonitoringService : Service() {
         return true
     }
 
-    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L) {
+    private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L, messageId: Long = 0L) {
         val nowSec = serverNowSec()
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
@@ -2847,7 +2851,7 @@ class MonitoringService : Service() {
         val command = parts[0]
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         try {
-            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec)
+            handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec, messageId = messageId)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -2861,7 +2865,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L) {
+    private suspend fun handleTelegramCommandInner(command: String, arg: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L, messageId: Long = 0L) {
         if (command in MUTATING_COMMANDS || command in SENSITIVE_COMMANDS) {
             val ageSec = when {
                 adoptionDoneSec > 0L -> serverNowSec() - adoptionDoneSec
@@ -3011,7 +3015,7 @@ class MonitoringService : Service() {
             "/audit" -> handleAuditCommand(privateChat)
             "/logout" -> handleLogoutCommand(privateChat)
             "/bersihkan" -> handleCleanMediaCommand(arg)
-            "/pulihkan" -> handleRestoreCommand(arg, privateChat)
+            "/pulihkan" -> handleRestoreCommand(arg, privateChat, messageId)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
@@ -3179,7 +3183,7 @@ class MonitoringService : Service() {
         sendToTelegram("🧹 Bersihkan media: $count berkas dihapus (±$mb MB), lebih lama dari $days hari.")
     }
 
-    private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean) {
+    private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean, messageId: Long = 0L) {
         if (!privateChat) {
             sendToTelegram("🔐 /pulihkan hanya bisa dipakai dari private chat owner.")
             return
@@ -3208,11 +3212,26 @@ class MonitoringService : Service() {
                 )
                 return
             }
-            if (secret.isEmpty() || !RestoreCode.isValid(secret, mode, System.currentTimeMillis())) {
+            if (messageId > 0L) {
+                val delToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
+                try { deleteIncomingMessage(chatId, messageId, delToken) } catch (_: Exception) { }
+            }
+            val nowMs = System.currentTimeMillis()
+            if (nowMs < restoreCodeLockoutUntil.get()) {
+                sendToTelegram("⏳ Kode restore dikunci sementara karena terlalu banyak kode salah. Coba lagi nanti.")
+                return
+            }
+            if (secret.isEmpty() || !RestoreCode.isValid(secret, mode, nowMs)) {
+                val fails = restoreCodeFailCount.incrementAndGet()
+                if (fails >= RESTORE_CODE_MAX_FAILS) {
+                    restoreCodeFailCount.set(0)
+                    restoreCodeLockoutUntil.set(nowMs + RESTORE_CODE_LOCK_MS)
+                }
                 audit("restore kode salah", "private")
                 sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /pulihkan &lt;kode&gt;.")
                 return
             }
+            restoreCodeFailCount.set(0)
         } else if (mode.isNotEmpty()) {
             sendToTelegram("Cara pakai: /pulihkan lalu kirim file <code>.redeyebak</code>, atau /pulihkan batal.")
             return
