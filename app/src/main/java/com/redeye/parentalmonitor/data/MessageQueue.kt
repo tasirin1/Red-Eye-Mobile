@@ -301,12 +301,7 @@ class MessageQueue private constructor(context: Context) {
         if (volatileOnly) return
         try {
             val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.putLong(KEY_EXHAUSTED_DROPS, exhaustedDrops.get())?.putLong(KEY_REJECTED_DROPS, rejectedDrops.get())
-            val saved = if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
-                editor?.apply()
-                editor != null
-            } else {
-                editor?.commit() == true
-            }
+            val saved = editor?.commit() == true
             if (saved) {
                 persistedOverflowDrops = overflowDrops.get()
                 persistedExpiredDrops = expiredDrops.get()
