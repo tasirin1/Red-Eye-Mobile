@@ -58,6 +58,20 @@ class CommandSuggestTest {
     }
 
     @Test
+    fun suggestCommandSubsequenceDoesNotCrossToMutating() {
+        // #552: typo hapus-huruf dari perintah baca-saja tak boleh menyarankan mutating.
+        assertEquals("/ringkas", CommandSuggest.suggestCommand("/rings"))
+        assertEquals("/ringkas", CommandSuggest.suggestCommand("/ringa"))
+        assertEquals("/perms", CommandSuggest.suggestCommand("/rms"))
+        assertEquals("/perms", CommandSuggest.suggestCommand("/ems"))
+        assertEquals("/perms", CommandSuggest.suggestCommand("/pms"))
+        // Saran mutating yang sah tetap utuh.
+        assertEquals("/log", CommandSuggest.suggestCommand("/lok"))
+        assertEquals("/stop", CommandSuggest.suggestCommand("/sto"))
+        assertEquals("/sms", CommandSuggest.suggestCommand("/smsx"))
+    }
+
+    @Test
     fun suggestCommandTranspositionDoesNotOverrideDisplacingTie() {
         assertEquals("/ping", CommandSuggest.suggestCommand("/irng"))
         assertEquals("/apps", CommandSuggest.suggestCommand("/apuse"))
