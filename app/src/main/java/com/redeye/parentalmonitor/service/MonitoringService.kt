@@ -3842,8 +3842,8 @@ class MonitoringService : Service() {
             } else {
                 val knownH = try { (calls.map { it.number } + sms.map { it.address }).distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 val freqH = try { freqForNumbers(calls.map { it.number } + sms.map { it.address }) } catch (_: Exception) { null }
-                if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH))
-                if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH))
+                if (calls.isNotEmpty()) sendToTelegram(formatCallMessage(calls, knownH, live = false))
+                if (sms.isNotEmpty()) sendToTelegram(formatSmsMessage(sms, freqH, knownH, live = false))
                 if (callsResult.items.size > 5 || smsResult.items.size > 5) {
                     val callsLabel = callsResult.items.size.toString() + if (callsResult.truncated) "+" else ""
                     val smsLabel = smsResult.items.size.toString() + if (smsResult.truncated) "+" else ""
@@ -4881,7 +4881,7 @@ class MonitoringService : Service() {
             sendToTelegram("📞 Tak ada riwayat panggilan.")
         } else {
             val knownCalls = try { calls.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
-            sendToTelegram(formatCallMessage(calls, knownCalls))
+            sendToTelegram(formatCallMessage(calls, knownCalls, live = false))
         }
     }
 
@@ -4899,7 +4899,7 @@ class MonitoringService : Service() {
         } else {
             val knownSms = try { sms.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
             val freqSms = try { freqForNumbers(sms.map { it.address }) } catch (_: Exception) { null }
-            sendToTelegram(formatSmsMessage(sms, freqSms, knownSms))
+            sendToTelegram(formatSmsMessage(sms, freqSms, knownSms, live = false))
         }
     }
 
@@ -5792,12 +5792,12 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: FreqResult? = null, knownMap: Map<String, Boolean>? = null): String {
+    private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: FreqResult? = null, knownMap: Map<String, Boolean>? = null, live: Boolean = true): String {
         val watchNums = watchNumbers()
         val todayCounts = HashMap<String, Int>()
         var freqFallback: FreqResult? = null
         return buildString {
-            appendLine("💬 <b>SMS baru (${smsList.size})</b>")
+            appendLine(if (live) "💬 <b>SMS baru (${smsList.size})</b>" else "💬 <b>SMS terakhir (${smsList.size})</b>")
             appendLine()
 
             smsList.forEach { sms ->
@@ -5828,10 +5828,10 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>, knownMap: Map<String, Boolean>? = null): String {
+    private fun formatCallMessage(callList: List<com.redeye.parentalmonitor.data.models.CallData>, knownMap: Map<String, Boolean>? = null, live: Boolean = true): String {
         val watchNums = watchNumbers()
         return buildString {
-            appendLine("📞 <b>Panggilan baru (${callList.size})</b>")
+            appendLine(if (live) "📞 <b>Panggilan baru (${callList.size})</b>" else "📞 <b>Panggilan terakhir (${callList.size})</b>")
             appendLine()
 
             callList.forEach { call ->
