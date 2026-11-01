@@ -137,7 +137,6 @@ class NotificationForwarderService : NotificationListenerService() {
     private var dropNoticeJob: Job? = null
     private var dropPersistJob: Job? = null
     private val dropNoticeLock = Any()
-    private val dropWriteLock = Any()
     private var dropNoticeInFlight = 0
     private var dropNoticeFirstAt = 0L
     private val dropNoticeBatchReconciled = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -247,10 +246,29 @@ class NotificationForwarderService : NotificationListenerService() {
                 history.clear()
             }
         }
+
+        private val dropWriteLock = Any()
+
+        @Volatile
+        private var activeInstance: NotificationForwarderService? = null
+
+        fun resetDropCounters(prefs: PreferencesManager) {
+            synchronized(dropWriteLock) {
+                val inst = activeInstance
+                if (inst != null) {
+                    synchronized(inst.dropNoticeLock) {
+                        inst.dropNoticeCount.set(0)
+                        inst.dropNoticeFirstAt = 0L
+                    }
+                }
+                try { prefs.setPendingNotifDropsSync(0, 0L) } catch (_: Exception) { }
+            }
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        activeInstance = this
         // Initialize synchronously to avoid race with onNotificationPosted
         try {
             adoptPrefs(PreferencesManager.getInstance(this@NotificationForwarderService))
@@ -914,6 +932,7 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        if (activeInstance === this) activeInstance = null
         try {
             synchronized(dropWriteLock) {
                 val pending = synchronized(dropNoticeLock) {
