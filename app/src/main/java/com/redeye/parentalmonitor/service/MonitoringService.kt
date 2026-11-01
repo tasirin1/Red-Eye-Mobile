@@ -2072,9 +2072,9 @@ class MonitoringService : Service() {
                                             }
                                         } else if (!balasAngka) {
                                             if (aliasInput != null && privateNow) {
-                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec)
+                                                handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
                                             } else if (intentInput != null && privateNow) {
-                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec)
+                                                handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
                                             }
                                         }
                                     }
@@ -3011,7 +3011,7 @@ class MonitoringService : Service() {
             "/audit" -> handleAuditCommand(privateChat)
             "/logout" -> handleLogoutCommand(privateChat)
             "/bersihkan" -> handleCleanMediaCommand(arg)
-            "/pulihkan" -> handleRestoreCommand(arg, privateChat, messageId)
+            "/pulihkan" -> handleRestoreCommand(arg, privateChat, messageId, senderId)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
@@ -3179,7 +3179,7 @@ class MonitoringService : Service() {
         sendToTelegram("🧹 Bersihkan media: $count berkas dihapus (±$mb MB), lebih lama dari $days hari.")
     }
 
-    private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean, messageId: Long = 0L) {
+    private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean, messageId: Long = 0L, originChatId: String = "") {
         if (!privateChat) {
             sendToTelegram("🔐 /pulihkan hanya bisa dipakai dari private chat owner.")
             return
@@ -3210,7 +3210,7 @@ class MonitoringService : Service() {
             }
             if (messageId > 0L) {
                 val delToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
-                val delChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
+                val delChat = originChatId.ifEmpty { try { preferencesManager.chatId } catch (_: Exception) { "" } }
                 try { deleteIncomingMessage(delChat, messageId, delToken) } catch (_: Exception) { }
             }
             val nowMs = System.currentTimeMillis()
