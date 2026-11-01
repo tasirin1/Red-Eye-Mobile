@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.579] - 2026-11-01
+
 ### Fixed
 - Atome ID (`id.co.shopintar`, paylater berizin OJK) kini dikenali sebagai aplikasi sensitif (issue #562): petunjuk `shopintar` ditambahkan — nama merek "atome" sama sekali tidak muncul di nama paketnya, jadi petunjuk berbasis segmen paket. Terverifikasi uji `contains` dua arah atas daftar petunjuk penuh.
 - Makmur (`id.makmur`, investasi berizin OJK) kini dikenali sebagai aplikasi sensitif (issue #561): petunjuk `id.makmur` ditambahkan (bentuk telanjang `makmur` ditolak — terbukti menangkap contoh terkonstruksi `com.makmurjaya.food`). Terverifikasi uji `contains` dua arah atas daftar petunjuk penuh.
