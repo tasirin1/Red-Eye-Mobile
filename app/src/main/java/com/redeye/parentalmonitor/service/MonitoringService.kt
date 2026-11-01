@@ -7254,6 +7254,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkQuietHealth() {
         try {
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             val now = System.currentTimeMillis()
             val lastAlert = try { preferencesManager.healthAlertAt } catch (_: Exception) { 0L }
             if (lastAlert <= now && now - lastAlert < 12 * 60 * 60_000L) return
