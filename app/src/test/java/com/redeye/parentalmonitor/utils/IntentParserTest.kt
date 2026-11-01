@@ -120,6 +120,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsPrefixFalseFriends() {
+        // #619: kata umum yang kebetulan berawalan kata kunci bukan intent.
+        assertNull(IntentParser.parse("dayak berapa orang"))
+        assertNull(IntentParser.parse("kabari anak sekarang"))
+        assertEquals("/status", IntentParser.parse("kabar anak sekarang"))
+        assertEquals("/battery", IntentParser.parse("daya baterai berapa persen"))
+    }
+
+    @Test
     fun parseToleratesAttachedDigitUnitTokens() {
         // #617: angka+satuan yang menempel dikenali seperti bentuk berspasi.
         assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6jam dong", null))

@@ -265,8 +265,11 @@ object IntentParser {
         return NEGATIONS.any { base -> negationForm(collapsed, base) }
     }
 
+    private val TOKEN_PREFIX_FALSE_FRIENDS = setOf("dayak", "kabari")
+
     private fun tokenMatches(token: String, keyword: String): Boolean {
         if (token == keyword) return true
+        if (token in TOKEN_PREFIX_FALSE_FRIENDS) return false
         if (token == keyword + "nya") return true
         return keyword.length >= 4 && token.length - keyword.length in 1..3 && token.startsWith(keyword)
     }
