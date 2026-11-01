@@ -213,6 +213,8 @@ class MonitoringService : Service() {
     private var shotHeight = 0
     @Volatile
     private var shotNoFrameFailAt = 0L
+    @Volatile
+    private var lastShotStaleFrame = false
 
     private enum class MediaSendOutcome {
         SENT, KEPT, DROPPED
@@ -8557,7 +8559,13 @@ class MonitoringService : Service() {
                 markMediaActive(shotFile)
                 try {
                     when (sendPhotoFile(shotFile)) {
-                        MediaSendOutcome.SENT -> flushPendingPhotos()
+                        MediaSendOutcome.SENT -> {
+                            if (lastShotStaleFrame) {
+                                lastShotStaleFrame = false
+                                sendToTelegram("ℹ️ Yang terkirim adalah bingkai terakhir yang tertangkap (layar tak menghasilkan bingkai baru) — tampilannya mungkin bukan yang paling kini.")
+                            }
+                            flushPendingPhotos()
+                        }
                         MediaSendOutcome.DROPPED -> {
                             prunePhotoCache()
                             sendToTelegram("⚠️ Tangkap layar ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
@@ -8812,6 +8820,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun takeScreenshotFrame(): File? {
+        lastShotStaleFrame = false
         takeScreenshotFrameViaAccessibility()?.let { return it }
         if (!hasScreenshotConsent()) {
             releaseShotSession()
@@ -8849,8 +8858,10 @@ class MonitoringService : Service() {
                 if (stale != null && stale !== fresh) {
                     try { stale.close() } catch (_: Exception) { }
                 }
+                lastShotStaleFrame = false
                 img = fresh
             } else if (stale != null) {
+                lastShotStaleFrame = true
                 img = stale
             } else {
                 shotNoFrameFailAt = android.os.SystemClock.elapsedRealtime()
