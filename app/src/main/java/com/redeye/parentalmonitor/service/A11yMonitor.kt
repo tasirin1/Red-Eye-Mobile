@@ -553,13 +553,17 @@ object A11yMonitor {
     }
 
     private fun notePersistFailure() {
-        persistFailStreak += 1
-        lastPersistFailElapsed = SystemClock.elapsedRealtime()
+        synchronized(gate) {
+            persistFailStreak += 1
+            lastPersistFailElapsed = SystemClock.elapsedRealtime()
+        }
     }
 
     private fun notePersistSuccess(atElapsed: Long) {
-        lastPersistElapsed = atElapsed
-        persistFailStreak = 0
+        synchronized(gate) {
+            lastPersistElapsed = atElapsed
+            persistFailStreak = 0
+        }
     }
 
     private fun blockTamper(context: Context, reason: String) {
