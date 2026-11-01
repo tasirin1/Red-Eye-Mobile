@@ -26,10 +26,14 @@ class DailyFactsTest {
     }
 
     @Test
-    fun upsertDropsFutureDays() {
+    fun upsertKeepsFutureDaysInStorage() {
+        // #550: upsert tidak lagi membuang hari sesudah hari yang ditulis — hari
+        // tersimpan tak bisa dibedakan antara sisa loncatan jam vs hari sah saat
+        // jam dimundurkan, dan pengecualian hari masa depan dari hitungan pola
+        // adalah tugas saringan pembaca (day < hari ini, #536), bukan upsert.
         val stored = listOf(day("20261026", s = 100), day("20261031", s = 999))
         val out = DailyFacts.upsert(stored, day("20261027", s = 50))
-        assertEquals(listOf("20261026", "20261027"), out.map { it.day })
+        assertEquals(listOf("20261026", "20261027", "20261031"), out.map { it.day })
     }
 
     @Test
@@ -37,7 +41,7 @@ class DailyFactsTest {
         val base = (10..23).map { day("202610" + it.toString().padStart(2, '0'), s = 100) }
         val replaced = DailyFacts.upsert(base, day("20261015", s = 999))
         assertEquals(999, replaced.first { it.day == "20261015" }.screenMin)
-        assertEquals(6, replaced.size)
+        assertEquals(14, replaced.size)
         val extended = DailyFacts.upsert(base, day("20261024", s = 1))
         assertEquals(14, extended.size)
         assertEquals("20261011", extended.first().day)
