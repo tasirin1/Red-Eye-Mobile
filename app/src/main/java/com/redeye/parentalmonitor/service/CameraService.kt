@@ -316,15 +316,20 @@ class CameraService(private val context: Context) {
                 try { ownedSurface.release() } catch (_: Exception) { }
                 try { dummyTexture.release() } catch (_: Exception) { }
             }
+            var superseded = false
             synchronized(captureLock) {
                 if (sessionSeq.get() != mySeq) {
                     releaseOwned()
-                    finishWithError(Exception("Sesi kamera digantikan"))
-                    return
+                    superseded = true
+                } else {
+                    meteringTexture = dummyTexture
+                    meteringSurface = ownedSurface
+                    imageReader = ownedReader
                 }
-                meteringTexture = dummyTexture
-                meteringSurface = ownedSurface
-                imageReader = ownedReader
+            }
+            if (superseded) {
+                finishWithError(Exception("Sesi kamera digantikan"))
+                return
             }
             ownedReader.setOnImageAvailableListener({ reader ->
                 try {
@@ -385,14 +390,19 @@ class CameraService(private val context: Context) {
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
+                        var superseded = false
                         synchronized(captureLock) {
                             if (done.get() || sessionSeq.get() != mySeq) {
                                 try { camera.close() } catch (_: Exception) { }
                                 releaseOwned()
-                                finishWithError(Exception("Sesi kamera digantikan"))
-                                return
+                                superseded = true
+                            } else {
+                                cameraDevice = camera
                             }
-                            cameraDevice = camera
+                        }
+                        if (superseded) {
+                            finishWithError(Exception("Sesi kamera digantikan"))
+                            return
                         }
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Camera opened successfully")
                         onTrace("trace: camera opened")
@@ -615,6 +625,7 @@ class CameraService(private val context: Context) {
             rec.setOutputFile(tmpFile.absolutePath)
             rec.prepare()
             videoSurface = rec.surface
+            var superseded = false
             synchronized(captureLock) {
                 if (sessionSeq.get() != mySeq) {
                     try { rec.release() } catch (_: Exception) {
@@ -624,21 +635,29 @@ class CameraService(private val context: Context) {
                     if (activeRecorder === rec) activeRecorder = null
                     if (activeVideoFile === tmpFile) activeVideoFile = null
                     if (pendingOut === tmpFile) pendingOut = null
-                    finishWithError(Exception("Sesi kamera digantikan"))
-                    return
+                    superseded = true
                 }
+            }
+            if (superseded) {
+                finishWithError(Exception("Sesi kamera digantikan"))
+                return
             }
             val recordSurface = videoSurface ?: run { finishWithError(Exception("Permukaan rekaman tak tersedia")); return }
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     try {
+                        var superseded = false
                         synchronized(captureLock) {
                             if (done.get() || sessionSeq.get() != mySeq) {
                                 try { camera.close() } catch (_: Exception) { }
-                                finishWithError(Exception("Sesi kamera digantikan"))
-                                return
+                                superseded = true
+                            } else {
+                                cameraDevice = camera
                             }
-                            cameraDevice = camera
+                        }
+                        if (superseded) {
+                            finishWithError(Exception("Sesi kamera digantikan"))
+                            return
                         }
                         val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
                         builder.addTarget(recordSurface)
@@ -647,13 +666,18 @@ class CameraService(private val context: Context) {
                             listOf(recordSurface),
                             object : CameraCaptureSession.StateCallback() {
                                 override fun onConfigured(session: CameraCaptureSession) {
+                                    var superseded = false
                                     synchronized(captureLock) {
                                         if (sessionSeq.get() != mySeq) {
                                             try { session.close() } catch (_: Exception) { }
-                                            finishWithError(Exception("Sesi kamera digantikan"))
-                                            return
+                                            superseded = true
+                                        } else {
+                                            captureSession = session
                                         }
-                                        captureSession = session
+                                    }
+                                    if (superseded) {
+                                        finishWithError(Exception("Sesi kamera digantikan"))
+                                        return
                                     }
                                     try {
                                         session.setRepeatingRequest(builder.build(), null, flowHandler)
