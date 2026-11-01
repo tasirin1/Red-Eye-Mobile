@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Alert Aksesibilitas mati kini digerbang jeda (issue #556): `checkAccessibilityHealth` sebelumnya mengirim alert proteksi tamper tanpa membaca `monitoringPaused`. Kini berhenti saat jeda sebelum cap alert disentuh, sehingga alert tetap dapat terkirim sesudah jeda berakhir bila Aksesibilitas masih mati.
 - `checkQuietHealth` kini digerbang jeda secara utuh (issue #555): sebelumnya hanya catatan "sepi >48 jam" yang digerbang `monitoringPaused`, sedangkan catatan lokasi gagal ≥5× dan antrean ≥50 beserta pengiriman akhirnya tidak — alert health tetap bisa terkirim selama jeda. Kini seluruh fungsi berhenti saat jeda sebelum keadaan apa pun dikonsumsi (penghitung gagal lokasi tidak direset, cap alert tidak dimajukan).
 - Heartbeat berkala kini digerbang jeda (issue #554): `maybeSendHeartbeat` sebelumnya hanya memeriksa interval dan `awaitingOwnerLogin`, sehingga laporan hidup lengkap tetap keluar selama jeda. Kini berhenti saat `monitoringPaused` tanpa memajukan cap `heartbeatAt`, sehingga heartbeat berikutnya tetap terjadwal wajar sesudah jeda berakhir.
 - Alert baterai lemah & kabar pemulihan baterai kini digerbang jeda (issue #553): `checkBatteryAlert` dan `syncLowPowerNotice` sebelumnya mengirim lewat `sendToTelegram` tanpa membaca `monitoringPaused`, tidak seperti permukaan spontan lain dari keluarga #518–#522. Keduanya kini berhenti saat jeda tanpa menyentuh cap throttle/keadaan tertunda, sehingga alert tetap dapat terkirim sesudah jeda berakhir bila keadaan baterai masih berlaku.

@@ -9206,6 +9206,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkAccessibilityHealth() {
         try {
+            if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             if (!preferencesManager.a11yTamperEnabled) return
             if (!preferencesManager.accessibilityEverEnabled) return
             if (ShotAccessibilityService.isEnabled(this)) {
