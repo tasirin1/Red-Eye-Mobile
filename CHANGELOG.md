@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Pengaman penanda masa lalu untuk kata kerja tangkap kini sejalan dengan pencocok niatnya (issue #543, sisa #527): kata kerja berelongasi/berimbuhan ("potrett", "jepretlah") yang lolos `markerMatches` tidak lagi lolos pengaman hanya karena tidak sama persis dengan kata kerja — "potrett kemarin kirim dong" kini terveto sebagai rujukan foto lama, bukan memicu foto baru. Dibuktikan porting Python 1:1 atas `hasFirmCaptureIntent` (kasus terkunci utuh, hanya kasus issue yang berubah).
+
 ## [1.6.578] - 2026-11-01
 
 ### Fixed

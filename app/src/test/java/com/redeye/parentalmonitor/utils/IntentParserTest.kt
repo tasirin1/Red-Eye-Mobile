@@ -297,6 +297,23 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseElongatedCaptureVerbWithPastMarkerStaysReference() {
+        // #543: kata kerja tangkap berelongasi/berimbuhan yang lolos markerMatches
+        // tidak boleh lolos pengaman penanda masa lalu hanya karena tidak sama persis.
+        val phrases = listOf(
+            "potrett kemarin kirim dong",
+            "jepretlah kemarin kirim dong",
+            "potrett tadi kirim dong"
+        )
+        for (phrase in phrases) {
+            assertNull("frasa: $phrase", IntentParser.parse(phrase))
+        }
+        // Tanpa penanda masa lalu, bentuk berelongasi tetap niat tegas.
+        assertEquals("/photo", IntentParser.parse("potrett sekarang"))
+        assertEquals("/photo", IntentParser.parse("jepretlah sekarang"))
+    }
+
+    @Test
     fun parseFirmCaptureIntentToleratesElongation() {
         assertEquals("/photo", IntentParser.parse("tolong jepretlahh fotonya sekarang"))
         assertEquals("/photo", IntentParser.parse("foto kemarin jelek, jepret foto baruu sekarang"))

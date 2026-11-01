@@ -170,7 +170,7 @@ object IntentParser {
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) continue
             for (verb in CAPTURE_VERBS) {
                 if (!markerMatches(token, verb)) continue
-                if (hasPastMarker && token == verb && (verb == "potret" || verb == "jepret")) continue
+                if (hasPastMarker && (verb == "potret" || verb == "jepret")) continue
                 return true
             }
         }
