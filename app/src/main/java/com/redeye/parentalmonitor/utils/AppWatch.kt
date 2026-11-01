@@ -8,12 +8,12 @@ object AppWatch {
 
     private val SENSITIVE_HINTS = listOf(
         "bank", "pay", "wallet", "finance", "password", "authenticator",
-        "1password", "lastpass", "bitwarden", "keepass", "crypto", "bitcoin", "binance",
+        "lastpass", "bitwarden", "keepass", "crypto", "bitcoin", "binance",
         "browser", "chrome", "firefox", "opera", "duckduckgo", "settings", "systemui", "emmx", "ucmobile",
-        "id.dana", "ovo.id", "com.gojek.app", "com.gojek.gopay", "com.shopee.id",
+        "id.dana", "ovo.id", "com.gojek.app", "com.shopee.id",
         "id.co.linkaja", "id.flip", "com.kredivo", "com.akulaku", "com.jago", "com.jenius",
-        "id.co.seabank", "com.bca", "com.bni", "id.bni", "co.bri", "com.mandiri", "bmri",
-        "com.cimb", "cimbniaga", "btpn", "com.danamon", "com.permatabank", "com.bankbkemobile",
+        "com.bca", "com.bni", "id.bni", "co.bri", "com.mandiri", "bmri",
+        "com.cimb", "cimbniaga", "btpn", "com.danamon",
         "com.bsm", "permatamobilex", "id.com.uiux", "ocbc", "alloapp", "panin", "muamalat", "hsbc",
         "com.isaku", "com.indodana", "com.bibit", "com.stockbit", "ajaib.co.id",
         "emasdigi", "com.valar.pintu", "indopremier", "bareksa", "koinworks", "rekeningku", "tanamduit",
