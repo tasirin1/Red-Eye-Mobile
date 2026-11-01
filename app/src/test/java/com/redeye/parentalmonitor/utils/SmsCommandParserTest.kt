@@ -70,6 +70,28 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun kepalaPesanTigaEmpatDigitTidakTerserapNomor() {
+        // #545: kepala pesan 3-4 digit sesudah nomor yang sudah lengkap adalah isi pesan.
+        val a = SmsCommandParser.parse("081234567890 123 orang dijemput")
+        assertEquals("081234567890", a?.number)
+        assertEquals("123 orang dijemput", a?.text)
+        val b = SmsCommandParser.parse("08123456789 1234 orang")
+        assertEquals("08123456789", b?.number)
+        assertEquals("1234 orang", b?.text)
+        val c = SmsCommandParser.parse("0812 3456 7890 123 orang dijemput")
+        assertEquals("0812 3456 7890", c?.number)
+        assertEquals("123 orang dijemput", c?.text)
+    }
+
+    @Test
+    fun nomorBerspasiPanjangLimaDigitTetapUtuh() {
+        val parsed = SmsCommandParser.parse("08123 45678 90123 Halo")
+        assertEquals("08123 45678 90123", parsed?.number)
+        assertEquals("081234567890123", parsed?.normalized)
+        assertEquals("Halo", parsed?.text)
+    }
+
+    @Test
     fun kepalaPesanDuaDigitTidakTerserapNomorInternasional() {
         val parsed = SmsCommandParser.parse("+62 812 3456 7890 22 orang")
         assertEquals("+62 812 3456 7890", parsed?.number)
