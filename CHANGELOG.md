@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.581] - 2026-11-01
+
 ### Fixed
 - Lima hint sensitif AppWatch yang mati dihapus (issue #623): `1password`, `com.gojek.gopay`, `id.co.seabank`, `com.permatabank`, dan `com.bankbkemobile` tidak pernah bisa menjadi pencocok penentu karena `isSensitivePackage` memakai `contains` dan daftar yang sama sudah memuat hint yang lebih pendek (`password`, `pay`, `bank`) yang selalu cocok lebih dulu pada paket yang sama — keberadaannya hanya memberi ilusi cakupan. Perilaku identik (dibuktikan pemindaian subsumsi atas seluruh daftar saat audit), daftar kini hanya memuat hint yang hidup.
 - Header hasil kueri riwayat tidak lagi berbunyi "baru" (issue #622): `formatSmsMessage`/`formatCallMessage` memakai header "SMS baru"/"Panggilan baru" untuk semua pemanggil, sehingga jawaban /lastsms, /lastcalls, dan pencarian riwayat per nomor menampilkan entri lama (bahkan berbulan-bulan) seolah notifikasi yang baru masuk. Kedua formatter kini menerima parameter `live` (bawaan true = notifikasi waktu-nyata, tidak berubah); tiga situs kueri historis mengoper `live = false` dan mendapat header "SMS terakhir"/"Panggilan terakhir".
