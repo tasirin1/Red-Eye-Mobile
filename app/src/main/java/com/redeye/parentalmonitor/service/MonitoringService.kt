@@ -5976,19 +5976,24 @@ class MonitoringService : Service() {
     }
 
     private fun noteDroppedMessage() {
-        msgDropCount.incrementAndGet()
-        try {
-            preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
-        } catch (_: Exception) {
+        synchronized(msgDropLock) {
+            val v = msgDropCount.incrementAndGet()
+            try {
+                preferencesManager.setPendingMsgDropsSync(v)
+            } catch (_: Exception) {
+            }
         }
         scheduleMsgDropFlush()
     }
 
     private fun flushMsgDropNotice() {
-        val count = msgDropCount.getAndSet(0)
-        try {
-            preferencesManager.setPendingMsgDropsSync(0)
-        } catch (_: Exception) {
+        val count = synchronized(msgDropLock) {
+            val c = msgDropCount.getAndSet(0)
+            try {
+                preferencesManager.setPendingMsgDropsSync(0)
+            } catch (_: Exception) {
+            }
+            c
         }
         if (count <= 0) return
         try {
@@ -5997,10 +6002,12 @@ class MonitoringService : Service() {
             if (!messageQueue.addMessage(text, true)) throw IllegalStateException("addMessage gagal")
             MessageScheduler.scheduleMessageSend(this@MonitoringService)
         } catch (_: Exception) {
-            msgDropCount.addAndGet(count)
-            try {
-                preferencesManager.setPendingMsgDropsSync(msgDropCount.get())
-            } catch (_: Exception) {
+            synchronized(msgDropLock) {
+                val v = msgDropCount.addAndGet(count)
+                try {
+                    preferencesManager.setPendingMsgDropsSync(v)
+                } catch (_: Exception) {
+                }
             }
         }
     }
