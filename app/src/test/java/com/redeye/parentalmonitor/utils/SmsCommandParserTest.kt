@@ -84,6 +84,16 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun kepalaPesanLimaDigitTidakTerserapNomorUtuh() {
+        // #598 (sisa #545): basis token-tunggal yang sudah nomor utuh tidak diperpanjang
+        // oleh grup 5 digit berikutnya; grup itu kepala isi pesan.
+        val parsed = SmsCommandParser.parse("0812345678 12345 halo")
+        assertEquals("0812345678", parsed?.number)
+        assertEquals("0812345678", parsed?.normalized)
+        assertEquals("12345 halo", parsed?.text)
+    }
+
+    @Test
     fun nomorBerspasiPanjangLimaDigitTetapUtuh() {
         val parsed = SmsCommandParser.parse("08123 45678 90123 Halo")
         assertEquals("08123 45678 90123", parsed?.number)
