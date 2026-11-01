@@ -532,8 +532,8 @@ class CameraService(private val context: Context) {
                 releaseRecorder()
                 releaseSurface()
                 pendingOut = null
-                activeVideoFile = null
-                activeRecorder = null
+                if (activeVideoFile === file) activeVideoFile = null
+                if (activeRecorder === recorder) activeRecorder = null
                 onVideoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
             } else {
