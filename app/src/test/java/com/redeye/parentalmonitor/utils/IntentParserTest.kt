@@ -120,6 +120,19 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasFallbackRejectsFutureTimeWords() {
+        // Kata masa depan pada alias mutating = niat menjadwalkan, bukan eksekusi sekarang.
+        assertNull(IntentParser.intentOrAlias("kunci besok", "/lock besok"))
+        assertNull(IntentParser.intentOrAlias("hilang besok", "/hilang besok"))
+        assertNull(IntentParser.intentOrAlias("lanjut nanti", "/resume nanti"))
+        assertNull(IntentParser.intentOrAlias("darurat lusa", "/darurat lusa"))
+        assertTrue(IntentParser.isVetoedText("kunci besok", "/lock besok"))
+        // Kontrol positif & cermin masa lalu tetap seperti sebelumnya.
+        assertEquals("/lock", IntentParser.intentOrAlias("kunci", "/lock"))
+        assertNull(IntentParser.intentOrAlias("kunci kemarin", "/lock kemarin"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

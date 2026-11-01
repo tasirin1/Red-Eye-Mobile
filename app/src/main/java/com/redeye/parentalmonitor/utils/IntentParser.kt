@@ -291,8 +291,11 @@ object IntentParser {
         return tokens to " " + tokens.joinToString(" ") + " "
     }
 
+    private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa")
+
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
+        if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
         return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
     }
