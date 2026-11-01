@@ -383,6 +383,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_RESTORE_STRICT = "restore_strict_enabled"
         private const val KEY_RESTORE_PIN_FAIL_COUNT = "restore_pin_fail_count"
         private const val KEY_RESTORE_PIN_LOCKOUT_UNTIL = "restore_pin_lockout_until"
+        private const val KEY_RESTORE_CODE_FAIL_COUNT = "restore_code_fail_count"
+        private const val KEY_RESTORE_CODE_LOCKOUT_UNTIL = "restore_code_lockout_until"
         private const val KEY_RESTORE_SECRET = "restore_code_secret"
         private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
@@ -768,6 +770,14 @@ class PreferencesManager(context: Context) {
     var restorePinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
+
+    var restoreCodeFailCount: Int
+        get() = try { sharedPreferences.getInt(KEY_RESTORE_CODE_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+        set(value) { try { sharedPreferences.edit().putInt(KEY_RESTORE_CODE_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
+
+    var restoreCodeLockoutUntil: Long
+        get() = try { sharedPreferences.getLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
 
     fun ensureRestoreCodeSecret(): String {
         synchronized(auditLock) {

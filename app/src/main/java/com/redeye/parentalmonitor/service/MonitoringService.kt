@@ -1239,8 +1239,12 @@ class MonitoringService : Service() {
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
-    private val restoreCodeFailCount = java.util.concurrent.atomic.AtomicInteger(0)
-    private val restoreCodeLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
+    private var restoreCodeFailCount: Int
+        get() = try { preferencesManager.restoreCodeFailCount } catch (_: Exception) { 0 }
+        set(value) { try { preferencesManager.restoreCodeFailCount = value } catch (_: Exception) { } }
+    private var restoreCodeLockoutUntil: Long
+        get() = try { preferencesManager.restoreCodeLockoutUntil } catch (_: Exception) { 0L }
+        set(value) { try { preferencesManager.restoreCodeLockoutUntil = value } catch (_: Exception) { } }
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
@@ -3214,21 +3218,22 @@ class MonitoringService : Service() {
                 try { deleteIncomingMessage(delChat, messageId, delToken) } catch (_: Exception) { }
             }
             val nowMs = System.currentTimeMillis()
-            if (nowMs < restoreCodeLockoutUntil.get()) {
+            if (nowMs < restoreCodeLockoutUntil) {
                 sendToTelegram("⏳ Kode restore dikunci sementara karena terlalu banyak kode salah. Coba lagi nanti.")
                 return
             }
             if (secret.isEmpty() || !RestoreCode.isValid(secret, mode, nowMs)) {
-                val fails = restoreCodeFailCount.incrementAndGet()
+                val fails = restoreCodeFailCount + 1
+                restoreCodeFailCount = fails
                 if (fails >= RESTORE_CODE_MAX_FAILS) {
-                    restoreCodeFailCount.set(0)
-                    restoreCodeLockoutUntil.set(nowMs + RESTORE_CODE_LOCK_MS)
+                    restoreCodeFailCount = 0
+                    restoreCodeLockoutUntil = nowMs + RESTORE_CODE_LOCK_MS
                 }
                 audit("restore kode salah", "private")
                 sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /pulihkan &lt;kode&gt;.")
                 return
             }
-            restoreCodeFailCount.set(0)
+            restoreCodeFailCount = 0
         } else if (mode.isNotEmpty()) {
             sendToTelegram("Cara pakai: /pulihkan lalu kirim file <code>.redeyebak</code>, atau /pulihkan batal.")
             return
