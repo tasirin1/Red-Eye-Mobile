@@ -7485,7 +7485,7 @@ class MonitoringService : Service() {
                 appendLine("Aktif 00–23: " + Sparkline.render(hours))
                 appendLine("Begadang (23–05): $nights")
                 if (watch.isNotEmpty() || watchNums.isNotEmpty()) appendLine("Kena pantau: $watchHits")
-                if (capped) appendLine("(dari 200 data terakhir)")
+                if (capped) appendLine("(statistik dari 200 data terakhir per sumber; rentang efektif bisa lebih pendek dari 7 hari)")
             },
                 mainMenu()
             )
