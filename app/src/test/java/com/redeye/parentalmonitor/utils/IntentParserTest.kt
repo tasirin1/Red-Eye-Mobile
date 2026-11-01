@@ -120,6 +120,16 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsShortNegationsWithDigitReduplication() {
+        // #620: reduplikasi digit gaya chat pada negasi basis pendek tetap negasi.
+        assertNull(IntentParser.parse("gak2 kirim foto sekarang"))
+        assertNull(IntentParser.parse("ga2 kirim foto sekarang"))
+        assertNull(IntentParser.parse("jgn2 kirim foto sekarang"))
+        assertNull(IntentParser.parse("tak2 kirim foto sekarang"))
+        assertEquals("/photo", IntentParser.parse("kirim foto2 sekarang"))
+    }
+
+    @Test
     fun parseRejectsPrefixFalseFriends() {
         // #619: kata umum yang kebetulan berawalan kata kunci bukan intent.
         assertNull(IntentParser.parse("dayak berapa orang"))
