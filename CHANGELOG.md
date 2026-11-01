@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.580] - 2026-11-01
+
 ### Fixed
 - Perbaikan kompilasi: penghapusan pesan kode restore memakai ID chat dari preferensi (cakupan `handleRestoreCommand` tak punya `chatId` lokal — build CI merah sejak perubahan #572, didahulukan sesuai aturan maraton).
 - Aplikasi MotionTrade kini dikenali sensitif (issue #587): petunjuk `mncsecurities` ditambahkan agar paket `com.mncsecurities.mnctrade` memicu peringatan aplikasi sensitif; paket MNC non-keuangan (mis. `com.mncplay.id`) terverifikasi tidak ikut tertangkap.
