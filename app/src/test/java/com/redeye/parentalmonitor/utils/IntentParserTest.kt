@@ -247,6 +247,12 @@ class IntentParserTest {
         )
         assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terakhirr dari siapa", "/sms 0812, terakhirr dari siapa"))
         assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terbaruu dari siapa", "/sms 0812, terbaruu dari siapa"))
+        // #595 (sisa #546): nomor spasi 8 digit yang ter-parse lengkap juga formulir kirim,
+        // bukan pertanyaan riwayat, walau isinya memuat "terakhir".
+        assertEquals(
+            "/sms 0812 3456 terakhir kalinya",
+            IntentParser.intentOrAlias("sms 0812 3456 terakhir kalinya", "/sms 0812 3456 terakhir kalinya")
+        )
     }
 
     @Test
