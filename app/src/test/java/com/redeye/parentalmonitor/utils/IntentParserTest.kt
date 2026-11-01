@@ -208,11 +208,18 @@ class IntentParserTest {
             "kirim foto barusan dong",
             "screenshot yang diambil kemarin, kirim ulang dong",
             "kirim ulang screenshot kemarin",
-            "kirim screenshotnya dong"
+            "kirim screenshotnya dong",
+            "kirim foto lama dong",
+            "kirim foto semalam dong",
+            "kirim foto sebelumnya dong",
+            "kirim foto yang lalu dong",
+            "screenshot semalam kirim dong"
         )
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))
         }
+        // Kontrol: "selama" bukan penanda "lama"; niat tangkap baru tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto selama liburan dong"))
     }
 
     @Test

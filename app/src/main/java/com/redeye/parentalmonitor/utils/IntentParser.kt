@@ -128,6 +128,7 @@ object IntentParser {
 
     private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" kirim ulang ")) return true
+        if (padded.contains(" yang lalu ")) return true
         for (i in 0 until tokens.size - 1) {
             if (markerMatches(tokens[i], "kirim") && markerMatches(tokens[i + 1], "ulang")) return true
         }
@@ -136,6 +137,7 @@ object IntentParser {
             if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) return true
             if (markerMatches(token, "diambil")) return true
+            if (markerMatches(token, "lama") || markerMatches(token, "semalam") || markerMatches(token, "sebelumnya")) return true
         }
         return false
     }
