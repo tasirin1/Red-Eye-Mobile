@@ -59,6 +59,33 @@ class PhotoFingerprintTest {
     }
 
     @Test
+    fun cellAveragesFollowCellMajorityNotCenterPixel() {
+        val a = IntArray(256) { i -> if (i % 16 < 8) 40 else 200 }
+        val b = a.copyOf()
+        for (cy in 0 until 4) {
+            for (cx in 4 until 8) {
+                val x0 = cx * 2
+                val y0 = cy * 2
+                b[y0 * 16 + x0] = 40
+                b[y0 * 16 + x0 + 1] = 40
+                b[(y0 + 1) * 16 + x0] = 40
+                b[(y0 + 1) * 16 + x0 + 1] = 200
+            }
+        }
+        val fa = PhotoFingerprint.fingerprintBits(PhotoFingerprint.cellAverages(a, 16, 16))
+        val fb = PhotoFingerprint.fingerprintBits(PhotoFingerprint.cellAverages(b, 16, 16))
+        assertTrue(PhotoFingerprint.hammingDistance(fa, fb) > 6)
+        assertFalse(PhotoFingerprint.isDuplicateFingerprint(fa, fb))
+        val noisy = a.copyOf()
+        noisy[0] = 45
+        val fn = PhotoFingerprint.fingerprintBits(PhotoFingerprint.cellAverages(noisy, 16, 16))
+        assertTrue(PhotoFingerprint.isDuplicateFingerprint(fa, fn))
+        val uniform = PhotoFingerprint.cellAverages(IntArray(256) { 150 }, 16, 16)
+        assertTrue(uniform.all { it == 150 })
+        assertEquals(0L, PhotoFingerprint.fingerprintBits(uniform))
+    }
+
+    @Test
     fun countsDifferingBits() {
         assertEquals(0, PhotoFingerprint.hammingDistance(0L, 0L))
         assertEquals(1, PhotoFingerprint.hammingDistance(1L, 0L))

@@ -13,40 +13,47 @@ object PhotoFingerprint {
             val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
             val bmp = android.graphics.BitmapFactory.decodeFile(photoFile.absolutePath, opts) ?: return 255 to 0L
             try {
+                val grid = IntArray(bmp.width * bmp.height)
                 var sum = 0L
-                var n = 0
-                val stepX = (bmp.width / 16).coerceAtLeast(1)
-                val stepY = (bmp.height / 16).coerceAtLeast(1)
-                var y = 0
-                while (y < bmp.height) {
-                    var x = 0
-                    while (x < bmp.width) {
+                for (y in 0 until bmp.height) {
+                    for (x in 0 until bmp.width) {
                         val p = bmp.getPixel(x, y)
-                        sum += (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
-                        n++
-                        x += stepX
-                    }
-                    y += stepY
-                }
-                val luma = if (n == 0) 255 else (sum / n).toInt().coerceIn(0, 255)
-
-                val cell = IntArray(64)
-                for (cy in 0 until 8) {
-                    for (cx in 0 until 8) {
-                        val x = (((cx + 0.5) * bmp.width) / 8).toInt().coerceIn(0, bmp.width - 1)
-                        val y2 = (((cy + 0.5) * bmp.height) / 8).toInt().coerceIn(0, bmp.height - 1)
-                        val p = bmp.getPixel(x, y2)
                         val l = (((p shr 16) and 0xff) * 299 + ((p shr 8) and 0xff) * 587 + (p and 0xff) * 114) / 1000
-                        cell[cy * 8 + cx] = l
+                        grid[y * bmp.width + x] = l
+                        sum += l
                     }
                 }
-                luma to fingerprintBits(cell)
+                val luma = if (grid.isEmpty()) 255 else (sum / grid.size).toInt().coerceIn(0, 255)
+                luma to fingerprintBits(cellAverages(grid, bmp.width, bmp.height))
             } finally {
                 try { bmp.recycle() } catch (_: Exception) { }
             }
         } catch (_: Exception) {
             255 to 0L
         }
+    }
+
+    fun cellAverages(lumas: IntArray, width: Int, height: Int): IntArray {
+        val out = IntArray(64)
+        if (width <= 0 || height <= 0 || lumas.size < width * height) return out
+        for (cy in 0 until 8) {
+            for (cx in 0 until 8) {
+                val x0 = cx * width / 8
+                val x1 = ((cx + 1) * width / 8).coerceAtLeast(x0 + 1)
+                val y0 = cy * height / 8
+                val y1 = ((cy + 1) * height / 8).coerceAtLeast(y0 + 1)
+                var sum = 0L
+                var n = 0
+                for (y in y0 until y1) {
+                    for (x in x0 until x1) {
+                        sum += lumas[y * width + x]
+                        n++
+                    }
+                }
+                out[cy * 8 + cx] = if (n == 0) 0 else (sum / n).toInt()
+            }
+        }
+        return out
     }
 
     fun fingerprintBits(cell: IntArray): Long {
