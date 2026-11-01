@@ -1061,7 +1061,13 @@ class PreferencesManager(context: Context) {
 
     var accessPin: String
         get() = prefString(KEY_ACCESS_PIN, "")
-        set(value) = sharedPreferences.edit().putString(KEY_ACCESS_PIN, value).apply()
+        set(value) {
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit().putString(KEY_ACCESS_PIN, value)
+                if (value != accessPin) bumpCredentialGeneration(editor)
+                editor.apply()
+            }
+        }
 
     fun setOwnerIdSync(id: Long): Boolean {
         return try {
@@ -1806,7 +1812,10 @@ class PreferencesManager(context: Context) {
                 editor.putString(KEY_CHAT_ID, newChatId)
                 editor.putInt(KEY_SYNC_INTERVAL, newSyncInterval)
                 editor.putInt(KEY_CAMERA_INTERVAL, newCameraInterval)
-                if (newAccessPin != null) editor.putString(KEY_ACCESS_PIN, newAccessPin)
+                if (newAccessPin != null) {
+                    if (newAccessPin != accessPin) bumpCredentialGeneration(editor)
+                    editor.putString(KEY_ACCESS_PIN, newAccessPin)
+                }
                 editor.commit()
             } catch (_: Exception) {
                 false
