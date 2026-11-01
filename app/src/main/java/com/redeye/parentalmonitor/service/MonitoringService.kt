@@ -9461,6 +9461,9 @@ class MonitoringService : Service() {
     @Volatile
     private var lastLoopRestartAt = 0L
 
+    @Volatile
+    private var loopRelaunchJob: Job? = null
+
     private fun restartAllLoops(fromWatchdog: Boolean = false): Boolean {
         val nowRestart = android.os.SystemClock.elapsedRealtime()
         if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return false
@@ -9475,7 +9478,8 @@ class MonitoringService : Service() {
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
-        serviceScope.launch {
+        try { loopRelaunchJob?.cancel() } catch (_: Exception) { }
+        loopRelaunchJob = serviceScope.launch {
             try {
                 kotlinx.coroutines.withTimeoutOrNull(5_000L) {
                     for (job in oldJobs) job.join()
