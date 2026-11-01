@@ -2761,6 +2761,31 @@ class MonitoringService : Service() {
             }
             return false
         }
+        val firmIntent = try {
+            val parsedFirm = IntentParser.parse(bersih)
+            if (parsedFirm != null) {
+                parsedFirm
+            } else {
+                val words = bersih.split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
+                if (words.size >= 2) {
+                    IntentParser.intentOrAlias(bersih, resolveAliasInput(words[0], bersih.substring(words[0].length).trim()))?.substringBefore(" ")
+                } else {
+                    null
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+        if (firmIntent != null && firmIntent != pending) {
+            synchronized(inputLock) {
+                if (pendingInputCommand == pending) {
+                    pendingInputCommand = ""
+                    pendingInputChat = ""
+                    clearPendingPromptMarker()
+                }
+            }
+            return false
+        }
         val mintaHelp = bersih.equals("help", ignoreCase = true) || bersih.equals("bantuan", ignoreCase = true) || bersih == "?" || bersih.equals("cara", ignoreCase = true)
         val angka = numberInputFor(pending)
         if (angka != null) {
