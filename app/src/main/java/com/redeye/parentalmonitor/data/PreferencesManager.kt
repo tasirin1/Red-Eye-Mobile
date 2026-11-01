@@ -381,6 +381,8 @@ class PreferencesManager(context: Context) {
         const val KEY_NOTIF_FORWARD = "notif_forward_enabled"
         private const val KEY_OTP_MASK = "otp_mask_enabled"
         private const val KEY_RESTORE_STRICT = "restore_strict_enabled"
+        private const val KEY_RESTORE_PIN_FAIL_COUNT = "restore_pin_fail_count"
+        private const val KEY_RESTORE_PIN_LOCKOUT_UNTIL = "restore_pin_lockout_until"
         private const val KEY_RESTORE_SECRET = "restore_code_secret"
         private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
@@ -758,6 +760,14 @@ class PreferencesManager(context: Context) {
     var restoreStrict: Boolean
         get() = prefBoolean(KEY_RESTORE_STRICT, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_RESTORE_STRICT, value).apply()
+
+    var restorePinFailCount: Int
+        get() = try { sharedPreferences.getInt(KEY_RESTORE_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+        set(value) { try { sharedPreferences.edit().putInt(KEY_RESTORE_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
+
+    var restorePinLockoutUntil: Long
+        get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
 
     fun ensureRestoreCodeSecret(): String {
         synchronized(auditLock) {

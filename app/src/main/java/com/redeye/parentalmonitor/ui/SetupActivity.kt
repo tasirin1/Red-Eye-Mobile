@@ -114,6 +114,10 @@ class SetupActivity : AppCompatActivity() {
                 }
                 askPin(getString(R.string.restore_pin_title), false) { pin ->
                     if (pin == null) return@askPin
+                    if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(try { prefs.restorePinLockoutUntil } catch (_: Exception) { 0L }, System.currentTimeMillis())) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.restore_pin_locked), Toast.LENGTH_LONG).show()
+                        return@askPin
+                    }
                     lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
                         val data = try {
                             com.redeye.parentalmonitor.utils.SettingsBackup.import(text, pin)
@@ -123,9 +127,15 @@ class SetupActivity : AppCompatActivity() {
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             if (isFinishing || isDestroyed) return@withContext
                             if (data == null) {
+                                val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
+                                val (newCount, lockUntil) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
+                                try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
+                                if (lockUntil > 0L) try { prefs.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
                                 Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
                                 return@withContext
                             }
+                            try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
+                            try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
                             try {
                                 botTokenInput.setText(data.token)
                                 chatIdInput.setText(data.chatId)

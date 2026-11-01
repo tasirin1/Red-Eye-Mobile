@@ -3391,6 +3391,12 @@ class MonitoringService : Service() {
         chatId: String
     ) {
         val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
+        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(try { preferencesManager.restorePinLockoutUntil } catch (_: Exception) { 0L }, System.currentTimeMillis())) {
+            try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
+            pendingRestore = null
+            sendToTelegram("⏳ PIN backup dikunci sementara karena terlalu banyak PIN salah. Coba lagi 15 menit.")
+            return
+        }
         val data = try {
             pending.blob?.let { SettingsBackup.import(it, pin) }
         } catch (_: Exception) {
@@ -3398,15 +3404,20 @@ class MonitoringService : Service() {
         }
         try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
         if (data == null) {
-            pending.attempts++
-            if (pending.attempts >= RESTORE_MAX_PIN_TRIES) {
+            val prevCount = try { preferencesManager.restorePinFailCount } catch (_: Exception) { 0 }
+            val (newCount, lockUntil) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
+            try { preferencesManager.restorePinFailCount = newCount } catch (_: Exception) { }
+            if (lockUntil > 0L) {
+                try { preferencesManager.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
                 pendingRestore = null
-                sendToTelegram("❌ PIN salah 3 kali. Sesi pulihkan ditutup; kirim /pulihkan lagi.")
+                sendToTelegram("❌ PIN salah ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES} kali. PIN backup dikunci 15 menit.")
             } else {
-                sendToTelegram("❌ PIN salah. Sisa ${RESTORE_MAX_PIN_TRIES - pending.attempts} percobaan.")
+                sendToTelegram("❌ PIN salah. Sisa ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES - newCount} percobaan.")
             }
             return
         }
+        try { preferencesManager.restorePinFailCount = 0 } catch (_: Exception) { }
+        try { preferencesManager.restorePinLockoutUntil = 0L } catch (_: Exception) { }
         pendingRestore = null
         val restoreEpoch = ownerEpoch
         if (!validateRestoreTarget(data)) {
