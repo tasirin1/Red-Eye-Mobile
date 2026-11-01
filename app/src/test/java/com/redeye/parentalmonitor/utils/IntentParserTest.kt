@@ -31,7 +31,7 @@ class IntentParserTest {
             "ringkasan hari ini dong" to "/digest",
             "rekap aktivitas hari ini" to "/digest",
             "rekap seminggu terakhir" to "/minggu",
-            "rekap 7 hari terakhir" to "/minggu",
+            "7 hari terakhir" to "/minggu",
             "laporan minggu ini" to "/minggu",
             "ringkasan minggu lalu" to "/minggu",
             "tadi habis dari mana saja" to "/jejak",
