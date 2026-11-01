@@ -345,6 +345,16 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseToleratesInternalElongation() {
+        // #551: elongasi di tengah kata kunci/frasa tidak lagi menggagalkan parse.
+        assertEquals("/location", IntentParser.parse("anak dimaana sekarang"))
+        assertEquals("/location", IntentParser.parse("lokaasi hp saat ini"))
+        assertEquals("/battery", IntentParser.parse("bateraai hp tinggal berapa"))
+        assertEquals("/photo", IntentParser.parse("kirim footo sekarang"))
+        assertEquals("/screenshot", IntentParser.parse("kirim tangkaap layar sekarang"))
+    }
+
+    @Test
     fun parseFirmCaptureIntentToleratesElongation() {
         assertEquals("/photo", IntentParser.parse("tolong jepretlahh fotonya sekarang"))
         assertEquals("/photo", IntentParser.parse("foto kemarin jelek, jepret foto baruu sekarang"))

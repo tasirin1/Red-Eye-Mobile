@@ -259,10 +259,12 @@ object IntentParser {
         for (token in tokens) {
             for (keyword in group.tokens) {
                 if (tokenMatches(token, keyword)) return true
+                if (collapseRuns(token) == collapseRuns(keyword)) return true
             }
         }
         for (phrase in group.phrases) {
             if (padded.contains(" $phrase ")) return true
+            if (collapseRuns(padded).contains(" ${collapseRuns(phrase)} ")) return true
         }
         return false
     }
