@@ -72,4 +72,17 @@ class BootClockTest {
         assertFalse(BootClock.sameBootOrClockShift(1_700_000_000_000L, 3_600_000L, 1_700_093_600_000L, 3_600_000L + 90_000_000L))
         assertFalse(BootClock.sameBootOrClockShift(0L, 0L, 1_700_000_900_000L, 1_200_000L))
     }
+
+    @Test
+    fun rebootDenganJedaNyataBesarDitolakWalauElapsedKonsisten() {
+        // #858: elapsed di boot baru kebetulan >= penanda, tetapi jeda
+        // waktu nyata antar penanda dan restore 3-4 jam — geseran jam
+        // tersirat melewati batas koreksi yang wajar.
+        val w = 1_700_000_000_000L
+        val e = 3_600_000L
+        assertFalse(BootClock.sameBootOrClockShift(w, e, w + 4 * 3_600_000L, e + 1_800_000L))
+        assertFalse(BootClock.sameBootOrClockShift(w, e, w + 3 * 3_600_000L, e))
+        // Koreksi NTP besar 1,5 jam tetap diterima.
+        assertTrue(BootClock.sameBootOrClockShift(w, e, w + 1_800_000L + 5_400_000L, e + 1_800_000L))
+    }
 }

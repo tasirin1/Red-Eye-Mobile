@@ -21,12 +21,21 @@ object BootClock {
     // sesi yang sah. Bila rentang elapsed-nya sendiri konsisten
     // (tak negatif — elapsed tereset saat reboot — dan tak lebih
     // dari sehari), perlakukan sebagai boot yang sama terkoreksi.
+    // Geseran jam tersiratnya juga dibatasi (issue #858): tanpa
+    // batas itu, sesi lintas reboot diterima bila restore terjadi
+    // pada elapsed yang kebetulan >= penanda — jeda nyata antar
+    // boot umumnya jauh lebih besar dari koreksi jam yang wajar.
+    // Sisa yang tak bisa dibedakan: reboot cepat (< batas geseran)
+    // memang tak terbedakan dari koreksi jam oleh wall+elapsed saja.
     fun sameBootOrClockShift(prevWall: Long, prevElapsed: Long, nowWall: Long, nowElapsed: Long): Boolean {
         if (sameBoot(prevWall, prevElapsed, nowWall, nowElapsed)) return true
         if (prevWall <= 0L || prevElapsed <= 0L) return false
         val span = nowElapsed - prevElapsed
-        return span >= 0L && span <= MAX_ELAPSED_SPAN_MS
+        if (span < 0L || span > MAX_ELAPSED_SPAN_MS) return false
+        val impliedShift = (nowWall - prevWall) - span
+        return kotlin.math.abs(impliedShift) <= MAX_CLOCK_SHIFT_MS
     }
 
     const val MAX_ELAPSED_SPAN_MS = 24 * 60 * 60_000L
+    const val MAX_CLOCK_SHIFT_MS = 2 * 60 * 60_000L
 }
