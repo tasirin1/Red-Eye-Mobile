@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.588] - 2026-11-03
+
 ### Fixed
 - Nama berkas kini ikut dipindai gerbang (issue #803): berkas yang namanya sendiri berpola token bot tidak lagi lolos hanya karena isinya bersih.
 - Jeda alert tamper aksesibilitas kini tersimpan (issue #799): peta jeda per alasan disimpan mengikuti pola alert kata kunci, jadi restart proses oleh sistem tidak lagi mengulang alert tamper yang sama dalam 5 menit.
