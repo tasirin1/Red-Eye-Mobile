@@ -1356,6 +1356,16 @@ def utama():
     berubah += [b for b in nama_tak_lacak() if b not in berubah]
     if args.semua:
         berubah = [p for p in jalan_repo("app")]
+        # Repo dangkal (issue #837): pindai pesan commit + nama
+        # riwayat hanya melihat commit yang terunduh lokal. Tanpa
+        # peringatan ini LOLOS terasa seperti seluruh riwayat sudah
+        # diperiksa, padahal cakupannya menyempit diam-diam.
+        if (jalan("git", "rev-parse", "--is-shallow-repository") or "").strip() == "true":
+            peringatan.append(
+                "Repo ini clone DANGKAL (shallow): pindai pesan commit "
+                "dan nama riwayat --semua hanya mencakup commit lokal "
+                "yang terunduh, bukan seluruh riwayat — gunakan clone "
+                "penuh (fetch-depth 0) untuk vonis forensik.")
         cek_secret_pesan_semua(gagal)
 
     ada_uji = os.path.isdir(UJI)
