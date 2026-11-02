@@ -43,6 +43,24 @@ class SettingsBackupTest {
     }
 
     @Test
+    fun decryptMemulihkanCadanganKunciTulisanTangan() {
+        // #686: simulasi cadangan yang terenkripsi di perangkat yang
+        // SecretKeyFactory-nya gagal (kunci tulisan tangan UTF-8) — decrypt()
+        // harus menemukannya lewat kandidat tulisan tangan juga.
+        val salt = ByteArray(16) { (it * 7 + 1).toByte() }
+        val iv = ByteArray(12) { (it * 3 + 2).toByte() }
+        val plain = "{\"v\":1,\"token\":\"abc\"}".toByteArray(Charsets.UTF_8)
+        val manualKey = javax.crypto.spec.SecretKeySpec(
+            SettingsBackup.pbkdf2Sha256("pin-non-ascii-é", salt, 1_000, 32), "AES"
+        )
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, manualKey, GCMParameterSpec(128, iv))
+        val cipherText = cipher.doFinal(plain)
+        val restored = SettingsBackup.decrypt(cipherText, "pin-non-ascii-é", salt, iv, 1_000)
+        assertArrayEquals(plain, restored)
+    }
+
+    @Test
     fun decryptMemulihkanTeksDanMenolakPinSalah() {
         // Putaran penuh inti kripto tanpa lapisan Base64/JSON Android:
         // enkripsi dengan deriveKey modern, dekripsi lewat decrypt() dwi-KDF.

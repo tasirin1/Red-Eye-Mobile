@@ -71,10 +71,21 @@ object SettingsBackup {
 
     internal fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {
         var failure: Exception? = null
-        for (modern in booleanArrayOf(true, false)) {
+        // Kandidat modern dicoba dari KEDUA jalur derivasi: enkripsi di
+        // perangkat yang SecretKeyFactory-nya gagal memakai PBKDF2 tulisan
+        // tangan (sandi sebagai byte UTF-8), sedangkan jalur pabrik bisa
+        // mengonversi char sandi secara berbeda untuk PIN non-ASCII —
+        // mencoba pabrik saja membuat cadangan seperti itu tak terpulihkan
+        // di perangkat lain (issue #686).
+        val candidates: List<() -> javax.crypto.SecretKey> = listOf(
+            { deriveKey(pin, salt, true, iterations) },
+            { javax.crypto.spec.SecretKeySpec(pbkdf2Sha256(pin, salt, iterations, 32), KEY_ALGORITHM) },
+            { deriveKey(pin, salt, false, iterations) }
+        )
+        for (makeKey in candidates) {
             try {
                 val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, deriveKey(pin, salt, modern, iterations), javax.crypto.spec.GCMParameterSpec(128, iv))
+                cipher.init(javax.crypto.Cipher.DECRYPT_MODE, makeKey(), javax.crypto.spec.GCMParameterSpec(128, iv))
                 return cipher.doFinal(cipherText)
             } catch (e: Exception) {
                 if (failure == null) failure = e

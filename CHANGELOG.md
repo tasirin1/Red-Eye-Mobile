@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Dekripsi cadangan kini mencoba kedua jalur derivasi kunci modern (issue #686): cadangan yang terenkripsi di perangkat yang `SecretKeyFactory`-nya gagal memakai PBKDF2 tulisan tangan (sandi sebagai byte UTF-8), sedangkan konversi char sandi jalur pabrik bisa berbeda untuk PIN non-ASCII — sebelumnya jalur tulisan tangan hanya dicoba bila pabrik MELEMPAR, bukan bila dekripsi gagal, sehingga cadangan seperti itu tak terpulihkan di perangkat lain. `decrypt()` kini mencoba kandidat pabrik modern, tulisan tangan, lalu legacy; uji baru mensimulasikan enkripsi kunci tulisan tangan.
 - Cakupan pantauan aplikasi sensitif bertambah untuk 2FA/pengelola sandi (issue #685): Authy, Dashlane, dan Aegis sebelumnya tak cocok dengan petunjuk AppWatch mana pun. Ditambah petunjuk authy/dashlane/aegis; terverifikasi uji paket nyata.
 - Cakupan pantauan aplikasi sensitif bertambah untuk pembayaran global (issue #684): Venmo dan Cash App sebelumnya tak cocok dengan petunjuk AppWatch mana pun. Ditambah petunjuk venmo/squareup; terverifikasi uji paket nyata.
 - Cakupan pantauan aplikasi sensitif bertambah untuk bursa/dompet kripto global (issue #683): Coinbase, MetaMask, Kraken, dan Ledger Live sebelumnya tak cocok dengan satu pun dari 92 petunjuk sensitif AppWatch sehingga lolos dari daftar pantau. Ditambah petunjuk coinbase/metamask/kraken/ledger; terverifikasi uji paket nyata.
