@@ -69,7 +69,7 @@ object SettingsBackup {
         return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin)
     }
 
-    private fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {
+    internal fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {
         var failure: Exception? = null
         for (modern in booleanArrayOf(true, false)) {
             try {
@@ -83,7 +83,7 @@ object SettingsBackup {
         throw failure ?: javax.crypto.AEADBadTagException("gagal mendekripsi")
     }
 
-    private fun deriveKey(pin: String, salt: ByteArray, modern: Boolean, iterations: Int): javax.crypto.SecretKey {
+    internal fun deriveKey(pin: String, salt: ByteArray, modern: Boolean, iterations: Int): javax.crypto.SecretKey {
         if (modern) {
             try {
                 val factory = javax.crypto.SecretKeyFactory.getInstance(KDF_MODERN)
@@ -98,7 +98,7 @@ object SettingsBackup {
         return javax.crypto.spec.SecretKeySpec(factory.generateSecret(spec).encoded, KEY_ALGORITHM)
     }
 
-    private fun pbkdf2Sha256(pin: String, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
+    internal fun pbkdf2Sha256(pin: String, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
         val mac = javax.crypto.Mac.getInstance("HmacSHA256")
         val key = javax.crypto.spec.SecretKeySpec(pin.toByteArray(Charsets.UTF_8), "HmacSHA256")
         val hLen = 32
