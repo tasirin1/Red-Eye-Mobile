@@ -799,7 +799,11 @@ object A11yMonitor {
         // maju, jadi transisi DST / lompatan jam manual di tengah sesi
         // menggeser atribusi nightMillis dan geserannya terbawa ke
         // akru berikutnya. Ujung jendela kini selalu nowWall.
-        var wallStart = nowWall - remaining
+        // Awal jendela tak boleh mundur melewati titik yang sudah
+        // diakru (issue #834): jam yang DIMUNDURKAN membuat jendela
+        // baru tumpang tindih dengan jendela akru sebelumnya dan
+        // irisan malamnya terhitung dua kali.
+        var wallStart = maxOf(currentStartWall, nowWall - remaining)
         while (remaining > 0L) {
             val chunk = minOf(remaining, MAX_SESSION_MS)
             val row = usage.getOrPut(currentPackage) { AppUsage(label = currentLabel) }

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Hitungan menit malam tidak lagi terhitung ganda saat jam HP dimundurkan (#834): jendela hitung sesi kini tidak pernah mundur melewati titik yang sudah dihitung, jadi koreksi jam mundur di tengah sesi malam tidak menggandakan menit malam pada statistik.
 - Pemulihan cap jeda alert malam kini tidak bisa menimpa cap yang lebih baru (#833): bila dua kejadian malam nyaris bersamaan dan pengantrean salah satunya gagal, pemulihannya hanya berjalan bila cap saat ini masih cap milik kejadian itu — sebelumnya cap kejadian lain yang lebih baru bisa ikut terhapus dan alert malam berikutnya lolos dalam masa jeda.
 - Sesudah ganti launcher bawaan, launcher baru lebih cepat dikenali (#832): masa simpan deteksi launcher dipersingkat dari 10 menit menjadi 60 detik, jadi launcher baru tidak lama tercatat sebagai aplikasi biasa yang ikut dihitung waktu pakainya.
 - Sesi pemakaian yang sedang berjalan tidak lagi hilang saat jam HP dikoreksi (#831): koreksi jam otomatis/manual lebih dari 2 menit di antara aplikasi dimatikan sistem dan hidup lagi sebelumnya membuat sesi terbuang; kini rentang waktu monoton sesi ikut dinilai, jadi koreksi jam dikenali sebagai koreksi — bukan sebagai ganti boot.
