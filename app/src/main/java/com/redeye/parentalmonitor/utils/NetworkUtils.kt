@@ -13,7 +13,34 @@ object NetworkUtils {
 
     private const val PREFS_NAME = "network_state"
     private const val KEY_RATE_LIMITED_UNTIL = "rate_limited_until_wall"
+    private const val KEY_RATE_LIMITED_WALL_AT_WRITE = "rate_limited_wall_at_write"
+    private const val KEY_RATE_LIMITED_ELAPSED_AT_WRITE = "rate_limited_elapsed_at_write"
     private const val MAX_RATE_LIMIT_MS = 3600_000L
+
+    // Usia penanda memakai jam ganda (issue #733, pola #687/#698): selama
+    // jangkar monoton berlaku (boot sama), usia dihitung dari elapsed —
+    // memundurkan/memajukan jam dinding tidak mengubah keputusan. Tanpa
+    // jangkar (penanda warisan) atau sesudah reboot, jam dinding dipakai;
+    // jam dinding yang mundur tanpa jangkar mengembalikan -1 (tak
+    // diketahui) agar perilaku warisan pemanggil tetap berlaku.
+    fun blockAgeMs(atWall: Long, atElapsed: Long, nowWall: Long, nowElapsed: Long): Long {
+        if (atElapsed > 0L && nowElapsed >= atElapsed) return nowElapsed - atElapsed
+        if (nowWall < atWall) return -1L
+        return nowWall - atWall
+    }
+
+    // Sisa jendela bertenggat jam dinding dengan jangkar ganda: durasi
+    // awal (untilWall - writtenWall) dikurangi usia monoton bila boot
+    // sama; selain itu sisa jam dinding polos. Selalu terkurung 0..maxMs.
+    fun remainMsDual(untilWall: Long, writtenWall: Long, writtenElapsed: Long, nowWall: Long, nowElapsed: Long, maxMs: Long): Long {
+        if (untilWall <= 0L) return 0L
+        val remain = if (writtenWall > 0L && writtenElapsed > 0L && nowElapsed >= writtenElapsed) {
+            (untilWall - writtenWall) - (nowElapsed - writtenElapsed)
+        } else {
+            untilWall - nowWall
+        }
+        return remain.coerceIn(0L, maxMs)
+    }
 
     @Volatile
     private var appContext: Context? = null
@@ -45,13 +72,16 @@ object NetworkUtils {
 
     private fun storedRateLimitRemainMs(): Long {
         val context = appContext ?: return 0L
-        val until = try {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getLong(KEY_RATE_LIMITED_UNTIL, 0L)
+        val prefs = try {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         } catch (_: Exception) {
-            0L
+            return 0L
         }
+        val until = try { prefs.getLong(KEY_RATE_LIMITED_UNTIL, 0L) } catch (_: Exception) { 0L }
         if (until <= 0L) return 0L
-        return (until - System.currentTimeMillis()).coerceIn(0L, MAX_RATE_LIMIT_MS)
+        val writtenWall = try { prefs.getLong(KEY_RATE_LIMITED_WALL_AT_WRITE, 0L) } catch (_: Exception) { 0L }
+        val writtenElapsed = try { prefs.getLong(KEY_RATE_LIMITED_ELAPSED_AT_WRITE, 0L) } catch (_: Exception) { 0L }
+        return remainMsDual(until, writtenWall, writtenElapsed, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime(), MAX_RATE_LIMIT_MS)
     }
 
     fun noteRateLimited(retryAfterSecs: Long) {
@@ -61,9 +91,14 @@ object NetworkUtils {
                 rateLimitedUntil = maxOf(rateLimitedUntil, android.os.SystemClock.elapsedRealtime() + waitMs)
                 val context = appContext ?: return
                 val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val untilWall = System.currentTimeMillis() + waitMs
+                val nowWall = System.currentTimeMillis()
+                val untilWall = nowWall + waitMs
                 if (untilWall > prefs.getLong(KEY_RATE_LIMITED_UNTIL, 0L)) {
-                    prefs.edit().putLong(KEY_RATE_LIMITED_UNTIL, untilWall).apply()
+                    prefs.edit()
+                        .putLong(KEY_RATE_LIMITED_UNTIL, untilWall)
+                        .putLong(KEY_RATE_LIMITED_WALL_AT_WRITE, nowWall)
+                        .putLong(KEY_RATE_LIMITED_ELAPSED_AT_WRITE, android.os.SystemClock.elapsedRealtime())
+                        .apply()
                 }
             } catch (_: Exception) {
             }
@@ -96,10 +131,8 @@ object NetworkUtils {
         return try {
             val err = prefs.credentialError
             if (err != "400" && err != "401" && err != "403") return false
-            val now = System.currentTimeMillis()
-            val at = prefs.credentialErrorAt
-            if (now < at) return false
-            now - at < 30 * 60_000L
+            val age = blockAgeMs(prefs.credentialErrorAt, prefs.credentialErrorElapsed, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+            age >= 0L && age < 30 * 60_000L
         } catch (_: Exception) {
             false
         }
@@ -109,11 +142,9 @@ object NetworkUtils {
         return try {
             val err = prefs.credentialError
             if (err != "401" && err != "403") return false
-            val now = System.currentTimeMillis()
-            val at = prefs.credentialErrorAt
-            if (now < at) return false
             val window = if (err == "403") 5 * 60_000L else 30 * 60_000L
-            now - at < window
+            val age = blockAgeMs(prefs.credentialErrorAt, prefs.credentialErrorElapsed, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+            age >= 0L && age < window
         } catch (_: Exception) {
             false
         }
@@ -124,7 +155,10 @@ object NetworkUtils {
             if (prefs.credentialError.isEmpty()) return
             val now = System.currentTimeMillis()
             val at = prefs.credentialErrorAt
-            if (now < at || now - at >= 30 * 60_000L) {
+            val age = blockAgeMs(at, prefs.credentialErrorElapsed, now, android.os.SystemClock.elapsedRealtime())
+            // Pembersihan dini warisan (jam dinding mundur tanpa jangkar)
+            // hanya berlaku untuk penanda tanpa jangkar monoton.
+            if (age >= 30 * 60_000L || (prefs.credentialErrorElapsed <= 0L && now < at)) {
                 prefs.setCredentialError("", 0L)
             }
         } catch (_: Exception) {

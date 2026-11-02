@@ -7,6 +7,26 @@ import org.junit.Test
 class NetworkUtilsTest {
 
     @Test
+    fun blockAgeJamGanda() {
+        // Boot sama: usia dari jam monoton walau jam dinding dimundurkan.
+        assertEquals(600_000L, NetworkUtils.blockAgeMs(1_000_000L, 500_000L, 1_000_000L + 600_000L - 3_600_000L, 1_100_000L))
+        // Tanpa jangkar + jam mundur: -1 (perilaku warisan).
+        assertEquals(-1L, NetworkUtils.blockAgeMs(1_000_000L, 0L, 500_000L, 500_000L))
+        // Sesudah reboot (elapsed mengecil): kembali ke jam dinding.
+        assertEquals(1_900_000L, NetworkUtils.blockAgeMs(1_000_000L, 500_000L, 2_900_000L, 100_000L))
+    }
+
+    @Test
+    fun remainJamGanda() {
+        // Jam dinding dimajukan 1 jam sesudah 60 detik nyata: sisa tetap
+        // dihitung dari jam monoton (540 detik), bukan hangus.
+        assertEquals(540_000L, NetworkUtils.remainMsDual(1_600_000L, 1_000_000L, 500_000L, 4_660_000L, 560_000L, 3_600_000L))
+        // Warisan tanpa jangkar: sisa jam dinding polos, terkurung batas.
+        assertEquals(300_000L, NetworkUtils.remainMsDual(1_600_000L, 0L, 0L, 1_300_000L, 0L, 3_600_000L))
+        assertEquals(0L, NetworkUtils.remainMsDual(0L, 0L, 0L, 1_300_000L, 0L, 3_600_000L))
+    }
+
+    @Test
     fun retryAfterDariJson() {
         assertEquals(17L, NetworkUtils.parseRetryAfter("{\"parameters\":{\"retry_after\":17}}"))
     }

@@ -399,6 +399,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
         private const val KEY_CRED_ERROR_AT = "credential_error_at"
+        private const val KEY_CRED_ERROR_ELAPSED = "credential_error_elapsed"
         private const val KEY_COMMANDS_TOKEN_HASH = "commands_token_hash"
         private const val KEY_RING_PREV_VOL = "ring_prev_volume"
         private const val KEY_RING_SAVED_AT = "ring_saved_at"
@@ -853,10 +854,17 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_CRED_ERROR_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_CRED_ERROR_AT, value).apply()
 
+    // Jangkar jam monoton pendamping credentialErrorAt (issue #733):
+    // blokir auth tidak lagi bisa dibuka lebih awal dengan memundurkan
+    // jam dinding. 0 berarti penanda warisan tanpa jangkar.
+    val credentialErrorElapsed: Long
+        get() = prefLong(KEY_CRED_ERROR_ELAPSED, 0L)
+
     fun setCredentialError(code: String, at: Long) {
         try {
             synchronized(credentialLock) {
-                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+                val elapsed = if (at > 0L) android.os.SystemClock.elapsedRealtime() else 0L
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).apply()
             }
         } catch (_: Exception) {
         }
@@ -867,7 +875,8 @@ class PreferencesManager(context: Context) {
             if (botToken != token || chatId != chat) return@synchronized false
             if (credentialError == code && credentialErrorAt == at) return@synchronized true
             try {
-                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).apply()
+                val elapsed = if (at > 0L) android.os.SystemClock.elapsedRealtime() else 0L
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).apply()
                 true
             } catch (_: Exception) {
                 false
@@ -1111,6 +1120,7 @@ class PreferencesManager(context: Context) {
                     .putString(KEY_COMMANDS_TOKEN_HASH, "")
                     .putString(KEY_CRED_ERROR, "")
                     .putLong(KEY_CRED_ERROR_AT, 0L)
+                    .putLong(KEY_CRED_ERROR_ELAPSED, 0L)
                 if (ownerId != ownerUserId || newChatId != chatId) bumpCredentialGeneration(editor)
                 editor.commit()
             }
@@ -1804,6 +1814,7 @@ class PreferencesManager(context: Context) {
         }
         editor.putString(KEY_CRED_ERROR, "")
         editor.putLong(KEY_CRED_ERROR_AT, 0L)
+        editor.putLong(KEY_CRED_ERROR_ELAPSED, 0L)
     }
 
     fun setChatIdSync(newChatId: String): Boolean {
