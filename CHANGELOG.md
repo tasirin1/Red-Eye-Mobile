@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.591] - 2026-11-03
+
 ### Fixed
 
 - Jalan pintas rentang gerbang tidak lagi lolos kosong pada rentang dua titik (#871): ekstraksi ujung yang salah sebelumnya membuat diff kosong dan pemeriksaan melaporkan LOLOS atas commit bertoken; kini ujung diekstrak dengan pemisah yang benar.
