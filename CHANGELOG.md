@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.593] - 2026-11-03
+
 ### Fixed
 
 - Satuan pada argumen angka kini dikonversi sungguhan, bukan lagi sekadar hiasan (keputusan owner atas #776): "/photointerval 1 jam" sebelumnya terbaca 1 menit dan "/heartbeat 30 menit" terbaca 30 jam; kini satuan pengguna (detik/menit/jam) dikonversi ke satuan bawaan tiap perintah dengan pembulatan terdekat, dan satuan jarak pada perintah durasi (atau sebaliknya) ditolak sebagai salah pakai.
