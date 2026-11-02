@@ -7185,6 +7185,26 @@ class MonitoringService : Service() {
 
     private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f, izinkanJemput: Boolean = true) {
         try {
+            // Pagar bersarang (issue #853): sekolah di dalam radius
+            // rumah membuat transisi keluar rumah tak pernah terjadi,
+            // jadi fakta berangkat harian hilang; dan dua pagar
+            // bertitik hampir sama menggandakan alert satu kejadian.
+            val schoolNestedInHome = try {
+                val hCfg = GeofenceLogic.configured(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM)
+                val sCfg = GeofenceLogic.configured(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM)
+                if (hCfg && sCfg) {
+                    val centerDist = ReportFormat.distanceMeters(
+                        preferencesManager.homeLatE6 / 1_000_000.0, preferencesManager.homeLonE6 / 1_000_000.0,
+                        preferencesManager.schoolLatE6 / 1_000_000.0, preferencesManager.schoolLonE6 / 1_000_000.0
+                    )
+                    centerDist >= 0f && centerDist <= preferencesManager.homeRadiusM
+                } else {
+                    false
+                }
+            } catch (_: Exception) {
+                false
+            }
+            var homeAlertedInside: Boolean? = null
             val fences = listOf(
                 Triple(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM) to true,
                 Triple(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM) to false
@@ -7261,11 +7281,25 @@ class MonitoringService : Service() {
                 }
                 if (transition.first) {
                     if (isHome) recordFenceFact(transition.third)
-                    if (transition.second) {
+                    // Masuk sekolah bersarang saat tercatat di rumah =
+                    // berangkat (issue #853): pagar rumah tak pernah
+                    // mencatat keluar karena titiknya masih di dalam
+                    // radius rumah.
+                    if (!isHome && transition.third && schoolNestedInHome) {
+                        val homeInside = try { preferencesManager.homeState == 1 } catch (_: Exception) { false }
+                        if (homeInside) recordFenceFact(false)
+                    }
+                    // Satu kejadian fisik cukup satu alert (issue
+                    // #853): pagar kedua yang bersarang dan searah
+                    // dengan alert pagar rumah pada lintasan yang sama
+                    // tidak mengirim duplikat.
+                    val duplicateNested = !isHome && schoolNestedInHome && homeAlertedInside == transition.third
+                    if (transition.second && !duplicateNested) {
                         val name = if (isHome) "Rumah" else "Sekolah"
                         val verb = if (transition.third) "masuk" else "keluar"
                         val terkirim = sendToTelegramStatus("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).") != SendStatus.DROPPED
                         if (terkirim) {
+                            if (isHome) homeAlertedInside = transition.third
                             try {
                                 synchronized(fenceLock) {
                                     val nowWall = System.currentTimeMillis()
