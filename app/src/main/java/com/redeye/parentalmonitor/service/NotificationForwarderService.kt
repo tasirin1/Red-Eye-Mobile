@@ -1463,7 +1463,16 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 return true
             }
-            if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) return false
+            if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) {
+                // Antrekan seperti cabang jeda/kredensial kosong: sebelumnya
+                // batch terbuang diam-diam (hanya tersisa di /lastnotif).
+                // SendMessageWorker sendiri menahan pengiriman selama
+                // owner belum login, jadi tak ada yang keluar pra-login
+                // (issue #675).
+                queue().addMessage(message)
+                MessageScheduler.scheduleMessageSend(this)
+                return true
+            }
             if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) return false
             if (prefs.monitoringPaused) {
                 queue().addMessage(message)
