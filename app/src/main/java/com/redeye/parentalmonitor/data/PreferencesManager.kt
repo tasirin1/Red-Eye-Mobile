@@ -392,6 +392,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_RESTORE_PIN_FAIL_COUNT = "restore_pin_fail_count"
         private const val KEY_RESTORE_PIN_LOCKOUT_UNTIL = "restore_pin_lockout_until"
         private const val KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START = "restore_pin_lockout_elapsed_start"
+        private const val KEY_ACCESS_PIN_FAIL_COUNT = "access_pin_fail_count"
+        private const val KEY_ACCESS_PIN_LOCKOUT_UNTIL = "access_pin_lockout_until"
+        private const val KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START = "access_pin_lockout_elapsed_start"
         private const val KEY_RESTORE_CODE_FAIL_COUNT = "restore_code_fail_count"
         private const val KEY_RESTORE_CODE_LOCKOUT_UNTIL = "restore_code_lockout_until"
         private const val KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START = "restore_code_lockout_elapsed_start"
@@ -797,6 +800,18 @@ class PreferencesManager(context: Context) {
     var restorePinLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
+
+    var accessPinFailCount: Int
+        get() = try { sharedPreferences.getInt(KEY_ACCESS_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+        set(value) { try { sharedPreferences.edit().putInt(KEY_ACCESS_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
+
+    var accessPinLockoutUntil: Long
+        get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
+
+    var accessPinLockoutElapsedStart: Long
+        get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
     var restoreCodeFailCount: Int
         get() = try { sharedPreferences.getInt(KEY_RESTORE_CODE_FAIL_COUNT, 0) } catch (_: Exception) { 0 }

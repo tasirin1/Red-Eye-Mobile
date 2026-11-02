@@ -604,32 +604,37 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun verifyStoredAccessPin(action: () -> Unit) {
+        // Anggaran lockout SENDIRI untuk PIN akses (issue #767): rahasia
+        // ini beda dari PIN cadangan, jadi kegagalan/keberhasilan restore
+        // tak boleh mengunci atau mereset gerbang kredensial di sini.
+        // Restore lokal dan jarak jauh tetap berbagi anggaran restore
+        // karena keduanya memeriksa PIN cadangan yang sama.
         val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
         if (storedPin.isEmpty()) {
             action()
             return
         }
-        val lockUntil = try { prefs.restorePinLockoutUntil } catch (_: Exception) { 0L }
-        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(lockUntil, System.currentTimeMillis(), try { prefs.restorePinLockoutElapsedStart } catch (_: Exception) { 0L }, android.os.SystemClock.elapsedRealtime())) {
+        val lockUntil = try { prefs.accessPinLockoutUntil } catch (_: Exception) { 0L }
+        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(lockUntil, System.currentTimeMillis(), try { prefs.accessPinLockoutElapsedStart } catch (_: Exception) { 0L }, android.os.SystemClock.elapsedRealtime())) {
             Toast.makeText(this, getString(R.string.restore_pin_locked), Toast.LENGTH_LONG).show()
             return
         }
         askPin(getString(R.string.setup_verify_pin_title), false) { pin ->
             if (pin == null) return@askPin
             if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
-                val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
+                val prevCount = try { prefs.accessPinFailCount } catch (_: Exception) { 0 }
                 val (newCount, newLock) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
-                try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
+                try { prefs.accessPinFailCount = newCount } catch (_: Exception) { }
                 if (newLock > 0L) {
-                    try { prefs.restorePinLockoutUntil = newLock } catch (_: Exception) { }
-                    try { prefs.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
+                    try { prefs.accessPinLockoutUntil = newLock } catch (_: Exception) { }
+                    try { prefs.accessPinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 }
                 Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
                 return@askPin
             }
-            try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
-            try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
-            try { prefs.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
+            try { prefs.accessPinFailCount = 0 } catch (_: Exception) { }
+            try { prefs.accessPinLockoutUntil = 0L } catch (_: Exception) { }
+            try { prefs.accessPinLockoutElapsedStart = 0L } catch (_: Exception) { }
             action()
         }
     }
