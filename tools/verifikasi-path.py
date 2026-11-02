@@ -928,7 +928,13 @@ def utama():
     cek_paritas_resource(gagal)
     cek_plurals(gagal)
     cek_ikon_launcher(gagal)
-    cek_aturan_repo(gagal, berubah)
+    if args.semua:
+        # Mode audit penuh: aturan berkas terlarang harus melihat SELURUH
+        # berkas terlacak, bukan hanya kode di app/ (issue #679).
+        terlacak = (jalan("git", "ls-files") or "").splitlines()
+        cek_aturan_repo(gagal, terlacak)
+    else:
+        cek_aturan_repo(gagal, berubah)
     if args.semua:
         cek_secret_pohon(gagal)
     else:
