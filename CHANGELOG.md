@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penanda masa lalu untuk kata kerja tangkap kini juga mencakup "semalam", "sebelumnya", dan "tempo hari" (issue #788): rujukan lampau dengan kata-kata itu sebelumnya tetap mengeksekusi foto/screenshot baru. "dulu" dan "lalu" sengaja tidak dimasukkan karena dwimakna dalam kalimat perintah ("ambil foto dulu" = ambil sekarang lebih dulu).
+
 ## [1.6.587] - 2026-11-03
 
 ### Fixed

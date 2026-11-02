@@ -382,8 +382,15 @@ class IntentParserTest {
         assertNull(IntentParser.parse("ambil screenshot kemarin dong"))
         assertNull(IntentParser.parse("ambilkan foto kemarin dong"))
         assertNull(IntentParser.parse("ambil foto barusan dong"))
+        // #788: penanda lampau tambahan yang murni lampau.
+        assertNull(IntentParser.parse("ambil foto semalam"))
+        assertNull(IntentParser.parse("ambil foto sebelumnya"))
+        assertNull(IntentParser.parse("ambil screenshot tempo hari"))
         // Kontrol positif: tanpa penanda masa lalu tetap perintah.
         assertEquals("/photo", IntentParser.parse("ambil foto sekarang"))
+        // #788: "dulu"/"lalu" dwimakna perintah — tangkapan sah tak diveto.
+        assertEquals("/photo", IntentParser.parse("ambil foto dulu"))
+        assertEquals("/photo", IntentParser.parse("ambil foto lalu kirim"))
         assertEquals("/photo", IntentParser.parse("ambilkan fotonya sekarang"))
     }
 

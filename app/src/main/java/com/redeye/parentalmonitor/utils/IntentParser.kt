@@ -156,7 +156,12 @@ object IntentParser {
 
     private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan", "potretan")
 
-    private val PAST_MARKERS = setOf("tadi", "kemarin", "kemaren", "barusan", "terakhir")
+    // "dulu"/"lalu" sengaja TIDAK dimasukkan (issue #788): keduanya
+    // dwimakna dalam kalimat perintah ("ambil foto dulu" = ambil
+    // sekarang lebih dulu; "ambil foto lalu kirim" = lalu sambung
+    // kirim), jadi mem-veto-nya akan membatalkan tangkapan sah.
+    // "tempo" mewakili frasa "tempo hari" yang murni lampau.
+    private val PAST_MARKERS = setOf("tadi", "kemarin", "kemaren", "barusan", "terakhir", "semalam", "sebelumnya", "tempo")
 
     private fun firmPairMatches(token: String, marker: String): Boolean {
         val collapsedToken = collapseRuns(token)
