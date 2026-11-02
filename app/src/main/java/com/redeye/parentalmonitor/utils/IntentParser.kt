@@ -325,8 +325,9 @@ object IntentParser {
     fun parse(text: String): String? {
         val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
-        val photoVetoed = isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
-        val shotVetoed = isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded)
+        val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
+        val photoVetoed = futureVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        val shotVetoed = futureVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         var best: String? = null
         var bestScore = 0
         var tie = false

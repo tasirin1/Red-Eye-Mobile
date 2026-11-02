@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Penanda masa depan kini memveto jalur `parse()` untuk intent tangkapan (issue #624, sisa #594): veto `besok`/`nanti`/`lusa` dari #594 sebelumnya hanya terpasang di `isVetoed` (jalur alias/slash), sehingga kalimat alami seperti `kirim foto besok dong` dan `kirim screenshot nanti dong` tetap dieksekusi sekarang. `parse()` kini menekan intent /photo & /screenshot bila ada penanda masa depan (mutlak, meniru urutan veto di `isVetoed`); intent baca-saja tidak terpengaruh.
+
 ## [1.6.581] - 2026-11-01
 
 ### Fixed

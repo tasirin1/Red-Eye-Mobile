@@ -174,6 +174,22 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsFutureTimeWords() {
+        // #624 (sisa #594): penanda masa depan juga memveto jalur parse() untuk
+        // intent tangkapan — sebelumnya hanya jalur alias/slash yang terveto.
+        assertNull(IntentParser.parse("kirim foto besok dong"))
+        assertNull(IntentParser.parse("nanti saja kirim foto dong"))
+        assertNull(IntentParser.parse("kirim foto lusa dong"))
+        assertNull(IntentParser.parse("kirim screenshot nanti dong"))
+        assertNull(IntentParser.parse("ambil foto besok"))
+        // Kontrol: kalimat tangkap tanpa penanda waktu tetap ter-parse.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+        assertEquals("/screenshot", IntentParser.parse("kirim screenshot sekarang"))
+        // Intent baca-saja tidak ikut terveto oleh penanda masa depan.
+        assertEquals("/location", IntentParser.parse("lokasi anak besok"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",
