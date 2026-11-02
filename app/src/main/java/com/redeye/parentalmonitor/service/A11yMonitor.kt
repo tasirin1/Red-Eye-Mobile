@@ -153,14 +153,19 @@ object A11yMonitor {
             val todayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             val slotDay = try { manager.a11yUsageDate } catch (_: Exception) { "" }
             if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && slotDay == startDay) {
-                val span = todayStart - startWall
+                // Akru hanya sampai tengah malam PERTAMA sesudah sesi
+                // mulai (issue #780): sebelumnya sampai tengah malam
+                // hari ini, sehingga sesi yang mulai ≥2 hari lalu
+                // menagih seluruh hari antaranya ke hari mulai.
+                val spanEnd = A11yUsageMath.splitBoundaryWallMillis(startWall, todayStart)
+                val span = spanEnd - startWall
                 val todayUsage = usage
                 usage = loadUsage(context, startDay)
                 currentPackage = pkg
                 currentLabel = labelFor(context, pkg)
                 currentStartWall = startWall
                 currentStartElapsed = 1L
-                accrueSessionLocked(todayStart, 1L + span)
+                accrueSessionLocked(spanEnd, 1L + span)
                 saveUsageFor(context, startDay)
                 usage = todayUsage
                 currentPackage = pkg
