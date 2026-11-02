@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.585] - 2026-11-03
+
 ### Fixed
 - Pesan gerbang untuk kecocokan token di berkas biner kini memberi konteks (issue #742): efek samping #695 — biner sah yang kebetulan memuat deret byte mirip token menggagalkan semua mode gerbang (arah gagalnya memang aman), tetapi pesan `--semua` hanya berupa baris mentah grep "Binary file … matches" dan cek-cepat bahkan tak menyebut berkasnya. Kini kedua gerbang menyebut jalur berkas dan menjelaskan maknanya (deret byte mirip token di berkas biner — periksa, ganti/hapus bila bukan token sungguhan). Terverifikasi sabotase: biner berisi deret mirip token tetap GAGAL di kedua gerbang, kini dengan nama berkas.
 - Notifikasi pengingat kini menyamar penuh sebagai Kalkulator (issue #741): judul/teks pengingat jeda dan penyimpanan ("Service paused / Open the app to restore monitoring", teks kredensial/pemantauan) serta pengingat gagal auth ("Token bot ditolak", "perbaiki token di halaman Setup") sebelumnya membocorkan jati diri aplikasi pemantau ke siapa pun yang memegang HP. Semuanya kini berjudul "Calculator/Kalkulator" dengan teks netral; rincian galat tetap terlihat di halaman Setup dan kode galat auth dicatat di log.
