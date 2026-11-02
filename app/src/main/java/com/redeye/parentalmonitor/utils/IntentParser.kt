@@ -538,6 +538,7 @@ object IntentParser {
 
     private val PHOTO_KEYWORDS = setOf("foto", "potret", "jepret", "photo")
     private val LAYAR_KEYWORDS = setOf("layar", "screentime")
+    private val LAYAR_PHRASES = listOf("screen time", "main hp", "main hape", "pemakaian aplikasi", "pakai aplikasi", "waktu layar")
 
     private fun mergeTextArgs(text: String, parsed: String?): String? {
         if (parsed == null) return null
@@ -556,9 +557,22 @@ object IntentParser {
             return parsed
         }
         if (parsed == "/layar") {
-            val start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) } }
+            var start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) || tokenMatches(token.replace("_", ""), it) } }
+            var anchorLen = 1
+            if (start < 0) {
+                // Jangkar frasa grup-1 (issue #726): "screen time", "main hp",
+                // dst dikenali parse() lewat frasa tetapi tak punya token
+                // tunggal — tanpa ini argumen jam sesudah frasa hilang.
+                for (phrase in LAYAR_PHRASES) {
+                    val pw = phrase.split(' ')
+                    val idx = (0..tokens.size - pw.size).firstOrNull { s -> pw.indices.all { stripEdgePunct(tokens[s + it]) == pw[it] } } ?: continue
+                    start = idx
+                    anchorLen = pw.size
+                    break
+                }
+            }
             if (start >= 0) {
-                for (i in start + 1 until minOf(start + 3, tokens.size)) {
+                for (i in start + anchorLen until minOf(start + anchorLen + 2, tokens.size)) {
                     val word = stripEdgePunct(tokens[i])
                     val attachedHours = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam").toIntOrNull() else null
                     if (attachedHours != null && attachedHours in 1..24) return "$parsed $attachedHours"
