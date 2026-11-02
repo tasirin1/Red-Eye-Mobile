@@ -759,11 +759,19 @@ def kupas_komentar_gradle(teks):
         tiga = teks[i:i + 3]
         dua = teks[i:i + 2]
         if tiga in ("'''", '"""'):
+            # Isi string multi-baris dikosongkan (issue #804): string
+            # triple-quote adalah DATA, bukan kode — baris include di
+            # dalamnya (mis. catatan) bukan pernyataan modul. String
+            # satu baris tetap dipertahankan utuh karena jalur include
+            # sungguhan tinggal di sana (include ':app').
             akhir = teks.find(tiga, i + 3)
             if akhir < 0:
-                keluar.append(teks[i:])
+                keluar.append(tiga)
+                keluar.append("".join("\n" if c == "\n" else " " for c in teks[i + 3:]))
                 break
-            keluar.append(teks[i:akhir + 3])
+            keluar.append(tiga)
+            keluar.append("".join("\n" if c == "\n" else " " for c in teks[i + 3:akhir]))
+            keluar.append(tiga)
             i = akhir + 3
         elif dua == "//":
             while i < n and teks[i] != "\n":
