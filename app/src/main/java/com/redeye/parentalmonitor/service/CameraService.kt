@@ -546,11 +546,17 @@ class CameraService(private val context: Context) {
                 if (sessionSeq.get() == mySeq) capturing.set(false)
                 removeEverywhere(timeoutRunnable)
                 removeEverywhere(stopRunnable)
+                // Ambil identitas SEBELUM release: releaseRecorder() menull
+                // `recorder` lebih dulu sehingga perbandingan sesudahnya tak
+                // pernah cocok; activeVideoFile juga menunjuk tmpFile,
+                // sedangkan `file` adalah hasil rename-nya (issue #674).
+                val finishedRecorder = recorder
+                val finishedFile = pendingOut
                 releaseRecorder()
                 releaseSurface()
                 pendingOut = null
-                if (activeVideoFile === file) activeVideoFile = null
-                if (activeRecorder === recorder) activeRecorder = null
+                if (activeVideoFile === finishedFile || activeVideoFile === file) activeVideoFile = null
+                if (activeRecorder === finishedRecorder) activeRecorder = null
                 onVideoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
             } else {
