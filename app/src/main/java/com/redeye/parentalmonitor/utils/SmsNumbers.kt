@@ -19,7 +19,13 @@ object SmsNumbers {
         var intl = digits
         if (intl.startsWith("011")) intl = intl.substring(3)
         else if (intl.startsWith("00")) intl = intl.substring(2)
-        val local = if (digits.startsWith("0")) digits.substring(1) else digits
+        // Bentuk lokal: buang 0 depan, atau buang kode negara 62 — sebelumnya
+        // bentuk +62809… lolos cek awalan lokal seperti 809 (issue #662).
+        val local = when {
+            digits.startsWith("0") -> digits.substring(1)
+            intl.startsWith("62") -> intl.substring(2)
+            else -> digits
+        }
         if (digits in emergency || intl in emergency || local in emergency) return false
         if (local.startsWith("1900") || local.startsWith("900") || local.startsWith("976") || local.startsWith("809")) return true
         if (intl.startsWith("44")) {

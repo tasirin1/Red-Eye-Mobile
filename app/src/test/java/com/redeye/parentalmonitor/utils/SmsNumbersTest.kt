@@ -25,6 +25,11 @@ class SmsNumbersTest {
         // #641 (dugaan): awalan 0809 adalah layanan premium Indonesia (bukan
         // awalan seluler reguler) — sebelumnya lolos semua aturan premium.
         assertTrue(SmsNumbers.isPremium("080912345678"))
+        // #662: bentuk internasional +62809…/62809… juga premium.
+        assertTrue(SmsNumbers.isPremium("+6280912345678"))
+        assertTrue(SmsNumbers.isPremium("6280912345678"))
+        // Kontrol: nomor seluler Indonesia biasa format internasional aman.
+        assertFalse(SmsNumbers.isPremium("+6281234567890"))
     }
 
     @Test
