@@ -5620,8 +5620,9 @@ class MonitoringService : Service() {
                     }
                     val sentSms = sendFitted(formatSmsMessage(part, freqMap, knownMap), queueOnFail = true, queuePriority = true)
                     if (sentSms != SendStatus.DROPPED) {
-                        smsCursor = part.last().id
-                        smsDate = part.last().date
+                        val advSms = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(smsCursor, smsDate, part.map { it.id to it.date })
+                        smsCursor = advSms.first
+                        smsDate = advSms.second
                         try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { }
                         smsSentAny = true
                         found = true
@@ -5654,6 +5655,8 @@ class MonitoringService : Service() {
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
+                var callCursorId = lastCallId
+                var callCursorDate = lastCallTs
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var callHabis = true
                 for (part in callPage.chunked(10)) {
@@ -5663,8 +5666,11 @@ class MonitoringService : Service() {
                     }
                     val sentCall = sendFitted(formatCallMessage(part, callKnown), queueOnFail = true, queuePriority = true)
                     if (sentCall != SendStatus.DROPPED) {
+                        val advCall = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(callCursorId, callCursorDate, part.map { it.id to it.date })
+                        callCursorId = advCall.first
+                        callCursorDate = advCall.second
                         try {
-                            preferencesManager.setCallCursorSync(part.last().date, part.last().id)
+                            preferencesManager.setCallCursorSync(callCursorDate, callCursorId)
                         } catch (_: Exception) {
                         }
                         callSentAny = true
