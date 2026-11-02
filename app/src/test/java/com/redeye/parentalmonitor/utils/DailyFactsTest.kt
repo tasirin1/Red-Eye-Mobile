@@ -28,7 +28,6 @@ class DailyFactsTest {
     }
 
     @Test
-    @Test
     fun upsertKeepsNearestFutureDaysFirst() {
         // #701: hari masa depan yang dipertahankan adalah yang terdekat.
         val stored = (1..20).map { day("202612%02d".format(it), s = it) }
