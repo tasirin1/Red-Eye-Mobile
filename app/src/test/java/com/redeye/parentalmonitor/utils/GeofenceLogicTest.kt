@@ -24,10 +24,23 @@ class GeofenceLogicTest {
     @Test
     fun transitionChangeRequiresAccuracyWithinRadius() {
         assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, -1f, 200))
-        assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 200f, 200))
         assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 0f, 200))
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 201f, 200))
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(2, true, 5_000f, 200))
+    }
+
+    @Test
+    fun transitionChangeRequiresAccuracyWithinHalfRadius() {
+        // #716: perubahan state (yang mengalert) menuntut akurasi lebih ketat
+        // dari adopsi awal: fix berakurasi sebesar radius tak lagi membalik
+        // state — posisi sebenarnya bisa di mana saja selebar radius.
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(2, true, 200f, 200))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 200f, 200))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 101f, 200))
+        assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, 100f, 200))
+        assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 100f, 200))
+        // Adopsi state awal tetap pada gerbang lama (akurasi <= radius).
+        assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(0, true, 200f, 200))
     }
 
     @Test
