@@ -902,6 +902,11 @@ def utama():
     peringatan = []
     diff = ""
     if args.jalur:
+        # Jalur yang salah ketik tak boleh hilang diam-diam menjadi
+        # "LOLOS (0 berkas diperiksa)" (issue #681).
+        for j in args.jalur:
+            if not os.path.exists(os.path.join(AKAR, j)):
+                gagal.append("Jalur tidak ditemukan: " + j)
         berubah = [j for j in args.jalur if os.path.exists(os.path.join(AKAR, j))]
         diff = jalan("git", "diff", "--", *berubah) or ""
     elif args.rentang:
