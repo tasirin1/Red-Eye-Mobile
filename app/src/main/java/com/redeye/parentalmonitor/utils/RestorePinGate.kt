@@ -23,4 +23,32 @@ object RestorePinGate {
         val next = failCount.coerceAtLeast(0) + 1
         return if (next >= MAX_FAILURES) 0 to (now + LOCK_MS) else next to 0L
     }
+
+    // Kunci percobaan = pasangan (berkas, PIN) (issue #873): kegagalan
+    // dekripsi tak bisa membedakan PIN salah dari berkas RUSAK —
+    // keduanya gagal di tag AES-GCM yang sama. Menghitung percobaan
+    // yang PERSIS sama berulang kali menghukum pemilik yang mencoba
+    // lagi berkas rusak yang sama dengan PIN yang benar (3x -> kunci
+    // 15 menit). Percobaan identik tak membawa tebakan baru, jadi
+    // hanya percobaan BERBEDA yang dihitung; tebakan PIN berbeda atas
+    // berkas yang sama tetap terhitung satu per satu.
+    fun attemptKey(blob: String, pin: String): String {
+        return try {
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val digest = md.digest((blob + "\u0000" + pin).toByteArray(Charsets.UTF_8))
+            digest.joinToString("") { "%02x".format(it) }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    // Hasil: (jumlah gagal baru, kunci sampai, terhitung?). Bila tak
+    // terhitung, jumlah dan kunci tak berubah.
+    fun registerFailure(failCount: Int, now: Long, prevKey: String, newKey: String): Triple<Int, Long, Boolean> {
+        if (prevKey.isNotEmpty() && newKey.isNotEmpty() && prevKey == newKey) {
+            return Triple(failCount.coerceAtLeast(0), 0L, false)
+        }
+        val (count, lock) = registerFailure(failCount, now)
+        return Triple(count, lock, true)
+    }
 }

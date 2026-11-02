@@ -3626,20 +3626,31 @@ class MonitoringService : Service() {
         }
         try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
         if (data == null) {
+            // Percobaan identik (berkas + PIN yang sama) tak dihitung
+            // ulang (issue #873): bisa jadi berkasnya yang rusak,
+            // bukan PIN-nya — menguncinya menghukum pemilik sendiri.
             val prevCount = try { preferencesManager.restorePinFailCount } catch (_: Exception) { 0 }
-            val (newCount, lockUntil) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
+            val prevKey = try { preferencesManager.restorePinLastAttemptKey } catch (_: Exception) { "" }
+            val newKey = com.redeye.parentalmonitor.utils.RestorePinGate.attemptKey(pending.blob.orEmpty(), pin)
+            val (newCount, lockUntil, counted) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis(), prevKey, newKey)
+            if (!counted) {
+                sendToTelegram("❌ Berkas + PIN ini sudah dicoba dan tetap gagal. Bila PIN yakin benar, kemungkinan berkas cadangannya RUSAK (mis. ekspor terpotong) — buat ekspor baru dari perangkat lama, atau coba PIN lain.")
+                return
+            }
             try { preferencesManager.restorePinFailCount = newCount } catch (_: Exception) { }
+            try { preferencesManager.restorePinLastAttemptKey = newKey } catch (_: Exception) { }
             if (lockUntil > 0L) {
                 try { preferencesManager.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
                 try { preferencesManager.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 pendingRestore = null
                 sendToTelegram("❌ PIN salah ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES} kali. PIN backup dikunci 15 menit.")
             } else {
-                sendToTelegram("❌ PIN salah. Sisa ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES - newCount} percobaan.")
+                sendToTelegram("❌ PIN salah (atau berkas rusak). Sisa ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES - newCount} percobaan.")
             }
             return
         }
         try { preferencesManager.restorePinFailCount = 0 } catch (_: Exception) { }
+        try { preferencesManager.restorePinLastAttemptKey = "" } catch (_: Exception) { }
         try { preferencesManager.restorePinLockoutUntil = 0L } catch (_: Exception) { }
         try { preferencesManager.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
         pendingRestore = null

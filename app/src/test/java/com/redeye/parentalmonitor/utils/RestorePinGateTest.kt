@@ -2,6 +2,7 @@ package com.redeye.parentalmonitor.utils
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -51,5 +52,35 @@ class RestorePinGateTest {
         val r = RestorePinGate.registerFailure(-5, now)
         assertEquals(1, r.first)
         assertEquals(0L, r.second)
+    }
+
+    @Test
+    fun attemptKeyDistinguishesBlobAndPin() {
+        val a = RestorePinGate.attemptKey("blobSama", "1234")
+        assertTrue(a.isNotEmpty())
+        assertEquals(a, RestorePinGate.attemptKey("blobSama", "1234"))
+        assertNotEquals(a, RestorePinGate.attemptKey("blobSama", "9999"))
+        assertNotEquals(a, RestorePinGate.attemptKey("blobLain", "1234"))
+    }
+
+    @Test
+    fun identicalAttemptIsNotCountedTwice() {
+        // #873: berkas rusak + PIN benar dicoba berulang kali tidak
+        // boleh mengunci; hanya percobaan berbeda yang terhitung.
+        val key = RestorePinGate.attemptKey("blob", "1234")
+        val first = RestorePinGate.registerFailure(0, now, "", key)
+        assertEquals(1, first.first)
+        assertTrue(first.third)
+        val again = RestorePinGate.registerFailure(first.first, now, key, key)
+        assertEquals(1, again.first)
+        assertEquals(0L, again.second)
+        assertFalse(again.third)
+        // PIN berbeda atas berkas yang sama tetap terhitung.
+        val other = RestorePinGate.registerFailure(again.first, now, key, RestorePinGate.attemptKey("blob", "9999"))
+        assertEquals(2, other.first)
+        assertTrue(other.third)
+        val third = RestorePinGate.registerFailure(other.first, now, RestorePinGate.attemptKey("blob", "9999"), RestorePinGate.attemptKey("blob", "5555"))
+        assertTrue(third.second > 0L)
+        assertTrue(third.third)
     }
 }

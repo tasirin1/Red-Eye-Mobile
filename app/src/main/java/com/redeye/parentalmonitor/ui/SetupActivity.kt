@@ -127,9 +127,18 @@ class SetupActivity : AppCompatActivity() {
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                             if (isFinishing || isDestroyed) return@withContext
                             if (data == null) {
+                                // Cermin jalur Telegram (issue #873):
+                                // percobaan identik tak dihitung ulang.
                                 val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
-                                val (newCount, lockUntil) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
+                                val prevKey = try { prefs.restorePinLastAttemptKey } catch (_: Exception) { "" }
+                                val newKey = com.redeye.parentalmonitor.utils.RestorePinGate.attemptKey(text, pin)
+                                val (newCount, lockUntil, counted) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis(), prevKey, newKey)
+                                if (!counted) {
+                                    Toast.makeText(this@SetupActivity, getString(R.string.restore_same_attempt), Toast.LENGTH_LONG).show()
+                                    return@withContext
+                                }
                                 try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
+                                try { prefs.restorePinLastAttemptKey = newKey } catch (_: Exception) { }
                                 if (lockUntil > 0L) {
                                     try { prefs.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
                 try { prefs.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
@@ -138,6 +147,7 @@ class SetupActivity : AppCompatActivity() {
                                 return@withContext
                             }
                             try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
+                            try { prefs.restorePinLastAttemptKey = "" } catch (_: Exception) { }
                             try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
                             try { prefs.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
                             try {

@@ -391,6 +391,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_OTP_MASK = "otp_mask_enabled"
         private const val KEY_RESTORE_STRICT = "restore_strict_enabled"
         private const val KEY_RESTORE_PIN_FAIL_COUNT = "restore_pin_fail_count"
+        private const val KEY_RESTORE_PIN_LAST_KEY = "restore_pin_last_key"
         private const val KEY_RESTORE_PIN_LOCKOUT_UNTIL = "restore_pin_lockout_until"
         private const val KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START = "restore_pin_lockout_elapsed_start"
         private const val KEY_ACCESS_PIN_FAIL_COUNT = "access_pin_fail_count"
@@ -807,6 +808,11 @@ class PreferencesManager(context: Context) {
     var restorePinFailCount: Int
         get() = try { sharedPreferences.getInt(KEY_RESTORE_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
         set(value) { try { sharedPreferences.edit().putInt(KEY_RESTORE_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
+
+    // Kunci percobaan (berkas, PIN) terakhir yang gagal (issue #873).
+    var restorePinLastAttemptKey: String
+        get() = prefString(KEY_RESTORE_PIN_LAST_KEY, "")
+        set(value) = sharedPreferences.edit().putString(KEY_RESTORE_PIN_LAST_KEY, value).apply()
 
     var restorePinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
