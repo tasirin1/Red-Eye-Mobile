@@ -51,6 +51,12 @@ class SetupActivity : AppCompatActivity() {
     private val startGuard = Any()
     private var startingMonitoring = false
     private var lastNotifToggleAt = 0L
+    // Username bot dari getMe terakhir yang terverifikasi di sesi
+    // layar ini (issue #875): hanya DITAHAN di ingatan dulu dan baru
+    // ditulis ke prefs bersamaan kredensial yang benar-benar
+    // disimpan — menulisnya langsung saat uji membuat nama bot yang
+    // tak jadi dipakai menempel permanen di prefs.
+    private var usernameBotTeruji: String = ""
     private val testSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private val statusSeq = java.util.concurrent.atomic.AtomicInteger(0)
     private var statusJob: kotlinx.coroutines.Job? = null
@@ -335,15 +341,21 @@ class SetupActivity : AppCompatActivity() {
             if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                 return VerifyOutcome.HttpError(meResp.code(), true)
             }
-            // Simpan username bot yang terverifikasi (issue #843):
-            // dipakai layanan untuk mengenali perintah @BotLain.
+            // Username bot yang terverifikasi (issue #843) dipakai
+            // layanan untuk mengenali perintah @BotLain — tetapi di
+            // sini hanya ditahan di ingatan (issue #875): token ini
+            // mungkin hanya diuji dan tak jadi disimpan, sedangkan
+            // penulisan langsung ke prefs tak pernah dikoreksi
+            // layanan sehingga nama bot asing menempel permanen.
+            // Persistensi terjadi di simpanUsernameBotTeruji() pada
+            // jalur simpan yang benar-benar menyimpan kredensial ini.
             var botUsername = ""
             var botId = 0L
             try {
                 val meObj = meResp.body()?.result?.asJsonObject
                 botUsername = meObj?.get("username")?.asString.orEmpty()
                 botId = meObj?.get("id")?.asLong ?: 0L
-                if (botUsername.isNotEmpty()) prefs.botUsername = botUsername
+                if (botUsername.isNotEmpty()) usernameBotTeruji = botUsername
             } catch (_: Exception) {
             }
             val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
@@ -391,6 +403,16 @@ class SetupActivity : AppCompatActivity() {
             throw e
         } catch (e: Exception) {
             VerifyOutcome.Error(redactToken(e.message))
+        }
+    }
+
+    // Tulis username bot teruji ke prefs (issue #875): dipanggil
+    // HANYA dari jalur yang baru saja berhasil menyimpan kredensial
+    // milik bot itu, agar nama di prefs selalu milik token tersimpan.
+    private fun simpanUsernameBotTeruji() {
+        val u = usernameBotTeruji
+        if (u.isNotEmpty()) {
+            try { prefs.botUsername = u } catch (_: Exception) { }
         }
     }
 
@@ -969,6 +991,7 @@ class SetupActivity : AppCompatActivity() {
                         loadedSyncInterval = interval
                         loadedCameraInterval = cameraInterval
                         clearPendingRestore()
+                        simpanUsernameBotTeruji()
                     }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
@@ -998,6 +1021,7 @@ class SetupActivity : AppCompatActivity() {
                 loadedSyncInterval = interval
                 loadedCameraInterval = cameraInterval
                 clearPendingRestore()
+                simpanUsernameBotTeruji()
             }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
@@ -1389,9 +1413,10 @@ class SetupActivity : AppCompatActivity() {
                         // Identitas bot ditampilkan (issue #872):
                         // pemasang melihat persis bot mana yang
                         // terhubung, bukan sekadar "berhasil".
-                        // Username dibaca dari prefs (disimpan
-                        // verifyCredentials saat getMe berhasil).
-                        val namaBot = try { prefs.botUsername } catch (_: Exception) { "" }
+                        // Username diambil dari hasil getMe sesi ini
+                        // (ditahan di ingatan oleh verifyCredentials,
+                        // belum tentu tersimpan — issue #875).
+                        val namaBot = usernameBotTeruji
                         if (namaBot.isNotEmpty()) {
                             Toast.makeText(this@SetupActivity, "Terhubung sebagai @" + namaBot, Toast.LENGTH_LONG).show()
                         }
@@ -1470,6 +1495,7 @@ class SetupActivity : AppCompatActivity() {
             val saved = try { prefs.saveCredentials(token, chatId, syncInterval, cameraInterval, restoreOwnerOverride(token, chatId), accessPin) } catch (_: Exception) { false }
             if (saved) {
                 clearPendingRestore()
+                simpanUsernameBotTeruji()
             }
             saved
         }

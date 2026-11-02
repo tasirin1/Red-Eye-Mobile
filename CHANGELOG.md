@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Username bot yang hanya diuji tidak lagi menempel permanen (#875): verifikasi kredensial di layar Setup sebelumnya menulis nama bot dari token yang sedang diuji langsung ke penyimpanan walau token itu batal disimpan, dan layanan tak pernah mengoreksinya, sehingga perintah berbentuk "/perintah@BotAktif" di grup dibuang senyap selamanya; kini nama bot hanya ditahan di ingatan selama layar Setup dan ditulis bersamaan kredensial yang benar-benar disimpan, dan pergantian token mengosongkan nama lama agar dipelajari ulang dari token yang aktif.
+
 ## [1.6.593] - 2026-11-03
 
 ### Fixed

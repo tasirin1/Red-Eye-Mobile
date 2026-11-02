@@ -526,6 +526,14 @@ class MonitoringService : Service() {
                         synchronized(handledCallbackIds) { handledCallbackIds.clear() }
                     } catch (_: Exception) {
                     }
+                    // Username bot milik token LAMA tak boleh
+                    // menempel pada token baru (issue #875): kosongkan
+                    // agar blok pelajar di polling mengisinya ulang
+                    // dari getMe token yang kini tersimpan.
+                    try {
+                        preferencesManager.botUsername = ""
+                    } catch (_: Exception) {
+                    }
                 }
                 serviceScope.launch { registerBotCommands() }
             }
@@ -1889,9 +1897,11 @@ class MonitoringService : Service() {
         offsetFailCount = 0
 
         val updates = response.body()?.result ?: return false
-        // Pelajari username bot sendiri sekali (issue #843) agar
-        // sufiks @ pada perintah bisa dibandingkan; kegagalan diam
-        // saja — dibandingkan lagi pada putaran berikutnya.
+        // Pelajari username bot sendiri (issue #843) agar sufiks @
+        // pada perintah bisa dibandingkan; kegagalan diam saja —
+        // dibandingkan lagi pada putaran berikutnya. Sesudah token
+        // berganti listener kredensial mengosongkannya (issue #875)
+        // sehingga blok ini mengisinya ulang dari token yang aktif.
         try {
             if (preferencesManager.botUsername.isEmpty() && botToken.isNotEmpty()) {
                 serviceScope.launch {
