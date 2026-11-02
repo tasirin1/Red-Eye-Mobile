@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Klasifikasi baca-saja /hematdata & /kendara kini sadar argumen (issue #696): keduanya memang dwifungsi — tanpa argumen/status tetap baca-saja, tetapi bentuk mutasi (on/off/nyala/mati) tidak lagi melewati veto rujukan masa lalu/laporan seperti perintah mutasi lain.
 - Gerbang kini menangkap token bot di dalam berkas biner (issue #695): `cek_secret_pohon` tak lagi memakai `git grep -I` (yang melewatkan biner), dan `cek_secret` memindai isi berkas berubah secara langsung dari header diff karena diff biner tak menyumbang baris isi. Terverifikasi sabotase berkas biner berisi token: tertangkap di mode --semua dan --rentang.
 - Masker kode bergrup kini mengenal pemisah titik, garis bawah, titik dua, dan campuran (issue #694): sebelumnya hanya strip yang ditopeng sehingga `AB.12.CD.34` dan `AB_12_CD_34` lolos utuh. Varian pemisah spasi hanya menoping bila setiap grup campuran huruf+angka (`AB12 CD34 EF56`) agar alamat seperti "RT 04 RW 05" tidak ikut tertopeng.
 - Pengiriman pesan panjang kini berhenti saat kredensial berganti (issue #693): tiap potongan memeriksa token/chat saat ini terhadap snapshot awal; bila berbeda (mis. terapkan /pulihkan atau migrasi chat), sisa potongan diantrekan ulang untuk run berkredensial baru — sebelumnya sisa laporan tetap terkirim ke bot/chat lama.

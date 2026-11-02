@@ -394,6 +394,22 @@ object IntentParser {
         "/layar", "/hematdata", "/jejak", "/kendara", "/lastsms", "/lastcalls"
     )
 
+    private val MUTATION_ARGS = setOf("on", "off", "nyala", "mati")
+
+    // /hematdata & /kendara dwifungsi: tanpa argumen/status mereka laporan
+    // baca-saja, tetapi dengan argumen on/off/nyala/mati mereka MUTASI —
+    // bentuk mutasinya tidak boleh melewati veto rujukan (issue #696).
+    private fun isReadOnlyTarget(aliasInput: String): Boolean {
+        val head = aliasInput.substringBefore(" ")
+        if (head !in READ_ONLY_HEADS) return false
+        if (head == "/hematdata" || head == "/kendara") {
+            val arg = aliasInput.substringAfter(" ", "").trim()
+            val first = arg.split(WHITESPACE).firstOrNull().orEmpty()
+            if (first in MUTATION_ARGS) return false
+        }
+        return true
+    }
+
     private fun isVetoed(tokens: List<String>, padded: String, readOnlyTarget: Boolean = false): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
@@ -530,7 +546,7 @@ object IntentParser {
         if (isSmsSendForm(aliasInput)) return false
         val tk = tokenize(text) ?: return false
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk.first.size == 2 && isCancellation(tk.first[1])) return false
-        if (!isVetoed(tk.first, tk.second, aliasInput.substringBefore(" ") in READ_ONLY_HEADS)) return false
+        if (!isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return false
         val parsed = parse(text)
         if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
         return true
@@ -578,7 +594,7 @@ object IntentParser {
         if (words.size > 2) return null
         val tk = tokenize(text)
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
-        if (tk != null && isVetoed(tk.first, tk.second, aliasInput.substringBefore(" ") in READ_ONLY_HEADS)) return null
+        if (tk != null && isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return null
         return aliasInput
     }
 }
