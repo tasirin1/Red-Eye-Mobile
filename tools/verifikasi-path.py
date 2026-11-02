@@ -1376,9 +1376,23 @@ def utama():
             daftar = jalan("git", "diff", "--name-only", rentang_lokal) or ""
             berubah = daftar.splitlines()
         else:
-            rentang_lokal = "HEAD~1...HEAD"
-            diff = jalan("git", "diff", rentang_lokal) or ""
-            berubah = (jalan("git", "diff", "--name-only", rentang_lokal) or "").splitlines()
+            # Tanpa upstream (issue #869): fallback lama HEAD~1...HEAD
+            # hanya melihat commit terakhir — isi dan pesan commit
+            # akar (dan commit lama lain di repo tanpa hulu) tak
+            # pernah terperiksa lokal. Kini seluruh riwayat lokal
+            # diperiksa: diff dari commit akar + isi commit akar itu
+            # sendiri, pesan dari semua commit.
+            akar = (jalan("git", "rev-list", "--max-parents=0", "HEAD") or "").splitlines()
+            akar_sha = akar[0].strip() if akar else ""
+            rentang_lokal = "HEAD"
+            if akar_sha:
+                diff = (jalan("git", "show", "--format=", "--patch", akar_sha) or "") + \
+                    (jalan("git", "diff", akar_sha + "...HEAD") or "")
+                berubah = (jalan("git", "show", "--format=", "--name-only", akar_sha) or "").splitlines()
+                berubah += (jalan("git", "diff", "--name-only", akar_sha + "...HEAD") or "").splitlines()
+            else:
+                diff = ""
+                berubah = []
         cek_secret_pesan(gagal, rentang_lokal)
         kotor = jalan("git", "status", "--porcelain") or ""
         for baris in kotor.splitlines():
