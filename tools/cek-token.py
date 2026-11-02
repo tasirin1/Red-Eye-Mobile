@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Pemindai token bot untuk gerbang repo (issue #765).
 
-Mengenali tiga bentuk token:
+Mengenali bentuk-bentuk token:
   1. literal utuh satu baris (pola lama),
-  2. terbelah antar baris / antar literal string (dipadatkan dulu),
-  3. ter-encode base64 (kandidat panjang didekode lalu dicocokkan).
+  2. terbelah antar baris / antar literal string / oleh pemisah kode
+     lain (".", "${...}", tanda kurung) — dipadatkan dulu (issue #772),
+  3. ter-encode base64 (kandidat panjang didekode lalu dicocokkan),
+     termasuk base64 yang terbelah lalu tersambung lagi sesudah
+     pemadatan (issue #772).
 
 Dipakai tools/verifikasi-path.py (diimpor) dan scripts/cek-cepat.sh:
     cek-token.py --teks     : baca teks dari stdin; cetak DITEMUKAN bila ada
@@ -39,16 +42,30 @@ def _cocok_b64(kandidat):
     return False
 
 
+def _padatkan(teks):
+    # Sisipan interpolasi "${...}" dibuang utuh lebih dulu (menyamai
+    # semantik gabung string saat jalan), lalu pemisah belah yang lazim
+    # (spasi, kutip, +) dirapatkan seperti sebelumnya, dan terakhir titik
+    # yang diapit dua karakter alfabet token dibuang — token terbelah
+    # "." tersambung lagi (issue #772). Titik yang lebih luas TIDAK
+    # dibuang: merapatkan semua tanda baca kode terbukti menyambung
+    # kata-kata kode biasa (fixture uji "A".repeat(35) dsb.) menjadi
+    # ekor pola palsu.
+    rapat = re.sub(r"\$\{[^}]*\}", "", teks)
+    rapat = re.sub(r"[\s\"'\\+]+", "", rapat)
+    return re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
+
+
 def mengandung_token(teks):
     if not teks:
         return False
     if POLA.search(teks):
         return True
-    rapat = re.sub(r"[\s\"'\\+]+", "", teks)
+    rapat = _padatkan(teks)
     if rapat != teks and POLA.search(rapat):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
-    for sumber in (teks, tanpa_spasi):
+    for sumber in (teks, tanpa_spasi, rapat):
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
                 return True
