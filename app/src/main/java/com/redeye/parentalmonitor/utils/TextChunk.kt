@@ -22,11 +22,16 @@ object TextChunk {
                 }
                 if (ri % 2 == 1) c -= 2
             }
-            if (c > 0 && c < text.length && text[c] == '\u200D') {
-                c -= codePointBefore(c)
-            } else if (c > 1 && c < text.length && text[c - 1] == '\u200D') {
-                c -= 1
-                c -= codePointBefore(c)
+            // Mundur melewati SELURUH urutan ZWJ (emoji keluarga majemuk
+            // punya beberapa ZWJ) — satu langkah saja menyisakan ZWJ
+            // menggantung di akhir potongan (issue #663).
+            while (c > 0 && c < text.length && (text[c] == '\u200D' || text[c - 1] == '\u200D')) {
+                if (text[c] == '\u200D') {
+                    c -= codePointBefore(c)
+                } else {
+                    c -= 1
+                    if (c > 0) c -= codePointBefore(c)
+                }
             }
             val amp = text.lastIndexOf('&', c - 1)
             if (amp >= 0 && amp > c - 12) {

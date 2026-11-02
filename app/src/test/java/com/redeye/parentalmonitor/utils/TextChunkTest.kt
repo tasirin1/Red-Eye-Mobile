@@ -44,6 +44,18 @@ class TextChunkTest {
     }
 
     @Test
+    fun urutanZwjMajemukTakDibelah() {
+        // #663: emoji keluarga multi-ZWJ (4 orang, 3 ZWJ) — potongan di
+        // tengah urutan mana pun harus mundur ke sebelum seluruh urutan.
+        val keluarga = "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66"
+        val teks = "a" + keluarga + "b"
+        for (max in 2 until teks.length) {
+            val cut = TextChunk.safeCut(teks, max)
+            assertTrue("max=$max cut=$cut", cut <= 1 || cut >= 1 + keluarga.length)
+        }
+    }
+
+    @Test
     fun entitasHtmlTakDibelah() {
         assertEquals(4, TextChunk.safeCut("halo&nbsp;dunia", 6))
     }
