@@ -24,6 +24,16 @@ class RedactTest {
     }
 
     @Test
+    fun tokenTerencodeDanTerbelahBarisDitopeng() {
+        // #707: fallback mengenal %3A dan token yang terbelah baris.
+        val tok = "123456789:" + "A".repeat(40)
+        assertEquals("url *** ok", Redact.token("url " + tok.replace(":", "%3A") + " ok"))
+        val split = tok.substring(0, 20) + "\n" + tok.substring(20)
+        assertEquals("***", Redact.token(split))
+        assertEquals("baris satu\nbaris dua", Redact.token("baris satu\nbaris dua"))
+    }
+
+    @Test
     fun rahasiaBukanAngkaDigantiMentah() {
         assertEquals("***", Redact.token("a:b", "a:b"))
     }

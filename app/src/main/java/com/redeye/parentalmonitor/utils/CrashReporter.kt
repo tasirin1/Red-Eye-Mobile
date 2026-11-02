@@ -367,7 +367,7 @@ object CrashReporter {
         var raw = body.toString()
         val secrets = try {
             val prefs = PreferencesManager.getInstance(context)
-            arrayOf(prefs.botToken, prefs.chatId)
+            arrayOf(prefs.botToken, prefs.chatId, prefs.accessPin)
         } catch (_: Exception) {
             emptyArray()
         }

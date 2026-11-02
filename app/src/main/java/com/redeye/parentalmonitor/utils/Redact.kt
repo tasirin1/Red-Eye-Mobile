@@ -1,7 +1,10 @@
 package com.redeye.parentalmonitor.utils
 
 object Redact {
-    private val TOKEN_FALLBACK = Regex("[0-9]{5,15}:[A-Za-z0-9_-]{35,}")
+    // Bentuk kanonik dan bentuk ter-encode URL (%3A) — pesan galat yang
+    // memuat URL ber-token sebelumnya lolos fallback (issue #707).
+    private val TOKEN_FALLBACK = Regex("[0-9]{5,15}(?::|%3A)[A-Za-z0-9_-]{35,}")
+    private val LINE_SPLIT = Regex("(?<=[A-Za-z0-9_-])\r?\n(?=[A-Za-z0-9_-])")
 
     fun token(value: String?, vararg secrets: String): String {
         val src: String = value ?: ""
@@ -11,8 +14,14 @@ object Redact {
             if (secret.isEmpty()) continue
             out = if (secret.length < 10 && secret.all { it.isDigit() }) replaceDigitBounded(out, secret) else out.replace(secret, "***")
         }
-        if (!out.contains(':')) return out
-        return out.replace(TOKEN_FALLBACK, "***")
+        if (!out.contains(':') && !out.contains("%3A")) return out
+        val direct = out.replace(TOKEN_FALLBACK, "***")
+        if (direct != out) return direct
+        // Token terbelah baris: satukan baris di antara karakter token lalu
+        // coba lagi — teks hanya diubah bila pola token benar-benar cocok.
+        val joined = out.replace(LINE_SPLIT, "")
+        val rejoined = joined.replace(TOKEN_FALLBACK, "***")
+        return if (rejoined != joined) rejoined else out
     }
 
     private fun replaceDigitBounded(src: String, secret: String): String {

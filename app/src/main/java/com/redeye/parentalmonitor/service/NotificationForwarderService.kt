@@ -1027,7 +1027,8 @@ class NotificationForwarderService : NotificationListenerService() {
         } catch (_: Exception) {
             ""
         }
-        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat)
+        val pin = try { prefsRef?.accessPin ?: PreferencesManager.getInstance(this).accessPin } catch (_: Exception) { "" }
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat, pin)
     }
 
     private fun queue(): MessageQueue {

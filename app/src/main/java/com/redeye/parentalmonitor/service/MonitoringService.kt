@@ -806,7 +806,8 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             ""
         }
-        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat)
+        val pin = try { preferencesManager.accessPin } catch (_: Exception) { "" }
+        return com.redeye.parentalmonitor.utils.Redact.token(value, token, chat, pin)
     }
 
     private fun startMonitoring() {
