@@ -229,6 +229,8 @@ def cek_xml(gagal):
             ET.parse(os.path.join(AKAR, path))
         except ET.ParseError as e:
             buruk.append("%s (%s)" % (path, e))
+        except OSError:
+            buruk.append("%s (tidak ditemukan)" % path)
     if buruk:
         gagal.append("XML rusak: " + ", ".join(buruk))
 
@@ -258,6 +260,9 @@ def cek_manifest(gagal):
         pohon = ET.parse(os.path.join(AKAR, "app/src/main/AndroidManifest.xml"))
     except ET.ParseError:
         return  # sudah dilaporkan cek_xml
+    except OSError:
+        gagal.append("AndroidManifest.xml tidak ditemukan / tidak bisa dibaca")
+        return
     ns = namespace_aplikasi()
     for el in pohon.getroot().iter():
         nama = el.get("{http://schemas.android.com/apk/res/android}name", "")
