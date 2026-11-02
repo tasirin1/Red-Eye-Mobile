@@ -1050,6 +1050,7 @@ class MonitoringService : Service() {
     private fun startPatrolLoop() {
         val patrol = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
+            var firstRound = true
             while (isActive && (patrolJob == null || patrolJob === self)) {
                 patrolBeatAt = android.os.SystemClock.elapsedRealtime()
                 try {
@@ -1057,8 +1058,14 @@ class MonitoringService : Service() {
                     val effMinutes = com.redeye.parentalmonitor.utils.PowerSave.patrolIntervalEff(cachedPatrolInterval, lowPower)
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     val sleepMs = if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
-                        patrolRound()
-                        effMinutes * 60_000L
+                        val lastPatrol = if (firstRound) try { preferencesManager.patrolLastAt } catch (_: Exception) { 0L } else 0L
+                        val remainMs = if (lastPatrol > 0L) lastPatrol + effMinutes * 60_000L - System.currentTimeMillis() else 0L
+                        if (remainMs > 0L) {
+                            remainMs
+                        } else {
+                            patrolRound()
+                            effMinutes * 60_000L
+                        }
                     } else if (cachedMonitoringPaused) {
                         15 * 60_000L
                     } else {
@@ -1066,6 +1073,7 @@ class MonitoringService : Service() {
                     }
                     patrolCycleMs = sleepMs
                     delayMs(sleepMs)
+                    firstRound = false
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -1120,6 +1128,7 @@ class MonitoringService : Service() {
             }
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")
         }
+        try { preferencesManager.patrolLastAt = System.currentTimeMillis() } catch (_: Exception) { }
         sendToTelegram(body)
         try {
             captureAndSendPhoto()
