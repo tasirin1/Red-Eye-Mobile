@@ -344,23 +344,37 @@ object IntentParser {
     // kutipan di awal kalimat (issue #666). Kutipan satu kata ("depan")
     // adalah penekanan dan tetap sah (uji terkunci).
     private fun hasQuotedUtterance(text: String): Boolean {
+        // Kutip tunggal & kutip tak tertutup kini ikut dilacak (issue #697):
+        // ucapan yang dilaporkan tak selalu memakai kutip ganda tertutup.
         var open = '\u0000'
         var spanStart = -1
+        fun closes(c: Char): Boolean = when (open) {
+            '"' -> c == '"'
+            '“' -> c == '”' || c == '"'
+            '\'' -> c == '\'' || c == '’'
+            '‘' -> c == '’' || c == '\''
+            else -> false
+        }
         for (i in text.indices) {
             val c = text[i]
             if (open == '\u0000') {
-                if (c == '"' || c == '“') {
+                if (c == '"' || c == '“' || c == '\'' || c == '‘') {
+                    // Kutip tunggal hanya di awal kata (sesudah spasi/awal)
+                    // agar apostrof di tengah kata tak membuka kutipan.
+                    if ((c == '\'' || c == '‘') && i > 0 && !text[i - 1].isWhitespace()) continue
                     open = c
                     spanStart = i
                 }
-            } else {
-                if ((open == '"' && c == '"') || (open == '“' && (c == '”' || c == '"'))) {
-                    val span = text.substring(spanStart + 1, i).trim()
-                    if (span.split(WHITESPACE).count { it.isNotEmpty() } >= 2) return true
-                    open = '\u0000'
-                    spanStart = -1
-                }
+            } else if (closes(c)) {
+                val span = text.substring(spanStart + 1, i).trim()
+                if (span.split(WHITESPACE).count { it.isNotEmpty() } >= 2) return true
+                open = '\u0000'
+                spanStart = -1
             }
+        }
+        if (open != '\u0000') {
+            val span = text.substring(spanStart + 1).trim()
+            if (span.split(WHITESPACE).count { it.isNotEmpty() } >= 2) return true
         }
         return false
     }
