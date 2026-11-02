@@ -97,7 +97,9 @@ class GeofenceLogicTest {
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, 800f))
         assertTrue(GeofenceLogic.judgedOutside(150f, 100, 50f))
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, -1f))
-        assertTrue(GeofenceLogic.judgedOutside(150f, 100, 100f))
+        // #759: akurasi selebar radius penuh tak lagi cukup menilai
+        // "di luar" — gerbang diselaraskan jadi setengah radius.
+        assertFalse(GeofenceLogic.judgedOutside(150f, 100, 100f))
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, 101f))
         assertFalse(GeofenceLogic.judgedOutside(90f, 100, 10f))
         assertFalse(GeofenceLogic.judgedOutside(-1f, 100, 10f))

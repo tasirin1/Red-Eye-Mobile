@@ -21,7 +21,13 @@ object GeofenceLogic {
     }
 
     fun judgedOutside(distM: Float, radiusM: Int, accuracyM: Float): Boolean {
-        return distM >= 0f && distM > radiusM && accuracyM > 0f && accuracyM <= radiusM.toFloat()
+        // Gerbang akurasi diselaraskan dengan transition (#716) dan
+        // jemputHit (#740) — issue #759: fungsi ini tertinggal di
+        // "akurasi <= radius penuh", sehingga alert jam malam/sekolah
+        // dan skor /waspada bisa digerakkan fix yang ketidakpastiannya
+        // selebar radius. Kini sama ketatnya: paling tidak setengah
+        // radius.
+        return distM >= 0f && distM > radiusM && accuracyM > 0f && accuracyM <= radiusM / 2f
     }
 
     fun statusText(latE6: Long, lonE6: Long, radiusM: Int): String {
