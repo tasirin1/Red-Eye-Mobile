@@ -346,6 +346,11 @@ class MonitoringService : Service() {
         private const val SELF_TEST_ALARM_DELAY_MS = 45_000L
         private val SMS_NUMBER_REGEX = Regex("^\\+?[0-9]{7,15}$")
         private val CMD_SPLIT_REGEX = "\\s+".toRegex()
+        // Pemisah non-ASCII dari klien lain (issue #845): NBSP dan
+        // spasi Unicode lain, titik dua lebar penuh, koma Arab —
+        // dinormalkan ke ASCII agar belah kepala intake konsisten
+        // dengan tokenize yang membuang semua non-alfanumerik.
+        private val UNICODE_SEP_REGEX = Regex("[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFF1A\u060C]")
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
@@ -1934,7 +1939,13 @@ class MonitoringService : Service() {
                     // hilang tanpa ada yang mengetik perintah. Alur
                     // pulihkan membaca message.document/text langsung
                     // dan tidak bergantung caption.
-                    val rawText = message?.text?.trim().orEmpty()
+                    val rawText = message?.text?.trim().orEmpty().replace(UNICODE_SEP_REGEX) { m ->
+                        when (m.value) {
+                            "\uFF1A" -> ":"
+                            "\u060C" -> ","
+                            else -> " "
+                        }
+                    }
                     val headArg = rawText.split(CMD_SPLIT_REGEX, limit = 2)
                     val head = headArg.getOrNull(0).orEmpty()
                     // Perintah beralamat @BotLain bukan untuk bot ini
