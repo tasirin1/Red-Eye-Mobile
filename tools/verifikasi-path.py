@@ -565,11 +565,31 @@ def cek_secret(gagal, diff):
                          "hanya via input manual SetupActivity: %s"
                          % isi.strip()[:60])
             break
+    # Berkas biner yang berubah tak menyumbang baris "+" berisi isi —
+    # token di dalamnya lolos pemindaian baris di atas (issue #695).
+    # Pindai isi berkas berubah langsung (dekode toleran seperti baca()).
+    for baris in diff.splitlines():
+        if baris.startswith("diff --git a/") and " b/" in baris:
+            path = baris.split(" b/", 1)[1].strip()
+        elif baris.startswith("+++ b/"):
+            path = baris[len("+++ b/"):].strip()
+        else:
+            continue
+        if True:
+            isi = baca(path)
+            if isi is not None and POLA_TOKEN_ASLI.search(isi):
+                gagal.append("Kemungkinan token bot asli di berkas berubah %s "
+                             "(termasuk biner) — kredensial hanya via input "
+                             "manual SetupActivity" % path)
+                break
 
 
 def cek_secret_pohon(gagal):
     """Pindai token asli di seluruh berkas terlacak (mode --semua/audit penuh)."""
-    out = jalan("git", "grep", "-I", "-n", "-E",
+    # Tanpa -I: git grep juga melaporkan berkas biner yang cocok
+    # ("Binary file ... matches") — token di berkas biner ter-commit
+    # sebelumnya lolos diam-diam (issue #695).
+    out = jalan("git", "grep", "-n", "-E",
                 r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", "--", ".") or ""
     for baris in out.splitlines():
         gagal.append("Kemungkinan token bot asli terlacak di repo — kredensial "
