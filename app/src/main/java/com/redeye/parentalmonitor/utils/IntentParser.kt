@@ -134,8 +134,9 @@ object IntentParser {
         for (i in 0 until tokens.size - 1) {
             if (markerMatches(tokens[i], "kirim") && markerMatches(tokens[i + 1], "ulang")) return true
         }
+        if (padded.contains(" tempo hari ")) return true
         for (token in tokens) {
-            if (markerMatches(token, "kemarin") || markerMatches(token, "fotonya")) return true
+            if (markerMatches(token, "kemarin") || markerMatches(token, "kemaren") || markerMatches(token, "fotonya")) return true
             if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) return true
             if (markerMatches(token, "diambil")) return true
@@ -153,7 +154,7 @@ object IntentParser {
 
     private val CAPTURE_RESULT_NOUNS = setOf("jepretan", "ambilan", "potretan")
 
-    private val PAST_MARKERS = setOf("tadi", "kemarin", "barusan", "terakhir")
+    private val PAST_MARKERS = setOf("tadi", "kemarin", "kemaren", "barusan", "terakhir")
 
     private fun firmPairMatches(token: String, marker: String): Boolean {
         val collapsedToken = collapseRuns(token)

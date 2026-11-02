@@ -205,6 +205,20 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsKemarenAndTempoHariReferences() {
+        // #626: ejaan tak baku "kemaren" dan frasa "tempo hari" adalah rujukan
+        // masa lalu — sebelumnya tak dikenali sehingga memicu tangkapan baru.
+        assertNull(IntentParser.parse("kirim foto kemaren dong"))
+        assertNull(IntentParser.parse("foto kemaren bagus dong"))
+        assertNull(IntentParser.parse("kirim foto tempo hari dong"))
+        assertNull(IntentParser.intentOrAlias("hilang kemaren", "/hilang kemaren"))
+        assertNull(IntentParser.intentOrAlias("darurat kemaren", "/darurat kemaren"))
+        // Kontrol: tangkap sekarang dan ejaan baku tetap seperti sebelumnya.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+        assertNull(IntentParser.parse("kirim foto kemarin dong"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",
