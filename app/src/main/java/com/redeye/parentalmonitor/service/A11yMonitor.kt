@@ -350,7 +350,28 @@ object A11yMonitor {
                 ensureLoadedLocked(app)
                 val pkg = suspendedPackage
                 val manager = prefs
-                if (pkg.isNotEmpty() && manager != null && monitoringActive(manager) && !isKeyguardLocked(app) && isLaunchable(app, pkg)) {
+                // Verifikasi aplikasi terdepan sungguhan (issue #739):
+                // sesi lama hanya dilanjutkan bila jendela aktif memang
+                // paket itu; bila pengguna membuka aplikasi lain dari
+                // notifikasi/pintasan kunci, sesi lama tidak dilanjutkan
+                // (event jendela aplikasi baru yang akan mencatatnya).
+                var foreground = ""
+                val service = a11yService
+                if (service != null) {
+                    try {
+                        val root = service.rootInActiveWindow
+                        if (root != null) {
+                            foreground = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+                            recycleNode(root)
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+                if (pkg.isNotEmpty() && foreground.isNotEmpty() && foreground != pkg) {
+                    suspendedPackage = ""
+                    suspendedLabel = ""
+                }
+                if (pkg.isNotEmpty() && manager != null && monitoringActive(manager) && !isKeyguardLocked(app) && isLaunchable(app, pkg) && (foreground.isEmpty() || foreground == pkg)) {
                     suspendedPackage = ""
                     val nowWall = System.currentTimeMillis()
                     val nowElapsed = SystemClock.elapsedRealtime()
