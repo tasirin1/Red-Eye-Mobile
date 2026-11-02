@@ -479,6 +479,24 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasRejectsQuestionsWithTailFillers() {
+        // #744: veto tanya jalur alias dinilai dari token inti — penegas
+        // ekor tidak lagi meloloskan pertanyaan menjadi perintah.
+        assertNull(IntentParser.intentOrAlias("kunci apa dong", "/lock apa dong"))
+        assertNull(IntentParser.intentOrAlias("kunci apa sekarang", "/lock apa sekarang"))
+        assertNull(IntentParser.intentOrAlias("kunci kapan ya", "/lock kapan ya"))
+        assertNull(IntentParser.intentOrAlias("hilang kenapa sih", "/hilang kenapa sih"))
+        assertNull(IntentParser.intentOrAlias("darurat gimana sekarang", "/darurat gimana sekarang"))
+        assertNull(IntentParser.intentOrAlias("kunci kah dong", "/lock kah dong"))
+        assertNull(IntentParser.intentOrAlias("kunci kan sih", "/lock kan sih"))
+        assertTrue(IntentParser.isVetoedText("kunci apa dong", "/lock apa dong"))
+        // Kontrol: "kok" sendiri tetap penanda tanya; perintah sah berpenegas jalan.
+        assertNull(IntentParser.intentOrAlias("kunci kok", "/lock kok"))
+        assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on dong", "/hematdata on dong"))
+        assertEquals("/lock hp", IntentParser.intentOrAlias("kunci hp sekarang", "/lock hp sekarang"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))

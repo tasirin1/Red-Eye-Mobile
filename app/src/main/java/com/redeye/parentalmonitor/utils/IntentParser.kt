@@ -430,7 +430,18 @@ object IntentParser {
         if (isReport(tokens, padded)) return true
         if (hasFutureMarker(tokens, padded)) return true
         if (isAspectStatus(tokens)) return true
-        if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
+        // Veto tanya dinilai dari token inti (issue #744): kata penegas
+        // ekor dibuang dulu seperti di pipa fallback, karena sebelumnya
+        // "kunci apa dong" lolos (3 token mentah) dan dieksekusi sebagai
+        // /lock. Token yang cocok penanda tanya (mis. "kok") tidak ikut
+        // dibuang agar veto lamanya tidak berubah.
+        var core = tokens
+        while (core.isNotEmpty() && stripEdgePunct(core.last()) in TAIL_FILLERS &&
+            QUESTION_TAIL.none { markerMatches(core.last(), it) }
+        ) {
+            core = core.dropLast(1)
+        }
+        if (core.size == 2 && QUESTION_TAIL.any { markerMatches(core[1], it) }) return true
         // Veto rujukan foto/screenshot tak relevan untuk perintah
         // baca-saja: penanda masa lalu di sana adalah argumen sah
         // ("waspada kemarin", "lokasi kemarin") — issue #672.

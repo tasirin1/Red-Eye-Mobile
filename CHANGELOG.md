@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Veto tanya jalur alias kini menilai token inti, bukan token mentah (issue #744): sebelumnya pertanyaan dua kata isi yang ditambah kata penegas ekor apa pun ("kunci apa dong", "hilang kenapa sih", "darurat gimana sekarang", "kunci kah dong") lolos dari veto karena jumlah token mentahnya 3, lalu dieksekusi sebagai perintah /lock, /hilang, /darurat — veto partikel kah/kan #713 ikut terlewati. Kata penegas ekor kini dibuang dulu sebelum pemeriksaan kata tanya (token yang cocok penanda tanya seperti "kok" tidak ikut dibuang), sama seperti pipa fallback membuangnya sebelum batas kata; perintah sah berpenegas ("kuota on dong", "kunci hp sekarang") tidak berubah.
+
 ## [1.6.585] - 2026-11-03
 
 ### Fixed
