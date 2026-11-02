@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Frasa waktu "pekan depan" tak lagi terbaca sebagai lensa depan (issue #671, sisa #638): daftar kata sebelum "depan" yang memblokir tafsir lensa sebelumnya hanya minggu/bulan/tahun/di. Ditambah "pekan"; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Typo negasi "tdak" kini dikenali (issue #670, sisa #627): pola typo #627 menutup sebagian bentuk (tidka/jngan sebagai entri literal), tetapi "tdak" (huruf hilang + tertukar dari "tidak") lolos. Ditambahkan sebagai entri literal sejajar preseden #627; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Kata penolakan "ogah" kini dikenali sebagai negasi (issue #669): sebelumnya tak ada di daftar negasi sehingga "ogah kirim foto" tetap mengeksekusi. Ditambahkan ke `NEGATIONS`; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Nomina "pembatalan" kini dikenali sebagai pembatalan (issue #668, sisa #628): `isCancellation` sebelumnya hanya memeriksa awalan "batal", sedangkan nomina itu berawalan pem-. Terverifikasi porting + 418/418 ekspektasi terkunci.

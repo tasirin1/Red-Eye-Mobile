@@ -454,7 +454,7 @@ object IntentParser {
 
     private val PHOTO_LENS_WORDS = setOf("depan", "belakang", "front", "back")
 
-    private val PHOTO_LENS_BLOCKED_PREV = setOf("minggu", "bulan", "tahun", "di")
+    private val PHOTO_LENS_BLOCKED_PREV = setOf("minggu", "bulan", "tahun", "di", "pekan")
 
     private fun mergeAliasArgs(parsed: String, aliasInput: String): String {
         val parts = aliasInput.split(WHITESPACE, limit = 2)
