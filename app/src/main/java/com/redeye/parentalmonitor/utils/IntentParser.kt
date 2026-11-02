@@ -657,14 +657,32 @@ object IntentParser {
         // "kunci hp sekarang" sebelumnya gugur oleh batas <=2 kata. Buang
         // kata penegas ekor lebih dulu, lalu batas lama berlaku. Pemeriksaan
         // veto di bawah tetap memakai teks utuh.
-        val tailFillers = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
-        while (words.size > 2 && words.last() in tailFillers) {
+        while (words.size > 2 && words.last() in TAIL_FILLERS) {
             words = words.dropLast(1)
         }
         if (words.size > 2) return null
         val tk = tokenize(text)
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
         if (tk != null && isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return null
-        return aliasInput
+        return cleanAliasTail(aliasInput)
+    }
+
+    private val TAIL_FILLERS = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
+
+    // Kata penegas ekor juga dibuang dari argumen alias yang dikembalikan
+    // (issue #728): handler hilir memeriksa argumen secara persis, jadi
+    // "/jampulang 21:30 dong" dan "/hematdata on dong" sebelumnya ditolak
+    // "Cara pakai". Tanda baca tepi pada token argumen terakhir juga
+    // dibersihkan. Argumen tunggal yang hanya berisi penegas dibiarkan
+    // (perilaku terkunci perintah tanpa argumen, mis. "cekmati dong").
+    private fun cleanAliasTail(aliasInput: String): String {
+        val parts = aliasInput.split(WHITESPACE).filter { it.isNotEmpty() }
+        if (parts.size < 2) return aliasInput
+        var args = parts.drop(1)
+        while (args.size > 1 && stripEdgePunct(args.last().lowercase(Locale.ROOT)) in TAIL_FILLERS) {
+            args = args.dropLast(1)
+        }
+        val lastClean = stripEdgePunct(args.last())
+        return (listOf(parts[0]) + args.dropLast(1) + lastClean).joinToString(" ")
     }
 }

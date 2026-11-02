@@ -625,6 +625,13 @@ class IntentParserTest {
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
         assertEquals("/photo depan", IntentParser.intentOrAlias("foto (depan) dong", "/photo (depan) dong"))
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto *depan* dong", null))
+        // Kata penegas ekor dibuang dari argumen alias yang dikembalikan
+        // (issue #728): handler memeriksa argumen secara persis.
+        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 dong", "/jampulang 21:30 dong"))
+        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30,", "/jampulang 21:30,"))
+        assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on dong", "/hematdata on dong"))
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 dong", "/jemput 500 dong"))
+        assertEquals("/cekmati dong", IntentParser.intentOrAlias("cekmati dong", "/cekmati dong"))
         // mergeTextArgs setoleran parse(): elongasi, tanda hubung, kata
         // kunci berulang tidak lagi menelan argumen (issue #727).
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim footo depan sekarang", null))
