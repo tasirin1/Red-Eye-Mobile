@@ -5284,6 +5284,8 @@ class MonitoringService : Service() {
                 }
                 smsTruncated = probe.isNotEmpty()
             }
+            val seenSmsIds = HashSet<Long>()
+            pendingSms.retainAll { seenSmsIds.add(it.id) }
             pendingSms.sortBy { it.id }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${pendingSms.size} SMS messages")
 
@@ -5322,6 +5324,8 @@ class MonitoringService : Service() {
                 }
                 callTruncated = probe.isNotEmpty()
             }
+            val seenCallIds = HashSet<Long>()
+            pendingCalls.retainAll { seenCallIds.add(it.id) }
             pendingCalls.sortWith(compareBy({ it.id }, { it.date }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 if (smsReadFailed || callReadFailed) {
