@@ -241,6 +241,13 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    // Kontrak nilai kembali (issue #778): true HANYA bila seluruh batch
+    // selamat dari eviksi dan terpersisten. Semantik lama "satu selamat
+    // = true" membuat pemanggil menandai seluruh batch berhasil —
+    // notifikasi yang tereviksi tertandai sudah diteruskan dan potongan
+    // laporan memajukan kursor sumbernya. Pada keberhasilan sebagian
+    // pemanggil kini menganggap batch gagal: arah gagal aman (yang
+    // selamat bisa terkirim ganda saat dicoba lagi, bukan hilang).
     fun addMessages(messages: Collection<String>, priority: Boolean = false): Boolean {
         if (messages.isEmpty()) return true
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
@@ -256,7 +263,7 @@ class MessageQueue private constructor(context: Context) {
                     evictedVolatile++
                 }
                 if (evictedVolatile > 0) persistDropCountsLocked()
-                return added.any { item -> volatileQueue.any { it === item } }
+                return added.all { item -> volatileQueue.any { it === item } }
             }
             val queue = readLocked().toMutableList()
             val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
@@ -268,7 +275,7 @@ class MessageQueue private constructor(context: Context) {
             }
             if (evictedBatch > 0) persistDropCountsLocked()
             val persistedBatch = persistLocked(queue, force = true, syncOnMain = true)
-            return persistedBatch && addedBatch.any { item -> queue.any { it === item } }
+            return persistedBatch && addedBatch.all { item -> queue.any { it === item } }
         }
     }
 
