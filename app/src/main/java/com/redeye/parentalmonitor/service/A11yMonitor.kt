@@ -612,12 +612,12 @@ object A11yMonitor {
                 val firstOpen = manager.rememberA11yApp(pkg)
                 if (seeded && firstOpen && manager.a11yAppAlert) {
                     if (isNightHour(nowWall)) {
-                        if (nightUndo == null) nightUndo = captureNightStamp(manager)
+                        if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                         stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
                 } else if (manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
-                    if (nightUndo == null) nightUndo = captureNightStamp(manager)
+                    if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
                     stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)
                 }
@@ -819,16 +819,25 @@ object A11yMonitor {
     // dibaca bila bidang masih kosong (baru restart).
     // Penangkap keadaan cap malam sebelum ditulis (issue #811):
     // kembalikan lewat lambda bila pengantrean alertnya gagal.
-    private fun captureNightStamp(manager: PreferencesManager): () -> Unit {
+    // Pemulihan dijaga (issue #833): lambda hanya memulihkan bila
+    // cap saat ini MASIH cap yang ditulis situs ini — cap yang lebih
+    // baru dari jalur lain tak boleh tertimpa — dan seluruh
+    // periksa+pulih berjalan di dalam gate yang sama dengan
+    // penulisan cap, karena pemanggilnya berada di luar kunci.
+    private fun captureNightStamp(manager: PreferencesManager, writtenPkg: String, writtenElapsed: Long): () -> Unit {
         val memElapsed = lastNightAlertElapsed
         val memPkg = nightAlertedPackage
         val wPkg = try { manager.a11yNightAlertPkg } catch (_: Exception) { "" }
         val wAt = try { manager.a11yNightAlertAt } catch (_: Exception) { 0L }
         val wEl = try { manager.a11yNightAlertElapsed } catch (_: Exception) { 0L }
         return {
-            lastNightAlertElapsed = memElapsed
-            nightAlertedPackage = memPkg
-            try { manager.setA11yNightAlert(wPkg, wAt, wEl) } catch (_: Exception) { }
+            synchronized(gate) {
+                if (lastNightAlertElapsed == writtenElapsed && nightAlertedPackage == writtenPkg) {
+                    lastNightAlertElapsed = memElapsed
+                    nightAlertedPackage = memPkg
+                    try { manager.setA11yNightAlert(wPkg, wAt, wEl) } catch (_: Exception) { }
+                }
+            }
         }
     }
 
@@ -885,7 +894,7 @@ object A11yMonitor {
                     monitoringActive(manager) && manager.a11yAppAlert && isNightHour(nowWall) &&
                     nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS
                 ) {
-                    nightUndo = captureNightStamp(manager)
+                    nightUndo = captureNightStamp(manager, currentPackage, nowElapsed)
                     stampNightAlert(manager, currentPackage, nowWall, nowElapsed)
                     crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n<code>" + currentPackage + "</code>\n" + TimeFmt.short(nowWall)
                 }
