@@ -56,6 +56,26 @@ class CallLogRepository(private val context: Context) {
         )
     }
 
+    fun callDateForId(id: Long): Long {
+        if (id <= 0L) return 0L
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls.DATE),
+            "${CallLog.Calls._ID} = ?",
+            arrayOf(id.toString()),
+            "${CallLog.Calls._ID} ASC",
+            1
+        ) ?: return 0L
+        return try {
+            if (cursor.moveToFirst()) cursor.getLong(cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)) else 0L
+        } catch (_: Exception) {
+            0L
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
+    }
+
     fun newestCallId(): Long {
         val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
             context.contentResolver,

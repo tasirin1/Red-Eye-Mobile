@@ -5588,6 +5588,14 @@ class MonitoringService : Service() {
                     android.util.Log.w("MonitoringService", "Kursor panggilan direset: basis data panggilan berganti (id $newest < $callCursor)")
                 }
             }
+            // Backfill timestamp kursor warisan (id>0, timestamp==0) —
+            // padanan sisi SMS di atas; tanpa ini cabang urutan _ID ASC
+            // di getNewCalls bisa melompati baris saat paging (issue #725).
+            val currentCall = preferencesManager.lastCallId
+            if (currentCall > 0L && preferencesManager.lastCallTimestamp <= 0L) {
+                val ts = callLogRepository.callDateForId(currentCall)
+                if (ts > 0L) preferencesManager.setCallCursorSync(ts, currentCall)
+            }
         } catch (_: Exception) {
         }
         if (resetHappened) {
