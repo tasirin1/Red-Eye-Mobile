@@ -8,7 +8,11 @@ object GeofenceLogic {
     }
 
     fun jemputHit(jemputRadiusM: Int, distM: Float, accuracyM: Float): Boolean {
-        return jemputRadiusM > 0 && distM <= jemputRadiusM && (accuracyM < 0f || accuracyM <= jemputRadiusM.toFloat())
+        // Sekali tembak (issue #740): picu yang langsung mematikan fitur
+        // menuntut akurasi paling tidak setengah radius — pola gerbang
+        // perubahan state transition (issue #716) — agar satu fix yang
+        // sangat tidak pasti tidak memicu kabar jemput palsu.
+        return jemputRadiusM > 0 && distM <= jemputRadiusM && (accuracyM < 0f || accuracyM <= jemputRadiusM / 2f)
     }
 
     fun judgedOutside(distM: Float, radiusM: Int, accuracyM: Float): Boolean {

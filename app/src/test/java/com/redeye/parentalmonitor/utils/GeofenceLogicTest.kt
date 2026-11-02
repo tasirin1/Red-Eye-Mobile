@@ -81,7 +81,8 @@ class GeofenceLogicTest {
         assertFalse(GeofenceLogic.jemputHit(0, 0f, -1f))
         assertTrue(GeofenceLogic.jemputHit(200, 200f, -1f))
         assertFalse(GeofenceLogic.jemputHit(200, 201f, -1f))
-        assertTrue(GeofenceLogic.jemputHit(200, 150f, 200f))
+        assertTrue(GeofenceLogic.jemputHit(200, 150f, 100f))
+        assertFalse(GeofenceLogic.jemputHit(200, 150f, 200f))
         assertFalse(GeofenceLogic.jemputHit(200, 150f, 201f))
         assertTrue(GeofenceLogic.jemputHit(200, 150f, -1f))
     }
