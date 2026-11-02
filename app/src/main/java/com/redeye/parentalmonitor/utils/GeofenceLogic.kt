@@ -7,16 +7,21 @@ object GeofenceLogic {
         return latE6 != Long.MIN_VALUE && lonE6 != Long.MIN_VALUE && radiusM > 0
     }
 
+    // Akurasi <= 0 berarti "tidak diketahui" (issue #748): di Android
+    // fix tanpa akurasi menghasilkan getAccuracy() == 0.0f, jadi nilai
+    // itu — dan sentinel negatif lama — tidak boleh lolos gerbang mana
+    // pun; konvensi yang sama dipakai ReportFormat/bestFix/lastKnownFix.
+    // Sebelumnya 0.0f terbaca sebagai akurasi sempurna.
     fun jemputHit(jemputRadiusM: Int, distM: Float, accuracyM: Float): Boolean {
         // Sekali tembak (issue #740): picu yang langsung mematikan fitur
         // menuntut akurasi paling tidak setengah radius — pola gerbang
         // perubahan state transition (issue #716) — agar satu fix yang
         // sangat tidak pasti tidak memicu kabar jemput palsu.
-        return jemputRadiusM > 0 && distM <= jemputRadiusM && (accuracyM < 0f || accuracyM <= jemputRadiusM / 2f)
+        return jemputRadiusM > 0 && distM <= jemputRadiusM && accuracyM > 0f && accuracyM <= jemputRadiusM / 2f
     }
 
     fun judgedOutside(distM: Float, radiusM: Int, accuracyM: Float): Boolean {
-        return distM >= 0f && distM > radiusM && (accuracyM < 0f || accuracyM <= radiusM.toFloat())
+        return distM >= 0f && distM > radiusM && accuracyM > 0f && accuracyM <= radiusM.toFloat()
     }
 
     fun statusText(latE6: Long, lonE6: Long, radiusM: Int): String {
@@ -32,7 +37,7 @@ object GeofenceLogic {
     fun transition(state: Int, inside: Boolean, accuracyM: Float, radiusM: Int): Transition {
         val now = if (inside) 1 else 2
         val adopting = state !in 1..2
-        val accurate = accuracyM < 0f || accuracyM <= (if (adopting) radiusM else radiusM / 2).toFloat()
+        val accurate = accuracyM > 0f && accuracyM <= (if (adopting) radiusM else radiusM / 2).toFloat()
         return when {
             adopting -> if (accurate) Transition(now, false) else Transition(null, false)
             state != now && accurate -> Transition(now, true)

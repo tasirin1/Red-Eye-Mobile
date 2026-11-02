@@ -9,10 +9,13 @@ class GeofenceLogicTest {
     @Test
     fun transitionAdoptionRequiresAccuracyWithinRadius() {
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(0, true, 10_000f, 200))
-        assertEquals(GeofenceLogic.Transition(2, false), GeofenceLogic.transition(3, false, -1f, 200))
+        // #748: akurasi <= 0 (tak diketahui, termasuk 0.0f dari fix tanpa
+        // akurasi) tidak lagi mengadopsi state — ekspektasi lama yang
+        // memakai -1f/0f sebagai "lolos" diperbarui sengaja di sini.
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(3, false, -1f, 200))
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(-1, true, 51f, 50))
         assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(0, true, 200f, 200))
-        assertEquals(GeofenceLogic.Transition(2, false), GeofenceLogic.transition(0, false, 0f, 200))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(0, false, 0f, 200))
     }
 
     @Test
@@ -23,8 +26,8 @@ class GeofenceLogicTest {
 
     @Test
     fun transitionChangeRequiresAccuracyWithinRadius() {
-        assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, -1f, 200))
-        assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 0f, 200))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, -1f, 200))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(2, true, 0f, 200))
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 201f, 200))
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(2, true, 5_000f, 200))
     }
@@ -79,19 +82,21 @@ class GeofenceLogicTest {
     @Test
     fun jemputHitBoundaries() {
         assertFalse(GeofenceLogic.jemputHit(0, 0f, -1f))
-        assertTrue(GeofenceLogic.jemputHit(200, 200f, -1f))
+        // #748: akurasi tak diketahui (-1f/0f) tidak lagi memicu jemput.
+        assertFalse(GeofenceLogic.jemputHit(200, 200f, -1f))
         assertFalse(GeofenceLogic.jemputHit(200, 201f, -1f))
         assertTrue(GeofenceLogic.jemputHit(200, 150f, 100f))
         assertFalse(GeofenceLogic.jemputHit(200, 150f, 200f))
         assertFalse(GeofenceLogic.jemputHit(200, 150f, 201f))
-        assertTrue(GeofenceLogic.jemputHit(200, 150f, -1f))
+        assertFalse(GeofenceLogic.jemputHit(200, 150f, -1f))
+        assertFalse(GeofenceLogic.jemputHit(200, 150f, 0f))
     }
 
     @Test
     fun judgedOutsideAccuracyGate() {
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, 800f))
         assertTrue(GeofenceLogic.judgedOutside(150f, 100, 50f))
-        assertTrue(GeofenceLogic.judgedOutside(150f, 100, -1f))
+        assertFalse(GeofenceLogic.judgedOutside(150f, 100, -1f))
         assertTrue(GeofenceLogic.judgedOutside(150f, 100, 100f))
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, 101f))
         assertFalse(GeofenceLogic.judgedOutside(90f, 100, 10f))
