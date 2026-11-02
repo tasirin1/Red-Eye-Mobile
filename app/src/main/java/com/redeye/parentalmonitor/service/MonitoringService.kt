@@ -259,6 +259,7 @@ class MonitoringService : Service() {
     @Volatile
     private var ownerEpoch = 0
     private val offsetPersistLock = Any()
+    private val heldPhotosLock = Any()
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
     private var credsCheckAt = 0L
@@ -8354,8 +8355,8 @@ class MonitoringService : Service() {
                 }
                 val healed = HeldPhotos.heal(heldEntries, existingNames, decoded)
                 if (healed != heldEntries) {
-                    heldEntries = healed
-                    storeHeldPhotoEntries(heldEntries)
+                    mutateHeldPhotoEntries { fresh -> HeldPhotos.heal(fresh, existingNames, decoded) }
+                    heldEntries = heldPhotoEntriesNow()
                 }
             }
         }
@@ -8406,12 +8407,24 @@ class MonitoringService : Service() {
         try { preferencesManager.setHeldPhotoHashSync(0L) } catch (_: Exception) { }
     }
 
+    // Baca-ubah-tulis daftar foto tertahan di bawah satu kunci: situs-situs
+    // panggil berjalan dari benang/korutin berbeda (flush kuota, prune
+    // cache, tahan Data Saver) sehingga pola baca-lalu-tulis tanpa kunci
+    // bisa menimpa penambahan serentak (issue #673).
+    private fun mutateHeldPhotoEntries(transform: (List<HeldPhotos.Entry>) -> List<HeldPhotos.Entry>) {
+        synchronized(heldPhotosLock) {
+            val now = heldPhotoEntriesNow()
+            val next = transform(now)
+            if (next != now) storeHeldPhotoEntries(next)
+        }
+    }
+
     private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long) {
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
                     try {
-                        storeHeldPhotoEntries(HeldPhotos.withHeld(heldPhotoEntriesNow(), photoFile.name, photoHashNow, MAX_PHOTO_KEPT))
+                        mutateHeldPhotoEntries { HeldPhotos.withHeld(it, photoFile.name, photoHashNow, MAX_PHOTO_KEPT) }
                     } catch (_: Exception) { }
                     android.util.Log.i("MonitoringService", "Hemat kuota: foto otomatis ditahan sampai tersambung Wi-Fi")
                     return@launch
@@ -10632,7 +10645,7 @@ class MonitoringService : Service() {
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)
-                            storeHeldPhotoEntries(HeldPhotos.withoutHashes(heldEntriesFlush, setOf(fileHashFlush)))
+                            mutateHeldPhotoEntries { fresh -> HeldPhotos.withoutHashes(fresh, setOf(fileHashFlush)) }
                         } catch (_: Exception) {
                         }
                     }
@@ -10680,17 +10693,17 @@ class MonitoringService : Service() {
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
-            val heldEntriesPrune = heldPhotoEntriesNow()
-            if (heldEntriesPrune.isNotEmpty()) {
-                var keptEntries = HeldPhotos.withoutNames(heldEntriesPrune, dropped.mapTo(HashSet()) { it.name })
-                if (keptEntries.any { it.raw == null && it.name == null }) {
-                    val droppedHashes = HashSet<Long>()
-                    for (file in dropped) {
-                        try { droppedHashes.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
-                    }
-                    keptEntries = HeldPhotos.withoutHashes(keptEntries, droppedHashes)
+            val droppedNames = dropped.mapTo(HashSet()) { it.name }
+            val droppedHashes = HashSet<Long>()
+            for (file in dropped) {
+                try { droppedHashes.add(PhotoFingerprint.analyze(file).second) } catch (_: Exception) { }
+            }
+            mutateHeldPhotoEntries { fresh ->
+                var kept = HeldPhotos.withoutNames(fresh, droppedNames)
+                if (kept.any { it.raw == null && it.name == null }) {
+                    kept = HeldPhotos.withoutHashes(kept, droppedHashes)
                 }
-                if (keptEntries != heldEntriesPrune) storeHeldPhotoEntries(keptEntries)
+                kept
             }
             dropped.forEach { deleteQuietly(it) }
             try {

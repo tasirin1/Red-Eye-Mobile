@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Daftar foto tertahan kini diubah di bawah kunci bersama (issue #673): pola baca-ubah-tulis daftar itu sebelumnya tanpa kunci bersama padahal situs-situsnya (tahan Data Saver, flush hemat kuota, prune cache, heal) berjalan dari benang/korutin berbeda — penambahan serentak bisa tertimpa tulis berbasis potret basi. Semua penulisan kini lewat `mutateHeldPhotoEntries` yang membaca ulang dan menerapkan transformasi di dalam `synchronized(heldPhotosLock)`.
 - Veto rujukan masa lalu tak lagi meluas ke perintah baca-saja (issue #672): jalur alias sebelumnya menerapkan veto rujukan foto ke semua perintah, sehingga permintaan sah seperti `waspada kemarin`, `lokasi kemarin`, dan `kuota kemarin` gugur diam-diam (dan tak konsisten dengan bentuk slash Inggrisnya). Veto rujukan kini dilewati hanya untuk kepala perintah baca-saja (lokasi/baterai/waspada/kuota/dll.); perintah mutasi seperti /hilang tetap terveto. Terverifikasi porting + 418/418 ekspektasi terkunci.
 - Frasa waktu "pekan depan" tak lagi terbaca sebagai lensa depan (issue #671, sisa #638): daftar kata sebelum "depan" yang memblokir tafsir lensa sebelumnya hanya minggu/bulan/tahun/di. Ditambah "pekan"; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Typo negasi "tdak" kini dikenali (issue #670, sisa #627): pola typo #627 menutup sebagian bentuk (tidka/jngan sebagai entri literal), tetapi "tdak" (huruf hilang + tertukar dari "tidak") lolos. Ditambahkan sebagai entri literal sejajar preseden #627; terverifikasi porting + 418/418 ekspektasi terkunci.
