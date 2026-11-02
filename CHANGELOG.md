@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kait lama dalam rantai pre-push kini menerima stdin persis seperti yang dikirim git (#862): push tanpa baris refs sebelumnya diteruskan sebagai satu baris kosong semu; kini stdin kosong tiba sebagai stdin kosong.
 - Rantai kait pre-push kini terbukti bisa berjalan, bukan sekadar diumumkan (#861): salinan kait lama yang tak eksekutabel sebelumnya dilewati diam-diam oleh kait baru di setiap push; pemasang kini menegaskan bit eksekusi salinan dan memperingatkan keras bila tidak bisa.
 - Detektor UTF-16 perkakas gerbang tidak lagi salah endian pada teks Thai/Lao/Khmer (#860): dekode byte-tertukar dari berkas big-endian aksara itu sebelumnya tetap lolos ambang "tercetak" sehingga dinyatakan little-endian dan token di dalamnya terlewat; kini kedua endian dinilai dan yang benar dipilih lewat rasio tercetak + koherensi aksara.
 - Toleransi koreksi jam pada penanda sesi kini juga membatasi besar geseran jamnya (#858): sebelumnya sesi bisa "dilanjutkan" lintas reboot bila pemulihan terjadi pada penanda waktu jalan yang kebetulan cocok, mengkreditkan waktu antar boot sebagai pemakaian; kini geseran jam tersirat di atas 2 jam ditolak (koreksi NTP besar yang sah tetap diterima).

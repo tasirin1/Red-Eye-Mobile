@@ -57,7 +57,14 @@ ZERO="0000000000000000000000000000000000000000"
 # ke pemeriksaan kita, karena stdin hanya bisa dibaca satu kali.
 MASUKAN="$(cat)"
 if [ -n "$K_LAMA" ] && [ -x "$K_LAMA" ]; then
-    printf '%s\n' "$MASUKAN" | "$K_LAMA" "$@" || exit $?
+    # Teruskan stdin apa adanya (issue #862): masukan kosong harus
+    # tiba sebagai stdin kosong, bukan satu baris kosong semu dari
+    # printf yang selalu menambah newline.
+    if [ -n "$MASUKAN" ]; then
+        printf '%s\n' "$MASUKAN" | "$K_LAMA" "$@" || exit $?
+    else
+        "$K_LAMA" "$@" < /dev/null || exit $?
+    fi
 fi
 TMPREF="$(mktemp)" || exit 1
 trap 'rm -f "$TMPREF"' EXIT
