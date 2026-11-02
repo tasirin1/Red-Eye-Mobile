@@ -3422,7 +3422,7 @@ class MonitoringService : Service() {
         chatId: String
     ) {
         val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
-        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(try { preferencesManager.restorePinLockoutUntil } catch (_: Exception) { 0L }, System.currentTimeMillis())) {
+        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(try { preferencesManager.restorePinLockoutUntil } catch (_: Exception) { 0L }, System.currentTimeMillis(), try { preferencesManager.restorePinLockoutElapsedStart } catch (_: Exception) { 0L }, android.os.SystemClock.elapsedRealtime())) {
             try { deleteIncomingMessage(chatId, message.messageId, token) } catch (_: Exception) { }
             pendingRestore = null
             sendToTelegram("⏳ PIN backup dikunci sementara karena terlalu banyak PIN salah. Coba lagi 15 menit.")
@@ -3440,6 +3440,7 @@ class MonitoringService : Service() {
             try { preferencesManager.restorePinFailCount = newCount } catch (_: Exception) { }
             if (lockUntil > 0L) {
                 try { preferencesManager.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
+                try { preferencesManager.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 pendingRestore = null
                 sendToTelegram("❌ PIN salah ${com.redeye.parentalmonitor.utils.RestorePinGate.MAX_FAILURES} kali. PIN backup dikunci 15 menit.")
             } else {
@@ -3449,6 +3450,7 @@ class MonitoringService : Service() {
         }
         try { preferencesManager.restorePinFailCount = 0 } catch (_: Exception) { }
         try { preferencesManager.restorePinLockoutUntil = 0L } catch (_: Exception) { }
+        try { preferencesManager.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
         pendingRestore = null
         val restoreEpoch = ownerEpoch
         if (!validateRestoreTarget(data)) {
