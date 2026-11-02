@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Aplikasi yang di-uninstall kini dilupakan dari daftar aplikasi dikenal (#854): sebelumnya nama paket tersimpan seumur pemasangan, jadi aplikasi yang dipasang ulang (terutama saat monitoring sedang jeda) tak pernah lagi memicu alert "aplikasi baru"; kini uninstall menghapusnya dari daftar dan pemasangan ulang teralert seperti biasa.
 - Sekolah di dalam radius rumah kini tetap mencatat fakta berangkat dan tidak menggandakan alert (#853): sebelumnya anak yang berangkat ke sekolah dekat rumah tak pernah tercatat berangkat (pagar rumah tak pernah "keluar") dan satu kedatangan bisa menghasilkan dua pesan; kini masuk sekolah bersarang saat tercatat di rumah dihitung berangkat, dan alert kedua yang searah dalam lintasan yang sama ditahan.
 - Ringkasan malam tidak lagi hilang dua malam sesudah pindah zona waktu jauh ke barat (#852): kunci hari lokal yang terbaca mundur sebelumnya menelan jatuhnya digest; kini umur cap menurut waktu epoch membedakan pindah zona (digest tetap dikirim) dari jam yang dimundurkan manual (tetap dilindungi dari pengiriman ulang).
 - /jejak kini menyaring titik lokasi kasar dan menampilkan akurasi tiap titik (#851): sebelumnya titik network berakurasi ribuan meter tampil setara GPS presisi dan ikut digambar sebagai rute, sehingga terlihat seperti perpindahan yang tidak pernah terjadi; jalur ringkasan sebenarnya sudah menyaringnya.

@@ -1659,6 +1659,21 @@ class PreferencesManager(context: Context) {
         return try { sharedPreferences.getStringSet(KEY_A11Y_KNOWN_APPS, emptySet())?.toHashSet() ?: HashSet() } catch (_: Exception) { HashSet() }
     }
 
+    // Kebalikan rememberA11yApp (issue #854): uninstall menghapus
+    // nama dari himpunan dikenal agar pemasangan ulang di kemudian
+    // hari kembali memicu alert "aplikasi baru dibuka". Tanpa ini
+    // himpunan bersifat tambah-saja seumur pemasangan.
+    fun forgetA11yApp(packageName: String) {
+        if (packageName.isEmpty()) return
+        try {
+            val current = a11yKnownApps()
+            if (current.remove(packageName)) {
+                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     fun rememberA11yApp(packageName: String): Boolean {
         if (packageName.isEmpty()) return false
         return try {
