@@ -2319,16 +2319,14 @@ class MonitoringService : Service() {
             ) return
             authReminderAt.set(now)
             val tap = setupTapIntent()
-            val title = when (code) {
-                400 -> "Chat tak ditemukan (400)"
-                403 -> "Bot diblokir/dikeluarkan dari chat (403)"
-                else -> "Token bot ditolak ($code)"
-            }
-            val text = when (code) {
-                400 -> "Buka aplikasi, lalu perbaiki Chat ID di halaman Setup."
-                403 -> "Buka Telegram: buka blokir bot atau undang lagi bot ke chat, lalu kirim /status (perintah dibaca lagi dalam ±5 menit)."
-                else -> "Buka aplikasi, lalu perbaiki token di halaman Setup."
-            }
+            // Teks notifikasi menyamar penuh (issue #741): judul/teks lama
+            // menyebut token, bot, dan Setup — membocorkan jati diri
+            // aplikasi ke siapa pun yang melihat notifikasi. Rincian
+            // galat kredensial tetap terlihat di halaman Setup sendiri.
+            val title = "Kalkulator"
+            val text = "Perlu perhatian: buka aplikasi dan periksa pengaturan."
+            // Kode galat dipertahankan untuk diagnosis lewat log saja.
+            android.util.Log.w("MonitoringService", "Pengingat kegagalan auth dipasang (kode $code)")
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)

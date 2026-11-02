@@ -132,10 +132,10 @@
     <string name="msg_service_failed">Error: layanan tak bisa jalan</string>
     <string name="msg_action_failed">Aksi gagal, coba lagi</string>
     <string name="msg_open_setup_failed">Tak bisa buka setup: %1$s</string>
-    <string name="resume_title">Layanan dijeda</string>
-    <string name="resume_text">Buka aplikasi untuk memulihkan pemantauan</string>
-    <string name="storage_fallback_title">Penyimpanan aman tak tersedia</string>
-    <string name="storage_fallback_text">Kredensial tak bisa disimpan, jadi pemantauan berhenti. Buka aplikasi, tahan tombol Simpan untuk mereset penyimpanan terenkripsi bila perlu, lalu simpan ulang.</string>
+    <string name="resume_title">Kalkulator</string>
+    <string name="resume_text">Ketuk untuk membuka aplikasi</string>
+    <string name="storage_fallback_title">Kalkulator</string>
+    <string name="storage_fallback_text">Ketuk untuk membuka aplikasi dan memeriksa pengaturan</string>
     <string name="admin_disabled">⚠️ Proteksi dimatikan!</string>
     <string name="admin_disable_warning">⚠️ Hati-hati! Admin Perangkat harus dimatikan sebelum uninstall aplikasi ini!</string>
     <string name="setup_status_owner_known">Pemilik: dikenali</string>
