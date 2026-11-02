@@ -102,6 +102,15 @@ if [ -f tools/cek-token.py ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas terabaikan $b64_ign (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
+# 5e. Token di PESAN commit yang belum ter-push (issue #769): diff dan
+# pohon tak memuat pesan commit, padahal token di sana hidup permanen di
+# riwayat. Tanpa upstream, periksa commit terakhir saja.
+if [ -f tools/cek-token.py ]; then
+  pesan_token=$( (git log @{u}..HEAD --format=%B 2>/dev/null || git log -1 --format=%B 2>/dev/null) | python3 tools/cek-token.py --teks 2>/dev/null || true)
+  if [ -n "$pesan_token" ]; then
+    echo "GAGAL: kemungkinan token bot asli di pesan commit yang belum ter-push (hanya via input SetupActivity)"; gagal=1;
+  fi
+fi
 # 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
 loop_dup=""
 while IFS= read -r f; do

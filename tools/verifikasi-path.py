@@ -672,6 +672,27 @@ def cek_secret_riwayat(gagal, rentang):
                 return
 
 
+def cek_secret_pesan(gagal, rentang):
+    """Pindai token di PESAN commit dalam rentang (issue #769).
+
+    Diff dan pohon tak memuat pesan commit, padahal token yang tertulis
+    di pesan (tempelan contoh, pesan bawaan cherry-pick) terkirim dan
+    hidup permanen di riwayat — media yang sama dengan #750.
+    """
+    daftar_commit = jalan("git", "rev-list", rentang) or ""
+    for sha in daftar_commit.splitlines():
+        sha = sha.strip()
+        if not sha:
+            continue
+        pesan = jalan("git", "log", "-1", "--format=%B", sha)
+        if mengandung_token(pesan):
+            gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
+                         "token di pesan commit hidup permanen di riwayat; "
+                         "tulis ulang pesan itu sebelum push. Kredensial "
+                         "hanya via input manual SetupActivity" % sha[:8])
+            return
+
+
 def cek_secret_tak_lacak(gagal):
     """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
     berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
@@ -1094,15 +1115,19 @@ def utama():
             pemisah = "..." if "..." in args.rentang else ".."
             diff = jalan("git", "diff", a + pemisah + b) or ""
             cek_secret_riwayat(gagal, args.rentang)
+            cek_secret_pesan(gagal, args.rentang)
     else:
         hulu = jalan("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
         if hulu:
-            diff = jalan("git", "diff", hulu.strip() + "...HEAD") or ""
-            daftar = jalan("git", "diff", "--name-only", hulu.strip() + "...HEAD") or ""
+            rentang_lokal = hulu.strip() + "...HEAD"
+            diff = jalan("git", "diff", rentang_lokal) or ""
+            daftar = jalan("git", "diff", "--name-only", rentang_lokal) or ""
             berubah = daftar.splitlines()
         else:
-            diff = jalan("git", "diff", "HEAD~1...HEAD") or ""
-            berubah = (jalan("git", "diff", "--name-only", "HEAD~1...HEAD") or "").splitlines()
+            rentang_lokal = "HEAD~1...HEAD"
+            diff = jalan("git", "diff", rentang_lokal) or ""
+            berubah = (jalan("git", "diff", "--name-only", rentang_lokal) or "").splitlines()
+        cek_secret_pesan(gagal, rentang_lokal)
         kotor = jalan("git", "status", "--porcelain") or ""
         for baris in kotor.splitlines():
             nama = baris[3:].strip().strip('"')
