@@ -609,6 +609,42 @@ def cek_secret_pohon(gagal):
                          "hanya via input manual SetupActivity: %s" % teks[:100])
 
 
+def cek_secret_riwayat(gagal, rentang):
+    """Pindai token di pohon TIAP commit dalam rentang (issue #750).
+
+    Diff bersih rentang tidak memuat token yang ditambah lalu dihapus
+    lagi di dalam rentang yang sama, padahal kedua commit ikut terkirim
+    dan token itu hidup permanen di riwayat git. Pindai pohon tiap
+    commit dalam rentang agar pola "sudah kuhapus kok" tetap tertangkap.
+    """
+    daftar_commit = jalan("git", "rev-list", rentang) or ""
+    for sha in daftar_commit.splitlines():
+        sha = sha.strip()
+        if not sha:
+            continue
+        out = jalan("git", "grep", "-l", "-E",
+                    r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", sha) or ""
+        for baris in out.splitlines():
+            teks = baris.strip()
+            if not teks:
+                continue
+            if teks.startswith("Binary file ") and teks.endswith(" matches"):
+                path = teks[len("Binary file "):-len(" matches")]
+                gagal.append("Kemungkinan token bot asli di berkas BINER %s "
+                             "pada commit %s (riwayat rentang) — token tetap "
+                             "hidup di riwayat walau sudah dihapus di pohon "
+                             "akhir. Kredensial hanya via input manual "
+                             "SetupActivity" % (path, sha[:8]))
+            else:
+                path = teks.split(":", 1)[1] if ":" in teks else teks
+                gagal.append("Kemungkinan token bot asli di %s pada commit %s "
+                             "(riwayat rentang) — token tetap hidup di "
+                             "riwayat walau sudah dihapus di pohon akhir. "
+                             "Kredensial hanya via input manual "
+                             "SetupActivity" % (path, sha[:8]))
+            return
+
+
 def cek_secret_tak_lacak(gagal):
     """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
     berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
@@ -991,6 +1027,7 @@ def utama():
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
             pemisah = "..." if "..." in args.rentang else ".."
             diff = jalan("git", "diff", a + pemisah + b) or ""
+            cek_secret_riwayat(gagal, args.rentang)
     else:
         hulu = jalan("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
         if hulu:
