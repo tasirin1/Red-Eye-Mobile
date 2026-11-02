@@ -455,6 +455,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_SCHOOL_STATE = "school_state"
         private const val KEY_SCHOOL_ALERT_AT = "school_alert_at"
         private const val KEY_NIGHT_DIGEST_DATE = "night_digest_date"
+        private const val KEY_NIGHT_DIGEST_DONE_AT = "night_digest_done_at"
         private const val KEY_LAST_DATA_AT = "last_data_at"
         private const val KEY_LOC_FAIL_COUNT = "loc_fail_count"
         private const val KEY_HEALTH_ALERT_AT = "health_alert_at"
@@ -1774,6 +1775,13 @@ class PreferencesManager(context: Context) {
     var nightDigestDate: String
         get() = prefString(KEY_NIGHT_DIGEST_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_NIGHT_DIGEST_DATE, value).apply()
+
+    // Epoch saat cap digest malam ditulis (issue #852): membedakan
+    // pindah zona waktu (epoch normal) dari jam dimundurkan (epoch
+    // mundur) pada kunci hari yang sama-sama terbaca mundur.
+    var nightDigestDoneAtMs: Long
+        get() = prefLong(KEY_NIGHT_DIGEST_DONE_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_NIGHT_DIGEST_DONE_AT, value).apply()
 
     var lastDataAt: Long
         get() = prefLong(KEY_LAST_DATA_AT, 0L)

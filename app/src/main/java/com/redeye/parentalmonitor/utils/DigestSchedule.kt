@@ -36,4 +36,22 @@ object DigestSchedule {
     fun nightCatchUpDue(doneKey: String, yesterdayKey: String, todayKey: String, hour: Int): Boolean {
         return hour in 5..11 && doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneKey < yesterdayKey
     }
+
+    // Pindah zona waktu jauh ke barat (issue #852): kunci hari lokal
+    // terbaca mundur sehingga perbandingan string di atas membuat
+    // digest hilang dua malam. Pembeda dari jam dimundurkan manual
+    // (#601) adalah EPOCH: pindah zona membiarkan epoch berjalan
+    // normal, jam mundur menggerakkan epoch ke belakang. Jadi bila
+    // cap terbaca "hari ini/di depan" tetapi umur epoch-nya sudah
+    // >= 16 jam, cap itu tidak mungkin ditulis malam ini — malam
+    // zona baru tetap jatuh tempo.
+    fun nightZoneShiftDue(doneKey: String, todayKey: String, hour: Int, doneAtMs: Long, nowMs: Long): Boolean {
+        return hour >= 21 && doneKey.isNotEmpty() && doneAtMs > 0L &&
+            nowMs - doneAtMs >= 16 * 3_600_000L && doneKey >= todayKey
+    }
+
+    fun nightZoneShiftCatchUpDue(doneKey: String, yesterdayKey: String, hour: Int, doneAtMs: Long, nowMs: Long): Boolean {
+        return hour in 5..11 && doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneAtMs > 0L &&
+            nowMs - doneAtMs >= 16 * 3_600_000L && doneKey >= yesterdayKey
+    }
 }

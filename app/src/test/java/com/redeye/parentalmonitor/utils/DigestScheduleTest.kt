@@ -80,4 +80,29 @@ class DigestScheduleTest {
         assertFalse(DigestSchedule.nightDue(23, "2026-10-28", "2026-10-27"))
         assertFalse(DigestSchedule.nightCatchUpDue("2026-10-27", "2026-10-25", "2026-10-26", 7))
     }
+
+    @Test
+    fun zoneShiftWestKeepsNightDigestDue() {
+        // #852: pindah zona jauh ke barat — kunci mundur tetapi epoch
+        // berjalan normal dan cap sudah berumur >= 16 jam.
+        val e = 1_000_000_000_000L
+        val h16 = 16 * 3_600_000L
+        assertTrue(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-01", 21, e, e + h16 + 5_400_000L))
+        assertTrue(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-02", 21, e, e + 41 * 3_600_000L))
+        assertTrue(DigestSchedule.nightZoneShiftCatchUpDue("2026-11-02", "2026-11-02", 7, e, e + 21 * 3_600_000L))
+    }
+
+    @Test
+    fun zoneShiftDueRejectsFreshCapsAndRollback() {
+        val e = 1_000_000_000_000L
+        // Cap malam ini sendiri (umur 1 jam) tidak boleh menembak ulang.
+        assertFalse(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-02", 22, e, e + 3_600_000L))
+        // Jam dimundurkan: epoch ikut mundur -> bukan pindah zona.
+        assertFalse(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-01", 21, e, e - 5 * 3_600_000L))
+        // Belum ada cap epoch (pemasangan lama) -> jalur string biasa.
+        assertFalse(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-01", 21, 0L, e + 40 * 3_600_000L))
+        // Di luar jendela malam/pagi.
+        assertFalse(DigestSchedule.nightZoneShiftDue("2026-11-02", "2026-11-01", 14, e, e + 40 * 3_600_000L))
+        assertFalse(DigestSchedule.nightZoneShiftCatchUpDue("2026-11-02", "2026-11-02", 13, e, e + 30 * 3_600_000L))
+    }
 }

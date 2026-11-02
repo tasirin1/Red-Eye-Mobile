@@ -7559,7 +7559,9 @@ class MonitoringService : Service() {
             val h = DigestSchedule.localHour(now, off.toLong())
             val key = todayKey()
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
-            if (DigestSchedule.nightDue(h, done, key)) {
+            val doneAt = try { preferencesManager.nightDigestDoneAtMs } catch (_: Exception) { 0L }
+            if (DigestSchedule.nightDue(h, done, key) ||
+                DigestSchedule.nightZoneShiftDue(done, key, h, doneAt, now)) {
                 if (awaitingOwnerLogin()) return
                 // Tandai selesai SESUDAH kirim berhasil (issue #699):
                 // menandai sebelum kirim membuat digest hari itu hilang
@@ -7573,17 +7575,20 @@ class MonitoringService : Service() {
                     nightDigestAttemptKey = key
                     if (sendDailyDigest(manual = false)) {
                         try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                        try { preferencesManager.nightDigestDoneAtMs = now } catch (_: Exception) { }
                     }
                 }
                 return
             }
             val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
-            if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h)) {
+            if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h) ||
+                DigestSchedule.nightZoneShiftCatchUpDue(done, yesterday, h, doneAt, now)) {
                 if (awaitingOwnerLogin()) return
                 if (nightDigestAttemptKey != yesterday) {
                     nightDigestAttemptKey = yesterday
                     if (sendDailyDigest(manual = false)) {
                         try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
+                        try { preferencesManager.nightDigestDoneAtMs = now } catch (_: Exception) { }
                     }
                 }
             }
