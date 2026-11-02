@@ -336,6 +336,32 @@ object IntentParser {
         return markerMatches(token, "batal")
     }
 
+    // Kutipan berisi >=2 kata di tengah kalimat adalah ucapan yang DILAPORKAN
+    // (mis. bunyi pesan masuk), bukan perintah — sisa #640 yang baru menutup
+    // kutipan di awal kalimat (issue #666). Kutipan satu kata ("depan")
+    // adalah penekanan dan tetap sah (uji terkunci).
+    private fun hasQuotedUtterance(text: String): Boolean {
+        var open = ' '
+        var spanStart = -1
+        for (i in text.indices) {
+            val c = text[i]
+            if (open == ' ') {
+                if (c == '"' || c == '“') {
+                    open = c
+                    spanStart = i
+                }
+            } else {
+                if ((open == '"' && c == '"') || (open == '“' && (c == '”' || c == '"'))) {
+                    val span = text.substring(spanStart + 1, i).trim()
+                    if (span.split(WHITESPACE).count { it.isNotEmpty() } >= 2) return true
+                    open = ' '
+                    spanStart = -1
+                }
+            }
+        }
+        return false
+    }
+
     private fun isReportToken(token: String): Boolean {
         return markerMatches(token, "katanya") || markerMatches(token, "bilang")
     }
@@ -370,6 +396,7 @@ object IntentParser {
         if (tokens.any { isReportToken(it) }) return null
         val rawTrim = text.trim()
         if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
+        if (hasQuotedUtterance(rawTrim)) return null
         val futureVetoed = hasFutureMarker(tokens, padded)
         val aspectVetoed = isAspectStatus(tokens)
         // Kata tanya sesudah kata pertama menandakan pertanyaan, bukan

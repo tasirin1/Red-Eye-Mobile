@@ -371,6 +371,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsMidSentenceQuotedUtterance() {
+        // #666: kutipan >=2 kata di tengah kalimat = ucapan yang dilaporkan.
+        assertNull(IntentParser.parse("pesan masuk bunyinya \"kirim foto sekarang\""))
+        assertNull(IntentParser.parse("bunyi notifnya “ambil foto depan”"))
+        // Kontrol terkunci: kutipan satu kata adalah penekanan, tetap sah.
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+    }
+
+    @Test
     fun parseRejectsMalamIniFuture() {
         // #665: frasa "malam ini" merujuk waktu mendatang seperti "nanti malam".
         assertNull(IntentParser.parse("kirim foto malam ini dong"))
