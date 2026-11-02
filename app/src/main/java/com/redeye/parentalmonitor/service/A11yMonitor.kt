@@ -222,7 +222,7 @@ object A11yMonitor {
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
                 val app = service.applicationContext
                 executor.execute {
-                    val texts = if (sensitive) collectSnapshot(service, pkg).texts else emptyList()
+                    val texts = if (sensitive) collectSnapshot(service, pkg).first.texts else emptyList()
                     handleWindow(app, pkg, cls, texts)
                 }
                 scanWatchedContent(service, pkg)
