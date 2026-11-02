@@ -919,15 +919,21 @@ class NotificationForwarderService : NotificationListenerService() {
                 items
             }
             if (leftover.isNotEmpty()) {
-                var queued = false
+                // Penandaan per item (issue #791): buffer sudah terlanjur
+                // dikuras, jadi item yang selamat wajib ditandai walau
+                // sebagian batch tereviksi — pola all-or-nothing lama
+                // membuat yang selamat terkirim tanpa tanda (dobel saat
+                // replay) dan yang tereviksi hilang tanpa tercatat.
+                var results: List<Boolean> = emptyList()
                 try {
-                    queued = queue().addMessages(leftover.map { it.first })
+                    results = queue().addMessagesPerItem(leftover.map { it.first })
                     queue().flushSync()
                 } catch (_: Exception) {
                 }
-                if (queued) {
-                    markForwardedIds(leftover.map { it.second }.filter { it.isNotEmpty() })
-                    markGroupsForwarded(leftover.map { it.third }.filter { it.isNotEmpty() }.distinct())
+                val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
+                if (survived.isNotEmpty()) {
+                    markForwardedIds(survived.map { it.second }.filter { it.isNotEmpty() })
+                    markGroupsForwarded(survived.map { it.third }.filter { it.isNotEmpty() }.distinct())
                 }
                 try {
                     MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
@@ -1226,42 +1232,50 @@ class NotificationForwarderService : NotificationListenerService() {
             val restItems = ArrayList<Triple<String, String, String>>()
             while (index < items.size) restItems.add(items[index++])
             if (t is kotlinx.coroutines.CancellationException) {
+                // Daftar hash/grup kini sejajar per teks (issue #791)
+                // agar penandaan bisa per item seperti salvageBatch.
                 val texts = ArrayList<String>()
-                val hashes = ArrayList<String>()
-                val groups = ArrayList<String>()
+                val hashLists = ArrayList<List<String>>()
+                val groupLists = ArrayList<List<String>>()
                 if (curCount > 0) {
                     texts.add(cur.toString())
-                    hashes.addAll(curHashes)
-                    groups.addAll(curGroups)
+                    hashLists.add(ArrayList(curHashes))
+                    groupLists.add(ArrayList(curGroups))
                 }
                 val pendingSplit = splitRest
                 if (!pendingSplit.isNullOrEmpty()) {
                     texts.add(pendingSplit)
-                    if (splitHash.isNotEmpty()) hashes.add(splitHash)
-                    if (splitGroup.isNotEmpty()) groups.add(splitGroup)
+                    hashLists.add(if (splitHash.isNotEmpty()) listOf(splitHash) else emptyList())
+                    groupLists.add(if (splitGroup.isNotEmpty()) listOf(splitGroup) else emptyList())
                 }
                 val curItemCe = currentItem
                 if (curItemCe != null && !currentCovered) {
                     texts.add(curItemCe.first)
-                    if (curItemCe.second.isNotEmpty()) hashes.add(curItemCe.second)
-                    if (curItemCe.third.isNotEmpty()) groups.add(curItemCe.third)
+                    hashLists.add(if (curItemCe.second.isNotEmpty()) listOf(curItemCe.second) else emptyList())
+                    groupLists.add(if (curItemCe.third.isNotEmpty()) listOf(curItemCe.third) else emptyList())
                 }
                 for (item in restItems) {
                     texts.add(item.first)
-                    if (item.second.isNotEmpty()) hashes.add(item.second)
-                    if (item.third.isNotEmpty()) groups.add(item.third)
+                    hashLists.add(if (item.second.isNotEmpty()) listOf(item.second) else emptyList())
+                    groupLists.add(if (item.third.isNotEmpty()) listOf(item.third) else emptyList())
                 }
                 if (texts.isNotEmpty()) {
-                    var queued = false
+                    var results: List<Boolean> = emptyList()
                     try {
-                        queued = queue().addMessages(texts)
+                        results = queue().addMessagesPerItem(texts)
                         queue().flushSync()
                     } catch (_: Exception) {
                     }
-                    if (queued) {
-                        markForwardedIds(hashes)
-                        markGroupsForwarded(groups.distinct())
+                    val okHashes = ArrayList<String>()
+                    val okGroups = ArrayList<String>()
+                    for (idx in texts.indices) {
+                        if (results.getOrElse(idx) { false }) {
+                            okHashes.addAll(hashLists[idx])
+                            okGroups.addAll(groupLists[idx])
+                        }
                     }
+                    markForwardedIds(okHashes)
+                    markGroupsForwarded(okGroups.distinct())
                     try {
                         MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {

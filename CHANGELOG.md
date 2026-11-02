@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penandaan "sudah diteruskan" di jalur salvage notifikasi kini per item (issue #791): varian antrean baru melaporkan keselamatan tiap pesan, jadi bila sebagian batch tereviksi, item yang selamat tetap ditandai (tidak dobel saat replay) — pola all-or-nothing sebelumnya justru menggabungkan dua kerugian itu.
 - Perintah batal /pulihkan kini memakai kosakata yang sama dengan parser (issue #789): "batalkan", "batalin", dan "pembatalan" kini benar-benar membatalkan sesi restore — sebelumnya hanya "batal" persis yang diterima handler, sehingga kata batal lain jatuh sebagai tebakan kode yang salah (mode ketat: ikut mengunci kode restore).
 - Penanda masa lalu untuk kata kerja tangkap kini juga mencakup "semalam", "sebelumnya", dan "tempo hari" (issue #788): rujukan lampau dengan kata-kata itu sebelumnya tetap mengeksekusi foto/screenshot baru. "dulu" dan "lalu" sengaja tidak dimasukkan karena dwimakna dalam kalimat perintah ("ambil foto dulu" = ambil sekarang lebih dulu).
 

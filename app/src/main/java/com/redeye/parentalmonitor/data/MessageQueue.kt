@@ -250,6 +250,17 @@ class MessageQueue private constructor(context: Context) {
     // selamat bisa terkirim ganda saat dicoba lagi, bukan hilang).
     fun addMessages(messages: Collection<String>, priority: Boolean = false): Boolean {
         if (messages.isEmpty()) return true
+        return addMessagesPerItem(messages, priority).all { it }
+    }
+
+    // Varian per item dari addMessages (issue #791): hasil per pesan
+    // memberi tahu pemanggil salvage pesan mana saja yang benar-benar
+    // selamat dari eviksi dan terpersisten, agar penandaan "sudah
+    // diteruskan" mengikuti itemnya — bukan all-or-nothing yang pada
+    // kegagalan sebagian membuat yang selamat terkirim tanpa tanda
+    // (dobel) dan yang tereviksi hilang tanpa tercatat.
+    fun addMessagesPerItem(messages: Collection<String>, priority: Boolean = false): List<Boolean> {
+        if (messages.isEmpty()) return emptyList()
         val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
@@ -263,7 +274,7 @@ class MessageQueue private constructor(context: Context) {
                     evictedVolatile++
                 }
                 if (evictedVolatile > 0) persistDropCountsLocked()
-                return added.all { item -> volatileQueue.any { it === item } }
+                return added.map { item -> volatileQueue.any { it === item } }
             }
             val queue = readLocked().toMutableList()
             val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
@@ -275,7 +286,7 @@ class MessageQueue private constructor(context: Context) {
             }
             if (evictedBatch > 0) persistDropCountsLocked()
             val persistedBatch = persistLocked(queue, force = true, syncOnMain = true)
-            return persistedBatch && addedBatch.all { item -> queue.any { it === item } }
+            return addedBatch.map { item -> persistedBatch && queue.any { it === item } }
         }
     }
 
