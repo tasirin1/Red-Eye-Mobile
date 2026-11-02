@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Kata "manajer", "harimau", "bilangan", dan "batalion" tidak lagi tertangkap penanda pendek yang mirip awalannya (issue #773): "kirim foto manajer sekarang" kini berjalan (sebelumnya terveto sebagai pertanyaan "mana") dan "laporan harimau" tidak lagi tersasar menjadi laporan harian.
 - Pemindai token gerbang kini juga mengenali bentuk gabungan yang sebelumnya lolos (issue #772): token base64 yang terbelah antar literal, token mentah terbelah titik, dan token yang disisipi interpolasi `${...}`. Pemadatan dibuat sempit agar kata-kata kode biasa tidak tersambung menjadi pola palsu.
 - Gerbang akurasi penilaian "di luar pagar" kini memakai lantai 50 m yang sama dengan perubahan state (issue #771): pada radius pagar 50–99 m, alert jam malam, alert sekolah, dan skor /waspada kini bisa menyala dari fix GPS yang sama yang mengubah state, bukan tertahan gerbang yang lebih sempit.
 - Perintah lensa "yang" di akhir kalimat kini dikenali lagi (issue #770): "kirim foto yang belakang" kembali menghasilkan foto kamera belakang, sementara kalimat keterangan "yang belakang itu adiknya" tetap tidak tergabung sebagai pilihan lensa.

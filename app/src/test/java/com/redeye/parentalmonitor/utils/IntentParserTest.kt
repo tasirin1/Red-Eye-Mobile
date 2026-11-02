@@ -307,6 +307,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseKawanPalsuAwalanLain() {
+        // Issue #773: kata yang lebih panjang tertangkap penanda pendek
+        // lewat aturan awalan — "manajer" terveto "mana", "harimau"
+        // tersasar ke /digest lewat "hari". Kini kawan palsu awalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto manajer sekarang"))
+        assertNull(IntentParser.parse("laporan harimau"))
+        assertNull(IntentParser.parse("batalion khusus datang"))
+        // Kontrol: penanda betulan tetap bekerja.
+        assertEquals("/digest", IntentParser.parse("laporan hari ini"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",
