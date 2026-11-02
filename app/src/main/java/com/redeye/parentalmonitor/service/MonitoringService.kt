@@ -4794,7 +4794,9 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleRingCommand(arg: String) {
-        val seconds = if (arg.isEmpty()) 15 else arg.toIntOrNull()
+        // NumericArg seperti handler durasi lain (issue #812):
+        // sebelumnya toIntOrNull mentah menolak "/ring 30 detik".
+        val seconds = if (arg.isEmpty()) 15 else NumericArg.parse(arg)
         if (seconds == null || seconds !in 5..60) {
             sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
         } else if (!ringBusy.compareAndSet(false, true)) {
@@ -5042,7 +5044,8 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handlePauseCommand(arg: String) {
-        val minutes = arg.toIntOrNull()
+        // NumericArg (issue #812): "/pause 30 menit" kini diterima.
+        val minutes = NumericArg.parse(arg)
         if (minutes == null || minutes !in 1..480) {
             sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
         } else {
