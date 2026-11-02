@@ -289,6 +289,17 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseFotoLamaranTidakTervetoLama() {
+        // #643 (efek samping #597): "lamaran" = "lama"+"ran" secara awalan
+        // sehingga tertangkap penanda masa lalu "lama" dan perintah foto
+        // surat lamaran gugur diam-diam. Kini kawan palsu awalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto lamaran sekarang"))
+        assertEquals("/photo", IntentParser.parse("kirim foto lamaran dong"))
+        // Kontrol: rujukan "lama" betulan tetap terveto.
+        assertNull(IntentParser.parse("kirim foto lama dong"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

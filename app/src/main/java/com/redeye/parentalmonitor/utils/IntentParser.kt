@@ -274,7 +274,7 @@ object IntentParser {
         return NEGATIONS.any { base -> negationForm(collapsed, base) }
     }
 
-    private val TOKEN_PREFIX_FALSE_FRIENDS = setOf("dayak", "kabari")
+    private val TOKEN_PREFIX_FALSE_FRIENDS = setOf("dayak", "kabari", "lamaran")
 
     private fun tokenMatches(token: String, keyword: String): Boolean {
         if (token == keyword) return true
