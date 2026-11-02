@@ -108,6 +108,12 @@ class GeofenceLogicTest {
         assertFalse(GeofenceLogic.judgedOutside(150f, 100, 101f))
         assertFalse(GeofenceLogic.judgedOutside(90f, 100, 10f))
         assertFalse(GeofenceLogic.judgedOutside(-1f, 100, 10f))
+        // Lantai 50 m selaras transition (issue #771): radius kecil.
+        assertTrue(GeofenceLogic.judgedOutside(80f, 50, 40f))
+        assertTrue(GeofenceLogic.judgedOutside(80f, 50, 50f))
+        assertFalse(GeofenceLogic.judgedOutside(80f, 50, 51f))
+        assertTrue(GeofenceLogic.judgedOutside(100f, 75, 50f))
+        assertFalse(GeofenceLogic.judgedOutside(100f, 75, 51f))
     }
 
     @Test

@@ -27,7 +27,13 @@ object GeofenceLogic {
         // dan skor /waspada bisa digerakkan fix yang ketidakpastiannya
         // selebar radius. Kini sama ketatnya: paling tidak setengah
         // radius.
-        return distM >= 0f && distM > radiusM && accuracyM > 0f && accuracyM <= radiusM / 2f
+        // Lantai akurasi perubahan state yang sama seperti transition
+        // (issue #771): pada radius 50–99 m gerbang setengah radius lebih
+        // sempit dari galat GPS kota biasa, sehingga state bisa berubah
+        // lewat transition tetapi alert di sini tak pernah menyala dari
+        // fix yang sama. Kini keduanya memakai batas yang sama.
+        val limit = maxOf(radiusM / 2, minOf(50, radiusM))
+        return distM >= 0f && distM > radiusM && accuracyM > 0f && accuracyM <= limit.toFloat()
     }
 
     fun statusText(latE6: Long, lonE6: Long, radiusM: Int): String {

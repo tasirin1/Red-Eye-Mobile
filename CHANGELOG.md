@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Gerbang akurasi penilaian "di luar pagar" kini memakai lantai 50 m yang sama dengan perubahan state (issue #771): pada radius pagar 50–99 m, alert jam malam, alert sekolah, dan skor /waspada kini bisa menyala dari fix GPS yang sama yang mengubah state, bukan tertahan gerbang yang lebih sempit.
 - Perintah lensa "yang" di akhir kalimat kini dikenali lagi (issue #770): "kirim foto yang belakang" kembali menghasilkan foto kamera belakang, sementara kalimat keterangan "yang belakang itu adiknya" tetap tidak tergabung sebagai pilihan lensa.
 - Gerbang keamanan kini juga memindai pesan commit (issue #769): token bot yang tertulis di pesan commit — yang sebelumnya lolos kedua gerbang — kini menggagalkan `tools/verifikasi-path.py` (mode rentang dan bawaan) serta `scripts/cek-cepat.sh`, dengan nama commit pelanggar disebut.
 - Regresi penggabungan argumen lensa dari #753 diperbaiki: kata "yang" kini termasuk kata pendahulu yang memblokir penggabungan lensa, sejajar "di"/"minggu"/"bulan" — sebelumnya kalimat deskriptif "kirim foto sekarang, yang belakang itu adiknya dong" (="yang belakang" adalah frasa benda, bukan perintah lensa) salah digabung menjadi `/photo belakang` karena penegas yang dilewati #753 menaikkan "belakang" ke dalam anggaran pindai. Uji terkunci lama `intentOrAliasDoesNotMergeDistantArgs` kembali hijau (terbukti porting: 434/434 kasus terkunci tetap cocok dan keempat kasus sengketa berperilaku benar); kasus #753 sendiri ("sekarang dong depan" tetap menggabung) tidak berubah.
