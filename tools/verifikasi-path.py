@@ -224,6 +224,10 @@ def cek_xml(gagal):
             ET.parse(os.path.join(AKAR, path))
         except ET.ParseError as e:
             buruk.append("%s (%s)" % (path, e))
+        except OSError as e:
+            # Symlink putus/berkas lenyap di tengah jalan: laporkan bernama,
+            # jangan mati traceback menutupi cek lain (issue #682).
+            buruk.append("%s (tak terbaca: %s)" % (path, e.__class__.__name__))
     for path in ("app/src/main/AndroidManifest.xml",):
         try:
             ET.parse(os.path.join(AKAR, path))
