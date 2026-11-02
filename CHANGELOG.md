@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Mode pindai penuh gerbang kini juga memeriksa nama berkas tak terlacak (#863): sebelumnya berkas bernama token yang belum pernah ter-commit lolos dari mode forensik menyeluruh walau mode pemeriksaan biasa menangkapnya.
 - Kait lama dalam rantai pre-push kini menerima stdin persis seperti yang dikirim git (#862): push tanpa baris refs sebelumnya diteruskan sebagai satu baris kosong semu; kini stdin kosong tiba sebagai stdin kosong.
 - Rantai kait pre-push kini terbukti bisa berjalan, bukan sekadar diumumkan (#861): salinan kait lama yang tak eksekutabel sebelumnya dilewati diam-diam oleh kait baru di setiap push; pemasang kini menegaskan bit eksekusi salinan dan memperingatkan keras bila tidak bisa.
 - Detektor UTF-16 perkakas gerbang tidak lagi salah endian pada teks Thai/Lao/Khmer (#860): dekode byte-tertukar dari berkas big-endian aksara itu sebelumnya tetap lolos ambang "tercetak" sehingga dinyatakan little-endian dan token di dalamnya terlewat; kini kedua endian dinilai dan yang benar dipilih lewat rasio tercetak + koherensi aksara.

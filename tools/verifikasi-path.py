@@ -1426,6 +1426,12 @@ def utama():
         nama_pindai = (jalan("git", "ls-files") or "").splitlines()
         nama_pindai += [p for p in nama_riwayat("HEAD")
                         if p not in nama_pindai]
+        # Berkas tak terlacak ikut dipindai namanya (issue #863):
+        # mode default melihatnya lewat daftar berubah, mode --semua
+        # sebelumnya tidak — vonis forensik LOLOS atas berkas bernama
+        # token yang belum pernah ter-commit.
+        nama_pindai += [p for p in nama_tak_lacak()
+                        if p not in nama_pindai]
         cek_secret_nama(gagal, nama_pindai)
     else:
         cek_secret(gagal, diff)
