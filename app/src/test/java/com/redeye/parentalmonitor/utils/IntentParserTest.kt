@@ -179,6 +179,7 @@ class IntentParserTest {
     fun parseRejectsFutureTimeWords() {
         // #624 (sisa #594): penanda masa depan juga memveto jalur parse() untuk
         // intent tangkapan — sebelumnya hanya jalur alias/slash yang terveto.
+        assertNull(IntentParser.parse("kirim foto kelak dong"))
         assertNull(IntentParser.parse("kirim foto besok dong"))
         assertNull(IntentParser.parse("nanti saja kirim foto dong"))
         assertNull(IntentParser.parse("kirim foto lusa dong"))

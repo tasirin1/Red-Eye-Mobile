@@ -321,7 +321,7 @@ object IntentParser {
         return tokens to " " + tokens.joinToString(" ") + " "
     }
 
-    private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa", "esok")
+    private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa", "esok", "kelak")
 
     private fun hasFutureMarker(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
