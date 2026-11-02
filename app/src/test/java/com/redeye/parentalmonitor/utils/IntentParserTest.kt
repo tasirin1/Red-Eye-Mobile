@@ -539,6 +539,26 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasUnparseableNumberShortQuestionStillHijacked() {
+        // Nomor 16 digit ditolak SmsCommandParser; pertanyaan riwayat
+        // pendek tetap dibajak, isi pesan ekor panjang tidak (issue #723).
+        assertEquals(
+            "/lastsms",
+            IntentParser.intentOrAlias(
+                "sms 0812345678901234 tadi isinya apa",
+                "/sms 0812345678901234 tadi isinya apa"
+            )
+        )
+        assertEquals(
+            "/sms 0812345678901234 tolong kirimkan promo diskon besar besaran sekarang juga ya",
+            IntentParser.intentOrAlias(
+                "sms 0812345678901234 tolong kirimkan promo diskon besar besaran sekarang juga ya",
+                "/sms 0812345678901234 tolong kirimkan promo diskon besar besaran sekarang juga ya"
+            )
+        )
+    }
+
+    @Test
     fun intentOrAliasSmsGateDoesNotHijackHistoryQuestions() {
         assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812, terakhir dari siapa", "/sms 0812, terakhir dari siapa"))
         assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0,5 terakhir dari siapa", "/sms 0,5 terakhir dari siapa"))

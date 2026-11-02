@@ -592,7 +592,15 @@ object IntentParser {
         // Ekor sesudah nomor: pertanyaan riwayat sejati pendek (<=4 token);
         // ekor panjang adalah ISI PESAN formulir yang kebetulan memuat
         // "tadi" + kata tanya (issue #690).
-        val tailTokens = if (smsParsed != null) tk.first.size - 1 - (tokenize(smsParsed.number)?.first?.size ?: smsParsed.number.split(WHITESPACE).size) else Int.MAX_VALUE
+        val tailTokens = if (smsParsed != null) {
+            tk.first.size - 1 - (tokenize(smsParsed.number)?.first?.size ?: smsParsed.number.split(WHITESPACE).size)
+        } else {
+            // Nomor tak ter-parse (mis. 16 digit di luar rentang parser):
+            // ekor tetap dihitung dari token kepala mentah agar cabang
+            // kepala >=7 digit di bawah tetap terjangkau (issue #723) —
+            // sebelumnya ekor dianggap tak hingga dan cabang itu mati.
+            tk.first.size - 1 - (tokenize(head)?.first?.size ?: 1)
+        }
         val shortTail = tailTokens <= 4
         if (smsParsed != null && smsParsed.normalized.count { it.isDigit() } >= 10) {
             return hasTadi && hasQuestion && shortTail
