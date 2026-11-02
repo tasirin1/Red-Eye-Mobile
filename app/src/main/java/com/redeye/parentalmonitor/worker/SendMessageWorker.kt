@@ -388,6 +388,10 @@ class SendMessageWorker(
         var exhaustedTaken = 0L
         var rejectedTaken = 0L
         val sameCreds = credsSame(runToken, runChatId)
+        // Generasi antrean saat pengambilan (issue #822): bila
+        // /clearqueue berjalan di tengah laporan ini, restore di
+        // bawah tak boleh membangkitkan angka pra-pembersihan.
+        val dropGen = try { messageQueue.queueGeneration() } catch (_: Exception) { -1L }
         if (!queueCleared && sameCreds) {
             try {
                 val expired = messageQueue.takeExpiredDrops()
@@ -467,6 +471,11 @@ class SendMessageWorker(
                 false
             }
             if (!reported) {
+                // Lewati restore bila antrean dibersihkan sesudah
+                // pengambilan (issue #822): angka lama akan bangkit
+                // sebagai laporan drop hantu pada run berikutnya.
+                val genSama = try { messageQueue.queueGeneration() == dropGen } catch (_: Exception) { true }
+                if (genSama) {
                 try {
                     messageQueue.restoreExpiredDrops(expiredTaken)
                 } catch (_: Exception) {
@@ -486,6 +495,7 @@ class SendMessageWorker(
                 try {
                     messageQueue.restoreRejectedDrops(rejectedTaken)
                 } catch (_: Exception) {
+                }
                 }
             }
         }
