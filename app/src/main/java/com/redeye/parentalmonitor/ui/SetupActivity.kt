@@ -1208,6 +1208,12 @@ class SetupActivity : AppCompatActivity() {
                     Toast.makeText(this@SetupActivity, getString(R.string.backup_empty), Toast.LENGTH_LONG).show()
                     return@withContext
                 }
+                verifyStoredAccessPin { askBackupPin(token, chatId, interval, camInterval) }
+            }
+        }
+    }
+
+    private fun askBackupPin(token: String, chatId: String, interval: Int, camInterval: Int) {
                 askPin(getString(R.string.backup_pin_title), true) { pin ->
                     if (pin == null) return@askPin
                     lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
@@ -1233,8 +1239,6 @@ class SetupActivity : AppCompatActivity() {
                         }
                     }
                 }
-            }
-        }
     }
 
     private fun testConnection() {
