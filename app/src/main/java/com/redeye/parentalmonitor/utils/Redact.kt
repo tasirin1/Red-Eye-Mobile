@@ -1,10 +1,11 @@
 package com.redeye.parentalmonitor.utils
 
 object Redact {
-    // Bentuk kanonik dan bentuk ter-encode URL (%3A) — pesan galat yang
-    // memuat URL ber-token sebelumnya lolos fallback (issue #707).
-    private val TOKEN_FALLBACK = Regex("[0-9]{5,15}(?::|%3A)[A-Za-z0-9_-]{35,}")
-    private val LINE_SPLIT = Regex("(?<=[A-Za-z0-9_-])\r?\n(?=[A-Za-z0-9_-])")
+    // Bentuk kanonik dan bentuk ter-encode URL (%3A, huruf besar/kecil) —
+    // pesan galat yang memuat URL ber-token sebelumnya lolos fallback
+    // (issue #707, sisa #724).
+    private val TOKEN_FALLBACK = Regex("[0-9]{5,15}(?::|(?i:%3A))[A-Za-z0-9_-]{35,}")
+    private val LINE_SPLIT = Regex("(?<=[A-Za-z0-9_:-])\r?\n(?=[A-Za-z0-9_:-])")
 
     fun token(value: String?, vararg secrets: String): String {
         val src: String = value ?: ""
@@ -14,14 +15,15 @@ object Redact {
             if (secret.isEmpty()) continue
             out = if (secret.length < 10 && secret.all { it.isDigit() }) replaceDigitBounded(out, secret) else out.replace(secret, "***")
         }
-        if (!out.contains(':') && !out.contains("%3A")) return out
+        if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return out
         val direct = out.replace(TOKEN_FALLBACK, "***")
-        if (direct != out) return direct
         // Token terbelah baris: satukan baris di antara karakter token lalu
-        // coba lagi — teks hanya diubah bila pola token benar-benar cocok.
-        val joined = out.replace(LINE_SPLIT, "")
+        // coba lagi — dijalankan juga sesudah penggantian langsung berhasil,
+        // agar token terbelah kedua dalam string yang sama tidak lolos
+        // (issue #724). Teks hanya diubah bila pola token benar-benar cocok.
+        val joined = direct.replace(LINE_SPLIT, "")
         val rejoined = joined.replace(TOKEN_FALLBACK, "***")
-        return if (rejoined != joined) rejoined else out
+        return if (rejoined != joined) rejoined else direct
     }
 
     private fun replaceDigitBounded(src: String, secret: String): String {
