@@ -832,6 +832,7 @@ class MonitoringService : Service() {
         commandJob?.cancel()
         initialSyncJob?.cancel()
         patrolJob?.cancel()
+        loopRelaunchJob?.cancel()
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
@@ -7735,6 +7736,10 @@ class MonitoringService : Service() {
             loopWatchdogJob?.cancel()
         } catch (_: Exception) {
         }
+        try {
+            loopRelaunchJob?.cancel()
+        } catch (_: Exception) {
+        }
         photoWatchdog?.cancel()
         videoWatchdog?.cancel()
         try { releaseVideoWakeLock(videoWakeLock) } catch (_: Exception) { }
@@ -9499,8 +9504,11 @@ class MonitoringService : Service() {
                 kotlinx.coroutines.withTimeoutOrNull(5_000L) {
                     for (job in oldJobs) job.join()
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
             }
+            if (!isActive) return@launch
             startPeriodicLoops()
             startCommandPolling()
             startLoopWatchdog()
