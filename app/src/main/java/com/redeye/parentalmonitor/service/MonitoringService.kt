@@ -7839,6 +7839,7 @@ class MonitoringService : Service() {
     private var lastUnlockAlertAt = 0L
     private var unlockAlertWindowStart = 0L
     private var unlockAlertCount = 0
+    private val unlockAlertLock = Any()
 
     private fun currentSimIdentity(): String {
         return try {
@@ -7875,14 +7876,27 @@ class MonitoringService : Service() {
             val streak = attempts.coerceAtLeast(1)
             if (streak != 1 && streak % 3 != 0) return
             val now = android.os.SystemClock.elapsedRealtime()
-            if (lastUnlockAlertAt > 0L && now - lastUnlockAlertAt < 2 * 60_000L) return
-            if (unlockAlertWindowStart == 0L || now - unlockAlertWindowStart > 3_600_000L) {
-                unlockAlertWindowStart = now
-                unlockAlertCount = 0
+            // Cek-tulis throttle harus atomik (issue #702): pemanggil adalah
+            // korutin IO paralel per intent, dan slot dicadangkan di dalam
+            // kunci SEBELUM kerja kirim yang menangguhkan dimulai.
+            val allowed = synchronized(unlockAlertLock) {
+                if (lastUnlockAlertAt > 0L && now - lastUnlockAlertAt < 2 * 60_000L) {
+                    false
+                } else {
+                    if (unlockAlertWindowStart == 0L || now - unlockAlertWindowStart > 3_600_000L) {
+                        unlockAlertWindowStart = now
+                        unlockAlertCount = 0
+                    }
+                    if (unlockAlertCount >= 3) {
+                        false
+                    } else {
+                        unlockAlertCount++
+                        lastUnlockAlertAt = now
+                        true
+                    }
+                }
             }
-            if (unlockAlertCount >= 3) return
-            unlockAlertCount++
-            lastUnlockAlertAt = now
+            if (!allowed) return
             val loc = try { fetchLocation(allowStale = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             val level = batteryLevel()
             val battery = if (level in 0..100) "\nBaterai: $level%" else ""
