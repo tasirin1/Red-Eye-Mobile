@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Atribusi pemakaian malam kini dijangkar ke jam dinding nyata pada tiap akru (#823): sesi yang melewati perubahan jam (DST atau diubah manual) tidak lagi menggeser hitungan menit malamnya sampai satu jam.
 - Laporan pesan terbuang kini memeriksa generasi antrean sebelum mengembalikan hitungannya (#822): bila antrean dibersihkan di tengah penyusunan laporan dan laporannya gagal terkirim, angka lama tidak lagi bangkit sebagai laporan hantu pada pengiriman berikutnya.
 - Penjadwalan ulang pesan tertunda kini punya pemulihan mandiri yang sama dengan penjadwalan utama (#821): bila penghitung work terlanjur penuh tetapi cap tambah terakhir sudah lewat 10 menit, penjadwalan diteruskan — sebelumnya jalur lanjutan worker bisa berhenti menjadwalkan diam-diam sampai proses dimulai ulang.
 - Cek cepat kini juga memindai nama berkas dari token (#818): nama staged, terlacak, dan tak terlacak diperiksa mentah dan tergabung tanpa garis miring, sejajar dengan gerbang utama — sebelumnya berkas bernama token dengan isi bersih lolos cek cepat.

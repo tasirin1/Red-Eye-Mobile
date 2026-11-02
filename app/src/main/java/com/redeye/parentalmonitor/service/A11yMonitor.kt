@@ -776,7 +776,12 @@ object A11yMonitor {
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) return
         var remaining = nowElapsed - currentStartElapsed
         if (remaining <= 0L) return
-        var wallStart = currentStartWall
+        // Jendela dinding dijangkar ke jam dinding NYATA (issue #823):
+        // sebelumnya awal dinding sesi + durasi elapsed diproyeksikan
+        // maju, jadi transisi DST / lompatan jam manual di tengah sesi
+        // menggeser atribusi nightMillis dan geserannya terbawa ke
+        // akru berikutnya. Ujung jendela kini selalu nowWall.
+        var wallStart = nowWall - remaining
         while (remaining > 0L) {
             val chunk = minOf(remaining, MAX_SESSION_MS)
             val row = usage.getOrPut(currentPackage) { AppUsage(label = currentLabel) }
