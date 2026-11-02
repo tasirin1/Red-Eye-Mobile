@@ -37,6 +37,12 @@ class MessageQueue private constructor(context: Context) {
     private val persistExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "redeye-queue-persist").apply { isDaemon = true }
     }
+    // Penjadwal tunda terpisah (issue #705): jadwal ulang drain sebelumnya
+    // Thread.sleep di dalam satu-satunya thread persist, menahan drain
+    // lain dan sinkronisasi .bak selama tidur itu.
+    private val persistScheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "redeye-queue-persist-tunda").apply { isDaemon = true }
+    }
     private val persistQueued = java.util.concurrent.atomic.AtomicBoolean(false)
     private val bakSyncQueued = java.util.concurrent.atomic.AtomicBoolean(false)
     private val persistMutex = Any()
@@ -693,10 +699,12 @@ class MessageQueue private constructor(context: Context) {
 
     private fun jadwalUlangDrain(delayMs: Long): Boolean {
         return try {
-            persistExecutor.execute {
-                try { Thread.sleep(delayMs) } catch (_: Exception) { }
-                drainPersist()
-            }
+            persistScheduler.schedule({
+                try {
+                    persistExecutor.execute { drainPersist() }
+                } catch (_: Exception) {
+                }
+            }, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
             true
         } catch (_: Exception) {
             false

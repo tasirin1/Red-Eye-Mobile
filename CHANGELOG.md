@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jadwal ulang drain MessageQueue tak lagi tidur di thread persist tunggal (issue #705): penundaan kini memakai ScheduledExecutor terpisah yang menyerahkan drain ke executor persist saat waktunya tiba, sehingga drain lain dan sinkronisasi berkas cadangan tidak tertahan sampai 60 detik.
 - Sisa batch yang sedang dikirim kini diselamatkan sinkron saat service dihancurkan (issue #704): `flushBatch` mendaftarkan item yang dipegangnya ke daftar in-flight yang diperbarui seiring kemajuan, dan `onDestroy` mengantrekan sisanya sebelum scope dibatalkan — sebelumnya item di daftar lokal hanya bisa diselamatkan jalur tangkap asinkron yang tak selalu sempat berjalan.
 - Jalur luapan NotificationForwarder kini ikut antrean serial yang sama dan gerbang ringkasan grup atomik (issue #703): sebelumnya jalur luapan berjalan paralel di luar `fwdSerial` dan cek/tulis `groupSeen` berada di blok synchronized terpisah sehingga ringkasan grup ganda bisa lolos.
 - Throttle peringatan gagal buka kunci kini atomik (issue #702): cek-tulis jendela peringatan sebelumnya memakai var polos dari korutin paralel sehingga batas 3 peringatan bisa bocor dan peringatan ganda terkirim; kini dicadangkan di dalam satu kunci sebelum kerja kirim dimulai.
