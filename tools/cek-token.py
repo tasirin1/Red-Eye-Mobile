@@ -88,6 +88,39 @@ def _utf16_tanpa_bom(data):
         return "utf-16-le"
     if dominan_nul(genap) and dominan_ascii(ganjil):
         return "utf-16-be"
+    # Skor dekode untuk teks non-Latin (issue #836): UTF-16 Kiril/
+    # CJK tak didominasi NUL maupun ASCII (byte tingginya 0x04,
+    # 0x4E, ...), jadi dua syarat 90% di atas gugur begitu >10% isi
+    # non-ASCII. Nilai hasil dekodenya langsung: teks sungguhan
+    # terdekode hampir seluruhnya menjadi karakter tercetak.
+    # Hanya dinilai bila contoh tak terbaca sebagai teks UTF-8
+    # bersih (3 byte ekor dibuang agar potongan di tengah urutan
+    # multi-byte tak mengotori penilaian), supaya berkas UTF-8
+    # non-Latin tak salah terdekode. Sisa yang diakui: UTF-16 CJK
+    # murni yang seluruh bytenya kebetulan ASCII tercetak.
+    # Coba utuh lalu mundur 1-3 byte: potongan 512 byte bisa
+    # membelah urutan multi-byte UTF-8 di ekornya. Prefiks parsial
+    # TIDAK diterima — byte UTF-16 CJK terbaca sebagai UTF-8 sah
+    # pada prefiks panjang, jadi kebersihan harus atas contoh utuh
+    # (sesudah mundur ekor itu).
+    teks8 = None
+    for mundur in (0, 1, 2, 3):
+        try:
+            teks8 = contoh[: len(contoh) - mundur].decode("utf-8")
+            break
+        except Exception:
+            teks8 = None
+    utf8_bersih = teks8 is not None and all(
+        c in "\t\n\r" or ord(c) >= 32 for c in teks8)
+    if not utf8_bersih:
+        genap512 = contoh[:510] if len(contoh) >= 510 else contoh[: len(contoh) // 2 * 2]
+        for enc in ("utf-16-le", "utf-16-be"):
+            teks = genap512.decode(enc, errors="replace").rstrip("\ufffd")
+            if len(teks) < 8 or "\ufffd" in teks:
+                continue
+            tercetak = sum(1 for c in teks if c == " " or c.isprintable() or c in "\t\n\r")
+            if tercetak >= int(len(teks) * 0.95):
+                return enc
     return None
 
 

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Deteksi berkas UTF-16 tanpa BOM di gerbang kini juga mengenali teks non-Latin (#836): berkas UTF-16 berisi teks Kiril, Cina, Arab, atau Korea yang memuat token sebelumnya lolos karena pendeteksinya hanya mengenali teks yang didominasi huruf Latin; kini hasil dekodenya ikut dinilai, dengan penjaga agar berkas UTF-8 non-Latin tidak salah terdekode.
 - Gerbang kini juga melihat isi commit merge dan commit pertama pada pindai riwayatnya (#835): nama berkas atau berkas berkode UTF-16 yang hanya pernah hidup di hasil penggabungan cabang (merge) sebelumnya tak terlihat oleh pindai nama maupun pindai isi riwayat; keduanya kini menelusuri diff tiap induk merge dan commit akar.
 - Hitungan menit malam tidak lagi terhitung ganda saat jam HP dimundurkan (#834): jendela hitung sesi kini tidak pernah mundur melewati titik yang sudah dihitung, jadi koreksi jam mundur di tengah sesi malam tidak menggandakan menit malam pada statistik.
 - Pemulihan cap jeda alert malam kini tidak bisa menimpa cap yang lebih baru (#833): bila dua kejadian malam nyaris bersamaan dan pengantrean salah satunya gagal, pemulihannya hanya berjalan bila cap saat ini masih cap milik kejadian itu — sebelumnya cap kejadian lain yang lebih baru bisa ikut terhapus dan alert malam berikutnya lolos dalam masa jeda.
