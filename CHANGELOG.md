@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Teks tempel panjang tidak lagi bisa tereksekusi sebagai perintah (#827): pengurai bahasa alami kini menolak teks di atas 200 karakter — sebelumnya catatan/log tempelan ribuan karakter yang kebetulan memuat pasangan kata perintah (mis. "kirim foto") dijalankan sebagai perintah sungguhan.
 - Pertanyaan berbentuk frasa perintah kini ditahan seperti pertanyaan satu kata (#826): "pulang jam berapa", "cek mati apa", dan "hemat kuota apa" tidak lagi dieksekusi sebagai perintah — sebelumnya veto tanya hanya menilai inti dua kata sehingga frasa dua kata + kata tanya lolos.
 - Ringkasan berkala tidak lagi terkirim dua kali sesudah aplikasi dimulai ulang (#825): cap tanggal ringkasan malam, ringkasan 6 jam, dan peringatan begadang kini mengikuti status kirim (terkirim atau terantre), bukan hanya terkirim langsung — sebelumnya salinan yang terantre saat offline ditembak ulang oleh proses baru sementara salinan lamanya tetap terkirim dari antrean.
 - Pengiriman ulang media tertahan tidak lagi kelaparan (#824): berkas yang kehabisan waktu saat diunggah kini diputar ke belakang urutan siklus berikutnya, jadi satu berkas besar di jaringan lambat tidak lagi memblokir semua foto/video/rekaman lain selamanya; gilirannya tetap tiba lagi dengan jatah waktu penuh.

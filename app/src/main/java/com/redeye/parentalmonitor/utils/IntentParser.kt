@@ -467,6 +467,11 @@ object IntentParser {
     }
 
     fun parse(text: String): String? {
+        // Batas panjang teks bahasa alami (issue #827): perintah
+        // alami terpanjang yang sah jauh di bawah ini (kasus uji
+        // terpanjang 81 karakter); teks tempel ribuan karakter yang
+        // kebetulan memuat pasangan kata intent bukan perintah.
+        if (text.length > MAX_NATURAL_TEXT_LEN) return null
         val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
         if (tokens.any { isCancellation(it) }) return null
@@ -785,6 +790,8 @@ object IntentParser {
 
     // Kata kedua frasa ALIAS_PHRASES MonitoringService (issue #826).
     private val PHRASE_SECONDS = setOf("pulang", "jam", "kuota", "mati")
+
+    private const val MAX_NATURAL_TEXT_LEN = 200
 
     private val TAIL_FILLERS = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
     // Selaras dengan NumericArg.UNITS (issue #754): sebelumnya "s"/"min"
