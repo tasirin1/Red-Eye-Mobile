@@ -951,7 +951,12 @@ object A11yMonitor {
     }
 
     private fun defaultLauncherPackage(context: Context): String {
-        if (launcherPackage.isNotEmpty() && System.currentTimeMillis() - launcherPackageAt < 10 * 60_000L) return launcherPackage
+        // Masa cache 60 detik (issue #832): 10 menit sebelumnya
+        // membuat launcher BARU sesudah ganti launcher default
+        // tercatat sebagai aplikasi biasa (ikut akru + penilaian
+        // malam) selama sisa cache. Resolusi HOME murah dan fungsi
+        // ini hanya dipanggil pada pergantian jendela.
+        if (launcherPackage.isNotEmpty() && System.currentTimeMillis() - launcherPackageAt < 60_000L) return launcherPackage
         launcherPackage = try {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName.orEmpty()
