@@ -272,11 +272,13 @@ class CameraService(private val context: Context) {
 
             if (cameraId == null) {
                 if (sessionSeq.get() == mySeq) {
-                    try {
-                        imageReader?.close()
-                    } catch (_: Exception) {
+                    synchronized(captureLock) {
+                        try {
+                            imageReader?.close()
+                        } catch (_: Exception) {
+                        }
+                        imageReader = null
                     }
-                    imageReader = null
                     stopBackgroundThread()
                 }
                 finishWithError(Exception("Kamera yang dipilih tak ditemukan"))
@@ -698,13 +700,20 @@ class CameraService(private val context: Context) {
                                             var stopOk = true
                                             try { rec.stop() } catch (_: Exception) { stopOk = false }
                                             recording.set(false)
-                                            captureSession?.close()
-                                            captureSession = null
-                                            cameraDevice?.close()
-                                            cameraDevice = null
+                                            val ownsDevice = synchronized(captureLock) {
+                                                if (activeRecorder === rec) {
+                                                    try { captureSession?.close() } catch (_: Exception) { }
+                                                    captureSession = null
+                                                    try { cameraDevice?.close() } catch (_: Exception) { }
+                                                    cameraDevice = null
+                                                    true
+                                                } else {
+                                                    false
+                                                }
+                                            }
                                             releaseRecorder()
                                             releaseSurface()
-                                            stopBackgroundThread()
+                                            if (ownsDevice) stopBackgroundThread()
                                             val hasData = tmpFile.exists() && tmpFile.length() > 0L
                                             val moved = hasData && try { tmpFile.renameTo(outFile) } catch (_: Exception) { false }
                                             if (!moved) {
