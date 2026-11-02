@@ -280,7 +280,7 @@ object A11yMonitor {
         } catch (_: Exception) {
             null
         }
-        sendAlert(
+        val queued = sendAlert(
             context,
             "\uD83D\uDD0E <b>Kata pantau di aplikasi</b>\nApp: " + Html.escape(label) +
                 "\nKata: " + Html.escape(hit) +
@@ -288,6 +288,14 @@ object A11yMonitor {
                 "\nWaktu: " + TimeFmt.short(nowWall) +
                 "\nMatikan: /pantauapp off"
         )
+        if (!queued) {
+            // Antre menolak (issue #811): kembalikan cap jeda +
+            // hitungan harian yang telanjur ditulis di atas, agar
+            // kejadian yang sama bisa dilaporkan lagi.
+            if (last > 0L) lastKeywordAlert[key] = last else lastKeywordAlert.remove(key)
+            keywordAlertCount--
+            saveKeywordState(manager)
+        }
     }
 
     private fun ensureKeywordState(manager: PreferencesManager, day: String) {
@@ -560,6 +568,7 @@ object A11yMonitor {
         val launchable = isLaunchable(context, pkg)
         var persistSnapshot: Triple<String, String, Long>? = null
         var alertText: String? = null
+        var nightUndo: (() -> Unit)? = null
         var tamperReason: String? = null
         var done = false
         synchronized(gate) {
@@ -600,10 +609,12 @@ object A11yMonitor {
                 val firstOpen = manager.rememberA11yApp(pkg)
                 if (seeded && firstOpen && manager.a11yAppAlert) {
                     if (isNightHour(nowWall)) {
+                        if (nightUndo == null) nightUndo = captureNightStamp(manager)
                         stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
                 } else if (manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
+                    if (nightUndo == null) nightUndo = captureNightStamp(manager)
                     stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)
                 }
@@ -611,7 +622,12 @@ object A11yMonitor {
             }
         }
         tamperReason?.let { blockTamper(context, it) }
-        alertText?.let { sendAlert(context, it) }
+        alertText?.let {
+            // Antre menolak (issue #811): cap malam dikembalikan.
+            if (!sendAlert(context, it)) {
+                try { nightUndo?.invoke() } catch (_: Exception) { }
+            }
+        }
         writePersistSnapshot(persistSnapshot)
     }
 
@@ -665,6 +681,7 @@ object A11yMonitor {
             try { a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) } catch (_: Exception) { }
         }
         val manager = try { prefs ?: PreferencesManager.getInstance(context.applicationContext).also { prefs = it } } catch (_: Exception) { null }
+        var prevTamper = -1L
         val allowed = synchronized(lastTamperAlert) {
             if (!tamperStateLoaded) {
                 tamperStateLoaded = true
@@ -681,6 +698,7 @@ object A11yMonitor {
             val last = lastTamperAlert[reason] ?: 0L
             if (last > 0L && now - last >= 0L && now - last < TAMPER_ALERT_GAP_MS) false
             else {
+                prevTamper = last
                 lastTamperAlert[reason] = now
                 if (manager != null) {
                     try { manager.a11yTamperAlertJson = gson.toJson(HashMap(lastTamperAlert)) } catch (_: Exception) { }
@@ -689,7 +707,18 @@ object A11yMonitor {
             }
         }
         if (!allowed) return
-        sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + "\nTindakan: layar ditutup")
+        val queued = sendAlert(context, "\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>\nPercobaan: " + Html.escape(reason) + "\nTindakan: layar ditutup")
+        if (!queued) {
+            // Antre menolak (issue #811): kembalikan entri jeda yang
+            // telanjur dicap + dipersisten, agar percobaan berikutnya
+            // tetap dilaporkan.
+            synchronized(lastTamperAlert) {
+                if (prevTamper > 0L) lastTamperAlert[reason] = prevTamper else lastTamperAlert.remove(reason)
+                if (manager != null) {
+                    try { manager.a11yTamperAlertJson = gson.toJson(HashMap(lastTamperAlert)) } catch (_: Exception) { }
+                }
+            }
+        }
     }
 
     private fun protectionActive(manager: PreferencesManager): Boolean {
@@ -765,6 +794,21 @@ object A11yMonitor {
     // jeda 30 menit dan menggandakan alert dalam satu malam. Bidang
     // memori tetap sumber utama selama proses hidup; prefs hanya
     // dibaca bila bidang masih kosong (baru restart).
+    // Penangkap keadaan cap malam sebelum ditulis (issue #811):
+    // kembalikan lewat lambda bila pengantrean alertnya gagal.
+    private fun captureNightStamp(manager: PreferencesManager): () -> Unit {
+        val memElapsed = lastNightAlertElapsed
+        val memPkg = nightAlertedPackage
+        val wPkg = try { manager.a11yNightAlertPkg } catch (_: Exception) { "" }
+        val wAt = try { manager.a11yNightAlertAt } catch (_: Exception) { 0L }
+        val wEl = try { manager.a11yNightAlertElapsed } catch (_: Exception) { 0L }
+        return {
+            lastNightAlertElapsed = memElapsed
+            nightAlertedPackage = memPkg
+            try { manager.setA11yNightAlert(wPkg, wAt, wEl) } catch (_: Exception) { }
+        }
+    }
+
     private fun stampNightAlert(manager: PreferencesManager, pkg: String, nowWall: Long, nowElapsed: Long) {
         lastNightAlertElapsed = nowElapsed
         nightAlertedPackage = pkg
@@ -807,6 +851,7 @@ object A11yMonitor {
         val app = context.applicationContext
         executor.execute {
             var crossAlert: String? = null
+            var nightUndo: (() -> Unit)? = null
             synchronized(gate) {
                 ensureLoadedLocked(app)
                 val nowWall = System.currentTimeMillis()
@@ -817,12 +862,18 @@ object A11yMonitor {
                     monitoringActive(manager) && manager.a11yAppAlert && isNightHour(nowWall) &&
                     nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS
                 ) {
+                    nightUndo = captureNightStamp(manager)
                     stampNightAlert(manager, currentPackage, nowWall, nowElapsed)
                     crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n<code>" + currentPackage + "</code>\n" + TimeFmt.short(nowWall)
                 }
                 persistLocked(app, false)
             }
-            crossAlert?.let { sendAlert(app, it) }
+            crossAlert?.let {
+                // Antre menolak (issue #811): cap malam dikembalikan.
+                if (!sendAlert(app, it)) {
+                    try { nightUndo?.invoke() } catch (_: Exception) { }
+                }
+            }
         }
     }
 
@@ -935,11 +986,17 @@ object A11yMonitor {
         }
     }
 
-    private fun sendAlert(context: Context, text: String) {
-        try {
-            MessageQueue.getInstance(context).addMessage(text, true)
-            MessageScheduler.scheduleMessageSend(context)
+    // Hasil antre dikembalikan (issue #811): pemanggil menulis cap
+    // jeda/hitungannya di sekitar panggilan ini, jadi kegagalan antre
+    // harus terlihat agar cap bisa dibatalkan — sebelumnya hasil
+    // dibuang dan alert hilang sementara jedanya tetap terpakai.
+    private fun sendAlert(context: Context, text: String): Boolean {
+        return try {
+            val queued = MessageQueue.getInstance(context).addMessage(text, true)
+            if (queued) MessageScheduler.scheduleMessageSend(context)
+            queued
         } catch (_: Exception) {
+            false
         }
     }
 }
