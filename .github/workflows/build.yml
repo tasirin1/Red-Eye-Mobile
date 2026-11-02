@@ -52,7 +52,11 @@ jobs:
             fi
           fi
           if [ -n "$BASE" ]; then
-            python3 tools/verifikasi-path.py --rentang "$BASE...${{ github.sha }}"
+            # Dua titik (issue #838): tiga titik = beda simetris,
+            # memindai juga commit yang sudah duduk di main dan tak
+            # disentuh perubahan ini (PR bersih bisa gagal dan tak
+            # bisa diperbaiki dari sisi PR).
+            python3 tools/verifikasi-path.py --rentang "$BASE..${{ github.sha }}"
           else
             python3 tools/verifikasi-path.py
           fi

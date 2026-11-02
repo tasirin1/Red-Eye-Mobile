@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksaan gerbang di CI kini hanya memindai commit milik perubahan itu sendiri (#838): rentang tiga titik sebelumnya ikut memindai commit lama yang sudah duduk di cabang utama, sehingga perubahan bersih bisa gagal oleh temuan yang bukan miliknya dan tak bisa diperbaiki dari sisinya.
 - Gerbang kini memperingatkan bila dijalankan di clone dangkal (#837): pindai pesan commit dan nama riwayat pada mode pindai penuh sebelumnya menyempit diam-diam mengikuti clone --depth 1 dan tetap melaporkan lolos; kini keterbatasan cakupan itu dinyatakan terang-terangan.
 - Deteksi berkas UTF-16 tanpa BOM di gerbang kini juga mengenali teks non-Latin (#836): berkas UTF-16 berisi teks Kiril, Cina, Arab, atau Korea yang memuat token sebelumnya lolos karena pendeteksinya hanya mengenali teks yang didominasi huruf Latin; kini hasil dekodenya ikut dinilai, dengan penjaga agar berkas UTF-8 non-Latin tidak salah terdekode.
 - Gerbang kini juga melihat isi commit merge dan commit pertama pada pindai riwayatnya (#835): nama berkas atau berkas berkode UTF-16 yang hanya pernah hidup di hasil penggabungan cabang (merge) sebelumnya tak terlihat oleh pindai nama maupun pindai isi riwayat; keduanya kini menelusuri diff tiap induk merge dan commit akar.
