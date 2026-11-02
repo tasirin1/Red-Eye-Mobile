@@ -520,6 +520,14 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasUnitsMatchNumericArg() {
+        // #754: satuan "min"/"s" dari NumericArg kini dikenal gerbang alias.
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 min", "/jemput 500 min"))
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 s", "/jemput 500 s"))
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 mnt", "/jemput 500 mnt"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))

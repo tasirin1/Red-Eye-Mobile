@@ -718,7 +718,10 @@ object IntentParser {
     }
 
     private val TAIL_FILLERS = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
-    private val ARG_UNITS = setOf("meter", "m", "detik", "menit", "jam", "dtk", "mnt")
+    // Selaras dengan NumericArg.UNITS (issue #754): sebelumnya "s"/"min"
+    // diterima handler lewat jalur slash tetapi ditolak jalur bahasa
+    // alami karena daftar ini tertinggal dua satuan.
+    private val ARG_UNITS = setOf("meter", "m", "detik", "menit", "jam", "dtk", "mnt", "s", "min")
 
     // Kata penegas ekor juga dibuang dari argumen alias yang dikembalikan
     // (issue #728): handler hilir memeriksa argumen secara persis, jadi
