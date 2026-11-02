@@ -71,6 +71,12 @@ class NotificationPrivacyTest {
         assertEquals("Kode Anda: ••••", NotificationPrivacy.mask("Kode Anda: AB-1234-CD"))
         // Kontrol: dua grup saja (kode promo, model perangkat) bukan pola ini.
         assertEquals("Kode promo HEMAT-50", NotificationPrivacy.mask("Kode promo HEMAT-50"))
+        // #694: pemisah titik/garis-bawah/campuran dan spasi antar grup campuran.
+        assertEquals("Kode Anda ••••", NotificationPrivacy.mask("Kode Anda AB.12.CD.34"))
+        assertEquals("Kode Anda ••••", NotificationPrivacy.mask("Kode Anda AB_12_CD_34"))
+        assertEquals("Kode Anda ••••", NotificationPrivacy.mask("Kode Anda AB-12.CD-34"))
+        assertEquals("Kode Anda ••••", NotificationPrivacy.mask("Kode Anda AB12 CD34 EF56"))
+        assertEquals("Alamat RT 04 RW 05", NotificationPrivacy.mask("Alamat RT 04 RW 05"))
     }
 
     @Test

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Masker kode bergrup kini mengenal pemisah titik, garis bawah, titik dua, dan campuran (issue #694): sebelumnya hanya strip yang ditopeng sehingga `AB.12.CD.34` dan `AB_12_CD_34` lolos utuh. Varian pemisah spasi hanya menoping bila setiap grup campuran huruf+angka (`AB12 CD34 EF56`) agar alamat seperti "RT 04 RW 05" tidak ikut tertopeng.
 - Pengiriman pesan panjang kini berhenti saat kredensial berganti (issue #693): tiap potongan memeriksa token/chat saat ini terhadap snapshot awal; bila berbeda (mis. terapkan /pulihkan atau migrasi chat), sisa potongan diantrekan ulang untuk run berkredensial baru — sebelumnya sisa laporan tetap terkirim ke bot/chat lama.
 - Pengiriman pesan panjang kini menghormati pembersihan antrean (issue #692): `sendChunked` menerima generasi antrean run dan memeriksanya di kepala tiap potongan serta sebelum setiap pengantrean ulang sisa potongan — sebelumnya /clearqueue dan logout tidak benar-benar membuang pesan panjang yang sedang dikirim (pembatalan worker saat logout justru mengantrekan sisa potongannya kembali).
 - Nomor berawalan 0062 tak lagi terpotong oleh pengurai perintah SMS (issue #691): hitungan kelengkapan nomor kini memakai digit efektif dengan awalan internasional `00` dibuang, konsisten dengan `SmsNumbers` — sebelumnya "0062 812 3456 7890 halo" terurai menjadi nomor `00628123456` dan isi "7890 halo".

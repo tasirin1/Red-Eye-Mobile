@@ -17,7 +17,12 @@ object NotificationPrivacy {
     private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,16}(?![\\p{L}\\p{N}])")
     // Kode alfanumerik bergrup-strip (AB-12-CD-34): potongan per grup terlalu
     // pendek untuk kedua pola di atas sehingga kode lolos utuh (issue #660).
-    private val GROUPED_CODES = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{2,8}(?:-[\\p{L}\\p{N}]{2,8}){2,3}(?![\\p{L}\\p{N}])")
+    // Pemisah diperluas ke titik/garis-bawah/titik-dua/campuran (issue #694).
+    private val GROUPED_CODES = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{2,8}(?:[-._:][\\p{L}\\p{N}]{2,8}){2,3}(?![\\p{L}\\p{N}])")
+    // Varian pemisah spasi hanya untuk grup yang SETIAP grupnya campuran
+    // huruf+angka (AB12 CD34 EF56) — grup murni berspasi (alamat
+    // "RT 04 RW 05", "AB 12 CD 34") sengaja tidak ditopeng (issue #694).
+    private val GROUPED_CODES_SPACED = Regex("(?<![\\p{L}\\p{N}])(?:(?=[\\p{L}\\p{N}]*\\p{L})(?=[\\p{L}\\p{N}]*\\p{N})[\\p{L}\\p{N}]{2,8})(?: (?:(?=[\\p{L}\\p{N}]*\\p{L})(?=[\\p{L}\\p{N}]*\\p{N})[\\p{L}\\p{N}]{2,8})){2,3}(?![\\p{L}\\p{N}])")
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 
@@ -26,10 +31,13 @@ object NotificationPrivacy {
     private val MASK_TOKEN = "••••"
 
     fun mask(text: String): String {
-        val groupedMasked = GROUPED_CODES.replace(text) { match ->
-            val alnum = match.value.filter { it != '-' }
-            if (alnum.length >= 6 && alnum.any { it.isLetter() } && alnum.any { it.isDigit() }) MASK_TOKEN else match.value
-        }
+        val groupedMasked = GROUPED_CODES_SPACED.replace(
+            GROUPED_CODES.replace(text) { match ->
+                val alnum = match.value.filter { it.isLetterOrDigit() }
+                if (alnum.length >= 6 && alnum.any { it.isLetter() } && alnum.any { it.isDigit() }) MASK_TOKEN else match.value
+            },
+            MASK_TOKEN
+        )
         val digitsMasked = DIGIT_GROUPS.replace(groupedMasked, MASK_TOKEN)
         return CODE_TOKENS.replace(digitsMasked) { match ->
             val token = match.value
