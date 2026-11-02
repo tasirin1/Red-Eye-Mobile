@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Gerbang kini juga mengenali berkas UTF-16 tanpa BOM (#817): pola byte NUL di antara karakter ASCII dideteksi dan isinya didekode sebelum dipindai, di pohon maupun di riwayat rentang — sebelumnya hanya UTF-16 ber-BOM yang tertangkap.
 - Pindai nama berkas gerbang kini juga menelusuri nama-nama di riwayat (#816): berkas yang pernah bernama token lalu diganti namanya tetap tertangkap pada mode pindai penuh maupun rentang, dari daftar nama per-commit.
 - Pindai nama berkas gerbang kini juga memeriksa path dengan komponen yang digabungkan (#815): token yang terbelah antara nama direktori dan nama berkas tidak lagi lolos hanya karena terputus garis miring.
 - Sapuan pesan commit mode pindai penuh gerbang tidak lagi bisa diakali karakter pemisah rekaman di dalam pesan (#814): potongan pesan yang tidak diawali hash commit kini digabungkan lagi ke rekamannya sebelum dipindai, jadi token sesudah karakter itu tetap tertangkap.

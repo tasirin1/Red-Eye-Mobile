@@ -111,14 +111,40 @@ def nama_tak_lacak():
     return out.splitlines() if out else []
 
 
+def _utf16_tanpa_bom(data):
+    # Cermin _utf16_tanpa_bom di tools/cek-token.py (issue #817).
+    contoh = data[:512]
+    if len(contoh) < 8:
+        return None
+    genap = contoh[0::2]
+    ganjil = contoh[1::2]
+
+    def dominan_nul(bs):
+        return bs.count(0) >= max(1, int(len(bs) * 0.9))
+
+    def dominan_ascii(bs):
+        cocok = sum(1 for b in bs if b in (9, 10, 13) or 32 <= b < 127)
+        return cocok >= int(len(bs) * 0.9)
+
+    if dominan_nul(ganjil) and dominan_ascii(genap):
+        return "utf-16-le"
+    if dominan_nul(genap) and dominan_ascii(ganjil):
+        return "utf-16-be"
+    return None
+
+
 def _dekode(data):
     # Cermin dekode_berkas di tools/cek-token.py (issue #785): berkas
     # UTF-16 membawa BOM dan harus didekode sesuai BOM, kalau tidak
-    # byte NUL antar karakter memutus pola token dan isi lain.
+    # byte NUL antar karakter memutus pola token dan isi lain. Tanpa
+    # BOM: tebak UTF-16 dari pola NUL (issue #817).
     if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
         return data.decode("utf-16", errors="replace")
     if data.startswith(b"\xef\xbb\xbf"):
         return data.decode("utf-8-sig", errors="replace")
+    enc = _utf16_tanpa_bom(data)
+    if enc:
+        return data.decode(enc, errors="replace")
     return data.decode("utf-8", errors="replace")
 
 
@@ -713,6 +739,25 @@ def cek_secret_riwayat(gagal, rentang):
                                  "via input manual SetupActivity"
                                  % (path, sha[:8]))
                     return
+        # UTF-16 TANPA BOM juga tak jadi kandidat (issue #817): tak
+        # ada BOM untuk disapu dan NUL memutus saringan grep. Uji pola
+        # NUL-nya langsung pada blob berkas yang berubah di commit ini.
+        berubah = jalan("git", "diff-tree", "--no-commit-id",
+                        "--name-only", "-r", sha) or ""
+        for path in berubah.splitlines():
+            path = path.strip()
+            if not path:
+                continue
+            mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
+            if mentah is not None and _utf16_tanpa_bom(mentah) and \
+                    mengandung_token(_dekode(mentah)):
+                gagal.append("Kemungkinan token bot asli (UTF-16 "
+                             "tanpa BOM) di %s pada commit %s (riwayat "
+                             "rentang) — token tetap hidup di riwayat "
+                             "walau sudah dihapus di pohon akhir. "
+                             "Kredensial hanya via input manual "
+                             "SetupActivity" % (path, sha[:8]))
+                return
 
 
 def cek_secret_pesan(gagal, rentang):

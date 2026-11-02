@@ -66,14 +66,43 @@ def _padatkan(teks):
     return re.sub(r"(?<=[A-Za-z0-9+/=_-]),(?=[A-Za-z0-9+/=_-])", "", rapat)
 
 
+def _utf16_tanpa_bom(data):
+    # Tebak UTF-16 tanpa BOM (issue #817): teks yang didominasi ASCII
+    # tersimpan UTF-16LE punya NUL di semua posisi ganjil; UTF-16BE
+    # sebaliknya. Ambang 90% dua arah agar berkas biner biasa tidak
+    # ikut terdekode sebagai UTF-16.
+    contoh = data[:512]
+    if len(contoh) < 8:
+        return None
+    genap = contoh[0::2]
+    ganjil = contoh[1::2]
+
+    def dominan_nul(bs):
+        return bs.count(0) >= max(1, int(len(bs) * 0.9))
+
+    def dominan_ascii(bs):
+        cocok = sum(1 for b in bs if b in (9, 10, 13) or 32 <= b < 127)
+        return cocok >= int(len(bs) * 0.9)
+
+    if dominan_nul(ganjil) and dominan_ascii(genap):
+        return "utf-16-le"
+    if dominan_nul(genap) and dominan_ascii(ganjil):
+        return "utf-16-be"
+    return None
+
+
 def dekode_berkas(data):
     # Berkas UTF-16 (lazim dari editor Windows / ekspor log) membawa
     # BOM; dekode sesuai BOM agar byte NUL antar karakter tidak
-    # memutus pola (issue #785). Tanpa BOM: UTF-8 seperti sebelumnya.
+    # memutus pola (issue #785). Tanpa BOM: tebak UTF-16 dari pola
+    # NUL (issue #817), sisanya UTF-8 seperti sebelumnya.
     if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
         return data.decode("utf-16", errors="replace")
     if data.startswith(b"\xef\xbb\xbf"):
         return data.decode("utf-8-sig", errors="replace")
+    enc = _utf16_tanpa_bom(data)
+    if enc:
+        return data.decode(enc, errors="replace")
     return data.decode("utf-8", errors="replace")
 
 
