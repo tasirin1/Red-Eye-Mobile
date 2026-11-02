@@ -621,8 +621,17 @@ def cek_secret_terabaikan(gagal, peringatan):
     menjalankan git add -f (issue #680). Abaikan direktori build."""
     for path in nama_terabaikan():
         bagian = path.split("/")
-        if any(b in ("build", ".gradle", "__pycache__") for b in bagian):
+        if any(b in (".gradle", "__pycache__") for b in bagian):
             continue
+        # Pengecualian direktori build hanya untuk direktori build SUNGGUHAN
+        # (issue #706): komponen bernama "build" di mana pun sebelumnya ikut
+        # dikecualikan sehingga catatan/build/bocor.txt lolos. Kini direktori
+        # build harus di akar repo atau milik modul ber-build.gradle.
+        if "build" in bagian:
+            i = bagian.index("build")
+            awalan = bagian[:i]
+            if i == 0 or os.path.isfile(os.path.join(AKAR, *(awalan + ["build.gradle"]))):
+                continue
         rendah = path.lower()
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
                             ".keystore", ".p12", ".pfx", ".env")) or \
