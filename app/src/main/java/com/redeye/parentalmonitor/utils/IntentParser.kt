@@ -476,15 +476,23 @@ object IntentParser {
         if (parsed != "/lastsms" && parsed != "/lastcalls") return false
         val arg = aliasInput.removePrefix("/sms ")
         val head = arg.split(WHITESPACE).firstOrNull().orEmpty()
-        if (head.count { it.isDigit() } >= 7) return false
         val smsParsed = SmsCommandParser.parse(arg)
         val tk = tokenize(text) ?: return false
+        val hasTadi = tk.first.any { markerMatches(it, "tadi") }
+        val hasQuestion = tk.first.any { markerMatches(it, "apa") || markerMatches(it, "siapa") || markerMatches(it, "isinya") }
         if (smsParsed != null && smsParsed.normalized.count { it.isDigit() } >= 10) {
-            val hasTadi = tk.first.any { markerMatches(it, "tadi") }
-            val hasQuestion = tk.first.any { markerMatches(it, "apa") || markerMatches(it, "siapa") || markerMatches(it, "isinya") }
             return hasTadi && hasQuestion
         }
-        if (smsParsed != null && smsParsed.number.contains(" ") && smsParsed.normalized.count { it.isDigit() } >= 7) return false
+        // Kepala/nomor 7-9 digit: umumnya formulir, tetapi pertanyaan
+        // riwayat (tadi/terakhir + kata tanya) tetap dibajak ke /lastsms —
+        // ambang >=7 sebelumnya membuat pemeriksaan itu tak terjangkau
+        // (#659). Cabang >=10 digit di atas sengaja tetap lebih ketat
+        // (nomor lengkap bukti formulir lebih kuat, terkunci #546).
+        val hasHistory = hasTadi || tk.first.any { markerMatches(it, "terakhir") }
+        if (head.count { it.isDigit() } >= 7) return hasHistory && hasQuestion
+        if (smsParsed != null && smsParsed.number.contains(" ") && smsParsed.normalized.count { it.isDigit() } >= 7) {
+            return hasHistory && hasQuestion
+        }
         return tk.first.any { markerMatches(it, "terakhir") || markerMatches(it, "terbaru") || markerMatches(it, "tadi") || markerMatches(it, "siapa") }
     }
 

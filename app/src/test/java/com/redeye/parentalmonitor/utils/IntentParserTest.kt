@@ -459,6 +459,14 @@ class IntentParserTest {
             "/sms 0812 3456 7890 tadi malam berangkat",
             IntentParser.intentOrAlias("sms 0812 3456 7890 tadi malam berangkat", "/sms 0812 3456 7890 tadi malam berangkat")
         )
+        // #659: nomor 7-9 digit (utuh/berspasi) + pertanyaan riwayat juga
+        // pertanyaan, bukan formulir — ambang >=7 tak lagi membutakan cek.
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 1234567 terakhir dari siapa", "/sms 1234567 terakhir dari siapa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 123456789 tadi isinya apa", "/sms 123456789 tadi isinya apa"))
+        assertEquals("/lastsms", IntentParser.intentOrAlias("sms 0812 3456 tadi isinya apa", "/sms 0812 3456 tadi isinya apa"))
+        // Kontrol #595: nomor berspasi 8 digit + "terakhir" TANPA kata tanya
+        // tetap formulir kirim.
+        assertEquals("/sms 0812 3456 terakhir kalinya", IntentParser.intentOrAlias("sms 0812 3456 terakhir kalinya", "/sms 0812 3456 terakhir kalinya"))
     }
 
     @Test
