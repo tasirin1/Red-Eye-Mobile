@@ -7,6 +7,19 @@ import org.junit.Test
 class UpdateOffsetTrackerTest {
 
     @Test
+    fun isPendingMencerminkanSiklusLacak() {
+        val tracker = UpdateOffsetTracker()
+        assertEquals(false, tracker.isPending(7L))
+        tracker.begin(7L, 1L)
+        assertEquals(true, tracker.isPending(7L))
+        tracker.finish(7L, 1L, true)
+        assertEquals(false, tracker.isPending(7L))
+        tracker.begin(8L, 1L)
+        tracker.forget(8L, 1L)
+        assertEquals(false, tracker.isPending(8L))
+    }
+
+    @Test
     fun konfirmasiBerurutan() {
         val tracker = UpdateOffsetTracker()
         tracker.begin(10, 1L)

@@ -295,18 +295,27 @@ class MonitoringService : Service() {
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
     private val handledCallbackIds = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
 
-    private fun <T> markSeen(set: MutableSet<T>, id: T): Boolean {
+    private fun <T> markSeen(set: MutableSet<T>, id: T, protect: (T) -> Boolean = { false }): Boolean {
         return synchronized(set) {
             val seen = !set.add(id)
+            // Eviksi melewati entri yang masih tertunda konfirmasi
+            // (issue #734): membuang id pending membuat poll berikutnya
+            // menganggapnya baru dan men-dispatch ulang perintah yang
+            // sama. Bila semua sisa terlindungi, set boleh melewati cap
+            // sementara (terbatas oleh jumlah pending nyata).
             while (set.size > 500) {
                 try {
                     val it = set.iterator()
-                    if (it.hasNext()) {
-                        it.next()
-                        it.remove()
-                    } else {
-                        break
+                    var removed = false
+                    while (it.hasNext()) {
+                        val el = it.next()
+                        if (!protect(el)) {
+                            it.remove()
+                            removed = true
+                            break
+                        }
                     }
+                    if (!removed) break
                 } catch (_: Exception) {
                     break
                 }
@@ -1828,7 +1837,7 @@ class MonitoringService : Service() {
         val updates = response.body()?.result ?: return false
         if (updates.isEmpty()) return false
         for (update in updates) {
-            val seen = markSeen(handledUpdateIds, update.updateId)
+            val seen = markSeen(handledUpdateIds, update.updateId) { updateOffsetTracker.isPending(it) }
             if (seen) {
                 continue
             }

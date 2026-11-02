@@ -11,6 +11,11 @@ class UpdateOffsetTracker {
     }
 
     @Synchronized
+    fun isPending(updateId: Long): Boolean {
+        return pending.containsKey(updateId)
+    }
+
+    @Synchronized
     fun forget(updateId: Long, generation: Long) {
         if (pending[updateId] == generation) pending.remove(updateId)
         if (confirmed[updateId] == generation) confirmed.remove(updateId)
