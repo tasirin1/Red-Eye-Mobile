@@ -627,19 +627,28 @@ class NotificationForwarderService : NotificationListenerService() {
             // Cek dan penandaan groupSeen dalam SATU blok synchronized
             // (issue #703): blok terpisah membuat dua ringkasan grup yang
             // sama bisa lolos bersamaan.
-            val seenAt = synchronized(groupSeen) {
-                val prev = groupSeen[groupKey]
-                if (prev == null || now - prev >= 120_000L) {
-                    groupSeen[groupKey] = now
-                }
-                prev
-            }
+            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
             if (seenAt != null && now - seenAt < 120_000L) {
                 record(label, title, text)
                 return
             }
             val childAt = groupForwardedAt(groupKey)
             if (childAt > 0L && System.currentTimeMillis() - childAt < GROUP_SUMMARY_HOLD_MS) {
+                record(label, title, text)
+                return
+            }
+            // Klaim slot ringkasan secara atomik: periksa ulang di dalam
+            // kunci agar dua ringkasan bersamaan tak sama-sama lolos.
+            val claimed = synchronized(groupSeen) {
+                val prev = groupSeen[groupKey]
+                if (prev != null && now - prev < 120_000L) {
+                    false
+                } else {
+                    groupSeen[groupKey] = now
+                    true
+                }
+            }
+            if (!claimed) {
                 record(label, title, text)
                 return
             }
