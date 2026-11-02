@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Kontrak hasil kirim kini membedakan terkirim / terantre / terbuang (#806): nilai gagal lama menyamakan pesan yang terbuang dengan yang sudah masuk antrean, sehingga cap jeda alert (pagar, jemput, baterai, aksesibilitas, heartbeat, izin, kendaraan, quiet-health, hemat kuota, jam malam/sekolah) menunggu "terkirim langsung" dan mengirim ulang alert yang sama selama gangguan jaringan sampai terkirim dobel. Cap kini mengikuti "terkirim atau terantre"; hanya pesan yang sungguh terbuang (pra-login, ditolak permanen, antrean menolak) yang tidak mencap.
 
 ## [1.6.588] - 2026-11-03
 

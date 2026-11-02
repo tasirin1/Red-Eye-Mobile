@@ -6165,29 +6165,39 @@ class MonitoringService : Service() {
         replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
         queueOnFail: Boolean = true,
         onPermanent: (() -> Unit)? = null
-    ): Boolean {
+    ): Boolean = sendToTelegramStatus(message, replyMarkup, queueOnFail, onPermanent) == SendStatus.SENT
+
+    // Kontrak status kirim (issue #806): nilai Boolean lama menyamakan
+    // "terbuang" dengan "gagal tetapi sudah terantre", sehingga situs
+    // cap jeda yang menunggu true mengirim ulang alert yang sama
+    // selama gangguan. DROPPED hanya bila pesan sungguh hilang
+    // (pra-login, ditolak permanen, atau antrean menolak); situs cap
+    // memakai varian ini dan mencap pada status != DROPPED.
+    private suspend fun sendToTelegramStatus(
+        message: String,
+        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null,
+        queueOnFail: Boolean = true,
+        onPermanent: (() -> Unit)? = null
+    ): SendStatus {
         try {
-            if (awaitingOwnerLogin()) return false
+            if (awaitingOwnerLogin()) return SendStatus.DROPPED
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
-                queueForRetry(message, queueOnFail)
-                return false
+                return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
             if (rateRemain > 0L) {
-                queueForRetryLater(message, queueOnFail, rateRemain)
-                return false
+                return if (queueForRetryLater(message, queueOnFail, rateRemain)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             if (message.length > 4000) {
                 android.util.Log.e("MonitoringService", "Message too long: ${message.length} chars, splitting")
-                return sendFitted(message, replyMarkup, queueOnFail) != SendStatus.DROPPED
+                return sendFitted(message, replyMarkup, queueOnFail)
             }
 
             val (botToken, chatId) = sendCreds()
 
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 android.util.Log.w("MonitoringService", "Bot credentials unavailable, queuing message for later")
-                queueForRetry(message, queueOnFail)
-                return false
+                return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
 
             val hasNetwork = hasNetwork()
@@ -6195,8 +6205,7 @@ class MonitoringService : Service() {
 
             if (!hasNetwork) {
                 android.util.Log.w("MonitoringService", "No network, adding to queue")
-                queueForRetry(message, queueOnFail)
-                return false
+                return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
 
             val telegramMessage = TelegramMessage(
@@ -6215,35 +6224,31 @@ class MonitoringService : Service() {
                     if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Message sent")
                     preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
                     noteSendOk()
-                    return true
+                    return SendStatus.SENT
                 }
                 TelegramSendPolicy.Kind.RATE_LIMITED -> {
                     NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
                     android.util.Log.w("MonitoringService", "Rate limited, will retry via queue after ${outcome.retryAfterSecs}s")
-                    queueForRetryLater(message, queueOnFail, outcome.retryAfterSecs * 1000L)
-                    return false
+                    return if (queueForRetryLater(message, queueOnFail, outcome.retryAfterSecs * 1000L)) SendStatus.QUEUED else SendStatus.DROPPED
                 }
                 TelegramSendPolicy.Kind.AUTH_FAILED -> {
                     android.util.Log.e("MonitoringService", "Send rejected (${outcome.code}), queuing")
                     preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
-                    queueForRetry(message, queueOnFail)
-                    return false
+                    return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
                 }
                 else -> {
                     if (outcome.code == 400) {
                         return sendStatus400(outcome, message, botToken, chatId, queueOnFail, onPermanent)
                     }
                     android.util.Log.e("MonitoringService", "✗ Failed to send: ${outcome.code}")
-                    queueForRetry(message, queueOnFail)
-                    return false
+                    return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Exception sending message: ${redactToken(e.message)}")
-            queueForRetry(message, queueOnFail)
-            return false
+            return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
         }
     }
 
@@ -6254,10 +6259,9 @@ class MonitoringService : Service() {
         chatId: String,
         queueOnFail: Boolean,
         onPermanent: (() -> Unit)? = null
-    ): Boolean {
+    ): SendStatus {
         if (outcome.kind == TelegramSendPolicy.Kind.MIGRATED) {
-            queueForRetry(message, queueOnFail)
-            return false
+            return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
         }
         if (outcome.kind == TelegramSendPolicy.Kind.CHAT_MISSING) {
             preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
@@ -6265,21 +6269,18 @@ class MonitoringService : Service() {
                 postAuthFailureReminder(400)
             } catch (_: Exception) {
             }
-            queueForRetry(message, queueOnFail)
-            return false
+            return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
         }
         if (outcome.kind == TelegramSendPolicy.Kind.RIGHTS_LIMITED) {
             android.util.Log.w("MonitoringService", "Insufficient rights (400), queuing without auth block")
-            queueForRetry(message, queueOnFail)
-            return false
+            return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
         }
         val plain = Html.unescape(message)
         if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
             try {
                 return sendPlainFallback(botToken, chatId, plain, queueOnFail, onPermanent)
             } catch (_: Exception) {
-                queueForRetry(plain, queueOnFail)
-                return false
+                return if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
         } else {
             android.util.Log.w("MonitoringService", "Message permanently rejected (400), not queued")
@@ -6288,7 +6289,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             try { onPermanent?.invoke() } catch (_: Exception) { }
-            return false
+            return SendStatus.DROPPED
         }
     }
 
@@ -6298,7 +6299,7 @@ class MonitoringService : Service() {
         plain: String,
         queueOnFail: Boolean,
         onPermanent: (() -> Unit)? = null
-    ): Boolean {
+    ): SendStatus {
         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
         val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
         val outcome = classifySend(fallbackResp, chatId)
@@ -6306,26 +6307,22 @@ class MonitoringService : Service() {
             TelegramSendPolicy.Kind.SENT -> {
                 preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, "", 0L)
                 noteSendOk()
-                true
+                SendStatus.SENT
             }
             TelegramSendPolicy.Kind.RATE_LIMITED -> {
                 NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
-                queueForRetryLater(plain, queueOnFail, outcome.retryAfterSecs * 1000L)
-                false
+                if (queueForRetryLater(plain, queueOnFail, outcome.retryAfterSecs * 1000L)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             TelegramSendPolicy.Kind.AUTH_FAILED -> {
                 preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
-                queueForRetry(plain, queueOnFail)
-                false
+                if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             TelegramSendPolicy.Kind.TRANSIENT, TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
-                queueForRetry(plain, queueOnFail)
-                false
+                if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             TelegramSendPolicy.Kind.CHAT_MISSING -> {
                 preferencesManager.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis())
-                queueForRetry(plain, queueOnFail)
-                false
+                if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
                 android.util.Log.w("MonitoringService", "Message permanently rejected (${outcome.code}), not queued")
@@ -6334,27 +6331,31 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 try { onPermanent?.invoke() } catch (_: Exception) { }
-                false
+                SendStatus.DROPPED
             }
         }
     }
 
-    private fun queueForRetry(text: String, queueOnFail: Boolean) {
-        if (queueOnFail) {
-            // Hasil antre kini diperiksa (issue #792): kedua helper ini
-            // muara hampir semua kegagalan kirim, jadi kegagalan antre
-            // (eviksi/persist) tak boleh bisu — catat ke log audit agar
-            // kehilangan pesan punya jejak yang bisa dilihat owner.
-            if (!messageQueue.addMessage(text)) audit("retry gagal antre", "queue")
-            MessageScheduler.scheduleMessageSend(this)
-        }
+    private fun queueForRetry(text: String, queueOnFail: Boolean): Boolean {
+        if (!queueOnFail) return false
+        // Hasil antre kini diperiksa (issue #792): kedua helper ini
+        // muara hampir semua kegagalan kirim, jadi kegagalan antre
+        // (eviksi/persist) tak boleh bisu — catat ke log audit agar
+        // kehilangan pesan punya jejak yang bisa dilihat owner. Nilai
+        // kembali dipakai kontrak status kirim (issue #806): true
+        // berarti pesan sungguh terantre.
+        val queued = messageQueue.addMessage(text)
+        if (!queued) audit("retry gagal antre", "queue")
+        MessageScheduler.scheduleMessageSend(this)
+        return queued
     }
 
-    private fun queueForRetryLater(text: String, queueOnFail: Boolean, delayMs: Long) {
-        if (queueOnFail) {
-            if (!messageQueue.addMessage(text)) audit("retry gagal antre", "queue")
-            MessageScheduler.scheduleMessageSendNext(this, delayMs)
-        }
+    private fun queueForRetryLater(text: String, queueOnFail: Boolean, delayMs: Long): Boolean {
+        if (!queueOnFail) return false
+        val queued = messageQueue.addMessage(text)
+        if (!queued) audit("retry gagal antre", "queue")
+        MessageScheduler.scheduleMessageSendNext(this, delayMs)
+        return queued
     }
 
     private fun syncIntervalMillis(): Long {
@@ -6586,8 +6587,9 @@ class MonitoringService : Service() {
         val kmh = (speed * 3.6f).toInt()
         val level = batteryLevel()
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
-        // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
-        if (sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery")) {
+        // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
+        // status #806: terantre juga mencap agar tak dobel.
+        if (sendToTelegramStatus("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery") != SendStatus.DROPPED) {
             try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
         }
         try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
@@ -6656,8 +6658,9 @@ class MonitoringService : Service() {
             if (last > now) {
                 preferencesManager.dataSaverNoticeAt = now
             } else if (last <= 0L || now - last >= 6 * 60 * 60_000L) {
-                // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
-                if (sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")) {
+                // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
+                // status #806: terantre juga mencap agar tak dobel.
+                if (sendToTelegramStatus("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.") != SendStatus.DROPPED) {
                     preferencesManager.dataSaverNoticeAt = now
                 }
             }
@@ -6704,9 +6707,9 @@ class MonitoringService : Service() {
         // Cap jeda 24 jam ditulis SESUDAH kirim berhasil (issue #796):
         // sebelumnya alert yang terbuang (mis. pra-login) tetap
         // menahan alert berikutnya seharian penuh.
-        val terkirim = sendToTelegram("🔋 Baterai perangkat tinggal $level%." +
+        val terkirim = sendToTelegramStatus("🔋 Baterai perangkat tinggal $level%." +
             slowedNote +
-            " Colok charger agar monitoring tak putus.")
+            " Colok charger agar monitoring tak putus.") != SendStatus.DROPPED
         if (terkirim) {
             try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
             if (throttled) lowPowerNotified = true
@@ -7074,8 +7077,12 @@ class MonitoringService : Service() {
                         false
                     }
                     if (jemputHit) {
-                        val sent = sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
-                        if (!sent && claimedRadius > 0) {
+                        // Status, bukan Boolean (issue #806): radius
+                        // hanya dipulihkan bila kabar sungguh terbuang;
+                        // kabar yang terantre akan terkirim, jadi klaim
+                        // tetap berlaku agar tak terkirim dobel.
+                        val sent = sendToTelegramStatus("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
+                        if (sent == SendStatus.DROPPED && claimedRadius > 0) {
                             try {
                                 synchronized(fenceLock) {
                                     if (preferencesManager.jemputRadiusM == 0) preferencesManager.jemputRadiusM = claimedRadius
@@ -7115,7 +7122,7 @@ class MonitoringService : Service() {
                     if (transition.second) {
                         val name = if (isHome) "Rumah" else "Sekolah"
                         val verb = if (transition.third) "masuk" else "keluar"
-                        val terkirim = sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                        val terkirim = sendToTelegramStatus("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).") != SendStatus.DROPPED
                         if (terkirim) {
                             try {
                                 synchronized(fenceLock) {
@@ -7566,7 +7573,7 @@ class MonitoringService : Service() {
             // Cap jeda + reset penghitung gagal SESUDAH kirim berhasil
             // (issue #798, pola #737): sebelumnya kabar yang terbuang
             // tetap menghabiskan jeda 12 jam dan catatan kegagalannya.
-            if (sendToTelegram("🩺 Health: " + notes.joinToString("; ") + ". Cek /status & /perms.")) {
+            if (sendToTelegramStatus("🩺 Health: " + notes.joinToString("; ") + ". Cek /status & /perms.") != SendStatus.DROPPED) {
                 try { preferencesManager.healthAlertAt = now } catch (_: Exception) { }
                 if (failsTercatat) resetLocFailCount()
             }
@@ -7853,7 +7860,7 @@ class MonitoringService : Service() {
                     // proses agar kegagalan terantre tak menumpuk salinan.
                     if (curfewAttemptKey != key) {
                         curfewAttemptKey = key
-                        if (sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")) {
+                        if (sendToTelegramStatus("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
                             try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
                         }
                     }
@@ -7865,7 +7872,7 @@ class MonitoringService : Service() {
                 if (GeofenceLogic.judgedOutside(dist, schoolRad, posAccuracy)) {
                     if (schoolAttemptKey != key) {
                         schoolAttemptKey = key
-                        if (sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")) {
+                        if (sendToTelegramStatus("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
                             try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
                         }
                     }
@@ -7929,8 +7936,9 @@ class MonitoringService : Service() {
         val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < hours * 3_600_000L) return
         if (awaitingOwnerLogin()) return
-        // Cap sesudah kirim berhasil (issue #798, pola #737).
-        if (sendToTelegram(aliveReportText())) {
+        // Cap sesudah kirim berhasil (issue #798, pola #737);
+        // status #806: terantre juga mencap agar tak dobel.
+        if (sendToTelegramStatus(aliveReportText()) != SendStatus.DROPPED) {
             try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
         }
     }
@@ -9554,8 +9562,9 @@ class MonitoringService : Service() {
             val nowMs = System.currentTimeMillis()
             val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
             if (nowMs >= last && nowMs - last < 24 * 60 * 60_000L) return
-            // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
-            if (sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")) {
+            // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
+            // status #806: terantre juga mencap agar tak dobel.
+            if (sendToTelegramStatus("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.") != SendStatus.DROPPED) {
                 try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
             }
         } catch (_: Exception) {
@@ -9581,7 +9590,7 @@ class MonitoringService : Service() {
             // Cap jeda 6 jam SESUDAH kirim berhasil (issue #797):
             // alert ini justru memberi tahu pemilik bahwa mata
             // pemantau mati — tak boleh tertahan jeda saat terbuang.
-            val terkirim = sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
+            val terkirim = sendToTelegramStatus("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".") != SendStatus.DROPPED
             if (terkirim) {
                 try { preferencesManager.a11yDisabledAlertAt = now } catch (_: Exception) { }
             }
