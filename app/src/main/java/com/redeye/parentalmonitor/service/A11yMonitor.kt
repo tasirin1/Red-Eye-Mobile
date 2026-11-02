@@ -253,17 +253,20 @@ object A11yMonitor {
         if (keywords.isEmpty()) return
         val app = service.applicationContext
         executor.execute {
-            val snapshot = collectSnapshot(service, pkg)
+            val (snapshot, fullHit) = collectSnapshot(service, pkg, keywords)
             if (snapshot.hasPassword || snapshot.texts.isEmpty()) return@execute
-            handleContent(app, pkg, snapshot.texts, keywords)
+            handleContent(app, pkg, snapshot.texts, keywords, fullHit)
         }
     }
 
-    private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>) {
+    private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>, fullTextHit: String? = null) {
         val manager = prefs ?: return
         if (!manager.a11yAppWatchEnabled || !monitoringActive(manager)) return
         if (pkg !in manager.a11yAppWatchPackageSet() || AppWatch.isSensitivePackage(pkg)) return
-        val hit = AppWatch.hit(keywords, texts.joinToString(" ")) ?: return
+        // Kena dari teks UTUH node (issue #830) didahulukan: kata
+        // pantau di luar potongan 512 karakter snapshot sebelumnya
+        // tak pernah terdeteksi sama sekali.
+        val hit = fullTextHit ?: AppWatch.hit(keywords, texts.joinToString(" ")) ?: return
         val nowWall = System.currentTimeMillis()
         val day = TimeFmt.dayKey(nowWall)
         ensureKeywordState(manager, day)
@@ -731,15 +734,18 @@ object A11yMonitor {
         try { node.recycle() } catch (_: Exception) { }
     }
 
-    private fun collectSnapshot(service: AccessibilityService, expectedPackage: String): ScreenSnapshot {
-        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false)
+    // Pasangan kedua: kena kata pantau dari teks UTUH node (issue
+    // #830), di luar potongan snapshot.
+    private fun collectSnapshot(service: AccessibilityService, expectedPackage: String, keywords: List<String> = emptyList()): Pair<ScreenSnapshot, String?> {
+        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
         val rootPackage = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
         if (rootPackage != expectedPackage) {
             recycleNode(root)
-            return ScreenSnapshot(emptyList(), false)
+            return ScreenSnapshot(emptyList(), false) to null
         }
         val out = ArrayList<String>()
         var hasPassword = false
+        var fullHit: String? = null
         val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var nodes = 0
@@ -750,9 +756,21 @@ object A11yMonitor {
                 try {
                     if (try { node.isPassword } catch (_: Exception) { false }) hasPassword = true
                     val text = try { node.text?.toString()?.trim() } catch (_: Exception) { null }
-                    if (!text.isNullOrEmpty()) out.add(text.take(SCAN_TEXT_MAX_CHARS))
+                    if (!text.isNullOrEmpty()) {
+                        // Uji kata pantau atas teks UTUH sebelum
+                        // dipotong untuk snapshot (issue #830).
+                        if (fullHit == null && keywords.isNotEmpty()) {
+                            fullHit = try { AppWatch.hit(keywords, text) } catch (_: Exception) { null }
+                        }
+                        out.add(text.take(SCAN_TEXT_MAX_CHARS))
+                    }
                     val desc = try { node.contentDescription?.toString()?.trim() } catch (_: Exception) { null }
-                    if (!desc.isNullOrEmpty() && desc != text) out.add(desc.take(SCAN_TEXT_MAX_CHARS))
+                    if (!desc.isNullOrEmpty() && desc != text) {
+                        if (fullHit == null && keywords.isNotEmpty()) {
+                            fullHit = try { AppWatch.hit(keywords, desc) } catch (_: Exception) { null }
+                        }
+                        out.add(desc.take(SCAN_TEXT_MAX_CHARS))
+                    }
                     val count = try { minOf(node.childCount, 24) } catch (_: Exception) { 0 }
                     for (i in 0 until count) {
                         if (queue.size >= 160) break
@@ -769,7 +787,7 @@ object A11yMonitor {
         } finally {
             while (queue.isNotEmpty()) recycleNode(queue.removeFirst())
         }
-        return ScreenSnapshot(out, hasPassword)
+        return ScreenSnapshot(out, hasPassword) to fullHit
     }
 
     private fun accrueSessionLocked(nowWall: Long, nowElapsed: Long) {
