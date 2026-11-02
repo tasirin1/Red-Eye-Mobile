@@ -371,6 +371,14 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsTdakTypo() {
+        // #670: typo "tdak" (huruf hilang+tertukar dari "tidak") adalah negasi,
+        // sejajar entri typo terkunci #627 (tidka/jngan).
+        assertNull(IntentParser.parse("tdak kirim foto sekarang"))
+        assertNull(IntentParser.parse("tdak ambil screenshot"))
+    }
+
+    @Test
     fun parseRejectsOgahRefusal() {
         // #669: kata penolakan kasual "ogah" adalah negasi.
         assertNull(IntentParser.parse("ogah kirim foto sekarang"))

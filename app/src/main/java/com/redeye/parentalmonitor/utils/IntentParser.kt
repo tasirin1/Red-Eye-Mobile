@@ -13,7 +13,7 @@ object IntentParser {
     private val NEGATIONS = setOf(
         "jangan", "tidak", "nggak", "enggak", "gak", "bukan", "tak", "ndak",
         "ga", "ngga", "engga", "gausah", "kagak", "jgn",
-        "tdk", "gk", "dak", "usah", "jngan", "tidka", "ogah"
+        "tdk", "gk", "dak", "usah", "jngan", "tidka", "ogah", "tdak"
     )
 
     private val INTENTS = listOf(

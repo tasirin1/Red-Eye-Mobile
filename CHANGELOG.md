@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Typo negasi "tdak" kini dikenali (issue #670, sisa #627): pola typo #627 menutup sebagian bentuk (tidka/jngan sebagai entri literal), tetapi "tdak" (huruf hilang + tertukar dari "tidak") lolos. Ditambahkan sebagai entri literal sejajar preseden #627; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Kata penolakan "ogah" kini dikenali sebagai negasi (issue #669): sebelumnya tak ada di daftar negasi sehingga "ogah kirim foto" tetap mengeksekusi. Ditambahkan ke `NEGATIONS`; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Nomina "pembatalan" kini dikenali sebagai pembatalan (issue #668, sisa #628): `isCancellation` sebelumnya hanya memeriksa awalan "batal", sedangkan nomina itu berawalan pem-. Terverifikasi porting + 418/418 ekspektasi terkunci.
 - Penanda laporan frasa "kata dia"/"kata anak" kini dikenali (issue #667, sisa #640): pemeriksaan laporan sebelumnya token-per-token (katanya/bilang), sehingga kalimat laporan berbentuk frasa itu tetap mengeksekusi perintah di dalamnya. `isReport` baru memeriksa frasa pada teks berpagar untuk `parse()` dan jalur alias. Commit ini juga mengganti literal karakter NUL mentah di `hasQuotedUtterance` (#666) dengan escape `\u0000` agar berkas sumber tetap teks bersih.
