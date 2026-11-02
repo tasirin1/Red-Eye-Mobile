@@ -9331,9 +9331,15 @@ class MonitoringService : Service() {
                 return
             }
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
-            preferencesManager.lastCameraErrorNotice = now
+            // Cap jeda 30 menit HANYA sesudah kabar terkirim/terantre
+            // (issue #809, pola #737/#806): sebelumnya cap ditulis
+            // sebelum kirim dan hasil diabaikan, jadi kabar yang
+            // terbuang (mis. pra-login) menahan laporan kegagalan
+            // berikutnya 30 menit penuh.
             val hint = if (policyError) policyFailureHint(cameraBlockingAdmins()) else cameraFailureHint(clean)
-            sendToTelegram("⚠️ Gagal memotret: " + Html.escape(clean) + ". $hint")
+            if (sendToTelegramStatus("⚠️ Gagal memotret: " + Html.escape(clean) + ". $hint") != SendStatus.DROPPED) {
+                preferencesManager.lastCameraErrorNotice = now
+            }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending camera notice: ${redactToken(e.message)}")
         }
@@ -9349,8 +9355,10 @@ class MonitoringService : Service() {
                 return
             }
             if (last > 0 && now >= last && now - last < 30 * 60_000L) return
-            preferencesManager.lastUploadErrorNotice = now
-            sendToTelegram("⚠️ Unggah $jenis gagal (" + Html.escape(detail) + "). Akan dicoba otomatis.")
+            // Cap jeda HANYA sesudah terkirim/terantre (issue #809).
+            if (sendToTelegramStatus("⚠️ Unggah $jenis gagal (" + Html.escape(detail) + "). Akan dicoba otomatis.") != SendStatus.DROPPED) {
+                preferencesManager.lastUploadErrorNotice = now
+            }
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "Error sending upload notice: ${redactToken(e.message)}")
         }
