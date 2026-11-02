@@ -750,6 +750,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasMergesLensAfterYangAtEnd() {
+        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto yang belakang", null))
+        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto pakai yang belakang", null))
+        assertEquals("/photo belakang", IntentParser.intentOrAlias("foto yang belakang dong", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto yang depan dong ya", null))
+        assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang belakang rumah", null))
+    }
+
+    @Test
     fun parseRejectsElongatedReferenceMarkers() {
         val cases = listOf(
             "kirim foto kemarinn dong",

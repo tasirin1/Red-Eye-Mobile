@@ -569,12 +569,20 @@ object IntentParser {
                     // (issue #753): "foto sekarang dong depan" sebelumnya
                     // kehilangan lensa karena dua penegas dihitung jarak.
                     if (stripEdgePunct(tokens[i]) in TAIL_FILLERS) continue
+                    // "yang" juga tak menghabiskan anggaran pindai
+                    // (issue #770): kata penghubung relatif, bukan isi.
+                    if (stripEdgePunct(tokens[i]) == "yang") continue
                     checked++
                     if (checked > 2) break
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) {
                         val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
                         if (prev !in PHOTO_LENS_BLOCKED_PREV) return "$parsed $word"
+                        // "yang" hanya memblokir bila frasanya berlanjut
+                        // jadi keterangan ("yang belakang itu adiknya");
+                        // bila kata lensa adalah isi terakhir ("foto yang
+                        // belakang dong") itu pilihan lensa (issue #770).
+                        if (prev == "yang" && (i + 1 until tokens.size).none { stripEdgePunct(tokens[it]) !in TAIL_FILLERS }) return "$parsed $word"
                     }
                 }
             }
