@@ -625,6 +625,12 @@ class IntentParserTest {
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
         assertEquals("/photo depan", IntentParser.intentOrAlias("foto (depan) dong", "/photo (depan) dong"))
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto *depan* dong", null))
+        // mergeTextArgs setoleran parse(): elongasi, tanda hubung, kata
+        // kunci berulang tidak lagi menelan argumen (issue #727).
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim footo depan sekarang", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("laayar 6 jam", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6-jam dong", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto foto foto depan dong", null))
         // Frasa grup-1 /layar ikut menjadi jangkar argumen jam (issue #726).
         assertEquals("/layar 6", IntentParser.intentOrAlias("screen time 6 jam hari ini", null))
         assertEquals("/layar 6", IntentParser.intentOrAlias("anak main hp 6 jam hari ini", null))

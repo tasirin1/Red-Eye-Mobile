@@ -540,13 +540,24 @@ object IntentParser {
     private val LAYAR_KEYWORDS = setOf("layar", "screentime")
     private val LAYAR_PHRASES = listOf("screen time", "main hp", "main hape", "pemakaian aplikasi", "pakai aplikasi", "waktu layar")
 
+    // Pencocokan kata kunci jalur gabung diselaraskan dengan groupHit
+    // parse(): tokenMatches ATAU setara sesudah pelipatan elongasi huruf
+    // (issue #727).
+    private fun mergeKeywordMatch(token: String, keyword: String): Boolean {
+        return tokenMatches(token, keyword) || collapseLetterRuns(stripEdgePunct(token)) == collapseLetterRuns(keyword)
+    }
+
     private fun mergeTextArgs(text: String, parsed: String?): String? {
         if (parsed == null) return null
         val tokens = text.trim().lowercase(Locale.ROOT).split(WHITESPACE).filter { it.isNotEmpty() }
         if (parsed == "/photo") {
-            val start = tokens.indexOfFirst { token -> PHOTO_KEYWORDS.any { tokenMatches(token, it) } }
+            val start = tokens.indexOfFirst { token -> PHOTO_KEYWORDS.any { mergeKeywordMatch(token, it) } }
             if (start >= 0) {
-                for (i in start + 1 until minOf(start + 3, tokens.size)) {
+                var checked = 0
+                for (i in start + 1 until minOf(start + 6, tokens.size)) {
+                    if (PHOTO_KEYWORDS.any { mergeKeywordMatch(tokens[i], it) }) continue
+                    checked++
+                    if (checked > 2) break
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) {
                         val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
@@ -557,7 +568,7 @@ object IntentParser {
             return parsed
         }
         if (parsed == "/layar") {
-            var start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { tokenMatches(token, it) || tokenMatches(token.replace("_", ""), it) } }
+            var start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { mergeKeywordMatch(token, it) || mergeKeywordMatch(token.replace("_", ""), it) } }
             var anchorLen = 1
             if (start < 0) {
                 // Jangkar frasa grup-1 (issue #726): "screen time", "main hp",
@@ -573,7 +584,7 @@ object IntentParser {
             }
             if (start >= 0) {
                 for (i in start + anchorLen until minOf(start + anchorLen + 2, tokens.size)) {
-                    val word = stripEdgePunct(tokens[i])
+                    val word = stripEdgePunct(tokens[i]).replace("-", "")
                     val attachedHours = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam").toIntOrNull() else null
                     if (attachedHours != null && attachedHours in 1..24) return "$parsed $attachedHours"
                     val hours = word.toIntOrNull()
