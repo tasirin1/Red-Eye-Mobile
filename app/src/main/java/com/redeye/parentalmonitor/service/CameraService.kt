@@ -963,13 +963,18 @@ class CameraService(private val context: Context) {
                 listOf(surface, meterSurface),
                 object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
+                        var superseded = false
                         synchronized(captureLock) {
                             if (sessionSeq.get() != mySeq) {
                                 try { session.close() } catch (_: Exception) { }
-                                onError(Exception("Sesi kamera digantikan"))
-                                return
+                                superseded = true
+                            } else {
+                                captureSession = session
                             }
-                            captureSession = session
+                        }
+                        if (superseded) {
+                            onError(Exception("Sesi kamera digantikan"))
+                            return
                         }
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.d(TAG, "Capture session configured")
                         onTrace("trace: session configured")
