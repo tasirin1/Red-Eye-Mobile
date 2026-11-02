@@ -1909,7 +1909,14 @@ class MonitoringService : Service() {
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
-                    val rawText = (message?.text ?: message?.caption)?.trim().orEmpty()
+                    // Hanya TEKS yang jadi perintah (issue #841):
+                    // caption media sebelumnya ikut dieksekusi, jadi
+                    // meneruskan foto berketerangan "kunci"/"hilang"
+                    // ke chat bot mengunci HP / menyalakan mode
+                    // hilang tanpa ada yang mengetik perintah. Alur
+                    // pulihkan membaca message.document/text langsung
+                    // dan tidak bergantung caption.
+                    val rawText = message?.text?.trim().orEmpty()
                     val headArg = rawText.split(CMD_SPLIT_REGEX, limit = 2)
                     val head = headArg.getOrNull(0).orEmpty()
                     val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
