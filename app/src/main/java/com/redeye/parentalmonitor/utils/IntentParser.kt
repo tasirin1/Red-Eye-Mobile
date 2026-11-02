@@ -640,9 +640,15 @@ object IntentParser {
                     // diam-diam ke laporan bawaan 24 jam; kini dibulatkan
                     // ke jam terdekat (floor(x + 0,5) untuk nilai positif).
                     val numText = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam") else word
-                    val decHours = numText.replace(',', '.').toDoubleOrNull()?.plus(0.5)?.toInt()
+                    val decVal = numText.replace(',', '.').toDoubleOrNull()
+                    val decHours = decVal?.plus(0.5)?.toInt()
                     val nextJam = i + 1 < tokens.size && stripEdgePunct(tokens[i + 1]) == "jam"
                     if (decHours != null && decHours in 1..24 && (numText != word || nextJam)) return "$parsed $decHours"
+                    // Desimal positif di bawah 0,5 membulat ke 0 (issue
+                    // #790): jangan jatuh ke bawaan 24 jam — jepit ke
+                    // minimum 1 jam yang paling dekat maksudnya. Tepi
+                    // atas tetap dibuang seperti terkunci uji ("25,5").
+                    if (decVal != null && decVal > 0.0 && decHours == 0 && (numText != word || nextJam)) return "$parsed 1"
                 }
             }
             return parsed

@@ -796,6 +796,10 @@ class IntentParserTest {
         assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6,4 jam", null))
         assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6,5jam", null))
         assertEquals("/layar", IntentParser.intentOrAlias("layar 25,5 jam", null))
+        // #790: desimal positif di bawah 0,5 dijepit ke 1 jam, bukan
+        // jatuh diam-diam ke laporan bawaan 24 jam.
+        assertEquals("/layar 1", IntentParser.intentOrAlias("layar 0,4 jam", null))
+        assertEquals("/layar", IntentParser.intentOrAlias("layar 0 jam", null))
     }
 
     @Test
