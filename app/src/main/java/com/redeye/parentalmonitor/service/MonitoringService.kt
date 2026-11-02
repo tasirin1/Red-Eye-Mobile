@@ -3390,6 +3390,17 @@ class MonitoringService : Service() {
             }
             val pin = message.text?.trim().orEmpty()
             if (pin.isEmpty() || pin.startsWith("/")) return false
+            // Kata batal polos di tahap PIN (issue #805): sebelumnya
+            // diteruskan sebagai tebakan PIN sehingga sesi tak batal
+            // DAN satu percobaan PIN persisten terbakar. Kosakata sama
+            // dengan jalur perintah (#789).
+            val pinLower = pin.lowercase(java.util.Locale.ROOT)
+            if (pinLower == "cancel" || pinLower == "off" || (!pinLower.contains(' ') && IntentParser.isCancellation(pinLower))) {
+                pendingRestore = null
+                audit("restore batal", "private")
+                sendToTelegram("Pemulihan dibatalkan.")
+                return true
+            }
             handleRestorePin(pending, pin, message, chatId)
             return true
         }
