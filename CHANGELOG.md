@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Kata penolakan kini juga menahan perintah slash bernama resmi Inggris (#840): mengetik "/lock jangan", "/stop jangan", atau "/restart jangan" sebelumnya tetap mengeksekusi perintahnya karena veto hanya dinilai untuk nama alias bahasa Indonesia; kini veto dinilai untuk semua perintah slash dengan penjaga yang sama (isi SMS dan "/pulihkan batal" tetap sah).
+
 ## [1.6.590] - 2026-11-03
 
 ### Fixed

@@ -2041,8 +2041,19 @@ class MonitoringService : Service() {
                         } else {
                             null
                         }
-                        val slashVetoed = rawAliasInput != null && try {
-                            IntentParser.isVetoedText(command.substring(1) + (if (arg.isEmpty()) "" else " $arg"), rawAliasInput)
+                        // Veto berlaku juga untuk nama slash RESMI yang
+                        // bukan kunci alias (issue #840): sebelumnya
+                        // "/lock jangan" lolos tanpa veto karena
+                        // rawAliasInput-nya null, sementara "/kunci
+                        // jangan" tertahan. Target kanonisnya perintah
+                        // itu sendiri; penjaga di isVetoedText (formulir
+                        // SMS, "/pulihkan batal", target baca-saja)
+                        // tetap berlaku lewat aliasInput ini.
+                        val slashVetoed = command.startsWith("/") && try {
+                            IntentParser.isVetoedText(
+                                command.substring(1) + (if (arg.isEmpty()) "" else " $arg"),
+                                rawAliasInput ?: (command + if (arg.isEmpty()) "" else " $arg")
+                            )
                         } catch (_: Exception) {
                             false
                         }
