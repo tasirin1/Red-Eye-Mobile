@@ -91,6 +91,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("io.metamask"))
         assertTrue(AppWatch.isSensitivePackage("com.kraken.trade"))
         assertTrue(AppWatch.isSensitivePackage("com.ledger.live"))
+        assertTrue(AppWatch.isSensitivePackage("com.venmo"))
+        assertTrue(AppWatch.isSensitivePackage("com.squareup.cash"))
     }
 
     @Test

@@ -21,6 +21,7 @@ object AppWatch {
         "id.co.triv", "siminvest", "lakuemas", "gotrade", "miraeasset", "com.bmoney",
         "nanovest", "dana.rupiah", "pinjamango", "cmcm.uangme", "finplus", "pinjamduit", "id.makmur", "shopintar", "indosk", "cairin", "sucor", "mncsecurities", "tunaiku", "com.uatas", "modalku", "modalnasional", "revolut", "transferwise",
         "coinbase", "metamask", "kraken", "ledger",
+        "venmo", "squareup"
     )
 
     fun parseKeywords(raw: String): List<String> {
