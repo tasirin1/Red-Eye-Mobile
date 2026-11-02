@@ -190,6 +190,21 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasFallbackRejectsQuestionTail() {
+        // #625: kata tanya sebagai kata kedua alias = pertanyaan, bukan perintah;
+        // handler mutating mengabaikan argumen sehingga sebelumnya tetap jalan.
+        assertNull(IntentParser.intentOrAlias("kunci apa", "/lock apa"))
+        assertNull(IntentParser.intentOrAlias("kunci kapan", "/lock kapan"))
+        assertNull(IntentParser.intentOrAlias("kunci kenapa", "/lock kenapa"))
+        assertNull(IntentParser.intentOrAlias("hilang apa", "/hilang apa"))
+        assertNull(IntentParser.intentOrAlias("hilang kenapa", "/hilang kenapa"))
+        assertNull(IntentParser.intentOrAlias("darurat gimana", "/darurat gimana"))
+        // Kontrol: alias polos dan alias + argumen sah tetap jalan.
+        assertEquals("/lock", IntentParser.intentOrAlias("kunci", "/lock"))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan dong", "/photo depan dong"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

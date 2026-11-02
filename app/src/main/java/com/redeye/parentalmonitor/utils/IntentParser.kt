@@ -315,9 +315,12 @@ object IntentParser {
 
     private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa")
 
+    private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok")
+
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
+        if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
         return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
     }

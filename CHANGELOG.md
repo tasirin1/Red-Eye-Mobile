@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kata tanya sebagai kata kedua alias tidak lagi mengeksekusi perintah (issue #625): fallback alias ≤2 kata sebelumnya hanya membatalkan negasi/masa depan/rujukan foto, sehingga `kunci apa`, `hilang kenapa`, dan `darurat gimana` — semuanya pertanyaan — tetap menjalankan perintah mutating penuh (handler mengabaikan argumen). `isVetoed` kini juga memveto bentuk dua token yang token keduanya kata tanya (`apa`, `kapan`, `kenapa`, `gimana`, `bagaimana`, `mengapa`, `siapa`, `berapa`, `mana`, `kok`, `apakah`); jalur slash tetap dilindungi cek hasil parse di `isVetoedText` sehingga pertanyaan baca-saja yang ter-parse sah tidak ikut gugur.
 - Penanda masa depan kini memveto jalur `parse()` untuk intent tangkapan (issue #624, sisa #594): veto `besok`/`nanti`/`lusa` dari #594 sebelumnya hanya terpasang di `isVetoed` (jalur alias/slash), sehingga kalimat alami seperti `kirim foto besok dong` dan `kirim screenshot nanti dong` tetap dieksekusi sekarang. `parse()` kini menekan intent /photo & /screenshot bila ada penanda masa depan (mutlak, meniru urutan veto di `isVetoed`); intent baca-saja tidak terpengaruh.
 
 ## [1.6.581] - 2026-11-01
