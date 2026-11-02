@@ -134,6 +134,9 @@ class MonitoringService : Service() {
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
     @Volatile
     private var curfewFetchFailAt = 0L
+    private var digestAttemptAnchor = 0L
+    private var curfewAttemptKey = ""
+    private var schoolAttemptKey = ""
     private var trailMirrorRaw: String? = null
     private var trailMirrorPts: List<String>? = null
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -6661,25 +6664,38 @@ class MonitoringService : Service() {
         if (awaitingOwnerLogin()) return
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.digestAt } catch (_: Exception) { 0L }
+        var anchor = 0L
         when (DigestSchedule.periodicDecision(last, now)) {
             DigestSchedule.Verdict.RESET -> {
                 try { preferencesManager.digestAt = now } catch (_: Exception) { }
                 return
             }
             DigestSchedule.Verdict.WAIT -> return
-            DigestSchedule.Verdict.SEND -> try { preferencesManager.digestAt = DigestSchedule.nextPeriodicAnchor(last, now) } catch (_: Exception) { }
+            DigestSchedule.Verdict.SEND -> {
+                anchor = DigestSchedule.nextPeriodicAnchor(last, now)
+                // Satu percobaan per jendela per proses (issue #737):
+                // kegagalan yang terantre tidak ditembak ulang tiap
+                // siklus (menghindari salinan menumpuk di antrean),
+                // tetapi jangkar persisten hanya maju sesudah kirim
+                // berhasil — pola #699.
+                if (anchor <= digestAttemptAnchor) return
+                digestAttemptAnchor = anchor
+            }
         }
         val since = now - 6 * 60 * 60_000L
         val smsCount = try { smsRepository.countSmsSince(since, 200) } catch (_: Exception) { -1 }
         val callCount = try { callLogRepository.countCallsSince(since, 200) } catch (_: Exception) { -1 }
         val level = batteryLevel()
-        sendToTelegram(buildString {
+        val sent = sendToTelegram(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
             appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}${if (smsCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}${if (callCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
         })
+        if (sent) {
+            try { preferencesManager.digestAt = anchor } catch (_: Exception) { }
+        }
     }
 
     private fun lastSentLatLon(): Pair<Double, Double>? {
@@ -7713,16 +7729,27 @@ class MonitoringService : Service() {
             if (needCurfew) {
                 val dist = ReportFormat.distanceMeters(homeLat / 1_000_000.0, homeLon / 1_000_000.0, pos.first, pos.second)
                 if (GeofenceLogic.judgedOutside(dist, homeRad, posAccuracy)) {
-                    try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
-                    sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")
+                    // Tandai "sudah" hanya sesudah kirim berhasil (pola
+                    // #699, issue #737); satu percobaan per malam per
+                    // proses agar kegagalan terantre tak menumpuk salinan.
+                    if (curfewAttemptKey != key) {
+                        curfewAttemptKey = key
+                        if (sendToTelegram("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).")) {
+                            try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
+                        }
+                    }
                     return
                 }
             }
             if (needSchool) {
                 val dist = ReportFormat.distanceMeters(schoolLat / 1_000_000.0, schoolLon / 1_000_000.0, pos.first, pos.second)
                 if (GeofenceLogic.judgedOutside(dist, schoolRad, posAccuracy)) {
-                    try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
-                    sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")
+                    if (schoolAttemptKey != key) {
+                        schoolAttemptKey = key
+                        if (sendToTelegram("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).")) {
+                            try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
+                        }
+                    }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
