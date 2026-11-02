@@ -371,6 +371,14 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsKataDiaReportPhrases() {
+        // #667: penanda laporan frasa "kata dia"/"kata anak".
+        assertNull(IntentParser.parse("kata dia kirim foto sekarang"))
+        assertNull(IntentParser.parse("kata anak ambil foto depan"))
+        assertNull(IntentParser.parse("kata dia kirim screenshot sekarang"))
+    }
+
+    @Test
     fun parseRejectsMidSentenceQuotedUtterance() {
         // #666: kutipan >=2 kata di tengah kalimat = ucapan yang dilaporkan.
         assertNull(IntentParser.parse("pesan masuk bunyinya \"kirim foto sekarang\""))

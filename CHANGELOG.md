@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penanda laporan frasa "kata dia"/"kata anak" kini dikenali (issue #667, sisa #640): pemeriksaan laporan sebelumnya token-per-token (katanya/bilang), sehingga kalimat laporan berbentuk frasa itu tetap mengeksekusi perintah di dalamnya. `isReport` baru memeriksa frasa pada teks berpagar untuk `parse()` dan jalur alias. Commit ini juga mengganti literal karakter NUL mentah di `hasQuotedUtterance` (#666) dengan escape `\u0000` agar berkas sumber tetap teks bersih.
 - Kutipan ucapan di tengah kalimat kini memveto tangkapan (issue #666, sisa #640): #640 baru menutup kutipan di AWAL kalimat, sehingga `pesan masuk bunyinya "kirim foto sekarang"` tetap mengeksekusi perintah di dalam kutipan. Pemeriksaan `hasQuotedUtterance` baru menolak rentang kutipan berisi ≥2 kata di posisi mana pun; kutipan satu kata (penekanan seperti `"depan"`) tetap sah sesuai uji terkunci. Terverifikasi porting + 418/418 ekspektasi terkunci.
 - Frasa "malam ini" kini memveto tangkapan (issue #665): pemeriksaan masa depan sebelumnya token-per-token saja, sehingga frasa "malam ini" (rujukan malam yang akan datang, setara "nanti malam") tak dikenali. Pemeriksaan dipindah ke `hasFutureMarker` yang juga memeriksa frasa itu pada teks berpagar, dipakai `parse()` dan `isVetoed()`. Terverifikasi porting + 418/418 ekspektasi terkunci.
 - Sinonim masa depan "esok" kini dikenali (issue #664): `FUTURE_MARKERS` sebelumnya hanya besok/nanti/lusa, sehingga "kirim foto esok" mengeksekusi tangkapan sekarang. Ditambah "esok"; terverifikasi porting + 418/418 ekspektasi terkunci.

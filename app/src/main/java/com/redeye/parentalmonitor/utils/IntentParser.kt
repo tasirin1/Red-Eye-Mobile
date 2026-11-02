@@ -341,11 +341,11 @@ object IntentParser {
     // kutipan di awal kalimat (issue #666). Kutipan satu kata ("depan")
     // adalah penekanan dan tetap sah (uji terkunci).
     private fun hasQuotedUtterance(text: String): Boolean {
-        var open = ' '
+        var open = '\u0000'
         var spanStart = -1
         for (i in text.indices) {
             val c = text[i]
-            if (open == ' ') {
+            if (open == '\u0000') {
                 if (c == '"' || c == '“') {
                     open = c
                     spanStart = i
@@ -354,7 +354,7 @@ object IntentParser {
                 if ((open == '"' && c == '"') || (open == '“' && (c == '”' || c == '"'))) {
                     val span = text.substring(spanStart + 1, i).trim()
                     if (span.split(WHITESPACE).count { it.isNotEmpty() } >= 2) return true
-                    open = ' '
+                    open = '\u0000'
                     spanStart = -1
                 }
             }
@@ -364,6 +364,12 @@ object IntentParser {
 
     private fun isReportToken(token: String): Boolean {
         return markerMatches(token, "katanya") || markerMatches(token, "bilang")
+    }
+
+    private fun isReport(tokens: List<String>, padded: String): Boolean {
+        if (tokens.any { isReportToken(it) }) return true
+        // Penanda laporan berbentuk frasa "kata dia"/"kata anak" (issue #667).
+        return padded.contains(" kata dia ") || padded.contains(" kata anak ")
     }
 
     private val SEND_OR_CAPTURE_VERBS = setOf("kirim", "ambil", "jepret", "potret")
@@ -381,7 +387,7 @@ object IntentParser {
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
-        if (tokens.any { isReportToken(it) }) return true
+        if (isReport(tokens, padded)) return true
         if (hasFutureMarker(tokens, padded)) return true
         if (isAspectStatus(tokens)) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
@@ -393,7 +399,7 @@ object IntentParser {
         val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
         if (tokens.any { isCancellation(it) }) return null
-        if (tokens.any { isReportToken(it) }) return null
+        if (isReport(tokens, padded)) return null
         val rawTrim = text.trim()
         if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
         if (hasQuotedUtterance(rawTrim)) return null
