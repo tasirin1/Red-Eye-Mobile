@@ -1079,11 +1079,17 @@ class MonitoringService : Service() {
                         val lastPatrol = if (firstRound) try { preferencesManager.patrolLastAt } catch (_: Exception) { 0L } else 0L
                         val lastPatrolElapsed = if (firstRound) try { preferencesManager.patrolLastElapsed } catch (_: Exception) { 0L } else 0L
                         val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                        val nowWall = System.currentTimeMillis()
+                        // Jangkar monoton hanya berlaku dalam boot yang
+                        // sama (issue #781): tanpa pemeriksaan ini jangkar
+                        // boot lama yang kebetulan kecil lolos dan patroli
+                        // pertama sesudah reboot tertunda sampai sisa
+                        // interval penuh walau sudah jatuh tempo.
                         val remainMs = when {
-                            lastPatrolElapsed > 0L && nowElapsed >= lastPatrolElapsed ->
+                            lastPatrolElapsed > 0L && lastPatrol > 0L && BootClock.sameBoot(lastPatrol, lastPatrolElapsed, nowWall, nowElapsed) ->
                                 (effMinutes * 60_000L - (nowElapsed - lastPatrolElapsed)).coerceAtLeast(0L)
                             lastPatrol > 0L ->
-                                (lastPatrol + effMinutes * 60_000L - System.currentTimeMillis()).coerceIn(0L, effMinutes * 60_000L)
+                                (lastPatrol + effMinutes * 60_000L - nowWall).coerceIn(0L, effMinutes * 60_000L)
                             else -> 0L
                         }
                         if (remainMs > 0L) {

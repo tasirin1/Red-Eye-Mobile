@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Patroli pertama sesudah HP menyala ulang tidak lagi bisa tertunda tanpa alasan (issue #781): jangkar waktu patroli terakhir kini diperiksa berasal dari boot yang sama sebelum dipakai; jangkar sisa boot lama jatuh ke perhitungan jam dinding seperti semula.
 - Pemulihan sesi aksesibilitas yang mulai dua hari lalu atau lebih tidak lagi menagih seluruh rentangnya ke hari mulai (issue #780): akru kini berhenti di tengah malam pertama sesudah sesi mulai, sehingga laporan pemakaian hari mulai tidak lagi meledak belasan jam.
 - Penerusan notifikasi kini jujur bila pengantrean gagal (issue #779): cabang-cabang fallback sebelumnya melaporkan berhasil tanpa memeriksa hasil pengantrean, sehingga pesan yang membuang dirinya sendiri dari antrean penuh tetap ditandai sudah diteruskan dan tak pernah dicoba lagi. Kini statusnya mengikuti hasil pengantrean yang sebenarnya.
 - Antrean pesan batch tidak lagi melaporkan berhasil bila hanya sebagian yang selamat (issue #778): sebelumnya satu item yang lolos eviksi membuat seluruh batch dianggap terantre — notifikasi yang hilang tertandai sudah diteruskan dan kursor laporan SMS/panggilan ikut maju. Kini batch hanya berhasil bila seluruhnya selamat; keberhasilan sebagian dianggap gagal agar dicoba lagi.
