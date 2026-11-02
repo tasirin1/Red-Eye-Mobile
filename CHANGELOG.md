@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jeda alert tamper aksesibilitas kini tersimpan (issue #799): peta jeda per alasan disimpan mengikuti pola alert kata kunci, jadi restart proses oleh sistem tidak lagi mengulang alert tamper yang sama dalam 5 menit.
 - Lima alert berkala lain kini mengikuti pola yang sama (issue #798): heartbeat, kesehatan izin, kendaraan, quiet-health (termasuk reset penghitung gagal lokasi), dan pemberitahuan hemat kuota mencap jedanya hanya sesudah kabar benar-benar terkirim.
 - Alert baterai dan alert aksesibilitas mati kini dicap jedanya sesudah kirim berhasil (issue #796, #797): alert baterai juga kini punya penjaga pra-login seperti digest, jadi kabar yang terbuang tidak tertahan jeda 24/6 jam.
 - Cooldown alert pagar kini dicap sesudah kabar transisi benar-benar terkirim (issue #795): sebelumnya cap ditulis sebelum kirim, jadi transisi yang kabarnya terbuang hilang permanen tertahan cooldown.

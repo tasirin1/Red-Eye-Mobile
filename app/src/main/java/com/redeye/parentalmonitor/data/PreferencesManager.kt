@@ -501,6 +501,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_KEYWORD_DAY = "a11y_keyword_day"
         private const val KEY_A11Y_KEYWORD_COUNT = "a11y_keyword_count"
         private const val KEY_A11Y_KEYWORD_JSON = "a11y_keyword_json"
+        private const val KEY_A11Y_TAMPER_JSON = "a11y_tamper_json"
 
         private fun clearStaleCredentialError(target: PreferencesManager) {
             try {
@@ -1576,6 +1577,12 @@ class PreferencesManager(context: Context) {
     var a11yKeywordAlertJson: String
         get() = prefString(KEY_A11Y_KEYWORD_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_KEYWORD_JSON, value).apply()
+
+    // Peta jeda alert tamper per alasan (issue #799): sebelumnya hanya
+    // di memori A11yMonitor sehingga restart proses mengulang alert.
+    var a11yTamperAlertJson: String
+        get() = prefString(KEY_A11Y_TAMPER_JSON, "")
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_TAMPER_JSON, value).apply()
 
     fun setA11yKeywordAlertState(day: String, count: Int, json: String) {
         try {

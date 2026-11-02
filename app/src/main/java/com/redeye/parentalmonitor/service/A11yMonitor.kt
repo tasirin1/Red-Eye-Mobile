@@ -50,6 +50,7 @@ object A11yMonitor {
     private val gate = Any()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val lastTamperAlert = HashMap<String, Long>()
+    private var tamperStateLoaded = false
     private val lastContentScan = HashMap<String, Long>()
     private val lastKeywordAlert = HashMap<String, Long>()
     private var keywordAlertDay = ""
@@ -655,15 +656,35 @@ object A11yMonitor {
     }
 
     private fun blockTamper(context: Context, reason: String) {
-        val now = SystemClock.elapsedRealtime()
+        // Jam dinding + peta persisten (issue #799): jeda anti-dobel
+        // alert tamper sebelumnya hanya di memori, jadi restart proses
+        // oleh sistem mengulang alert yang sama. Pola meniru peta
+        // alert kata kunci yang sudah persisten di berkas ini.
+        val now = System.currentTimeMillis()
         mainHandler.post {
             try { a11yService?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME) } catch (_: Exception) { }
         }
+        val manager = try { prefs ?: PreferencesManager.getInstance(context.applicationContext).also { prefs = it } } catch (_: Exception) { null }
         val allowed = synchronized(lastTamperAlert) {
+            if (!tamperStateLoaded) {
+                tamperStateLoaded = true
+                if (manager != null) {
+                    try {
+                        val parsed: MutableMap<String, Long>? = gson.fromJson(manager.a11yTamperAlertJson, alertType)
+                        if (parsed != null) {
+                            lastTamperAlert.putAll(parsed.filterValues { now - it < TAMPER_ALERT_GAP_MS })
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
             val last = lastTamperAlert[reason] ?: 0L
-            if (now - last < TAMPER_ALERT_GAP_MS) false
+            if (last > 0L && now - last >= 0L && now - last < TAMPER_ALERT_GAP_MS) false
             else {
                 lastTamperAlert[reason] = now
+                if (manager != null) {
+                    try { manager.a11yTamperAlertJson = gson.toJson(HashMap(lastTamperAlert)) } catch (_: Exception) { }
+                }
                 true
             }
         }
