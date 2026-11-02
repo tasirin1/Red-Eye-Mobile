@@ -219,6 +219,21 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsShortAndTransposedNegations() {
+        // #627: singkatan konsonan & transposisi huruf negasi sebelumnya lolos.
+        assertNull(IntentParser.parse("tdk kirim foto sekarang"))
+        assertNull(IntentParser.parse("gk kirim foto sekarang"))
+        assertNull(IntentParser.parse("dak kirim foto sekarang"))
+        assertNull(IntentParser.parse("usah kirim foto dong"))
+        assertNull(IntentParser.parse("jngan kirim foto sekarang"))
+        assertNull(IntentParser.parse("tidka kirim foto sekarang"))
+        assertNull(IntentParser.intentOrAlias("kunci tdk", "/lock tdk"))
+        assertNull(IntentParser.intentOrAlias("kunci dak", "/lock dak"))
+        // Kontrol: kata mirip yang bukan negasi tidak ikut tertelan.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",
