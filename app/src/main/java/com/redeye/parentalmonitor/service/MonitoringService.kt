@@ -3363,7 +3363,13 @@ class MonitoringService : Service() {
                 val video = wantsVideo && name.startsWith("video_") && (name.endsWith(".mp4") || name.endsWith(".tmp"))
                 val audio = wantsAudio && name.startsWith("audio_") && (name.endsWith(".m4a") || name.endsWith(".tmp"))
                 val media = photo || video || audio
-                if (media && file.lastModified() < cutoff) {
+                // Umur dari cap di NAMA berkas (issue #855): rotasi
+                // flush menulis ulang lastModified, jadi berkas tua
+                // yang baru timeout terasa baru lahir dan lolos
+                // dibersihkan. Nama tak terbaca -> lastModified.
+                val bornMs = if (media) TimeFmt.mediaNameTimeMs(name) else -1L
+                val ageRef = if (bornMs > 0L) bornMs else file.lastModified()
+                if (media && ageRef < cutoff) {
                     val len = file.length()
                     if (file.delete()) {
                         count++
