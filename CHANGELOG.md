@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Alert begadang kini ditandai terkirim hanya sesudah pengiriman benar-benar berhasil (issue #783): sebelumnya tanggalnya ditandai apa pun hasil kirimnya, sehingga alert yang gagal permanen hilang tanpa pernah dicoba lagi.
 - Jeda alert malam aksesibilitas kini tersimpan (issue #782): restart proses oleh sistem tidak lagi meng-nol-kan jeda 30 menitnya, sehingga alert malam yang sama tidak terkirim dua kali dalam satu malam.
 - Patroli pertama sesudah HP menyala ulang tidak lagi bisa tertunda tanpa alasan (issue #781): jangkar waktu patroli terakhir kini diperiksa berasal dari boot yang sama sebelum dipakai; jangkar sisa boot lama jatuh ke perhitungan jam dinding seperti semula.
 - Pemulihan sesi aksesibilitas yang mulai dua hari lalu atau lebih tidak lagi menagih seluruh rentangnya ke hari mulai (issue #780): akru kini berhenti di tengah malam pertama sesudah sesi mulai, sehingga laporan pemakaian hari mulai tidak lagi meledak belasan jam.

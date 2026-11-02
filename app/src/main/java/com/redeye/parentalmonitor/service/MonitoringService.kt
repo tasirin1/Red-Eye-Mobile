@@ -138,6 +138,7 @@ class MonitoringService : Service() {
     private var curfewAttemptKey = ""
     private var schoolAttemptKey = ""
     private var nightDigestAttemptKey = ""
+    private var begadangAttemptKey = ""
     private var trailMirrorRaw: String? = null
     private var trailMirrorPts: List<String>? = null
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -7657,8 +7658,15 @@ class MonitoringService : Service() {
                 try { preferencesManager.begadangDate = key } catch (_: Exception) { }
                 return
             }
-            sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "")
-            try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+            // Tandai "sudah" hanya sesudah kirim berhasil (pola #699,
+            // issue #783); satu percobaan per hari per proses agar
+            // kegagalan terantre tak menumpuk salinan.
+            if (begadangAttemptKey != key) {
+                begadangAttemptKey = key
+                if (sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "")) {
+                    try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+                }
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
