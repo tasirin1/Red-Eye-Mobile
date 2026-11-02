@@ -7863,8 +7863,14 @@ class MonitoringService : Service() {
                         if (sendToTelegramStatus("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
                             try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
                         }
+                        return
                     }
-                    return
+                    // Percobaan jam malam sudah terpakai (issue #807):
+                    // return tanpa syarat di sini membuat cabang
+                    // sekolah di bawah tak pernah dievaluasi selama
+                    // perangkat dinilai di luar rumah — dengan jam
+                    // malam mulai 12:00-15:59 alert sekolah bisa
+                    // hilang seharian. Lanjut menilai sekolah.
                 }
             }
             if (needSchool) {
