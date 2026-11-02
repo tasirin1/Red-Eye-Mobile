@@ -482,6 +482,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
         private const val KEY_A11Y_USAGE_DATE = "a11y_usage_date"
         private const val KEY_A11Y_USAGE_JSON = "a11y_usage_json"
+        private const val KEY_A11Y_NIGHT_ALERT_PKG = "a11y_night_alert_pkg"
+        private const val KEY_A11Y_NIGHT_ALERT_AT = "a11y_night_alert_at"
+        private const val KEY_A11Y_NIGHT_ALERT_ELAPSED = "a11y_night_alert_elapsed"
         private const val KEY_A11Y_OPEN_SESSION_PKG = "a11y_open_session_pkg"
         private const val KEY_A11Y_OPEN_SESSION_START_WALL = "a11y_open_session_start_wall"
         private const val KEY_A11Y_OPEN_SESSION_START_ELAPSED = "a11y_open_session_start_elapsed"
@@ -1500,6 +1503,33 @@ class PreferencesManager(context: Context) {
                 .putString(KEY_A11Y_USAGE_DATE, date)
                 .putString(KEY_A11Y_USAGE_JSON, json)
                 .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    val a11yNightAlertPkg: String
+        get() = prefString(KEY_A11Y_NIGHT_ALERT_PKG, "")
+
+    val a11yNightAlertAt: Long
+        get() = prefLong(KEY_A11Y_NIGHT_ALERT_AT, 0L)
+
+    val a11yNightAlertElapsed: Long
+        get() = prefLong(KEY_A11Y_NIGHT_ALERT_ELAPSED, 0L)
+
+    fun setA11yNightAlert(pkg: String, atWall: Long, atElapsed: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_A11Y_NIGHT_ALERT_PKG, pkg)
+                .putLong(KEY_A11Y_NIGHT_ALERT_AT, atWall)
+                .putLong(KEY_A11Y_NIGHT_ALERT_ELAPSED, atElapsed)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun clearA11yNightAlertPkg() {
+        try {
+            sharedPreferences.edit().remove(KEY_A11Y_NIGHT_ALERT_PKG).apply()
         } catch (_: Exception) {
         }
     }

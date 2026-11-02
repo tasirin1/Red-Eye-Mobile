@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Jeda alert malam aksesibilitas kini tersimpan (issue #782): restart proses oleh sistem tidak lagi meng-nol-kan jeda 30 menitnya, sehingga alert malam yang sama tidak terkirim dua kali dalam satu malam.
 - Patroli pertama sesudah HP menyala ulang tidak lagi bisa tertunda tanpa alasan (issue #781): jangkar waktu patroli terakhir kini diperiksa berasal dari boot yang sama sebelum dipakai; jangkar sisa boot lama jatuh ke perhitungan jam dinding seperti semula.
 - Pemulihan sesi aksesibilitas yang mulai dua hari lalu atau lebih tidak lagi menagih seluruh rentangnya ke hari mulai (issue #780): akru kini berhenti di tengah malam pertama sesudah sesi mulai, sehingga laporan pemakaian hari mulai tidak lagi meledak belasan jam.
 - Penerusan notifikasi kini jujur bila pengantrean gagal (issue #779): cabang-cabang fallback sebelumnya melaporkan berhasil tanpa memeriksa hasil pengantrean, sehingga pesan yang membuang dirinya sendiri dari antrean penuh tetap ditandai sudah diteruskan dan tak pernah dicoba lagi. Kini statusnya mengikuti hasil pengantrean yang sebenarnya.

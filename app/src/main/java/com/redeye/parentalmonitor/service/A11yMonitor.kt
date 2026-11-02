@@ -18,6 +18,7 @@ import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.BootClock
 import com.redeye.parentalmonitor.utils.Html
 import com.redeye.parentalmonitor.utils.MessageScheduler
+import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.TamperGuard
 import com.redeye.parentalmonitor.utils.TimeFmt
 import java.util.concurrent.Executors
@@ -598,13 +599,11 @@ object A11yMonitor {
                 val firstOpen = manager.rememberA11yApp(pkg)
                 if (seeded && firstOpen && manager.a11yAppAlert) {
                     if (isNightHour(nowWall)) {
-                        lastNightAlertElapsed = nowElapsed
-                        nightAlertedPackage = pkg
+                        stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     }
                     alertText = "\uD83D\uDCE6 <b>Aplikasi baru dibuka</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>"
-                } else if (manager.a11yAppAlert && isNightHour(nowWall) && nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS) {
-                    lastNightAlertElapsed = nowElapsed
-                    nightAlertedPackage = pkg
+                } else if (manager.a11yAppAlert && isNightHour(nowWall) && nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS) {
+                    stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)
                 }
                 persistSnapshot = persistSnapshotLocked(false)
@@ -740,8 +739,34 @@ object A11yMonitor {
         currentStartElapsed = nowElapsed
     }
 
+    // Jeda alert malam persisten (issue #782): cap waktu + paket
+    // disimpan di prefs agar restart proses (LMK) tidak meng-nol-kan
+    // jeda 30 menit dan menggandakan alert dalam satu malam. Bidang
+    // memori tetap sumber utama selama proses hidup; prefs hanya
+    // dibaca bila bidang masih kosong (baru restart).
+    private fun stampNightAlert(manager: PreferencesManager, pkg: String, nowWall: Long, nowElapsed: Long) {
+        lastNightAlertElapsed = nowElapsed
+        nightAlertedPackage = pkg
+        try { manager.setA11yNightAlert(pkg, nowWall, nowElapsed) } catch (_: Exception) { }
+    }
+
+    private fun nightAlertAgeMs(manager: PreferencesManager, nowWall: Long, nowElapsed: Long): Long {
+        if (lastNightAlertElapsed > 0L) return nowElapsed - lastNightAlertElapsed
+        val atWall = try { manager.a11yNightAlertAt } catch (_: Exception) { 0L }
+        val atElapsed = try { manager.a11yNightAlertElapsed } catch (_: Exception) { 0L }
+        if (atWall <= 0L && atElapsed <= 0L) return Long.MAX_VALUE
+        val age = NetworkUtils.blockAgeMs(atWall, atElapsed, nowWall, nowElapsed)
+        return if (age < 0L) 0L else age
+    }
+
+    private fun nightAlertPkg(manager: PreferencesManager): String {
+        if (nightAlertedPackage.isNotEmpty()) return nightAlertedPackage
+        return try { manager.a11yNightAlertPkg } catch (_: Exception) { "" }
+    }
+
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {
         nightAlertedPackage = ""
+        try { prefs?.clearA11yNightAlertPkg() } catch (_: Exception) { }
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) {
             currentPackage = ""
             currentStartElapsed = 0L
@@ -767,12 +792,11 @@ object A11yMonitor {
                 val nowElapsed = SystemClock.elapsedRealtime()
                 accrueSessionLocked(nowWall, nowElapsed)
                 val manager = prefs
-                if (manager != null && currentPackage.isNotEmpty() && currentPackage != nightAlertedPackage &&
+                if (manager != null && currentPackage.isNotEmpty() && currentPackage != nightAlertPkg(manager) &&
                     monitoringActive(manager) && manager.a11yAppAlert && isNightHour(nowWall) &&
-                    nowElapsed - lastNightAlertElapsed >= NIGHT_ALERT_GAP_MS
+                    nightAlertAgeMs(manager, nowWall, nowElapsed) >= NIGHT_ALERT_GAP_MS
                 ) {
-                    lastNightAlertElapsed = nowElapsed
-                    nightAlertedPackage = currentPackage
+                    stampNightAlert(manager, currentPackage, nowWall, nowElapsed)
                     crossAlert = "\uD83C\uDF19 <b>Aplikasi masih dipakai malam</b>\n" + Html.escape(labelFor(app, currentPackage)) + "\n<code>" + currentPackage + "</code>\n" + TimeFmt.short(nowWall)
                 }
                 persistLocked(app, false)
