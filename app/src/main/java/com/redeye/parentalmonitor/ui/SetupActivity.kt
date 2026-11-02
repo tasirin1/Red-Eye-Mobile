@@ -1124,13 +1124,27 @@ class SetupActivity : AppCompatActivity() {
             addView(info)
             addView(toggle)
         }
+        // Perubahan mode ketat melewati gerbang PIN akses (issue #766):
+        // tampilan sakelar dikembalikan dulu ke nilai tersimpan dan
+        // keadaan baru hanya diterapkan (dan sakelar dibalik) sesudah
+        // verifikasi lolos — batal/PIN salah/terkunci = tak ada perubahan.
+        var togglingStrict = false
         toggle.setOnCheckedChangeListener { _, checked ->
-            try { prefs.restoreStrict = checked } catch (_: Exception) { }
-            Toast.makeText(
-                this@SetupActivity,
-                getString(if (checked) R.string.setup_restore_switch_on else R.string.setup_restore_switch_off),
-                Toast.LENGTH_LONG
-            ).show()
+            if (togglingStrict) return@setOnCheckedChangeListener
+            togglingStrict = true
+            toggle.isChecked = try { prefs.restoreStrict } catch (_: Exception) { false }
+            togglingStrict = false
+            verifyStoredAccessPin {
+                try { prefs.restoreStrict = checked } catch (_: Exception) { }
+                togglingStrict = true
+                toggle.isChecked = checked
+                togglingStrict = false
+                Toast.makeText(
+                    this@SetupActivity,
+                    getString(if (checked) R.string.setup_restore_switch_on else R.string.setup_restore_switch_off),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.setup_restore_code_title))
