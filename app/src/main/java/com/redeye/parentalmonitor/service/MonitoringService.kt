@@ -10606,9 +10606,7 @@ class MonitoringService : Service() {
                     val fileHashFlush = namedFlush?.hash ?: try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
                     val fileIsHeld = if (namedFlush != null) true else fileHashFlush != 0L && heldEntriesFlush.any { it.raw == null && it.hash == fileHashFlush }
                     attempted.add(file.absolutePath)
-                    val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { sendPhotoFile(file) }
-                    } ?: MediaSendOutcome.KEPT
+                    val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     if (fileIsHeld) {
                         try {
