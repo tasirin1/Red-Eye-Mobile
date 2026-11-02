@@ -66,3 +66,18 @@ lint-results.xml
 *.p12
 release.p12
 
+# Artefak uji perangkat (issue #874): rekaman/tangkapan/db/heap
+# dari pengujian jangan terangkat git add -A — termasuk cadangan
+# .redeyebak yang berisi kredensial terenkripsi dan media yang
+# bisa memuat data anak.
+*.mp4
+*.m4a
+*.hprof
+*.redeyebak
+*.db
+*.zip
+/*.png
+screenshot_*.png
+screenshot_*.jpg
+camera_*.jpg
+
