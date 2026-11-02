@@ -6919,7 +6919,7 @@ class MonitoringService : Service() {
                         val alertNow = if (t.alert) {
                             val nowWall = System.currentTimeMillis()
                             val lastAlert = if (isHome) preferencesManager.homeAlertAt else preferencesManager.schoolAlertAt
-                            if (lastAlert > 0L && nowWall > lastAlert && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS) {
+                            if (lastAlert > 0L && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS) {
                                 false
                             } else {
                                 if (isHome) preferencesManager.homeAlertAt = nowWall else preferencesManager.schoolAlertAt = nowWall
@@ -7346,7 +7346,7 @@ class MonitoringService : Service() {
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             val now = System.currentTimeMillis()
             val lastAlert = try { preferencesManager.healthAlertAt } catch (_: Exception) { 0L }
-            if (lastAlert <= now && now - lastAlert < 12 * 60 * 60_000L) return
+            if (lastAlert > 0L && now - lastAlert < 12 * 60 * 60_000L) return
             val notes = ArrayList<String>()
             val lastData = try { preferencesManager.lastDataAt } catch (_: Exception) { 0L }
             if (lastData > 0 && now - lastData > 48 * 60 * 60_000L && !preferencesManager.monitoringPaused) {
