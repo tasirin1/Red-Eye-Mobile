@@ -1132,6 +1132,13 @@ class NotificationForwarderService : NotificationListenerService() {
         var curHashes = ArrayList<String>()
         var curGroups = ArrayList<String>()
         var index = 0
+        // Item yang sedang diproses dan apakah ia sudah tercakup wadah
+        // penyelamatan (cur/splitRest) — issue #758: pengecualian di
+        // dalam flushCur() (dipanggil sebelum item semasa ditambahkan
+        // ke cur) sebelumnya membuat item itu hilang dari penyelamatan
+        // catch, karena index sudah terlanjur melewatinya.
+        var currentItem: Triple<String, String, String>? = null
+        var currentCovered = false
         var splitRest: String? = null
         var splitHash = ""
         var splitGroup = ""
@@ -1156,12 +1163,15 @@ class NotificationForwarderService : NotificationListenerService() {
             while (index < items.size) {
                 val item = items[index]
                 index++
+                currentItem = item
+                currentCovered = false
                 val msg = item.first
                 if (msg.length > 4000) {
                     flushCur()
                     var rest = msg
                     var splitDelivered = true
                     splitRest = rest
+                    currentCovered = true
                     splitHash = item.second
                     splitGroup = item.third
                     syncSplitRegistry(item, rest)
@@ -1194,6 +1204,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 curCount++
                 if (item.second.isNotEmpty()) curHashes.add(item.second)
                 if (item.third.isNotEmpty()) curGroups.add(item.third)
+                currentCovered = true
                 synchronized(batchLock) {
                     val sisa = items.drop(index)
                     flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), "", "")) + sisa else sisa
@@ -1229,6 +1240,12 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (splitHash.isNotEmpty()) hashes.add(splitHash)
                     if (splitGroup.isNotEmpty()) groups.add(splitGroup)
                 }
+                val curItemCe = currentItem
+                if (curItemCe != null && !currentCovered) {
+                    texts.add(curItemCe.first)
+                    if (curItemCe.second.isNotEmpty()) hashes.add(curItemCe.second)
+                    if (curItemCe.third.isNotEmpty()) groups.add(curItemCe.third)
+                }
                 for (item in restItems) {
                     texts.add(item.first)
                     if (item.second.isNotEmpty()) hashes.add(item.second)
@@ -1255,6 +1272,8 @@ class NotificationForwarderService : NotificationListenerService() {
                     for (i in restItems.indices.reversed()) batchBuf.addFirst(restItems[i])
                     val pendingSplit = splitRest
                     if (!pendingSplit.isNullOrEmpty()) batchBuf.addFirst(Triple(pendingSplit, splitHash, splitGroup))
+                    val curItem = currentItem
+                    if (curItem != null && !currentCovered) batchBuf.addFirst(curItem)
                     if (curCount > 0) {
                         val onlyHash = if (curHashes.size == 1) curHashes[0] else ""
                         val distinctGroups = curGroups.distinct()
