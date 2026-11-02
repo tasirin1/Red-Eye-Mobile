@@ -237,6 +237,26 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsDeletionTyposInNegations() {
+        // #876: satu huruf hilang di tengah kata veto sebelumnya tak
+        // dikenal toleransi mana pun (hanya elongasi/sufiks/skeleton
+        // tercatat) — perintah yang dibatalkan pemilik tetap jalan.
+        assertNull(IntentParser.parse("jangn kirim foto sekarang"))
+        assertNull(IntentParser.parse("tidk kirim foto sekarang"))
+        assertNull(IntentParser.parse("nggk kirim foto sekarang"))
+        assertNull(IntentParser.intentOrAlias("kunci jangn", "/lock jangn"))
+        // Kosakata batal untuk /pulihkan berbagi celah yang sama.
+        assertTrue(IntentParser.isCancellation("batl"))
+        // Kontrol: kata sah berjarak satu hapusan dari basis negasi
+        // tidak ikut tertelan ("buka" dari bukan, "agak" dari kagak,
+        // "angan" dari jangan).
+        assertFalse(IntentParser.isVetoedText("kunci buka", "/lock buka"))
+        assertFalse(IntentParser.isVetoedText("kunci agak", "/lock agak"))
+        assertFalse(IntentParser.isVetoedText("kunci angan", "/lock angan"))
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsCancellationWords() {
         // #628: kata pembatalan sebelumnya tak memveto apa pun — pesan yang
         // maksudnya membatalkan justru mengeksekusi hal yang dibatalkan.

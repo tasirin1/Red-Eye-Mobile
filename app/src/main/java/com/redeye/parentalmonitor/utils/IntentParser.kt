@@ -201,6 +201,34 @@ object IntentParser {
         }
     }
 
+    // Kata sah yang kebetulan berjarak satu hapusan dari basis
+    // negasi (issue #876): "buka" (dari bukan), "agak" (dari
+    // kagak), "angan" (dari jangan) — ketiganya tak boleh ke-veto.
+    private val DELETION_FALSE_FRIENDS = setOf("buka", "agak", "angan")
+
+    // Benar bila token adalah base dengan tepat SATU huruf hilang
+    // (issue #876): salah ketik huruf-hilang di tengah kata veto
+    // ("jangn", "tidk", "nggk") sebelumnya tak dikenal toleransi
+    // mana pun — yang ada hanya elongasi, sufiks, dan skeleton
+    // tercatat — sehingga perintah yang dibatalkan tetap jalan.
+    private fun isOneDeletionOf(token: String, base: String): Boolean {
+        if (base.length - token.length != 1) return false
+        var t = 0
+        var b = 0
+        var skipped = false
+        while (t < token.length && b < base.length) {
+            if (token[t] == base[b]) {
+                t++
+                b++
+            } else {
+                if (skipped) return false
+                skipped = true
+                b++
+            }
+        }
+        return true
+    }
+
     private fun collapseRuns(token: String): String {
         val sb = StringBuilder()
         var prev = '\u0000'
@@ -270,6 +298,12 @@ object IntentParser {
         }
         if (token in NEGATIONS) return true
         if (NEGATIONS.any { base -> negationForm(token, base) }) return true
+        // Satu huruf hilang dari basis panjang >= 5 (issue #876);
+        // basis pendek dikecualikan agar kata sah berjarak satu
+        // hapusan darinya (mis. "sah" dari usah) tak ikut ke-veto.
+        if (token !in DELETION_FALSE_FRIENDS &&
+            NEGATIONS.any { base -> base.length >= 5 && isOneDeletionOf(token, base) }
+        ) return true
         if (isNegationCompound(token)) return true
         val collapsed = collapseRuns(token)
         if (collapsed == token) return false
@@ -343,7 +377,10 @@ object IntentParser {
         // Nomina "pembatalan" berawalan pem- sehingga tak diawali "batal"
         // (issue #668, sisa #628).
         if (collapseRuns(token) == "pembatalan") return true
-        return markerMatches(token, "batal")
+        if (markerMatches(token, "batal")) return true
+        // Satu huruf hilang (issue #876): "batl" tetap kata batal;
+        // semua hasil hapusan "batal" bukan kata sah.
+        return isOneDeletionOf(token, "batal")
     }
 
     // Kutipan berisi >=2 kata di tengah kalimat adalah ucapan yang DILAPORKAN

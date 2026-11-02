@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kata veto dengan satu huruf hilang kini tetap dikenali sebagai pembatalan (#876): salah ketik seperti "jangn", "tidk", atau "nggk" sebelumnya tak dikenal toleransi pengenal kata veto mana pun (yang ada hanya elongasi huruf, sufiks, dan singkatan tercatat), sehingga perintah yang sebenarnya dibatalkan pemilik tetap dieksekusi; kini token yang berjarak tepat satu huruf hilang dari kata veto panjang dikenali, dengan pengecualian kata sah yang kebetulan berjarak sama ("buka", "agak", "angan"), dan kosakata "batal" untuk /pulihkan mendapat toleransi yang sama ("batl").
 - Username bot yang hanya diuji tidak lagi menempel permanen (#875): verifikasi kredensial di layar Setup sebelumnya menulis nama bot dari token yang sedang diuji langsung ke penyimpanan walau token itu batal disimpan, dan layanan tak pernah mengoreksinya, sehingga perintah berbentuk "/perintah@BotAktif" di grup dibuang senyap selamanya; kini nama bot hanya ditahan di ingatan selama layar Setup dan ditulis bersamaan kredensial yang benar-benar disimpan, dan pergantian token mengosongkan nama lama agar dipelajari ulang dari token yang aktif.
 
 ## [1.6.593] - 2026-11-03
