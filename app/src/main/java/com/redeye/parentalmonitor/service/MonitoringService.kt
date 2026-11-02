@@ -10585,7 +10585,16 @@ class MonitoringService : Service() {
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
-                    val videoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) } ?: MediaSendOutcome.KEPT
+                    val videoResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) }
+                    if (videoResult == null) {
+                        // Timeout memakan sisa anggaran flush (issue
+                        // #824): putar berkas ke belakang urutan siklus
+                        // berikut agar berkas lain tidak kelaparan;
+                        // gilirannya tiba lagi dengan anggaran penuh.
+                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        continue
+                    }
+                    val videoOutcome = videoResult
                     if (videoOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
@@ -10671,7 +10680,15 @@ class MonitoringService : Service() {
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
-                    val audioOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) } ?: MediaSendOutcome.KEPT
+                    val audioResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) }
+                    if (audioResult == null) {
+                        // Timeout flush (issue #824): putar ke belakang
+                        // urutan siklus berikut, jangan kelaparkan
+                        // berkas lain.
+                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        continue
+                    }
+                    val audioOutcome = audioResult
                     if (audioOutcome == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
@@ -10950,7 +10967,15 @@ class MonitoringService : Service() {
                     val fileHashFlush = namedFlush?.hash ?: try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
                     val fileIsHeld = if (namedFlush != null) true else fileHashFlush != 0L && heldEntriesFlush.any { it.raw == null && it.hash == fileHashFlush }
                     attempted.add(file.absolutePath)
-                    val photoOutcome = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) } ?: MediaSendOutcome.KEPT
+                    val photoResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) }
+                    if (photoResult == null) {
+                        // Timeout flush (issue #824): putar ke belakang
+                        // urutan siklus berikut, jangan kelaparkan
+                        // berkas lain.
+                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        continue
+                    }
+                    val photoOutcome = photoResult
                     if (photoOutcome == MediaSendOutcome.KEPT) continue
                     if (fileIsHeld) {
                         try {

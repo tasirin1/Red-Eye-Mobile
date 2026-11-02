@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pengiriman ulang media tertahan tidak lagi kelaparan (#824): berkas yang kehabisan waktu saat diunggah kini diputar ke belakang urutan siklus berikutnya, jadi satu berkas besar di jaringan lambat tidak lagi memblokir semua foto/video/rekaman lain selamanya; gilirannya tetap tiba lagi dengan jatah waktu penuh.
+
 ## [1.6.589] - 2026-11-03
 
 ### Fixed
