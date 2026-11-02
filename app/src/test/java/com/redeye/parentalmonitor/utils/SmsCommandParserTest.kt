@@ -32,6 +32,8 @@ class SmsCommandParserTest {
 
     @Test
     fun nomorInternasionalBerspasi() {
+        val parsedTrunk = SmsCommandParser.parse("+62 0812 3456 7890 Halo")
+        assertEquals("+6281234567890", parsedTrunk?.normalized)
         val parsed0062 = SmsCommandParser.parse("0062 812 3456 7890 Halo")
         assertEquals("0062 812 3456 7890", parsed0062?.number)
         assertEquals("Halo", parsed0062?.text)

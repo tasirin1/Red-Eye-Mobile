@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Nomor "+62 0812…" kini dinormalisasi ke E.164 sah (issue #710): nol batang sesudah kode negara dibuang saat normalisasi nomor perintah SMS, sehingga "+62 0812 3456 7890" menjadi "+6281234567890", bukan nomor tak sah "+620812…".
 - Seri intent laporan tunggal kini dimenangkan kata benda khasnya (issue #709): "laporan aktivitas minggu ini" → /minggu dan "laporan layar hari ini" → /layar, bukan lagi tak dikenal karena kata generik "laporan" membuat /digest seri. Permintaan ganda sejati (kedua frasa cakupan hadir) tetap tak dikenal.
 - Perintah berargumen/frasa dengan kata penegas ekor kini dikenali (issue #708): "kuota on dong", "hematdata off sekarang", "kunci hp sekarang" sebelumnya berakhir "perintah tak dikenal" karena fallback alias membatasi teks ≤2 kata; kata penegas ekor yang dikenal kini dibuang sebelum batas itu diterapkan, sedangkan pemeriksaan veto tetap memakai teks utuh.
 - Redaksi token kini menangkap bentuk ter-encode URL dan terbelah baris, dan PIN akses ikut disunting di semua situs (issue #707): fallback `Redact` sebelumnya hanya mengenal token kanonik utuh sehingga token dalam URL ter-encode (`%3A`) lolos, dan MonitoringService/NotificationForwarderService/CrashReporter tidak menyertakan `accessPin` sebagai rahasia yang disunting.

@@ -61,7 +61,14 @@ object SmsCommandParser {
                 else -> return null
             }
         }
-        val normalized = digits.toString()
+        var normalized = digits.toString()
+        // Nol batang sesudah kode negara dibuang (issue #710): "+62 0812..."
+        // bukan E.164 sah; bentuk sahnya +62812...
+        if (normalized.startsWith("+620")) {
+            normalized = "+62" + normalized.substring(4)
+        } else if (normalized.startsWith("620")) {
+            normalized = "62" + normalized.substring(3)
+        }
         if (plusCount > 1 || !NUMBER_REGEX.matches(normalized)) return null
         return normalized
     }
