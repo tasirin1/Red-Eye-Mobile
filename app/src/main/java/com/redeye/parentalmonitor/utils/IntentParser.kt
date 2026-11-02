@@ -363,8 +363,12 @@ object IntentParser {
         if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
         val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
         val aspectVetoed = isAspectStatus(tokens)
-        val photoVetoed = futureVetoed || aspectVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
-        val shotVetoed = futureVetoed || aspectVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        // Kata tanya sesudah kata pertama menandakan pertanyaan, bukan
+        // perintah tangkap — #625 baru menutup bentuk alias 2-token
+        // (issue #658 untuk kalimat >=3 token di jalur parse()).
+        val questionVetoed = tokens.size >= 2 && tokens.drop(1).any { token -> QUESTION_TAIL.any { markerMatches(token, it) } }
+        val photoVetoed = futureVetoed || aspectVetoed || questionVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        val shotVetoed = futureVetoed || aspectVetoed || questionVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         var best: String? = null
         var bestScore = 0
         var tie = false

@@ -371,6 +371,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsQuestionSentences() {
+        // #658: kata tanya di kalimat >=3 token memveto jalur parse().
+        assertNull(IntentParser.parse("kirim foto apa dong"))
+        assertNull(IntentParser.parse("foto apa sekarang"))
+        assertNull(IntentParser.parse("foto siapa dong"))
+        assertNull(IntentParser.parse("kirim screenshot apa dong"))
+        // Kontrol: kata tanya di kata pertama tak menghalangi perintah
+        // tegas sesudahnya; perintah tanpa kata tanya tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto dong"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))
