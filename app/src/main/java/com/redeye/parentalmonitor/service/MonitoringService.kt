@@ -3104,7 +3104,7 @@ class MonitoringService : Service() {
             "/photointerval" -> handlePhotoIntervalCommand(arg)
             "/patrol" -> handlePatrolCommand(arg)
             "/patrolinterval" -> {
-                val minutes = NumericArg.parse(arg)
+                val minutes = NumericArg.parse(arg, NumericArg.Satuan.MENIT)
                 if (minutes == null || minutes !in 5..180) {
                     sendToTelegram("Cara pakai: /patrolinterval &lt;5-180&gt;")
                 } else {
@@ -3165,7 +3165,7 @@ class MonitoringService : Service() {
             }
             "/layar" -> {
                 val raw = arg.trim()
-                val parsed = NumericArg.parse(raw)
+                val parsed = NumericArg.parse(raw, NumericArg.Satuan.JAM)
                 if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
                     sendToTelegram("Cara pakai: /layar &lt;1-24&gt; (jam, bawaan 24)")
                 } else {
@@ -3294,7 +3294,7 @@ class MonitoringService : Service() {
                 }
             )
         } else {
-            val rad = NumericArg.parse(sub)
+            val rad = NumericArg.parse(sub, NumericArg.Satuan.METER)
             if (rad == null || rad !in 50..5000) {
                 sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
             } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
@@ -4480,7 +4480,7 @@ class MonitoringService : Service() {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
         }
-        val seconds = NumericArg.parse(arg)
+        val seconds = NumericArg.parse(arg, NumericArg.Satuan.DETIK)
         if (seconds == null || seconds !in 5..600) {
             sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -4510,7 +4510,7 @@ class MonitoringService : Service() {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
         }
-        val seconds = NumericArg.parse(arg)
+        val seconds = NumericArg.parse(arg, NumericArg.Satuan.DETIK)
         if (seconds == null || seconds !in 5..MAX_VIDEO_SECONDS.toInt()) {
             sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (seconds)")
         } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
@@ -4708,7 +4708,7 @@ class MonitoringService : Service() {
             val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
             sendToTelegram("💚 Heartbeat: " + if (hours <= 0) "mati. Pakai /heartbeat &lt;1-48&gt; untuk menyalakan." else "tiap $hours jam.")
         } else {
-            val hours = NumericArg.parse(arg)
+            val hours = NumericArg.parse(arg, NumericArg.Satuan.JAM)
             if (hours == null || hours < 0 || hours > 48) {
                 sendToTelegram("Cara pakai: /heartbeat &lt;0-48&gt; (0 = matikan).")
             } else {
@@ -4842,7 +4842,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleSyncIntervalCommand(arg: String) {
-        val minutes = NumericArg.parse(arg)
+        val minutes = NumericArg.parse(arg, NumericArg.Satuan.MENIT)
         if (minutes == null || minutes !in 1..1440) {
             sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (menit)")
         } else {
@@ -4924,7 +4924,7 @@ class MonitoringService : Service() {
     private suspend fun handleRingCommand(arg: String) {
         // NumericArg seperti handler durasi lain (issue #812):
         // sebelumnya toIntOrNull mentah menolak "/ring 30 detik".
-        val seconds = if (arg.isEmpty()) 15 else NumericArg.parse(arg)
+        val seconds = if (arg.isEmpty()) 15 else NumericArg.parse(arg, NumericArg.Satuan.DETIK)
         if (seconds == null || seconds !in 5..60) {
             sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
         } else if (!ringBusy.compareAndSet(false, true)) {
@@ -5121,7 +5121,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handlePhotoIntervalCommand(arg: String) {
-        val minutes = NumericArg.parse(arg)
+        val minutes = NumericArg.parse(arg, NumericArg.Satuan.MENIT)
         if (minutes == null || minutes !in 0..60) {
             sendToTelegram("Cara pakai: /photointerval &lt;0-60&gt; (0 = manual saja)")
         } else if (minutes == 0) {
@@ -5173,7 +5173,7 @@ class MonitoringService : Service() {
 
     private suspend fun handlePauseCommand(arg: String) {
         // NumericArg (issue #812): "/pause 30 menit" kini diterima.
-        val minutes = NumericArg.parse(arg)
+        val minutes = NumericArg.parse(arg, NumericArg.Satuan.MENIT)
         if (minutes == null || minutes !in 1..480) {
             sendToTelegram("Cara pakai: /pause &lt;menit&gt; (1-480)")
         } else {
