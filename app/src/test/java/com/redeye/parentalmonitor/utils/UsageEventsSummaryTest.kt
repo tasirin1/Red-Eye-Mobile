@@ -64,6 +64,10 @@ class UsageEventsSummaryTest {
         assertEquals(3_000L, UsageEventsSummary.firstUnlockToday(events, 2_000L))
         assertEquals(0L, UsageEventsSummary.firstUnlockToday(events, 0L))
         assertEquals(0L, UsageEventsSummary.firstUnlockToday(events, 9_000L))
+        // #634: jumlah buka kunci hari ini dihitung terpisah dari jendela 24 jam.
+        assertEquals(2, UsageEventsSummary.unlocksToday(events, 2_000L))
+        assertEquals(0, UsageEventsSummary.unlocksToday(events, 0L))
+        assertEquals(0, UsageEventsSummary.unlocksToday(events, 9_000L))
     }
 
     @Test

@@ -48,4 +48,14 @@ object UsageEventsSummary {
         }
         return first
     }
+
+    fun unlocksToday(events: List<Event>, dayStartMs: Long): Int {
+        if (dayStartMs <= 0L) return 0
+        var count = 0
+        for (e in events) {
+            if (e.type != TYPE_KEYGUARD_HIDDEN) continue
+            if (e.at >= dayStartMs) count++
+        }
+        return count
+    }
 }
