@@ -312,7 +312,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private sealed class VerifyOutcome {
-        data class Success(val effectiveChatId: String) : VerifyOutcome()
+        data class Success(val effectiveChatId: String, val botUsername: String = "") : VerifyOutcome()
         data class HttpError(val code: Int, val fromGetMe: Boolean) : VerifyOutcome()
         data class Error(val detail: String) : VerifyOutcome()
         object Stale : VerifyOutcome()
@@ -327,9 +327,13 @@ class SetupActivity : AppCompatActivity() {
             }
             // Simpan username bot yang terverifikasi (issue #843):
             // dipakai layanan untuk mengenali perintah @BotLain.
+            var botUsername = ""
+            var botId = 0L
             try {
-                val uname = meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty()
-                if (uname.isNotEmpty()) prefs.botUsername = uname
+                val meObj = meResp.body()?.result?.asJsonObject
+                botUsername = meObj?.get("username")?.asString.orEmpty()
+                botId = meObj?.get("id")?.asLong ?: 0L
+                if (botUsername.isNotEmpty()) prefs.botUsername = botUsername
             } catch (_: Exception) {
             }
             val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
@@ -343,7 +347,36 @@ class SetupActivity : AppCompatActivity() {
                 val resolved = try { chatResp.body()?.result?.asJsonObject?.get("id")?.asLong?.toString().orEmpty() } catch (_: Exception) { "" }
                 if (resolved.isNotEmpty() && resolved != "0") effectiveChat = resolved
             }
-            VerifyOutcome.Success(effectiveChat)
+            // Keanggotaan bot di chat tujuan (issue #872): getChat
+            // atas chat publik berhasil TANPA bot menjadi anggota,
+            // jadi token bot lain + @channelpublik sebelumnya lulus
+            // "berhasil" walau laporan tak akan pernah terkirim ke
+            // sana. Chat privat dikecualikan (tak ada konsep anggota).
+            // Panggilan pemeriksanya yang gagal tidak menggagalkan —
+            // hanya jawaban definitif bukan-anggota yang menolak.
+            try {
+                val chatType = chatResp.body()?.result?.asJsonObject?.get("type")?.asString.orEmpty()
+                if (botId > 0L && chatType.isNotEmpty() && chatType != "private") {
+                    val encChat = try { java.net.URLEncoder.encode(effectiveChat, "UTF-8") } catch (_: Exception) { effectiveChat }
+                    val memResp = TelegramClient.api.getChatMember("https://api.telegram.org/bot" + token + "/getChatMember?chat_id=" + encChat + "&user_id=" + botId)
+                    if (isStale()) return VerifyOutcome.Stale
+                    if (memResp.isSuccessful && memResp.body()?.ok == true) {
+                        val memObj = memResp.body()?.result?.asJsonObject
+                        val status = memObj?.get("status")?.asString.orEmpty()
+                        val isMember = memObj?.get("is_member")?.asBoolean ?: true
+                        val anggota = status == "member" || status == "administrator" ||
+                            status == "creator" || (status == "restricted" && isMember)
+                        if (!anggota) {
+                            val namaBot = if (botUsername.isNotEmpty()) "@" + botUsername else "Bot ini"
+                            return VerifyOutcome.Error(namaBot + " bukan anggota chat itu — tambahkan bot ke grup/channel tujuan dulu, atau pakai Chat ID privat Anda.")
+                        }
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+            VerifyOutcome.Success(effectiveChat, botUsername)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1343,6 +1376,12 @@ class SetupActivity : AppCompatActivity() {
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         if (myTest != testSeq.get()) return@withContext
+                        // Identitas bot ditampilkan (issue #872):
+                        // pemasang melihat persis bot mana yang
+                        // terhubung, bukan sekadar "berhasil".
+                        if (outcome.botUsername.isNotEmpty()) {
+                            Toast.makeText(this@SetupActivity, "Terhubung sebagai @" + outcome.botUsername, Toast.LENGTH_LONG).show()
+                        }
                         confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, if (rawAccessPin == STORED_MASK) restoreAccessPin(token, outcome.effectiveChatId, storedAccessPin) else rawAccessPin)
                     }
                 }

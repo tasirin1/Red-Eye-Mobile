@@ -138,6 +138,11 @@ interface TelegramApi {
     ): Response<TelegramResponse>
 
     @GET
+    suspend fun getChatMember(
+        @Url url: String
+    ): Response<TelegramResponse>
+
+    @GET
     suspend fun getFile(
         @Url url: String
     ): Response<TelegramFileResponse>
