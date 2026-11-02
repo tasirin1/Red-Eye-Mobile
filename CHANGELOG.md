@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.586] - 2026-11-03
+
 ### Fixed
 - Anggaran lockout gerbang PIN akses kini terpisah dari anggaran PIN cadangan (issue #767): sebelumnya satu penghitung bersama dipakai tiga permukaan yang memeriksa dua rahasia berbeda — kegagalan restore bisa mengunci perubahan kredensial owner selama 15 menit (dan diulang), dan keberhasilan memasukkan PIN akses mereset anggaran tebak PIN cadangan penyerang. Verifikasi PIN akses di Setup kini memakai penghitung/kunci/jangkar monotonnya sendiri; restore lokal dan restore jarak jauh tetap berbagi satu anggaran karena keduanya memang memeriksa PIN cadangan yang sama.
 - Sakelar mode restore ketat kini melewati gerbang PIN akses (issue #766): sebelumnya siapa pun yang bisa membuka Setup (kode kalkulator) bisa mematikan faktor kedua restore jarak jauh tanpa verifikasi apa pun. Sakelar kini menampilkan nilai tersimpan sampai verifikasi PIN lolos — batal, PIN salah, atau sedang terkunci berarti tidak ada perubahan; tanpa PIN akses tersimpan perilaku tetap langsung seperti sebelumnya.
