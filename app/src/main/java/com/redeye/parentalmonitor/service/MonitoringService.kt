@@ -5532,13 +5532,19 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun repairCursorsAfterProviderReset() {
+    // Mengembalikan true bila ada kursor yang direset (basis provider
+    // berganti): pemanggil jalur rutin harus melewati siklus ini dan
+    // menyerahkan basis yang ter-restore ke sinkron awal massal, bukan
+    // meneruskannya butir-per-butir berlabel "baru" (issue #677).
+    private fun repairCursorsAfterProviderReset(): Boolean {
+        var resetHappened = false
         try {
             val smsCursor = preferencesManager.lastSmsId
             if (smsCursor > 0L) {
                 val newest = smsRepository.newestSmsId()
                 if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(smsCursor, newest)) {
                     preferencesManager.resetSmsCursorSync()
+                    resetHappened = true
                     android.util.Log.w("MonitoringService", "Kursor SMS direset: basis data pesan berganti (id $newest < $smsCursor)")
                 }
             }
@@ -5555,11 +5561,16 @@ class MonitoringService : Service() {
                 val newest = callLogRepository.newestCallId()
                 if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(callCursor, newest)) {
                     preferencesManager.resetCallCursorSync()
+                    resetHappened = true
                     android.util.Log.w("MonitoringService", "Kursor panggilan direset: basis data panggilan berganti (id $newest < $callCursor)")
                 }
             }
         } catch (_: Exception) {
         }
+        if (resetHappened) {
+            try { preferencesManager.setInitialSyncDoneSync(false) } catch (_: Exception) { }
+        }
+        return resetHappened
     }
 
     private val dataCheckLock = java.util.concurrent.Semaphore(1)
@@ -5592,7 +5603,13 @@ class MonitoringService : Service() {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
         if (!hasNetwork()) return false
         if (NetworkUtils.rateLimitedRemainMs() > 0L) return false
-        repairCursorsAfterProviderReset()
+        if (repairCursorsAfterProviderReset()) {
+            // Basis provider berganti: lewati siklus rutin ini; sinkron
+            // awal (format massal + batas + pemberitahuan terpotong)
+            // menangani basis yang ter-restore.
+            startInitialSync(false)
+            return false
+        }
         var found = false
         try {
             try { checkPermissionHealth() } catch (_: Exception) { }
