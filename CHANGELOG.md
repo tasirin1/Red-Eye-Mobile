@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.583] - 2026-11-02
+
 ### Fixed
 - Lockout PIN backup tak lagi bisa dilewati dengan memajukan jam perangkat (issue #687): keputusan kunci sebelumnya murni jam dinding. Kini tersimpan juga cap `elapsedRealtime` saat kunci dipasang; selama boot yang sama (elapsed monoton) keputusan memakai jam monoton, dan sesudah reboot kembali ke jam dinding. Diterapkan di ketiga situs gerbang (layanan + dua jalur Setup) dengan uji jam-ganda baru. Sisa yang diketahui: reboot + majukan jam bersamaan masih bisa mempercepat (butuh akses fisik perangkat).
 - Dekripsi cadangan kini mencoba kedua jalur derivasi kunci modern (issue #686): cadangan yang terenkripsi di perangkat yang `SecretKeyFactory`-nya gagal memakai PBKDF2 tulisan tangan (sandi sebagai byte UTF-8), sedangkan konversi char sandi jalur pabrik bisa berbeda untuk PIN non-ASCII — sebelumnya jalur tulisan tangan hanya dicoba bila pabrik MELEMPAR, bukan bila dekripsi gagal, sehingga cadangan seperti itu tak terpulihkan di perangkat lain. `decrypt()` kini mencoba kandidat pabrik modern, tulisan tangan, lalu legacy; uji baru mensimulasikan enkripsi kunci tulisan tangan.
