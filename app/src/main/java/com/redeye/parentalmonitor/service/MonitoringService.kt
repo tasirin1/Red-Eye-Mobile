@@ -2769,6 +2769,8 @@ class MonitoringService : Service() {
                 val words = bersih.split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
                 if (words.size >= 2) {
                     IntentParser.intentOrAlias(bersih, resolveAliasInput(words[0], bersih.substring(words[0].length).trim()))?.substringBefore(" ")
+                } else if (words.size == 1) {
+                    resolveAliasInput(words[0], "")?.substringBefore(" ")
                 } else {
                     null
                 }
