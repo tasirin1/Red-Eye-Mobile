@@ -74,7 +74,10 @@ if [ -n "$tak_lacak_token" ]; then
 fi
 # 5c. Berkas ignored juga dipindai (issue #706): token di sana menunggu
 # git add -f. Lewati hanya direktori build sungguhan di akar/modul app.
-ign_token=$f
+# Wajib mulai kosong (issue #866): sebelumnya diisi $f sisa loop 5b,
+# jadi pesan GAGAL bisa menuduh berkas tak terlacak sebagai berkas
+# terabaikan walau daftar ignored kosong.
+ign_token=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in
