@@ -42,6 +42,11 @@ class GeofenceLogicTest {
         assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 101f, 200))
         assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, 100f, 200))
         assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 100f, 200))
+        assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, 40f, 50))
+        assertEquals(GeofenceLogic.Transition(1, true), GeofenceLogic.transition(2, true, 50f, 50))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 51f, 50))
+        assertEquals(GeofenceLogic.Transition(2, true), GeofenceLogic.transition(1, false, 50f, 75))
+        assertEquals(GeofenceLogic.Transition(null, false), GeofenceLogic.transition(1, false, 51f, 75))
         // Adopsi state awal tetap pada gerbang lama (akurasi <= radius).
         assertEquals(GeofenceLogic.Transition(1, false), GeofenceLogic.transition(0, true, 200f, 200))
     }
