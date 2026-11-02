@@ -7017,7 +7017,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) { }
     }
 
-    private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f) {
+    private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f, izinkanJemput: Boolean = true) {
         try {
             val fences = listOf(
                 Triple(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM) to true,
@@ -7028,7 +7028,10 @@ class MonitoringService : Service() {
                 if (!GeofenceLogic.configured(laE6, loE6, rad)) continue
                 val dist = ReportFormat.distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
-                if (isHome) {
+                // Jemput hanya dari fix segar (issue #794): fix cache
+                // basi sampai 30 menit dari jalur fallback tak boleh
+                // memicu "siap dijemput" — anak bisa sudah jauh.
+                if (isHome && izinkanJemput) {
                     // Klaim atomik di dalam kunci dipertahankan (cegah
                     // kirim dobel), tetapi radius dipulihkan bila kabar
                     // gagal terkirim (issue #793): sebelumnya fitur
@@ -7122,8 +7125,10 @@ class MonitoringService : Service() {
             val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             val cached = lastSentLatLon()
             var accuracyM = -1f
+            var dariCache = false
             val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
                 accuracyM = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
+                dariCache = true
                 cached
             } else {
                 val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null } ?: return
@@ -7131,7 +7136,7 @@ class MonitoringService : Service() {
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
-            checkGeofence(pos.first, pos.second, accuracyM)
+            checkGeofence(pos.first, pos.second, accuracyM, izinkanJemput = !dariCache)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
