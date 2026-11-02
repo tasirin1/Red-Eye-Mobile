@@ -124,7 +124,7 @@ class SendMessageWorker(
             }
             processed++
             try {
-                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt, queuedMessage.priority)
+                val outcome = sendMessage(queuedMessage.message, runToken, runChatId, queuedMessage.retryCount, queuedMessage.id, runDeadlineAt, queuedMessage.priority, runGen)
                 when (outcome) {
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
@@ -573,7 +573,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false): SendOutcome {
+    private suspend fun sendChunked(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L): SendOutcome {
         val parts = mutableListOf<String>()
         var rest = message
         while (rest.length > 4000) {
@@ -582,6 +582,18 @@ class SendMessageWorker(
             rest = rest.substring(cut)
         }
         parts.add(rest)
+        // Generasi antrean berubah = antrean dibersihkan/diganti di tengah
+        // kirim (issue #692): potongan sisa TIDAK boleh diantrekan ulang
+        // dan pengiriman pesan ini harus berhenti.
+        fun genStale(): Boolean = runGen >= 0L && (try { messageQueue.queueGeneration() } catch (_: Exception) { runGen } != runGen)
+        fun queueRemainder(fromIdx: Int): Boolean {
+            if (genStale()) return false
+            return try {
+                messageQueue.addMessage(parts.subList(fromIdx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
+            } catch (_: Exception) {
+                false
+            }
+        }
         var rateAfter = 0L
         var authCode = 0
         var failed = 0
@@ -589,13 +601,10 @@ class SendMessageWorker(
         var remainderQueued = false
         var rejected = 0
         for ((idx, part) in parts.withIndex()) {
+            if (genStale()) return SendOutcome.Failed
             if (android.os.SystemClock.elapsedRealtime() >= deadlineAt) {
                 if (idx == 0) return SendOutcome.Failed
-                val queued = try {
-                    messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                } catch (_: Exception) {
-                    false
-                }
+                val queued = queueRemainder(idx)
                 if (!queued) return SendOutcome.Failed
                 try {
                     if (origId != null) messageQueue.removeMessages(listOf(origId))
@@ -614,11 +623,7 @@ class SendMessageWorker(
                         delay(500)
                     } catch (e: kotlinx.coroutines.CancellationException) {
                         if (idx + 1 < parts.size) {
-                            val queued = try {
-                                messageQueue.addMessage(parts.subList(idx + 1, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                            } catch (_: Exception) {
-                                false
-                            }
+                            val queued = queueRemainder(idx + 1)
                             if (queued) {
                                 try {
                                     if (origId != null) messageQueue.removeMessages(listOf(origId))
@@ -640,11 +645,7 @@ class SendMessageWorker(
                 }
                 is SendOutcome.RateLimited -> {
                     if (idx > 0 && !remainderQueued) {
-                        remainderQueued = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                        } catch (_: Exception) {
-                            false
-                        }
+                        remainderQueued = queueRemainder(idx)
                         if (remainderQueued) {
                             try {
                                 MessageScheduler.scheduleMessageSendNext(applicationContext, outcome.retryAfterSecs * 1000L)
@@ -669,11 +670,7 @@ class SendMessageWorker(
                 }
                 is SendOutcome.AuthFailed -> {
                     if (idx > 0 && !remainderQueued) {
-                        remainderQueued = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                        } catch (_: Exception) {
-                            false
-                        }
+                        remainderQueued = queueRemainder(idx)
                         if (remainderQueued) {
                             try {
                                 MessageScheduler.scheduleMessageSend(applicationContext)
@@ -694,11 +691,7 @@ class SendMessageWorker(
                 SendOutcome.Failed -> {
                     failed++
                     if (idx > 0 && !failedKept) {
-                        failedKept = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                        } catch (_: Exception) {
-                            false
-                        }
+                        failedKept = queueRemainder(idx)
                         if (failedKept) {
                             try {
                                 MessageScheduler.scheduleMessageSend(applicationContext)
@@ -711,11 +704,7 @@ class SendMessageWorker(
                 SendOutcome.Rejected -> {
                     rejected++
                     if (idx > 0 && !failedKept) {
-                        failedKept = try {
-                            messageQueue.addMessage(parts.subList(idx, parts.size).joinToString(""), priority, retryCount = retryCount + 1)
-                        } catch (_: Exception) {
-                            false
-                        }
+                        failedKept = queueRemainder(idx)
                         if (failedKept) {
                             try {
                                 MessageScheduler.scheduleMessageSend(applicationContext)
@@ -834,7 +823,7 @@ class SendMessageWorker(
         }
     }
 
-    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false): SendOutcome {
+    private suspend fun sendMessage(message: String, botToken: String, chatId: String, retryCount: Int = 0, origId: String? = null, deadlineAt: Long = Long.MAX_VALUE, priority: Boolean = false, runGen: Long = -1L): SendOutcome {
         return try {
             val url = sendMessageUrl(botToken)
             val response = TelegramClient.api.sendMessage(
@@ -845,7 +834,7 @@ class SendMessageWorker(
             if (response.isSuccessful && response.body()?.ok == true) {
                 SendOutcome.Sent
             } else if (response.code() == 400) {
-                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority) else sendPlainFallback(message, botToken, chatId)
+                classify400(response, chatId) ?: if (message.length > 4000) sendChunked(message, botToken, chatId, retryCount, origId, deadlineAt, priority, runGen) else sendPlainFallback(message, botToken, chatId)
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
