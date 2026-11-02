@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Menyunting pesan perintah tidak lagi menjalankannya untuk kedua kali (#829): pesan yang diedit pemilik di Telegram sebelumnya masuk jalur perintah yang sama dengan pesan baru, jadi menyunting perintah seperti /sms atau /ring dalam 15 menit sesudah terkirim mengeksekusinya lagi; update suntingan kini dilewati utuh.
 - Nomor tujuan /sms berawalan 011 kini dinormalkan sebagai nomor internasional (#828): "0114420..." menjadi "+4420..." — sebelumnya awalan panggil itu lolos apa adanya dan SMS dikirim ke nomor yang tak terjangkau, padahal gerbang nomor darurat/premium sudah lama membuang awalan yang sama.
 - Teks tempel panjang tidak lagi bisa tereksekusi sebagai perintah (#827): pengurai bahasa alami kini menolak teks di atas 200 karakter — sebelumnya catatan/log tempelan ribuan karakter yang kebetulan memuat pasangan kata perintah (mis. "kirim foto") dijalankan sebagai perintah sungguhan.
 - Pertanyaan berbentuk frasa perintah kini ditahan seperti pertanyaan satu kata (#826): "pulang jam berapa", "cek mati apa", dan "hemat kuota apa" tidak lagi dieksekusi sebagai perintah — sebelumnya veto tanya hanya menilai inti dua kata sehingga frasa dua kata + kata tanya lolos.

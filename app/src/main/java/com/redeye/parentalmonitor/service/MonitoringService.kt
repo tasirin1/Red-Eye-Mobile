@@ -1896,8 +1896,16 @@ class MonitoringService : Service() {
                             throw e
                         }
                     }
-                } else {
-                    val message = update.message ?: update.editedMessage ?: update.channelPost ?: update.editedChannelPost
+                } else if (update.editedMessage == null && update.editedChannelPost == null) {
+                    // Pesan suntingan BUKAN perintah baru (issue #829):
+                    // rantai fallback lama memasukkan editedMessage ke
+                    // dispatch yang sama, jadi menyunting perintah
+                    // mutasi dalam jendela segar 15 menit (model tak
+                    // memuat edit_date; penjaga umur menilai tanggal
+                    // asli) menjalankannya dua kali. Update suntingan
+                    // kini dilewati utuh — offset tetap maju lewat
+                    // finally pelacak.
+                    val message = update.message ?: update.channelPost
                     val msgChatId = message?.chat?.id?.toString().orEmpty()
                     val senderId = message?.from?.id?.toString().orEmpty()
                     val chatOk = msgChatId.isNotEmpty() && msgChatId == chatId
