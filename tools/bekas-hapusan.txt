@@ -82,3 +82,6 @@ applyPendingRestoreOwner
 masksFourToTwelveDigitGroups
 upsertDropsFutureDays
 penyelesaianMengambilMaksimumPerBidang
+multiIntentCommands
+multiIntentDetectsTwoCommands
+multiIntentRejectsSinglesAndVetoes

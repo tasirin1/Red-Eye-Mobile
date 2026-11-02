@@ -687,14 +687,18 @@ object IntentParser {
 
     // Dua maksud dalam satu pesan (issue #844): "foto lalu lokasi"
     // sebelumnya gugur senyap total karena parse utuh tak mengenal
-    // gabungan. Fungsi ini hanya MENGENALI bentuknya (kedua sisi
-    // ter-parse sendiri-sendiri menjadi perintah berbeda) agar
-    // pemanggil bisa menyarankan kirim terpisah — tidak mengeksekusi
-    // apa pun. Sisi yang ter-veto ter-parse null, jadi gabungan
-    // berisi penolakan tidak pernah disarankan.
+    // gabungan. Fungsi ini hanya MEMBELAH teks pada kata sambung
+    // pertama yang kedua sisinya tak kosong. Resolusi tiap sisi ke
+    // perintah dilakukan pemanggil lewat pipa yang sama dengan
+    // pesan tunggal (parse + alias): parse() saja tak cukup karena
+    // ia menuntut skor dua grup ("foto" tunggal gugur) dan kata
+    // seperti "kunci" memang hanya dikenal tabel alias. Sisi yang
+    // ter-veto gugur di resolusi pemanggil, jadi gabungan berisi
+    // penolakan tidak pernah disarankan — dan tak ada yang
+    // dieksekusi di sini.
     private val CONJUNCTIONS = setOf("lalu", "dan", "terus", "kemudian")
 
-    fun multiIntentCommands(text: String): Pair<String, String>? {
+    fun multiIntentSides(text: String): Pair<String, String>? {
         if (text.length > MAX_NATURAL_TEXT_LEN) return null
         val tk = tokenize(text) ?: return null
         val tokens = tk.first
@@ -703,9 +707,7 @@ object IntentParser {
             val left = tokens.subList(0, i).joinToString(" ")
             val right = tokens.subList(i + 1, tokens.size).joinToString(" ")
             if (left.isEmpty() || right.isEmpty()) continue
-            val l = parse(left) ?: continue
-            val r = parse(right) ?: continue
-            if (l.substringBefore(" ") != r.substringBefore(" ")) return l to r
+            return left to right
         }
         return null
     }

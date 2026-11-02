@@ -1025,19 +1025,28 @@ class IntentParserTest {
     }
 
     @Test
-    fun multiIntentDetectsTwoCommands() {
-        assertEquals("/photo" to "/location", IntentParser.multiIntentCommands("foto lalu lokasi"))
-        assertEquals("/lock" to "/photo", IntentParser.multiIntentCommands("kunci lalu foto"))
-        assertEquals("/photo" to "/location", IntentParser.multiIntentCommands("foto dan lokasi"))
+    fun multiIntentSidesSplitsAtConjunction() {
+        // Belahan murni (issue #844): resolusi sisi ke perintah
+        // dilakukan pemanggil lewat pipa pesan tunggal — parse()
+        // saja menuntut skor dua grup dan "kunci" hanya dikenal
+        // tabel alias, jadi pengujian berhenti di teks sisinya.
+        assertEquals("foto" to "lokasi", IntentParser.multiIntentSides("foto lalu lokasi"))
+        assertEquals("kunci" to "foto", IntentParser.multiIntentSides("kunci lalu foto"))
+        assertEquals("foto" to "lokasi", IntentParser.multiIntentSides("foto dan lokasi"))
+        assertEquals("foto" to "lokasi", IntentParser.multiIntentSides("foto terus lokasi"))
+        assertEquals("foto" to "lokasi", IntentParser.multiIntentSides("foto kemudian lokasi"))
+        // Sisi multi-kata diteruskan utuh.
+        assertEquals("foto depan" to "lokasi anak", IntentParser.multiIntentSides("foto depan lalu lokasi anak"))
+        // Kata sambung pertama yang menang.
+        assertEquals("foto" to "lokasi lalu baterai", IntentParser.multiIntentSides("foto lalu lokasi lalu baterai"))
     }
 
     @Test
-    fun multiIntentRejectsSinglesAndVetoes() {
-        assertNull(IntentParser.multiIntentCommands("foto"))
-        assertNull(IntentParser.multiIntentCommands("makan lalu minum"))
-        // Sisi kanan ter-veto: gabungan tidak disarankan.
-        assertNull(IntentParser.multiIntentCommands("foto lalu kunci jangan"))
-        // Dua sisi perintah yang sama bukan dua maksud.
-        assertNull(IntentParser.multiIntentCommands("foto lalu foto"))
+    fun multiIntentSidesRejectsSingles() {
+        assertNull(IntentParser.multiIntentSides("foto"))
+        assertNull(IntentParser.multiIntentSides("makan minum"))
+        // Sisi kosong di salah satu ujung bukan gabungan.
+        assertNull(IntentParser.multiIntentSides("lalu foto"))
+        assertNull(IntentParser.multiIntentSides("foto lalu"))
     }
 }

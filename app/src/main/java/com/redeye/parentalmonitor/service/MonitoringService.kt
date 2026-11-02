@@ -2226,11 +2226,18 @@ class MonitoringService : Service() {
                                                 // Dua perintah satu pesan
                                                 // (issue #844): jangan
                                                 // gugur senyap — sarankan
-                                                // kirim terpisah.
-                                                val multi = try { IntentParser.multiIntentCommands(rawText) } catch (_: Exception) { null }
-                                                if (multi != null) {
+                                                // kirim terpisah. Tiap
+                                                // sisi diselesaikan lewat
+                                                // pipa pesan tunggal;
+                                                // sisi tak dikenal atau
+                                                // ter-veto membatalkan
+                                                // saran.
+                                                val sides = try { IntentParser.multiIntentSides(rawText) } catch (_: Exception) { null }
+                                                val leftCmd = sides?.let { resolveNaturalSide(it.first) }
+                                                val rightCmd = sides?.let { resolveNaturalSide(it.second) }
+                                                if (leftCmd != null && rightCmd != null && leftCmd != rightCmd) {
                                                     try {
-                                                        sendToTelegram("Kirim satu-satu ya 🙏 Pesan tadi terbaca dua perintah: <b>${multi.first.substringBefore(" ")}</b> dan <b>${multi.second.substringBefore(" ")}</b>. Kirim terpisah agar dua-duanya jalan.")
+                                                        sendToTelegram("Kirim satu-satu ya 🙏 Pesan tadi terbaca dua perintah: <b>$leftCmd</b> dan <b>$rightCmd</b>. Kirim terpisah agar dua-duanya jalan.")
                                                     } catch (_: Exception) {
                                                     }
                                                 }
@@ -7120,6 +7127,20 @@ class MonitoringService : Service() {
             ""
         } catch (_: Exception) {
             ""
+        }
+    }
+
+    // Selesaikan satu sisi pesan gabungan (issue #844) persis seperti
+    // pesan tunggal: alias dulu lewat resolveAliasInput, lalu
+    // intentOrAlias menilai parse + veto. Mengembalikan kepala
+    // perintahnya ("/photo") atau null bila sisi tak dikenal/ter-veto.
+    private fun resolveNaturalSide(side: String): String? {
+        return try {
+            val head = side.substringBefore(" ")
+            val arg = side.substringAfter(" ", "")
+            IntentParser.intentOrAlias(side, resolveAliasInput(head, arg))?.substringBefore(" ")
+        } catch (_: Exception) {
+            null
         }
     }
 
