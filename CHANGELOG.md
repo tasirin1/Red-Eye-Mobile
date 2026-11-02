@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Sesi pemakaian yang sedang berjalan tidak lagi hilang saat jam HP dikoreksi (#831): koreksi jam otomatis/manual lebih dari 2 menit di antara aplikasi dimatikan sistem dan hidup lagi sebelumnya membuat sesi terbuang; kini rentang waktu monoton sesi ikut dinilai, jadi koreksi jam dikenali sebagai koreksi — bukan sebagai ganti boot.
 - Kata pantau di pesan panjang kini tetap terdeteksi (#830): pemeriksaan kata pantau aplikasi kini menilai teks utuh tiap elemen layar sebelum dipotong untuk cuplikan — sebelumnya kata yang muncul sesudah 512 karakter pertama satu pesan tidak pernah memicu peringatan sama sekali.
 - Menyunting pesan perintah tidak lagi menjalankannya untuk kedua kali (#829): pesan yang diedit pemilik di Telegram sebelumnya masuk jalur perintah yang sama dengan pesan baru, jadi menyunting perintah seperti /sms atau /ring dalam 15 menit sesudah terkirim mengeksekusinya lagi; update suntingan kini dilewati utuh.
 - Nomor tujuan /sms berawalan 011 kini dinormalkan sebagai nomor internasional (#828): "0114420..." menjadi "+4420..." — sebelumnya awalan panggil itu lolos apa adanya dan SMS dikirim ke nomor yang tak terjangkau, padahal gerbang nomor darurat/premium sudah lama membuang awalan yang sama.

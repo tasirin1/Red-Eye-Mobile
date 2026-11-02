@@ -140,7 +140,7 @@ object A11yMonitor {
         }
         val recoverable = startWall > 0L && startElapsed > 0L &&
             TimeFmt.dayKey(startWall) == TimeFmt.dayKey(nowWall) &&
-            BootClock.sameBoot(startWall, startElapsed, nowWall, nowElapsed) &&
+            BootClock.sameBootOrClockShift(startWall, startElapsed, nowWall, nowElapsed) &&
             foreground == pkg &&
             monitoringActive(manager) &&
             isLaunchable(context, pkg)
