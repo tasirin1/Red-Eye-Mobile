@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Alert baterai dan alert aksesibilitas mati kini dicap jedanya sesudah kirim berhasil (issue #796, #797): alert baterai juga kini punya penjaga pra-login seperti digest, jadi kabar yang terbuang tidak tertahan jeda 24/6 jam.
 - Cooldown alert pagar kini dicap sesudah kabar transisi benar-benar terkirim (issue #795): sebelumnya cap ditulis sebelum kirim, jadi transisi yang kabarnya terbuang hilang permanen tertahan cooldown.
 - Jemput kini hanya terpicu dari fix lokasi segar (issue #794): jalur fallback pagar yang memakai fix cache sampai 30 menit tidak lagi menilai jemput (transisi pagar tetap dinilai), jadi kabar "siap dijemput" tidak datang dari posisi lama.
 - Kegagalan mengantrekan pesan retry kini tercatat di log audit (issue #792): muara kegagalan kirim sebelumnya membuang hasil pengantrean, sehingga pesan yang tereviksi atau gagal tersimpan hilang tanpa jejak apa pun.

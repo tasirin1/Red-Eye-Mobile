@@ -6668,6 +6668,7 @@ class MonitoringService : Service() {
 
     private suspend fun checkBatteryAlert() {
         if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
+        if (awaitingOwnerLogin()) return
         val level = batteryLevel()
         if (level < 0 || level > LOW_BATTERY_LEVEL) return
         if (isCharging()) return
@@ -6678,18 +6679,23 @@ class MonitoringService : Service() {
             return
         }
         if (last <= now && now - last < 24 * 60 * 60_000L) return
-        try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
         val throttled = lowPowerActive()
-        if (throttled) lowPowerNotified = true
         val slowedNote = if (throttled) when (lowPowerSlowedMask()) {
             3 -> " Foto otomatis & patroli diperlambat sampai di-charge."
             1 -> " Foto otomatis diperlambat sampai di-charge."
             2 -> " Patroli diperlambat sampai di-charge."
             else -> ""
         } else ""
-        sendToTelegram("🔋 Baterai perangkat tinggal $level%." +
+        // Cap jeda 24 jam ditulis SESUDAH kirim berhasil (issue #796):
+        // sebelumnya alert yang terbuang (mis. pra-login) tetap
+        // menahan alert berikutnya seharian penuh.
+        val terkirim = sendToTelegram("🔋 Baterai perangkat tinggal $level%." +
             slowedNote +
             " Colok charger agar monitoring tak putus.")
+        if (terkirim) {
+            try { preferencesManager.batteryAlertAt = now } catch (_: Exception) { }
+            if (throttled) lowPowerNotified = true
+        }
     }
 
     private suspend fun maybeSendDigest() {
@@ -9548,8 +9554,13 @@ class MonitoringService : Service() {
                 return
             }
             if (now >= last && now - last < 6 * 60 * 60_000L) return
-            preferencesManager.a11yDisabledAlertAt = now
-            sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
+            // Cap jeda 6 jam SESUDAH kirim berhasil (issue #797):
+            // alert ini justru memberi tahu pemilik bahwa mata
+            // pemantau mati — tak boleh tertahan jeda saat terbuang.
+            val terkirim = sendToTelegram("\u267F <b>Aksesibilitas mati</b>\nPemakaian layar, pantau app, dan proteksi tamper berhenti. Buka Setup di perangkat \u2192 Aktifkan Aksesibilitas, lalu nyalakan lagi \"Pendukung Layar\".")
+            if (terkirim) {
+                try { preferencesManager.a11yDisabledAlertAt = now } catch (_: Exception) { }
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
