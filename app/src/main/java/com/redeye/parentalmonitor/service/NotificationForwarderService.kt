@@ -417,7 +417,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 try { recordDrop() } catch (_: Exception) { }
                 return
             }
-            scope.launch {
+            // Jalur luapan ikut antrean serial yang sama dengan jalur
+            // normal (issue #703) agar urutan & gerbang grup tak berlomba.
+            scope.launch(fwdSerial) {
                 try {
                     val nf = notifTitleText(notification)
                     if (nf.title.isNotEmpty() || nf.text.isNotEmpty()) {
@@ -622,7 +624,16 @@ class NotificationForwarderService : NotificationListenerService() {
         keyJoined: String = ""
     ) {
         if (isSummary && groupKey.isNotEmpty()) {
-            val seenAt = synchronized(groupSeen) { groupSeen[groupKey] }
+            // Cek dan penandaan groupSeen dalam SATU blok synchronized
+            // (issue #703): blok terpisah membuat dua ringkasan grup yang
+            // sama bisa lolos bersamaan.
+            val seenAt = synchronized(groupSeen) {
+                val prev = groupSeen[groupKey]
+                if (prev == null || now - prev >= 120_000L) {
+                    groupSeen[groupKey] = now
+                }
+                prev
+            }
             if (seenAt != null && now - seenAt < 120_000L) {
                 record(label, title, text)
                 return
@@ -631,10 +642,6 @@ class NotificationForwarderService : NotificationListenerService() {
             if (childAt > 0L && System.currentTimeMillis() - childAt < GROUP_SUMMARY_HOLD_MS) {
                 record(label, title, text)
                 return
-            }
-            try {
-                synchronized(groupSeen) { groupSeen[groupKey] = now }
-            } catch (_: Exception) {
             }
         }
         val keyTitle = if (rawTitle.isEmpty() && rawBody.isEmpty()) title else rawTitle

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jalur luapan NotificationForwarder kini ikut antrean serial yang sama dan gerbang ringkasan grup atomik (issue #703): sebelumnya jalur luapan berjalan paralel di luar `fwdSerial` dan cek/tulis `groupSeen` berada di blok synchronized terpisah sehingga ringkasan grup ganda bisa lolos.
 - Throttle peringatan gagal buka kunci kini atomik (issue #702): cek-tulis jendela peringatan sebelumnya memakai var polos dari korutin paralel sehingga batas 3 peringatan bisa bocor dan peringatan ganda terkirim; kini dicadangkan di dalam satu kunci sebelum kerja kirim dimulai.
 - DailyFacts.upsert kini mempertahankan hari masa depan terdekat lebih dulu (issue #701): `takeLast` sebelumnya membuang hari terdekat dan menyimpan yang terjauh saat daftar melebihi batas.
 - Zona waktu TimeFmt kini dibandingkan setiap pemanggilan (issue #700): cache 60 detik sebelumnya bisa menyajikan zona lama sesudah zona perangkat berubah sehingga `dayKey()` salah hari sesaat di sekitar tengah malam; kini ID + offset zona dibandingkan dan cache hanya diganti bila zona benar-benar berubah.
