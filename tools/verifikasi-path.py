@@ -1348,7 +1348,11 @@ def utama():
     elif args.rentang:
         daftar = daftar_berkas_berubah(args.rentang)
         if daftar is None:
-            ujung = args.rentang.split("...")[-1] or "HEAD"
+            # Ekstrak ujung dengan pemisah yang sama seperti awal
+            # (issue #871): split("...") pada rentang dua titik
+            # mengembalikan seluruh string sebagai "ujung", git show
+            # gagal, diff kosong, dan commit bertoken LOLOS.
+            ujung = re.split(r"\.\.+", args.rentang)[-1] or "HEAD"
             if not ujung or set(ujung) == {"0"}:
                 ujung = "HEAD"
             awal = re.split(r"\.\.+", args.rentang, maxsplit=1)[0]
