@@ -6339,6 +6339,21 @@ class MonitoringService : Service() {
         }
     }
 
+    @Volatile
+    private var lastRetryAuditElapsed = 0L
+
+    // Audit kegagalan antre dengan peredam (issue #813): log audit
+    // hanya menampung 50 baris FIFO, jadi entri identik beruntun saat
+    // antrean penuh berkepanjangan akan mendorong keluar jejak
+    // penting (restore, kode salah). Cukup satu entri per 5 menit —
+    // keberadaan masalahnya tercatat, banjirnya tidak.
+    private fun auditRetryGagal() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (lastRetryAuditElapsed > 0L && now - lastRetryAuditElapsed < 5 * 60_000L) return
+        lastRetryAuditElapsed = now
+        audit("retry gagal antre", "queue")
+    }
+
     private fun queueForRetry(text: String, queueOnFail: Boolean): Boolean {
         if (!queueOnFail) return false
         // Hasil antre kini diperiksa (issue #792): kedua helper ini
@@ -6348,7 +6363,7 @@ class MonitoringService : Service() {
         // kembali dipakai kontrak status kirim (issue #806): true
         // berarti pesan sungguh terantre.
         val queued = messageQueue.addMessage(text)
-        if (!queued) audit("retry gagal antre", "queue")
+        if (!queued) auditRetryGagal()
         MessageScheduler.scheduleMessageSend(this)
         return queued
     }
@@ -6356,7 +6371,7 @@ class MonitoringService : Service() {
     private fun queueForRetryLater(text: String, queueOnFail: Boolean, delayMs: Long): Boolean {
         if (!queueOnFail) return false
         val queued = messageQueue.addMessage(text)
-        if (!queued) audit("retry gagal antre", "queue")
+        if (!queued) auditRetryGagal()
         MessageScheduler.scheduleMessageSendNext(this, delayMs)
         return queued
     }

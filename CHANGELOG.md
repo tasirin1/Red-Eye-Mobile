@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Catatan audit "retry gagal antre" kini diredam satu entri per 5 menit (#813): log audit hanya menampung 50 baris, jadi kegagalan antre beruntun saat antrean penuh lama tidak lagi mendorong keluar jejak audit penting lain.
 - /ring dan /pause kini menerima satuan waktu alami seperti handler durasi lain (#812): "/ring 30 detik" dan "/pause 30 menit" sebelumnya dibalas cara pakai karena masih memakai pengurai angka mentah.
 - Alert aksesibilitas kini mengembalikan cap jeda/hitungannya bila antrean menolak (#811): kata pantau (jeda + hitungan harian), proteksi tamper (peta jeda persisten), dan alert malam (cap persisten) sebelumnya tetap terpakai walau alertnya gagal masuk antrean dan hilang.
 - Kabar "baterai kembali normal" kini mereset penandanya hanya sesudah terkirim atau terantre (#810): sebelumnya penanda dibersihkan sebelum kirim, jadi kabar pulih yang terbuang hilang permanen dan pemilik hanya menerima kabar daruratnya saja.
