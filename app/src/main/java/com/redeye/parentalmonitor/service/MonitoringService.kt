@@ -1656,9 +1656,17 @@ class MonitoringService : Service() {
     }
 
     private suspend fun clearStaleWebhook(botToken: String) {
+        var webhookWasPresent = false
         val cleared = try {
             val url = "https://api.telegram.org/bot$botToken/deleteWebhook"
             val resp = TelegramClient.api.deleteWebhook(url, emptyMap())
+            val desc = resp.body()?.description.orEmpty()
+            // Telegram menjawab ok=true juga bila webhook memang tidak
+            // ada ("already deleted") — itu TIDAK membuktikan konflik 409
+            // selesai (penyebab umumnya konsumen getUpdates lain), jadi
+            // backoff hanya dibatalkan bila webhook sungguh terhapus
+            // (issue #732).
+            webhookWasPresent = desc.contains("was deleted") && !desc.contains("already")
             resp.isSuccessful && resp.body()?.ok == true
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -1666,7 +1674,7 @@ class MonitoringService : Service() {
             false
         }
         val now = System.currentTimeMillis()
-        if (cleared) {
+        if (cleared && webhookWasPresent) {
             commandBackoffUntil = 0L
             if (now - webhookClearNoticeAt > 3_600_000L) {
                 webhookClearNoticeAt = now
@@ -1675,7 +1683,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
             }
-        } else if (now - updateConflictNoticeAt > 3_600_000L) {
+        } else if (!cleared && now - updateConflictNoticeAt > 3_600_000L) {
             updateConflictNoticeAt = now
             try {
                 sendToTelegram("Konflik polling bot (409): klien lain sedang membaca pembaruan, perintah tertunda. Hentikan klien polling lain.")

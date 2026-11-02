@@ -37,7 +37,8 @@ data class InlineKeyboardMarkup(
 
 data class TelegramResponse(
     @SerializedName("ok") val ok: Boolean,
-    @SerializedName("result") val result: JsonElement?
+    @SerializedName("result") val result: JsonElement?,
+    @SerializedName("description") val description: String? = null
 )
 
 data class EditMessageRequest(
