@@ -21,9 +21,13 @@ object SmsCommandParser {
             spaced = parsed
             val lastGroup = candidate.takeLastWhile { !it.isWhitespace() }
             val lastDigits = lastGroup.count { it.isDigit() }
-            val totalDigits = normalized.count { it.isDigit() }
+            // Digit efektif: awalan internasional 00 dibuang seperti di
+            // SmsNumbers (issue #691) — tanpa ini nomor 0062... terpotong
+            // karena hitungan basisnya tak pernah mencapai ambang lengkap.
+            val effDigits = normalized.removePrefix("+").removePrefix("00")
+            val totalDigits = effDigits.length
             val baseDigits = totalDigits - lastDigits
-            val minBaseDigits = if (normalized.removePrefix("+").startsWith("62")) 11 else 10
+            val minBaseDigits = if (effDigits.startsWith("62")) 11 else 10
             val baseText = candidate.dropLast(lastGroup.length).trim()
             val baseStandalone = !baseText.contains(" ") && baseDigits >= 7
             if ((lastDigits >= 5 && !baseStandalone) || baseDigits < minBaseDigits || (lastDigits in 1..4 && baseDigits == minBaseDigits)) spacedComplete = parsed
