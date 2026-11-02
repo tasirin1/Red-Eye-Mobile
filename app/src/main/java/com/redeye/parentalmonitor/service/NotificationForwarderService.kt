@@ -1524,43 +1524,50 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             TelegramSendPolicy.Kind.AUTH_FAILED -> {
                 try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                queue().addMessage(original)
+                val queued = queue().addMessage(original)
                 MessageScheduler.scheduleMessageSend(this)
-                true
+                queued
             }
             TelegramSendPolicy.Kind.RATE_LIMITED -> {
                 NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
-                queue().addMessage(original)
+                val queued = queue().addMessage(original)
                 MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
-                true
+                queued
             }
             TelegramSendPolicy.Kind.TRANSIENT, TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
-                queue().addMessage(original)
+                val queued = queue().addMessage(original)
                 MessageScheduler.scheduleMessageSend(this)
-                true
+                queued
             }
             TelegramSendPolicy.Kind.CHAT_MISSING -> {
                 try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                queue().addMessage(original)
+                val queued = queue().addMessage(original)
                 MessageScheduler.scheduleMessageSend(this)
-                true
+                queued
             }
             TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> false
         }
     }
 
 
+    // Nilai kembali (issue #779): true hanya bila pesan benar-benar
+    // terkirim ATAU selamat terantre. Cabang antre sebelumnya
+    // mengabaikan hasil addMessage, sehingga eviksi-diri (antrean
+    // tepat penuh berisi prioritas) membuat pesan hilang tetapi
+    // pemanggil menandainya sudah diteruskan. Berlaku juga untuk
+    // forwardPlainFallback di atas.
     private suspend fun forwardLocked(message: String, msgCount: Int = 1, queueOnCancel: Boolean = true): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { adoptPrefs(it) }
             } catch (_: Exception) {
+                var queued = false
                 try {
-                    queue().addMessage(message)
+                    queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
-                return true
+                return queued
             }
             if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) {
                 // Antrekan seperti cabang jeda/kredensial kosong: sebelumnya
@@ -1568,38 +1575,38 @@ class NotificationForwarderService : NotificationListenerService() {
                 // SendMessageWorker sendiri menahan pengiriman selama
                 // owner belum login, jadi tak ada yang keluar pra-login
                 // (issue #675).
-                queue().addMessage(message)
+                val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return true
+                return queued
             }
             if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) return false
             if (prefs.monitoringPaused) {
-                queue().addMessage(message)
+                val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return true
+                return queued
             }
             if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
             val botToken = cachedFwdToken
             val chatId = cachedFwdChat
             if (botToken.isEmpty() || chatId.isEmpty()) {
-                queue().addMessage(message)
+                val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return true
+                return queued
             }
             try {
                 NetworkUtils.sweepAuthBlock(prefs)
                 if (prefs.credentialError.isNotEmpty()) {
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
             } catch (_: Exception) {
             }
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
             if (rateRemain > 0L) {
-                queue().addMessage(message)
+                val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSendNext(this, rateRemain)
-                return true
+                return queued
             }
             val nowNet = android.os.SystemClock.elapsedRealtime()
             if (nowNet - netCheckAt > 20_000L) {
@@ -1607,9 +1614,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 netCached = NetworkUtils.isNetworkAvailable(this)
             }
             if (!netCached) {
-                queue().addMessage(message)
+                val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
-                return true
+                return queued
             }
             val url = "https://api.telegram.org/bot$botToken/sendMessage"
             val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = message))
@@ -1622,26 +1629,26 @@ class NotificationForwarderService : NotificationListenerService() {
                 TelegramSendPolicy.Kind.AUTH_FAILED -> {
                     android.util.Log.e("NotifForwarder", "Send rejected (${outcome.code}), queuing notification")
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
                 TelegramSendPolicy.Kind.RATE_LIMITED -> {
                     NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
-                    return true
+                    return queued
                 }
                 TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
                 TelegramSendPolicy.Kind.CHAT_MISSING -> {
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
                 TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
                     if (outcome.code == 400) {
@@ -1653,14 +1660,14 @@ class NotificationForwarderService : NotificationListenerService() {
                         try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
                         return false
                     }
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
                 TelegramSendPolicy.Kind.TRANSIENT -> {
-                    queue().addMessage(message)
+                    val queued = queue().addMessage(message)
                     MessageScheduler.scheduleMessageSend(this)
-                    return true
+                    return queued
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -1674,12 +1681,13 @@ class NotificationForwarderService : NotificationListenerService() {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("NotifForwarder", "Forward failed: ${redactToken(e.message)}")
+            var queued = false
             try {
-                queue().addMessage(message)
+                queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
-            return true
+            return queued
         }
     }
 }

@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Penerusan notifikasi kini jujur bila pengantrean gagal (issue #779): cabang-cabang fallback sebelumnya melaporkan berhasil tanpa memeriksa hasil pengantrean, sehingga pesan yang membuang dirinya sendiri dari antrean penuh tetap ditandai sudah diteruskan dan tak pernah dicoba lagi. Kini statusnya mengikuti hasil pengantrean yang sebenarnya.
 - Antrean pesan batch tidak lagi melaporkan berhasil bila hanya sebagian yang selamat (issue #778): sebelumnya satu item yang lolos eviksi membuat seluruh batch dianggap terantre — notifikasi yang hilang tertandai sudah diteruskan dan kursor laporan SMS/panggilan ikut maju. Kini batch hanya berhasil bila seluruhnya selamat; keberhasilan sebagian dianggap gagal agar dicoba lagi.
 - Frasa perintah dua kata kini dikenali (issue #777): "jam pulang 21:30", "pulang jam 21:30", "hemat kuota on", dan "cek mati" tidak lagi gugur diam-diam — sebelumnya pemilik bisa mengira jam pulang sudah diatur padahal tidak terjadi apa-apa.
 - `/patrolinterval` kini menerima satuan seperti handler interval lain (issue #775): "30 menit" dan "30mnt" tidak lagi ditolak.
