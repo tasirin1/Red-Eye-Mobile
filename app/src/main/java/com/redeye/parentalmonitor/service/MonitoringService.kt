@@ -1147,12 +1147,16 @@ class MonitoringService : Service() {
             }
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "tak tahu"}")
         }
-        try { preferencesManager.patrolLastAt = System.currentTimeMillis() } catch (_: Exception) { }
         sendToTelegram(body)
         try {
             captureAndSendPhoto()
         } catch (_: Exception) {
         }
+        // Stempel throttle ditulis di AKHIR putaran (issue #751): putaran
+        // yang gugur oleh pengecualian di tengah tidak ikut menekan
+        // putaran berikutnya. Laporan yang terantre tetap terhitung
+        // berjalan — memang sudah diterima antrean untuk dikirim.
+        try { preferencesManager.patrolLastAt = System.currentTimeMillis() } catch (_: Exception) { }
     }
 
     private suspend fun delayMs(totalMs: Long) {
