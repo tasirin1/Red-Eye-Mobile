@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.582] - 2026-11-02
+
 ### Fixed
 - Token kode alfanumerik sampai 16 karakter kini tertopeng (issue #654, dugaan): batas atas `CODE_TOKENS` NotificationPrivacy sebelumnya 10, sehingga kode OTP/verifikasi alfanumerik 11–16 karakter diteruskan utuh ke Telegram oleh penerus notifikasi. Batas dinaikkan ke 16; token yang lebih panjang dari itu (ID transaksi dsb., trade-off yang terdokumentasi di uji) tetap utuh. Satu ekspektasi uji terkunci disesuaikan di commit yang sama.
 - Gerbang melaporkan manifest hilang sebagai GAGAL, bukan traceback (issue #653): `cek_xml` dan `cek_manifest` di `verifikasi-path.py` hanya menangkap `ParseError`, sehingga manifest yang hilang membuat gerbang mati dengan `FileNotFoundError` mentah (tetap fail-closed, tetapi tak terbaca dan menutupi pemeriksaan lain). Keduanya kini menangkap `OSError`: manifest hilang dilaporkan sebagai baris GAGAL yang jelas dan proses keluar 1 (terverifikasi di salinan buangan).
