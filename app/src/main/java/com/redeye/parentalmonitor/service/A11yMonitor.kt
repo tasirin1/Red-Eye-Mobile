@@ -166,7 +166,14 @@ object A11yMonitor {
                 currentPackage = pkg
                 currentLabel = labelFor(context, pkg)
                 currentStartWall = todayStart
-                currentStartElapsed = (nowElapsed - (nowWall - todayStart)).coerceAtLeast(1L)
+                // Jangkar elapsed tengah malam hanya ada bila perangkat
+                // boot sebelum tengah malam; bila boot sesudahnya nilainya
+                // negatif — sesi dilanjutkan dihitung dari saat restore
+                // ini (issue #747). Koersi lama ke 1 ms membuat akru
+                // berikutnya menagih seluruh uptime sebagai pemakaian
+                // hari ini.
+                val midnightElapsed = nowElapsed - (nowWall - todayStart)
+                currentStartElapsed = if (midnightElapsed >= 1L) midnightElapsed else nowElapsed
                 usage.getOrPut(pkg) { AppUsage(label = currentLabel) }.label = currentLabel
                 try { manager.setA11yOpenSession(currentPackage, currentStartWall, currentStartElapsed) } catch (_: Exception) { }
                 return
