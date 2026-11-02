@@ -142,6 +142,36 @@ object A11yMonitor {
             foreground == pkg &&
             monitoringActive(manager) &&
             isLaunchable(context, pkg)
+        if (!recoverable && startWall > 0L && foreground == pkg && monitoringActive(manager) && isLaunchable(context, pkg)) {
+            // Sesi terbuka lintas tengah malam (issue #735): sebelumnya
+            // sesi semalam dibuang begitu saja saat service hidup lagi
+            // keesokan hari. Bila slot pemakaian masih memegang hari
+            // mulai sesi, akru porsi sebelum tengah malam ke hari itu,
+            // lalu lanjutkan sesi mulai tengah malam ini.
+            val startDay = TimeFmt.dayKey(startWall)
+            val todayKey = TimeFmt.dayKey(nowWall)
+            val todayStart = A11yUsageMath.dayStartWallMillis(nowWall)
+            val slotDay = try { manager.a11yUsageDate } catch (_: Exception) { "" }
+            if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && slotDay == startDay) {
+                val span = todayStart - startWall
+                val todayUsage = usage
+                usage = loadUsage(context, startDay)
+                currentPackage = pkg
+                currentLabel = labelFor(context, pkg)
+                currentStartWall = startWall
+                currentStartElapsed = 1L
+                accrueSessionLocked(todayStart, 1L + span)
+                saveUsageFor(context, startDay)
+                usage = todayUsage
+                currentPackage = pkg
+                currentLabel = labelFor(context, pkg)
+                currentStartWall = todayStart
+                currentStartElapsed = (nowElapsed - (nowWall - todayStart)).coerceAtLeast(1L)
+                usage.getOrPut(pkg) { AppUsage(label = currentLabel) }.label = currentLabel
+                try { manager.setA11yOpenSession(currentPackage, currentStartWall, currentStartElapsed) } catch (_: Exception) { }
+                return
+            }
+        }
         if (!recoverable) {
             try { manager.clearA11yOpenSession() } catch (_: Exception) { }
             return
