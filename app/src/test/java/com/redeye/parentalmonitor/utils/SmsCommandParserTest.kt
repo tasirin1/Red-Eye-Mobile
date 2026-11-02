@@ -152,6 +152,19 @@ class SmsCommandParserTest {
     }
 
     @Test
+    fun nomorSepuluhDigitGrupAkhirEmpatTidakTerpotong() {
+        // #639: basis tepat di panjang minimum (10 digit, atau 11 untuk 62)
+        // dengan grup akhir ≤4 digit adalah nomor berspasi yang berlanjut —
+        // sebelumnya aturan kelengkapan memotongnya dan grup itu jadi isi SMS.
+        // Perilaku terkunci lain (termasuk #545/#598) diverifikasi porting 1:1
+        // tidak berubah sebelum asersi ini ditulis.
+        val parsed = SmsCommandParser.parse("0812345678 9012 halo")
+        assertEquals("0812345678 9012", parsed?.number)
+        assertEquals("08123456789012", parsed?.normalized)
+        assertEquals("halo", parsed?.text)
+    }
+
+    @Test
     fun tanpaSpasiDitolak() {
         assertNull(SmsCommandParser.parse("08123456789"))
     }

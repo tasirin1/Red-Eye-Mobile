@@ -4363,7 +4363,7 @@ class MonitoringService : Service() {
                 val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
                 val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
                 preferencesManager.writeSmsPendingSync(normalized, smsText, System.currentTimeMillis(), senderId)
-                sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit)." + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
+                sendToTelegram("\uD83D\uDCE9 SMS ke <code>$normalized</code> siap dikirim. Balas /smsconfirm untuk konfirmasi (berlaku 5 menit).\nIsi: ${Html.escape(smsText)}" + if (oldPending.isNotEmpty()) "\nPending lama ke <code>${Html.escape(oldPending)}</code> dibuang." else "")
             }
         }
     }

@@ -26,7 +26,7 @@ object SmsCommandParser {
             val minBaseDigits = if (normalized.removePrefix("+").startsWith("62")) 11 else 10
             val baseText = candidate.dropLast(lastGroup.length).trim()
             val baseStandalone = !baseText.contains(" ") && baseDigits >= 7
-            if ((lastDigits >= 5 && !baseStandalone) || baseDigits < minBaseDigits) spacedComplete = parsed
+            if ((lastDigits >= 5 && !baseStandalone) || baseDigits < minBaseDigits || (lastDigits in 1..4 && baseDigits == minBaseDigits)) spacedComplete = parsed
             val firstToken = candidate.takeWhile { !it.isWhitespace() }
             if (firstTokenNumber == null && firstToken.count { it.isDigit() } >= 7) {
                 firstTokenNumber = parsed
