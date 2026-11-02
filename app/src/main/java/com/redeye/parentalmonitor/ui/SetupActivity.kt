@@ -325,6 +325,13 @@ class SetupActivity : AppCompatActivity() {
             if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                 return VerifyOutcome.HttpError(meResp.code(), true)
             }
+            // Simpan username bot yang terverifikasi (issue #843):
+            // dipakai layanan untuk mengenali perintah @BotLain.
+            try {
+                val uname = meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty()
+                if (uname.isNotEmpty()) prefs.botUsername = uname
+            } catch (_: Exception) {
+            }
             val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
             val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot" + token + "/getChat?chat_id=" + enc)
             if (isStale()) return VerifyOutcome.Stale

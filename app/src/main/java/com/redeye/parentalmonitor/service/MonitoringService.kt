@@ -1870,6 +1870,24 @@ class MonitoringService : Service() {
         offsetFailCount = 0
 
         val updates = response.body()?.result ?: return false
+        // Pelajari username bot sendiri sekali (issue #843) agar
+        // sufiks @ pada perintah bisa dibandingkan; kegagalan diam
+        // saja — dibandingkan lagi pada putaran berikutnya.
+        try {
+            if (preferencesManager.botUsername.isEmpty() && botToken.isNotEmpty()) {
+                serviceScope.launch {
+                    try {
+                        val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$botToken/getMe")
+                        val uname = try { meResp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty() } catch (_: Exception) { "" }
+                        if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty()) {
+                            preferencesManager.botUsername = uname
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
         if (updates.isEmpty()) return false
         for (update in updates) {
             val seen = markSeen(handledUpdateIds, update.updateId) { updateOffsetTracker.isPending(it) }
@@ -1919,7 +1937,16 @@ class MonitoringService : Service() {
                     val rawText = message?.text?.trim().orEmpty()
                     val headArg = rawText.split(CMD_SPLIT_REGEX, limit = 2)
                     val head = headArg.getOrNull(0).orEmpty()
-                    val command = head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+                    // Perintah beralamat @BotLain bukan untuk bot ini
+                    // (issue #843): sufiks sebelumnya dibuang buta,
+                    // jadi "/photo@BotLain" ikut dieksekusi. Bila
+                    // username sendiri belum dipelajari, perilaku lama
+                    // dipertahankan agar pemasangan lama tak patah.
+                    val atSuffix = if (head.contains("@")) head.substringAfter("@") else ""
+                    val ownUsername = try { preferencesManager.botUsername } catch (_: Exception) { "" }
+                    val forOtherBot = atSuffix.isNotEmpty() && ownUsername.isNotEmpty() &&
+                        !atSuffix.equals(ownUsername, ignoreCase = true)
+                    val command = if (forOtherBot) "" else head.substringBefore("@").lowercase(java.util.Locale.ROOT)
                     val arg = headArg.getOrNull(1)?.trim().orEmpty()
                     val loginOnly = command == "/login" || (command == "/start" && arg.isEmpty())
                     if (loginOnly) {
@@ -2065,7 +2092,7 @@ class MonitoringService : Service() {
                             false
                         }
                         val aliasInput = if (slashVetoed) null else rawAliasInput
-                        val intentInput = if (!command.startsWith("/")) {
+                        val intentInput = if (!command.startsWith("/") && !forOtherBot) {
                             try { IntentParser.intentOrAlias(rawText, resolveAliasInput(command, arg)) } catch (_: Exception) { null }
                         } else {
                             null

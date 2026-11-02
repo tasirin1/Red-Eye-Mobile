@@ -360,6 +360,7 @@ class PreferencesManager(context: Context) {
 
         const val KEY_BOT_TOKEN = "bot_token"
         const val KEY_CHAT_ID = "chat_id"
+        const val KEY_BOT_USERNAME = "bot_username"
         const val KEY_MONITORING_ENABLED = "monitoring_enabled"
         private const val KEY_LAST_SYNC = "last_sync"
         const val KEY_SYNC_INTERVAL = "sync_interval"
@@ -609,6 +610,15 @@ class PreferencesManager(context: Context) {
                 if (value != chatId) bumpCredentialGeneration(editor)
                 editor.apply()
             }
+        }
+
+    // Username bot sendiri (issue #843): dipelajari dari getMe agar
+    // perintah beralamat @BotLain bisa dikenali bukan untuk bot ini.
+    // Metadata saja, bukan kredensial — tak menaikkan generasi.
+    var botUsername: String
+        get() = prefString(KEY_BOT_USERNAME, "")
+        set(value) {
+            sharedPreferences.edit().putString(KEY_BOT_USERNAME, value).apply()
         }
 
     val isMonitoringEnabled: Boolean
