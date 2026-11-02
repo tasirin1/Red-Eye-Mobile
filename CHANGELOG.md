@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Zona waktu TimeFmt kini dibandingkan setiap pemanggilan (issue #700): cache 60 detik sebelumnya bisa menyajikan zona lama sesudah zona perangkat berubah sehingga `dayKey()` salah hari sesaat di sekitar tengah malam; kini ID + offset zona dibandingkan dan cache hanya diganti bila zona benar-benar berubah.
 - Digest malam kini ditandai selesai hanya sesudah pengiriman berhasil (issue #699): sebelumnya penanda ditulis sebelum kirim dan hasilnya dibuang, sehingga satu kegagalan kirim malam itu menghilangkan digest hari itu permanen.
 - Lockout kode restore kini juga memakai jam ganda (issue #698): pola yang sama dengan perbaikan gerbang PIN #687 diterapkan ke gerbang kode (cap elapsedRealtime saat kunci dipasang; jam monoton memutuskan selama satu boot) agar memajukan jam perangkat tak membuka kuncinya lebih awal.
 - Deteksi ucapan terkutip kini melacak kutip tunggal dan kutip tak tertutup (issue #697): sebelumnya hanya kutip ganda tertutup yang diveto, sehingga "bunyi pesannya 'kirim foto sekarang'" tetap mengeksekusi perintah di dalam kutipan. Kutip tunggal hanya diakui di awal kata agar apostrof tengah kata tak membuka kutipan, dan kutipan satu kata tetap sah sebagai penekanan.

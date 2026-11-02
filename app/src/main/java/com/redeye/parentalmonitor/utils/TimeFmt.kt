@@ -35,11 +35,18 @@ object TimeFmt {
     private fun currentTz(): TimeZone {
         val tz = cachedTz
         return try {
-            val now = android.os.SystemClock.elapsedRealtime()
-            if (tz != null && now - tzFetchedAt < 60_000L) return tz
+            // Cache 60 detik sebelumnya bisa menyajikan zona lama sesudah
+            // zona perangkat berubah — di sekitar tengah malam dayKey()
+            // bisa salah hari sesaat (issue #700). Bandingkan ID zona
+            // setiap panggil: getDefault() murah, dan instans cache hanya
+            // diganti bila zona benar-benar berubah.
             val fresh = TimeZone.getDefault()
+            if (tz != null && tz.id == fresh.id && tz.rawOffset == fresh.rawOffset) {
+                tzFetchedAt = android.os.SystemClock.elapsedRealtime()
+                return tz
+            }
             cachedTz = fresh
-            tzFetchedAt = now
+            tzFetchedAt = android.os.SystemClock.elapsedRealtime()
             fresh
         } catch (_: Exception) {
             tz ?: TimeZone.getTimeZone("UTC")
