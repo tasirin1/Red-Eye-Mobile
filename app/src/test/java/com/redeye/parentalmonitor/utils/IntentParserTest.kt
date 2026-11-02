@@ -371,6 +371,19 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsAspectStatusStatements() {
+        // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
+        assertNull(IntentParser.parse("belum kirim foto dong"))
+        assertNull(IntentParser.parse("belum ambil foto dong"))
+        assertNull(IntentParser.parse("belum kirim screenshot dong"))
+        assertNull(IntentParser.parse("sudah kirim foto dong"))
+        assertNull(IntentParser.parse("sudah jepret foto dong"))
+        assertNull(IntentParser.parse("belum jepret foto dong"))
+        // Kontrol: tanpa penanda aspek, perintah yang sama tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto dong"))
+    }
+
+    @Test
     fun parseRejectsReferencesToExistingPhoto() {
         val cases = listOf(
             "mana fotonya anak sekarang",

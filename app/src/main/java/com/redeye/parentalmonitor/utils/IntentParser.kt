@@ -331,11 +331,24 @@ object IntentParser {
         return markerMatches(token, "katanya") || markerMatches(token, "bilang")
     }
 
+    private val SEND_OR_CAPTURE_VERBS = setOf("kirim", "ambil", "jepret", "potret")
+
+    // Pernyataan status aspek: "belum/sudah + kata kerja kirim/tangkap"
+    // membicarakan pengiriman yang sudah/ belum terjadi, bukan perintah
+    // baru (keluarga #629 bentuk aktif, issue #657). Mutlak seperti veto
+    // masa depan: mengalahkan niat tangkap tegas.
+    private fun isAspectStatus(tokens: List<String>): Boolean {
+        val hasAspect = tokens.any { markerMatches(it, "belum") || markerMatches(it, "sudah") }
+        if (!hasAspect) return false
+        return tokens.any { token -> SEND_OR_CAPTURE_VERBS.any { markerMatches(token, it) } }
+    }
+
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
         if (tokens.any { isReportToken(it) }) return true
         if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
+        if (isAspectStatus(tokens)) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
         return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
@@ -349,8 +362,9 @@ object IntentParser {
         val rawTrim = text.trim()
         if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
         val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
-        val photoVetoed = futureVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
-        val shotVetoed = futureVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        val aspectVetoed = isAspectStatus(tokens)
+        val photoVetoed = futureVetoed || aspectVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        val shotVetoed = futureVetoed || aspectVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         var best: String? = null
         var bestScore = 0
         var tie = false
