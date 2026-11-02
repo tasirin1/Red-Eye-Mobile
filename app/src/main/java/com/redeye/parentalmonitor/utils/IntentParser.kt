@@ -387,13 +387,24 @@ object IntentParser {
         return tokens.any { token -> SEND_OR_CAPTURE_VERBS.any { markerMatches(token, it) } }
     }
 
-    private fun isVetoed(tokens: List<String>, padded: String): Boolean {
+    // Perintah baca-saja: argumen masa lalu sah ("waspada kemarin").
+    // Perintah mutasi (hilang/kunci/dll.) tetap menerima veto rujukan.
+    private val READ_ONLY_HEADS = setOf(
+        "/location", "/battery", "/help", "/version", "/waspada", "/minggu",
+        "/layar", "/hematdata", "/jejak", "/kendara", "/lastsms", "/lastcalls"
+    )
+
+    private fun isVetoed(tokens: List<String>, padded: String, readOnlyTarget: Boolean = false): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
         if (isReport(tokens, padded)) return true
         if (hasFutureMarker(tokens, padded)) return true
         if (isAspectStatus(tokens)) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
+        // Veto rujukan foto/screenshot tak relevan untuk perintah
+        // baca-saja: penanda masa lalu di sana adalah argumen sah
+        // ("waspada kemarin", "lokasi kemarin") — issue #672.
+        if (readOnlyTarget) return false
         if (hasFirmCaptureIntent(tokens, padded)) return false
         return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
     }
@@ -511,7 +522,7 @@ object IntentParser {
         if (isSmsSendForm(aliasInput)) return false
         val tk = tokenize(text) ?: return false
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk.first.size == 2 && isCancellation(tk.first[1])) return false
-        if (!isVetoed(tk.first, tk.second)) return false
+        if (!isVetoed(tk.first, tk.second, aliasInput.substringBefore(" ") in READ_ONLY_HEADS)) return false
         val parsed = parse(text)
         if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
         return true
@@ -554,7 +565,7 @@ object IntentParser {
         if (words.size > 2) return null
         val tk = tokenize(text)
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
-        if (tk != null && isVetoed(tk.first, tk.second)) return null
+        if (tk != null && isVetoed(tk.first, tk.second, aliasInput.substringBefore(" ") in READ_ONLY_HEADS)) return null
         return aliasInput
     }
 }

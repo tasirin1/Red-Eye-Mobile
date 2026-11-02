@@ -373,6 +373,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun readOnlyCommandsAcceptPastArguments() {
+        // #672: penanda masa lalu adalah argumen sah perintah baca-saja.
+        assertEquals("/waspada kemarin", IntentParser.intentOrAlias("waspada kemarin", "/waspada kemarin"))
+        assertEquals("/location kemarin", IntentParser.intentOrAlias("lokasi kemarin", "/location kemarin"))
+        assertEquals("/hematdata kemarin", IntentParser.intentOrAlias("kuota kemarin", "/hematdata kemarin"))
+        // Perintah tangkap tetap terveto rujukan seperti sebelumnya.
+        assertNull(IntentParser.intentOrAlias("foto kemarin", "/photo kemarin"))
+        // Veto keras (negasi) tetap berlaku untuk semua perintah.
+        assertNull(IntentParser.intentOrAlias("lokasi jangan kemarin", "/location jangan kemarin"))
+    }
+
+    @Test
     fun parseRejectsTdakTypo() {
         // #670: typo "tdak" (huruf hilang+tertukar dari "tidak") adalah negasi,
         // sejajar entri typo terkunci #627 (tidka/jngan).
