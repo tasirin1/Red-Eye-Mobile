@@ -277,6 +277,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsQuotedAndReportedSpeech() {
+        // #640: kutipan dan laporan ucapan orang lain bukan perintah pemilik.
+        assertNull(IntentParser.parse("\"kirim foto sekarang\" itu maksudnya apa"))
+        assertNull(IntentParser.parse("katanya kirim foto sekarang"))
+        assertNull(IntentParser.parse("dia bilang kirim foto sekarang"))
+        assertNull(IntentParser.intentOrAlias("katanya kunci", "/lock"))
+        // Kontrol: perintah langsung dan argumen berkutip di tengah tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

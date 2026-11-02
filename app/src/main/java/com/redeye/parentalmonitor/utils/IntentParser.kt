@@ -325,9 +325,14 @@ object IntentParser {
         return markerMatches(token, "batal")
     }
 
+    private fun isReportToken(token: String): Boolean {
+        return markerMatches(token, "katanya") || markerMatches(token, "bilang")
+    }
+
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
+        if (tokens.any { isReportToken(it) }) return true
         if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
@@ -338,6 +343,9 @@ object IntentParser {
         val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
         if (tokens.any { isCancellation(it) }) return null
+        if (tokens.any { isReportToken(it) }) return null
+        val rawTrim = text.trim()
+        if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
         val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
         val photoVetoed = futureVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         val shotVetoed = futureVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
