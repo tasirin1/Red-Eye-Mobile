@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kegagalan mengantrekan pesan retry kini tercatat di log audit (issue #792): muara kegagalan kirim sebelumnya membuang hasil pengantrean, sehingga pesan yang tereviksi atau gagal tersimpan hilang tanpa jejak apa pun.
 - Jam desimal /layar di bawah setengah jam kini dijepit ke 1 jam (issue #790): "layar 0,4 jam" sebelumnya membulat ke 0 lalu argumennya dibuang diam-diam sehingga laporan bawaan 24 jam yang berjalan.
 - Kalimat keterangan "yang" yang berjarak dari kata lensanya tidak lagi salah tergabung sebagai pilihan lensa (issue #787): penjaga kelanjutan klausa kini berlaku untuk seluruh jendela pindai, bukan hanya bila lensa tepat sesudah "yang".
 - Mode pindai penuh gerbang kini juga memeriksa pesan seluruh commit (issue #800): token yang telanjur tertulis di pesan commit lama kini tertandai pada pindai --semua agar bisa dirotasi, bukan hanya pesan yang belum ter-push.

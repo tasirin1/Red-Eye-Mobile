@@ -6330,14 +6330,18 @@ class MonitoringService : Service() {
 
     private fun queueForRetry(text: String, queueOnFail: Boolean) {
         if (queueOnFail) {
-            messageQueue.addMessage(text)
+            // Hasil antre kini diperiksa (issue #792): kedua helper ini
+            // muara hampir semua kegagalan kirim, jadi kegagalan antre
+            // (eviksi/persist) tak boleh bisu — catat ke log audit agar
+            // kehilangan pesan punya jejak yang bisa dilihat owner.
+            if (!messageQueue.addMessage(text)) audit("retry gagal antre", "queue")
             MessageScheduler.scheduleMessageSend(this)
         }
     }
 
     private fun queueForRetryLater(text: String, queueOnFail: Boolean, delayMs: Long) {
         if (queueOnFail) {
-            messageQueue.addMessage(text)
+            if (!messageQueue.addMessage(text)) audit("retry gagal antre", "queue")
             MessageScheduler.scheduleMessageSendNext(this, delayMs)
         }
     }
