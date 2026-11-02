@@ -1432,6 +1432,10 @@ def utama():
         # token yang belum pernah ter-commit.
         nama_pindai += [p for p in nama_tak_lacak()
                         if p not in nama_pindai]
+        # Nama berkas ignored ikut dipindai (issue #864).
+        nama_pindai += [p for p in nama_terabaikan()
+                        if p not in nama_pindai and
+                        not any(b in (".gradle", "__pycache__") for b in p.split("/"))]
         cek_secret_nama(gagal, nama_pindai)
     else:
         cek_secret(gagal, diff)
@@ -1439,6 +1443,11 @@ def utama():
         if rentang_lokal:
             nama_pindai += [p for p in nama_riwayat(rentang_lokal)
                             if p not in nama_pindai]
+        # Nama berkas ignored ikut dipindai (issue #864): isinya
+        # sudah dipindai cek_secret_terabaikan, namanya belum.
+        nama_pindai += [p for p in nama_terabaikan()
+                        if p not in nama_pindai and
+                        not any(b in (".gradle", "__pycache__") for b in p.split("/"))]
         cek_secret_nama(gagal, nama_pindai)
     cek_secret_tak_lacak(gagal)
     cek_secret_terabaikan(gagal, peringatan)
