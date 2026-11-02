@@ -6673,12 +6673,19 @@ class MonitoringService : Service() {
         try {
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             if (lowPower || !lowPowerNotified) return
-            lowPowerNotified = false
             val noticeAt = try { preferencesManager.batteryAlertAt } catch (_: Exception) { 0L }
             val now = System.currentTimeMillis()
             if (noticeAt > 0L && now > noticeAt) {
-                try { preferencesManager.batteryAlertAt = 0L } catch (_: Exception) { }
-                sendToTelegram("🔋 Baterai kembali normal — foto otomatis & patroli berjalan seperti biasa.")
+                // Reset penanda HANYA sesudah kabar pulih terkirim/
+                // terantre (issue #810): sebelumnya penanda dibersihkan
+                // sebelum kirim, jadi kabar pulih yang terbuang hilang
+                // permanen dan pemilik hanya menerima kabar daruratnya.
+                if (sendToTelegramStatus("🔋 Baterai kembali normal — foto otomatis & patroli berjalan seperti biasa.") != SendStatus.DROPPED) {
+                    lowPowerNotified = false
+                    try { preferencesManager.batteryAlertAt = 0L } catch (_: Exception) { }
+                }
+            } else {
+                lowPowerNotified = false
             }
         } catch (_: Exception) {
         }

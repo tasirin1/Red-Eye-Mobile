@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Kabar "baterai kembali normal" kini mereset penandanya hanya sesudah terkirim atau terantre (#810): sebelumnya penanda dibersihkan sebelum kirim, jadi kabar pulih yang terbuang hilang permanen dan pemilik hanya menerima kabar daruratnya saja.
 - Pemberitahuan gagal kamera dan gagal unggah media kini mencap jeda 30 menitnya hanya sesudah kabar terkirim atau terantre (#809): sebelumnya cap ditulis sebelum kirim dan hasilnya diabaikan, jadi kegagalan yang kabarnya terbuang menahan laporan kegagalan berikutnya selama 30 menit.
 - Snapshot izin kini dimajukan hanya sesudah kabar transisinya terkirim atau terantre (#808): sebelumnya snapshot ditulis sebelum kirim, jadi izin yang hilang/kembali saat kabarnya terbuang (mis. sebelum login owner) tidak pernah terdeteksi lagi.
 - Alert sekolah tidak lagi kelaparan oleh alert jam malam (#807): sesudah percobaan jam malam malam itu terpakai, evaluasi posisi yang sama kini tetap menilai cabang sekolah; sebelumnya kembali tanpa syarat di blok jam malam membuat alert sekolah tak pernah terkirim selama perangkat dinilai di luar rumah (dengan jam malam mulai siang, bisa hilang seharian).
