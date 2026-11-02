@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Kursor SMS/panggilan tidak lagi menghilangkan baris sudut secara permanen (issue #655, regresi dari #635): `CursorAdvance.penyelesaian` sebelumnya memajukan kursor ke id maksimum dan tanggal maksimum secara terpisah, lalu predikat ambil repository `(_ID > ? OR DATE > ?)` tak pernah lagi meloloskan baris belum terkirim yang berada di bawah kedua maksimum itu (terbukti porting: 91 dari 101 baris hilang pada bentuk data uji repo sendiri bila pengiriman putus antar-potongan). Sekarang pasangan kursor adalah maksimum leksikografik (tanggal, lalu id) — sama dengan urutan ambil — dan predikat repository menjadi keyset `(DATE > ?) OR (DATE = ? AND _ID > ?)` di `SmsRepository`/`CallLogRepository`. Harness uji `CursorAdvanceTest` ditulis ulang memodelkan disiplin produksi persis (versi lamanya memodelkan disiplin berbeda sehingga regresi ini lolos), ditambah kasus putus antar-potongan; terverifikasi porting Python: 0 hilang, 0 duplikat pada semua bentuk data termasuk banjir restore.
+
 ## [1.6.582] - 2026-11-02
 
 ### Fixed

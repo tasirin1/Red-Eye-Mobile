@@ -37,8 +37,10 @@ class SmsRepository(private val context: Context) {
         val selection: String
         val args: Array<String>
         if (afterId > 0L && afterDate > 0L) {
-            selection = "(${Telephony.Sms._ID} > ? OR ${Telephony.Sms.DATE} > ?)"
-            args = arrayOf(afterId.toString(), afterDate.toString())
+            // Keyset atas urutan (DATE, _ID): predikat OR lama melompati
+            // baris sudut di bawah kedua maksimum kursor (issue #655).
+            selection = "(${Telephony.Sms.DATE} > ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} > ?))"
+            args = arrayOf(afterDate.toString(), afterDate.toString(), afterId.toString())
         } else if (afterDate > 0L) {
             selection = "${Telephony.Sms.DATE} > ?"
             args = arrayOf(afterDate.toString())

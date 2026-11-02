@@ -29,8 +29,10 @@ class CallLogRepository(private val context: Context) {
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
         if (afterId > 0L && afterTimestamp > 0L) {
             return queryCalls(
-                selection = "(${CallLog.Calls._ID} > ? OR ${CallLog.Calls.DATE} > ?)",
-                args = arrayOf(afterId.toString(), afterTimestamp.toString()),
+                // Keyset atas urutan (DATE, _ID) — predikat OR lama melompati
+                // baris sudut di bawah kedua maksimum kursor (issue #655).
+                selection = "(${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?))",
+                args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString()),
                 sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
                 limit = 100,
                 strict = true
