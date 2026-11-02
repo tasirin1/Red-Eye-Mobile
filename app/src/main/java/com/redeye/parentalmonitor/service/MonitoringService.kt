@@ -7254,15 +7254,20 @@ class MonitoringService : Service() {
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
             if (DigestSchedule.nightDue(h, done, key)) {
                 if (awaitingOwnerLogin()) return
-                try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
-                sendDailyDigest(manual = false)
+                // Tandai selesai SESUDAH kirim berhasil (issue #699):
+                // menandai sebelum kirim membuat digest hari itu hilang
+                // permanen bila pengiriman gagal malam itu juga.
+                if (sendDailyDigest(manual = false)) {
+                    try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                }
                 return
             }
             val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key)) {
                 if (awaitingOwnerLogin()) return
-                try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
-                sendDailyDigest(manual = false)
+                if (sendDailyDigest(manual = false)) {
+                    try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
+                }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
