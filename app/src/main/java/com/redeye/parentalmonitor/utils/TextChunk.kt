@@ -4,9 +4,30 @@ object TextChunk {
     fun safeCut(text: String, max: Int): Int {
         if (max <= 0) return 0
         if (text.length <= max) return text.length
+        fun codePointBefore(c: Int): Int {
+            return if (c >= 2 && Character.isLowSurrogate(text[c - 1]) && Character.isHighSurrogate(text[c - 2])) 2 else 1
+        }
+        fun isRegionalIndicatorAt(i: Int): Boolean {
+            return i + 1 < text.length && text[i] == '\uD83C' && text[i + 1] in '\uDDE6'..'\uDDFF'
+        }
         fun scan(cut: Int): Int {
             var c = cut
             if (c > 0 && c < text.length && Character.isHighSurrogate(text[c - 1]) && Character.isLowSurrogate(text[c])) c -= 1
+            if (c > 0 && c < text.length) {
+                var ri = 0
+                var j = c
+                while (j >= 2 && isRegionalIndicatorAt(j - 2)) {
+                    ri++
+                    j -= 2
+                }
+                if (ri % 2 == 1) c -= 2
+            }
+            if (c > 0 && c < text.length && text[c] == '\u200D') {
+                c -= codePointBefore(c)
+            } else if (c > 1 && c < text.length && text[c - 1] == '\u200D') {
+                c -= 1
+                c -= codePointBefore(c)
+            }
             val amp = text.lastIndexOf('&', c - 1)
             if (amp >= 0 && amp > c - 12) {
                 val semi = text.indexOf(';', amp)

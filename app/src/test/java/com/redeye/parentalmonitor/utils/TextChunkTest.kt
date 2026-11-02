@@ -26,6 +26,24 @@ class TextChunkTest {
     }
 
     @Test
+    fun benderaIndikatorRegionalTakDibelah() {
+        // #647: pasangan indikator regional (bendera) adalah dua code point —
+        // membelahnya menghasilkan dua huruf regional yatim di dua potongan.
+        val teks = "ab\uD83C\uDDE6\uD83C\uDDE7cd"
+        assertEquals(2, TextChunk.safeCut(teks, 4))
+        assertEquals(6, TextChunk.safeCut(teks, 6))
+        assertEquals(2, TextChunk.safeCut(teks, 3))
+    }
+
+    @Test
+    fun urutanZwjTakDibelah() {
+        // #647: potongan tidak boleh jatuh di tengah urutan ZWJ (emoji keluarga).
+        val teks = "a\uD83D\uDC68\u200D\uD83D\uDC69b"
+        assertEquals(1, TextChunk.safeCut(teks, 3))
+        assertEquals(1, TextChunk.safeCut(teks, 4))
+    }
+
+    @Test
     fun entitasHtmlTakDibelah() {
         assertEquals(4, TextChunk.safeCut("halo&nbsp;dunia", 6))
     }
