@@ -7,7 +7,9 @@ Mengenali bentuk-bentuk token:
      lain (".", "${...}", tanda kurung) — dipadatkan dulu (issue #772),
   3. ter-encode base64 (kandidat panjang didekode lalu dicocokkan),
      termasuk base64 yang terbelah lalu tersambung lagi sesudah
-     pemadatan (issue #772).
+     pemadatan (issue #772),
+  4. ter-encode hex (kandidat hex panjang didekode lalu dicocokkan,
+     issue #784).
 
 Dipakai tools/verifikasi-path.py (diimpor) dan scripts/cek-cepat.sh:
     cek-token.py --teks     : baca teks dari stdin; cetak DITEMUKAN bila ada
@@ -22,6 +24,7 @@ import sys
 POLA = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 POLA_BYTE = re.compile(rb"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 POLA_KANDIDAT_B64 = re.compile(r"[A-Za-z0-9+/=_-]{48,}")
+POLA_KANDIDAT_HEX = re.compile(r"[0-9a-fA-F]{80,}")
 
 
 def _cocok_b64(kandidat):
@@ -68,6 +71,20 @@ def mengandung_token(teks):
     for sumber in (teks, tanpa_spasi, rapat):
         for m in POLA_KANDIDAT_B64.finditer(sumber):
             if _cocok_b64(m.group(0)):
+                return True
+    # Bentuk hex (issue #784): token ASCII 42+ karakter menjadi 84+
+    # karakter hex; ambang 80 memberi ruang. Hasil dekode tetap harus
+    # cocok pola token persis, jadi hash panjang biasa tidak tertuduh.
+    for sumber in (teks, tanpa_spasi):
+        for m in POLA_KANDIDAT_HEX.finditer(sumber):
+            s = m.group(0)
+            if len(s) % 2 == 1:
+                s = s[:-1]
+            try:
+                hasil = bytes.fromhex(s)
+            except Exception:
+                continue
+            if POLA_BYTE.search(hasil):
                 return True
     return False
 
