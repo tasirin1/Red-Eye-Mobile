@@ -745,10 +745,23 @@ def cek_secret_pesan_semua(gagal):
     agar riwayat panjang (ribuan commit) tidak dibayar per commit.
     """
     out = jalan("git", "log", "--format=%H%x00%B%x1e", "HEAD") or ""
-    for rekaman in out.split("\x1e"):
-        rekaman = rekaman.strip("\n")
-        if not rekaman.strip():
+    # Pesan commit bisa memuat byte \x1e itu sendiri (issue #814):
+    # pecahan yang TIDAK diawali pola hash+\x00 adalah kelanjutan
+    # pesan rekaman sebelumnya, bukan rekaman baru — gabungkan lagi
+    # sebelum memindai, agar token sesudah \x1e di dalam pesan tidak
+    # jatuh ke potongan yang tak pernah diperiksa.
+    rekaman_list = []
+    for pecahan in out.split("\x1e"):
+        inti = pecahan.strip("\n")
+        if not inti.strip():
             continue
+        if "\x00" in inti and len(inti.split("\x00", 1)[0].strip()) == 40:
+            rekaman_list.append(inti)
+        elif rekaman_list:
+            rekaman_list[-1] += "\x1e" + pecahan
+        else:
+            rekaman_list.append(inti)
+    for rekaman in rekaman_list:
         sha, _, pesan = rekaman.partition("\x00")
         if mengandung_token(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
