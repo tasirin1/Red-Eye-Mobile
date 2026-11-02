@@ -567,6 +567,20 @@ def cek_secret_pohon(gagal):
                      "hanya via input manual SetupActivity: %s" % baris.strip()[:100])
 
 
+def cek_secret_tak_lacak(gagal):
+    """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
+    berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
+    for path in nama_tak_lacak():
+        isi = baca(path)
+        if isi is None:
+            continue
+        for baris in isi.splitlines():
+            if POLA_TOKEN_ASLI.search(baris):
+                gagal.append("Kemungkinan token bot asli di berkas tak terlacak %s — kredensial "
+                             "hanya via input manual SetupActivity" % path)
+                break
+
+
 def nama_metode_hilang(diff, lewati_berkas=()):
     """Nama metode pada baris dihapus yang definisinya hilang dari pohon kerja."""
     hilang = []
@@ -914,6 +928,7 @@ def utama():
         cek_secret_pohon(gagal)
     else:
         cek_secret(gagal, diff)
+    cek_secret_tak_lacak(gagal)
     cek_kurung_kode(gagal, berubah)
     hapus = berkas_dihapus(args.rentang)
     if not args.rentang:

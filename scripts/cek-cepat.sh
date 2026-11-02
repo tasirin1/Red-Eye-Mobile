@@ -54,6 +54,15 @@ fi
 if git grep -q -I -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null; then
   echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
 fi
+# 5b. Berkas tak terlacak tak terlihat git grep/diff — pindai isinya juga.
+tak_lacak_token=""
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if grep -I -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then tak_lacak_token="$f"; break; fi
+done <<< "$(git ls-files --others --exclude-standard 2>/dev/null || true)"
+if [ -n "$tak_lacak_token" ]; then
+  echo "GAGAL: kemungkinan token bot asli di berkas tak terlacak $tak_lacak_token (hanya via input SetupActivity)"; gagal=1;
+fi
 # 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
 loop_dup=""
 while IFS= read -r f; do
