@@ -954,9 +954,14 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun salvageInFlight() {
         try {
             val sisa = synchronized(batchLock) {
-                val items = flushInFlight
-                flushInFlight = emptyList()
-                items
+                if (flushSalvageClaimed) {
+                    emptyList()
+                } else {
+                    flushSalvageClaimed = true
+                    val items = flushInFlight
+                    flushInFlight = emptyList()
+                    items
+                }
             }
             if (sisa.isNotEmpty()) {
                 try {
@@ -1068,6 +1073,7 @@ class NotificationForwarderService : NotificationListenerService() {
     // tak menjangkaunya. flushBatch memperbarui daftar ini seiring item
     // terkirim; onDestroy menyelamatkannya secara sinkron.
     private var flushInFlight: List<Triple<String, String, String>> = emptyList()
+    private var flushSalvageClaimed = false
 
     private fun scheduleBatchLocked() {
         if (batchJob?.isActive == true) return
@@ -1119,6 +1125,7 @@ class NotificationForwarderService : NotificationListenerService() {
             items = batchBuf.toList()
             batchBuf.clear()
             flushInFlight = items
+            flushSalvageClaimed = false
         }
         var cur = StringBuilder()
         var curCount = 0
@@ -1195,7 +1202,16 @@ class NotificationForwarderService : NotificationListenerService() {
             flushCur()
             synchronized(batchLock) { flushInFlight = emptyList() }
         } catch (t: Throwable) {
-            synchronized(batchLock) { flushInFlight = emptyList() }
+            val skipSalvage = synchronized(batchLock) {
+                if (flushSalvageClaimed) {
+                    true
+                } else {
+                    flushSalvageClaimed = true
+                    flushInFlight = emptyList()
+                    false
+                }
+            }
+            if (!skipSalvage) {
             val restItems = ArrayList<Triple<String, String, String>>()
             while (index < items.size) restItems.add(items[index++])
             if (t is kotlinx.coroutines.CancellationException) {
@@ -1246,6 +1262,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         batchBuf.addFirst(Triple(cur.toString(), onlyHash, onlyGroup))
                     }
                 }
+            }
             }
             throw t
         }
