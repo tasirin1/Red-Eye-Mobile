@@ -10777,7 +10777,13 @@ class MonitoringService : Service() {
                         // #824): putar berkas ke belakang urutan siklus
                         // berikut agar berkas lain tidak kelaparan;
                         // gilirannya tiba lagi dengan anggaran penuh.
-                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        // Kegagalan rotasi harus terlihat (issue
+                        // #856): setLastModified melaporkan gagal
+                        // lewat false, bukan pengecualian.
+                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
+                        if (!diputar) {
+                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
+                        }
                         continue
                     }
                     val videoOutcome = videoResult
@@ -10871,7 +10877,13 @@ class MonitoringService : Service() {
                         // Timeout flush (issue #824): putar ke belakang
                         // urutan siklus berikut, jangan kelaparkan
                         // berkas lain.
-                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        // Kegagalan rotasi harus terlihat (issue
+                        // #856): setLastModified melaporkan gagal
+                        // lewat false, bukan pengecualian.
+                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
+                        if (!diputar) {
+                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
+                        }
                         continue
                     }
                     val audioOutcome = audioResult
@@ -11158,7 +11170,13 @@ class MonitoringService : Service() {
                         // Timeout flush (issue #824): putar ke belakang
                         // urutan siklus berikut, jangan kelaparkan
                         // berkas lain.
-                        try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { }
+                        // Kegagalan rotasi harus terlihat (issue
+                        // #856): setLastModified melaporkan gagal
+                        // lewat false, bukan pengecualian.
+                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
+                        if (!diputar) {
+                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
+                        }
                         continue
                     }
                     val photoOutcome = photoResult
