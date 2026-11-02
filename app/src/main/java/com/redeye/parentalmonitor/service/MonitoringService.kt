@@ -5850,6 +5850,13 @@ class MonitoringService : Service() {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                     try { preferencesManager.lastDataAt = System.currentTimeMillis() } catch (_: Exception) { }
                 }
+                // Putaran selesai penuh tanpa kiriman (issue #850):
+                // cap sinkron tetap maju — sebelumnya query kosong
+                // tak pernah mencap, jadi /status menampilkan "belum
+                // pernah" selamanya walau sinkron sehat.
+                if (smsHabis) {
+                    try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
+                }
             }
             val lastCallTs = try {
                 preferencesManager.lastCallTimestamp
@@ -5896,6 +5903,11 @@ class MonitoringService : Service() {
                 if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                     try { preferencesManager.lastDataAt = System.currentTimeMillis() } catch (_: Exception) { }
+                }
+                // Cermin sisi SMS (issue #850): putaran tuntas tanpa
+                // kiriman tetap memajukan cap sinkron.
+                if (callHabis) {
+                    try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
