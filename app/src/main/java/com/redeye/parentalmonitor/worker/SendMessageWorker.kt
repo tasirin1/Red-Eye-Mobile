@@ -605,22 +605,24 @@ class SendMessageWorker(
             // Kredensial berganti di tengah pesan panjang (issue #693):
             // sisa potongan TIDAK diteruskan ke bot/chat snapshot lama —
             // antrekan ulang agar run berikutnya memakainya dengan
-            // kredensial baru, sama seperti jalur tenggat.
-            if (idx > 0) {
-                val curToken = try { preferencesManager.botToken } catch (_: Exception) { botToken }
-                val curChat = try { preferencesManager.chatId } catch (_: Exception) { chatId }
-                if (curToken != botToken || curChat != chatId) {
-                    if (!queueRemainder(idx)) return SendOutcome.Failed
-                    try {
-                        if (origId != null) messageQueue.removeMessages(listOf(origId))
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
-                    return SendOutcome.Sent
+            // kredensial baru, sama seperti jalur tenggat. Berlaku juga
+            // untuk potongan pertama (issue #722); nilai kosong dari baca
+            // prefs yang gagal sesaat (prefString mengembalikan "") TIDAK
+            // dianggap pergantian — pengosongan sungguhan (logout/Setup)
+            // menaikkan generasi antrean dan tertangkap genStale().
+            val curToken = try { preferencesManager.botToken } catch (_: Exception) { botToken }
+            val curChat = try { preferencesManager.chatId } catch (_: Exception) { chatId }
+            if ((curToken.isNotEmpty() && curToken != botToken) || (curChat.isNotEmpty() && curChat != chatId)) {
+                if (!queueRemainder(idx)) return SendOutcome.Failed
+                try {
+                    if (origId != null) messageQueue.removeMessages(listOf(origId))
+                } catch (_: Exception) {
                 }
+                try {
+                    MessageScheduler.scheduleMessageSend(applicationContext)
+                } catch (_: Exception) {
+                }
+                return SendOutcome.Sent
             }
             if (android.os.SystemClock.elapsedRealtime() >= deadlineAt) {
                 if (idx == 0) return SendOutcome.Failed
