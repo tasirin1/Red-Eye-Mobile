@@ -499,7 +499,17 @@ class PreferencesManager(context: Context) {
             try {
                 val now = System.currentTimeMillis()
                 val errAt = target.credentialErrorAt
-                if (errAt != 0L && (now < errAt || now - errAt >= 30 * 60_000L)) {
+                if (errAt == 0L) return
+                // Pola jam ganda yang sama dengan sweepAuthBlock
+                // (issue #756 — salinan ini tertinggal dari perbaikan
+                // #733): usia blokir dihitung dari jangkar monoton bila
+                // ada; pembersihan dini karena jam dinding mundur hanya
+                // berlaku untuk penanda warisan tanpa jangkar.
+                val elapsed = target.credentialErrorElapsed
+                val age = com.redeye.parentalmonitor.utils.NetworkUtils.blockAgeMs(
+                    errAt, elapsed, now, android.os.SystemClock.elapsedRealtime()
+                )
+                if (age >= 30 * 60_000L || (elapsed <= 0L && now < errAt)) {
                     target.setCredentialError("", 0L)
                 }
             } catch (_: Exception) {
