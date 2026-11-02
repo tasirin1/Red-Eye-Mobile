@@ -1023,4 +1023,21 @@ class IntentParserTest {
             assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
         }
     }
+
+    @Test
+    fun multiIntentDetectsTwoCommands() {
+        assertEquals("/photo" to "/location", IntentParser.multiIntentCommands("foto lalu lokasi"))
+        assertEquals("/lock" to "/photo", IntentParser.multiIntentCommands("kunci lalu foto"))
+        assertEquals("/photo" to "/location", IntentParser.multiIntentCommands("foto dan lokasi"))
+    }
+
+    @Test
+    fun multiIntentRejectsSinglesAndVetoes() {
+        assertNull(IntentParser.multiIntentCommands("foto"))
+        assertNull(IntentParser.multiIntentCommands("makan lalu minum"))
+        // Sisi kanan ter-veto: gabungan tidak disarankan.
+        assertNull(IntentParser.multiIntentCommands("foto lalu kunci jangan"))
+        // Dua sisi perintah yang sama bukan dua maksud.
+        assertNull(IntentParser.multiIntentCommands("foto lalu foto"))
+    }
 }

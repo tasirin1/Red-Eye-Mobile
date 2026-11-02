@@ -2197,6 +2197,18 @@ class MonitoringService : Service() {
                                                 handleTelegramCommand(aliasInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
                                             } else if (intentInput != null && privateNow) {
                                                 handleTelegramCommand(intentInput, messageDate, ownerNow, chatOk, senderId, true, adoptionDoneSec, messageId = message?.messageId ?: 0L)
+                                            } else if (privateNow) {
+                                                // Dua perintah satu pesan
+                                                // (issue #844): jangan
+                                                // gugur senyap — sarankan
+                                                // kirim terpisah.
+                                                val multi = try { IntentParser.multiIntentCommands(rawText) } catch (_: Exception) { null }
+                                                if (multi != null) {
+                                                    try {
+                                                        sendToTelegram("Kirim satu-satu ya 🙏 Pesan tadi terbaca dua perintah: <b>${multi.first.substringBefore(" ")}</b> dan <b>${multi.second.substringBefore(" ")}</b>. Kirim terpisah agar dua-duanya jalan.")
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
                                             }
                                         }
                                     }
