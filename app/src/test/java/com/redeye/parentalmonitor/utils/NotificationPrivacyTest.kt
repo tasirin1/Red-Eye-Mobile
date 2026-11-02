@@ -63,6 +63,17 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun masksHyphenGroupedAlphanumericCodes() {
+        // #660: kode bergrup-strip membelah token jadi potongan 2 karakter
+        // yang terlalu pendek untuk pola digit maupun token menyambung.
+        assertEquals("Kode Anda ••••", NotificationPrivacy.mask("Kode Anda AB-12-CD-34"))
+        assertEquals("Kode akses ••••", NotificationPrivacy.mask("Kode akses A1-B2-C3-D4"))
+        assertEquals("Kode Anda: ••••", NotificationPrivacy.mask("Kode Anda: AB-1234-CD"))
+        // Kontrol: dua grup saja (kode promo, model perangkat) bukan pola ini.
+        assertEquals("Kode promo HEMAT-50", NotificationPrivacy.mask("Kode promo HEMAT-50"))
+    }
+
+    @Test
     fun leavesPlainSentencesAndLongTokensUntouched() {
         assertEquals(
             "Kode verifikasi sudah dikirim ke aplikasi Anda",

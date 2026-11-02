@@ -15,6 +15,9 @@ object NotificationPrivacy {
     )
     private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]*\\d){3,}(?![ .-]*\\d)")
     private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,16}(?![\\p{L}\\p{N}])")
+    // Kode alfanumerik bergrup-strip (AB-12-CD-34): potongan per grup terlalu
+    // pendek untuk kedua pola di atas sehingga kode lolos utuh (issue #660).
+    private val GROUPED_CODES = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{2,8}(?:-[\\p{L}\\p{N}]{2,8}){2,3}(?![\\p{L}\\p{N}])")
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 
@@ -23,7 +26,11 @@ object NotificationPrivacy {
     private val MASK_TOKEN = "••••"
 
     fun mask(text: String): String {
-        val digitsMasked = DIGIT_GROUPS.replace(text, MASK_TOKEN)
+        val groupedMasked = GROUPED_CODES.replace(text) { match ->
+            val alnum = match.value.filter { it != '-' }
+            if (alnum.length >= 6 && alnum.any { it.isLetter() } && alnum.any { it.isDigit() }) MASK_TOKEN else match.value
+        }
+        val digitsMasked = DIGIT_GROUPS.replace(groupedMasked, MASK_TOKEN)
         return CODE_TOKENS.replace(digitsMasked) { match ->
             val token = match.value
             if (token.any { it.isLetter() } && token.any { it.isDigit() }) MASK_TOKEN else token
