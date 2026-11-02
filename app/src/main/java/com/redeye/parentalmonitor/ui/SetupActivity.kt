@@ -312,13 +312,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private sealed class VerifyOutcome {
-        data class Success(val effectiveChatId: String) : VerifyOutcome() {
-            // Dibawa sebagai properti badan, BUKAN parameter konstruktor:
-            // gerbang cek_metode_hilang membaca baris deklarasi data
-            // class sebagai "metode" — mengubahnya memicu GAGAL palsu
-            // "dihapus tapi masih dipanggil" (pola issue #830).
-            var botUsername: String = ""
-        }
+        data class Success(val effectiveChatId: String) : VerifyOutcome()
         data class HttpError(val code: Int, val fromGetMe: Boolean) : VerifyOutcome()
         data class Error(val detail: String) : VerifyOutcome()
         object Stale : VerifyOutcome()
@@ -382,7 +376,7 @@ class SetupActivity : AppCompatActivity() {
                 throw e
             } catch (_: Exception) {
             }
-            VerifyOutcome.Success(effectiveChat).also { it.botUsername = botUsername }
+            VerifyOutcome.Success(effectiveChat)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -1385,8 +1379,11 @@ class SetupActivity : AppCompatActivity() {
                         // Identitas bot ditampilkan (issue #872):
                         // pemasang melihat persis bot mana yang
                         // terhubung, bukan sekadar "berhasil".
-                        if (outcome.botUsername.isNotEmpty()) {
-                            Toast.makeText(this@SetupActivity, "Terhubung sebagai @" + outcome.botUsername, Toast.LENGTH_LONG).show()
+                        // Username dibaca dari prefs (disimpan
+                        // verifyCredentials saat getMe berhasil).
+                        val namaBot = try { prefs.botUsername } catch (_: Exception) { "" }
+                        if (namaBot.isNotEmpty()) {
+                            Toast.makeText(this@SetupActivity, "Terhubung sebagai @" + namaBot, Toast.LENGTH_LONG).show()
                         }
                         confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, if (rawAccessPin == STORED_MASK) restoreAccessPin(token, outcome.effectiveChatId, storedAccessPin) else rawAccessPin)
                     }
