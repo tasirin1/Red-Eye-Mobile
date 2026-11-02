@@ -722,6 +722,18 @@ object IntentParser {
         if (words.size == 3 && words[1].all { it.isDigit() } && stripEdgePunct(words[2]) in ARG_UNITS) {
             words = listOf(words[0], words[1])
         }
+        // Frasa perintah multi-kata (issue #777): resolveAliasInput dapat
+        // mengonsumsi lebih dari satu kata teks sebagai satu perintah
+        // ("jam pulang" → /jampulang). Bila ekor teks persis argumen
+        // alias, kepala frasa dihitung satu kata perintah.
+        val aliasParts = aliasInput.split(WHITESPACE).filter { it.isNotEmpty() }
+        if (aliasParts.size > 1 && words.size > aliasParts.size) {
+            val argWords = aliasParts.drop(1).map { stripEdgePunct(it.lowercase(Locale.ROOT)) }
+            val tail = words.takeLast(argWords.size).map { stripEdgePunct(it) }
+            if (tail == argWords) {
+                words = listOf(words.first()) + words.takeLast(argWords.size)
+            }
+        }
         if (words.size > 2) return null
         val tk = tokenize(text)
         // Pengecualian batal-restore dinilai dari token inti juga

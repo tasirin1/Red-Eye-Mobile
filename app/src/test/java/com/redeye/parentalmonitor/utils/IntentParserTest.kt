@@ -782,6 +782,19 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasAcceptsTwoWordCommandPhrases() {
+        // Issue #777: frasa perintah dua kata ("jam pulang") dihitung
+        // satu perintah oleh gerbang kata bila ekor teks persis argumen
+        // alias yang dibentuk resolveAliasInput.
+        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("jam pulang 21:30", "/jampulang 21:30"))
+        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang jam 21:30", "/jampulang 21:30"))
+        assertEquals("/hematdata on", IntentParser.intentOrAlias("hemat kuota on", "/hematdata on"))
+        assertEquals("/cekmati", IntentParser.intentOrAlias("cek mati", "/cekmati"))
+        // Kontrol: kalimat tiga kata biasa tetap gugur.
+        assertNull(IntentParser.intentOrAlias("kunci hp 1234", "/lock hp 1234"))
+    }
+
+    @Test
     fun parseRejectsElongatedReferenceMarkers() {
         val cases = listOf(
             "kirim foto kemarinn dong",

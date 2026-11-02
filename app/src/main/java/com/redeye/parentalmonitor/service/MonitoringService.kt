@@ -376,6 +376,10 @@ class MonitoringService : Service() {
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
         private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
         private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "restore" to "/pulihkan")
+        // Frasa perintah dua kata (issue #777): bentuk berjarak dari
+        // perintah yang sama — sebelumnya hanya kata pertama yang
+        // dipetakan sehingga bentuk ini gugur diam-diam.
+        private val ALIAS_PHRASES = mapOf("jam pulang" to "/jampulang", "pulang jam" to "/jampulang", "hemat kuota" to "/hematdata", "cek mati" to "/cekmati")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val ADOPTION_WAIT_DEADLINE_MS = COMMAND_MAX_AGE_SEC * 1000L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -6930,12 +6934,25 @@ class MonitoringService : Service() {
             } else {
                 val bare = cmd.trim().trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', '?', '!', '.', ',', ':', ';').lowercase(java.util.Locale.ROOT)
                 if (bare.isEmpty()) return null
+                val frasa = frasaAlias(bare, arg)
+                if (frasa != null) return frasa
                 val mapped = ALIAS_COMMANDS[bare] ?: return null
                 if (arg.isEmpty()) mapped else "$mapped $arg"
             }
         } catch (_: Exception) {
             null
         }
+    }
+
+    // Frasa dua kata (issue #777): kata pertama teks + kata pertama
+    // argumen membentuk satu perintah; sisa argumen diteruskan utuh.
+    private fun frasaAlias(kataPertama: String, arg: String): String? {
+        val bagian = arg.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (bagian.isEmpty()) return null
+        val kedua = bagian[0].trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', '?', '!', '.', ',', ':', ';').lowercase(java.util.Locale.ROOT)
+        val mapped = ALIAS_PHRASES["$kataPertama $kedua"] ?: return null
+        val sisa = bagian.drop(1).joinToString(" ")
+        return if (sisa.isEmpty()) mapped else "$mapped $sisa"
     }
 
     private fun watchList(): List<String> {
