@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penanda galat kredensial dari potongan tengah pesan panjang tidak lagi terhapus di run yang sama (issue #745): sebelumnya bila potongan tengah pesan >4000 karakter ditolak 401/403, `sendChunked` memasang penanda galat lalu keluar sebagai `Sent` (karena sisa berhasil diantrekan ulang), dan ekor `doWorkInternal` menghapus penanda itu lagi karena ada potongan yang terkirim — blokir auth 5–30 menit tidak pernah aktif dari jalur ini dan aplikasi terus memukul Telegram dengan token yang sudah ditolak. Jalur itu kini berakhir sebagai `AuthFailed` (pesan asal dibuang di tempat karena sisanya sudah terantre sebagai pesan baru), sehingga `handleAuthOrRate` memasang penanda dan run berhenti dengan benar.
 - Veto tanya jalur alias kini menilai token inti, bukan token mentah (issue #744): sebelumnya pertanyaan dua kata isi yang ditambah kata penegas ekor apa pun ("kunci apa dong", "hilang kenapa sih", "darurat gimana sekarang", "kunci kah dong") lolos dari veto karena jumlah token mentahnya 3, lalu dieksekusi sebagai perintah /lock, /hilang, /darurat — veto partikel kah/kan #713 ikut terlewati. Kata penegas ekor kini dibuang dulu sebelum pemeriksaan kata tanya (token yang cocok penanda tanya seperti "kok" tidak ikut dibuang), sama seperti pipa fallback membuangnya sebelum batas kata; perintah sah berpenegas ("kuota on dong", "kunci hp sekarang") tidak berubah.
 
 ## [1.6.585] - 2026-11-03

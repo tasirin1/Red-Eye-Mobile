@@ -706,7 +706,20 @@ class SendMessageWorker(
                             }
                         }
                     }
-                    if (remainderQueued) break
+                    if (remainderQueued) {
+                        // Hasil akhir harus AuthFailed, bukan Sent (issue
+                        // #745): penanda yang baru dipasang di atas dihapus
+                        // lagi oleh ekor doWorkInternal bila run ini keluar
+                        // sebagai Sent. handleAuthOrRate memasang ulang
+                        // penanda yang sama. Pesan asal dibuang di sini
+                        // karena sisanya sudah terantre sebagai pesan baru.
+                        try {
+                            if (origId != null) messageQueue.removeMessages(listOf(origId))
+                        } catch (_: Exception) {
+                        }
+                        authCode = outcome.code
+                        break
+                    }
                     authCode = outcome.code
                     break
                 }
@@ -739,8 +752,8 @@ class SendMessageWorker(
             }
         }
         if (rateAfter > 0L) return SendOutcome.RateLimited(rateAfter)
-        if (remainderQueued) return SendOutcome.Sent
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
+        if (remainderQueued) return SendOutcome.Sent
         if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
         if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
         return SendOutcome.Sent
