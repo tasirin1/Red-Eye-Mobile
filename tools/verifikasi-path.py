@@ -664,12 +664,59 @@ def nama_terabaikan():
     return out.splitlines() if out else []
 
 
+def kupas_komentar_gradle(teks):
+    """Buang komentar Gradle/Groovy sambil mempertahankan isi string."""
+    keluar = []
+    i, n = 0, len(teks)
+    while i < n:
+        tiga = teks[i:i + 3]
+        dua = teks[i:i + 2]
+        if tiga in ("'''", '"""'):
+            akhir = teks.find(tiga, i + 3)
+            if akhir < 0:
+                keluar.append(teks[i:])
+                break
+            keluar.append(teks[i:akhir + 3])
+            i = akhir + 3
+        elif dua == "//":
+            while i < n and teks[i] != "\n":
+                keluar.append(" ")
+                i += 1
+        elif dua == "/*":
+            keluar.append("  ")
+            i += 2
+            while i < n and teks[i:i + 2] != "*/":
+                keluar.append("\n" if teks[i] == "\n" else " ")
+                i += 1
+            if i < n:
+                keluar.append("  ")
+                i += 2
+        elif teks[i] in ("'", '"'):
+            kutip = teks[i]
+            keluar.append(kutip)
+            i += 1
+            while i < n:
+                c = teks[i]
+                keluar.append(c)
+                i += 1
+                if c == "\\" and i < n:
+                    keluar.append(teks[i])
+                    i += 1
+                elif c == kutip or c == "\n":
+                    break
+        else:
+            keluar.append(teks[i])
+            i += 1
+    return "".join(keluar)
+
+
 def modul_settings():
     """Daftar direktori modul dari settings.gradle/settings.gradle.kts
     (baris include ':app' dst) sebagai tuple komponen path."""
     teks = baca_teks("settings.gradle") or baca_teks("settings.gradle.kts")
+    teks = kupas_komentar_gradle(teks or "")
     modul = set()
-    for baris in (teks or "").splitlines():
+    for baris in teks.splitlines():
         if "include" not in baris:
             continue
         for m in re.finditer(r"""['"](:[A-Za-z0-9_:\-]+)['"]""", baris):
