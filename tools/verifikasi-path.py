@@ -742,9 +742,12 @@ def cek_secret_riwayat(gagal, rentang):
         # UTF-16 TANPA BOM juga tak jadi kandidat (issue #817): tak
         # ada BOM untuk disapu dan NUL memutus saringan grep. Uji pola
         # NUL-nya langsung pada blob berkas yang berubah di commit ini.
+        # --root + -m (issue #835): tanpa keduanya diff-tree kosong
+        # untuk commit root dan commit merge, jadi berkas UTF-16
+        # yang lahir di sana tak pernah terjangkau kanal ini.
         berubah = jalan("git", "diff-tree", "--no-commit-id",
-                        "--name-only", "-r", sha) or ""
-        for path in berubah.splitlines():
+                        "--name-only", "-r", "--root", "-m", sha) or ""
+        for path in dict.fromkeys(berubah.splitlines()):
             path = path.strip()
             if not path:
                 continue
@@ -823,7 +826,10 @@ def nama_riwayat(rev):
     ujung-ke-ujung dan bukan rev-list --objects) adalah satu-satunya
     sumber lengkap: diff ujung menyembunyikan rename di tengah
     rentang, dan rev-list menamai blob yang sama hanya sekali."""
-    out = jalan("git", "log", "--format=", "--name-status", rev) or ""
+    # -m (issue #835): tanpa itu git log tak menampilkan diff commit
+    # merge sama sekali, jadi nama yang hanya hidup di resolusi
+    # merge tak terlihat daftar ini.
+    out = jalan("git", "log", "--format=", "--name-status", "-m", rev) or ""
     hasil = []
     for baris in out.splitlines():
         kolom = baris.split("\t")
