@@ -25,7 +25,16 @@ siapkan_rantai() {
     if [ -f "$1" ] && ! grep -q "verifikasi-path.py" "$1" 2>/dev/null; then
         BAK="$1.bak-$(date +%Y%m%d%H%M%S)"
         if cp "$1" "$BAK" 2>/dev/null; then
-            echo "Kait lama ditemukan; ia DIRANTAI (tetap dijalankan lebih dulu): $BAK" >&2
+            # Salinan wajib bisa-dijalankan (issue #861): cp dari kait
+            # asal yang tak eksekutabel menghasilkan salinan yang
+            # penjaga -x kait baru lewati diam-diam selamanya,
+            # sementara pengumuman menyebutnya dirantai.
+            chmod +x "$BAK" 2>/dev/null || true
+            if [ -x "$BAK" ]; then
+                echo "Kait lama ditemukan; ia DIRANTAI (tetap dijalankan lebih dulu): $BAK" >&2
+            else
+                echo "PERINGATAN: salinan kait lama tidak bisa dibuat bisa-dijalankan; rantai TIDAK akan berjalan: $BAK" >&2
+            fi
             printf '%s' "$BAK"
         fi
     elif [ -f "$1" ]; then
