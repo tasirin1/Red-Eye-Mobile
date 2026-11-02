@@ -6572,11 +6572,13 @@ class MonitoringService : Service() {
         vehicleFastSamples = 0
         val last = try { preferencesManager.lastVehicleAlertAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < VEHICLE_COOLDOWN_MS) return
-        try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
         val kmh = (speed * 3.6f).toInt()
         val level = batteryLevel()
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
-        sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery")
+        // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
+        if (sendToTelegram("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery")) {
+            try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
+        }
         try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
     }
 
@@ -6643,8 +6645,10 @@ class MonitoringService : Service() {
             if (last > now) {
                 preferencesManager.dataSaverNoticeAt = now
             } else if (last <= 0L || now - last >= 6 * 60 * 60_000L) {
-                preferencesManager.dataSaverNoticeAt = now
-                sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")
+                // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
+                if (sendToTelegram("📶 <b>Hemat kuota</b>: $pending foto/video/rekaman ditahan dulu, dikirim otomatis begitu tersambung Wi-Fi.")) {
+                    preferencesManager.dataSaverNoticeAt = now
+                }
             }
         } catch (_: Exception) {
         }
@@ -7541,15 +7545,20 @@ class MonitoringService : Service() {
                 notes.add("sepi >48 jam (data terakhir ${formatDate(lastData)})")
             }
             val fails = try { preferencesManager.locFailCount } catch (_: Exception) { 0 }
-            if (fails >= 5) {
+            val failsTercatat = fails >= 5
+            if (failsTercatat) {
                 notes.add("lokasi gagal $fails x beruntun")
-                resetLocFailCount()
             }
             val q = try { messageQueue.getQueueSize() } catch (_: Exception) { 0 }
             if (q >= 50) notes.add("antrean $q (≥50)")
             if (notes.isEmpty()) return
-            try { preferencesManager.healthAlertAt = now } catch (_: Exception) { }
-            sendToTelegram("🩺 Health: " + notes.joinToString("; ") + ". Cek /status & /perms.")
+            // Cap jeda + reset penghitung gagal SESUDAH kirim berhasil
+            // (issue #798, pola #737): sebelumnya kabar yang terbuang
+            // tetap menghabiskan jeda 12 jam dan catatan kegagalannya.
+            if (sendToTelegram("🩺 Health: " + notes.joinToString("; ") + ". Cek /status & /perms.")) {
+                try { preferencesManager.healthAlertAt = now } catch (_: Exception) { }
+                if (failsTercatat) resetLocFailCount()
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -7909,8 +7918,10 @@ class MonitoringService : Service() {
         val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < hours * 3_600_000L) return
         if (awaitingOwnerLogin()) return
-        try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
-        sendToTelegram(aliveReportText())
+        // Cap sesudah kirim berhasil (issue #798, pola #737).
+        if (sendToTelegram(aliveReportText())) {
+            try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
+        }
     }
 
     private fun formatDate(timestamp: Long): String {
@@ -9532,8 +9543,10 @@ class MonitoringService : Service() {
             val nowMs = System.currentTimeMillis()
             val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
             if (nowMs >= last && nowMs - last < 24 * 60 * 60_000L) return
-            try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
-            sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
+            // Cap jeda sesudah kirim berhasil (issue #798, pola #737).
+            if (sendToTelegram("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")) {
+                try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
+            }
         } catch (_: Exception) {
         }
     }
