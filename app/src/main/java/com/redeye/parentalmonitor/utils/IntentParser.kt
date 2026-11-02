@@ -329,7 +329,7 @@ object IntentParser {
         return padded.contains(" malam ini ")
     }
 
-    private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok")
+    private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok", "kah", "kan")
 
     private fun isCancellation(token: String): Boolean {
         if (token == "batalin") return true

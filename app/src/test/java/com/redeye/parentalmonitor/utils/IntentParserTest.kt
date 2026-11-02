@@ -461,6 +461,23 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsKahKanQuestions() {
+        // #713: partikel tanya "kah"/tag konfirmasi "kan" adalah penanda
+        // pertanyaan, bukan perintah — sisa #625/#658.
+        assertNull(IntentParser.parse("kirim foto kah"))
+        assertNull(IntentParser.parse("kirim foto kan"))
+        assertNull(IntentParser.parse("kirim screenshot kah"))
+        assertNull(IntentParser.intentOrAlias("darurat kah", "/darurat kah"))
+        assertNull(IntentParser.intentOrAlias("darurat kan", "/darurat kan"))
+        assertNull(IntentParser.intentOrAlias("kunci kah", "/lock kah"))
+        assertNull(IntentParser.intentOrAlias("sembuh kah", "/sembuh kah"))
+        assertNull(IntentParser.intentOrAlias("hilang kah", "/hilang kah"))
+        // Kontrol: imbuhan -kan pada kata kerja bukan partikel tanya.
+        assertEquals("/photo", IntentParser.parse("kirimkan foto sekarang"))
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))
