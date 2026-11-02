@@ -2300,14 +2300,37 @@ class MonitoringService : Service() {
     }
 
 
+    // Hash token yang mengambil tiap update (issue #877): finish
+    // membedakan generasi naik karena migrasi chat (token sama —
+    // aliran update tetap milik bot yang sama) dari pergantian
+    // token (aliran berbeda, konfirmasi lama memang harus gugur).
+    private val updateTokenHashes = java.util.Collections.synchronizedMap(HashMap<Long, Int>())
+
     private fun beginUpdateTrack(updateId: Long, generation: Long) {
         updateOffsetTracker.begin(updateId, generation)
+        try { updateTokenHashes[updateId] = botToken.hashCode() } catch (_: Exception) { }
     }
 
     private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
+        val tokenHashAtBegin = try { synchronized(updateTokenHashes) { updateTokenHashes.remove(updateId) } } catch (_: Exception) { null }
         val currentGeneration = try { preferencesManager.credentialGeneration } catch (_: Exception) { -1L }
         if (generation != currentGeneration) {
-            updateOffsetTracker.forget(updateId, generation)
+            // Generasi naik di tengah dispatch (issue #877): migrasi
+            // grup ke supergrup lewat setChatIdSync menaikkan
+            // generasi TANPA mengganti token dan tanpa mereset
+            // offset, jadi membuang konfirmasi di sini membuat
+            // perintah yang sudah jalan terkirim ulang sesudah
+            // restart dan dieksekusi dua kali. Bila token terbukti
+            // sama, tag ulang entri ke generasi kini dan selesaikan
+            // seperti biasa; pergantian token tetap membuangnya.
+            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == botToken.hashCode() } catch (_: Exception) { false }
+            if (tokenSame) {
+                updateOffsetTracker.forget(updateId, generation)
+                updateOffsetTracker.begin(updateId, currentGeneration)
+                updateOffsetTracker.finish(updateId, currentGeneration, delivered)?.let { persistUpdateOffset(it, currentGeneration) }
+            } else {
+                updateOffsetTracker.forget(updateId, generation)
+            }
             return
         }
         updateOffsetTracker.finish(updateId, generation, delivered)?.let { persistUpdateOffset(it, generation) }
