@@ -6786,16 +6786,19 @@ class MonitoringService : Service() {
     }
 
     private fun usageEventSummary(hours: Int): List<String> {
-        return usageEventSummary(usageSummary(hours))
+        // Jendela bergulir (mis. /ringkas 6 jam) WAJIB berlabel: tanpa label
+        // angkanya terbaca sebagai hitungan hari ini (issue #678).
+        return usageEventSummary(usageSummary(hours), windowLabel = "$hours jam terakhir")
     }
 
-    private fun usageEventSummary(summary: com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary?, firstUnlockTodayAt: Long = 0L, unlocksTodayCount: Int = -1): List<String> {
+    private fun usageEventSummary(summary: com.redeye.parentalmonitor.utils.UsageEventsSummary.Summary?, firstUnlockTodayAt: Long = 0L, unlocksTodayCount: Int = -1, windowLabel: String? = null): List<String> {
         if (summary == null) return emptyList()
         val out = mutableListOf<String>()
         val unlocksShown = if (unlocksTodayCount >= 0) unlocksTodayCount else summary.unlocks
         val firstShown = if (firstUnlockTodayAt > 0L) firstUnlockTodayAt else summary.firstUnlockAt
         if (unlocksShown > 0) {
-            out.add("HP dibuka: ${unlocksShown}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(firstShown)}")
+            val label = if (windowLabel != null && unlocksTodayCount < 0) "HP dibuka ($windowLabel)" else "HP dibuka"
+            out.add("$label: ${unlocksShown}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(firstShown)}")
         }
         val labels = summary.topOpens.map { (pkg, count) -> "${appLabelFor(pkg)} ${count}x" }
         if (labels.isNotEmpty()) out.add("Paling sering dibuka: " + labels.joinToString(", "))
