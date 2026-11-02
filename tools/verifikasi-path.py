@@ -707,6 +707,50 @@ def cek_paritas_resource(gagal):
             gagal.append("Argumen format beda di values-in: " + nama)
 
 
+def cek_plurals(gagal):
+    """Kuantitas plurals wajib sah CLDR: selalu ada 'other', tak melebihi
+    acuan values/, dan khusus values-in hanya 'other' (CLDR bahasa 'in'
+    hanya mengenal other — quantity lain = galat lint UnusedQuantity)."""
+    dasar_res = os.path.join(AKAR, "app/src/main/res")
+    if not os.path.isdir(dasar_res):
+        return
+    pola = re.compile(r'<plurals\s+name="([^"]+)"[^>]*>(.*?)</plurals>', re.S)
+    pola_item = re.compile(r'<item\s+quantity="([^"]+)"')
+
+    def peta_plurals(dirpath):
+        peta = {}
+        for nama_berkas in sorted(os.listdir(dirpath)):
+            if not nama_berkas.endswith(".xml"):
+                continue
+            isi = baca(os.path.relpath(os.path.join(dirpath, nama_berkas), AKAR))
+            if isi is None:
+                continue
+            for nama, badan in pola.findall(kupas_komentar_xml(isi)):
+                peta[nama] = set(pola_item.findall(badan))
+        return peta
+
+    acuan = peta_plurals(os.path.join(dasar_res, "values"))
+    for nama, kuantitas in sorted(acuan.items()):
+        if "other" not in kuantitas:
+            gagal.append("Plurals %s di values tanpa quantity 'other'" % nama)
+    for entri in sorted(os.listdir(dasar_res)):
+        if not entri.startswith("values-"):
+            continue
+        dirpath = os.path.join(dasar_res, entri)
+        if not os.path.isdir(dirpath):
+            continue
+        for nama, kuantitas in sorted(peta_plurals(dirpath).items()):
+            if nama not in acuan:
+                gagal.append("Plurals %s di %s tanpa acuan di values" % (nama, entri))
+                continue
+            if "other" not in kuantitas:
+                gagal.append("Plurals %s di %s tanpa quantity 'other'" % (nama, entri))
+            if entri == "values-in" and kuantitas != {"other"}:
+                gagal.append("Plurals %s di values-in memakai quantity selain 'other' (CLDR 'in' hanya other): %s" % (nama, ", ".join(sorted(kuantitas - {"other"}))))
+            elif kuantitas - acuan[nama]:
+                gagal.append("Plurals %s di %s memakai quantity di luar acuan values: %s" % (nama, entri, ", ".join(sorted(kuantitas - acuan[nama]))))
+
+
 def cek_ikon_launcher(gagal):
     """Ikon adaptive (mipmap-anydpi-v26) wajib punya cadangan non-v26 bila minSdk < 26."""
     m = re.search(r"minSdk\s+(\d+)", baca_teks("app/build.gradle"))
@@ -863,6 +907,7 @@ def utama():
     cek_sinkron_terjemah(gagal)
     cek_import_mati(gagal)
     cek_paritas_resource(gagal)
+    cek_plurals(gagal)
     cek_ikon_launcher(gagal)
     cek_aturan_repo(gagal, berubah)
     if args.semua:
