@@ -2996,7 +2996,7 @@ class MonitoringService : Service() {
             "/photointerval" -> handlePhotoIntervalCommand(arg)
             "/patrol" -> handlePatrolCommand(arg)
             "/patrolinterval" -> {
-                val minutes = arg.toIntOrNull()
+                val minutes = NumericArg.parse(arg)
                 if (minutes == null || minutes !in 5..180) {
                     sendToTelegram("Cara pakai: /patrolinterval &lt;5-180&gt;")
                 } else {

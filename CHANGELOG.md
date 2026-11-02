@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- `/patrolinterval` kini menerima satuan seperti handler interval lain (issue #775): "30 menit" dan "30mnt" tidak lagi ditolak.
 - `/layar` kini konsisten antarjalur (issue #774): bentuk slash menerima "6 jam"/"6jam" seperti jalur alami, dan jam desimal di jalur alami ("layar 6,5 jam") dibulatkan ke jam terdekat alih-alih diam-diam menjadi laporan bawaan 24 jam.
 - Kata "manajer", "harimau", "bilangan", dan "batalion" tidak lagi tertangkap penanda pendek yang mirip awalannya (issue #773): "kirim foto manajer sekarang" kini berjalan (sebelumnya terveto sebagai pertanyaan "mana") dan "laporan harimau" tidak lagi tersasar menjadi laporan harian.
 - Pemindai token gerbang kini juga mengenali bentuk gabungan yang sebelumnya lolos (issue #772): token base64 yang terbelah antar literal, token mentah terbelah titik, dan token yang disisipi interpolasi `${...}`. Pemadatan dibuat sempit agar kata-kata kode biasa tidak tersambung menjadi pola palsu.
