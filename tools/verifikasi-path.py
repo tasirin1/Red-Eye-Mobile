@@ -736,6 +736,28 @@ def cek_secret_pesan(gagal, rentang):
             return
 
 
+def cek_secret_pesan_semua(gagal):
+    """Pindai pesan SELURUH commit terjangkau HEAD (issue #800).
+
+    Mode --semua adalah pindai forensik berkala: pesan commit yang
+    sudah telanjur ter-push pun harus tertandai agar token yang
+    bocor bisa dirotasi. Satu panggilan git log berformat rekaman
+    agar riwayat panjang (ribuan commit) tidak dibayar per commit.
+    """
+    out = jalan("git", "log", "--format=%H%x00%B%x1e", "HEAD") or ""
+    for rekaman in out.split("\x1e"):
+        rekaman = rekaman.strip("\n")
+        if not rekaman.strip():
+            continue
+        sha, _, pesan = rekaman.partition("\x00")
+        if mengandung_token(pesan):
+            gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
+                         "token di pesan commit hidup permanen di riwayat; "
+                         "rotasi token itu. Kredensial hanya via input "
+                         "manual SetupActivity" % sha.strip()[:8])
+            return
+
+
 def cek_secret_tak_lacak(gagal):
     """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
     berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
@@ -1200,6 +1222,7 @@ def utama():
     berubah += [b for b in nama_tak_lacak() if b not in berubah]
     if args.semua:
         berubah = [p for p in jalan_repo("app")]
+        cek_secret_pesan_semua(gagal)
 
     ada_uji = os.path.isdir(UJI)
     cek_xml(gagal)
