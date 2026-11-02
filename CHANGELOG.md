@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.590] - 2026-11-03
+
 ### Fixed
 
 - Pemasang kait gerbang kini merantai kait lama, bukan menggusurnya (#839): kait pre-push dari perkakas lain yang sudah terpasang sebelumnya hanya disalin cadangan lalu berhenti jalan diam-diam; kini kait lama tetap dijalankan lebih dulu pada tiap push (masukan refs dibagikan), kegagalannya tetap menggagalkan push, dan memasang ulang mempertahankan rantai itu.
