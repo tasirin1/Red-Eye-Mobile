@@ -427,6 +427,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_HELD_PHOTO_HASHES = "held_photo_hashes"
         private const val KEY_DIGEST_AT = "digest_at"
         private const val KEY_PATROL_LAST_AT = "patrol_last_at"
+        private const val KEY_PATROL_LAST_ELAPSED = "patrol_last_elapsed"
         private const val KEY_BATTERY_ALERT_AT = "battery_alert_at"
         private const val KEY_LAST_LOC_LAT = "last_loc_lat_e6"
         private const val KEY_LAST_LOC_LON = "last_loc_lon_e6"
@@ -1388,6 +1389,10 @@ class PreferencesManager(context: Context) {
     var patrolLastAt: Long
         get() = prefLong(KEY_PATROL_LAST_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PATROL_LAST_AT, value).apply()
+
+    var patrolLastElapsed: Long
+        get() = prefLong(KEY_PATROL_LAST_ELAPSED, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PATROL_LAST_ELAPSED, value).apply()
 
     var batteryAlertAt: Long
         get() = prefLong(KEY_BATTERY_ALERT_AT, 0L)

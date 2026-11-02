@@ -1073,7 +1073,15 @@ class MonitoringService : Service() {
                     val photoPaused = System.currentTimeMillis() < cachedPhotoPausedUntil
                     val sleepMs = if (!cachedMonitoringPaused && !photoPaused && !isNightPaused() && cachedPatrolEnabled) {
                         val lastPatrol = if (firstRound) try { preferencesManager.patrolLastAt } catch (_: Exception) { 0L } else 0L
-                        val remainMs = if (lastPatrol > 0L) lastPatrol + effMinutes * 60_000L - System.currentTimeMillis() else 0L
+                        val lastPatrolElapsed = if (firstRound) try { preferencesManager.patrolLastElapsed } catch (_: Exception) { 0L } else 0L
+                        val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                        val remainMs = when {
+                            lastPatrolElapsed > 0L && nowElapsed >= lastPatrolElapsed ->
+                                (effMinutes * 60_000L - (nowElapsed - lastPatrolElapsed)).coerceAtLeast(0L)
+                            lastPatrol > 0L ->
+                                (lastPatrol + effMinutes * 60_000L - System.currentTimeMillis()).coerceIn(0L, effMinutes * 60_000L)
+                            else -> 0L
+                        }
                         if (remainMs > 0L) {
                             remainMs
                         } else {
@@ -1156,7 +1164,10 @@ class MonitoringService : Service() {
         // yang gugur oleh pengecualian di tengah tidak ikut menekan
         // putaran berikutnya. Laporan yang terantre tetap terhitung
         // berjalan — memang sudah diterima antrean untuk dikirim.
-        try { preferencesManager.patrolLastAt = System.currentTimeMillis() } catch (_: Exception) { }
+        try {
+            preferencesManager.patrolLastAt = System.currentTimeMillis()
+            preferencesManager.patrolLastElapsed = android.os.SystemClock.elapsedRealtime()
+        } catch (_: Exception) { }
     }
 
     private suspend fun delayMs(totalMs: Long) {
