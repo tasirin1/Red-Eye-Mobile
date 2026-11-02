@@ -638,6 +638,10 @@ class IntentParserTest {
         assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 DONG", "/jampulang 21:30 DONG"))
         assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 😀", "/jampulang 21:30 😀"))
         assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on 😀", "/hematdata on 😀"))
+        // Angka + satuan = satu argumen (issue #731).
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 meter", "/jemput 500 meter"))
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 m", "/jemput 500 m"))
+        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 meter dong", "/jemput 500 meter dong"))
         // mergeTextArgs setoleran parse(): elongasi, tanda hubung, kata
         // kunci berulang tidak lagi menelan argumen (issue #727).
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim footo depan sekarang", null))

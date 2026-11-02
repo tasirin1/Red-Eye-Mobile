@@ -666,6 +666,12 @@ object IntentParser {
         while (words.size > 2 && stripEdgePunct(words.last()) in TAIL_FILLERS) {
             words = words.dropLast(1)
         }
+        // Angka + satuan dihitung satu argumen (issue #731): "jemput 500
+        // meter" sebelumnya 3 kata dan gugur total, padahal /layar menerima
+        // bentuk yang sama.
+        if (words.size == 3 && words[1].all { it.isDigit() } && stripEdgePunct(words[2]) in ARG_UNITS) {
+            words = listOf(words[0], words[1])
+        }
         if (words.size > 2) return null
         val tk = tokenize(text)
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
@@ -674,6 +680,7 @@ object IntentParser {
     }
 
     private val TAIL_FILLERS = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
+    private val ARG_UNITS = setOf("meter", "m", "detik", "menit", "jam", "dtk", "mnt")
 
     // Kata penegas ekor juga dibuang dari argumen alias yang dikembalikan
     // (issue #728): handler hilir memeriksa argumen secara persis, jadi
@@ -687,6 +694,11 @@ object IntentParser {
         var args = parts.drop(1)
         while (args.size > 1 && (stripEdgePunct(args.last().lowercase(Locale.ROOT)) in TAIL_FILLERS || args.last().none { it.isLetterOrDigit() })) {
             args = args.dropLast(1)
+        }
+        // Satuan sesudah angka dibuang dari argumen yang dikembalikan
+        // (issue #731): "/jemput 500 meter" menjadi "/jemput 500".
+        if (args.size == 2 && args[0].all { it.isDigit() } && stripEdgePunct(args[1].lowercase(Locale.ROOT)) in ARG_UNITS) {
+            args = listOf(args[0])
         }
         val lastClean = stripEdgePunct(args.last())
         return (listOf(parts[0]) + args.dropLast(1) + lastClean).joinToString(" ")

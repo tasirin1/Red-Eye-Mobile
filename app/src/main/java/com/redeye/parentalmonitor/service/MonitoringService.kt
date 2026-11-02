@@ -45,6 +45,7 @@ import com.redeye.parentalmonitor.repository.CallLogRepository
 import com.redeye.parentalmonitor.repository.SmsRepository
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.NotificationPrivacy
+import com.redeye.parentalmonitor.utils.NumericArg
 import com.redeye.parentalmonitor.utils.PatternBaseline
 import com.redeye.parentalmonitor.utils.PermReport
 import com.redeye.parentalmonitor.utils.PhotoFingerprint
@@ -3132,7 +3133,7 @@ class MonitoringService : Service() {
                 }
             )
         } else {
-            val rad = sub.toIntOrNull()
+            val rad = NumericArg.parse(sub)
             if (rad == null || rad !in 50..5000) {
                 sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
             } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
@@ -4286,7 +4287,7 @@ class MonitoringService : Service() {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
         }
-        val seconds = arg.toIntOrNull()
+        val seconds = NumericArg.parse(arg)
         if (seconds == null || seconds !in 5..600) {
             sendToTelegram("Cara pakai: /record &lt;5-600&gt; (detik)")
         } else if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -4316,7 +4317,7 @@ class MonitoringService : Service() {
             sendToTelegram("⏸️ Monitoring dijeda. Kirim /resume dulu.")
             return
         }
-        val seconds = arg.toIntOrNull()
+        val seconds = NumericArg.parse(arg)
         if (seconds == null || seconds !in 5..MAX_VIDEO_SECONDS.toInt()) {
             sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (seconds)")
         } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
@@ -4514,7 +4515,7 @@ class MonitoringService : Service() {
             val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
             sendToTelegram("💚 Heartbeat: " + if (hours <= 0) "mati. Pakai /heartbeat &lt;1-48&gt; untuk menyalakan." else "tiap $hours jam.")
         } else {
-            val hours = arg.trim().toIntOrNull()
+            val hours = NumericArg.parse(arg)
             if (hours == null || hours < 0 || hours > 48) {
                 sendToTelegram("Cara pakai: /heartbeat &lt;0-48&gt; (0 = matikan).")
             } else {
@@ -4648,7 +4649,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleSyncIntervalCommand(arg: String) {
-        val minutes = arg.toIntOrNull()
+        val minutes = NumericArg.parse(arg)
         if (minutes == null || minutes !in 1..1440) {
             sendToTelegram("Cara pakai: /syncinterval &lt;1-1440&gt; (menit)")
         } else {
@@ -4925,7 +4926,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handlePhotoIntervalCommand(arg: String) {
-        val minutes = arg.toIntOrNull()
+        val minutes = NumericArg.parse(arg)
         if (minutes == null || minutes !in 0..60) {
             sendToTelegram("Cara pakai: /photointerval &lt;0-60&gt; (0 = manual saja)")
         } else if (minutes == 0) {
