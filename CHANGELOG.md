@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Berkas UTF-16 di riwayat kini tertangkap gerbang juga (issue #801): jalur riwayat rentang kini mengambil isi blob sebagai biner dan mendekode mengikuti BOM, plus menyapu blob ber-BOM UTF-16 yang tak pernah jadi kandidat saringan grep.
 - Jemput tidak lagi mati sebelum kabarnya terkonfirmasi (issue #793): radius jemput yang diklaim saat anak terdeteksi dekat rumah kini dipulihkan bila pengiriman kabar gagal, jadi fitur tidak nonaktif permanen hanya karena kabar pertama terbuang (mis. sebelum pemilik login).
 - Penandaan "sudah diteruskan" di jalur salvage notifikasi kini per item (issue #791): varian antrean baru melaporkan keselamatan tiap pesan, jadi bila sebagian batch tereviksi, item yang selamat tetap ditandai (tidak dobel saat replay) — pola all-or-nothing sebelumnya justru menggabungkan dua kerugian itu.
 - Perintah batal /pulihkan kini memakai kosakata yang sama dengan parser (issue #789): "batalkan", "batalin", dan "pembatalan" kini benar-benar membatalkan sesi restore — sebelumnya hanya "batal" persis yang diterima handler, sehingga kata batal lain jatuh sebagai tebakan kode yang salah (mode ketat: ikut mengunci kode restore).

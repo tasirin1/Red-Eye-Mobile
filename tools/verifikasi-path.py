@@ -79,6 +79,18 @@ def jalan(*args):
     return hasil.stdout if hasil.returncode == 0 else None
 
 
+def jalan_biner(*args):
+    # Varian biner (issue #801): isi blob riwayat harus didekode
+    # mengikuti BOM lewat _dekode; jalan() teks memutus pola token
+    # UTF-16 oleh byte NUL antar karakter.
+    try:
+        hasil = subprocess.run(
+            list(args), cwd=AKAR, capture_output=True, timeout=120)
+    except Exception:
+        return None
+    return hasil.stdout if hasil.returncode == 0 else None
+
+
 def daftar_berkas_berubah(rentang):
     """Nama file berubah pada rentang diff (None bila revisi tak valid)."""
     if rentang:
@@ -672,7 +684,8 @@ def cek_secret_riwayat(gagal, rentang):
             if not teks:
                 continue
             path = teks.split(":", 1)[1] if ":" in teks else teks
-            isi = jalan("git", "show", "%s:%s" % (sha, path))
+            mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
+            isi = _dekode(mentah) if mentah is not None else None
             if mengandung_token(isi):
                 gagal.append("Kemungkinan token bot asli (base64/terbelah) "
                              "di %s pada commit %s (riwayat rentang) — "
@@ -681,6 +694,25 @@ def cek_secret_riwayat(gagal, rentang):
                              "via input manual SetupActivity"
                              % (path, sha[:8]))
                 return
+        # Berkas UTF-16 tak pernah jadi kandidat di atas (issue #801):
+        # byte NUL antar karakter memutus regex saringan grep. Sapu
+        # blob ber-BOM UTF-16 secara terpisah dan uji sesudah didekode.
+        for bom in (b"\xff\xfe", b"\xfe\xff"):
+            out = jalan_biner("git", "grep", "-a", "-l", "-F", "-e", bom, sha) or b""
+            for baris in out.decode("utf-8", errors="replace").splitlines():
+                teks = baris.strip()
+                if not teks:
+                    continue
+                path = teks.split(":", 1)[1] if ":" in teks else teks
+                mentah = jalan_biner("git", "show", "%s:%s" % (sha, path))
+                if mentah is not None and mengandung_token(_dekode(mentah)):
+                    gagal.append("Kemungkinan token bot asli (UTF-16) "
+                                 "di %s pada commit %s (riwayat rentang) — "
+                                 "token tetap hidup di riwayat walau sudah "
+                                 "dihapus di pohon akhir. Kredensial hanya "
+                                 "via input manual SetupActivity"
+                                 % (path, sha[:8]))
+                    return
 
 
 def cek_secret_pesan(gagal, rentang):
