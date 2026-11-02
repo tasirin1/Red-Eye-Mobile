@@ -9555,12 +9555,26 @@ class MonitoringService : Service() {
                 else if (!was && now) regained.add(permLabels[i].lowercase(java.util.Locale.ROOT))
             }
             if (lost.isNotEmpty() || regained.isNotEmpty()) {
-                try { preferencesManager.setPermSnapshotSync(cur) } catch (_: Exception) { }
                 val locLabel = permLabels[6].lowercase(java.util.Locale.ROOT)
                 val bgLabel = permLabels[7].lowercase(java.util.Locale.ROOT)
                 val lostShown = if (lost.contains(locLabel)) lost.filter { it != bgLabel } else lost
-                if (lostShown.isNotEmpty()) sendToTelegram("⚠️ Izin hilang: " + lostShown.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.")
-                if (regained.isNotEmpty()) sendToTelegram("✅ Izin kembali: " + regained.joinToString(", ") + ".")
+                var notified = false
+                if (lostShown.isNotEmpty()) {
+                    if (sendToTelegramStatus("⚠️ Izin hilang: " + lostShown.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.") != SendStatus.DROPPED) notified = true
+                }
+                if (regained.isNotEmpty()) {
+                    if (sendToTelegramStatus("✅ Izin kembali: " + regained.joinToString(", ") + ".") != SendStatus.DROPPED) notified = true
+                }
+                // Snapshot adalah memori deteksi transisi (issue
+                // #808): majukan HANYA sesudah kabar transisi
+                // terkirim/terantre. Sebelumnya snapshot ditulis
+                // lebih dulu, jadi transisi yang kabarnya terbuang
+                // (mis. pra-login) hilang permanen — tak pernah
+                // terdeteksi lagi. Mask tunggal tak bisa memajukan
+                // sebagian; satu kabar yang lolos memajukan keduanya.
+                if (notified) {
+                    try { preferencesManager.setPermSnapshotSync(cur) } catch (_: Exception) { }
+                }
                 return
             }
             val missing = PermReport.missingLabels(cur, permLabels)

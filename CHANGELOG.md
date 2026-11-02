@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Snapshot izin kini dimajukan hanya sesudah kabar transisinya terkirim atau terantre (#808): sebelumnya snapshot ditulis sebelum kirim, jadi izin yang hilang/kembali saat kabarnya terbuang (mis. sebelum login owner) tidak pernah terdeteksi lagi.
 - Alert sekolah tidak lagi kelaparan oleh alert jam malam (#807): sesudah percobaan jam malam malam itu terpakai, evaluasi posisi yang sama kini tetap menilai cabang sekolah; sebelumnya kembali tanpa syarat di blok jam malam membuat alert sekolah tak pernah terkirim selama perangkat dinilai di luar rumah (dengan jam malam mulai siang, bisa hilang seharian).
 - Kontrak hasil kirim kini membedakan terkirim / terantre / terbuang (#806): nilai gagal lama menyamakan pesan yang terbuang dengan yang sudah masuk antrean, sehingga cap jeda alert (pagar, jemput, baterai, aksesibilitas, heartbeat, izin, kendaraan, quiet-health, hemat kuota, jam malam/sekolah) menunggu "terkirim langsung" dan mengirim ulang alert yang sama selama gangguan jaringan sampai terkirim dobel. Cap kini mengikuti "terkirim atau terantre"; hanya pesan yang sungguh terbuang (pra-login, ditolak permanen, antrean menolak) yang tidak mencap.
 
