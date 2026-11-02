@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pindai kata pantau kini dibatasi pada 8.192 karakter pertama tiap teks (#857): penilaian atas teks utuh sebelumnya membuat satu tampilan teks raksasa (dokumen/chat sangat panjang) mahal dipindai berulang kali dan menunda pemindaian jendela lain; kata pantau adalah kata pendek di konten yang tampak.
 - Kegagalan memutar berkas pada antrean kirim media kini tercatat di log (#856): penulisan ulang waktu berkas yang gagal sebelumnya tak terlihat sama sekali (hasilnya dibuang), sehingga perputaran bisa berhenti bekerja diam-diam dan berkas yang sama kembali memakan seluruh jatah kirim.
 - /bersihkan media kini menilai umur dari cap waktu di nama berkas, bukan lastModified (#855): perputaran antrean kirim menulis ulang lastModified sehingga berkas tua yang baru gagal kirim terasa baru lahir dan selalu lolos dibersihkan; nama berkas media memang menyematkan waktu pembuatannya.
 - Aplikasi yang di-uninstall kini dilupakan dari daftar aplikasi dikenal (#854): sebelumnya nama paket tersimpan seumur pemasangan, jadi aplikasi yang dipasang ulang (terutama saat monitoring sedang jeda) tak pernah lagi memicu alert "aplikasi baru"; kini uninstall menghapusnya dari daftar dan pemasangan ulang teralert seperti biasa.

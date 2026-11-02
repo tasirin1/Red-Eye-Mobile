@@ -226,4 +226,14 @@ class AppWatchTest {
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
         assertFalse(AppWatch.isSensitivePackage("com.mobile.legends"))
     }
+
+    @Test
+    fun hitTerbatasPadaKepalaTeks() {
+        // #857: kata pantau di kepala teks tetap kena; yang hanya
+        // muncul sesudah 8.192 karakter tidak dinilai.
+        val keywords = listOf("judi")
+        assertEquals("judi", AppWatch.hit(keywords, "awal judi " + "x".repeat(9000)))
+        assertNull(AppWatch.hit(keywords, "x".repeat(9000) + " judi"))
+        assertEquals("judi", AppWatch.hit(keywords, "teks pendek ada judi di sini"))
+    }
 }

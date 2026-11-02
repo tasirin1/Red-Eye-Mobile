@@ -74,9 +74,18 @@ object AppWatch {
         return true
     }
 
+    // Batas teks yang dinilai hit() (issue #857): sejak #830 kata
+    // pantau dinilai atas teks node UTUH, satu node raksasa membuat
+    // lowercase + belah kata setara ukurannya di eksekutor A11y.
+    // Kata pantau adalah kata/frasa pendek di konten yang tampak —
+    // kecocokan di kedalaman >8.192 karakter dalam satu node bukan
+    // konten layar yang dimaksud pemilik.
+    private const val MAX_HIT_TEXT_CHARS = 8192
+
     fun hit(keywords: List<String>, text: String): String? {
         if (keywords.isEmpty() || text.isEmpty()) return null
-        return hitLowered(keywords, text.lowercase(Locale.ROOT))
+        val bounded = if (text.length > MAX_HIT_TEXT_CHARS) text.substring(0, MAX_HIT_TEXT_CHARS) else text
+        return hitLowered(keywords, bounded.lowercase(Locale.ROOT))
     }
 
     fun hitLowered(keywords: List<String>, lower: String): String? {
