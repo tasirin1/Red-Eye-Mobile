@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- /jejak kini menyaring titik lokasi kasar dan menampilkan akurasi tiap titik (#851): sebelumnya titik network berakurasi ribuan meter tampil setara GPS presisi dan ikut digambar sebagai rute, sehingga terlihat seperti perpindahan yang tidak pernah terjadi; jalur ringkasan sebenarnya sudah menyaringnya.
 - Cap "sinkron terakhir" di /status kini maju juga pada putaran tanpa data baru (#850): sebelumnya waktu sinkron hanya dicap bila ada SMS/panggilan yang terkirim, sehingga di HP yang jarang menerima data baru /status menampilkan "belum pernah" selamanya walau sinkronisasi sehat.
 - /restart kini sungguh memulihkan polling perintah (#849): sebelumnya perintah itu membalas "Loops restarted" tetapi sisa penundaan akibat konflik/rate-limit Telegram (sampai 1 jam) tidak dibersihkan, jadi perintah berikutnya tetap tak diproses; kini penundaan itu ikut direset seperti pada jalur restart penuh.
 - Video yang terlalu besar untuk Telegram kini dibuang sekali, tidak diunggah ulang selamanya (#848): berkas video di atas batas 48 MB yang tersimpan saat monitoring dijeda sebelumnya dicoba lagi di setiap siklus pengiriman tanpa pernah bisa terkirim; kini ia dibuang dan dilaporkan dalam ringkasan berkas terbuang.

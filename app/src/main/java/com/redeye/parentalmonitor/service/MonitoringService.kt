@@ -3212,11 +3212,25 @@ class MonitoringService : Service() {
         if (trail.isEmpty()) {
             sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
         } else {
-            val last = trail.takeLast(10)
+            // Saring titik kasar + tampilkan akurasi (issue #851):
+            // jalur ringkasan sudah menyaring >1000 m, /jejak
+            // sebelumnya menampilkan titik network ribuan meter
+            // sebagai perpindahan sungguhan dan menggambar rutenya.
+            // Akurasi tak diketahui (-1) dipertahankan, selaras
+            // TrailStats.dropCoarse. Bila semua titik kasar, tampilkan
+            // apa adanya — label akurasinya yang berbicara.
+            val fine = trail.filter { it.second < 0 || it.second <= com.redeye.parentalmonitor.utils.TrailStats.MAX_POINT_ACCURACY_M }
+            val coarseCount = trail.size - fine.size
+            val shownPool = if (fine.isNotEmpty()) fine else trail
+            val last = shownPool.takeLast(10)
             sendToTelegram(buildString {
                 appendLine("👣 <b>Jejak (${trail.size} titik tersimpan, ${last.size} terakhir)</b>")
-                for ((pt, _) in last) {
-                    appendLine("${TimeFmt.short(pt.at)} — ${pt.lat},${pt.lon}")
+                if (coarseCount > 0 && fine.isNotEmpty()) {
+                    appendLine("($coarseCount titik kasar >1 km disembunyikan)")
+                }
+                for ((pt, acc) in last) {
+                    val accText = if (acc >= 0) " (±$acc m)" else ""
+                    appendLine("${TimeFmt.short(pt.at)} — ${pt.lat},${pt.lon}$accText")
                 }
                 append("https://www.google.com/maps/dir/" + last.joinToString("/") { "${it.first.lat},${it.first.lon}" })
             })
