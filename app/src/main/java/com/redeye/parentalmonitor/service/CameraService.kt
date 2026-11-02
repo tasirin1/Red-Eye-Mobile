@@ -602,14 +602,12 @@ class CameraService(private val context: Context) {
             val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
             val tmpFile = File(context.cacheDir, outFile.name + ".tmp")
             pendingOut = tmpFile
-            activeVideoFile = tmpFile
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
             } else {
                 android.media.MediaRecorder()
             }
             recorder = rec
-            activeRecorder = rec
             rec.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
             rec.setVideoSource(android.media.MediaRecorder.VideoSource.SURFACE)
             rec.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
@@ -640,10 +638,16 @@ class CameraService(private val context: Context) {
                     }
                     try { tmpFile.delete() } catch (_: Exception) {
                     }
-                    if (activeRecorder === rec) activeRecorder = null
-                    if (activeVideoFile === tmpFile) activeVideoFile = null
                     if (pendingOut === tmpFile) pendingOut = null
                     superseded = true
+                } else {
+                    // Terbitkan penanda global HANYA sesudah generasi sesi
+                    // terkonfirmasi di bawah kunci: sebelumnya penanda
+                    // dipasang sebelum prepare() sehingga forceReset()
+                    // serentak bisa melepas recorder yang sedang disiapkan
+                    // (issue #676).
+                    activeVideoFile = tmpFile
+                    activeRecorder = rec
                 }
             }
             if (superseded) {
