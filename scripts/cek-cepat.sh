@@ -111,16 +111,18 @@ if [ -f tools/cek-token.py ]; then
     echo "GAGAL: kemungkinan token bot asli di pesan commit yang belum ter-push (hanya via input SetupActivity)"; gagal=1;
   fi
 fi
-# 5f. Token pada NAMA berkas (issue #818, paritas dengan
-# verifikasi-path cek_secret_nama #803/#815): isi bersih tak
-# menolong bila namanya sendiri berpola token. Periksa nama staged,
-# terlacak, dan tak terlacak — mentah dan tergabung tanpa "/".
+# 5f. Token pada NAMA berkas (issue #818): isi bersih tak menolong
+# bila namanya sendiri berpola token. Periksa nama staged, terlacak,
+# tak terlacak, terabaikan, DAN nama riwayat (issue #865 — nama yang
+# sudah berganti tetap hidup di riwayat; kanal ini sebelumnya hanya
+# ada di verifikasi-path sehingga komentar "paritas" menyesatkan) —
+# mentah dan tergabung tanpa "/".
 nama_token=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   gabung=$(printf '%s' "$f" | tr -d '/')
   if printf '%s' "$f" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' || printf '%s' "$gabung" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then nama_token="$f"; break; fi
-done <<< "$({ git diff --cached --name-only 2>/dev/null; git ls-files 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u)"
+done <<< "$({ git diff --cached --name-only 2>/dev/null; git ls-files 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; git ls-files --others -i --exclude-standard 2>/dev/null; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
 if [ -n "$nama_token" ]; then
   echo "GAGAL: kemungkinan token bot asli pada NAMA berkas $nama_token (hanya via input SetupActivity)"; gagal=1;
 fi

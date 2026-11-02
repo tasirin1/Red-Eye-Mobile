@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Cek cepat kini memeriksa token pada nama berkas di riwayat dan berkas terabaikan juga (#865): kanal nama riwayat sebelumnya hanya ada di gerbang utama, jadi nama bertoken yang sudah berganti nama lolos dari cek cepat walau komentar berkasnya mengesankan cakupan setara.
 - Nama berkas yang diabaikan git kini ikut dipindai gerbang di semua mode (#864): isi berkas ignored sudah lama dipindai, tetapi namanya belum — berkas bernama token di folder terabaikan menunggu di-add paksa untuk bocor tanpa pernah diperiksa namanya.
 - Mode pindai penuh gerbang kini juga memeriksa nama berkas tak terlacak (#863): sebelumnya berkas bernama token yang belum pernah ter-commit lolos dari mode forensik menyeluruh walau mode pemeriksaan biasa menangkapnya.
 - Kait lama dalam rantai pre-push kini menerima stdin persis seperti yang dikirim git (#862): push tanpa baris refs sebelumnya diteruskan sebagai satu baris kosong semu; kini stdin kosong tiba sebagai stdin kosong.
