@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Sinonim masa depan "esok" kini dikenali (issue #664): `FUTURE_MARKERS` sebelumnya hanya besok/nanti/lusa, sehingga "kirim foto esok" mengeksekusi tangkapan sekarang. Ditambah "esok"; terverifikasi porting + 418/418 ekspektasi terkunci.
 - Penjaga ZWJ `safeCut` kini mundur melewati seluruh urutan (issue #663, sisa #647): sebelumnya hanya satu langkah, sehingga emoji keluarga multi-ZWJ (👨‍👩‍👧‍👦) masih bisa terpotong menyisakan ZWJ menggantung. Penjaga kini berputar sampai keluar dari urutan ZWJ sepenuhnya; terverifikasi simulasi UTF-16 untuk semua titik potong + uji baru.
 - Blokir premium 0809 kini menjangkau format internasional (issue #662, sisa #641): `SmsNumbers.isPremium` sebelumnya menurunkan bentuk lokal hanya dari nomor berawalan 0, sehingga `+62809…`/`62809…` lolos cek awalan `809`. Bentuk lokal kini juga diturunkan dengan membuang kode negara 62; nomor seluler Indonesia biasa format internasional tetap aman (terverifikasi uji).
 - Kata umum "usaha" tidak lagi terbaca sebagai negasi (issue #661, sisa #627): basis `usah` yang ditambahkan #627 ditangkap aturan sufiks `negationForm`, sehingga setiap kalimat berisi "usaha" (bisnis) diveto sebagai penolakan dan perintah sah gugur diam-diam. `isNegation` kini mengecualikan token yang lipatan-run-nya persis "usaha"; "usah"/"nggak usah" betulan tetap negasi. Terverifikasi porting + 418/418 ekspektasi terkunci.

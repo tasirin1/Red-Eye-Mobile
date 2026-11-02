@@ -371,6 +371,13 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsEsokFuture() {
+        // #664: sinonim "esok" sama seperti besok/nanti/lusa.
+        assertNull(IntentParser.parse("kirim foto esok dong"))
+        assertNull(IntentParser.parse("kirim foto esok hari dong"))
+    }
+
+    @Test
     fun parseDoesNotTreatUsahaAsNegation() {
         // #661: kata umum "usaha" bukan negasi "usah".
         assertEquals("/photo", IntentParser.parse("kirim foto usaha anak dong"))

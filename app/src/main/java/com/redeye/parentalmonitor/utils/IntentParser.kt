@@ -321,7 +321,7 @@ object IntentParser {
         return tokens to " " + tokens.joinToString(" ") + " "
     }
 
-    private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa")
+    private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa", "esok")
 
     private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok")
 
