@@ -464,6 +464,7 @@ object IntentParser {
         var best: String? = null
         var bestScore = 0
         var tie = false
+        val top = mutableListOf<String>()
         for (intent in INTENTS) {
             var score = 0
             val suppressed = (intent.command == "/photo" && photoVetoed) || (intent.command == "/screenshot" && shotVetoed) ||
@@ -478,8 +479,22 @@ object IntentParser {
                 best = intent.command
                 bestScore = score
                 tie = false
+                top.clear()
+                top.add(intent.command)
             } else if (score == bestScore && score > 0) {
                 tie = true
+                top.add(intent.command)
+            }
+        }
+        // Seri laporan tunggal (issue #709): kata generik "laporan" memberi
+        // /digest nilai penuh, tetapi kata benda khas intent lain (layar /
+        // minggu) adalah penentu maksud sebenarnya. Permintaan ganda sejati
+        // (kedua frasa cakupan hadir) tetap seri -> null.
+        if (tie && bestScore >= 2 && "/digest" in top &&
+            !(padded.contains(" hari ini ") && padded.contains(" minggu ini "))
+        ) {
+            for ((cmd, noun) in listOf("/layar" to "layar", "/minggu" to "minggu")) {
+                if (cmd in top && tokens.any { markerMatches(it, noun) }) return cmd
             }
         }
         return if (bestScore < 2 || tie) null else best
