@@ -7213,7 +7213,7 @@ class MonitoringService : Service() {
             val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key)) {
                 if (awaitingOwnerLogin()) return
-                try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
                 sendDailyDigest(manual = false)
             }
         } catch (e: kotlinx.coroutines.CancellationException) {

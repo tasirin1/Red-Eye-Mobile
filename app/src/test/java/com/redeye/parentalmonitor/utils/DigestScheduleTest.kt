@@ -48,6 +48,16 @@ class DigestScheduleTest {
     }
 
     @Test
+    fun catchUpStampedWithYesterdayKeepsTonightDue() {
+        // #632: cabang catch-up di MonitoringService mencap kunci KEMARIN
+        // (bukan hari ini) — urutan predikat ini mengunci akibatnya: catch-up
+        // tidak menembak dua kali, dan digest reguler malam nanti tetap due.
+        val doneAfterCatchUp = "2026-10-26"
+        assertFalse(DigestSchedule.nightCatchUpDue(doneAfterCatchUp, "2026-10-26", "2026-10-27"))
+        assertTrue(DigestSchedule.nightDue(21, doneAfterCatchUp, "2026-10-27"))
+    }
+
+    @Test
     fun clockRollbackDoesNotRearm() {
         // #601: jam dimundurkan sehari -> kunci selesai yang lebih baru dari "hari ini"
         // tidak boleh mempersenjatai ulang digest malam maupun tangkapannya.
