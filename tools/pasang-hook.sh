@@ -99,11 +99,16 @@ fi
 HOOK_FALLBACK_DIR="${GIT_HOOKS_DIR:-$HOME/.githooks}/$(basename "$ROOT")"
 mkdir -p "$HOOK_FALLBACK_DIR"
 pasang_kait "$HOOK_FALLBACK_DIR/pre-push"
-git config core.hooksPath "$HOOK_FALLBACK_DIR"
-if [ -x "$HOOK_FALLBACK_DIR/pre-push" ]; then
+PROBE="$HOOK_FALLBACK_DIR/.probe-exec-$$"
+if [ -x "$HOOK_FALLBACK_DIR/pre-push" ] && printf '#!/bin/sh\nexit 0\n' > "$PROBE" 2>/dev/null && chmod +x "$PROBE" 2>/dev/null && "$PROBE" >/dev/null 2>&1; then
+    rm -f "$PROBE"
+    git config core.hooksPath "$HOOK_FALLBACK_DIR"
     echo "Kait pre-push terpasang via core.hooksPath: $HOOK_FALLBACK_DIR"
-else
-    echo "PERINGATAN: kait tak bisa dieksekusi di mana pun." >&2
-    echo "  Cadangan: workflow Verifikasi Path di CI tetap memeriksa tiap push;" >&2
-    echo "  atau jalankan manual sebelum commit: python3 tools/verifikasi-path.py" >&2
+    exit 0
 fi
+rm -f "$PROBE"
+echo "PERINGATAN: kait tak bisa dieksekusi di mana pun." >&2
+echo "  core.hooksPath TIDAK diarahkan ke direktori mati; kait lama (jika ada) tetap berlaku." >&2
+echo "  Cadangan: workflow Verifikasi Path di CI tetap memeriksa tiap push;" >&2
+echo "  atau jalankan manual sebelum commit: python3 tools/verifikasi-path.py" >&2
+exit 1
