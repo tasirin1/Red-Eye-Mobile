@@ -14,7 +14,7 @@ object NotificationPrivacy {
             ")(?:(?![\\p{L}\\p{N}])|(?=\\d)))"
     )
     private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ .-]*\\d){3,}(?![ .-]*\\d)")
-    private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,10}(?![\\p{L}\\p{N}])")
+    private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,16}(?![\\p{L}\\p{N}])")
 
     fun isOtp(text: String): Boolean = OTP_PATTERN.containsMatchIn(text)
 

@@ -68,7 +68,11 @@ class NotificationPrivacyTest {
             "Kode verifikasi sudah dikirim ke aplikasi Anda",
             NotificationPrivacy.mask("Kode verifikasi sudah dikirim ke aplikasi Anda")
         )
-        assertEquals("kode AB12CD34EF5", NotificationPrivacy.mask("kode AB12CD34EF5"))
+        // #654: batas atas token kode dinaikkan 10 -> 16 agar kode OTP
+        // alfanumerik yang lebih panjang ikut tertopeng; token yang lebih
+        // panjang lagi (ID transaksi dsb.) tetap utuh seperti sebelumnya.
+        assertEquals("kode ••••", NotificationPrivacy.mask("kode AB12CD34EF5"))
+        assertEquals("kode ••••", NotificationPrivacy.mask("kode A1B2C3D4E5F6"))
         assertEquals(
             "ID transaksi TRXAB12CD34EF56GH selesai",
             NotificationPrivacy.mask("ID transaksi TRXAB12CD34EF56GH selesai")
