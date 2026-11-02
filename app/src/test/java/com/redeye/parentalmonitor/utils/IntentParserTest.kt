@@ -234,6 +234,25 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsCancellationWords() {
+        // #628: kata pembatalan sebelumnya tak memveto apa pun — pesan yang
+        // maksudnya membatalkan justru mengeksekusi hal yang dibatalkan.
+        assertNull(IntentParser.parse("batalkan kirim foto sekarang"))
+        assertNull(IntentParser.parse("batal kirim screenshot sekarang"))
+        assertNull(IntentParser.parse("batalin kirim foto sekarang"))
+        assertNull(IntentParser.parse("foto batal dikirim sekarang dong"))
+        assertNull(IntentParser.intentOrAlias("kunci batal", "/lock batal"))
+        assertNull(IntentParser.intentOrAlias("lanjut batal", "/resume batal"))
+        assertNull(IntentParser.intentOrAlias("pulih batal", "/sembuh batal"))
+        // Pengecualian: "restore batal" adalah perintah batal-restore itu
+        // sendiri (/pulihkan batal) dan harus tetap sampai ke handler-nya.
+        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal", "/pulihkan batal"))
+        assertFalse(IntentParser.isVetoedText("restore batal", "/pulihkan batal"))
+        // Kontrol positif tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

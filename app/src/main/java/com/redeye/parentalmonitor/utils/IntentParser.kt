@@ -319,8 +319,14 @@ object IntentParser {
 
     private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok")
 
+    private fun isCancellation(token: String): Boolean {
+        if (token == "batalin") return true
+        return markerMatches(token, "batal")
+    }
+
     private fun isVetoed(tokens: List<String>, padded: String): Boolean {
         if (tokens.any { isNegation(it) }) return true
+        if (tokens.any { isCancellation(it) }) return true
         if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
@@ -330,6 +336,7 @@ object IntentParser {
     fun parse(text: String): String? {
         val (tokens, padded) = tokenize(text) ?: return null
         if (tokens.any { isNegation(it) }) return null
+        if (tokens.any { isCancellation(it) }) return null
         val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
         val photoVetoed = futureVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         val shotVetoed = futureVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
@@ -424,6 +431,7 @@ object IntentParser {
     fun isVetoedText(text: String, aliasInput: String): Boolean {
         if (isSmsSendForm(aliasInput)) return false
         val tk = tokenize(text) ?: return false
+        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk.first.size == 2 && isCancellation(tk.first[1])) return false
         if (!isVetoed(tk.first, tk.second)) return false
         val parsed = parse(text)
         if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
@@ -458,6 +466,7 @@ object IntentParser {
         val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
         if (words.size > 2) return null
         val tk = tokenize(text)
+        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
         if (tk != null && isVetoed(tk.first, tk.second)) return null
         return aliasInput
     }
