@@ -860,13 +860,6 @@ class MonitoringService : Service() {
         patrolJob?.cancel()
         loopRelaunchJob?.cancel()
         idlePolls = 0
-        // Backoff perintah/media ikut dibersihkan (issue #849):
-        // teardownJobs membersihkannya, restartAllLoops sebelumnya
-        // tidak — "/restart" membalas berhasil tetapi polling tetap
-        // tertahan sisa backoff 409/429 sampai satu jam. Respons
-        // 409/429 berikutnya akan memasangnya lagi bila masih perlu.
-        commandBackoffUntil = 0L
-        mediaBackoffUntil = 0L
         refreshCreds()
         refreshLoopConfig()
 
@@ -9922,6 +9915,13 @@ class MonitoringService : Service() {
             }
         }
         idlePolls = 0
+        // Backoff perintah/media ikut dibersihkan (issue #849):
+        // teardownJobs membersihkannya, restartAllLoops sebelumnya
+        // tidak — "/restart" membalas berhasil tetapi polling tetap
+        // tertahan sisa backoff 409/429 sampai satu jam. Respons
+        // 409/429 berikutnya akan memasangnya lagi bila masih perlu.
+        commandBackoffUntil = 0L
+        mediaBackoffUntil = 0L
         refreshCreds()
         refreshLoopConfig()
         try { loopRelaunchJob?.cancel() } catch (_: Exception) { }
