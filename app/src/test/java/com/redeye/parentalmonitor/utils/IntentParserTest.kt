@@ -371,6 +371,13 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsPembatalanNoun() {
+        // #668: nomina "pembatalan" adalah pembatalan.
+        assertNull(IntentParser.parse("pembatalan kirim foto sekarang"))
+        assertNull(IntentParser.parse("pembatalan ambil screenshot sekarang"))
+    }
+
+    @Test
     fun parseRejectsKataDiaReportPhrases() {
         // #667: penanda laporan frasa "kata dia"/"kata anak".
         assertNull(IntentParser.parse("kata dia kirim foto sekarang"))

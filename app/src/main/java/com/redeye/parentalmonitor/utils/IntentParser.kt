@@ -333,6 +333,9 @@ object IntentParser {
 
     private fun isCancellation(token: String): Boolean {
         if (token == "batalin") return true
+        // Nomina "pembatalan" berawalan pem- sehingga tak diawali "batal"
+        // (issue #668, sisa #628).
+        if (collapseRuns(token) == "pembatalan") return true
         return markerMatches(token, "batal")
     }
 
