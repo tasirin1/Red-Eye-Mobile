@@ -371,6 +371,13 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsMalamIniFuture() {
+        // #665: frasa "malam ini" merujuk waktu mendatang seperti "nanti malam".
+        assertNull(IntentParser.parse("kirim foto malam ini dong"))
+        assertNull(IntentParser.parse("ambil screenshot malam ini"))
+    }
+
+    @Test
     fun parseRejectsEsokFuture() {
         // #664: sinonim "esok" sama seperti besok/nanti/lusa.
         assertNull(IntentParser.parse("kirim foto esok dong"))

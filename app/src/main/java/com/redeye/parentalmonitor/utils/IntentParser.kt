@@ -323,6 +323,12 @@ object IntentParser {
 
     private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa", "esok")
 
+    private fun hasFutureMarker(tokens: List<String>, padded: String): Boolean {
+        if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
+        // Frasa "malam ini" merujuk malam yang akan datang (issue #665).
+        return padded.contains(" malam ini ")
+    }
+
     private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok")
 
     private fun isCancellation(token: String): Boolean {
@@ -350,7 +356,7 @@ object IntentParser {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
         if (tokens.any { isReportToken(it) }) return true
-        if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
+        if (hasFutureMarker(tokens, padded)) return true
         if (isAspectStatus(tokens)) return true
         if (tokens.size == 2 && QUESTION_TAIL.any { markerMatches(tokens[1], it) }) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
@@ -364,7 +370,7 @@ object IntentParser {
         if (tokens.any { isReportToken(it) }) return null
         val rawTrim = text.trim()
         if (rawTrim.startsWith("\"") || rawTrim.startsWith("'") || rawTrim.startsWith("“") || rawTrim.startsWith("‘")) return null
-        val futureVetoed = tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }
+        val futureVetoed = hasFutureMarker(tokens, padded)
         val aspectVetoed = isAspectStatus(tokens)
         // Kata tanya sesudah kata pertama menandakan pertanyaan, bukan
         // perintah tangkap — #625 baru menutup bentuk alias 2-token
