@@ -56,7 +56,14 @@ def _padatkan(teks):
     # ekor pola palsu.
     rapat = re.sub(r"\$\{[^}]*\}", "", teks)
     rapat = re.sub(r"[\s\"'\\+]+", "", rapat)
-    return re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
+    rapat = re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
+    # Koma yang diapit karakter token juga pemisah belah (issue #802):
+    # base64/hex yang dipecah elemen arrayOf("...", "...") tersambung
+    # lagi. Sempit seperti titik di atas — koma berkawan spasi/kurung
+    # (pemisah argumen biasa) tidak ikut terhapus karena sesudah
+    # langkah sebelumnya spasi sudah hilang; yang tersisa berkoma
+    # rapat memang bentuk pecahan literal.
+    return re.sub(r"(?<=[A-Za-z0-9+/=_-]),(?=[A-Za-z0-9+/=_-])", "", rapat)
 
 
 def dekode_berkas(data):
@@ -86,7 +93,9 @@ def mengandung_token(teks):
     # Bentuk hex (issue #784): token ASCII 42+ karakter menjadi 84+
     # karakter hex; ambang 80 memberi ruang. Hasil dekode tetap harus
     # cocok pola token persis, jadi hash panjang biasa tidak tertuduh.
-    for sumber in (teks, tanpa_spasi):
+    # Sumber kini termasuk teks terpadatkan (issue #802): hex yang
+    # terbelah gabung-string/koma tersambung lagi di sana.
+    for sumber in (teks, tanpa_spasi, rapat):
         for m in POLA_KANDIDAT_HEX.finditer(sumber):
             s = m.group(0)
             if len(s) % 2 == 1:
@@ -97,6 +106,19 @@ def mengandung_token(teks):
                 continue
             if POLA_BYTE.search(hasil):
                 return True
+    # Bentuk byteArrayOf(0xNN, ...) (issue #802): urutan panjang
+    # literal byte hex berkoma adalah bentuk tempelan hex yang lazim
+    # di kode Kotlin/Java; kumpulkan pasangan hex-nya dan uji dekode.
+    for m in re.finditer(r"(?:0[xX][0-9A-Fa-f]{2}[\s,]*)+", teks):
+        pasangan = re.findall(r"0[xX]([0-9A-Fa-f]{2})", m.group(0))
+        if len(pasangan) < 40:
+            continue
+        try:
+            hasil = bytes.fromhex("".join(pasangan))
+        except Exception:
+            continue
+        if POLA_BYTE.search(hasil):
+            return True
     return False
 
 

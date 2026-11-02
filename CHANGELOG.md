@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemindai token kini juga mengenali hex/base64 yang terbelah koma dan gabung-string (issue #802): elemen arrayOf berkoma tersambung lagi saat pemadatan, tahap hex membaca teks terpadatkan, dan urutan byteArrayOf(0xNN, ...) dikumpulkan lalu didekode — hash biasa dan kode normal tetap bersih.
 - Berkas UTF-16 di riwayat kini tertangkap gerbang juga (issue #801): jalur riwayat rentang kini mengambil isi blob sebagai biner dan mendekode mengikuti BOM, plus menyapu blob ber-BOM UTF-16 yang tak pernah jadi kandidat saringan grep.
 - Jemput tidak lagi mati sebelum kabarnya terkonfirmasi (issue #793): radius jemput yang diklaim saat anak terdeteksi dekat rumah kini dipulihkan bila pengiriman kabar gagal, jadi fitur tidak nonaktif permanen hanya karena kabar pertama terbuang (mis. sebelum pemilik login).
 - Penandaan "sudah diteruskan" di jalur salvage notifikasi kini per item (issue #791): varian antrean baru melaporkan keselamatan tiap pesan, jadi bila sebagian batch tereviksi, item yang selamat tetap ditandai (tidak dobel saat replay) — pola all-or-nothing sebelumnya justru menggabungkan dua kerugian itu.
