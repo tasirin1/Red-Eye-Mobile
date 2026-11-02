@@ -1620,6 +1620,7 @@ class MonitoringService : Service() {
     private var webhookClearAtElapsed = 0L
     @Volatile
     private var webhookClearNoticeAt = 0L
+    private var conflictNoticeAtElapsed = 0L
     @Volatile
     private var offsetFailCount = 0
     @Volatile
@@ -1829,6 +1830,19 @@ class MonitoringService : Service() {
                     serviceScope.launch {
                         try {
                             clearStaleWebhook(botToken)
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                // Kabari pemilik (issue #847): konflik dari konsumen
+                // getUpdates LAIN sebelumnya senyap total — backoff
+                // berulang tanpa kabar. Dibatasi sekali per jam
+                // seperti pemberitahuan webhook.
+                if (now409 - conflictNoticeAtElapsed > 3_600_000L) {
+                    conflictNoticeAtElapsed = now409
+                    serviceScope.launch {
+                        try {
+                            sendToTelegram("⚠️ <b>Bot dipakai proses lain.</b> Telegram menolak polling perintah (konflik 409) — kemungkinan token bot yang sama sedang dipakai perangkat/skrip lain. Perintah ke HP ini tertahan selama konflik berlangsung.")
                         } catch (_: Exception) {
                         }
                     }
