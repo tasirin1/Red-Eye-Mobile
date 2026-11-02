@@ -83,6 +83,28 @@ class A11yUsageMathTest {
     }
 
     @Test
+    fun batasBelahSemuaMengumpulkanSetiapTengahMalam() {
+        // #717: sesi yang membentang >=2 tengah malam harus dibelah di SETIAP
+        // tengah malam, bukan hanya yang pertama — hari di tengah tak hilang.
+        val day0 = 1_793_232_000_000L
+        val hour = 3_600_000L
+        val day = 86_400_000L
+        assertEquals(
+            listOf(day0 + day, day0 + 2 * day),
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + 2 * day)
+        )
+        assertEquals(
+            listOf(day0 + day, day0 + 2 * day, day0 + 3 * day),
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 8 * hour, day0 + 3 * day)
+        )
+        // Satu tengah malam: sama dengan splitBoundaryWallMillis tunggal.
+        assertEquals(
+            listOf(day0 + day),
+            A11yUsageMath.splitBoundariesWallMillis(day0 + 23 * hour, day0 + day)
+        )
+    }
+
+    @Test
     fun awalHariNilaiEkstremAman() {
         assertEquals(0L, A11yUsageMath.dayStartWallMillis(0L))
         assertEquals(-86_400_000L, A11yUsageMath.dayStartWallMillis(-1L))

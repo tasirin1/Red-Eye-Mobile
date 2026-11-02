@@ -385,14 +385,23 @@ object A11yMonitor {
             val nowElapsed = SystemClock.elapsedRealtime()
             val dayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             var splitAtMidnight = false
+            var segmentsSaved = false
             if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall) {
-                val splitWall = A11yUsageMath.splitBoundaryWallMillis(currentStartWall, dayStart)
-                val elapsedAtSplit = nowElapsed - (nowWall - splitWall)
-                val elapsedAtDayStart = nowElapsed - (nowWall - dayStart)
-                if (elapsedAtSplit > currentStartElapsed) {
-                    accrueSessionLocked(splitWall, elapsedAtSplit)
+                val boundaries = A11yUsageMath.splitBoundariesWallMillis(currentStartWall, dayStart)
+                val elapsedAtFirst = nowElapsed - (nowWall - boundaries.first())
+                if (elapsedAtFirst > currentStartElapsed) {
+                    var segDay = previousDay
+                    for (boundary in boundaries) {
+                        val elapsedAtBoundary = nowElapsed - (nowWall - boundary)
+                        accrueSessionLocked(boundary, elapsedAtBoundary)
+                        saveUsageFor(context, segDay)
+                        if (boundary >= dayStart) break
+                        segDay = TimeFmt.dayKey(boundary)
+                        usage = loadUsage(context, segDay)
+                    }
+                    segmentsSaved = true
                     resumeWall = dayStart
-                    resumeElapsed = elapsedAtDayStart
+                    resumeElapsed = nowElapsed - (nowWall - dayStart)
                     splitAtMidnight = true
                 }
             }
@@ -402,7 +411,7 @@ object A11yMonitor {
             } else {
                 finishSessionLocked(nowWall, nowElapsed)
             }
-            saveUsageFor(context, previousDay)
+            if (!segmentsSaved) saveUsageFor(context, previousDay)
         }
         loadedDay = today
         loaded = true

@@ -68,6 +68,18 @@ object A11yUsageMath {
         return if (nextDayStart < todayStartWall) nextDayStart else todayStartWall
     }
 
+    fun splitBoundariesWallMillis(sessionStartWall: Long, todayStartWall: Long): List<Long> {
+        val out = ArrayList<Long>()
+        var cursor = sessionStartWall
+        while (true) {
+            val boundary = splitBoundaryWallMillis(cursor, todayStartWall)
+            out.add(boundary)
+            if (boundary >= todayStartWall) break
+            cursor = boundary
+        }
+        return out
+    }
+
     private fun nextHourBoundary(timestamp: Long, offsetMs: Int): Long {
         val hourMs = 3_600_000L
         val shifted = timestamp + offsetMs
