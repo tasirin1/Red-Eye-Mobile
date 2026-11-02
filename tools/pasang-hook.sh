@@ -41,6 +41,11 @@ siapkan_rantai() {
         LAMA="$(sed -n 's/^K_LAMA="\(.*\)"$/\1/p' "$1" 2>/dev/null | head -n 1)"
         if [ -n "$LAMA" ] && [ -f "$LAMA" ]; then
             printf '%s' "$LAMA"
+        elif [ -n "$LAMA" ]; then
+            # Rantai putus harus bersuara (issue #867): berkas rantai
+            # terhapus membuat kait lama berhenti jalan diam-diam,
+            # dan pasang ulang membuang catatannya tanpa jejak.
+            echo "PERINGATAN: kait lama yang dirantai sudah tidak ada ($LAMA) — rantai dibuang; kait lama itu tidak berjalan lagi sejak berkasnya hilang." >&2
         fi
     fi
 }

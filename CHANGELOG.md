@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemasang kait kini memperingatkan bila rantai kait lama putus (#867): berkas salinan rantai yang terhapus sebelumnya membuat kait lama berhenti berjalan tanpa satu pun tanda, dan memasang ulang membuang catatannya diam-diam; kini ada peringatan keras saat pemasangan menemukan rantai yang hilang.
 - Pesan kegagalan cek cepat untuk berkas terabaikan kini menunjuk berkas yang benar (#866): variabel hasil langkah sebelumnya sebelumnya bocor ke langkah berkas terabaikan sehingga berkas tak terlacak bisa tertuduh sebagai berkas terabaikan.
 - Cek cepat kini memeriksa token pada nama berkas di riwayat dan berkas terabaikan juga (#865): kanal nama riwayat sebelumnya hanya ada di gerbang utama, jadi nama bertoken yang sudah berganti nama lolos dari cek cepat walau komentar berkasnya mengesankan cakupan setara.
 - Nama berkas yang diabaikan git kini ikut dipindai gerbang di semua mode (#864): isi berkas ignored sudah lama dipindai, tetapi namanya belum — berkas bernama token di folder terabaikan menunggu di-add paksa untuk bocor tanpa pernah diperiksa namanya.
