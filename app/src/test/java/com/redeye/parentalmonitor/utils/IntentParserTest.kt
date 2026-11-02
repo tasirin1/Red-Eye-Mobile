@@ -508,6 +508,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun mergeTextArgsSkipsTailFillers() {
+        // #753: penegas tidak menghabiskan anggaran pindai argumen.
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto sekarang dong depan", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto sekarang dong depan", "/photo sekarang dong depan"))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar dong dong 6 jam", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("screen time dong dong 6 jam", null))
+        // Kontrol terkunci tetap: satu penegas memang sudah bekerja.
+        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto dong depan", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar dong 6 jam", null))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))

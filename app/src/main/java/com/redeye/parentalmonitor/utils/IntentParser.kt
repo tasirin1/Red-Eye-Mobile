@@ -561,6 +561,10 @@ object IntentParser {
                 var checked = 0
                 for (i in start + 1 until minOf(start + 6, tokens.size)) {
                     if (PHOTO_KEYWORDS.any { mergeKeywordMatch(tokens[i], it) }) continue
+                    // Kata penegas tidak menghabiskan anggaran pindai
+                    // (issue #753): "foto sekarang dong depan" sebelumnya
+                    // kehilangan lensa karena dua penegas dihitung jarak.
+                    if (stripEdgePunct(tokens[i]) in TAIL_FILLERS) continue
                     checked++
                     if (checked > 2) break
                     val word = stripEdgePunct(tokens[i])
@@ -588,7 +592,15 @@ object IntentParser {
                 }
             }
             if (start >= 0) {
-                for (i in start + anchorLen until minOf(start + anchorLen + 2, tokens.size)) {
+                // Jendela 2 token terhitung; penegas dilewati tanpa
+                // dihitung dan rentang pindai diperluas secukupnya
+                // (issue #753): "cek layar dong dong 6 jam" sebelumnya
+                // kehilangan argumen jamnya.
+                var counted = 0
+                for (i in start + anchorLen until minOf(start + anchorLen + 4, tokens.size)) {
+                    if (stripEdgePunct(tokens[i]) in TAIL_FILLERS) continue
+                    counted++
+                    if (counted > 2) break
                     val word = stripEdgePunct(tokens[i]).replace("-", "")
                     val attachedHours = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam").toIntOrNull() else null
                     if (attachedHours != null && attachedHours in 1..24) return "$parsed $attachedHours"
