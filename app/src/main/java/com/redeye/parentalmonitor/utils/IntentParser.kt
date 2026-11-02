@@ -652,12 +652,18 @@ object IntentParser {
             if (merged != parsed) return merged
             return mergeTextArgs(text, parsed)
         }
+        // Kata dihitung dari bentuk ternormalkan (issue #729): huruf kecil
+        // (penegas "DONG" tetap dikenal) dan token tanpa huruf/angka sama
+        // sekali (emoji penutup) tidak dihitung sebagai kata — sebelumnya
+        // keduanya menggugurkan perintah yang sah menjadi null.
         var words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
+            .map { it.lowercase(Locale.ROOT) }
+            .filter { w -> w.any { it.isLetterOrDigit() } }
         // Kata penegas sopan di ekor (issue #708): "kuota on dong" dan
         // "kunci hp sekarang" sebelumnya gugur oleh batas <=2 kata. Buang
         // kata penegas ekor lebih dulu, lalu batas lama berlaku. Pemeriksaan
         // veto di bawah tetap memakai teks utuh.
-        while (words.size > 2 && words.last() in TAIL_FILLERS) {
+        while (words.size > 2 && stripEdgePunct(words.last()) in TAIL_FILLERS) {
             words = words.dropLast(1)
         }
         if (words.size > 2) return null
@@ -679,7 +685,7 @@ object IntentParser {
         val parts = aliasInput.split(WHITESPACE).filter { it.isNotEmpty() }
         if (parts.size < 2) return aliasInput
         var args = parts.drop(1)
-        while (args.size > 1 && stripEdgePunct(args.last().lowercase(Locale.ROOT)) in TAIL_FILLERS) {
+        while (args.size > 1 && (stripEdgePunct(args.last().lowercase(Locale.ROOT)) in TAIL_FILLERS || args.last().none { it.isLetterOrDigit() })) {
             args = args.dropLast(1)
         }
         val lastClean = stripEdgePunct(args.last())
