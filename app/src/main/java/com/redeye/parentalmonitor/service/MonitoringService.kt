@@ -3247,7 +3247,11 @@ class MonitoringService : Service() {
                 try { deleteIncomingMessage(delChat, messageId, delToken) } catch (_: Exception) { }
             }
             val nowMs = System.currentTimeMillis()
-            if (nowMs < restoreCodeLockoutUntil) {
+            // Jam ganda seperti gerbang PIN (issue #698, pola #687): selama
+            // satu boot keputusan memakai jam monoton agar memajukan jam
+            // perangkat tak membuka kunci kode restore lebih awal. Durasi
+            // kedua kunci sama-sama 15 menit sehingga helper yang sama sah.
+            if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(restoreCodeLockoutUntil, nowMs, try { preferencesManager.restoreCodeLockoutElapsedStart } catch (_: Exception) { 0L }, android.os.SystemClock.elapsedRealtime())) {
                 sendToTelegram("⏳ Kode restore dikunci sementara karena terlalu banyak kode salah. Coba lagi nanti.")
                 return
             }
@@ -3257,6 +3261,7 @@ class MonitoringService : Service() {
                 if (fails >= RESTORE_CODE_MAX_FAILS) {
                     restoreCodeFailCount = 0
                     restoreCodeLockoutUntil = nowMs + RESTORE_CODE_LOCK_MS
+                    try { preferencesManager.restoreCodeLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 }
                 audit("restore kode salah", "private")
                 sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /pulihkan &lt;kode&gt;.")

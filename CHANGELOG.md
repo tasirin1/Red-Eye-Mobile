@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Lockout kode restore kini juga memakai jam ganda (issue #698): pola yang sama dengan perbaikan gerbang PIN #687 diterapkan ke gerbang kode (cap elapsedRealtime saat kunci dipasang; jam monoton memutuskan selama satu boot) agar memajukan jam perangkat tak membuka kuncinya lebih awal.
 - Deteksi ucapan terkutip kini melacak kutip tunggal dan kutip tak tertutup (issue #697): sebelumnya hanya kutip ganda tertutup yang diveto, sehingga "bunyi pesannya 'kirim foto sekarang'" tetap mengeksekusi perintah di dalam kutipan. Kutip tunggal hanya diakui di awal kata agar apostrof tengah kata tak membuka kutipan, dan kutipan satu kata tetap sah sebagai penekanan.
 - Klasifikasi baca-saja /hematdata & /kendara kini sadar argumen (issue #696): keduanya memang dwifungsi — tanpa argumen/status tetap baca-saja, tetapi bentuk mutasi (on/off/nyala/mati) tidak lagi melewati veto rujukan masa lalu/laporan seperti perintah mutasi lain.
 - Gerbang kini menangkap token bot di dalam berkas biner (issue #695): `cek_secret_pohon` tak lagi memakai `git grep -I` (yang melewatkan biner), dan `cek_secret` memindai isi berkas berubah secara langsung dari header diff karena diff biner tak menyumbang baris isi. Terverifikasi sabotase berkas biner berisi token: tertangkap di mode --semua dan --rentang.
