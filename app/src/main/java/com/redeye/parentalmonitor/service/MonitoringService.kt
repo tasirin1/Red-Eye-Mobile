@@ -7073,15 +7073,14 @@ class MonitoringService : Service() {
                         if (ws != null) {
                             if (isHome) preferencesManager.homeState = ws else preferencesManager.schoolState = ws
                         }
+                        // Cap cooldown TIDAK ditulis di sini (issue
+                        // #795): cap ditulis sesudah kirim berhasil di
+                        // bawah, agar transisi yang kabarnya terbuang
+                        // tidak tertahan cooldown dan hilang permanen.
                         val alertNow = if (t.alert) {
                             val nowWall = System.currentTimeMillis()
                             val lastAlert = if (isHome) preferencesManager.homeAlertAt else preferencesManager.schoolAlertAt
-                            if (lastAlert > 0L && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS) {
-                                false
-                            } else {
-                                if (isHome) preferencesManager.homeAlertAt = nowWall else preferencesManager.schoolAlertAt = nowWall
-                                true
-                            }
+                            !(lastAlert > 0L && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS)
                         } else {
                             false
                         }
@@ -7095,7 +7094,16 @@ class MonitoringService : Service() {
                     if (transition.second) {
                         val name = if (isHome) "Rumah" else "Sekolah"
                         val verb = if (transition.third) "masuk" else "keluar"
-                        sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                        val terkirim = sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
+                        if (terkirim) {
+                            try {
+                                synchronized(fenceLock) {
+                                    val nowWall = System.currentTimeMillis()
+                                    if (isHome) preferencesManager.homeAlertAt = nowWall else preferencesManager.schoolAlertAt = nowWall
+                                }
+                            } catch (_: Exception) {
+                            }
+                        }
                     }
                 }
             }
