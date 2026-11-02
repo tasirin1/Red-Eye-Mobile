@@ -358,6 +358,19 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsAmbilWithPastMarker() {
+        // #656: pengecualian penanda masa lalu berlaku juga untuk ambil.
+        assertNull(IntentParser.parse("ambil foto kemarin dong"))
+        assertNull(IntentParser.parse("ambil foto tadi dong"))
+        assertNull(IntentParser.parse("ambil screenshot kemarin dong"))
+        assertNull(IntentParser.parse("ambilkan foto kemarin dong"))
+        assertNull(IntentParser.parse("ambil foto barusan dong"))
+        // Kontrol positif: tanpa penanda masa lalu tetap perintah.
+        assertEquals("/photo", IntentParser.parse("ambil foto sekarang"))
+        assertEquals("/photo", IntentParser.parse("ambilkan fotonya sekarang"))
+    }
+
+    @Test
     fun parseRejectsReferencesToExistingPhoto() {
         val cases = listOf(
             "mana fotonya anak sekarang",

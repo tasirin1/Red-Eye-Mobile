@@ -177,7 +177,9 @@ object IntentParser {
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) continue
             for (verb in CAPTURE_VERBS) {
                 if (!markerMatches(token, verb)) continue
-                if (hasPastMarker && (verb == "potret" || verb == "jepret")) continue
+                // Penanda masa lalu menggugurkan SEMUA kata kerja tangkap
+                // (termasuk ambil — sebelumnya hanya potret/jepret, #656).
+                if (hasPastMarker) continue
                 return true
             }
         }
