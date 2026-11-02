@@ -615,22 +615,38 @@ def nama_terabaikan():
     return out.splitlines() if out else []
 
 
+def modul_settings():
+    """Daftar direktori modul dari settings.gradle/settings.gradle.kts
+    (baris include ':app' dst) sebagai tuple komponen path."""
+    teks = baca_teks("settings.gradle") or baca_teks("settings.gradle.kts")
+    modul = set()
+    for baris in (teks or "").splitlines():
+        if "include" not in baris:
+            continue
+        for m in re.finditer(r"""['"](:[A-Za-z0-9_:\-]+)['"]""", baris):
+            modul.add(tuple(p for p in m.group(1).split(":") if p))
+    return modul
+
+
 def cek_secret_terabaikan(gagal, peringatan):
     """Berkas ignored + tak terlacak tak terlihat ls-files biasa: berkas
     berisi token di sana tak terlihat kedua gerbang sampai seseorang
     menjalankan git add -f (issue #680). Abaikan direktori build."""
+    modul = modul_settings()
     for path in nama_terabaikan():
         bagian = path.split("/")
         if any(b in (".gradle", "__pycache__") for b in bagian):
             continue
         # Pengecualian direktori build hanya untuk direktori build SUNGGUHAN
         # (issue #706): komponen bernama "build" di mana pun sebelumnya ikut
-        # dikecualikan sehingga catatan/build/bocor.txt lolos. Kini direktori
-        # build harus di akar repo atau milik modul ber-build.gradle.
+        # dikecualikan sehingga catatan/build/bocor.txt lolos. Jangkar
+        # build.gradle (#706) masih bisa dilompati folder contoh yang memuat
+        # build.gradle kosong (issue #719) — kini direktori build harus di
+        # akar repo atau milik modul yang tercantum di settings.gradle.
         if "build" in bagian:
             i = bagian.index("build")
             awalan = bagian[:i]
-            if i == 0 or os.path.isfile(os.path.join(AKAR, *(awalan + ["build.gradle"]))):
+            if i == 0 or tuple(awalan) in modul:
                 continue
         rendah = path.lower()
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
