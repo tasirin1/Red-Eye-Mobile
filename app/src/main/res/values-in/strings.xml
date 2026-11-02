@@ -75,6 +75,7 @@
     <string name="setup_bad_token">Format token salah, harus mengandung :</string>
     <string name="setup_bad_chat">Format chat ID salah: angka (contoh -1001234567890) atau @username</string>
     <string name="setup_bad_access_pin">PIN akses harus 6-12 digit</string>
+    <string name="setup_verify_pin_title">Masukkan PIN akses saat ini</string>
     <string name="setup_bad_interval">Interval salah, harus 1-1440 mnt (kamera 0-60 mnt)</string>
     <string name="setup_no_network">tak ada jaringan</string>
     <string name="backup_settings">Backup setingan</string>

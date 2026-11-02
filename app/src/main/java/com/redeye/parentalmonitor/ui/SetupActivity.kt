@@ -600,9 +600,13 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun askClearCredentials() {
+        verifyStoredAccessPin { confirmClearCredentials() }
+    }
+
+    private fun verifyStoredAccessPin(action: () -> Unit) {
         val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
         if (storedPin.isEmpty()) {
-            confirmClearCredentials()
+            action()
             return
         }
         val lockUntil = try { prefs.restorePinLockoutUntil } catch (_: Exception) { 0L }
@@ -610,7 +614,7 @@ class SetupActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.restore_pin_locked), Toast.LENGTH_LONG).show()
             return
         }
-        askPin(getString(R.string.setup_clear_title), false) { pin ->
+        askPin(getString(R.string.setup_verify_pin_title), false) { pin ->
             if (pin == null) return@askPin
             if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
                 val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
@@ -618,7 +622,7 @@ class SetupActivity : AppCompatActivity() {
                 try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
                 if (newLock > 0L) {
                     try { prefs.restorePinLockoutUntil = newLock } catch (_: Exception) { }
-                try { prefs.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
+                    try { prefs.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 }
                 Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
                 return@askPin
@@ -626,7 +630,7 @@ class SetupActivity : AppCompatActivity() {
             try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
             try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
             try { prefs.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
-            confirmClearCredentials()
+            action()
         }
     }
 
@@ -780,6 +784,27 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun saveSettings() {
+        val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
+        if (storedPin.isEmpty()) {
+            saveSettingsInternal()
+            return
+        }
+        val rawToken = botTokenInput.text.toString().trim()
+        val rawChat = chatIdInput.text.toString().trim()
+        val rawAccessPin = accessPinInput.text.toString().trim()
+        val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+        val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+        val sensitive = rawAccessPin != STORED_MASK ||
+            (rawToken != STORED_MASK && rawToken != storedToken) ||
+            (rawChat != STORED_MASK && rawChat != storedChat)
+        if (!sensitive) {
+            saveSettingsInternal()
+            return
+        }
+        verifyStoredAccessPin { saveSettingsInternal() }
+    }
+
+    private fun saveSettingsInternal() {
         val rawToken = botTokenInput.text.toString().trim()
         val rawChat = chatIdInput.text.toString().trim()
         val rawAccessPin = accessPinInput.text.toString().trim()
@@ -1288,24 +1313,14 @@ class SetupActivity : AppCompatActivity() {
                 .setTitle(getString(R.string.save_settings))
                 .setMessage(getString(R.string.setup_test_success))
                 .setPositiveButton(getString(R.string.save_settings)) { _, _ ->
-                    lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-                        val persisted = persistTestSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin)
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            if (isFinishing || isDestroyed) return@withContext
-                            if (myTest != testSeq.get()) return@withContext
-                            if (!persisted) {
-                                val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
-                                val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
-                                Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
-                                return@withContext
-                            }
-                            botTokenInput.setText(STORED_MASK)
-                            chatIdInput.setText(STORED_MASK)
-                            accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
-                            Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-                            reviveMonitoringIfNeeded()
-                            updateStatus()
-                        }
+                    val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
+                    val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
+                    val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+                    val sensitive = storedPin.isNotEmpty() && (token != storedToken || chatId != storedChat || accessPin != storedPin)
+                    if (sensitive) {
+                        verifyStoredAccessPin { persistTestedSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin) }
+                    } else {
+                        persistTestedSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin)
                     }
                 }
                 .setNegativeButton(android.R.string.cancel) { _, _ ->
@@ -1314,6 +1329,28 @@ class SetupActivity : AppCompatActivity() {
                 .show()
         } catch (_: Exception) {
             Toast.makeText(this, getString(R.string.setup_test_success), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun persistTestedSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String) {
+        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val persisted = persistTestSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                if (myTest != testSeq.get()) return@withContext
+                if (!persisted) {
+                    val storageOk = try { prefs.isStorageEncrypted } catch (_: Exception) { true }
+                    val msg = if (storageOk) getString(R.string.setup_save_failed_keystore) else getString(R.string.setup_save_no_storage)
+                    Toast.makeText(this@SetupActivity, msg, Toast.LENGTH_LONG).show()
+                    return@withContext
+                }
+                botTokenInput.setText(STORED_MASK)
+                chatIdInput.setText(STORED_MASK)
+                accessPinInput.setText(if (accessPin.isNotEmpty()) STORED_MASK else "")
+                Toast.makeText(this@SetupActivity, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                reviveMonitoringIfNeeded()
+                updateStatus()
+            }
         }
     }
 

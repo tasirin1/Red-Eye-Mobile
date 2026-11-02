@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Mengubah kredensial atau PIN akses di Setup kini mensyaratkan verifikasi PIN akses lama (issue #711): sebelumnya siapa pun yang memegang HP terbuka dan tahu kode kalkulator bisa mengganti token bot/chat ID dan menghapus PIN tanpa verifikasi apa pun — padahal jalur hapus kredensial sudah dipagari PIN. Gerbang yang sama (dengan lockout bersama) kini menjaga jalur Simpan dan jalur simpan-setelah-tes bila token/chat/PIN benar-benar berubah; simpan tanpa perubahan kredensial dan penyiapan pertama (belum ada PIN) tidak berubah.
+
 ## [1.6.584] - 2026-11-02
 
 ### Fixed
