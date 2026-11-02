@@ -5290,7 +5290,13 @@ class MonitoringService : Service() {
             }
             val seenSmsIds = HashSet<Long>()
             pendingSms.retainAll { seenSmsIds.add(it.id) }
-            pendingSms.sortBy { it.id }
+            // Urutan kirim HARUS leksikografik (tanggal,id) — sama dengan
+            // arah kursor persisten (issue #688): kursor yang disimpan per
+            // potongan adalah maksimum leksikografik dari yang terkirim,
+            // jadi berhenti di tengah hanya aman bila yang terkirim selalu
+            // awalan leksikografik. Urutan id murni membuat baris
+            // berperingkat lebih kecil yang belum terkirim hilang permanen.
+            pendingSms.sortWith(compareBy({ it.date }, { it.id }))
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Found ${pendingSms.size} SMS messages")
 
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Collecting call history...")
@@ -5330,7 +5336,7 @@ class MonitoringService : Service() {
             }
             val seenCallIds = HashSet<Long>()
             pendingCalls.retainAll { seenCallIds.add(it.id) }
-            pendingCalls.sortWith(compareBy({ it.id }, { it.date }))
+            pendingCalls.sortWith(compareBy({ it.date }, { it.id }))
             if (pendingSms.isEmpty() && pendingCalls.isEmpty()) {
                 if (smsReadFailed || callReadFailed) {
                     initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L

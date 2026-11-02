@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Sinkron awal kini mengirim dalam urutan leksikografik (tanggal, id) yang sama dengan arah kursor persisten (issue #688): sebelumnya urutan kirim menurut id murni sedangkan kursor per potongan maju sebagai maksimum leksikografik, sehingga bila sinkron berhenti di tengah, baris belum terkirim yang berperingkat lebih kecil menjadi tak terjangkau dan hilang permanen.
+
 ## [1.6.583] - 2026-11-02
 
 ### Fixed
