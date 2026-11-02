@@ -37,6 +37,8 @@ class IntentParserTest {
             "tadi habis dari mana saja" to "/jejak",
             "jejak anak hari ini" to "/jejak",
             "riwayat lokasi kemarin" to "/jejak",
+            "riwayat lokasi anak hari ini" to "/jejak",
+            "riwayat lokasi hp sekarang" to "/jejak",
             "ada yang mencurigakan semalam" to "/waspada",
             "ada kejadian aneh tadi malam" to "/waspada",
             "notif apa saja yang masuk" to "/lastnotif",

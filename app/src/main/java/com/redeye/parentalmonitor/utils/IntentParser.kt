@@ -425,16 +425,24 @@ object IntentParser {
         val questionVetoed = tokens.size >= 2 && tokens.drop(1).any { token -> QUESTION_TAIL.any { markerMatches(token, it) } }
         val photoVetoed = futureVetoed || aspectVetoed || questionVetoed || (isPhotoReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
         val shotVetoed = futureVetoed || aspectVetoed || questionVetoed || (isScreenshotReference(tokens, padded) && !hasFirmCaptureIntent(tokens, padded))
+        // Frasa "riwayat lokasi/perjalanan" adalah penanda riwayat yang
+        // tegas (issue #689): tanpa ini, /location ikut menilai kata
+        // "lokasi" sehingga seri 2-2 (-> null) atau menang salah
+        // ("...hp sekarang" -> lokasi saat ini). Tekan /location dan beri
+        // /jejak bonus agar frasa riwayat selalu menang sebagai /jejak.
+        val historyLocation = padded.contains(" riwayat lokasi ") || padded.contains(" riwayat perjalanan ")
         var best: String? = null
         var bestScore = 0
         var tie = false
         for (intent in INTENTS) {
             var score = 0
-            val suppressed = (intent.command == "/photo" && photoVetoed) || (intent.command == "/screenshot" && shotVetoed)
+            val suppressed = (intent.command == "/photo" && photoVetoed) || (intent.command == "/screenshot" && shotVetoed) ||
+                (historyLocation && intent.command == "/location")
             if (!suppressed) {
                 for (group in intent.groups) {
                     if (groupHit(tokens, padded, group)) score++
                 }
+                if (historyLocation && intent.command == "/jejak") score++
             }
             if (score > bestScore) {
                 best = intent.command

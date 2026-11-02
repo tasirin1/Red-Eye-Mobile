@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Frasa "riwayat lokasi/perjalanan" kini selalu menang sebagai /jejak (issue #689): sebelumnya kata "lokasi" ikut dinilai intent /location sehingga "riwayat lokasi anak hari ini" seri menjadi tak dikenal dan "riwayat lokasi hp sekarang" salah terkirim sebagai lokasi saat ini. Intent /location kini ditekan dan /jejak diberi bonus bila frasa riwayat itu ada.
 - Sinkron awal kini mengirim dalam urutan leksikografik (tanggal, id) yang sama dengan arah kursor persisten (issue #688): sebelumnya urutan kirim menurut id murni sedangkan kursor per potongan maju sebagai maksimum leksikografik, sehingga bila sinkron berhenti di tengah, baris belum terkirim yang berperingkat lebih kecil menjadi tak terjangkau dan hilang permanen.
 
 ## [1.6.583] - 2026-11-02
