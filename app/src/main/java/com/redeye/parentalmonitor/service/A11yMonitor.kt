@@ -374,7 +374,14 @@ object A11yMonitor {
                     } catch (_: Exception) {
                     }
                 }
-                if (pkg.isNotEmpty() && foreground.isNotEmpty() && foreground != pkg) {
+                // Pembersihan karena beda terdepan hanya sah bila layar
+                // sudah terbuka (issue #760): pada SCREEN_ON yang masih
+                // terkunci, jendela aktif bisa terbaca sebagai SystemUI/
+                // layar kunci — cabang lanjutkan di bawah sudah menunggu
+                // kunci terbuka lewat isKeyguardLocked, tetapi cabang
+                // bersih ini sebelumnya menghapus sesi tersuspensi lebih
+                // dulu sehingga tak ada lagi yang bisa dilanjutkan.
+                if (pkg.isNotEmpty() && foreground.isNotEmpty() && foreground != pkg && !isKeyguardLocked(app)) {
                     suspendedPackage = ""
                     suspendedLabel = ""
                 }
