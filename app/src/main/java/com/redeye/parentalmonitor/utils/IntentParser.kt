@@ -433,14 +433,8 @@ object IntentParser {
         // Veto tanya dinilai dari token inti (issue #744): kata penegas
         // ekor dibuang dulu seperti di pipa fallback, karena sebelumnya
         // "kunci apa dong" lolos (3 token mentah) dan dieksekusi sebagai
-        // /lock. Token yang cocok penanda tanya (mis. "kok") tidak ikut
-        // dibuang agar veto lamanya tidak berubah.
-        var core = tokens
-        while (core.isNotEmpty() && stripEdgePunct(core.last()) in TAIL_FILLERS &&
-            QUESTION_TAIL.none { markerMatches(core.last(), it) }
-        ) {
-            core = core.dropLast(1)
-        }
+        // /lock.
+        val core = coreTokens(tokens)
         if (core.size == 2 && QUESTION_TAIL.any { markerMatches(core[1], it) }) return true
         // Veto rujukan foto/screenshot tak relevan untuk perintah
         // baca-saja: penanda masa lalu di sana adalah argumen sah
@@ -607,10 +601,24 @@ object IntentParser {
         return parsed
     }
 
+    // Token inti: kata penegas ekor dibuang (issue #744). Token yang
+    // cocok penanda tanya (mis. "kok") tidak ikut dibuang agar veto
+    // lamanya tidak berubah.
+    private fun coreTokens(tokens: List<String>): List<String> {
+        var core = tokens
+        while (core.isNotEmpty() && stripEdgePunct(core.last()) in TAIL_FILLERS &&
+            QUESTION_TAIL.none { markerMatches(core.last(), it) }
+        ) {
+            core = core.dropLast(1)
+        }
+        return core
+    }
+
     fun isVetoedText(text: String, aliasInput: String): Boolean {
         if (isSmsSendForm(aliasInput)) return false
         val tk = tokenize(text) ?: return false
-        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk.first.size == 2 && isCancellation(tk.first[1])) return false
+        val core = coreTokens(tk.first)
+        if (aliasInput.substringBefore(" ") == "/pulihkan" && core.size == 2 && isCancellation(core[1])) return false
         if (!isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return false
         val parsed = parse(text)
         if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
@@ -685,7 +693,14 @@ object IntentParser {
         }
         if (words.size > 2) return null
         val tk = tokenize(text)
-        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput
+        // Pengecualian batal-restore dinilai dari token inti juga
+        // (issue #752): "restore batal dong" sebelumnya gugur karena
+        // token mentahnya 3. Yang dikembalikan bentuk bersihnya agar
+        // argumen handler persis "batal".
+        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null) {
+            val core = coreTokens(tk.first)
+            if (core.size == 2 && isCancellation(core[1])) return cleanAliasTail(aliasInput)
+        }
         if (tk != null && isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return null
         return cleanAliasTail(aliasInput)
     }

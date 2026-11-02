@@ -497,6 +497,17 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasPulihkanBatalSurvivesTailFillers() {
+        // #752: pengecualian batal-restore dinilai dari token inti.
+        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal dong", "/pulihkan batal dong"))
+        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal sih", "/pulihkan batal sih"))
+        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal", "/pulihkan batal"))
+        assertFalse(IntentParser.isVetoedText("restore batal dong", "/pulihkan batal dong"))
+        // Kontrol: veto batal untuk perintah lain tidak ikut longgar.
+        assertNull(IntentParser.intentOrAlias("kunci batal dong", "/lock batal dong"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))
