@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.584] - 2026-11-02
+
 ### Fixed
 - Nomor "+62 0812…" kini dinormalisasi ke E.164 sah (issue #710): nol batang sesudah kode negara dibuang saat normalisasi nomor perintah SMS, sehingga "+62 0812 3456 7890" menjadi "+6281234567890", bukan nomor tak sah "+620812…".
 - Seri intent laporan tunggal kini dimenangkan kata benda khasnya (issue #709): "laporan aktivitas minggu ini" → /minggu dan "laporan layar hari ini" → /layar, bukan lagi tak dikenal karena kata generik "laporan" membuat /digest seri. Permintaan ganda sejati (kedua frasa cakupan hadir) tetap tak dikenal.
