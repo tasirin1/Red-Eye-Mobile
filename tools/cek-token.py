@@ -59,6 +59,17 @@ def _padatkan(teks):
     return re.sub(r"(?<=[A-Za-z0-9_-])\.(?=[A-Za-z0-9_-])", "", rapat)
 
 
+def dekode_berkas(data):
+    # Berkas UTF-16 (lazim dari editor Windows / ekspor log) membawa
+    # BOM; dekode sesuai BOM agar byte NUL antar karakter tidak
+    # memutus pola (issue #785). Tanpa BOM: UTF-8 seperti sebelumnya.
+    if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
+        return data.decode("utf-16", errors="replace")
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data.decode("utf-8-sig", errors="replace")
+    return data.decode("utf-8", errors="replace")
+
+
 def mengandung_token(teks):
     if not teks:
         return False
@@ -101,8 +112,8 @@ def main():
                 continue
             nama = path.decode("utf-8", "replace")
             try:
-                with open(nama, encoding="utf-8", errors="replace") as f:
-                    isi = f.read()
+                with open(nama, "rb") as f:
+                    isi = dekode_berkas(f.read())
             except OSError:
                 continue
             if mengandung_token(isi):

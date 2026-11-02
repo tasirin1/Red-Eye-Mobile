@@ -99,11 +99,22 @@ def nama_tak_lacak():
     return out.splitlines() if out else []
 
 
+def _dekode(data):
+    # Cermin dekode_berkas di tools/cek-token.py (issue #785): berkas
+    # UTF-16 membawa BOM dan harus didekode sesuai BOM, kalau tidak
+    # byte NUL antar karakter memutus pola token dan isi lain.
+    if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
+        return data.decode("utf-16", errors="replace")
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data.decode("utf-8-sig", errors="replace")
+    return data.decode("utf-8", errors="replace")
+
+
 @lru_cache(maxsize=None)
 def baca(path):
     try:
-        with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
-            return f.read()
+        with open(os.path.join(AKAR, path), "rb") as f:
+            return _dekode(f.read())
     except OSError:
         return None
 
