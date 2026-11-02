@@ -81,6 +81,8 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.gojek.app"))
         assertTrue(AppWatch.isSensitivePackage("com.google.android.apps.walletnfcrel"))
         assertTrue(AppWatch.isSensitivePackage("com.bitwarden"))
+        assertTrue(AppWatch.isSensitivePackage("com.revolut.revolut"))
+        assertTrue(AppWatch.isSensitivePackage("com.transferwise.android"))
         assertTrue(AppWatch.isSensitivePackage("com.android.chrome"))
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
         assertFalse(AppWatch.isSensitivePackage("org.telegram.messenger"))
