@@ -555,16 +555,32 @@ def cek_aturan_repo(gagal, berubah):
 POLA_TOKEN_ASLI = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 
 
+def _muat_mengandung_token():
+    """Pakai pemindai bersama tools/cek-token.py (issue #765: bentuk
+    base64/terbelah ikut dikenali); jatuh ke pola literal bila berkas
+    pendamping hilang agar gerbang dasar tetap hidup."""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cek_token", os.path.join(AKAR, "tools", "cek-token.py"))
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul.mengandung_token
+    except Exception:
+        return lambda teks: bool(teks) and bool(POLA_TOKEN_ASLI.search(teks))
+
+
+mengandung_token = _muat_mengandung_token()
+
+
 def cek_secret(gagal, diff):
-    for baris in diff.splitlines():
-        if not baris.startswith("+") or baris.startswith("+++"):
-            continue
-        isi = baris[1:]
-        if POLA_TOKEN_ASLI.search(isi):
-            gagal.append("Kemungkinan token bot asli ikut diff — kredensial "
-                         "hanya via input manual SetupActivity: %s"
-                         % isi.strip()[:60])
-            break
+    tambah = "\n".join(
+        baris[1:] for baris in diff.splitlines()
+        if baris.startswith("+") and not baris.startswith("+++"))
+    if mengandung_token(tambah):
+        gagal.append("Kemungkinan token bot asli ikut diff (termasuk "
+                     "bentuk base64/terbelah) — kredensial hanya via "
+                     "input manual SetupActivity")
     # Berkas biner yang berubah tak menyumbang baris "+" berisi isi —
     # token di dalamnya lolos pemindaian baris di atas (issue #695).
     # Pindai isi berkas berubah langsung (dekode toleran seperti baca()).
@@ -577,36 +593,27 @@ def cek_secret(gagal, diff):
             continue
         if True:
             isi = baca(path)
-            if isi is not None and POLA_TOKEN_ASLI.search(isi):
+            if isi is not None and mengandung_token(isi):
                 gagal.append("Kemungkinan token bot asli di berkas berubah %s "
-                             "(termasuk biner) — kredensial hanya via input "
-                             "manual SetupActivity" % path)
+                             "(termasuk biner/base64/terbelah) — kredensial "
+                             "hanya via input manual SetupActivity" % path)
                 break
 
 
 def cek_secret_pohon(gagal):
     """Pindai token asli di seluruh berkas terlacak (mode --semua/audit penuh)."""
-    # Tanpa -I: git grep juga melaporkan berkas biner yang cocok
-    # ("Binary file ... matches") — token di berkas biner ter-commit
-    # sebelumnya lolos diam-diam (issue #695).
-    out = jalan("git", "grep", "-n", "-E",
-                r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", "--", ".") or ""
-    for baris in out.splitlines():
-        teks = baris.strip()
-        if teks.startswith("Binary file ") and teks.endswith(" matches"):
-            # Kecocokan di dalam berkas biner (issue #742): grep tak
-            # memberi konteks baris — sebutkan jalurnya dan maknanya agar
-            # pemilik bisa memeriksa deret byte yang mirip token itu,
-            # bukan menebak dari pesan mentah grep.
-            path = teks[len("Binary file "):-len(" matches")]
-            gagal.append("Kemungkinan token bot asli di berkas BINER %s — "
-                         "deret byte di dalamnya mirip pola token; periksa "
-                         "dan ganti/hapus berkas itu bila bukan token "
+    # Per berkas lewat mengandung_token (issue #765): git grep literal
+    # saja melewatkan bentuk base64/terbelah; baca() mendekode toleran
+    # sehingga berkas biner ikut terbaca seperti issue #695/#742.
+    for path in (jalan("git", "ls-files") or "").splitlines():
+        if not path:
+            continue
+        if mengandung_token(baca(path)):
+            gagal.append("Kemungkinan token bot asli terlacak di %s "
+                         "(termasuk biner/base64/terbelah) — periksa dan "
+                         "ganti/hapus berkas itu bila bukan token "
                          "sungguhan. Kredensial hanya via input manual "
                          "SetupActivity" % path)
-        else:
-            gagal.append("Kemungkinan token bot asli terlacak di repo — kredensial "
-                         "hanya via input manual SetupActivity: %s" % teks[:100])
 
 
 def cek_secret_riwayat(gagal, rentang):
@@ -643,20 +650,36 @@ def cek_secret_riwayat(gagal, rentang):
                              "Kredensial hanya via input manual "
                              "SetupActivity" % (path, sha[:8]))
             return
+        # Bentuk base64/terbelah tak terlihat grep literal (issue #765):
+        # saring berkas kandidat (memuat deret digit panjang atau run
+        # base64 panjang), lalu uji isinya per commit dengan pemindai
+        # bersama.
+        kandidat = jalan("git", "grep", "-a", "-l", "-E",
+                         r"[0-9]{6,}|[A-Za-z0-9+/=_-]{48,}", sha) or ""
+        for baris in kandidat.splitlines():
+            teks = baris.strip()
+            if not teks:
+                continue
+            path = teks.split(":", 1)[1] if ":" in teks else teks
+            isi = jalan("git", "show", "%s:%s" % (sha, path))
+            if mengandung_token(isi):
+                gagal.append("Kemungkinan token bot asli (base64/terbelah) "
+                             "di %s pada commit %s (riwayat rentang) — "
+                             "token tetap hidup di riwayat walau sudah "
+                             "dihapus di pohon akhir. Kredensial hanya "
+                             "via input manual SetupActivity"
+                             % (path, sha[:8]))
+                return
 
 
 def cek_secret_tak_lacak(gagal):
     """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
     berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
     for path in nama_tak_lacak():
-        isi = baca(path)
-        if isi is None:
-            continue
-        for baris in isi.splitlines():
-            if POLA_TOKEN_ASLI.search(baris):
-                gagal.append("Kemungkinan token bot asli di berkas tak terlacak %s — kredensial "
-                             "hanya via input manual SetupActivity" % path)
-                break
+        if mengandung_token(baca(path)):
+            gagal.append("Kemungkinan token bot asli di berkas tak terlacak %s "
+                         "(termasuk base64/terbelah) — kredensial hanya "
+                         "via input manual SetupActivity" % path)
 
 
 def nama_terabaikan():
@@ -749,14 +772,10 @@ def cek_secret_terabaikan(gagal, peringatan):
                             ".keystore", ".p12", ".pfx", ".env")) or \
                 rendah == "local.properties" or rendah.endswith("/local.properties"):
             peringatan.append("Berkas sensitif terabaikan di pohon kerja: " + path)
-        isi = baca(path)
-        if isi is None:
-            continue
-        for baris in isi.splitlines():
-            if POLA_TOKEN_ASLI.search(baris):
-                gagal.append("Kemungkinan token bot asli di berkas terabaikan %s — kredensial "
-                             "hanya via input manual SetupActivity" % path)
-                break
+        if mengandung_token(baca(path)):
+            gagal.append("Kemungkinan token bot asli di berkas terabaikan %s "
+                         "(termasuk base64/terbelah) — kredensial hanya "
+                         "via input manual SetupActivity" % path)
 
 
 def nama_metode_hilang(diff, lewati_berkas=()):

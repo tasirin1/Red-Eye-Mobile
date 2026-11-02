@@ -46,6 +46,14 @@ fi
 if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' >/dev/null; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
+# 4b. Bentuk base64/terbelah di staged (issue #765): regex literal poin 4
+# tak melihatnya — uji gabungan baris tambah lewat pemindai bersama.
+if [ -f tools/cek-token.py ]; then
+  tambah_token=$(git diff --cached -U0 2>/dev/null | grep -E '^\+' | grep -v '^+++' | python3 tools/cek-token.py --teks 2>/dev/null || true)
+  if [ -n "$tambah_token" ]; then
+    echo "GAGAL: kemungkinan token bot asli (base64/terbelah) ikut staged (hanya via input SetupActivity)"; gagal=1;
+  fi
+fi
 # 5. Pindai tracked tree selalu (bukan hanya saat index bersih).
 # Menangkap secret yang terlanjur ter-commit via --no-verify walau ada perubahan staged.
 if git ls-files -z | tr '\0' '\n' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
@@ -76,6 +84,23 @@ while IFS= read -r f; do
 done <<< "$(git ls-files --others -i --exclude-standard 2>/dev/null || true)"
 if [ -n "$ign_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas terabaikan $ign_token (hanya via input SetupActivity)"; gagal=1;
+fi
+# 5d. Bentuk base64/terbelah di pohon kerja (issue #765): pindai terlacak,
+# tak terlacak, dan terabaikan (di luar build sungguhan) lewat pemindai
+# bersama; regex literal poin 5/5b/5c tetap berjalan sebagai lapis dasar.
+if [ -f tools/cek-token.py ]; then
+  b64_pohon=$(git ls-files -z 2>/dev/null | python3 tools/cek-token.py --berkas 2>/dev/null || true)
+  if [ -n "$b64_pohon" ]; then
+    echo "GAGAL: kemungkinan token bot asli (base64/terbelah) terlacak di repo pada: $b64_pohon (hanya via input SetupActivity)"; gagal=1;
+  fi
+  b64_tak_lacak=$(git ls-files --others -z --exclude-standard 2>/dev/null | python3 tools/cek-token.py --berkas 2>/dev/null || true)
+  if [ -n "$b64_tak_lacak" ]; then
+    echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas tak terlacak $b64_tak_lacak (hanya via input SetupActivity)"; gagal=1;
+  fi
+  b64_ign=$(git ls-files --others -z -i --exclude-standard 2>/dev/null | tr '\0' '\n' | grep -v -E '^(build/|app/build/|.*/\.gradle/|\.gradle/|.*__pycache__/)' | tr '\n' '\0' | python3 tools/cek-token.py --berkas 2>/dev/null || true)
+  if [ -n "$b64_ign" ]; then
+    echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas terabaikan $b64_ign (hanya via input SetupActivity)"; gagal=1;
+  fi
 fi
 # 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
 loop_dup=""
