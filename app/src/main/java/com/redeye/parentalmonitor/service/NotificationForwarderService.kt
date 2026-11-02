@@ -951,8 +951,34 @@ class NotificationForwarderService : NotificationListenerService() {
         try { super.onTaskRemoved(rootIntent) } catch (_: Exception) { }
     }
 
+    private fun salvageInFlight() {
+        try {
+            val sisa = synchronized(batchLock) {
+                val items = flushInFlight
+                flushInFlight = emptyList()
+                items
+            }
+            if (sisa.isNotEmpty()) {
+                try {
+                    queue().addMessages(sisa.map { it.first })
+                    queue().flushSync()
+                } catch (_: Exception) {
+                }
+                try {
+                    MessageScheduler.scheduleMessageSend(this)
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onDestroy() {
         if (activeInstance === this) activeInstance = null
+        // Selamatkan sisa flush yang sedang berjalan SEBELUM scope.cancel()
+        // (issue #704) — jalur tangkap asinkron tak selalu sempat jalan
+        // bila proses mati tepat sesudah onDestroy.
+        try { salvageInFlight() } catch (_: Exception) { }
         try {
             synchronized(dropWriteLock) {
                 val pending = synchronized(dropNoticeLock) {
@@ -1036,6 +1062,11 @@ class NotificationForwarderService : NotificationListenerService() {
     private val batchLock = Any()
     private val batchBuf = ArrayDeque<Triple<String, String, String>>()
     private var batchJob: Job? = null
+    // Sisa item yang sedang dipegang flushBatch di daftar lokalnya (issue
+    // #704): batchBuf sudah kosong untuk item ini, jadi salvageBatch biasa
+    // tak menjangkaunya. flushBatch memperbarui daftar ini seiring item
+    // terkirim; onDestroy menyelamatkannya secara sinkron.
+    private var flushInFlight: List<Triple<String, String, String>> = emptyList()
 
     private fun scheduleBatchLocked() {
         if (batchJob?.isActive == true) return
@@ -1086,6 +1117,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (batchBuf.isEmpty()) return
             items = batchBuf.toList()
             batchBuf.clear()
+            flushInFlight = items
         }
         var cur = StringBuilder()
         var curCount = 0
@@ -1138,6 +1170,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     splitGroup = ""
                     if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
                     if (splitDelivered && item.third.isNotEmpty()) markGroupForwarded(item.third)
+                    synchronized(batchLock) { flushInFlight = items.drop(index) }
                     continue
                 }
                 if (curCount > 0 && cur.length + 2 + msg.length > 4000) flushCur()
@@ -1146,9 +1179,15 @@ class NotificationForwarderService : NotificationListenerService() {
                 curCount++
                 if (item.second.isNotEmpty()) curHashes.add(item.second)
                 if (item.third.isNotEmpty()) curGroups.add(item.third)
+                synchronized(batchLock) {
+                    val sisa = items.drop(index)
+                    flushInFlight = if (curCount > 0) listOf(Triple(cur.toString(), "", "")) + sisa else sisa
+                }
             }
             flushCur()
+            synchronized(batchLock) { flushInFlight = emptyList() }
         } catch (t: Throwable) {
+            synchronized(batchLock) { flushInFlight = emptyList() }
             val restItems = ArrayList<Triple<String, String, String>>()
             while (index < items.size) restItems.add(items[index++])
             if (t is kotlinx.coroutines.CancellationException) {
