@@ -22,7 +22,11 @@ direktori_kait() {
 # dipertahankan. Hasil: path kait lama (kosong bila tak ada),
 # dicetak ke stdout; keterangan ke stderr.
 siapkan_rantai() {
-    if [ -f "$1" ] && ! grep -q "verifikasi-path.py" "$1" 2>/dev/null; then
+    # Penanda kepemilikan = baris yang MENJALANKAN gerbang (issue
+    # #868), bukan kemunculan nama berkas di mana pun: kait asing
+    # yang sekadar menyebut verifikasi-path.py di komentar
+    # sebelumnya dikira kait kita lalu ditimpa tanpa rantai.
+    if [ -f "$1" ] && ! grep -q "python3 tools/verifikasi-path.py" "$1" 2>/dev/null; then
         BAK="$1.bak-$(date +%Y%m%d%H%M%S)"
         if cp "$1" "$BAK" 2>/dev/null; then
             # Salinan wajib bisa-dijalankan (issue #861): cp dari kait
