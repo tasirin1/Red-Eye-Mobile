@@ -69,11 +69,23 @@ object MessageScheduler {
 
     fun scheduleMessageSendNext(context: Context, initialDelayMs: Long = 0L): Boolean {
         var reserved = false
+        val nowHeal = android.os.SystemClock.elapsedRealtime()
         while (!reserved) {
             val cur = outstandingSends.get()
-            if (cur >= MAX_OUTSTANDING_SEND) return true
+            // Self-heal berbasis waktu yang sama dengan
+            // scheduleMessageSend (issue #821): penghitung penuh yang
+            // cap tambah terakhirnya sudah lewat 10 menit dianggap
+            // macet (work hilang di lapisan WorkManager/OEM) — teruskan
+            // penjadwalan, jangan berhenti diam-diam selamanya. Semua
+            // penjadwalan lanjutan worker lewat fungsi ini.
+            if (cur >= MAX_OUTSTANDING_SEND &&
+                nowHeal - lastSendAppendAt.get() < SEND_SKIP_SELF_HEAL_MS
+            ) {
+                return true
+            }
             reserved = outstandingSends.compareAndSet(cur, cur + 1)
         }
+        lastSendAppendAt.set(nowHeal)
         return try {
             val delayMs = initialDelayMs.coerceAtLeast(0L)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()

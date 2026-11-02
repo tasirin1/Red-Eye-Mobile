@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Penjadwalan ulang pesan tertunda kini punya pemulihan mandiri yang sama dengan penjadwalan utama (#821): bila penghitung work terlanjur penuh tetapi cap tambah terakhir sudah lewat 10 menit, penjadwalan diteruskan — sebelumnya jalur lanjutan worker bisa berhenti menjadwalkan diam-diam sampai proses dimulai ulang.
 - Cek cepat kini juga memindai nama berkas dari token (#818): nama staged, terlacak, dan tak terlacak diperiksa mentah dan tergabung tanpa garis miring, sejajar dengan gerbang utama — sebelumnya berkas bernama token dengan isi bersih lolos cek cepat.
 - Gerbang kini juga mengenali berkas UTF-16 tanpa BOM (#817): pola byte NUL di antara karakter ASCII dideteksi dan isinya didekode sebelum dipindai, di pohon maupun di riwayat rentang — sebelumnya hanya UTF-16 ber-BOM yang tertangkap.
 - Pindai nama berkas gerbang kini juga menelusuri nama-nama di riwayat (#816): berkas yang pernah bernama token lalu diganti namanya tetap tertangkap pada mode pindai penuh maupun rentang, dari daftar nama per-commit.
