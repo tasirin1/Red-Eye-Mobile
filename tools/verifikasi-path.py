@@ -586,6 +586,34 @@ def cek_secret_tak_lacak(gagal):
                 break
 
 
+def nama_terabaikan():
+    out = jalan("git", "ls-files", "--others", "-i", "--exclude-standard")
+    return out.splitlines() if out else []
+
+
+def cek_secret_terabaikan(gagal, peringatan):
+    """Berkas ignored + tak terlacak tak terlihat ls-files biasa: berkas
+    berisi token di sana tak terlihat kedua gerbang sampai seseorang
+    menjalankan git add -f (issue #680). Abaikan direktori build."""
+    for path in nama_terabaikan():
+        bagian = path.split("/")
+        if any(b in ("build", ".gradle", "__pycache__") for b in bagian):
+            continue
+        rendah = path.lower()
+        if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
+                            ".keystore", ".p12", ".pfx", ".env")) or \
+                rendah == "local.properties" or rendah.endswith("/local.properties"):
+            peringatan.append("Berkas sensitif terabaikan di pohon kerja: " + path)
+        isi = baca(path)
+        if isi is None:
+            continue
+        for baris in isi.splitlines():
+            if POLA_TOKEN_ASLI.search(baris):
+                gagal.append("Kemungkinan token bot asli di berkas terabaikan %s — kredensial "
+                             "hanya via input manual SetupActivity" % path)
+                break
+
+
 def nama_metode_hilang(diff, lewati_berkas=()):
     """Nama metode pada baris dihapus yang definisinya hilang dari pohon kerja."""
     hilang = []
@@ -940,6 +968,7 @@ def utama():
     else:
         cek_secret(gagal, diff)
     cek_secret_tak_lacak(gagal)
+    cek_secret_terabaikan(gagal, peringatan)
     cek_kurung_kode(gagal, berubah)
     hapus = berkas_dihapus(args.rentang)
     if not args.rentang:
