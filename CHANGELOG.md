@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pesan prioritas kini dikirim lebih dulu, tidak menunggu urutan antrean biasa (#846): sebelumnya bendera prioritas hanya memengaruhi batas antrean dan perlindungan buang, sedangkan urutan kirim murni urutan masuk — pesan prioritas di posisi 100 baru terkirim pada putaran kelima.
 - Pemisah non-ASCII pada perintah kini dinormalkan (#845): spasi tak-pecah (NBSP), titik dua lebar penuh, dan koma Arab dari klien Telegram lain sebelumnya membuat sebagian perintah gugur diam-diam dan tak konsisten antar kata; kini semuanya diperlakukan seperti spasi/titik dua/koma biasa.
 - Dua perintah dalam satu pesan kini dijawab saran, bukan senyap (#844): "foto lalu lokasi" sebelumnya tidak menghasilkan apa pun; kini bot menyebut kedua perintah yang terbaca dan meminta dikirim terpisah (tidak mengeksekusi sebagian). Gabungan berisi penolakan ("…jangan") tetap senyap.
 - Perintah yang dialamatkan ke bot lain kini diabaikan (#843): sufiks "@NamaBot" sebelumnya dibuang tanpa pemeriksaan sehingga "/photo@BotLain" ikut dieksekusi; kini username bot sendiri dipelajari dari Telegram dan perintah beralamat lain dilewati (pemasangan lama yang belum mempelajari username mempertahankan perilaku lama sampai username diketahui).

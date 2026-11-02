@@ -67,7 +67,11 @@ class SendMessageWorker(
         guardPreconditions()?.let { return it }
 
         val runGen = messageQueue.queueGeneration()
-        val queue = messageQueue.getQueue()
+        // Prioritas jalan lebih dulu dalam putaran ini (issue #846):
+        // sebelumnya urutan kirim murni FIFO sehingga pesan prioritas
+        // di posisi 100 menunggu lima putaran worker. Urutan di dalam
+        // kelas yang sama tetap FIFO (pengurutan stabil).
+        val queue = messageQueue.getQueue().sortedByDescending { it.priority }
         if (queue.isEmpty()) {
             return Result.success()
         }
