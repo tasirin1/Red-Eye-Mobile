@@ -336,7 +336,9 @@ object IntentParser {
 
     private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok", "kah", "kan")
 
-    private fun isCancellation(token: String): Boolean {
+    // Publik agar handler /pulihkan memakai kosakata batal yang sama
+    // dengan parser (issue #789).
+    fun isCancellation(token: String): Boolean {
         if (token == "batalin") return true
         // Nomina "pembatalan" berawalan pem- sehingga tak diawali "batal"
         // (issue #668, sisa #628).

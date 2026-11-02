@@ -3280,7 +3280,11 @@ class MonitoringService : Service() {
         }
         val mode = arg.trim()
         val lower = mode.lowercase(java.util.Locale.ROOT)
-        if (lower == "batal" || lower == "cancel" || lower == "off") {
+        // Kosakata batal sama dengan parser (issue #789): sebelumnya
+        // hanya "batal" persis, sehingga "batalkan"/"batalin"/
+        // "pembatalan" yang lolos parser jatuh sebagai tebakan kode
+        // (mode ketat: penghitung gagal ikut naik).
+        if (lower == "cancel" || lower == "off" || (!lower.contains(' ') && IntentParser.isCancellation(lower))) {
             val had = pendingRestore != null
             pendingRestore = null
             audit("restore batal", "private")
