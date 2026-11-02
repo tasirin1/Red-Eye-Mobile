@@ -604,7 +604,15 @@ object IntentParser {
             if (merged != parsed) return merged
             return mergeTextArgs(text, parsed)
         }
-        val words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
+        var words = text.trim().split(WHITESPACE).filter { it.isNotEmpty() }
+        // Kata penegas sopan di ekor (issue #708): "kuota on dong" dan
+        // "kunci hp sekarang" sebelumnya gugur oleh batas <=2 kata. Buang
+        // kata penegas ekor lebih dulu, lalu batas lama berlaku. Pemeriksaan
+        // veto di bawah tetap memakai teks utuh.
+        val tailFillers = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
+        while (words.size > 2 && words.last() in tailFillers) {
+            words = words.dropLast(1)
+        }
         if (words.size > 2) return null
         val tk = tokenize(text)
         if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null && tk.first.size == 2 && isCancellation(tk.first[1])) return aliasInput

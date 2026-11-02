@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perintah berargumen/frasa dengan kata penegas ekor kini dikenali (issue #708): "kuota on dong", "hematdata off sekarang", "kunci hp sekarang" sebelumnya berakhir "perintah tak dikenal" karena fallback alias membatasi teks ≤2 kata; kata penegas ekor yang dikenal kini dibuang sebelum batas itu diterapkan, sedangkan pemeriksaan veto tetap memakai teks utuh.
 - Redaksi token kini menangkap bentuk ter-encode URL dan terbelah baris, dan PIN akses ikut disunting di semua situs (issue #707): fallback `Redact` sebelumnya hanya mengenal token kanonik utuh sehingga token dalam URL ter-encode (`%3A`) lolos, dan MonitoringService/NotificationForwarderService/CrashReporter tidak menyertakan `accessPin` sebagai rahasia yang disunting.
 - Pengecualian direktori build pada pemindaian berkas terabaikan kini hanya untuk direktori build sungguhan (issue #706): komponen bernama "build" di mana pun sebelumnya ikut dikecualikan sehingga `catatan/build/bocor.txt` berisi token lolos; kini pengecualian mensyaratkan build di akar repo atau modul ber-build.gradle. `cek-cepat.sh` juga kini memindai berkas ignored dan tak lagi memakai `grep -I` yang buta berkas biner.
 - Jadwal ulang drain MessageQueue tak lagi tidur di thread persist tunggal (issue #705): penundaan kini memakai ScheduledExecutor terpisah yang menyerahkan drain ke executor persist saat waktunya tiba, sehingga drain lain dan sinkronisasi berkas cadangan tidak tertahan sampai 60 detik.
