@@ -49,11 +49,17 @@ class DigestScheduleTest {
 
     @Test
     fun nightCatchUpDueRules() {
-        assertTrue(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27"))
-        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-26", "2026-10-26", "2026-10-27"))
-        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-27", "2026-10-26", "2026-10-27"))
-        assertFalse(DigestSchedule.nightCatchUpDue("", "2026-10-26", "2026-10-27"))
-        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "", "2026-10-27"))
+        assertTrue(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 7))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-26", "2026-10-26", "2026-10-27", 7))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-27", "2026-10-26", "2026-10-27", 7))
+        assertFalse(DigestSchedule.nightCatchUpDue("", "2026-10-26", "2026-10-27", 7))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "", "2026-10-27", 7))
+        // Jendela pagi saja (issue #738): tengah hari/malam tidak menyusul.
+        assertTrue(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 5))
+        assertTrue(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 11))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 15))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 22))
+        assertFalse(DigestSchedule.nightCatchUpDue("2026-10-25", "2026-10-26", "2026-10-27", 3))
     }
 
     @Test
@@ -62,7 +68,7 @@ class DigestScheduleTest {
         // (bukan hari ini) — urutan predikat ini mengunci akibatnya: catch-up
         // tidak menembak dua kali, dan digest reguler malam nanti tetap due.
         val doneAfterCatchUp = "2026-10-26"
-        assertFalse(DigestSchedule.nightCatchUpDue(doneAfterCatchUp, "2026-10-26", "2026-10-27"))
+        assertFalse(DigestSchedule.nightCatchUpDue(doneAfterCatchUp, "2026-10-26", "2026-10-27", 7))
         assertTrue(DigestSchedule.nightDue(21, doneAfterCatchUp, "2026-10-27"))
     }
 
