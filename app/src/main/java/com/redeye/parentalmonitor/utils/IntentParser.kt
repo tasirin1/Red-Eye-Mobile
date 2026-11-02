@@ -428,7 +428,6 @@ object IntentParser {
         if (tokens.any { isNegation(it) }) return true
         if (tokens.any { isCancellation(it) }) return true
         if (isReport(tokens, padded)) return true
-        if (hasFutureMarker(tokens, padded)) return true
         if (isAspectStatus(tokens)) return true
         // Veto tanya dinilai dari token inti (issue #744): kata penegas
         // ekor dibuang dulu seperti di pipa fallback, karena sebelumnya
@@ -440,6 +439,11 @@ object IntentParser {
         // baca-saja: penanda masa lalu di sana adalah argumen sah
         // ("waspada kemarin", "lokasi kemarin") — issue #672.
         if (readOnlyTarget) return false
+        // Penanda masa depan juga tak memveto target baca-saja
+        // (issue #755): parse() menoleransinya ("lokasi anak besok"
+        // -> /location), jadi jalur alias diselaraskan — "lokasi
+        // besok" sebelumnya gugur hanya karena jatuh ke fallback.
+        if (hasFutureMarker(tokens, padded)) return true
         if (hasFirmCaptureIntent(tokens, padded)) return false
         return isPhotoReference(tokens, padded) || isScreenshotReference(tokens, padded)
     }

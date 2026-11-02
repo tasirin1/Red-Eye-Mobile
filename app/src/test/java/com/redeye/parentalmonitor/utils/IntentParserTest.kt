@@ -528,6 +528,17 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasFutureMarkerYieldsToReadOnlyTargets() {
+        // #755: penanda masa depan tak memveto target baca-saja di jalur
+        // alias, selaras toleransi parse() dan pengecualian #672.
+        assertEquals("/location besok", IntentParser.intentOrAlias("lokasi besok", "/location besok"))
+        assertEquals("/location kemarin", IntentParser.intentOrAlias("lokasi kemarin", "/location kemarin"))
+        // Target mutasi tetap terveto masa depan.
+        assertNull(IntentParser.intentOrAlias("kunci besok", "/lock besok"))
+        assertNull(IntentParser.intentOrAlias("darurat besok", "/darurat besok"))
+    }
+
+    @Test
     fun parseRejectsAspectStatusStatements() {
         // #657: "belum/sudah + kata kerja" adalah pernyataan status kiriman.
         assertNull(IntentParser.parse("belum kirim foto dong"))
