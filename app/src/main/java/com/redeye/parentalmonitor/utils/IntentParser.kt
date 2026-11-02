@@ -442,6 +442,17 @@ object IntentParser {
         // /lock.
         val core = coreTokens(tokens)
         if (core.size == 2 && QUESTION_TAIL.any { markerMatches(core[1], it) }) return true
+        // Frasa alias dua kata (issue #826): "pulang jam berapa"
+        // sebelumnya lolos karena intinya 3 token — kata keduanya
+        // kata kedua frasa yang dikenal dan token ketiganya penanda
+        // tanya, jadi pertanyaan atas frasa ikut diveto. Daftar kata
+        // kedua mencerminkan kata kedua ALIAS_PHRASES di
+        // MonitoringService; uji porting 716/716 tetap hijau.
+        if (core.size == 3 && core[1] in PHRASE_SECONDS &&
+            QUESTION_TAIL.any { markerMatches(core[2], it) }
+        ) {
+            return true
+        }
         // Veto rujukan foto/screenshot tak relevan untuk perintah
         // baca-saja: penanda masa lalu di sana adalah argumen sah
         // ("waspada kemarin", "lokasi kemarin") — issue #672.
@@ -771,6 +782,9 @@ object IntentParser {
         if (tk != null && isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return null
         return cleanAliasTail(aliasInput)
     }
+
+    // Kata kedua frasa ALIAS_PHRASES MonitoringService (issue #826).
+    private val PHRASE_SECONDS = setOf("pulang", "jam", "kuota", "mati")
 
     private val TAIL_FILLERS = setOf("dong", "sih", "deh", "ya", "yuk", "sekarang", "nih", "kok")
     // Selaras dengan NumericArg.UNITS (issue #754): sebelumnya "s"/"min"
