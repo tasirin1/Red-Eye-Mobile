@@ -22,6 +22,9 @@ class SmsNumbersTest {
         assertTrue(SmsNumbers.isPremium("+44 70 1234 5678"))
         assertTrue(SmsNumbers.isPremium("976"))
         assertTrue(SmsNumbers.isPremium("12345"))
+        // #641 (dugaan): awalan 0809 adalah layanan premium Indonesia (bukan
+        // awalan seluler reguler) — sebelumnya lolos semua aturan premium.
+        assertTrue(SmsNumbers.isPremium("080912345678"))
     }
 
     @Test
