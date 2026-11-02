@@ -10678,6 +10678,18 @@ class MonitoringService : Service() {
                         videoProgress = true
                         continue
                     }
+                    // Terlalu besar untuk Telegram (issue #848):
+                    // jalur kirim langsung menolaknya, tetapi jalur
+                    // flush sebelumnya mengunggah ulang selamanya —
+                    // buang sekali dan hitung sebagai dropped (pesan
+                    // ringkasannya memang sudah menyebut terlalu besar).
+                    if (file.length() > MAX_VIDEO_BYTES) {
+                        deleteQuietly(file)
+                        droppedVideos++
+                        batchProgress = true
+                        videoProgress = true
+                        continue
+                    }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)

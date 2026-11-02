@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Video yang terlalu besar untuk Telegram kini dibuang sekali, tidak diunggah ulang selamanya (#848): berkas video di atas batas 48 MB yang tersimpan saat monitoring dijeda sebelumnya dicoba lagi di setiap siklus pengiriman tanpa pernah bisa terkirim; kini ia dibuang dan dilaporkan dalam ringkasan berkas terbuang.
 - Pemilik kini dikabari bila token bot dipakai proses lain (#847): konflik polling Telegram (409) dari konsumen lain sebelumnya hanya memicu backoff berulang tanpa satu pun kabar, sehingga perintah bisa tertahan berjam-jam tanpa sebab yang terlihat; kini ada peringatan (dibatasi sekali per jam).
 - Pesan prioritas kini dikirim lebih dulu, tidak menunggu urutan antrean biasa (#846): sebelumnya bendera prioritas hanya memengaruhi batas antrean dan perlindungan buang, sedangkan urutan kirim murni urutan masuk — pesan prioritas di posisi 100 baru terkirim pada putaran kelima.
 - Pemisah non-ASCII pada perintah kini dinormalkan (#845): spasi tak-pecah (NBSP), titik dua lebar penuh, dan koma Arab dari klien Telegram lain sebelumnya membuat sebagian perintah gugur diam-diam dan tak konsisten antar kata; kini semuanya diperlakukan seperti spasi/titik dua/koma biasa.
