@@ -794,9 +794,26 @@ class SetupActivity : AppCompatActivity() {
         val rawAccessPin = accessPinInput.text.toString().trim()
         val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
         val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
-        val sensitive = rawAccessPin != STORED_MASK ||
-            (rawToken != STORED_MASK && rawToken != storedToken) ||
-            (rawChat != STORED_MASK && rawChat != storedChat)
+        // Sensitivitas dinilai dari nilai TERESOLUSI, bukan teks kolom
+        // mentah (issue #749): sesudah pulihkan cadangan, kolom PIN
+        // berisi masker tetapi PIN yang benar-benar disimpan berasal
+        // dari cadangan (restoreAccessPin) dan owner bisa ikut diganti
+        // (restoreOwnerOverride) — perbandingan mentah melewatkan
+        // keduanya sehingga PIN akses terganti tanpa verifikasi PIN
+        // lama. Jalur Tes (:1323) sudah membandingkan yang teresolusi.
+        val resolvedToken = resolveStored(rawToken, storedToken)
+        val resolvedChat = resolveStored(rawChat, storedChat)
+        val resolvedPin = if (rawAccessPin == STORED_MASK) {
+            restoreAccessPin(resolvedToken, resolvedChat, storedPin)
+        } else {
+            rawAccessPin
+        }
+        val ownerOverride = restoreOwnerOverride(resolvedToken, resolvedChat)
+        val storedOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
+        val sensitive = resolvedPin != storedPin ||
+            resolvedToken != storedToken ||
+            resolvedChat != storedChat ||
+            (ownerOverride != null && ownerOverride != storedOwner)
         if (!sensitive) {
             saveSettingsInternal()
             return
@@ -1320,7 +1337,9 @@ class SetupActivity : AppCompatActivity() {
                     val storedPin = try { prefs.accessPin } catch (_: Exception) { "" }
                     val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
                     val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
-                    val sensitive = storedPin.isNotEmpty() && (token != storedToken || chatId != storedChat || accessPin != storedPin)
+                    val ownerOverride = restoreOwnerOverride(token, chatId)
+                    val storedOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
+                    val sensitive = storedPin.isNotEmpty() && (token != storedToken || chatId != storedChat || accessPin != storedPin || (ownerOverride != null && ownerOverride != storedOwner))
                     if (sensitive) {
                         verifyStoredAccessPin { persistTestedSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin) }
                     } else {
