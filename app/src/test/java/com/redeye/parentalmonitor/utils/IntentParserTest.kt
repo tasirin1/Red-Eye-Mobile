@@ -371,6 +371,13 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsOgahRefusal() {
+        // #669: kata penolakan kasual "ogah" adalah negasi.
+        assertNull(IntentParser.parse("ogah kirim foto sekarang"))
+        assertNull(IntentParser.parse("ogah ambil screenshot"))
+    }
+
+    @Test
     fun parseRejectsPembatalanNoun() {
         // #668: nomina "pembatalan" adalah pembatalan.
         assertNull(IntentParser.parse("pembatalan kirim foto sekarang"))
