@@ -137,6 +137,7 @@ class MonitoringService : Service() {
     private var digestAttemptAnchor = 0L
     private var curfewAttemptKey = ""
     private var schoolAttemptKey = ""
+    private var nightDigestAttemptKey = ""
     private var trailMirrorRaw: String? = null
     private var trailMirrorPts: List<String>? = null
     private val videoFlushBusy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -7312,16 +7313,26 @@ class MonitoringService : Service() {
                 // Tandai selesai SESUDAH kirim berhasil (issue #699):
                 // menandai sebelum kirim membuat digest hari itu hilang
                 // permanen bila pengiriman gagal malam itu juga.
-                if (sendDailyDigest(manual = false)) {
-                    try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                // Satu percobaan per malam per proses (issue #746, pola
+                // #737): sendToTelegram false juga berarti "diantrekan",
+                // jadi tanpa penjaga ini tiap siklus gelung menambahkan
+                // satu salinan digest ke antrean saat offline.
+                if (nightDigestAttemptKey != key) {
+                    nightDigestAttemptKey = key
+                    if (sendDailyDigest(manual = false)) {
+                        try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
+                    }
                 }
                 return
             }
             val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h)) {
                 if (awaitingOwnerLogin()) return
-                if (sendDailyDigest(manual = false)) {
-                    try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
+                if (nightDigestAttemptKey != yesterday) {
+                    nightDigestAttemptKey = yesterday
+                    if (sendDailyDigest(manual = false)) {
+                        try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
+                    }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
