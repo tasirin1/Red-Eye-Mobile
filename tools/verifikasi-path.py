@@ -771,6 +771,22 @@ def cek_secret_pesan_semua(gagal):
             return
 
 
+def nama_riwayat(rev):
+    """Semua path yang muncul di diff per-commit dalam cakupan rev
+    (issue #816): nama bertoken yang sudah diganti nama tetap hidup
+    di riwayat dan ikut terpublikasi. Daftar per-commit (bukan diff
+    ujung-ke-ujung dan bukan rev-list --objects) adalah satu-satunya
+    sumber lengkap: diff ujung menyembunyikan rename di tengah
+    rentang, dan rev-list menamai blob yang sama hanya sekali."""
+    out = jalan("git", "log", "--format=", "--name-status", rev) or ""
+    hasil = []
+    for baris in out.splitlines():
+        kolom = baris.split("\t")
+        if len(kolom) >= 2 and kolom[0] and kolom[0][0] in "AMDRC":
+            hasil.extend(kolom[1:])
+    return hasil
+
+
 def cek_secret_nama(gagal, daftar):
     """Pindai token pada NAMA berkas itu sendiri (issue #803).
 
@@ -1200,6 +1216,7 @@ def utama():
     gagal = []
     peringatan = []
     diff = ""
+    rentang_lokal = ""
     if args.jalur:
         # Jalur yang salah ketik tak boleh hilang diam-diam menjadi
         # "LOLOS (0 berkas diperiksa)" (issue #681).
@@ -1225,6 +1242,7 @@ def utama():
                 diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
         else:
             berubah = daftar
+            rentang_lokal = args.rentang
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
             pemisah = "..." if "..." in args.rentang else ".."
             diff = jalan("git", "diff", a + pemisah + b) or ""
@@ -1275,10 +1293,17 @@ def utama():
         cek_aturan_repo(gagal, berubah)
     if args.semua:
         cek_secret_pohon(gagal)
-        cek_secret_nama(gagal, (jalan("git", "ls-files") or "").splitlines())
+        nama_pindai = (jalan("git", "ls-files") or "").splitlines()
+        nama_pindai += [p for p in nama_riwayat("HEAD")
+                        if p not in nama_pindai]
+        cek_secret_nama(gagal, nama_pindai)
     else:
         cek_secret(gagal, diff)
-        cek_secret_nama(gagal, berubah)
+        nama_pindai = list(berubah)
+        if rentang_lokal:
+            nama_pindai += [p for p in nama_riwayat(rentang_lokal)
+                            if p not in nama_pindai]
+        cek_secret_nama(gagal, nama_pindai)
     cek_secret_tak_lacak(gagal)
     cek_secret_terabaikan(gagal, peringatan)
     cek_kurung_kode(gagal, berubah)
