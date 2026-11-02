@@ -3057,7 +3057,7 @@ class MonitoringService : Service() {
             }
             "/layar" -> {
                 val raw = arg.trim()
-                val parsed = raw.toIntOrNull()
+                val parsed = NumericArg.parse(raw)
                 if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
                     sendToTelegram("Cara pakai: /layar &lt;1-24&gt; (jam, bawaan 24)")
                 } else {

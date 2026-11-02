@@ -618,6 +618,13 @@ object IntentParser {
                     if (attachedHours != null && attachedHours in 1..24) return "$parsed $attachedHours"
                     val hours = word.toIntOrNull()
                     if (hours != null && hours in 1..24 && i + 1 < tokens.size && stripEdgePunct(tokens[i + 1]) == "jam") return "$parsed $hours"
+                    // Jam desimal (issue #774): "6,5 jam" sebelumnya jatuh
+                    // diam-diam ke laporan bawaan 24 jam; kini dibulatkan
+                    // ke jam terdekat (floor(x + 0,5) untuk nilai positif).
+                    val numText = if (word.length > 3 && word.endsWith("jam")) word.removeSuffix("jam") else word
+                    val decHours = numText.replace(',', '.').toDoubleOrNull()?.plus(0.5)?.toInt()
+                    val nextJam = i + 1 < tokens.size && stripEdgePunct(tokens[i + 1]) == "jam"
+                    if (decHours != null && decHours in 1..24 && (numText != word || nextJam)) return "$parsed $decHours"
                 }
             }
             return parsed

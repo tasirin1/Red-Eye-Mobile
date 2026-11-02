@@ -771,6 +771,17 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasMergesDecimalScreenHours() {
+        // Issue #774: jam desimal sebelumnya jatuh diam-diam ke laporan
+        // bawaan 24 jam; kini dibulatkan ke jam terdekat.
+        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6,5 jam", null))
+        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6.5 jam", null))
+        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6,4 jam", null))
+        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6,5jam", null))
+        assertEquals("/layar", IntentParser.intentOrAlias("layar 25,5 jam", null))
+    }
+
+    @Test
     fun parseRejectsElongatedReferenceMarkers() {
         val cases = listOf(
             "kirim foto kemarinn dong",
