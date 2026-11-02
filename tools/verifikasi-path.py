@@ -758,6 +758,21 @@ def cek_secret_pesan_semua(gagal):
             return
 
 
+def cek_secret_nama(gagal, daftar):
+    """Pindai token pada NAMA berkas itu sendiri (issue #803).
+
+    Semua jalur lain hanya membaca isi; berkas yang namanya berpola
+    token (tangkapan/log yang dinamai dari teks berisi token) ikut
+    ter-commit dan tampil di daftar repo tanpa pernah diperiksa.
+    """
+    for path in daftar:
+        if path and mengandung_token(path):
+            gagal.append("Kemungkinan token bot asli pada NAMA berkas %s — "
+                         "ganti nama berkas itu; kredensial hanya via "
+                         "input manual SetupActivity" % path)
+            return
+
+
 def cek_secret_tak_lacak(gagal):
     """Pindai token asli di berkas tak terlacak (belum masuk git grep/diff):
     berkas seperti itu lolos kedua jalur lain dan tinggal menunggu commit."""
@@ -1243,8 +1258,10 @@ def utama():
         cek_aturan_repo(gagal, berubah)
     if args.semua:
         cek_secret_pohon(gagal)
+        cek_secret_nama(gagal, (jalan("git", "ls-files") or "").splitlines())
     else:
         cek_secret(gagal, diff)
+        cek_secret_nama(gagal, berubah)
     cek_secret_tak_lacak(gagal)
     cek_secret_terabaikan(gagal, peringatan)
     cek_kurung_kode(gagal, berubah)
