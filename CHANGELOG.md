@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Detektor UTF-16 perkakas gerbang tidak lagi salah endian pada teks Thai/Lao/Khmer (#860): dekode byte-tertukar dari berkas big-endian aksara itu sebelumnya tetap lolos ambang "tercetak" sehingga dinyatakan little-endian dan token di dalamnya terlewat; kini kedua endian dinilai dan yang benar dipilih lewat rasio tercetak + koherensi aksara.
 - Toleransi koreksi jam pada penanda sesi kini juga membatasi besar geseran jamnya (#858): sebelumnya sesi bisa "dilanjutkan" lintas reboot bila pemulihan terjadi pada penanda waktu jalan yang kebetulan cocok, mengkreditkan waktu antar boot sebagai pemakaian; kini geseran jam tersirat di atas 2 jam ditolak (koreksi NTP besar yang sah tetap diterima).
 - Pindai kata pantau kini dibatasi pada 8.192 karakter pertama tiap teks (#857): penilaian atas teks utuh sebelumnya membuat satu tampilan teks raksasa (dokumen/chat sangat panjang) mahal dipindai berulang kali dan menunda pemindaian jendela lain; kata pantau adalah kata pendek di konten yang tampak.
 - Kegagalan memutar berkas pada antrean kirim media kini tercatat di log (#856): penulisan ulang waktu berkas yang gagal sebelumnya tak terlihat sama sekali (hasilnya dibuang), sehingga perputaran bisa berhenti bekerja diam-diam dan berkas yang sama kembali memakan seluruh jatah kirim.

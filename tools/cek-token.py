@@ -114,13 +114,49 @@ def _utf16_tanpa_bom(data):
         c in "\t\n\r" or ord(c) >= 32 for c in teks8)
     if not utf8_bersih:
         genap512 = contoh[:510] if len(contoh) >= 510 else contoh[: len(contoh) // 2 * 2]
+        # Nilai KEDUA endian lalu pilih yang terbaik (issue #860):
+        # urutan coba lama (LE dulu) salah menebak UTF-16BE aksara
+        # Thai/Lao/Khmer — dekode byte-tertukarnya tetap >= 95%
+        # tercetak. Dekode yang benar unggul di rasio tercetak dan
+        # koherensi aksara (karakter non-ASCII terkumpul di SATU
+        # blok aksara; hasil tertukar menyebar antar blok).
+        blok_aksara = ((0x00C0, 0x024F), (0x0370, 0x03FF), (0x0400, 0x04FF),
+                       (0x0590, 0x05FF), (0x0600, 0x06FF), (0x0900, 0x097F),
+                       (0x0E00, 0x0E7F), (0x0E80, 0x0EFF), (0x1780, 0x17FF),
+                       (0x1100, 0x11FF), (0x3040, 0x309F), (0x30A0, 0x30FF),
+                       (0x4E00, 0x9FFF), (0xAC00, 0xD7AF), (0xFF00, 0xFF60))
+
+        def koherensi(teks):
+            hitung = {}
+            total = 0
+            for c in teks:
+                cp = ord(c)
+                if cp <= 0x7F:
+                    continue
+                total += 1
+                kunci = -1
+                for i, (a, b) in enumerate(blok_aksara):
+                    if a <= cp <= b:
+                        kunci = i
+                        break
+                hitung[kunci] = hitung.get(kunci, 0) + 1
+            if total == 0:
+                return 0.0
+            return max(hitung.values()) / total
+
+        terbaik = None
         for enc in ("utf-16-le", "utf-16-be"):
             teks = genap512.decode(enc, errors="replace").rstrip("\ufffd")
             if len(teks) < 8 or "\ufffd" in teks:
                 continue
             tercetak = sum(1 for c in teks if c == " " or c.isprintable() or c in "\t\n\r")
-            if tercetak >= int(len(teks) * 0.95):
-                return enc
+            if tercetak < int(len(teks) * 0.95):
+                continue
+            skor = (tercetak / len(teks), koherensi(teks))
+            if terbaik is None or skor > terbaik[0]:
+                terbaik = (skor, enc)
+        if terbaik is not None:
+            return terbaik[1]
     return None
 
 
