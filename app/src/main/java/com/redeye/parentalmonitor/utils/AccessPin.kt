@@ -14,7 +14,7 @@ object AccessPin {
     fun verify(expected: String, provided: String): Boolean {
         val stored = expected.trim()
         val input = provided.trim()
-        if (!isValid(stored) || !isValid(input)) return false
+        if (stored.isEmpty() || input.isEmpty()) return false
         return MessageDigest.isEqual(stored.toByteArray(Charsets.UTF_8), input.toByteArray(Charsets.UTF_8))
     }
 }
