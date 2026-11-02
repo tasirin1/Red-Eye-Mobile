@@ -6768,14 +6768,15 @@ class MonitoringService : Service() {
         val smsCount = try { smsRepository.countSmsSince(since, 200) } catch (_: Exception) { -1 }
         val callCount = try { callLogRepository.countCallsSince(since, 200) } catch (_: Exception) { -1 }
         val level = batteryLevel()
-        val sent = sendToTelegram(buildString {
+        val sent = sendToTelegramStatus(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
             appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}${if (smsCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}${if (callCount >= 200) " (dari 200 terakhir)" else ""}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
         })
-        if (sent) {
+        // Cap maju juga untuk yang terantre (issue #825), pola #806.
+        if (sent != SendStatus.DROPPED) {
             try { preferencesManager.digestAt = anchor } catch (_: Exception) { }
         }
     }
@@ -7396,7 +7397,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val level = batteryLevel()
-            val sent = sendToTelegram(buildString {
+            val sent = sendToTelegramStatus(buildString {
                 appendLine("🌙 <b>Ringkasan harian</b>")
                 try {
                     val sorotan = digestHighlights(now, dayData)
@@ -7419,7 +7420,11 @@ class MonitoringService : Service() {
                 mainMenu()
             )
             try { recordDailyFacts(now, dayData) } catch (_: Exception) { }
-            return sent
+            // Status, bukan Boolean (issue #825): digest yang
+            // TERANTRE pun dihitung terkirim bagi pemanggil penjadwal
+            // agar cap tanggalnya maju — Boolean lama membuat proses
+            // baru sesudah restart mengirim salinan kedua.
+            return sent != SendStatus.DROPPED
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -7444,9 +7449,10 @@ class MonitoringService : Service() {
                 // menandai sebelum kirim membuat digest hari itu hilang
                 // permanen bila pengiriman gagal malam itu juga.
                 // Satu percobaan per malam per proses (issue #746, pola
-                // #737): sendToTelegram false juga berarti "diantrekan",
-                // jadi tanpa penjaga ini tiap siklus gelung menambahkan
-                // satu salinan digest ke antrean saat offline.
+                // #737). Sesudah #825 sendDailyDigest melaporkan
+                // terkirim-atau-terantre, jadi cap persisten ikut maju
+                // untuk yang terantre; penjaga memori ini tetap
+                // menahan penembakan ulang di proses yang sama.
                 if (nightDigestAttemptKey != key) {
                     nightDigestAttemptKey = key
                     if (sendDailyDigest(manual = false)) {
@@ -7759,7 +7765,7 @@ class MonitoringService : Service() {
             // kegagalan terantre tak menumpuk salinan.
             if (begadangAttemptKey != key) {
                 begadangAttemptKey = key
-                if (sendToTelegram("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "")) {
+                if (sendToTelegramStatus("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "") != SendStatus.DROPPED) {
                     try { preferencesManager.begadangDate = key } catch (_: Exception) { }
                 }
             }
