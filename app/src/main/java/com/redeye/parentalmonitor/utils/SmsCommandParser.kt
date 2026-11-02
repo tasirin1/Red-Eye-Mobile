@@ -69,6 +69,14 @@ object SmsCommandParser {
         } else if (normalized.startsWith("620")) {
             normalized = "62" + normalized.substring(3)
         }
+        // Awalan panggil internasional 011 (issue #828): SmsNumbers
+        // membuangnya untuk gerbang darurat/premium, tetapi bentuk
+        // mentahnya ("0114420...") sebelumnya lolos apa adanya dan
+        // menjadi nomor tujuan yang tak terjangkau dari jaringan
+        // Indonesia. Samakan sebagai awalan "+", seperti "00".
+        if (!normalized.startsWith("+") && normalized.startsWith("011")) {
+            normalized = "+" + normalized.substring(3)
+        }
         if (plusCount > 1 || !NUMBER_REGEX.matches(normalized)) return null
         return normalized
     }
