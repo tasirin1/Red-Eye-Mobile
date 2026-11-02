@@ -602,6 +602,26 @@ class SendMessageWorker(
         var rejected = 0
         for ((idx, part) in parts.withIndex()) {
             if (genStale()) return SendOutcome.Failed
+            // Kredensial berganti di tengah pesan panjang (issue #693):
+            // sisa potongan TIDAK diteruskan ke bot/chat snapshot lama —
+            // antrekan ulang agar run berikutnya memakainya dengan
+            // kredensial baru, sama seperti jalur tenggat.
+            if (idx > 0) {
+                val curToken = try { preferencesManager.botToken } catch (_: Exception) { botToken }
+                val curChat = try { preferencesManager.chatId } catch (_: Exception) { chatId }
+                if (curToken != botToken || curChat != chatId) {
+                    if (!queueRemainder(idx)) return SendOutcome.Failed
+                    try {
+                        if (origId != null) messageQueue.removeMessages(listOf(origId))
+                    } catch (_: Exception) {
+                    }
+                    try {
+                        MessageScheduler.scheduleMessageSend(applicationContext)
+                    } catch (_: Exception) {
+                    }
+                    return SendOutcome.Sent
+                }
+            }
             if (android.os.SystemClock.elapsedRealtime() >= deadlineAt) {
                 if (idx == 0) return SendOutcome.Failed
                 val queued = queueRemainder(idx)
