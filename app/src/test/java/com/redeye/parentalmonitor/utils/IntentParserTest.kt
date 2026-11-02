@@ -371,6 +371,15 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseDoesNotTreatUsahaAsNegation() {
+        // #661: kata umum "usaha" bukan negasi "usah".
+        assertEquals("/photo", IntentParser.parse("kirim foto usaha anak dong"))
+        // Kontrol: "usah" betulan tetap negasi.
+        assertNull(IntentParser.parse("usah kirim foto sekarang"))
+        assertNull(IntentParser.parse("nggak usah ambil foto"))
+    }
+
+    @Test
     fun parseRejectsQuestionSentences() {
         // #658: kata tanya di kalimat >=3 token memveto jalur parse().
         assertNull(IntentParser.parse("kirim foto apa dong"))

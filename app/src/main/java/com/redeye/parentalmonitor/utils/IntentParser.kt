@@ -252,6 +252,9 @@ object IntentParser {
     }
 
     private fun isNegation(token: String): Boolean {
+        // "usaha" (bisnis) bukan bentuk negasi "usah" — basis usah dari
+        // #627 ditangkap aturan sufiks negationForm (issue #661).
+        if (collapseRuns(token) == "usaha") return false
         if (token in COLLAPSE_FALSE_FRIENDS) return false
         if (isCollapseFalseFriend(token)) return false
         if (token.length > 1 && token.endsWith("2")) {
