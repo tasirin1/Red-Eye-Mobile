@@ -3,6 +3,7 @@
 ### Fixed
 
 - Kata batal polos ("batal"/"batalkan"/"batalin"/"pembatalan"/"cancel"/"off") di tahap PIN /pulihkan kini membatalkan sesi seperti jalur perintah, bukan diteruskan sebagai tebakan PIN yang membakar percobaan PIN persisten (#805).
+- Pindai nama berkas gerbang kini juga memeriksa path dengan komponen yang digabungkan (#815): token yang terbelah antara nama direktori dan nama berkas tidak lagi lolos hanya karena terputus garis miring.
 - Sapuan pesan commit mode pindai penuh gerbang tidak lagi bisa diakali karakter pemisah rekaman di dalam pesan (#814): potongan pesan yang tidak diawali hash commit kini digabungkan lagi ke rekamannya sebelum dipindai, jadi token sesudah karakter itu tetap tertangkap.
 - Catatan audit "retry gagal antre" kini diredam satu entri per 5 menit (#813): log audit hanya menampung 50 baris, jadi kegagalan antre beruntun saat antrean penuh lama tidak lagi mendorong keluar jejak audit penting lain.
 - /ring dan /pause kini menerima satuan waktu alami seperti handler durasi lain (#812): "/ring 30 detik" dan "/pause 30 menit" sebelumnya dibalas cara pakai karena masih memakai pengurai angka mentah.

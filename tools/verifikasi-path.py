@@ -779,7 +779,11 @@ def cek_secret_nama(gagal, daftar):
     ter-commit dan tampil di daftar repo tanpa pernah diperiksa.
     """
     for path in daftar:
-        if path and mengandung_token(path):
+        # Varian gabungan tanpa "/" (issue #815): token yang terbelah
+        # antar komponen path (direktori "123456789:" + berkas ekor
+        # token) tak terlihat sebagai satu token pada path mentah.
+        if path and (mengandung_token(path) or
+                     mengandung_token(path.replace("/", ""))):
             gagal.append("Kemungkinan token bot asli pada NAMA berkas %s — "
                          "ganti nama berkas itu; kredensial hanya via "
                          "input manual SetupActivity" % path)
