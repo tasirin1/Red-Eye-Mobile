@@ -408,7 +408,10 @@ object IntentParser {
             if (start >= 0) {
                 for (i in start + 1 until minOf(start + 3, tokens.size)) {
                     val word = stripEdgePunct(tokens[i])
-                    if (word in PHOTO_LENS_WORDS) return "$parsed $word"
+                    if (word in PHOTO_LENS_WORDS) {
+                        val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
+                        if (i == start + 1 || prev == "kamera") return "$parsed $word"
+                    }
                 }
             }
             return parsed
