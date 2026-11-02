@@ -451,7 +451,17 @@ object A11yMonitor {
             val dayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             var splitAtMidnight = false
             var segmentsSaved = false
-            if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall) {
+            // Penjaga lompatan jam dinding (issue #761): pemecahan per
+            // hari memetakan batas dinding ke elapsed dengan asumsi
+            // keduanya maju bersama. Bila jam dinding melompat maju jauh
+            // di tengah sesi (diubah manual), rentang dinding jauh lebih
+            // besar dari rentang elapsed dan sesi akan terpotong ke
+            // hari-hari yang tidak pernah dialami — lewati pemecahan dan
+            // biarkan jalur selesai biasa yang menanganinya.
+            val wallSpan = nowWall - currentStartWall
+            val elapsedSpan = nowElapsed - currentStartElapsed
+            val clockJumped = wallSpan - elapsedSpan > 3_600_000L
+            if (currentPackage.isNotEmpty() && currentStartElapsed > 0L && currentStartWall in 1L until dayStart && dayStart <= nowWall && !clockJumped) {
                 val boundaries = A11yUsageMath.splitBoundariesWallMillis(currentStartWall, dayStart)
                 val elapsedAtFirst = nowElapsed - (nowWall - boundaries.first())
                 if (elapsedAtFirst > currentStartElapsed) {
