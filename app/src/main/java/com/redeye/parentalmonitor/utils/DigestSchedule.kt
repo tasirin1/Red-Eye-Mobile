@@ -9,6 +9,16 @@ object DigestSchedule {
         return Verdict.SEND
     }
 
+    // Jangkar periode berikutnya tetap di kisi fase lama (issue #736):
+    // maju kelipatan penuh 6 jam dari jangkar sebelumnya, bukan ke waktu
+    // kirim aktual — overshoot satu siklus gelung tidak lagi menggeser
+    // jam kirim sedikit demi sedikit.
+    fun nextPeriodicAnchor(lastMs: Long, nowMs: Long): Long {
+        if (lastMs <= 0L || nowMs <= lastMs) return nowMs
+        val period = 6 * 60 * 60_000L
+        return lastMs + (nowMs - lastMs) / period * period
+    }
+
     fun localHour(nowMs: Long, offsetMs: Long): Int {
         return A11yUsageMath.localHour(nowMs, offsetMs.toInt())
     }

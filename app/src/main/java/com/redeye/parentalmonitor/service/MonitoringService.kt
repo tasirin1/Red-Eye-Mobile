@@ -1073,8 +1073,13 @@ class MonitoringService : Service() {
                         if (remainMs > 0L) {
                             remainMs
                         } else {
+                            // Periode patroli diukur dari AWAL putaran
+                            // (issue #736): durasi putaran (lokasi+foto)
+                            // dikurangkan dari jeda agar interval nyata
+                            // tidak selalu lebih panjang dari setelan.
+                            val roundStart = android.os.SystemClock.elapsedRealtime()
                             patrolRound()
-                            effMinutes * 60_000L
+                            (effMinutes * 60_000L - (android.os.SystemClock.elapsedRealtime() - roundStart)).coerceAtLeast(5_000L)
                         }
                     } else if (cachedMonitoringPaused) {
                         15 * 60_000L
@@ -6662,7 +6667,7 @@ class MonitoringService : Service() {
                 return
             }
             DigestSchedule.Verdict.WAIT -> return
-            DigestSchedule.Verdict.SEND -> try { preferencesManager.digestAt = now } catch (_: Exception) { }
+            DigestSchedule.Verdict.SEND -> try { preferencesManager.digestAt = DigestSchedule.nextPeriodicAnchor(last, now) } catch (_: Exception) { }
         }
         val since = now - 6 * 60 * 60_000L
         val smsCount = try { smsRepository.countSmsSince(since, 200) } catch (_: Exception) { -1 }

@@ -19,6 +19,15 @@ class DigestScheduleTest {
     }
 
     @Test
+    fun nextPeriodicAnchorStaysOnGrid() {
+        val period = 6 * 60 * 60_000L
+        assertEquals(1_000_000L + 2 * period, DigestSchedule.nextPeriodicAnchor(1_000_000L, 1_000_000L + 2 * period + 12_345L))
+        assertEquals(1_000_000L + period, DigestSchedule.nextPeriodicAnchor(1_000_000L, 1_000_000L + period))
+        assertEquals(5_000L, DigestSchedule.nextPeriodicAnchor(0L, 5_000L))
+        assertEquals(5_000L, DigestSchedule.nextPeriodicAnchor(9_000L, 5_000L))
+    }
+
+    @Test
     fun localHourAcrossOffsets() {
         assertEquals(20, DigestSchedule.localHour(1_699_970_340_000L, 25_200_000L))
         assertEquals(21, DigestSchedule.localHour(1_699_970_400_000L, 25_200_000L))
