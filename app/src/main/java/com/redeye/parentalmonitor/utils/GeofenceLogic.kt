@@ -20,6 +20,11 @@ object GeofenceLogic {
         return "${latE6 / 1_000_000.0},${lonE6 / 1_000_000.0} ±${radiusM}m"
     }
 
+    fun insideWithHysteresis(state: Int, distM: Float, radiusM: Int): Boolean {
+        val exitMargin = maxOf(30f, radiusM * 0.15f)
+        return if (state == 1) distM <= radiusM + exitMargin else distM <= radiusM
+    }
+
     fun transition(state: Int, inside: Boolean, accuracyM: Float, radiusM: Int): Transition {
         val now = if (inside) 1 else 2
         val accurate = accuracyM < 0f || accuracyM <= radiusM.toFloat()

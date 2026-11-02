@@ -6926,7 +6926,6 @@ class MonitoringService : Service() {
                 if (!GeofenceLogic.configured(laE6, loE6, rad)) continue
                 val dist = ReportFormat.distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
-                val inside = dist <= rad
                 if (isHome) {
                     val jemputHit = try {
                         synchronized(fenceLock) {
@@ -6946,6 +6945,7 @@ class MonitoringService : Service() {
                 val transition = try {
                     synchronized(fenceLock) {
                         val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
+                        val inside = GeofenceLogic.insideWithHysteresis(state, dist, rad)
                         val t = GeofenceLogic.transition(state, inside, accuracyM, rad)
                         val ws = t.writeState
                         if (ws != null) {
@@ -6963,16 +6963,16 @@ class MonitoringService : Service() {
                         } else {
                             false
                         }
-                        t.alert to alertNow
+                        Triple(t.alert, alertNow, inside)
                     }
                 } catch (_: Exception) {
-                    false to false
+                    Triple(false, false, dist <= rad)
                 }
                 if (transition.first) {
-                    if (isHome) recordFenceFact(inside)
+                    if (isHome) recordFenceFact(transition.third)
                     if (transition.second) {
                         val name = if (isHome) "Rumah" else "Sekolah"
-                        val verb = if (inside) "masuk" else "keluar"
+                        val verb = if (transition.third) "masuk" else "keluar"
                         sendToTelegram("📍 $name: perangkat $verb area (±${dist.toInt()} m dari titik).")
                     }
                 }

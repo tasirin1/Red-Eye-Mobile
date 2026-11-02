@@ -31,6 +31,39 @@ class GeofenceLogicTest {
     }
 
     @Test
+    fun hysteresisKeepsInsideWithinExitMargin() {
+        // #715: dari state di dalam, keluar hanya bila melewati radius + margin
+        // (maks 30 m atau 15% radius) — jitter tepi tak membalik state.
+        assertTrue(GeofenceLogic.insideWithHysteresis(1, 210f, 200))
+        assertTrue(GeofenceLogic.insideWithHysteresis(1, 230f, 200))
+        assertFalse(GeofenceLogic.insideWithHysteresis(1, 231f, 200))
+        // Dari luar / belum dikenal, masuk tetap pada radius persis.
+        assertFalse(GeofenceLogic.insideWithHysteresis(2, 210f, 200))
+        assertTrue(GeofenceLogic.insideWithHysteresis(2, 195f, 200))
+        assertTrue(GeofenceLogic.insideWithHysteresis(0, 200f, 200))
+        // Radius kecil: margin dasar 30 m (ambang keluar 80 m pada radius 50).
+        assertTrue(GeofenceLogic.insideWithHysteresis(1, 79f, 50))
+        assertFalse(GeofenceLogic.insideWithHysteresis(1, 81f, 50))
+    }
+
+    @Test
+    fun hysteresisStopsJitterFlapping() {
+        // Simulasi porting terverifikasi: jarak bergantian 190/210 m pada
+        // radius 200 m selama 24 fix tak menulis state dan tak mengalert.
+        var state = 1
+        repeat(24) { i ->
+            val dist = if (i % 2 == 0) 190f else 210f
+            val t = GeofenceLogic.transition(state, GeofenceLogic.insideWithHysteresis(state, dist, 200), 30f, 200)
+            assertEquals(GeofenceLogic.Transition(null, false), t)
+        }
+        // Keluar sungguhan (260 m) tetap terdeteksi.
+        assertEquals(
+            GeofenceLogic.Transition(2, true),
+            GeofenceLogic.transition(1, GeofenceLogic.insideWithHysteresis(1, 260f, 200), 30f, 200)
+        )
+    }
+
+    @Test
     fun jemputHitBoundaries() {
         assertFalse(GeofenceLogic.jemputHit(0, 0f, -1f))
         assertTrue(GeofenceLogic.jemputHit(200, 200f, -1f))
