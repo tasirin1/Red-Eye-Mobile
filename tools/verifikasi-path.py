@@ -592,8 +592,21 @@ def cek_secret_pohon(gagal):
     out = jalan("git", "grep", "-n", "-E",
                 r"[0-9]{6,}:[A-Za-z0-9_-]{35,}", "--", ".") or ""
     for baris in out.splitlines():
-        gagal.append("Kemungkinan token bot asli terlacak di repo — kredensial "
-                     "hanya via input manual SetupActivity: %s" % baris.strip()[:100])
+        teks = baris.strip()
+        if teks.startswith("Binary file ") and teks.endswith(" matches"):
+            # Kecocokan di dalam berkas biner (issue #742): grep tak
+            # memberi konteks baris — sebutkan jalurnya dan maknanya agar
+            # pemilik bisa memeriksa deret byte yang mirip token itu,
+            # bukan menebak dari pesan mentah grep.
+            path = teks[len("Binary file "):-len(" matches")]
+            gagal.append("Kemungkinan token bot asli di berkas BINER %s — "
+                         "deret byte di dalamnya mirip pola token; periksa "
+                         "dan ganti/hapus berkas itu bila bukan token "
+                         "sungguhan. Kredensial hanya via input manual "
+                         "SetupActivity" % path)
+        else:
+            gagal.append("Kemungkinan token bot asli terlacak di repo — kredensial "
+                         "hanya via input manual SetupActivity: %s" % teks[:100])
 
 
 def cek_secret_tak_lacak(gagal):

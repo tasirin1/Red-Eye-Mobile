@@ -51,8 +51,9 @@ fi
 if git ls-files -z | tr '\0' '\n' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|\.env$' >/dev/null; then
   echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
-if git grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null; then
-  echo "GAGAL: kemungkinan token bot asli terlacak di repo (hanya via input SetupActivity)"; gagal=1;
+pohon_token=$(git grep -l -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null || true)
+if [ -n "$pohon_token" ]; then
+  echo "GAGAL: kemungkinan token bot asli terlacak di repo pada: $pohon_token (berkas biner dilaporkan per nama — deret byte mirip token; hanya via input SetupActivity)"; gagal=1;
 fi
 # 5b. Berkas tak terlacak tak terlihat git grep/diff — pindai isinya juga.
 tak_lacak_token=""
