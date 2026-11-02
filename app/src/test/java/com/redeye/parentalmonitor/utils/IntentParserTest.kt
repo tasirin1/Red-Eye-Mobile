@@ -253,6 +253,18 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsDeliveryStatusQuestions() {
+        // #629: pertanyaan status kiriman bukan perintah tangkap baru — kata
+        // status "terkirim/dikirim" kini dikenali sebagai rujukan tangkapan
+        // yang sudah ada, seperti "diambil".
+        assertNull(IntentParser.parse("apakah foto sudah terkirim sekarang"))
+        assertNull(IntentParser.parse("apakah screenshot sudah terkirim sekarang"))
+        assertNull(IntentParser.parse("foto sudah dikirim belum dong"))
+        // Kontrol positif tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsColloquialNegations() {
         val cases = listOf(
             "ga usah kirim foto",

@@ -141,6 +141,7 @@ object IntentParser {
             if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true
             if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) return true
             if (markerMatches(token, "diambil")) return true
+            if (markerMatches(token, "terkirim") || markerMatches(token, "dikirim")) return true
             if (markerMatches(token, "lama") || markerMatches(token, "semalam") || markerMatches(token, "sebelumnya")) return true
         }
         return false
