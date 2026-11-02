@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cakupan pantauan aplikasi sensitif bertambah untuk bursa/dompet kripto global (issue #683): Coinbase, MetaMask, Kraken, dan Ledger Live sebelumnya tak cocok dengan satu pun dari 92 petunjuk sensitif AppWatch sehingga lolos dari daftar pantau. Ditambah petunjuk coinbase/metamask/kraken/ledger; terverifikasi uji paket nyata.
 - Gerbang tak lagi mati traceback pada XML res tak terbaca (issue #682, sisa kelas #653): gelung res di `cek_xml` hanya menangkap `ParseError`, sehingga symlink putus/berkas lenyap melempar `FileNotFoundError` yang membunuh proses dan menutupi cek lain. Kini `OSError` dilaporkan bernama sebagai entri "XML rusak (tak terbaca)" dan pemeriksaan lain tetap berjalan; terverifikasi sabotase symlink putus di salinan buangan.
 - Argumen jalur yang salah ketik di gerbang kini GAGAL dengan jelas (issue #681): jalur posisi yang tidak ada sebelumnya disaring diam-diam sehingga perintah melaporkan "LOLOS (0 berkas diperiksa)" dengan exit 0 — hijau palsu untuk kesalahan ketik manusia maupun skrip. Jalur tak ditemukan kini menjadi entri GAGAL bernama.
 - Gerbang kini juga memindai berkas ignored + tak terlacak (issue #680, sisa #651): daftar `ls-files --others --exclude-standard` menghormati .gitignore, sehingga berkas berisi token yang ter-ignore tak terlihat kedua gerbang sampai seseorang menjalankan `git add -f`. Pemeriksaan `cek_secret_terabaikan` baru memindai daftar ignored (di luar direktori build): token asli = GAGAL, nama berkas sensitif = peringatan. Terverifikasi sabotase di salinan buangan.

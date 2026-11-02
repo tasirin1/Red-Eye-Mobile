@@ -86,6 +86,11 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.android.chrome"))
         assertFalse(AppWatch.isSensitivePackage("com.whatsapp"))
         assertFalse(AppWatch.isSensitivePackage("org.telegram.messenger"))
+        // #683-#685: bursa kripto, pembayaran, dan 2FA/password global.
+        assertTrue(AppWatch.isSensitivePackage("com.coinbase.android"))
+        assertTrue(AppWatch.isSensitivePackage("io.metamask"))
+        assertTrue(AppWatch.isSensitivePackage("com.kraken.trade"))
+        assertTrue(AppWatch.isSensitivePackage("com.ledger.live"))
     }
 
     @Test
