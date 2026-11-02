@@ -1140,6 +1140,11 @@ class NotificationForwarderService : NotificationListenerService() {
             curHashes = ArrayList()
             curGroups = ArrayList()
         }
+        fun syncSplitRegistry(item: Triple<String, String, String>, restText: String) {
+            synchronized(batchLock) {
+                flushInFlight = if (restText.isEmpty()) items.drop(index) else listOf(Triple(restText, item.second, item.third)) + items.drop(index)
+            }
+        }
         try {
             while (index < items.size) {
                 val item = items[index]
@@ -1152,6 +1157,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     splitRest = rest
                     splitHash = item.second
                     splitGroup = item.third
+                    syncSplitRegistry(item, rest)
                     while (rest.length > 4000) {
                         var cut = rest.lastIndexOf("\n\n", 4000)
                         if (cut <= 0) cut = 4000
@@ -1160,6 +1166,7 @@ class NotificationForwarderService : NotificationListenerService() {
                         if (!forwardLocked(rest.substring(0, cut), 1, queueOnCancel = false)) splitDelivered = false
                         rest = rest.substring(cut).trimStart('\n')
                         splitRest = rest
+                        syncSplitRegistry(item, rest)
                         if (rest.isEmpty()) break
                     }
                     if (rest.isNotEmpty()) {
