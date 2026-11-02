@@ -3,6 +3,7 @@
 ## [1.6.586] - 2026-11-03
 
 ### Fixed
+- Gerbang kini hanya mengakui pernyataan `include` di awal baris sebagai modul (issue #786): teks include di dalam string settings.gradle (mis. catatan) tidak lagi mengecualikan direktori dari pemeriksaan token.
 - Berkas teks UTF-16 tidak lagi lolos gerbang (issue #785): pembaca berkas kedua gerbang kini mendekode mengikuti BOM, sehingga token di dalam berkas UTF-16 (lazim dari editor Windows atau ekspor log) tertangkap seperti berkas biasa.
 - Pemindai token gerbang kini juga mengenali token ter-encode hex (issue #784), bentuk tempelan log/debug yang sebelumnya lolos kedua gerbang; hash panjang biasa tetap tidak tertuduh karena hasil dekode harus cocok pola token persis.
 - Alert begadang kini ditandai terkirim hanya sesudah pengiriman benar-benar berhasil (issue #783): sebelumnya tanggalnya ditandai apa pun hasil kirimnya, sehingga alert yang gagal permanen hilang tanpa pernah dicoba lagi.

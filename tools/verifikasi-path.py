@@ -772,7 +772,16 @@ def modul_settings():
     teks = kupas_komentar_gradle(teks or "")
     modul = set()
     for baris in teks.splitlines():
-        if "include" not in baris:
+        # Hanya pernyataan include di awal baris yang sah (issue #786):
+        # #764 membuang komentar tetapi mempertahankan string, sehingga
+        # teks include ':x' di dalam string (mis. catatan di variabel)
+        # ikut menyatakan modul dan mengecualikan direktori itu dari
+        # gerbang. includeBuild juga bukan include modul.
+        s = baris.lstrip()
+        if not s.startswith("include"):
+            continue
+        rest = s[len("include"):]
+        if rest and rest[0] not in " \t('\"":
             continue
         for m in re.finditer(r"""['"](:[A-Za-z0-9_:\-]+)['"]""", baris):
             modul.add(tuple(p for p in m.group(1).split(":") if p))
