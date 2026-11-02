@@ -46,7 +46,10 @@ object DailyFacts {
         out.add(newDay)
         val sorted = out.sortedBy { it.day }
         val past = sorted.filter { it.day <= newDay.day }.takeLast(limit)
-        val future = sorted.filter { it.day > newDay.day }.takeLast(limit)
+        // Hari masa depan (artefak jam perangkat berubah): pertahankan yang
+        // TERDEKAT lebih dulu — takeLast sebelumnya justru membuang yang
+        // terdekat dan menyimpan yang terjauh (issue #701).
+        val future = sorted.filter { it.day > newDay.day }.take(limit)
         return past + future
     }
 }

@@ -1,6 +1,8 @@
 package com.redeye.parentalmonitor.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DailyFactsTest {
@@ -23,6 +25,16 @@ class DailyFactsTest {
         assertEquals("20261026,1,2,3,4,5", DailyFacts.serialize(listOf(day("20261026", 1, 2, 3, 4, 5))))
         val days = listOf(day("20261026", 100, 5, 400, 1130, 430), day("20261027", 120, -1, 410, -1, 425))
         assertEquals(days, DailyFacts.parse(DailyFacts.serialize(days)))
+    }
+
+    @Test
+    @Test
+    fun upsertKeepsNearestFutureDaysFirst() {
+        // #701: hari masa depan yang dipertahankan adalah yang terdekat.
+        val stored = (1..20).map { day("202612%02d".format(it), s = it) }
+        val out = DailyFacts.upsert(stored, day("20261102", s = 99), keep = 14)
+        assertTrue(out.any { it.day == "20261201" })
+        assertFalse(out.any { it.day == "20261220" })
     }
 
     @Test
