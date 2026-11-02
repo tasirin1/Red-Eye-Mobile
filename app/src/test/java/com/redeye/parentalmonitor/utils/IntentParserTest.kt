@@ -270,8 +270,10 @@ class IntentParserTest {
         // lensa — sebelumnya kamera depan terpilih untuk pesan tanpa lensa.
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto minggu depan dong", null))
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto bulan depan dong", null))
-        // Lensa betulan tetap dikenali: tepat sesudah kata foto, atau sesudah "kamera".
+        // Lensa betulan tetap dikenali: tepat sesudah kata foto, sesudah kata
+        // sisipan "dong", atau sesudah "kamera".
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/photo depan", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto kamera depan dong", null))
         assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto kamera belakang dong", null))
     }

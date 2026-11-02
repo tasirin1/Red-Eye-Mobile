@@ -389,6 +389,8 @@ object IntentParser {
 
     private val PHOTO_LENS_WORDS = setOf("depan", "belakang", "front", "back")
 
+    private val PHOTO_LENS_BLOCKED_PREV = setOf("minggu", "bulan", "tahun", "di")
+
     private fun mergeAliasArgs(parsed: String, aliasInput: String): String {
         val parts = aliasInput.split(WHITESPACE, limit = 2)
         if (parts.size != 2 || parts[0] != parsed) return parsed
@@ -418,7 +420,7 @@ object IntentParser {
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) {
                         val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
-                        if (i == start + 1 || prev == "kamera") return "$parsed $word"
+                        if (prev !in PHOTO_LENS_BLOCKED_PREV) return "$parsed $word"
                     }
                 }
             }
