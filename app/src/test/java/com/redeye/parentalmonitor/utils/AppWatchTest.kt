@@ -93,6 +93,9 @@ class AppWatchTest {
         assertTrue(AppWatch.isSensitivePackage("com.ledger.live"))
         assertTrue(AppWatch.isSensitivePackage("com.venmo"))
         assertTrue(AppWatch.isSensitivePackage("com.squareup.cash"))
+        assertTrue(AppWatch.isSensitivePackage("com.authy.authy"))
+        assertTrue(AppWatch.isSensitivePackage("com.dashlane"))
+        assertTrue(AppWatch.isSensitivePackage("com.beemdevelopment.aegis"))
     }
 
     @Test

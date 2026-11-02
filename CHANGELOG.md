@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cakupan pantauan aplikasi sensitif bertambah untuk 2FA/pengelola sandi (issue #685): Authy, Dashlane, dan Aegis sebelumnya tak cocok dengan petunjuk AppWatch mana pun. Ditambah petunjuk authy/dashlane/aegis; terverifikasi uji paket nyata.
 - Cakupan pantauan aplikasi sensitif bertambah untuk pembayaran global (issue #684): Venmo dan Cash App sebelumnya tak cocok dengan petunjuk AppWatch mana pun. Ditambah petunjuk venmo/squareup; terverifikasi uji paket nyata.
 - Cakupan pantauan aplikasi sensitif bertambah untuk bursa/dompet kripto global (issue #683): Coinbase, MetaMask, Kraken, dan Ledger Live sebelumnya tak cocok dengan satu pun dari 92 petunjuk sensitif AppWatch sehingga lolos dari daftar pantau. Ditambah petunjuk coinbase/metamask/kraken/ledger; terverifikasi uji paket nyata.
 - Gerbang tak lagi mati traceback pada XML res tak terbaca (issue #682, sisa kelas #653): gelung res di `cek_xml` hanya menangkap `ParseError`, sehingga symlink putus/berkas lenyap melempar `FileNotFoundError` yang membunuh proses dan menutupi cek lain. Kini `OSError` dilaporkan bernama sebagai entri "XML rusak (tak terbaca)" dan pemeriksaan lain tetap berjalan; terverifikasi sabotase symlink putus di salinan buangan.
