@@ -45,4 +45,31 @@ class BootClockTest {
         assertFalse(BootClock.sameBoot(1_700_000_000_000L, 0L, 1_700_000_900_000L, 1_200_000L))
         assertFalse(BootClock.sameBoot(0L, 0L, 1_700_000_900_000L, 1_200_000L))
     }
+
+    @Test
+    fun koreksiJamBesarDenganElapsedKonsistenDianggapBootSama() {
+        // Sesi mulai elapsed 2 jam; restore 30 menit kemudian dengan
+        // jam dinding dikoreksi +10 menit (issue #831): sameBoot polos
+        // menolak, jalur toleran menerima.
+        val startWall = 1_700_000_000_000L
+        val startElapsed = 7_200_000L
+        assertFalse(BootClock.sameBoot(startWall, startElapsed, startWall + 2_400_000L, startElapsed + 1_800_000L))
+        assertTrue(BootClock.sameBootOrClockShift(startWall, startElapsed, startWall + 2_400_000L, startElapsed + 1_800_000L))
+    }
+
+    @Test
+    fun koreksiJamMundurDenganElapsedKonsistenDianggapBootSama() {
+        val startWall = 1_700_000_000_000L
+        val startElapsed = 7_200_000L
+        assertTrue(BootClock.sameBootOrClockShift(startWall, startElapsed, startWall + 1_800_000L - 3_600_000L, startElapsed + 1_800_000L))
+    }
+
+    @Test
+    fun rebootTetapDitolehJalurToleran() {
+        // Elapsed tereset (negatif) dan rentang > 24 jam sama-sama
+        // bukan koreksi jam.
+        assertFalse(BootClock.sameBootOrClockShift(1_700_000_000_000L, 72_000_000L, 1_700_003_600_000L, 300_000L))
+        assertFalse(BootClock.sameBootOrClockShift(1_700_000_000_000L, 3_600_000L, 1_700_093_600_000L, 3_600_000L + 90_000_000L))
+        assertFalse(BootClock.sameBootOrClockShift(0L, 0L, 1_700_000_900_000L, 1_200_000L))
+    }
 }
