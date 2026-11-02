@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Antrean pesan tidak lagi mengorbankan pesan prioritas tertua saat pesan biasa masuk (#842): batas antrean sebelumnya dihitung dari bendera pesan yang sedang masuk, sehingga antrean berisi 105 pesan prioritas menyusut ke 100 dan membuang 5 prioritas tertua; kini kelonggaran prioritas mengikuti isi antrean.
 - Caption media tidak lagi dieksekusi sebagai perintah (#841): sebelumnya meneruskan foto berketerangan "kunci" atau "hilang" ke chat bot ikut mengunci HP atau menyalakan mode hilang; kini hanya teks pesan yang diperlakukan sebagai perintah (alur pulihkan lewat dokumen tidak berubah).
 - Kata penolakan kini juga menahan perintah slash bernama resmi Inggris (#840): mengetik "/lock jangan", "/stop jangan", atau "/restart jangan" sebelumnya tetap mengeksekusi perintahnya karena veto hanya dinilai untuk nama alias bahasa Indonesia; kini veto dinilai untuk semua perintah slash dengan penjaga yang sama (isi SMS dan "/pulihkan batal" tetap sah).
 

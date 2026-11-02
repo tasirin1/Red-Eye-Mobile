@@ -218,14 +218,13 @@ class MessageQueue private constructor(context: Context) {
     fun isVolatileOnly(): Boolean = volatileOnly
 
     fun addMessage(message: String, priority: Boolean = false, retryCount: Int = 0): Boolean {
-        val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
                 val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
                 volatileQueue.add(item)
-                while (volatileQueue.size > cap) {
+                while (overCapLocked(volatileQueue, priority)) {
                     evictOldestLocked(volatileQueue)
                 }
                 return volatileQueue.any { it === item }
@@ -233,7 +232,7 @@ class MessageQueue private constructor(context: Context) {
             val queue = readLocked().toMutableList()
             val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
             queue.add(item)
-            while (queue.size > cap) {
+            while (overCapLocked(queue, priority)) {
                 evictOldestLocked(queue)
             }
             val persisted = persistLocked(queue, force = true, syncOnMain = true)
@@ -261,7 +260,6 @@ class MessageQueue private constructor(context: Context) {
     // (dobel) dan yang tereviksi hilang tanpa tercatat.
     fun addMessagesPerItem(messages: Collection<String>, priority: Boolean = false): List<Boolean> {
         if (messages.isEmpty()) return emptyList()
-        val cap = MAX_QUEUE_SIZE + if (priority) 5 else 0
         synchronized(lock) {
             ensureRestored()
             if (volatileOnly) {
@@ -269,7 +267,7 @@ class MessageQueue private constructor(context: Context) {
                 val added = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
                 volatileQueue.addAll(added)
                 var evictedVolatile = 0
-                while (volatileQueue.size > cap) {
+                while (overCapLocked(volatileQueue, priority)) {
                     evictOldestLocked(volatileQueue, persist = false)
                     evictedVolatile++
                 }
@@ -280,7 +278,7 @@ class MessageQueue private constructor(context: Context) {
             val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
             queue.addAll(addedBatch)
             var evictedBatch = 0
-            while (queue.size > cap) {
+            while (overCapLocked(queue, priority)) {
                 evictOldestLocked(queue, persist = false)
                 evictedBatch++
             }
@@ -363,6 +361,16 @@ class MessageQueue private constructor(context: Context) {
         }
         dropsDirty = true
         if (persist && !restoringDrops) persistDropCountsLocked()
+    }
+
+    // Batas efektif antrean (issue #842): kelonggaran +5 milik
+    // pesan prioritas yang ADA di antrean, bukan bendera pesan yang
+    // sedang masuk. Sebelumnya satu pesan biasa yang masuk ke
+    // antrean berisi 105 prioritas menyusutkan batas ke 100 dan
+    // mengorbankan 5 prioritas tertua.
+    private fun overCapLocked(queue: List<QueuedMessage>, incomingPriority: Boolean): Boolean {
+        val cap = MAX_QUEUE_SIZE + if (incomingPriority || queue.any { it.priority }) 5 else 0
+        return queue.size > cap
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {
