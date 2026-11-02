@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemasang kait gerbang kini merantai kait lama, bukan menggusurnya (#839): kait pre-push dari perkakas lain yang sudah terpasang sebelumnya hanya disalin cadangan lalu berhenti jalan diam-diam; kini kait lama tetap dijalankan lebih dulu pada tiap push (masukan refs dibagikan), kegagalannya tetap menggagalkan push, dan memasang ulang mempertahankan rantai itu.
 - Pemeriksaan gerbang di CI kini hanya memindai commit milik perubahan itu sendiri (#838): rentang tiga titik sebelumnya ikut memindai commit lama yang sudah duduk di cabang utama, sehingga perubahan bersih bisa gagal oleh temuan yang bukan miliknya dan tak bisa diperbaiki dari sisinya.
 - Gerbang kini memperingatkan bila dijalankan di clone dangkal (#837): pindai pesan commit dan nama riwayat pada mode pindai penuh sebelumnya menyempit diam-diam mengikuti clone --depth 1 dan tetap melaporkan lolos; kini keterbatasan cakupan itu dinyatakan terang-terangan.
 - Deteksi berkas UTF-16 tanpa BOM di gerbang kini juga mengenali teks non-Latin (#836): berkas UTF-16 berisi teks Kiril, Cina, Arab, atau Korea yang memuat token sebelumnya lolos karena pendeteksinya hanya mengenali teks yang didominasi huruf Latin; kini hasil dekodenya ikut dinilai, dengan penjaga agar berkas UTF-8 non-Latin tidak salah terdekode.

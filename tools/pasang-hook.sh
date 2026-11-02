@@ -15,11 +15,44 @@ direktori_kait() {
     esac
 }
 
+# Tentukan kait lama yang harus DIRANTAI (issue #839): kait asing tak
+# lagi digusur diam-diam — ia disalin ke .bak bertanda waktu dan
+# kait baru menjalankannya lebih dulu pada tiap push. Bila tujuan
+# sudah berisi kait kita, rantai yang tercatat di dalamnya
+# dipertahankan. Hasil: path kait lama (kosong bila tak ada),
+# dicetak ke stdout; keterangan ke stderr.
+siapkan_rantai() {
+    if [ -f "$1" ] && ! grep -q "verifikasi-path.py" "$1" 2>/dev/null; then
+        BAK="$1.bak-$(date +%Y%m%d%H%M%S)"
+        if cp "$1" "$BAK" 2>/dev/null; then
+            echo "Kait lama ditemukan; ia DIRANTAI (tetap dijalankan lebih dulu): $BAK" >&2
+            printf '%s' "$BAK"
+        fi
+    elif [ -f "$1" ]; then
+        LAMA="$(sed -n 's/^K_LAMA="\(.*\)"$/\1/p' "$1" 2>/dev/null | head -n 1)"
+        if [ -n "$LAMA" ] && [ -f "$LAMA" ]; then
+            printf '%s' "$LAMA"
+        fi
+    fi
+}
+
 pasang_kait() {
-    cat > "$1" <<'HOOK'
-#!/bin/sh
-cd "$(git rev-parse --show-toplevel)" || exit 1
+    {
+        printf '#!/bin/sh\n'
+        printf 'cd "$(git rev-parse --show-toplevel)" || exit 1\n'
+        printf 'K_LAMA="%s"\n' "$2"
+    } > "$1"
+    cat >> "$1" <<'HOOK'
 ZERO="0000000000000000000000000000000000000000"
+# Masukan refs disimpan sekali: dibagikan ke kait lama (rantai) dan
+# ke pemeriksaan kita, karena stdin hanya bisa dibaca satu kali.
+MASUKAN="$(cat)"
+if [ -n "$K_LAMA" ] && [ -x "$K_LAMA" ]; then
+    printf '%s\n' "$MASUKAN" | "$K_LAMA" "$@" || exit $?
+fi
+TMPREF="$(mktemp)" || exit 1
+trap 'rm -f "$TMPREF"' EXIT
+printf '%s\n' "$MASUKAN" > "$TMPREF"
 status=0
 ada=0
 ke_commit() {
@@ -42,7 +75,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             python3 tools/verifikasi-path.py --rentang "$ujung~1..$ujung" || status=1
         fi
     fi
-done
+done < "$TMPREF"
 if [ "$ada" -eq 0 ]; then
     python3 tools/verifikasi-path.py || status=1
 fi
@@ -68,12 +101,8 @@ else
     HOOK_DST="$ROOT/.git/hooks/pre-push"
 fi
 
-if [ -f "$HOOK_DST" ] && ! grep -q "verifikasi-path.py" "$HOOK_DST" 2>/dev/null; then
-    BAK="$HOOK_DST.bak-$(date +%Y%m%d%H%M%S)"
-    cp "$HOOK_DST" "$BAK"
-    echo "Kait lama disalin ke: $BAK"
-fi
-pasang_kait "$HOOK_DST"
+RANTAI="$(siapkan_rantai "$HOOK_DST")"
+pasang_kait "$HOOK_DST" "$RANTAI"
 
 if [ -x "$HOOK_DST" ]; then
     PROBE="$(dirname "$HOOK_DST")/.probe-exec-$$"
@@ -98,7 +127,8 @@ fi
 
 HOOK_FALLBACK_DIR="${GIT_HOOKS_DIR:-$HOME/.githooks}/$(basename "$ROOT")"
 mkdir -p "$HOOK_FALLBACK_DIR"
-pasang_kait "$HOOK_FALLBACK_DIR/pre-push"
+RANTAI_FB="$(siapkan_rantai "$HOOK_FALLBACK_DIR/pre-push")"
+pasang_kait "$HOOK_FALLBACK_DIR/pre-push" "$RANTAI_FB"
 PROBE="$HOOK_FALLBACK_DIR/.probe-exec-$$"
 if [ -x "$HOOK_FALLBACK_DIR/pre-push" ] && printf '#!/bin/sh\nexit 0\n' > "$PROBE" 2>/dev/null && chmod +x "$PROBE" 2>/dev/null && "$PROBE" >/dev/null 2>&1; then
     rm -f "$PROBE"
