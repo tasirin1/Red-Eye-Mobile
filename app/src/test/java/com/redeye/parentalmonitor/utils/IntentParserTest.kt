@@ -778,6 +778,16 @@ class IntentParserTest {
     }
 
     @Test
+    fun intentOrAliasRejectsDistancedYangDescription() {
+        // #787: klausa "yang" yang berlanjut sesudah lensa berjarak
+        // tetap keterangan, bukan pilihan lensa.
+        assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang kedua belakang itu adiknya dong", null))
+        assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang baru belakang itu temannya", null))
+        // Kontrol: lensa di akhir klausa tetap pilihan lensa.
+        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto yang kedua belakang", null))
+    }
+
+    @Test
     fun intentOrAliasMergesDecimalScreenHours() {
         // Issue #774: jam desimal sebelumnya jatuh diam-diam ke laporan
         // bawaan 24 jam; kini dibulatkan ke jam terdekat.

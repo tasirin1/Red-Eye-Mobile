@@ -570,6 +570,7 @@ object IntentParser {
             val start = tokens.indexOfFirst { token -> PHOTO_KEYWORDS.any { mergeKeywordMatch(token, it) } }
             if (start >= 0) {
                 var checked = 0
+                var adaYang = false
                 for (i in start + 1 until minOf(start + 6, tokens.size)) {
                     if (PHOTO_KEYWORDS.any { mergeKeywordMatch(tokens[i], it) }) continue
                     // Kata penegas tidak menghabiskan anggaran pindai
@@ -578,18 +579,28 @@ object IntentParser {
                     if (stripEdgePunct(tokens[i]) in TAIL_FILLERS) continue
                     // "yang" juga tak menghabiskan anggaran pindai
                     // (issue #770): kata penghubung relatif, bukan isi.
-                    if (stripEdgePunct(tokens[i]) == "yang") continue
+                    // Kehadirannya dicatat: klausa "yang ..." yang
+                    // berlanjut sesudah kata lensa adalah keterangan,
+                    // walau lensanya berjarak (issue #787).
+                    if (stripEdgePunct(tokens[i]) == "yang") {
+                        adaYang = true
+                        continue
+                    }
                     checked++
                     if (checked > 2) break
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) {
                         val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
-                        if (prev !in PHOTO_LENS_BLOCKED_PREV) return "$parsed $word"
-                        // "yang" hanya memblokir bila frasanya berlanjut
-                        // jadi keterangan ("yang belakang itu adiknya");
-                        // bila kata lensa adalah isi terakhir ("foto yang
-                        // belakang dong") itu pilihan lensa (issue #770).
-                        if (prev == "yang" && (i + 1 until tokens.size).none { stripEdgePunct(tokens[it]) !in TAIL_FILLERS }) return "$parsed $word"
+                        if (prev !in PHOTO_LENS_BLOCKED_PREV && !adaYang) return "$parsed $word"
+                        // Klausa "yang" hanya memblokir bila frasanya
+                        // berlanjut jadi keterangan ("yang belakang itu
+                        // adiknya", "yang kedua belakang itu adiknya");
+                        // bila kata lensa adalah isi terakhir ("foto
+                        // yang belakang dong") itu pilihan lensa
+                        // (issue #770, diperluas #787).
+                        if ((prev == "yang" || adaYang) && prev !in (PHOTO_LENS_BLOCKED_PREV - "yang") &&
+                            (i + 1 until tokens.size).none { stripEdgePunct(tokens[it]) !in TAIL_FILLERS }
+                        ) return "$parsed $word"
                     }
                 }
             }

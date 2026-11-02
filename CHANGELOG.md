@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kalimat keterangan "yang" yang berjarak dari kata lensanya tidak lagi salah tergabung sebagai pilihan lensa (issue #787): penjaga kelanjutan klausa kini berlaku untuk seluruh jendela pindai, bukan hanya bila lensa tepat sesudah "yang".
 - Mode pindai penuh gerbang kini juga memeriksa pesan seluruh commit (issue #800): token yang telanjur tertulis di pesan commit lama kini tertandai pada pindai --semua agar bisa dirotasi, bukan hanya pesan yang belum ter-push.
 - Include di dalam string multi-baris settings.gradle tidak lagi dihitung modul (issue #804): pengupas komentar gerbang kini mengosongkan isi string triple-quote (data, bukan kode), sementara include sungguhan satu baris tetap terbaca.
 - Pemindai token kini juga mengenali hex/base64 yang terbelah koma dan gabung-string (issue #802): elemen arrayOf berkoma tersambung lagi saat pemadatan, tahap hex membaca teks terpadatkan, dan urutan byteArrayOf(0xNN, ...) dikumpulkan lalu didekode — hash biasa dan kode normal tetap bersih.
