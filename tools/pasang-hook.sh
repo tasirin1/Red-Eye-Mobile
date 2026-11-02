@@ -96,8 +96,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         pangkal="$(git merge-base refs/remotes/origin/main "$ujung" 2>/dev/null || true)"
         if [ -n "$pangkal" ]; then
             python3 tools/verifikasi-path.py --rentang "$pangkal..$ujung" || status=1
-        else
+        elif git rev-parse --verify "$ujung~1" >/dev/null 2>&1; then
             python3 tools/verifikasi-path.py --rentang "$ujung~1..$ujung" || status=1
+        else
+            # Commit akar (issue #870): tak ada ujung~1, jadi rentang
+            # lama membuat gerbang menolak push pertama sebagai
+            # "rentang tak valid". Pindai penuh adalah padanan CI
+            # untuk push pertama (BASE kosong).
+            python3 tools/verifikasi-path.py --semua || status=1
         fi
     fi
 done < "$TMPREF"

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Push pertama repo baru tidak lagi terblokir kait pre-push (#870): commit akar tidak punya induk sehingga rentang pemeriksaan lama tak valid dan gerbang menolak push perdana; kini push akar memakai pindai penuh seperti padanannya di CI.
 - Pemeriksaan lokal tanpa upstream kini memeriksa seluruh riwayat, termasuk commit akar (#869): jalan pintas lama hanya melihat commit terakhir, jadi token di isi atau pesan commit pertama repo tanpa hulu tak pernah tertangkap lokal.
 - Pemasang kait tidak lagi menimpa kait asing yang sekadar menyebut nama perkakas (#868): penanda kepemilikan sebelumnya kemunculan string di mana pun (termasuk komentar), sehingga kait pihak ketiga bisa tergantikan tanpa cadangan/rantai; kini penandanya baris yang benar-benar menjalankan gerbang.
 - Pemasang kait kini memperingatkan bila rantai kait lama putus (#867): berkas salinan rantai yang terhapus sebelumnya membuat kait lama berhenti berjalan tanpa satu pun tanda, dan memasang ulang membuang catatannya diam-diam; kini ada peringatan keras saat pemasangan menemukan rantai yang hilang.
