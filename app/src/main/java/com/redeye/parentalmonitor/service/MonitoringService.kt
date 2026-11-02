@@ -7025,11 +7025,18 @@ class MonitoringService : Service() {
                 val dist = ReportFormat.distanceMeters(laE6 / 1_000_000.0, loE6 / 1_000_000.0, lat, lon)
                 if (dist < 0f) continue
                 if (isHome) {
+                    // Klaim atomik di dalam kunci dipertahankan (cegah
+                    // kirim dobel), tetapi radius dipulihkan bila kabar
+                    // gagal terkirim (issue #793): sebelumnya fitur
+                    // jemput mati permanen walau kabarnya terbuang,
+                    // mis. terpicu sebelum pemilik login.
+                    var claimedRadius = 0
                     val jemputHit = try {
                         synchronized(fenceLock) {
                             val jemput = preferencesManager.jemputRadiusM
                             if (GeofenceLogic.jemputHit(jemput, dist, accuracyM)) {
                                 preferencesManager.jemputRadiusM = 0
+                                claimedRadius = jemput
                                 true
                             } else {
                                 false
@@ -7038,7 +7045,17 @@ class MonitoringService : Service() {
                     } catch (_: Exception) {
                         false
                     }
-                    if (jemputHit) sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
+                    if (jemputHit) {
+                        val sent = sendToTelegram("🏠 Anak dalam ±${dist.toInt()} m dari rumah — siap dijemput.")
+                        if (!sent && claimedRadius > 0) {
+                            try {
+                                synchronized(fenceLock) {
+                                    if (preferencesManager.jemputRadiusM == 0) preferencesManager.jemputRadiusM = claimedRadius
+                                }
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
                 }
                 val transition = try {
                     synchronized(fenceLock) {
