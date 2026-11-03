@@ -6331,9 +6331,30 @@ class MonitoringService : Service() {
     // meneruskannya butir-per-butir berlabel "baru" (issue #677).
     private fun repairCursorsAfterProviderReset(): Boolean {
         var resetHappened = false
+        // Jatah probe reset basis (issue #1091): dua query
+        // provider (id terbaru SMS + panggilan) dulu dibayar
+        // di SETIAP siklus data untuk kejadian yang hampir
+        // tak pernah terjadi (basis diganti/restore). Kini
+        // probe hanya jatuh tempo tiap 15 menit atau bila
+        // salah satu kursor berubah sejak probe terakhir;
+        // cabang backfill timestamp warisan tetap tiap siklus
+        // (murah: hanya berjalan selama timestamp kosong).
+        val probeSmsCursor = try { preferencesManager.lastSmsId } catch (_: Exception) { 0L }
+        val probeCallCursor = try { preferencesManager.lastCallId } catch (_: Exception) { 0L }
+        val probeDue = synchronized(providerProbeLock) {
+            val nowP = android.os.SystemClock.elapsedRealtime()
+            val due = nowP - providerProbeAt >= 15 * 60_000L ||
+                providerProbeSms != probeSmsCursor || providerProbeCall != probeCallCursor
+            if (due) {
+                providerProbeAt = nowP
+                providerProbeSms = probeSmsCursor
+                providerProbeCall = probeCallCursor
+            }
+            due
+        }
         try {
             val smsCursor = preferencesManager.lastSmsId
-            if (smsCursor > 0L) {
+            if (smsCursor > 0L && probeDue) {
                 val newest = smsRepository.newestSmsId()
                 if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(smsCursor, newest)) {
                     preferencesManager.resetSmsCursorSync()
@@ -6350,7 +6371,7 @@ class MonitoringService : Service() {
         }
         try {
             val callCursor = preferencesManager.lastCallId
-            if (callCursor > 0L) {
+            if (callCursor > 0L && probeDue) {
                 val newest = callLogRepository.newestCallId()
                 if (com.redeye.parentalmonitor.utils.CursorRepair.shouldReset(callCursor, newest)) {
                     preferencesManager.resetCallCursorSync()
@@ -6375,6 +6396,10 @@ class MonitoringService : Service() {
     }
 
     private val dataCheckLock = java.util.concurrent.Semaphore(1)
+    private val providerProbeLock = Any()
+    private var providerProbeAt = 0L
+    private var providerProbeSms = -1L
+    private var providerProbeCall = -1L
 
     private suspend fun checkAndSendNewData(): Boolean {
         if (!dataCheckLock.tryAcquire()) return false
