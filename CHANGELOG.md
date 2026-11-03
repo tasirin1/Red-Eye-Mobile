@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.603] - 2026-11-03
+
 ### Fixed
 
 - Perbaikan kompilasi pada penjadwalan kirim pesan: nilai jadwal sebelumnya kini dideklarasikan di luar blok try agar terlihat dari jalur gagal — build v1.6.602 gagal karenanya dan tidak menerbitkan APK; seluruh isi maraton-98 terbit pertama kali di v1.6.603.
