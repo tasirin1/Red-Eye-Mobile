@@ -1108,7 +1108,19 @@ class NotificationForwarderService : NotificationListenerService() {
         val eksak = setOf("bank", "bri", "bca", "bni", "btn", "ovo", "dana", "mandiri", "pay")
         val awalan = listOf("brimo", "livin", "gopay", "shopeepay", "mbanking", "m-banking", "wallet", "paypal", "paytm", "spay")
         return lowPkg.split('.').any { seg ->
-            seg in eksak || awalan.any { seg.startsWith(it) }
+            seg in eksak || awalan.any { seg.startsWith(it) } ||
+                // Merek bertoken menyatu (issue #970, regresi
+                // cakupan #933): segmen yang diawali/diakhiri
+                // "bank" atau diakhiri "banking" adalah merek
+                // bank nyata yang tertulis menyatu — bankmega,
+                // seabank, allobank, maybank, mobilebanking —
+                // dan pencocokan persis/awalan di atas
+                // melewatkannya semua. "cimbniaga" menyatu
+                // tanpa pola bank (bni di tengah), disebut
+                // eksplisit. Ini tetap jauh lebih sempit dari
+                // substring bebas lama yang dibuang #933.
+                seg.startsWith("bank") || seg.endsWith("bank") || seg.endsWith("banking") ||
+                seg == "cimbniaga"
         }
     }
 

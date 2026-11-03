@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Klasifikasi prioritas notifikasi bank/e-wallet kembali mengenali merek bertoken menyatu (SeaBank, Allo Bank, Bank Mega, Maybank, mobile banking, CIMB Niaga) yang sempat kehilangan status prioritas — tanpa kembali ke pencocokan substring bebas.
 - Peristiwa SMS/panggilan yang tertolak karena antrean receiver penuh kini menjadwalkan pemulihan BootRestart sebagai jaring pengaman (sebelumnya peristiwa hilang begitu saja), sama seperti cabang gagal-mulai layanan.
 - Receiver perubahan jam/zona kini memakai executor receiver khusus (bukan antrean critical bersama), sehingga penyelesaian broadcast tidak lagi menunggu di belakang pekerjaan berat lain dan jadwal liveness pasti terpasang ulang.
 - Antrean pesan warisan yang sungguh kedaluwarsa tidak lagi dipertahankan selamanya oleh heuristik "jam melompat": penyelamatan kini mensyaratkan bukti lompatan jam (ada pesan bertanggal masa depan), selain itu pesan basi dibuang seperti biasa.
