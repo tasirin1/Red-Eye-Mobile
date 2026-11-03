@@ -561,7 +561,13 @@ class SendMessageWorker(
             } else if (response.code() == 400) {
                 classify400(response, chatId) ?: SendOutcome.Rejected
             } else {
-                SendOutcome.Rejected
+                // Kode tak terdaftar (404/409/413/422, ...) BUKAN
+                // penolakan permanen (issue #966): hanya 400/
+                // 401/403 yang terbukti permanen di kode ini.
+                // Perlakukan sebagai gagal sementara — pesan
+                // dipertahankan dan dicoba lagi lewat anggaran
+                // retry, bukan dihapus permanen.
+                SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -595,7 +601,10 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else {
-                SendOutcome.Rejected
+                // Sama seperti sendPlainFallback (issue #966):
+                // kode tak terdaftar = gagal sementara, bukan
+                // penolakan permanen.
+                SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

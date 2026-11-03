@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kode HTTP Telegram yang tak terdaftar (mis. 404/409/413/422) tidak lagi diperlakukan sebagai penolakan permanen: pesan kini dipertahankan dan dicoba lagi lewat anggaran retry seperti kegagalan sementara, bukan dihapus permanen.
 - Kegagalan total worker pengirim pesan kini tercatat di log (bukan ditelan senyap sebagai sukses), sehingga kegagalan berulang bisa didiagnosis.
 - Alert percobaan mematikan Device Admin kini memakai goAsync seperti jalur receiver lain, sehingga proses tidak bisa dibunuh sistem sebelum alert prioritas itu terantre.
 - Penjaga anti-dobel pada restart menyeluruh kini atomik (cek dan tulis cap waktu di dalam kunci yang sama), sehingga dua pemicu restart yang bersamaan tidak bisa sama-sama lolos dan saling membatalkan.
