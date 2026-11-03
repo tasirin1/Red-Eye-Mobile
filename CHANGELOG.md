@@ -32,6 +32,7 @@
 - Worker pengirim kini menolak run kedua yang bersamaan (pola yang sama dengan worker restart): ekor run lama yang dibatalkan tidak lagi bisa mengirim pesan yang sama bersama run penggantinya.
 - Jatah bangun-ulang monitoring dari layanan notifikasi kini diklaim secara atomik: dua notifikasi yang masuk bersamaan tidak lagi bisa sama-sama meluncurkan upaya mulai yang sama.
 - Heartbeat kini berjangkar ganda (jam dinding + jam monoton) seperti patroli: lompatan jam maju tidak lagi memicu heartbeat prematur, dan koreksi jam tidak lagi memperpanjang masa senyap melewati interval yang diatur.
+- Titik jejak lokasi bertanda masa depan (sisa jam melompat maju) yang terbuang saat penulisan berikutnya kini menandai jejak sebagai terpotong: peringatan di ringkasan menyala, tidak lagi diam-diam membuat jarak dan masa diam 24 jam tampak lebih kecil dari sebenarnya.
 
 ## [1.6.601] - 2026-11-03
 

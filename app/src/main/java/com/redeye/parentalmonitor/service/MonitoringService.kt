@@ -7676,11 +7676,23 @@ class MonitoringService : Service() {
                 }
                 val accPart = if (accuracyM >= 0f) ",${accuracyM.toInt()}" else ""
                 pts.add("$now:${(lat * 1_000_000).toLong()},${(lon * 1_000_000).toLong()}$accPart")
+                // Titik bertanda masa depan (issue #1106):
+                // sisa ekskursi jam maju yang sudah terkoreksi
+                // — saringan di bawah membuangnya permanen.
+                // Jalur baca hanya menyembunyikannya, jadi
+                // pembuangan ini wajib menaikkan trimmedFrom
+                // agar peringatan "jejak terpotong" menyala;
+                // tanpa itu jarak/diam 24 jam diam-diam kurang.
+                val hasFutureDrop = pts.any {
+                    val ts = it.substringBefore(":").toLongOrNull() ?: 0L
+                    ts > now
+                }
                 var fresh = pts.filter {
                     val ts = it.substringBefore(":").toLongOrNull() ?: 0L
                     ts >= cutoff && ts <= now
                 }
                 var trimmedFrom = if (raw.isEmpty()) 0L else (try { preferencesManager.trailTrimmedFrom } catch (_: Exception) { 0L })
+                if (hasFutureDrop && trimmedFrom < now) trimmedFrom = now
                 if (fresh.size > 300) {
                     val newestDiscarded = fresh[fresh.size - 301].substringBefore(":").toLongOrNull() ?: 0L
                     if (newestDiscarded > trimmedFrom) trimmedFrom = newestDiscarded
