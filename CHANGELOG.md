@@ -29,6 +29,7 @@
 - Penghitung boot kini menyembuhkan diri saat dibaca: reboot yang siaran boot-nya tidak sampai ke aplikasi (mis. aplikasi berstatus berhenti paksa) tetap tercatat lewat saksi jam monoton, sehingga vonis uji anti-mati dan tenggang Setup tidak lagi buta pada reboot itu.
 - Uji anti-mati pertama sesudah aplikasi dipasang/diperbarui tidak lagi buta bukti boot: hitungan boot pertama yang terjadi di dalam masa uji kini dikenali sebagai reboot lewat cap waktu peristiwa hitungnya, tanpa membuka vonis palsu untuk uji lama.
 - Pemeriksaan anotasi ganda cek cepat kini juga mengupas literal karakter: kurung di dalam literal karakter tidak lagi mengacaukan pelacakan argumen anotasi multi-baris.
+- Keputusan mengganti jadwal kirim tertunda kini berupa fungsi murni yang terkunci uji unit, mengikuti pola watchdog anti-mati: perubahan ambang jadwal tidak lagi bisa bergeser diam-diam.
 
 ## [1.6.600] - 2026-11-03
 

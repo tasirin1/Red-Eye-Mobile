@@ -24,6 +24,15 @@ object MessageScheduler {
     private val nextSendAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
     private const val REPLACE_MIN_REMAINING_MS = 15_000L
 
+    // Keputusan ganti jadwal tertunda (issue #1073): murni
+    // agar terkunci uji — jadwal tertunda diganti hanya bila
+    // sisa tunggunya masih lebih dari ambang DAN worker kirim
+    // tidak sedang berjalan. Pola yang sama dengan ekstraksi
+    // Liveness #1043.
+    fun shouldReplaceDelayed(now: Long, nextSendAt: Long, workerRunning: Boolean): Boolean {
+        return now + REPLACE_MIN_REMAINING_MS < nextSendAt && !workerRunning
+    }
+
     private val netConstraints = Constraints.Builder()
         .setRequiredNetworkType(NetworkType.CONNECTED)
         .build()
@@ -46,8 +55,7 @@ object MessageScheduler {
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
 
-            val replaceDelayed = now + REPLACE_MIN_REMAINING_MS < nextSendAtElapsed.get() &&
-                !SendMessageWorker.isRunning()
+            val replaceDelayed = shouldReplaceDelayed(now, nextSendAtElapsed.get(), SendMessageWorker.isRunning())
             val policy = if (replaceDelayed) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
             try {
                 WorkManager.getInstance(context.applicationContext)
