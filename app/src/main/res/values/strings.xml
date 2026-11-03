@@ -99,6 +99,7 @@
     <string name="setup_restore_copy">Copy code</string>
     <string name="setup_restore_code_fail">Could not create the restore code. Try reopening Setup.</string>
     <string name="setup_restore_code_need_setup">Open this dialog again for the latest code.</string>
+    <string name="setup_restore_code_refreshed">Code refreshed — the newest code was copied.</string>
     <string name="backup_pin_title">Set backup PIN</string>
     <string name="backup_pin_hint">PIN/passphrase (min 10 characters)</string>
     <string name="backup_pin_hint2">Repeat PIN/passphrase</string>

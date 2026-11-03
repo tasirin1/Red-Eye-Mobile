@@ -1228,7 +1228,17 @@ class SetupActivity : AppCompatActivity() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(getString(R.string.setup_restore_code_title))
             .setView(box)
-            .setPositiveButton(getString(R.string.setup_restore_copy)) { _, _ -> copyToClipboard("restore-code", code) }
+            .setPositiveButton(getString(R.string.setup_restore_copy)) { _, _ ->
+                // Salin kode TERKINI, bukan tangkapan saat
+                // dialog dibuka (issue #1006): kode berputar
+                // tiap 10 menit, jadi dialog yang lama terbuka
+                // bisa menyalin kode yang sudah kedaluwarsa.
+                val freshCode = com.redeye.parentalmonitor.utils.RestoreCode.current(secret, System.currentTimeMillis())
+                copyToClipboard("restore-code", freshCode)
+                if (freshCode != code) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_restore_code_refreshed), Toast.LENGTH_LONG).show()
+                }
+            }
             .setNegativeButton(android.R.string.ok, null)
             .show()
     }
