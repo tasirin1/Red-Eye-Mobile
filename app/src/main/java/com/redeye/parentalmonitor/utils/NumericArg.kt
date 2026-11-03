@@ -71,6 +71,12 @@ object NumericArg {
         if (n > Long.MAX_VALUE / fu) return null
         val dasar = n * fu
         val f = faktor(native)
+        // Penjaga pembungkusan penjumlahan pembulatan (issue #899):
+        // dasar yang sangat dekat Long.MAX membuat dasar + f/2
+        // membungkus negatif sehingga hasil negatif lolos saringan
+        // Int.MAX di bawah. Nilai sebesar itu jauh di luar rentang
+        // Int, jadi tolak sebelum menjumlah.
+        if (dasar > Long.MAX_VALUE - f / 2) return null
         val hasil = (dasar + f / 2) / f
         if (hasil > Int.MAX_VALUE) return null
         // Masukan positif yang terkonversi menjadi 0 ditolak (issue

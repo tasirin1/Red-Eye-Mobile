@@ -53,6 +53,11 @@ class NumericArgTest {
         assertNull(NumericArg.parse("1000000 jam", NumericArg.Satuan.DETIK))
         // Kontrol: besar tapi sah tetap diterima.
         assertEquals(1800000000, NumericArg.parse("500000 jam", NumericArg.Satuan.DETIK))
+        // Issue #899: penjumlahan pembulatan dasar + f/2 di tepi
+        // Long.MAX membungkus negatif dan lolos sebagai Int
+        // negatif (terbukti porting int64: -2562047788015215).
+        assertNull(NumericArg.parse("9223372036854775807 detik", NumericArg.Satuan.JAM))
+        assertNull(NumericArg.parse("9223372036854775807 detik", NumericArg.Satuan.MENIT))
     }
 
     @Test
