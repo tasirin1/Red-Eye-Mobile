@@ -658,6 +658,58 @@ def _ambil_terhapus(out):
     return hasil
 
 
+def _deklarasi_tingkat_atas(teks, kelas):
+    # Deklarasi class/object/interface/enum bernama `kelas`
+    # pada kedalaman kurung 0 (tingkat atas berkas), sadar
+    # komentar/string secara sederhana (kurung di dalam
+    # komentar/string tak dihitung). Kelas BERSARANG tak
+    # dihitung: dari berkas lain ia tak terlihat tanpa
+    # kualifikasi (issue #1172).
+    pola = re.compile(r"(?:class|object|interface|enum)\s+%s\b" % re.escape(kelas))
+    i = 0
+    n = len(teks)
+    dalam = 0
+    while i < n:
+        c = teks[i]
+        if c == "/" and i + 1 < n and teks[i + 1] == "/":
+            j = teks.find("\n", i)
+            i = n if j < 0 else j + 1
+            continue
+        if c == "/" and i + 1 < n and teks[i + 1] == "*":
+            j = teks.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if teks.startswith('"""', i):
+            j = teks.find('"""', i + 3)
+            i = n if j < 0 else j + 3
+            continue
+        if c == '"' or c == "'":
+            j = i + 1
+            while j < n:
+                if teks[j] == "\\":
+                    j += 2
+                    continue
+                if teks[j] == c or teks[j] == "\n":
+                    break
+                j += 1
+            i = j + 1
+            continue
+        if c == "{":
+            dalam += 1
+            i += 1
+            continue
+        if c == "}":
+            dalam = max(0, dalam - 1)
+            i += 1
+            continue
+        if dalam == 0 and (c == "c" or c == "o" or c == "i" or c == "e"):
+            m = pola.match(teks, i)
+            if m:
+                return True
+        i += 1
+    return False
+
+
 def _ambil_rename_berisiko(out):
     # Rename (R) yang mengganti nama berkas kode (issue #1164):
     # kelas bernama sama dengan nama lama hilang bersama
@@ -691,8 +743,7 @@ def _ambil_rename_berisiko(out):
         kelas = os.path.splitext(os.path.basename(lama))[0]
         if os.path.splitext(os.path.basename(baru))[0] == kelas:
             continue
-        pola = re.compile(r"(?:class|object|interface|enum)\s+%s\b" % re.escape(kelas))
-        if not pola.search(baca_teks(baru)):
+        if not _deklarasi_tingkat_atas(baca_teks(baru), kelas):
             hasil.append(lama)
     return hasil
 
