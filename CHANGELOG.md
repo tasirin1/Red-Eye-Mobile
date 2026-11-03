@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Skrip gradlew yang tidak bisa jalan sebagaimana tersimpan di repo (jar wrapper-nya memang tidak pernah ikut) kini dihapus dan didokumentasikan — build resmi hanya lewat CI.
 - Dua pengurai daftar penanda notifikasi yang tersalin persis kini memakai satu fungsi pengurai bersama.
 - Kerangka pengiriman media tertunda untuk video dan audio disatukan jadi satu fungsi bersama (perilaku dibuktikan setara baris demi baris; jalur foto tetap terpisah karena logika foto tertahannya berbeda), dan langkah rotasi berkas sesudah timeout kini satu fungsi untuk ketiga jalur.
 - Blok pemberitahuan "pesan dibuang" pada pengirim antrean yang tersalin persis dua kali kini disatukan jadi satu fungsi bersama.
