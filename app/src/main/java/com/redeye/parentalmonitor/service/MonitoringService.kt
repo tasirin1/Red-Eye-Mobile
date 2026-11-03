@@ -7273,7 +7273,15 @@ class MonitoringService : Service() {
         if (vehicleFastSamples < 2) return
         vehicleFastSamples = 0
         val last = try { preferencesManager.lastVehicleAlertAt } catch (_: Exception) { 0L }
-        if (last > 0L && now > last && now - last < VEHICLE_COOLDOWN_MS) return
+        // Cap masa depan dijangkar ulang (issue #1023, pola
+        // #938/#959 di situs saudara): tanpa ini syarat
+        // now > last membuat cooldown dianggap sudah lewat
+        // sesudah jam dikoreksi kembali.
+        if (last > now) {
+            try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
+            return
+        }
+        if (last > 0L && now - last < VEHICLE_COOLDOWN_MS) return
         val kmh = (speed * 3.6f).toInt()
         val level = batteryLevel()
         val battery = if (level in 0..100) "\nBaterai: $level%" else ""
@@ -10514,7 +10522,14 @@ class MonitoringService : Service() {
             if (missing.isEmpty()) return
             val nowMs = System.currentTimeMillis()
             val last = try { preferencesManager.permHealthAlertAt } catch (_: Exception) { 0L }
-            if (nowMs >= last && nowMs - last < 24 * 60 * 60_000L) return
+            // Cap masa depan dijangkar ulang (issue #1023,
+            // pola #938/#959): tanpa ini cooldown 24 jam
+            // dianggap sudah lewat sesudah jam dikoreksi.
+            if (last > nowMs) {
+                try { preferencesManager.setPermHealthAlertAtSync(nowMs) } catch (_: Exception) { }
+                return
+            }
+            if (nowMs - last < 24 * 60 * 60_000L) return
             // Cap jeda sesudah kirim berhasil (issue #798, pola #737);
             // status #806: terantre juga mencap agar tak dobel.
             if (sendToTelegramStatus("⚠️ Izin dicabut: " + missing.joinToString(", ") + ". Monitoring buta sebagian — buka Setup di perangkat dan berikan lagi.") != SendStatus.DROPPED) {

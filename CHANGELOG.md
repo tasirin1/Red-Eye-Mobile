@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Alert berkendara dan alert izin dicabut kini juga menjangkar ulang cap jeda yang berada di masa depan (jam perangkat pernah dimajukan lalu dikoreksi) — sebelumnya jeda dianggap sudah lewat dan alert yang sama terkirim ulang.
 - Laporan crash basi tidak lagi terkirim sesudah reboot: umur laporan yang dihitung dari jam monoton kini hanya dipakai bila terbukti dari boot yang sama, selain itu umur jam dinding yang berlaku.
 - Penanda "terakhir berhasil kirim" kini dicatat berpasangan (jam dinding + jam monoton) sehingga lama bisunya jalur kirim dihitung dengan benar juga sesudah reboot — sebelumnya bisa terbaca jauh lebih muda dari bisu sebenarnya.
 - Uji anti-mati tidak lagi melaporkan hasil palsu sesudah reboot: waktu mulai uji kini dicatat berpasangan (jam dinding + jam monoton) sehingga reboot di tengah uji selalu terdeteksi, bukan hanya bila uptime baru masih kecil.
