@@ -8201,6 +8201,15 @@ class MonitoringService : Service() {
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
             val now = System.currentTimeMillis()
             val lastAlert = try { preferencesManager.healthAlertAt } catch (_: Exception) { 0L }
+            if (lastAlert > now) {
+                // Cap masa depan (issue #959): jam pernah maju jauh
+                // lalu terkoreksi — tanpa penjaga ini, jeda 12 jam
+                // dihitung dari cap masa depan dan alert kesehatan
+                // bisu selama seluruh selisihnya. Jangkar ulang ke
+                // sekarang (pola #938) dan tetap jeda dari sini.
+                try { preferencesManager.healthAlertAt = now } catch (_: Exception) { }
+                return
+            }
             if (lastAlert > 0L && now - lastAlert < 12 * 60 * 60_000L) return
             val notes = ArrayList<String>()
             val lastData = try { preferencesManager.lastDataAt } catch (_: Exception) { 0L }

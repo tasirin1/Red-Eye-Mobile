@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penjaga jeda alert kesehatan kini menangani cap waktu masa depan (jam pernah dimajukan jauh lalu dikoreksi): cap dijangkar ulang ke waktu sekarang sehingga alert kesehatan tidak bisu berhari-hari.
 - Penggabungan baris teks notifikasi (EXTRA_TEXT_LINES) kini dibatasi sejak awal sampai 20 ribu aksara, tidak lagi mewujudkan seluruh string gabungan raksasa di memori sebelum dipotong.
 - Gerbang PIN pemulihan tidak lagi terkunci palsu sesudah perangkat menyala ulang: keputusan kunci monoton kini mensyaratkan bukti boot yang sama (lewat pasangan jam dinding + monoton), sehingga jangkar uptime lama tidak menghidupkan lagi jendela kunci yang tenggat dindingnya sudah lama lewat.
 - Parser perintah bahasa sehari-hari kini mengenali salah ketik satu huruf hilang pada penanda waktu lampau/masa-depan (mis. "kemarn", "beso"), sehingga kalimat rujukan seperti "kirim foto kemarn" tidak lagi memicu tangkapan foto baru; kata sah yang mirip (mis. "kemari", "anti") tetap tidak ter-veto.
