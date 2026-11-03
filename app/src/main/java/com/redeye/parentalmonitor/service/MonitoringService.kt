@@ -1372,7 +1372,7 @@ class MonitoringService : Service() {
             if (location != null) {
                 resetLocFailCount()
                 try { preferencesManager.lastLocAt = System.currentTimeMillis() } catch (_: Exception) { }
-                try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
+                try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
                 val prev = lastSentLatLon()
                 val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (dist >= 0f && dist < 100f) {
@@ -3725,7 +3725,7 @@ class MonitoringService : Service() {
             val stale = isStaleFix(loc)
             if (!stale) {
                 try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
-                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy, fixAtMs = loc.time) } catch (_: Exception) { }
             }
             sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
         } else {
@@ -4948,7 +4948,7 @@ class MonitoringService : Service() {
             val stale = isStaleFix(loc)
             if (!stale) {
                 try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
-                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
+                try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy, fixAtMs = loc.time) } catch (_: Exception) { }
             }
             sendToTelegram(buildString {
                 appendLine("📍 <b>Lokasi darurat</b>")
@@ -5280,7 +5280,7 @@ class MonitoringService : Service() {
                 val dist = if (prev == null) -1f else ReportFormat.distanceMeters(prev.first, prev.second, location.latitude, location.longitude)
                 if (!stale) {
                     rememberSentLatLon(location.latitude, location.longitude, location.accuracy)
-                    try { checkGeofence(location.latitude, location.longitude, location.accuracy) } catch (_: Exception) { }
+                    try { checkGeofence(location.latitude, location.longitude, location.accuracy, fixAtMs = location.time) } catch (_: Exception) { }
                 }
                 val near = if (dist >= 0f) "\nJarak dari laporan terakhir: ${dist.toInt()} m" else ""
                 sendToTelegram("📍 <b>Lokasi</b>\nhttps://maps.google.com/?q=${location.latitude},${location.longitude}\n${ReportFormat.accuracyText(location.accuracy)}$near" + fixAgeNote(location))
@@ -7395,7 +7395,7 @@ class MonitoringService : Service() {
         if (sendToTelegramStatus("🚗 <b>Sepertinya sedang berkendara</b>\nKecepatan ±$kmh km/jam\n📍 https://maps.google.com/?q=${fix.latitude},${fix.longitude}\n${ReportFormat.accuracyText(fix.accuracy)}$battery") != SendStatus.DROPPED) {
             try { preferencesManager.lastVehicleAlertAt = now } catch (_: Exception) { }
         }
-        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
+        try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy, fixAtMs = fix.time) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
     }
 
     private fun isMeteredNetwork(): Boolean {
@@ -7851,9 +7851,14 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun recordFenceFact(arrive: Boolean) {
+    private fun recordFenceFact(arrive: Boolean, atMs: Long = 0L) {
         try {
-            val now = System.currentTimeMillis()
+            // Waktu KEJADIAN, bukan waktu proses (issue
+            // #1081): transisi yang terdeteksi dari posisi
+            // cache fallback bisa berumur sampai 30 menit —
+            // mencatatnya dengan jam proses membelah pasangan
+            // tiba/berangkat oleh tengah malam buatan.
+            val now = if (atMs > 0L) atMs else System.currentTimeMillis()
             val off = java.util.TimeZone.getDefault().getOffset(now)
             val minuteOfDay = (((now + off) / 60_000L) % 1440L).toInt()
             // Atribusi malam (issue #1080): peristiwa sebelum
@@ -7887,7 +7892,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) { }
     }
 
-    private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f, izinkanJemput: Boolean = true) {
+    private suspend fun checkGeofence(lat: Double, lon: Double, accuracyM: Float = -1f, izinkanJemput: Boolean = true, fixAtMs: Long = 0L) {
         try {
             // Pagar bersarang (issue #853): sekolah di dalam radius
             // rumah membuat transisi keluar rumah tak pernah terjadi,
@@ -7997,14 +8002,14 @@ class MonitoringService : Service() {
                     Triple(false, false, dist <= rad)
                 }
                 if (transition.first) {
-                    if (isHome) recordFenceFact(transition.third)
+                    if (isHome) recordFenceFact(transition.third, fixAtMs)
                     // Masuk sekolah bersarang saat tercatat di rumah =
                     // berangkat (issue #853): pagar rumah tak pernah
                     // mencatat keluar karena titiknya masih di dalam
                     // radius rumah.
                     if (!isHome && transition.third && schoolNestedInHome) {
                         val homeInside = try { preferencesManager.homeState == 1 } catch (_: Exception) { false }
-                        if (homeInside) recordFenceFact(false)
+                        if (homeInside) recordFenceFact(false, fixAtMs)
                     }
                     // Satu kejadian fisik cukup satu alert (issue
                     // #853): pagar kedua yang bersarang dan searah
@@ -8074,13 +8079,16 @@ class MonitoringService : Service() {
                 false
             }
             if (!hasHome && !hasSchool) return
-            val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+            val lastLocAtMs = try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
+            val locAge = System.currentTimeMillis() - lastLocAtMs
             val cached = lastSentLatLon()
             var accuracyM = -1f
             var dariCache = false
+            var fixAtMs = 0L
             val pos = if (cached != null && locAge in 0..(30 * 60_000L)) {
                 accuracyM = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
                 dariCache = true
+                fixAtMs = lastLocAtMs
                 cached
             } else {
                 val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
@@ -8107,12 +8115,13 @@ class MonitoringService : Service() {
                     return
                 }
                 accuracyM = fix.accuracy
+                fixAtMs = fix.time
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
             geofenceFailStreak = 0
             lastGeofenceCheckAt = nowElapsed
-            checkGeofence(pos.first, pos.second, accuracyM, izinkanJemput = !dariCache)
+            checkGeofence(pos.first, pos.second, accuracyM, izinkanJemput = !dariCache, fixAtMs = fixAtMs)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -8824,7 +8833,7 @@ class MonitoringService : Service() {
                 curfewFetchFailAt = 0L
                 resetLocFailCount()
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
-                try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
+                try { checkGeofence(fix.latitude, fix.longitude, fix.accuracy, fixAtMs = fix.time) } catch (_: Exception) { }
                 pos = Pair(fix.latitude, fix.longitude)
                 posAccuracy = fix.accuracy
             }
