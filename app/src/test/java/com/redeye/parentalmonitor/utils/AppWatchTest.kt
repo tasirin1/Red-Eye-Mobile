@@ -26,6 +26,17 @@ class AppWatchTest {
     }
 
     @Test
+    fun hitLoweredJugaTerbatas() {
+        // Issue #879: batas 8.192 #857 sebelumnya hanya di hit();
+        // hitLowered yang dipanggil langsung NotificationForwarder-
+        // Service memindai teks tak terbatas. Kini batasnya di dalam.
+        val jauh = "a".repeat(9000) + " judi"
+        assertNull(AppWatch.hitLowered(listOf("judi"), jauh))
+        val dekat = "a".repeat(100) + " judi"
+        assertEquals("judi", AppWatch.hitLowered(listOf("judi"), dekat))
+    }
+
+    @Test
     fun batasKataMenolakPotonganKataUmum() {
         assertNull(AppWatch.hit(listOf("mati"), "matikan"))
         assertNull(AppWatch.hit(listOf("mati"), "mode otomatis aktif"))

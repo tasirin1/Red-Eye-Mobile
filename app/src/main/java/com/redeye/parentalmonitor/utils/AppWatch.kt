@@ -74,12 +74,16 @@ object AppWatch {
         return true
     }
 
-    // Batas teks yang dinilai hit() (issue #857): sejak #830 kata
-    // pantau dinilai atas teks node UTUH, satu node raksasa membuat
-    // lowercase + belah kata setara ukurannya di eksekutor A11y.
-    // Kata pantau adalah kata/frasa pendek di konten yang tampak —
-    // kecocokan di kedalaman >8.192 karakter dalam satu node bukan
-    // konten layar yang dimaksud pemilik.
+    // Batas teks yang dinilai pemindaian kata pantau (issue #857):
+    // sejak #830 kata pantau dinilai atas teks node UTUH, satu node
+    // raksasa membuat lowercase + belah kata setara ukurannya di
+    // eksekutor A11y. Kata pantau adalah kata/frasa pendek di
+    // konten yang tampak — kecocokan di kedalaman >8.192 karakter
+    // dalam satu node bukan konten layar yang dimaksud pemilik.
+    // Batasnya tinggal di hitLowered (issue #879) agar SEMUA pintu
+    // masuk tertutup — dua situs NotificationForwarderService
+    // sebelumnya memanggil hitLowered langsung atas teks gabungan
+    // notifikasi tanpa batas.
     private const val MAX_HIT_TEXT_CHARS = 8192
 
     fun hit(keywords: List<String>, text: String): String? {
@@ -88,8 +92,9 @@ object AppWatch {
         return hitLowered(keywords, bounded.lowercase(Locale.ROOT))
     }
 
-    fun hitLowered(keywords: List<String>, lower: String): String? {
-        if (keywords.isEmpty() || lower.isEmpty()) return null
+    fun hitLowered(keywords: List<String>, lowerRaw: String): String? {
+        if (keywords.isEmpty() || lowerRaw.isEmpty()) return null
+        val lower = if (lowerRaw.length > MAX_HIT_TEXT_CHARS) lowerRaw.substring(0, MAX_HIT_TEXT_CHARS) else lowerRaw
         var words: List<String>? = null
         return keywords.firstOrNull { raw ->
             val keyword = raw.lowercase(Locale.ROOT)
