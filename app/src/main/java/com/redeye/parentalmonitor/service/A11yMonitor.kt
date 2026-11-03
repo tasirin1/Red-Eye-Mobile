@@ -21,7 +21,6 @@ import com.redeye.parentalmonitor.utils.MessageScheduler
 import com.redeye.parentalmonitor.utils.NetworkUtils
 import com.redeye.parentalmonitor.utils.TamperGuard
 import com.redeye.parentalmonitor.utils.TimeFmt
-import java.util.concurrent.Executors
 
 object A11yMonitor {
 
@@ -62,9 +61,23 @@ object A11yMonitor {
     private val lastKeywordAlert = HashMap<String, Long>()
     private var keywordAlertDay = ""
     private var keywordAlertCount = 0
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "redeye-a11y").apply { isDaemon = true }
-    }
+    // Antrean TERBATAS (issue #931): executor lama tak
+    // terbatas — satu tugas lambat menumpuk semua event/
+    // persist di belakangnya tanpa batas. Tugas yang tertolak
+    // saat penuh dibuang diam-diam (pindai/persist memang
+    // rancangan lossy dengan jeda; melempar ke thread callback
+    // sistem justru bisa mematikan proses).
+    private val executor = java.util.concurrent.ThreadPoolExecutor(
+        1,
+        1,
+        0L,
+        java.util.concurrent.TimeUnit.MILLISECONDS,
+        java.util.concurrent.ArrayBlockingQueue(64),
+        { runnable ->
+            Thread(runnable, "redeye-a11y").apply { isDaemon = true }
+        },
+        java.util.concurrent.ThreadPoolExecutor.DiscardPolicy()
+    )
 
     private val labels = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > MAX_LABEL_CACHE
