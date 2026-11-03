@@ -3031,7 +3031,7 @@ class MonitoringService : Service() {
                     "$menit mnt" + (if (preferencesManager.patrolEnabled) "" else " (patroli mati)")
                 }
                 "/pause" -> {
-                    val sisa = preferencesManager.photoPausedUntil - System.currentTimeMillis()
+                    val sisa = photoPausedElapsed() - System.currentTimeMillis()
                     if (sisa > 0L) "jeda " + (sisa / 60_000L + 1L) + " mnt lagi" else "sedang tidak dijeda"
                 }
                 "/syncinterval" -> preferencesManager.syncInterval.toString() + " mnt"
@@ -5456,7 +5456,24 @@ class MonitoringService : Service() {
             }
             return migrated
         }
-        if (stored - System.currentTimeMillis() > 1440 * 60_000L) {
+        // Jangkar monoton (issue #939): sisa jeda dihitung
+        // dari tenggat elapsedRealtime pendamping, jadi
+        // kemunduran jam dinding tidak lagi memperpanjang
+        // jeda (dulu jeda 60 mnt bisa meregang jadi ±4 jam).
+        // Sisa dijepit 480 mnt: jeda sah maksimum sekaligus
+        // pengaman jangkar basi sesudah perangkat menyala ulang
+        // (elapsedRealtime mulai dari nol lagi).
+        val elapsedDeadline = try {
+            preferencesManager.photoPausedElapsedUntil
+        } catch (_: Exception) {
+            0L
+        }
+        if (elapsedDeadline > 0L) {
+            val sisa = elapsedDeadline - android.os.SystemClock.elapsedRealtime()
+            if (sisa <= 0L) return 0L
+            return System.currentTimeMillis() + sisa.coerceAtMost(480 * 60_000L)
+        }
+        if (stored - System.currentTimeMillis() > 480 * 60_000L) {
             val clamped = System.currentTimeMillis() + 480 * 60_000L
             try {
                 preferencesManager.photoPausedUntil = clamped

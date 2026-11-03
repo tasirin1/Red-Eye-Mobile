@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Jeda foto tidak lagi meregang saat jam perangkat dimundurkan: sisa jeda kini dihitung dari jangkar waktu monoton pendamping tenggat jam dinding dan dijepit pada jeda sah maksimum 480 menit.
 - Detak jantung (heartbeat) kini tahan jam yang dimundurkan: cap masa depan dijangkar ulang tanpa mengirim detak ekstra dan tanpa menggeser interval mundur.
 - Tidur diam loop kamera dan patroli tidak lagi melewati akhir mode malam: bangun kini dibatasi sampai 05:00 bila mode malam yang menahan, sehingga foto/patroli tidak telat sampai 30 menit sesudah malam berakhir.
 - Pemeriksaan pagar cadangan (geofence fallback) tidak lagi kehilangan jatah 15 menitnya hanya karena satu kali gagal mengambil lokasi: cap jeda kini ditulis sesudah posisi didapat, dan kegagalan GPS hanya menekan pemeriksaan ±2 menit.

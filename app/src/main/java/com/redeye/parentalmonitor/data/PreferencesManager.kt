@@ -394,6 +394,7 @@ class PreferencesManager(context: Context) {
         const val KEY_MONITORING_PAUSED = "monitoring_paused"
         const val KEY_PHOTO_PAUSED_UNTIL = "photo_paused_until"
         const val KEY_PHOTO_PAUSE_SOURCE = "photo_pause_source"
+        private const val KEY_PHOTO_PAUSED_ELAPSED_UNTIL = "photo_paused_elapsed_until"
         const val KEY_PATROL_ENABLED = "patrol_enabled"
         const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_PATROL_INTERVAL = "patrol_interval"
@@ -742,7 +743,30 @@ class PreferencesManager(context: Context) {
 
     var photoPausedUntil: Long
         get() = prefLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
-        set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_UNTIL, value).apply()
+        set(value) {
+            // Jangkar monoton disimpan dalam edit yang sama
+            // (issue #939): tenggat elapsedRealtime pendamping
+            // tenggat jam dinding, agar sisa jeda kebal
+            // kemunduran jam dinding.
+            val elapsed = try {
+                if (value > 0L) {
+                    android.os.SystemClock.elapsedRealtime() +
+                        (value - System.currentTimeMillis()).coerceAtLeast(0L)
+                } else {
+                    0L
+                }
+            } catch (_: Exception) {
+                0L
+            }
+            sharedPreferences.edit()
+                .putLong(KEY_PHOTO_PAUSED_UNTIL, value)
+                .putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, elapsed)
+                .apply()
+        }
+
+    var photoPausedElapsedUntil: Long
+        get() = prefLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, value).apply()
 
     var photoPauseSource: Int
         get() = prefInt(KEY_PHOTO_PAUSE_SOURCE, 0)
@@ -750,8 +774,15 @@ class PreferencesManager(context: Context) {
 
     fun setPhotoPause(until: Long, source: Int) {
         try {
+            val elapsed = if (until > 0L) {
+                android.os.SystemClock.elapsedRealtime() +
+                    (until - System.currentTimeMillis()).coerceAtLeast(0L)
+            } else {
+                0L
+            }
             sharedPreferences.edit()
                 .putLong(KEY_PHOTO_PAUSED_UNTIL, until)
+                .putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, elapsed)
                 .putInt(KEY_PHOTO_PAUSE_SOURCE, source)
                 .apply()
         } catch (_: Exception) {
@@ -2046,6 +2077,7 @@ class PreferencesManager(context: Context) {
             editor.putBoolean(KEY_USER_CONSENTED, true)
             editor.putBoolean(KEY_MONITORING_PAUSED, false)
             editor.putLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
+            editor.putLong(KEY_PHOTO_PAUSED_ELAPSED_UNTIL, 0L)
             editor.putInt(KEY_PHOTO_PAUSE_SOURCE, 0)
         } else {
             editor.putBoolean(KEY_USER_DISABLED, true)
