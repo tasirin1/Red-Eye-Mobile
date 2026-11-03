@@ -7286,7 +7286,11 @@ class MonitoringService : Service() {
     private suspend fun dataSaverDeferMedia(): Boolean {
         if (!cachedDataSaver) return false
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
-        if (nowElapsed - dataSaverCheckedAtElapsed < DATA_SAVER_CHECK_WINDOW_MS) return dataSaverDeferResult
+        // Sentinel 0 = belum pernah cek (issue #1002): tanpa
+        // penjaga ini, 15 detik pertama sejak boot terbaca
+        // "baru saja dicek" dan hasil bawaan (tak menunda)
+        // dipakai tanpa pemeriksaan sungguhan.
+        if (dataSaverCheckedAtElapsed != 0L && nowElapsed - dataSaverCheckedAtElapsed < DATA_SAVER_CHECK_WINDOW_MS) return dataSaverDeferResult
         val deferred = dataSaverHoldNow(0)
         dataSaverCheckedAtElapsed = nowElapsed
         dataSaverDeferResult = deferred

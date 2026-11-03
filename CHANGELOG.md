@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksaan hemat data pada 15 detik pertama sejak HP menyala kini benar-benar memeriksa, bukan memakai hasil bawaan seolah baru saja diperiksa.
 - Berkas penanda versi Gradle (gradle-wrapper.properties) dikembalikan: perkakas analisis CodeQL membacanya untuk memilih versi Gradle — tanpa berkas itu analisisnya gagal memakai versi lama (skrip gradlew-nya sendiri tetap dihapus).
 - Konfirmasi SMS tertunda tidak lagi membuang SMS-nya bila jam perangkat dimundurkan sesudah SMS disiapkan — pending tetap disimpan dan pemilik diminta mengonfirmasi ulang sebentar lagi.
 - Pencarian riwayat nomor kini mengumpulkan kecocokan dari semua halaman pindaian, bukan berhenti di halaman pertama yang berisi kecocokan — riwayat nomor lama tidak lagi tampil sebagian.
