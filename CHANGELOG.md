@@ -10,6 +10,7 @@
 - Semua catatan galat di log kini melewati penyamaran standar yang sama, termasuk jalur pekerja kirim, antrean pesan, dan pelaksana latar — sebelumnya beberapa jalur menulis pesan galat mentah yang bisa memuat serpihan data antrean atau bentuk token.
 - Penghitung item cadangan pada gerbang tidak lagi membuang item sah ber-atribut panjang: batas panjang per tag diganti anggaran kerja keseluruhan, sehingga atribut sepanjang apa pun tetap terhitung sementara tumpukan tag rusak tetap berhenti cepat.
 - Pemeriksaan rename pada gerbang kini membedakan kelas tingkat atas dari kelas bersarang: nama lama yang hanya bertahan sebagai kelas bersarang tidak lagi dianggap masih terdeklarasi, sehingga acuan menggantungnya tertangkap.
+- Rename berkas murni yang nama lamanya bukan nama kelas di dalamnya kini tidak lagi diperlakukan sebagai penghapusan oleh gerbang: ganti nama berkas bebas (mis. Util.kt berisi kelas lain) tidak bisa digagalkan hanya oleh kata yang sama di komentar berkas lain.
 
 ## [1.6.607] - 2026-11-03
 
