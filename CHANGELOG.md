@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Percobaan ulang GPS untuk pagar cadangan kini mundur bertahap bila gagal beruntun (2, 5, 10, lalu 15 menit) alih-alih hampir tiap putaran — menghemat baterai saat GPS lama tak mendapat fix, mis. di dalam gedung.
 - Pemulihan state pagar (rumah/sekolah) sesudah alert terbuang kini memakai banding-tulis: state hanya dipulihkan bila belum ada pemeriksaan lain yang memajukannya selama pengiriman — transisi yang lebih baru tidak lagi tertimpa.
 - Klasifikasi prioritas notifikasi bank/e-wallet kembali mengenali merek bertoken menyatu (SeaBank, Allo Bank, Bank Mega, Maybank, mobile banking, CIMB Niaga) yang sempat kehilangan status prioritas — tanpa kembali ke pencocokan substring bebas.
 - Peristiwa SMS/panggilan yang tertolak karena antrean receiver penuh kini menjadwalkan pemulihan BootRestart sebagai jaring pengaman (sebelumnya peristiwa hilang begitu saja), sama seperti cabang gagal-mulai layanan.

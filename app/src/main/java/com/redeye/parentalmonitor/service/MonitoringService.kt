@@ -185,6 +185,7 @@ class MonitoringService : Service() {
     private var patrolCycleMs = 0L
     @Volatile
     private var lastGeofenceCheckAt = 0L
+    private var geofenceFailStreak = 0
     @Volatile
     private var idleDataCycles = 0
     @Volatile
@@ -7848,13 +7849,28 @@ class MonitoringService : Service() {
                     // kegagalan GPS hanya menekan ±2 menit, bukan
                     // seluruh jatah 15 menit seperti dulu saat cap
                     // ditulis sebelum mengambil lokasi.
-                    lastGeofenceCheckAt = nowElapsed - 13 * 60_000L
+                    // Kegagalan BERUNTUN mundur bertahap (issue
+                    // #972): kegagalan pertama tetap ±2 menit
+                    // (responsif #936), berikutnya 5, 10, lalu
+                    // 15 menit penuh — GPS yang tak pernah dapat
+                    // fix (di dalam gedung seharian) tak lagi
+                    // menyalakan listener sampai 20 detik hampir
+                    // tiap putaran cek berkala (±5 menit).
+                    geofenceFailStreak++
+                    val mundurMenit = when {
+                        geofenceFailStreak <= 1 -> 13L
+                        geofenceFailStreak == 2 -> 10L
+                        geofenceFailStreak == 3 -> 5L
+                        else -> 0L
+                    }
+                    lastGeofenceCheckAt = nowElapsed - mundurMenit * 60_000L
                     return
                 }
                 accuracyM = fix.accuracy
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
+            geofenceFailStreak = 0
             lastGeofenceCheckAt = nowElapsed
             checkGeofence(pos.first, pos.second, accuracyM, izinkanJemput = !dariCache)
         } catch (e: kotlinx.coroutines.CancellationException) {
