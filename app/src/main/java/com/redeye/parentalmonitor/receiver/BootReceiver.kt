@@ -44,18 +44,48 @@ class BootReceiver : BroadcastReceiver() {
                     // (aplikasi berstatus berhenti — force-stop
                     // atau belum pernah dibuka sesudah update),
                     // penghitung tak naik dan reboot tak terlihat
-                    // konsumen. Cap elapsed hitungan terakhir
-                    // adalah saksi monoton: elapsed SEKARANG yang
-                    // lebih kecil darinya hanya mungkin sesudah
-                    // reboot — naikkan sekali dan perbarui cap.
+                    // konsumen. Saksi utama sejak #1084 adalah
+                    // penghitung boot SISTEM (selisihnya = jumlah
+                    // boot tak tercatat, tanpa jendela waktu);
+                    // cap elapsed hitungan terakhir adalah saksi
+                    // cadangan: elapsed SEKARANG yang lebih kecil
+                    // darinya hanya mungkin sesudah reboot —
+                    // naikkan sekali dan perbarui cap.
                     val stampElapsed = meta.getLong("boot_count_elapsed", 0L)
                     val nowElapsed = android.os.SystemClock.elapsedRealtime()
-                    if (stampElapsed > 0L && nowElapsed < stampElapsed) {
-                        count += 1L
+                    // Saksi sistem lebih dulu (issue #1084):
+                    // penghitung boot platform yang lebih besar
+                    // dari tersimpan membuktikan reboot tanpa
+                    // jendela waktu sama sekali — heal elapsed
+                    // di bawah buta bila pembacaan pertama
+                    // sesudah reboot terjadi sesudah uptime
+                    // melewati cap lama. Selisihnya adalah
+                    // jumlah boot yang tak tercatat.
+                    val sysBoot = try {
+                        android.provider.Settings.Global.getInt(
+                            context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1
+                        ).toLong()
+                    } catch (_: Exception) {
+                        -1L
+                    }
+                    val storedSys = meta.getLong("boot_count_sys", -1L)
+                    if (sysBoot >= 0L && storedSys >= 0L && sysBoot > storedSys) {
+                        count += (sysBoot - storedSys)
                         try {
                             meta.edit().putLong("boot_count", count)
                                 .putLong("boot_count_wall", System.currentTimeMillis())
-                                .putLong("boot_count_elapsed", nowElapsed).commit()
+                                .putLong("boot_count_elapsed", nowElapsed)
+                                .putLong("boot_count_sys", sysBoot).commit()
+                        } catch (_: Exception) {
+                        }
+                    } else if (stampElapsed > 0L && nowElapsed < stampElapsed) {
+                        count += 1L
+                        try {
+                            val ed = meta.edit().putLong("boot_count", count)
+                                .putLong("boot_count_wall", System.currentTimeMillis())
+                                .putLong("boot_count_elapsed", nowElapsed)
+                            if (sysBoot >= 0L && sysBoot >= storedSys) ed.putLong("boot_count_sys", sysBoot)
+                            ed.commit()
                         } catch (_: Exception) {
                         }
                     }
