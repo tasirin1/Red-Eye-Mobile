@@ -505,6 +505,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_HEARTBEAT_AT = "heartbeat_at"
         private const val KEY_LIVE_TEST_PENDING = "live_test_pending"
         private const val KEY_LIVE_TEST_STARTED_ELAPSED = "live_test_started_elapsed"
+        private const val KEY_LIVE_TEST_STARTED_WALL = "live_test_started_wall"
         private const val KEY_LIVE_TEST_BY_ALARM = "live_test_by_alarm"
         private const val KEY_LIVE_TEST_LAST_SEC = "live_test_last_sec"
         private const val KEY_LAST_SEND_OK_ELAPSED = "last_send_ok_elapsed"
@@ -1086,11 +1087,19 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_LIVE_TEST_BY_ALARM, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_LIVE_TEST_BY_ALARM, value).apply()
 
-    fun beginLiveTest(startedElapsed: Long) {
+    // Pasangan dinding cap mulai uji (issue #1020): deteksi
+    // reboot tak lagi hanya dari elapsed — uji yang dimulai
+    // pada uptime kecil lalu reboot lolos sebagai "durasi
+    // singkat yang sah" dan laporannya palsu.
+    val liveTestStartedWall: Long
+        get() = prefLong(KEY_LIVE_TEST_STARTED_WALL, 0L)
+
+    fun beginLiveTest(startedElapsed: Long, startedWall: Long) {
         try {
             sharedPreferences.edit()
                 .putBoolean(KEY_LIVE_TEST_PENDING, true)
                 .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, startedElapsed)
+                .putLong(KEY_LIVE_TEST_STARTED_WALL, startedWall)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
                 .apply()
         } catch (_: Exception) {
@@ -1102,6 +1111,7 @@ class PreferencesManager(context: Context) {
             sharedPreferences.edit()
                 .putBoolean(KEY_LIVE_TEST_PENDING, false)
                 .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
+                .putLong(KEY_LIVE_TEST_STARTED_WALL, 0L)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
                 .apply()
         } catch (_: Exception) {

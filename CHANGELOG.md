@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Uji anti-mati tidak lagi melaporkan hasil palsu sesudah reboot: waktu mulai uji kini dicatat berpasangan (jam dinding + jam monoton) sehingga reboot di tengah uji selalu terdeteksi, bukan hanya bila uptime baru masih kecil.
 - Pesan gagal simpan kredensial di Setup tidak lagi gagal tampil diam-diam bila pemilik menutup layar saat pemeriksaan jaringan masih berjalan.
 - Penulisan penanda notifikasi terkirim ke penyimpanan tidak lagi menahan kunci data penanda selama penulisan berlangsung — penandaan dan penyemaian ulang penanda tidak lagi saling menunggu pada penulisan yang lambat.
 - Cache daftar pantau aksesibilitas kini dijamin terbaca segar antarbenang — sebelumnya satu-dua peristiwa bisa dinilai memakai daftar pantau versi setelan sebelumnya sesudah daftar diubah.

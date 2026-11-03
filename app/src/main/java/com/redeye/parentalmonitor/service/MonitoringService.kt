@@ -9112,7 +9112,7 @@ class MonitoringService : Service() {
 
     private fun runLivenessSelfTest() {
         try {
-            preferencesManager.beginLiveTest(android.os.SystemClock.elapsedRealtime())
+            preferencesManager.beginLiveTest(android.os.SystemClock.elapsedRealtime(), System.currentTimeMillis())
         } catch (_: Exception) {
         }
         try {
@@ -9153,7 +9153,16 @@ class MonitoringService : Service() {
             return
         }
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
-        if (startedElapsed > nowElapsed) {
+        val startedWall = try { preferencesManager.liveTestStartedWall } catch (_: Exception) { 0L }
+        // Reboot terdeteksi dari elapsed mundur ATAU pasangan
+        // dinding+elapsed yang tak lagi satu boot (issue
+        // #1020): uji mulai pada uptime kecil lalu reboot
+        // dulu lolos karena cap lama tetap < uptime baru.
+        // Cap warisan tanpa pasangan dinding (0) memakai
+        // deteksi lama saja.
+        val rebooted = startedElapsed > nowElapsed ||
+            (startedWall > 0L && !BootClock.sameBootOrClockShift(startedWall, startedElapsed, System.currentTimeMillis(), nowElapsed))
+        if (rebooted) {
             val terkirim = try {
                 sendToTelegramStatus("🧪 Uji anti-mati terputus oleh reboot HP — ulangi bila ingin hasil yang jelas.") != SendStatus.DROPPED
             } catch (_: Exception) {
