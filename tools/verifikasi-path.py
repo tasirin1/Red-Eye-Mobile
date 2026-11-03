@@ -887,6 +887,27 @@ def cek_aturan_repo(gagal, berubah):
                 gagal.append("Berkas >%d MB masuk repo: %s" % (batas // (1024 * 1024), path))
 
 
+def cek_ukuran_pohon(gagal, sudah_dicek):
+    # Sapuan pohon penuh untuk plafon ukuran (issue #1118):
+    # cek_aturan_repo hanya menilai berkas BERUBAH, jadi blob
+    # besar yang sudah ter-commit lebih dulu lolos mode
+    # rentang/bawaan selamanya — commit trivial sesudahnya
+    # tak pernah menyentuhnya lagi. Semua berkas terlacak
+    # dinilai ukurannya di sini dengan ambang dan pengecualian
+    # bernama yang sama; berkas yang baru dinilai lewat jalur
+    # berubah dilewati agar laporannya tak dobel.
+    for path in (jalan("git", "ls-files") or "").splitlines():
+        if path in sudah_dicek:
+            continue
+        batas = 5 * 1024 * 1024 if path == "CHANGELOG.md" else 1024 * 1024
+        try:
+            ukuran = os.path.getsize(os.path.join(AKAR, path))
+        except OSError:
+            continue
+        if ukuran > batas:
+            gagal.append("Berkas >%d MB masuk repo: %s" % (batas // (1024 * 1024), path))
+
+
 POLA_TOKEN_ASLI = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 
 
@@ -1775,6 +1796,7 @@ def utama():
         cek_aturan_repo(gagal, terlacak)
     else:
         cek_aturan_repo(gagal, berubah)
+        cek_ukuran_pohon(gagal, set(berubah))
     if args.semua:
         cek_secret_pohon(gagal)
         nama_pindai = (jalan("git", "ls-files") or "").splitlines()
