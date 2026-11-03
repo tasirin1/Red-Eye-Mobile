@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pool benang receiver kini sungguh berjalan sejajar hingga tiga benang (perbaikan sebelumnya tidak mengubah perilaku karena bentuk pool-nya), dan penanganan boot di-serial dengan kunci dedupnya sendiri agar pesan restart tidak terkirim ganda saat dua siaran boot tiba berbarengan.
 - Pemeriksaan anotasi ganda cek cepat kini melacak argumen anotasi yang membentang multi-baris — duplikat tak-repeatable yang dipisah anotasi berargumen panjang tidak lagi lolos gerbang lokal dan baru ketahuan di kompilasi CI.
 - Pemeriksaan paritas terjemahan gerbang kini mencakup string-array dan plurals serta semua berkas values, bukan hanya elemen string di dua berkas strings.xml utama — resource baru jenis itu tidak lagi bisa masuk tanpa terjemahan Indonesia.
 - Cap harian alert jam malam, sekolah, begadang, dan anomali kini ditulis bersama epoch penulisannya dan dinilai dengan penilai cap hari yang sama dengan digest malam: cap bertanggal masa depan sisa jam perangkat yang pernah dimajukan tidak lagi menekan alert-alert itu berhari-hari sesudah jam dikoreksi.

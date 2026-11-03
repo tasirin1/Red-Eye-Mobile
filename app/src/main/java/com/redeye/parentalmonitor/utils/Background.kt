@@ -8,17 +8,25 @@ object Background {
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )
 
-    // Maks 3 benang (issue #1016): dulu SATU benang bersama
-    // untuk semua receiver — pekerjaan berat BootReceiver
-    // (I/O keystore + retry) membuat receiver lain (alarm
-    // liveness, ganti paket, jam berubah) mengantre di
-    // belakangnya dan pendingResult.finish() mereka ikut
-    // tertunda melewati jendela goAsync. Handler receiver
-    // menjaga state bersamanya dengan kunci masing-masing,
-    // jadi berjalan sejajar aman.
+    // Maks 3 benang (issue #1016, diperbaiki #1032): dulu
+    // SATU benang bersama untuk semua receiver — pekerjaan
+    // berat BootReceiver (I/O keystore + retry) membuat
+    // receiver lain (alarm liveness, ganti paket, jam
+    // berubah) mengantre di belakangnya dan
+    // pendingResult.finish() mereka ikut tertunda melewati
+    // jendela goAsync. PERINGATAN #1032: corePoolSize TIDAK
+    // BOLEH 0 dengan antrean tak terbatas — ThreadPoolExecutor
+    // hanya membuat pekerja di atas core bila antrean PENUH,
+    // jadi bentuk (0, 3, LinkedBlockingQueue()) tetap efektif
+    // SATU benang dan patch #1016 dulu mati. Bentuk yang benar:
+    // core = maks = 3 + antrean TERBATAS. Handler receiver
+    // menjaga state bersamanya dengan kunci masing-masing;
+    // BootReceiver men-serial handleBoot-nya sendiri lewat
+    // handleLock karena rantai dedup cap boot_meta-nya
+    // cek-lalu-tulis (issue #1032).
     private val receivers: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
-        0, 3, 60L, java.util.concurrent.TimeUnit.SECONDS,
-        java.util.concurrent.LinkedBlockingQueue(),
+        3, 3, 60L, java.util.concurrent.TimeUnit.SECONDS,
+        java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecv").apply { isDaemon = true } },
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )

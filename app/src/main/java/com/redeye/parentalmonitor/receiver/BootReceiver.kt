@@ -83,7 +83,21 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
+    // Seluruh handleBoot di-serial per proses (issue #1032):
+    // pool receiver kini sungguh sejajar, sedangkan rantai
+    // dedup di bawah (gerbang lastHandleAt + cap boot_meta
+    // shot_notice_elapsed/reboot_notice_elapsed) adalah
+    // cek-lalu-tulis — dua handleBoot sejajar (BOOT_COMPLETED
+    // + USER_UNLOCKED berbarengan) bisa sama-sama lolos
+    // gerbang 1 jam dan mengirim pesan restart ganda.
+    // markHandled di dalamnya men-synchronized handleLock
+    // yang sama; monitor Java reentrant untuk benang yang
+    // sama, jadi tak ada deadlock.
     private fun handleBoot(context: Context, intentAction: String? = null) {
+        synchronized(handleLock) { handleBootLocked(context, intentAction) }
+    }
+
+    private fun handleBootLocked(context: Context, intentAction: String? = null) {
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         val freshBoot = nowBoot <= 120_000L
