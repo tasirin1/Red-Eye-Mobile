@@ -46,7 +46,32 @@ class BootReceiver : BroadcastReceiver() {
         private fun noteBootCounted(context: android.content.Context) {
             try {
                 val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-                meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L).commit()
+                // Dedup per boot (issue #1067): perangkat yang
+                // mengirim DUA aksi keluarga boot untuk satu
+                // boot fisik (BOOT_COMPLETED + QUICKBOOT)
+                // menaikkan penghitung dua kali. Dalam satu
+                // boot, selang dinding dan selang elapsed antara
+                // dua siaran itu nyaris sama dan pendek; pada
+                // boot sungguhan elapsed ter-reset sehingga
+                // kedua selang berpisah jauh (selang dinding
+                // memuat waktu mati + sisa uptime boot lama).
+                val lastWall = meta.getLong("boot_count_wall", 0L)
+                val lastElapsed = meta.getLong("boot_count_elapsed", 0L)
+                if (lastWall > 0L && lastElapsed > 0L) {
+                    val nowWall = System.currentTimeMillis()
+                    val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                    val elapsedDiff = nowElapsed - lastElapsed
+                    val wallDiff = nowWall - lastWall
+                    if (elapsedDiff >= 0L && elapsedDiff <= 30 * 60_000L &&
+                        kotlin.math.abs(wallDiff - elapsedDiff) <= 120_000L) return
+                    meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
+                        .putLong("boot_count_wall", nowWall)
+                        .putLong("boot_count_elapsed", nowElapsed).commit()
+                    return
+                }
+                meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
+                    .putLong("boot_count_wall", System.currentTimeMillis())
+                    .putLong("boot_count_elapsed", android.os.SystemClock.elapsedRealtime()).commit()
             } catch (_: Exception) {
             }
         }
