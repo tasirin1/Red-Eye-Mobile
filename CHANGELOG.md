@@ -4,6 +4,7 @@
 
 - Dedup penghitung boot kini memakai saksi penghitung boot sistem: reboot sungguhan yang sangat cepat (yang dulu tertelan karena mirip siaran ganda) kini tetap terhitung; heuristik waktu lama hanya menjadi cadangan bila saksi sistem tak tersedia.
 - Tunggu gabung loop lama pada mulai-ulang semua loop kini memakai penanda selesai yang benar: loop pengganti tidak lagi dinyalakan bersama sisa putaran loop lama hanya karena loop lama sudah dibatalkan, sehingga laporan terjadwal tidak terkirim dobel saat mulai ulang.
+- Pembatalan dan pencatatan penunggu mulai-ulang loop kini atomik di bawah kunci yang sama dengan penjaga anti-dobelnya: dua pemicu mulai ulang yang datang bersamaan tidak lagi bisa menyisakan penunggu yatim yang menyalakan set loop kedua.
 
 ## [1.6.601] - 2026-11-03
 

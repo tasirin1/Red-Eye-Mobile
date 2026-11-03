@@ -10813,6 +10813,12 @@ class MonitoringService : Service() {
         mediaBackoffUntil = 0L
         refreshCreds()
         refreshLoopConfig()
+        // Batal+catat relauncher harus atomik (issue #1076):
+        // di luar kunci, dua pemanggil bersamaan (watchdog +
+        // sembuh-diam) bisa saling menimpa field — satu
+        // relauncher jadi yatim tak terlacak teardown dan
+        // keduanya menyalakan set loop penuh.
+        synchronized(loopRestartLock) {
         try { loopRelaunchJob?.cancel() } catch (_: Exception) { }
         loopRelaunchJob = serviceScope.launch {
             // Tunggu loop lama SUNGGUH berhenti sebelum menyalakan
@@ -10849,6 +10855,7 @@ class MonitoringService : Service() {
             startCommandPolling()
             startLoopWatchdog()
             startInitialSync(force = true)
+        }
         }
         return true
     }
