@@ -8,6 +8,7 @@
 - Penerusan notifikasi kini menghitung penurunan huruf teks utuh dan pindai prioritas hanya sesudah gerbang duplikat (dan pada jalur luapan, hanya bila penerusan memang diperbolehkan): notifikasi duplikat — mayoritas pada aplikasi chat — tidak lagi membayar pindaian yang hasilnya dibuang.
 - Bangun-ulang monitoring dari halaman Setup kini dilewati bila layanan sudah berjalan, dan diklaim dengan jatah 60 detik yang sama seperti jalur bangun dari layanan notifikasi: membuka halaman berulang kali tidak lagi mengirim start penuh ke layanan yang sehat.
 - Pasangan kredensial penerusan notifikasi (token + chat) kini satu jepretan atomik: satu kiriman tidak lagi bisa memakai token baru bercampur chat lama saat kredensial diganti di tengah penerusan.
+- Hasil simpan penolkan penghitung pesan terbuang kini diperiksa: bila simpannya gagal, pemberitahuan "pesan dibuang" ditahan ronde itu dan dicoba lagi pada putaran berikutnya, alih-alih terkirim lalu terduplikat pada mulai berikutnya karena angka lama masih tersimpan.
 
 ## [1.6.603] - 2026-11-03
 

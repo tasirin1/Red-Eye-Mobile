@@ -6954,11 +6954,29 @@ class MonitoringService : Service() {
     private fun flushMsgDropNotice() {
         val count = synchronized(msgDropLock) {
             val c = msgDropCount.getAndSet(0)
-            try {
-                preferencesManager.setPendingMsgDropsSync(0)
-            } catch (_: Exception) {
+            if (c > 0) {
+                val nolTersimpan = try {
+                    preferencesManager.setPendingMsgDropsSync(0)
+                } catch (_: Exception) {
+                    false
+                }
+                if (!nolTersimpan) {
+                    // Hasil commit DIPERIKSA (issue #1126): dulu
+                    // Boolean-nya diabaikan — commit gagal sesudah
+                    // pemberitahuan terantre membuat angka lama
+                    // menabur ulang pada start berikutnya dan
+                    // pemberitahuan terkirim duplikat. Ronde ini
+                    // dibatalkan: penghitung memori dikembalikan
+                    // agar konsisten dengan simpanan, flush
+                    // berikutnya mencoba lagi.
+                    msgDropCount.addAndGet(c)
+                    0
+                } else {
+                    c
+                }
+            } else {
+                c
             }
-            c
         }
         if (count <= 0) return
         try {
