@@ -4644,17 +4644,21 @@ class MonitoringService : Service() {
         val tokens = if (raw.contains(",")) raw.split(',').map { it.trim() }.filter { it.isNotEmpty() } else listOf(raw.trim())
         val resolved = LinkedHashMap<String, String>()
         val failed = ArrayList<String>()
+        val ambiguous = ArrayList<Pair<String, List<Pair<String, String>>>>()
         val blocked = ArrayList<String>()
         val skippedOwn = ArrayList<String>()
         var sharedPairs: List<Pair<String, String>>? = null
         for (token in tokens) {
+            val amb = ArrayList<Pair<String, String>>()
             val pkg = if (token.contains(".")) {
                 resolveAppPackage(token)
             } else {
                 if (sharedPairs == null) sharedPairs = launchableAppPairs()
-                resolveAppPackage(token, sharedPairs ?: emptyList())
+                resolveAppPackage(token, sharedPairs ?: emptyList(), amb)
             }
-            if (pkg == null) {
+            if (pkg == null && amb.isNotEmpty()) {
+                ambiguous.add(token to amb)
+            } else if (pkg == null) {
                 failed.add(token)
             } else if (add && pkg == packageName) {
                 skippedOwn.add(appLabelFor(pkg))
@@ -4682,6 +4686,9 @@ class MonitoringService : Service() {
                 appendLine((if (add) "Sudah ada: " else "Belum terdaftar: ") + unchanged.joinToString(", ") { Html.escape(it) })
             }
             if (failed.isNotEmpty()) appendLine("Tak ditemukan: " + failed.joinToString(", ") { Html.escape(it) })
+            for ((token, cands) in ambiguous) {
+                appendLine("Ambigu: '" + Html.escape(token) + "' cocok ke " + cands.joinToString(", ") { Html.escape(it.first) } + " — pakai nama persis atau nama paket.")
+            }
             if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
             if (skippedOwn.isNotEmpty()) appendLine("Dilewati (aplikasi ini sendiri): " + skippedOwn.joinToString(", ") { Html.escape(it) })
             appendLine("Total: $total app")
@@ -4689,7 +4696,7 @@ class MonitoringService : Service() {
         }.trimEnd())
     }
 
-    private fun resolveAppPackage(input: String, precomputedPairs: List<Pair<String, String>>? = null): String? {
+    private fun resolveAppPackage(input: String, precomputedPairs: List<Pair<String, String>>? = null, ambiguousOut: MutableList<Pair<String, String>>? = null): String? {
         val value = input.trim()
         if (value.isEmpty()) return null
         if (value.contains(".")) {
@@ -4702,8 +4709,17 @@ class MonitoringService : Service() {
         }
         val lower = value.lowercase(java.util.Locale.ROOT)
         val apps = precomputedPairs ?: launchableAppPairs() ?: return null
-        return apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT) == lower }?.second
-            ?: apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT).contains(lower) }?.second
+        val exact = apps.firstOrNull { it.first.lowercase(java.util.Locale.ROOT) == lower }?.second
+        if (exact != null) return exact
+        // Kecocokan sebagian wajib TUNGGAL (issue #1003):
+        // dulu firstOrNull memilih sembarang app pertama
+        // ("chat" bisa kena app apa pun yang berlabel
+        // mengandung kata itu) dan app yang salah dipantau
+        // diam-diam. Kini multi-kecocokan dilaporkan ambigu.
+        val matches = apps.filter { it.first.lowercase(java.util.Locale.ROOT).contains(lower) }.distinctBy { it.second }
+        if (matches.size == 1) return matches[0].second
+        if (matches.size > 1) ambiguousOut?.addAll(matches)
+        return null
     }
 
     private fun appLabelFor(pkg: String): String {
