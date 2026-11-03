@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pesan gagal simpan kredensial di Setup tidak lagi gagal tampil diam-diam bila pemilik menutup layar saat pemeriksaan jaringan masih berjalan.
 - Penulisan penanda notifikasi terkirim ke penyimpanan tidak lagi menahan kunci data penanda selama penulisan berlangsung — penandaan dan penyemaian ulang penanda tidak lagi saling menunggu pada penulisan yang lambat.
 - Cache daftar pantau aksesibilitas kini dijamin terbaca segar antarbenang — sebelumnya satu-dua peristiwa bisa dinilai memakai daftar pantau versi setelan sebelumnya sesudah daftar diubah.
 - Penerima siaran (boot, alarm anti-mati, ganti paket, jam berubah, admin) tidak lagi mengantre di satu benang bersama — pekerjaan berat saat boot tidak lagi menunda penerima lain sampai melewati batas waktu sistem.
