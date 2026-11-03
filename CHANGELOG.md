@@ -10,6 +10,7 @@
 - Penilaian kelayakan bangun-ulang monitoring kini berjalan di benang latar sejak awal: sentuhan pertama ke penyimpanan terenkripsi (disk dan brankas kunci) tidak lagi berisiko terjadi sinkron di benang utama saat aplikasi mulai dingin.
 - Semua daftar nama berkas di cek cepat kini NUL-pasti sampai ke pembacanya (termasuk segmen riwayat): berkas bernama mengandung baris-baru tidak lagi terbelah menjadi fragmen yang lolos pindai token isi maupun nama.
 - Daftar hapusan staged pada gerbang utama kini juga dibaca tak-terkutip dan diurai posisional: menghapus berkas sumber bernama non-ASCII yang masih dirujuk tidak lagi lolos vonis acuan yatim.
+- Pemindai anotasi ganda pada cek cepat kini ikut memindai berkas skrip Kotlin (.kts), bukan hanya .kt dan .java.
 
 ## [1.6.605] - 2026-11-03
 

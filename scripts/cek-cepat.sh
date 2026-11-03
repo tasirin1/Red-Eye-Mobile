@@ -264,7 +264,7 @@ while IFS= read -r -d '' f; do
   if (line ~ /^[[:space:]]*$/) next
   cnt=0; hascode=0; d0=depth; i=1; n=length(line); while (i<=n) { c=substr(line, i, 1); if (depth>0) { if (c=="(") depth++; else if (c==")") depth--; i++; continue } if (c=="@" && substr(line, i+1, 1) ~ /[A-Za-z_]/) { j=i+1; nm=""; while (j<=n && substr(line, j, 1) ~ /[A-Za-z0-9_]/) { nm=nm substr(line, j, 1); j++ } cnt++; if (substr(line, j, 1)==":" && substr(line, j+1, 1) ~ /[A-Za-z_]/) { nm=nm ":"; j++; while (j<=n && substr(line, j, 1) ~ /[A-Za-z0-9_]/) { nm=nm substr(line, j, 1); j++ } } names[cnt]="@" nm; i=j; while (i<=n && substr(line, i, 1) ~ /[[:space:]]/) i++; if (i<=n && substr(line, i, 1)=="(") { depth=1; i++ } continue } if (c==",") { for (k=1; k<=cnt; k++) { if (names[k] in seen) { print FNR; exit } seen[names[k]]=1 } cnt=0; split("", names); split("", seen); hascode=1; i++; continue } if (c !~ /[[:space:]]/) hascode=1; i++ } if (cnt==0 && !hascode && depth==0 && d0==0) { split("", seen); next } for (k=1; k<=cnt; k++) { if (names[k] in seen) { print FNR; exit } seen[names[k]]=1 } if (hascode) split("", seen) }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
-done < <(git ls-files -z '*.kt' '*.java' 2>/dev/null || true)
+done < <(git ls-files -z '*.kt' '*.kts' '*.java' 2>/dev/null || true)
 if [ -n "$loop_dup" ]; then
   echo "GAGAL: anotasi ganda berturut-turut (tak repeatable) di $loop_dup"; gagal=1;
 fi
