@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Urutan pesan sinkron awal tidak lagi terbalik saat terantre (#887): pesan pembuka dan penutup sinkron awal sebelumnya terantre tanpa prioritas sedangkan potongan riwayat berprioritas, dan penguras antrean mendahulukan prioritas, sehingga riwayat bisa tiba sebelum pembukanya; kini ketiganya (pembuka, penutup, pemberitahuan terkirim sebagian) memakai antrean prioritas yang sama, dan status terantre dihitung sudah terkirim agar tak ganda.
 - Putaran sinkron yang benar-benar kosong kini tetap mencap waktu sinkron (#886): perbaikan #850 menaruh cap di dalam cabang halaman berisi, sehingga pada ponsel sepi tanpa SMS/panggilan baru cap tak pernah maju dan /status menampilkan "belum pernah" selamanya walau sinkron sehat; kini putaran yang kedua sisinya selesai penuh — termasuk yang kedua halamannya kosong — tetap mencap.
 - /layar kini menerima jam desimal juga lewat jalur slash (#885): "layar 6,5 jam" dalam bahasa alami menghasilkan laporan 7 jam, tetapi "/layar 6,5 jam" sebelumnya hanya dijawab pesan cara pakai karena pengurai argumen slash hanya menerima bilangan bulat; kini bentuk desimal yang sama diterima dan dibulatkan dengan aturan yang sama.
 - Kata "screenshot" dan "status" kini dikenali sebagai perintah kata-tunggal (#884): keduanya sebelumnya tidak punya alias dan pengurai frasa menuntut dua kelompok kata, sehingga pesan gabungan seperti "screenshot lalu foto" gugur senyap tanpa saran kirim-terpisah yang dijanjikan #844; kini keduanya terdaftar sebagai alias perintahnya, sejajar "foto" dan "baterai".

