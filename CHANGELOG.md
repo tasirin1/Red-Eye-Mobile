@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Baris "Paling sering dibuka" pada ringkasan pemakaian kini meng-escape HTML nama aplikasinya, sama seperti baris label lain — nama aplikasi berkarakter khusus tidak lagi merusak pesan ringkasan.
 - Label aplikasi yang sedang dibuka pada balasan /status kini di-escape HTML, sehingga nama aplikasi yang mengandung karakter seperti `<` atau `&` tidak lagi merusak pesan status (gagal kirim) atau menyuntikkan format.
 - Pesan panjang yang satu potongannya ditolak permanen oleh Telegram tidak lagi membuat seluruh pesan dikirim ulang tanpa akhir: potongan yang hilang dicatat sebagai pesan terbuang (dengan pemberitahuan ke owner), dan kursor SMS/panggilan tetap maju untuk potongan yang terkirim.
 - Pemicu SMS/panggilan masuk tidak lagi hilang: pemeriksaan seketika kini mencap throttle di akhir putaran dan menjalankan satu putaran lanjutan bila ada pemicu yang datang selama pemeriksaan berjalan — sebelumnya pemicu di jendela itu tertelan dan laporan menunggu putaran berkala.

@@ -7484,7 +7484,7 @@ class MonitoringService : Service() {
             val label = if (windowLabel != null && unlocksTodayCount < 0) "HP dibuka ($windowLabel)" else "HP dibuka"
             out.add("$label: ${unlocksShown}x, pertama ${com.redeye.parentalmonitor.utils.TimeFmt.short(firstShown)}")
         }
-        val labels = summary.topOpens.map { (pkg, count) -> "${appLabelFor(pkg)} ${count}x" }
+        val labels = summary.topOpens.map { (pkg, count) -> "${Html.escape(appLabelFor(pkg))} ${count}x" }
         if (labels.isNotEmpty()) out.add("Paling sering dibuka: " + labels.joinToString(", "))
         return out
     }
