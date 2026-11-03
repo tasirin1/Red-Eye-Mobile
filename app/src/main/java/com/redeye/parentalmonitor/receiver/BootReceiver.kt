@@ -94,6 +94,13 @@ class BootReceiver : BroadcastReceiver() {
                                 .putLong("boot_count_wall", System.currentTimeMillis())
                                 .putLong("boot_count_elapsed", nowElapsed)
                             if (sysBoot >= 0L && sysBoot >= storedSys) ed.putLong("boot_count_sys", sysBoot)
+                            else if (sysBoot < 0L && storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L)
+                            // Pasangan +1 saat saksi tak terbaca
+                            // (issue #1122): boot yang baru dihitung
+                            // ini juga menaikkan BOOT_COUNT tepat
+                            // satu — tanpa memajukan saksi, heal
+                            // #1084 menambahkan selisih yang sama
+                            // lagi pada bacaan berikutnya (dobel).
                             ed.apply()
                         } catch (_: Exception) {
                         }
@@ -170,6 +177,8 @@ class BootReceiver : BroadcastReceiver() {
                         .putLong("boot_count_wall", nowWall)
                         .putLong("boot_count_elapsed", nowElapsed)
                     if (sysBoot >= 0L) ed.putLong("boot_count_sys", sysBoot)
+                    else if (storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L)
+                    // Pasangan +1 seperti jalur heal (issue #1122).
                     ed.commit()
                     return
                 }
