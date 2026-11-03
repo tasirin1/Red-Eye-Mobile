@@ -23,6 +23,7 @@
 - Notifikasi layanan depan yang isinya tetap kini dibangun sekali dan dipakai ulang (dibangun ulang hanya bila bahasa perangkat berubah), tidak lagi dibangun dari nol untuk setiap intent yang masuk termasuk tiap kali kalkulator dibuka.
 - Pemeriksaan pagar kini membaca enam nilai konfigurasinya sekali per panggilan, bukan dua kali: blok pagar bersarang dan daftar pagar memakai bacaan lokal yang sama.
 - Pemindaian kata pantau aksesibilitas kini mengingat hasil ubah huruf kecil untuk teks pendek yang berulang antar peristiwa pada layar yang sama (memo berbatas), mengurangi pekerjaan berulang tanpa mengubah cakupan pemindaian sama sekali.
+- Penanda jadwal kirim tertunda kini diterbitkan sebelum pekerjaan antreannya didaftarkan (dan dinolkan sebelum pekerjaan pengganti didaftarkan): pesan mendesak tidak lagi bisa membaca penanda basi dan ikut menunggu di belakang jadwal tertunda.
 
 ## [1.6.601] - 2026-11-03
 

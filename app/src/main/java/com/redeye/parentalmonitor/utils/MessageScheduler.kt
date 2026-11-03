@@ -58,10 +58,14 @@ object MessageScheduler {
             val replaceDelayed = shouldReplaceDelayed(now, nextSendAtElapsed.get(), SendMessageWorker.isRunning())
             val policy = if (replaceDelayed) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
             try {
+                // Nolkan penanda SEBELUM enqueue REPLACE
+                // (pola sama #1097): urutan lama bisa menimpa
+                // nilai masa depan yang baru diterbitkan
+                // scheduleMessageSendNext bersamaan.
+                if (replaceDelayed) nextSendAtElapsed.set(0L)
                 WorkManager.getInstance(context.applicationContext)
                     .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
                 if (replaceDelayed) {
-                    nextSendAtElapsed.set(0L)
                     outstandingSends.set(1)
                 }
             } catch (e: Exception) {
@@ -102,11 +106,18 @@ object MessageScheduler {
                 requestBuilder.setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
             }
             val policyNext = ExistingWorkPolicy.APPEND_OR_REPLACE
+            // Terbitkan jadwal SEBELUM enqueue (issue #1097):
+            // urutan lama (enqueue lalu set) menyisakan jendela
+            // di mana scheduleMessageSend membaca nilai basi
+            // dan pesan mendesak menempel di belakang jadwal
+            // tertunda. Bila enqueue gagal, nilai lama dipulihkan.
+            val prevNextSendAt = nextSendAtElapsed.get()
+            nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
-            nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
             true
         } catch (e: Exception) {
+            nextSendAtElapsed.set(prevNextSendAt)
             outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false
