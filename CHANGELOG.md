@@ -16,6 +16,7 @@
 - Penulisan swasembuh penghitung boot tidak lagi sinkron ke disk: pembacaan penghitung dari layar Setup dan dari layanan aksesibilitas tidak lagi membayar tulis disk yang bisa membuat jeda sesaat.
 - Bukti boot untuk uji anti-mati pertama kini tahan jam dimundurkan di tengah uji sampai batas toleransi geser jam yang wajar: reboot sungguhan di tengah uji tidak lagi gugur buktinya hanya karena cap peristiwanya tertulis di bawah jam mulai uji.
 - Pemulihan penyimpanan antrean kini juga membuang salinan isi lama di memori: penulisan berikutnya merotasi cadangan dari isi antrean yang sebenarnya, bukan dari era sebelum penyimpanan rusak, sehingga pesan lama yang sudah terkirim tidak bisa bangkit lagi dari cadangan.
+- Pembatalan penunggu restart kamera/patroli saat monitoring mulai/berhenti kini memakai kunci yang sama dengan pencatatnya: penunggu yang sedang berjalan tidak lagi bisa lolos dari pembatalan dan menyalakan loop di layanan yang sedang berhenti.
 
 ## [1.6.601] - 2026-11-03
 

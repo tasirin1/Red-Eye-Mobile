@@ -957,12 +957,19 @@ class MonitoringService : Service() {
         commandJob?.cancel()
         initialSyncJob?.cancel()
         patrolJob?.cancel()
-        try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
-        try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
-        cameraRelaunchJob = null
-        cameraRelaunchTarget = null
-        patrolRelaunchJob = null
-        patrolRelaunchTarget = null
+        // Batal+nolkan relauncher di bawah kunci yang sama
+        // dengan pencatatnya (issue #1088): di luar
+        // relaunchLock, relaunch yang sedang berjalan bisa
+        // mencatat job baru sesudah teardown menolakkan
+        // field — relauncher lolos dari pembatalan.
+        synchronized(relaunchLock) {
+            try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
+            try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
+            cameraRelaunchJob = null
+            cameraRelaunchTarget = null
+            patrolRelaunchJob = null
+            patrolRelaunchTarget = null
+        }
         loopRelaunchJob?.cancel()
         idlePolls = 0
         refreshCreds()
@@ -8960,12 +8967,16 @@ class MonitoringService : Service() {
         // field loop di-nol-kan (issue #1033): tanpa ini
         // relauncher bisa menyalakan loop sesaat di layanan
         // yang sedang berhenti, di jendela stop ke onDestroy.
-        try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
-        try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
-        cameraRelaunchJob = null
-        cameraRelaunchTarget = null
-        patrolRelaunchJob = null
-        patrolRelaunchTarget = null
+        // Batal+nolkan di bawah relaunchLock (issue #1088)
+        // agar atomik terhadap pencatatan relaunchAfterJoin.
+        synchronized(relaunchLock) {
+            try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
+            try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
+            cameraRelaunchJob = null
+            cameraRelaunchTarget = null
+            patrolRelaunchJob = null
+            patrolRelaunchTarget = null
+        }
         cameraJob = null
         patrolJob = null
         ringJob?.cancel()
