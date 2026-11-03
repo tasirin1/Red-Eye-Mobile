@@ -39,6 +39,7 @@
 - Persen literal (%%) tidak lagi dihitung sebagai argumen format oleh gerbang: terjemahan yang menulis kata "persen" tidak lagi digagalkan palsu.
 - Pengecualian translatable pada gerbang kini dikenali juga dalam bentuk XML sah lain (spasi di sekitar tanda sama-dengan, kapital pada nilai), tidak hanya substring persis.
 - Semua pola nama resource pada gerbang kini menerima petik tunggal maupun ganda: elemen yang ditulis dengan petik tunggal tidak lagi tak terlihat oleh pemeriksaan paritas, duplikat, dan definisi.
+- Pemindai anotasi ganda pada cek cepat kini membaca tiap baris dalam satu lintasan per karakter: komentar di dalam string tidak lagi memotong sisa baris, penutup komentar blok di awal baris tidak lagi menelan anotasi sesudahnya, dan isi string mentah tidak lagi memicu tuduhan ganda palsu.
 
 ## [1.6.601] - 2026-11-03
 
