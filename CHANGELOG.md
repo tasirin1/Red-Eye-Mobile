@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Cap masa tenggang Setup kini juga membawa penanda penghitung boot: cap yang ditulis sesaat sesudah HP menyala tidak lagi hidup lagi sebagai tenggang pada boot berikutnya sesudah perangkat mati lama.
 - Uji anti-mati kini mencatat penghitung boot persisten saat dimulai: reboot cepat di tengah uji (yang dari jam saja tak terbedakan dari koreksi jam) terdeteksi pasti dan laporan tidak lagi menyatakan anti-mati bekerja padahal HP sempat reboot.
 - Penunggu restart loop kamera dan patroli kini tercatat dan terdeduplikasi: semburan perubahan setelan tidak lagi melahirkan banyak penunggu yang berebut menyalakan loop, dan penunggu ikut dibatalkan saat monitoring berhenti agar loop tidak menyala sesaat di layanan yang sedang berhenti.
 - Pool benang receiver kini sungguh berjalan sejajar hingga tiga benang (perbaikan sebelumnya tidak mengubah perilaku karena bentuk pool-nya), dan penanganan boot di-serial dengan kunci dedupnya sendiri agar pesan restart tidak terkirim ganda saat dua siaran boot tiba berbarengan.

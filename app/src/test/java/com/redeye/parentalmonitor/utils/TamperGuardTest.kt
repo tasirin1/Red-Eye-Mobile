@@ -160,6 +160,23 @@ class TamperGuardTest {
         assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1_700_003_600_000L, 1_700_000_120_000L, 0L, 900_000_000L, 864_120_000L, 0L))
     }
 
+    // Issue #1035: cap yang ditulis pada elapsed kecil di
+    // boot sebelumnya lolos uji sisa #1009 (sisa <= GRACE_MS)
+    // — penanda penghitung boot yang membedakannya. Nilai
+    // harapan dibuktikan porting Python 1:1 lebih dulu.
+    @Test
+    fun tenggangCapElapsedKecilBootLainDitolak() {
+        // Boot sama (5 == 5), sisa elapsed 40 detik -> tenggang.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_700_000_060_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 5L, 5L, 0L))
+        // Boot beda (cap 5, kini 6), dinding kedaluwarsa 3 hari -> bukan tenggang.
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1_700_259_200_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 6L, 5L, 0L))
+        // Boot beda tetapi dinding masih aktif -> tenggang dari dinding.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_700_000_060_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 6L, 5L, 0L))
+        // Alasan admin memakai penanda admin.
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1_700_259_200_000L, 0L, 1_700_000_120_000L, 100_000L, 0L, 140_000L, 6L, 0L, 5L))
+        assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1_700_000_060_000L, 0L, 1_700_000_120_000L, 100_000L, 0L, 140_000L, 5L, 0L, 5L))
+    }
+
     @Test
     fun alasanLainDanTanpaAlasanTidakPernahBebas() {
         assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L, 0L, 0L, 0L))

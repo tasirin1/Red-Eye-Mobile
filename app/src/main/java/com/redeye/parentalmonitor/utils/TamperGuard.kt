@@ -36,7 +36,10 @@ object TamperGuard {
         adminGraceUntil: Long,
         nowElapsed: Long,
         settingsGraceElapsedUntil: Long,
-        adminGraceElapsedUntil: Long
+        adminGraceElapsedUntil: Long,
+        currentBootCount: Long = 0L,
+        settingsGraceBootCount: Long = 0L,
+        adminGraceBootCount: Long = 0L
     ): Boolean {
         // Jangkar elapsed didahulukan (issue #1007): masa
         // tenggang yang hanya berjangkar jam dinding bisa
@@ -45,14 +48,19 @@ object TamperGuard {
         // cap warisan tanpa pasangan elapsed jatuh ke
         // perbandingan dinding seperti sebelumnya.
         return when (reason) {
-            "aksesibilitas" -> graceDecision(nowWall, settingsGraceUntil, nowElapsed, settingsGraceElapsedUntil)
-            "admin perangkat" -> graceDecision(nowWall, adminGraceUntil, nowElapsed, adminGraceElapsedUntil)
+            "aksesibilitas" -> graceDecision(nowWall, settingsGraceUntil, nowElapsed, settingsGraceElapsedUntil, settingsGraceBootCount, currentBootCount)
+            "admin perangkat" -> graceDecision(nowWall, adminGraceUntil, nowElapsed, adminGraceElapsedUntil, adminGraceBootCount, currentBootCount)
             else -> false
         }
     }
 
-    private fun graceDecision(nowWall: Long, wallUntil: Long, nowElapsed: Long, elapsedUntil: Long): Boolean {
-        if (elapsedUntil > 0L) {
+    private fun graceDecision(nowWall: Long, wallUntil: Long, nowElapsed: Long, elapsedUntil: Long, capBootCount: Long = 0L, currentBootCount: Long = 0L): Boolean {
+        // Cabang elapsed hanya sah di boot tempat cap ditulis
+        // (issue #1035): cap berpenanda boot yang berbeda
+        // adalah cap basi — putuskan dari dinding. Cap warisan
+        // tanpa penanda (0) memakai aturan #1009 apa adanya.
+        val bootSama = capBootCount == 0L || capBootCount == currentBootCount
+        if (elapsedUntil > 0L && bootSama) {
             val remaining = elapsedUntil - nowElapsed
             // Di boot tempat cap ditulis, sisa elapsed TIDAK
             // PERNAH melebihi GRACE_MS. Sisa yang lebih besar

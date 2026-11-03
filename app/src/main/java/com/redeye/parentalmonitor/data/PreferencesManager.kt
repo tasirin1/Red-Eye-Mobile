@@ -537,6 +537,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_SETTINGS_GRACE = "a11y_settings_grace"
         private const val KEY_A11Y_ADMIN_GRACE = "a11y_admin_grace"
         private const val KEY_A11Y_SETTINGS_GRACE_ELAPSED = "a11y_settings_grace_elapsed"
+        private const val KEY_A11Y_SETTINGS_GRACE_BOOT = "a11y_settings_grace_boot"
+        private const val KEY_A11Y_ADMIN_GRACE_BOOT = "a11y_admin_grace_boot"
         private const val KEY_A11Y_ADMIN_GRACE_ELAPSED = "a11y_admin_grace_elapsed"
         private const val KEY_A11Y_APP_WATCH = "a11y_app_watch"
         private const val KEY_A11Y_APP_WATCH_PACKAGES = "a11y_app_watch_packages"
@@ -1782,6 +1784,19 @@ class PreferencesManager(context: Context) {
     var a11yAdminGraceElapsedUntil: Long
         get() = prefLong(KEY_A11Y_ADMIN_GRACE_ELAPSED, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE_ELAPSED, value).apply()
+
+    // Penghitung boot saat cap tenggang ditulis (issue
+    // #1035): cap elapsed yang ditulis pada uptime kecil
+    // boot sebelumnya tak terbedakan dari cap segar hanya
+    // dari angka elapsed — penghitung boot persisten
+    // (#1034) yang membedakannya. 0 = cap warisan.
+    var a11ySettingsGraceBootCount: Long
+        get() = prefLong(KEY_A11Y_SETTINGS_GRACE_BOOT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_SETTINGS_GRACE_BOOT, value).apply()
+
+    var a11yAdminGraceBootCount: Long
+        get() = prefLong(KEY_A11Y_ADMIN_GRACE_BOOT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE_BOOT, value).apply()
 
     var a11yAppWatchEnabled: Boolean
         get() = prefBoolean(KEY_A11Y_APP_WATCH, false)

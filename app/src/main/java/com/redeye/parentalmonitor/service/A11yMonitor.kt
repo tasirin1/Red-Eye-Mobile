@@ -688,7 +688,10 @@ object A11yMonitor {
             ensureLoadedLocked(context)
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
                 val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, selfLabel)
-                val setupGrace = TamperGuard.inSetupGrace(reason, nowWall, manager.a11ySettingsGraceUntil, manager.a11yAdminGraceUntil, nowElapsed, manager.a11ySettingsGraceElapsedUntil, manager.a11yAdminGraceElapsedUntil)
+                val setupGrace = TamperGuard.inSetupGrace(reason, nowWall, manager.a11ySettingsGraceUntil, manager.a11yAdminGraceUntil, nowElapsed, manager.a11ySettingsGraceElapsedUntil, manager.a11yAdminGraceElapsedUntil,
+                    com.redeye.parentalmonitor.receiver.BootReceiver.bootCount(context),
+                    try { manager.a11ySettingsGraceBootCount } catch (_: Exception) { 0L },
+                    try { manager.a11yAdminGraceBootCount } catch (_: Exception) { 0L })
                 if (reason != null) {
                     if (!setupGrace) {
                         tamperReason = reason
