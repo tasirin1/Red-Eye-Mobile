@@ -59,6 +59,16 @@ object A11yMonitor {
     @Volatile
     private var lastTamperRecheckAt = 0L
     private val lastKeywordAlert = HashMap<String, Long>()
+    // Cache urai paket pantau + kata kunci (issue #980): jalur
+    // pindai a11y berjalan tiap peristiwa jendela/konten, dan
+    // dulu set paket dibangun ulang + kata kunci diurai ulang
+    // dari string prefs di SETIAP pindaian. Kini diurai hanya
+    // bila string mentahnya berubah (pola cache yang sama
+    // dengan NotificationForwarderService).
+    private var watchPackagesRaw: String? = null
+    private var watchPackagesCache: Set<String> = emptySet()
+    private var watchKeywordsRaw: String? = null
+    private var watchKeywordsCache: List<String> = emptyList()
     private var keywordAlertDay = ""
     private var keywordAlertCount = 0
     // Antrean TERBATAS (issue #931): executor lama tak
@@ -280,6 +290,24 @@ object A11yMonitor {
         }
     }
 
+    private fun watchedPackages(manager: PreferencesManager): Set<String> {
+        val raw = try { manager.a11yAppWatchPackages } catch (_: Exception) { "" }
+        if (raw != watchPackagesRaw) {
+            watchPackagesCache = try { manager.a11yAppWatchPackageSet() } catch (_: Exception) { emptySet() }
+            watchPackagesRaw = raw
+        }
+        return watchPackagesCache
+    }
+
+    private fun watchedKeywords(manager: PreferencesManager): List<String> {
+        val raw = try { manager.watchKeywords } catch (_: Exception) { "" }
+        if (raw != watchKeywordsRaw) {
+            watchKeywordsCache = AppWatch.parseKeywords(raw)
+            watchKeywordsRaw = raw
+        }
+        return watchKeywordsCache
+    }
+
     private fun scanWatchedContent(service: AccessibilityService, pkg: String) {
         if (pkg.isEmpty() || pkg == service.packageName) return
         val now = SystemClock.elapsedRealtime()
@@ -301,8 +329,8 @@ object A11yMonitor {
             }
         }
         lastContentScan[pkg] = now
-        if (pkg !in manager.a11yAppWatchPackageSet()) return
-        val keywords = AppWatch.parseKeywords(manager.watchKeywords)
+        if (pkg !in watchedPackages(manager)) return
+        val keywords = watchedKeywords(manager)
         if (keywords.isEmpty()) return
         val app = service.applicationContext
         executor.execute {
@@ -315,7 +343,7 @@ object A11yMonitor {
     private fun handleContent(context: Context, pkg: String, texts: List<String>, keywords: List<String>, fullTextHit: String? = null) {
         val manager = prefs ?: return
         if (!manager.a11yAppWatchEnabled || !monitoringActive(manager)) return
-        if (pkg !in manager.a11yAppWatchPackageSet() || AppWatch.isSensitivePackage(pkg)) return
+        if (pkg !in watchedPackages(manager) || AppWatch.isSensitivePackage(pkg)) return
         // Kena dari teks UTUH node (issue #830) didahulukan: kata
         // pantau di luar potongan 512 karakter snapshot sebelumnya
         // tak pernah terdeteksi sama sekali.
