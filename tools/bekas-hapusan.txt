@@ -85,3 +85,9 @@ penyelesaianMengambilMaksimumPerBidang
 multiIntentCommands
 multiIntentDetectsTwoCommands
 multiIntentRejectsSinglesAndVetoes
+markForwardedId
+markForwardedIds
+markGroupForwarded
+markGroupsForwarded
+setForwardedNotifIdsSync
+setNotifGroupForwardedSync
