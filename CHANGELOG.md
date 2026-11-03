@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.605] - 2026-11-03
+
 ### Fixed
 
 - Semua daftar nama berkas dari git pada gerbang kini dibaca dalam bentuk tak-terkutip (-z): berkas terlarang bernama non-ASCII (mis. beraksen) tidak lagi lolos aturan repo di mode mana pun, dan isi berkas bernama non-ASCII kini benar-benar ikut terpindai token pada audit penuh.
