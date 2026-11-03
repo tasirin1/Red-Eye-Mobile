@@ -2548,7 +2548,17 @@ class MonitoringService : Service() {
             // luar hanya untuk gerbang kesegaran di atas.
             val perintahFinal = if (toggle != null) {
                 val kiniSegar = toggleState(toggle.key)
-                if (kiniSegar == null) null else toggleCommand(toggle.key, !kiniSegar)
+                if (kiniSegar == null) null
+                else if (toggle.harapan != null && toggle.harapan != kiniSegar) {
+                    // Label di pesan lama sudah basi (issue #902):
+                    // keadaan aktual tak lagi sama dengan yang
+                    // tertulis saat tombol dibuat. Jangan balik —
+                    // penyegaran layar sesudah blok ini akan
+                    // menampilkan keadaan yang benar.
+                    null
+                } else {
+                    toggleCommand(toggle.key, !kiniSegar)
+                }
             } else {
                 command
             }
@@ -2790,7 +2800,10 @@ class MonitoringService : Service() {
     private fun saklar(emoji: String, nama: String, view: String, key: String): com.redeye.parentalmonitor.network.InlineButton {
         val on = toggleState(key) ?: false
         val label = "$emoji $nama: " + if (on) "NYALA \uD83D\uDFE2" else "MATI \uD83D\uDD34"
-        return com.redeye.parentalmonitor.network.InlineButton(label, "tg:$view:$key")
+        // Data membawa keadaan label (issue #902): penekanan pada
+        // menu lama yang keadaannya sudah berubah tidak membalik
+        // membabi buta — cukup segarkan tampilan.
+        return com.redeye.parentalmonitor.network.InlineButton(label, "tg:$view:$key:" + if (on) "1" else "0")
     }
 
     private fun menuScreen(id: String): MenuScreen {

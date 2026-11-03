@@ -6,7 +6,13 @@ sealed class MenuCallback {
     data class Navigate(val view: String, val editInPlace: Boolean) : MenuCallback()
     data class Run(val command: String) : MenuCallback()
     data class AskInput(val command: String, val view: String) : MenuCallback()
-    data class Toggle(val key: String, val view: String) : MenuCallback()
+    // harapan (issue #902): keadaan yang TERTULIS di label saat
+    // tombol dibuat ("1"=NYALA, "0"=MATI). Bila keadaan aktual
+    // sudah berbeda saat tombol ditekan (menu lama), saklar
+    // tidak membalik — hanya menyegarkan tampilan. Data format
+    // lama tanpa potongan ini -> null (perilaku balik seperti
+    // biasa agar menu lama tetap berfungsi).
+    data class Toggle(val key: String, val view: String, val harapan: Boolean? = null) : MenuCallback()
 
     companion object {
         val VIEWS = setOf("main", "media", "lokasi", "komu", "info", "pantau", "alat")
@@ -50,9 +56,16 @@ sealed class MenuCallback {
                 val isi = raw.removePrefix("tg:")
                 val pisah = isi.indexOf(':')
                 if (pisah < 0) return null
-                val key = isi.substring(pisah + 1).trim().lowercase(Locale.ROOT)
+                val sisa = isi.substring(pisah + 1).trim().lowercase(Locale.ROOT)
+                val pisah2 = sisa.indexOf(':')
+                val key = if (pisah2 < 0) sisa else sisa.substring(0, pisah2).trim()
                 if (key !in TOGGLE_KEYS) return null
-                return Toggle(key, viewName(isi.substring(0, pisah).trim()))
+                val harapan = if (pisah2 < 0) null else when (sisa.substring(pisah2 + 1).trim()) {
+                    "1" -> true
+                    "0" -> false
+                    else -> null
+                }
+                return Toggle(key, viewName(isi.substring(0, pisah).trim()), harapan)
             }
             val angka = raw.startsWith("num:")
             if (angka || raw.startsWith("i:")) {

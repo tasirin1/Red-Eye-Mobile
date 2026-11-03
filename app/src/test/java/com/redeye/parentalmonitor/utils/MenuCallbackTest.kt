@@ -50,6 +50,12 @@ class MenuCallbackTest {
     @Test
     fun saklarToggle() {
         assertEquals(MenuCallback.Toggle("notify", "komu"), MenuCallback.parse("tg:komu:notify"))
+        // #902: data saklar membawa keadaan label (1/0); format
+        // lama tanpa potongan itu tetap terbaca dengan harapan
+        // null, nilai liar dianggap tanpa harapan.
+        assertEquals(MenuCallback.Toggle("notify", "komu", true), MenuCallback.parse("tg:komu:notify:1"))
+        assertEquals(MenuCallback.Toggle("notify", "komu", false), MenuCallback.parse("tg:komu:notify:0"))
+        assertEquals(MenuCallback.Toggle("notify", "komu", null), MenuCallback.parse("tg:komu:notify:x"))
         assertEquals(MenuCallback.Toggle("patrol", "pantau"), MenuCallback.parse("tg:pantau:patrol"))
         assertEquals(MenuCallback.Toggle("datasaver", "pantau"), MenuCallback.parse("tg:pantau:datasaver"))
         assertEquals(MenuCallback.Toggle("otp", "komu"), MenuCallback.parse("tg:komu:OTP"))

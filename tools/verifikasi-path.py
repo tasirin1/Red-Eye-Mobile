@@ -1201,10 +1201,15 @@ def nama_metode_hilang(diff, lewati_berkas=()):
 
 
 def masih_didefinisikan(nama):
+    # Kelas (termasuk data class) juga diakui sebagai definisi:
+    # mengubah parameter konstruktor data class bukan menghapus
+    # metode — tanpa ini nama_metode_hilang memanen nama kelas
+    # dari baris deklarasi lama dan masih_didefinisikan (yang
+    # dulu hanya mencari "fun") tak pernah menemukannya lagi.
     pola = re.compile(
         r"(?m)^[ \t]*(?:(?:public|private|protected|internal|override|suspend|inline|"
-        r"operator|open|final|abstract|sealed|tailrec|infix)\s+)*"
-        r"fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?%s\s*\(" % re.escape(nama))
+        r"operator|open|final|abstract|sealed|tailrec|infix|data)\s+)*"
+        r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "main", "java")):
         if pola.search(baca_teks(path)):
             return True
