@@ -11,6 +11,7 @@
 - Fakta tiba/berangkat pagar pada dini hari (sebelum 05:00) kini dicatat sebagai kelanjutan hari sebelumnya, mengikuti konvensi jam malam yang sudah ada: tiba pukul 02:00 tidak lagi mengunci catatan hari baru dan membuang tiba sesungguhnya di sore hari dari riwayat pola.
 - Fakta tiba/berangkat pagar kini dicatat memakai waktu posisi GPS-nya, bukan waktu proses: transisi yang baru terdeteksi dari posisi cadangan berumur sampai 30 menit tidak lagi tertulis di hari yang salah hanya karena pemrosesannya melewati tengah malam.
 - Pemeriksaan paritas format terjemahan kini sadar urutan: terjemahan yang menukar urutan %s/%d tanpa indeks (yang akan crash saat teks diformat) tidak lagi lolos; pertukaran posisi yang memang sah dengan indeks eksplisit (%1$s/%2$d) tetap diterima.
+- Siaran boot kedua yang tiba sangat terlambat (lebih dari 30 menit) kini tetap dikenali sebagai duplikat dari boot yang sama lewat penghitung boot sistem, tidak lagi menaikkan penghitung seolah ada reboot baru.
 
 ## [1.6.601] - 2026-11-03
 

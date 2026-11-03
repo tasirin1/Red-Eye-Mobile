@@ -109,7 +109,12 @@ class BootReceiver : BroadcastReceiver() {
                     val elapsedDiff = nowElapsed - lastElapsed
                     val wallDiff = nowWall - lastWall
                     if (com.redeye.parentalmonitor.utils.BootClock
-                            .isDuplicateBroadcast(elapsedDiff, wallDiff, sysBoot, storedSys)) {
+                            .isDuplicateBroadcast(elapsedDiff, wallDiff, sysBoot, storedSys) ||
+                        (sysBoot >= 0L && storedSys >= 0L && sysBoot == storedSys)) {
+                        // Kesamaan penghitung sistem berarti
+                        // boot yang sama, berapa pun telatnya
+                        // siaran kedua tiba (issue #1083):
+                        // jendela waktu dedup tak lagi membatasi.
                         // Duplikat: bila baseline sistem belum
                         // pernah tersimpan (instalasi lama),
                         // simpan sekarang agar siaran berikutnya
