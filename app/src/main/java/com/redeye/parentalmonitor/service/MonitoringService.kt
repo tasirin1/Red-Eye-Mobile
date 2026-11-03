@@ -8145,7 +8145,7 @@ class MonitoringService : Service() {
             // hari ini.
             val already = if (DayStamp.blocks(stampDay,
                     try { preferencesManager.anomalyAlertsAtMs } catch (_: Exception) { 0L },
-                    today.day, now)) {
+                    today.day, now, DayStamp.STALE_MS_ZONA)) {
                 stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
             } else {
                 emptySet()

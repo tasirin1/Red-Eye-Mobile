@@ -54,4 +54,16 @@ class DayStampTest {
     @Test fun kunciHariIniKosongTidakMemblokir() {
         assertFalse(DayStamp.blocks(today, now - 1 * h, "", now))
     }
+
+    // Issue #1055: batas longgar zona untuk dedup anomali —
+    // tanggal lokal yang meregang karena terbang ke barat
+    // (30 jam epoch) tetap memblokir; pas 50 jam basi.
+    @Test fun batasZonaLonggarUntukAnomali() {
+        assertTrue(DayStamp.blocks(today, now - 30 * h, today, now, DayStamp.STALE_MS_ZONA))
+        assertTrue(DayStamp.blocks(today, now - (50 * h - 60_000L), today, now, DayStamp.STALE_MS_ZONA))
+        assertFalse(DayStamp.blocks(today, now - 50 * h, today, now, DayStamp.STALE_MS_ZONA))
+        assertTrue(DayStamp.blocks("2026-11-04", now - 30 * h, today, now, DayStamp.STALE_MS_ZONA))
+        // Batas bawaan tak berubah: 30 jam tetap basi.
+        assertFalse(DayStamp.blocks(today, now - 30 * h, today, now))
+    }
 }

@@ -22,10 +22,22 @@ package com.redeye.parentalmonitor.utils
 object DayStamp {
     const val STALE_MS = 24 * 3_600_000L
 
-    fun blocks(doneKey: String, doneAtMs: Long, todayKey: String, nowMs: Long): Boolean {
+    // Batas basi longgar untuk dedup anomali (issue #1055):
+    // satu tanggal lokal bisa berumur LEBIH dari 24 jam epoch
+    // bila offset zona berkurang di tengah hari yang sama
+    // (terbang ke barat lintas zona; ekstrem garis tanggal
+    // membuat tanggal yang sama berulang, rentang maksimum
+    // ±50 jam). Dengan batas 24 jam, cap anomali pagi hari
+    // dinilai basi pada tanggal lokal yang sama malamnya dan
+    // anomali yang sama terkirim ulang. Situs lain terikat
+    // jendela jam sehingga batas ketat 24 jam tetap benar
+    // untuk mereka.
+    const val STALE_MS_ZONA = 50 * 3_600_000L
+
+    fun blocks(doneKey: String, doneAtMs: Long, todayKey: String, nowMs: Long, staleMs: Long = STALE_MS): Boolean {
         if (doneKey.isEmpty() || todayKey.isEmpty()) return false
         if (doneKey < todayKey) return false
-        if (doneAtMs > 0L && nowMs - doneAtMs >= STALE_MS) return false
+        if (doneAtMs > 0L && nowMs - doneAtMs >= staleMs) return false
         return true
     }
 }
