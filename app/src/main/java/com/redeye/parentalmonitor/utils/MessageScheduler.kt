@@ -98,6 +98,10 @@ object MessageScheduler {
             reserved = outstandingSends.compareAndSet(cur, cur + 1)
         }
         lastSendAppendAt.set(nowHeal)
+        // Dideklarasikan DI LUAR try: variabel lokal yang lahir
+        // di dalam blok try tidak terlihat dari catch di Kotlin
+        // (galat kompilasi yang ditangkap CI pada rilis v1.6.602).
+        var prevNextSendAt = 0L
         return try {
             val delayMs = initialDelayMs.coerceAtLeast(0L)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
@@ -111,7 +115,7 @@ object MessageScheduler {
             // di mana scheduleMessageSend membaca nilai basi
             // dan pesan mendesak menempel di belakang jadwal
             // tertunda. Bila enqueue gagal, nilai lama dipulihkan.
-            val prevNextSendAt = nextSendAtElapsed.get()
+            prevNextSendAt = nextSendAtElapsed.get()
             nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
