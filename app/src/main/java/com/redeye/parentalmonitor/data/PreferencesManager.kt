@@ -525,6 +525,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LIVENESS_REPORT_AT = "liveness_report_at"
         private const val KEY_HEARTBEAT_HOURS = "heartbeat_hours"
         private const val KEY_HEARTBEAT_AT = "heartbeat_at"
+        private const val KEY_HEARTBEAT_ELAPSED = "heartbeat_elapsed"
         private const val KEY_LIVE_TEST_PENDING = "live_test_pending"
         private const val KEY_LIVE_TEST_STARTED_ELAPSED = "live_test_started_elapsed"
         private const val KEY_LIVE_TEST_STARTED_WALL = "live_test_started_wall"
@@ -1132,6 +1133,24 @@ class PreferencesManager(context: Context) {
     var heartbeatAt: Long
         get() = prefLong(KEY_HEARTBEAT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_AT, value).apply()
+
+    // Pasangan monoton cap heartbeat (issue #1105): jangkar
+    // dinding saja membuat lompatan jam maju memicu heartbeat
+    // prematur + cap palsu, dan koreksinya memperpanjang
+    // senyap. Pola pasangan yang sama dengan patroli (#923).
+    var heartbeatElapsed: Long
+        get() = prefLong(KEY_HEARTBEAT_ELAPSED, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_HEARTBEAT_ELAPSED, value).apply()
+
+    fun setHeartbeatAt(at: Long, elapsed: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_HEARTBEAT_AT, at)
+                .putLong(KEY_HEARTBEAT_ELAPSED, elapsed)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var liveTestPending: Boolean
         get() = prefBoolean(KEY_LIVE_TEST_PENDING, false)

@@ -5294,7 +5294,7 @@ class MonitoringService : Service() {
                 sendToTelegram("Cara pakai: /heartbeat &lt;0-48&gt; (0 = matikan).")
             } else {
                 try { preferencesManager.heartbeatHours = hours } catch (_: Exception) { }
-                try { preferencesManager.heartbeatAt = System.currentTimeMillis() } catch (_: Exception) { }
+                try { preferencesManager.setHeartbeatAt(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime()) } catch (_: Exception) { }
                 sendToTelegram(if (hours <= 0) "💚 Heartbeat dimatikan." else "💚 Heartbeat menyala: laporan tiap $hours jam.")
             }
         }
@@ -8997,21 +8997,32 @@ class MonitoringService : Service() {
         val hours = try { preferencesManager.heartbeatHours } catch (_: Exception) { 0 }
         if (hours <= 0) return
         val now = System.currentTimeMillis()
+        val nowElapsed = android.os.SystemClock.elapsedRealtime()
         val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
-        if (last > 0L && now > last && now - last < hours * 3_600_000L) return
-        if (last > 0L && now < last) {
-            // Jam dimundurkan (issue #938, pola RESET
-            // DigestSchedule): cap di masa depan — jangkar
-            // ulang ke sekarang TANPA mengirim, agar tak ada
-            // heartbeat ekstra dan interval tak bergeser mundur.
-            try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
-            return
+        val lastElapsed = try { preferencesManager.heartbeatElapsed } catch (_: Exception) { 0L }
+        // Jangkar monoton diutamakan (issue #1105): pasangan
+        // cap dari boot yang sama dinilai lewat elapsed yang
+        // kebal lompatan jam dinding. Pasangan tak konsisten
+        // (reboot sejak cap) atau cap warisan tanpa elapsed
+        // jatuh ke logika dinding lama di bawah.
+        if (last > 0L && lastElapsed > 0L && nowElapsed >= lastElapsed) {
+            if (nowElapsed - lastElapsed < hours * 3_600_000L) return
+        } else {
+            if (last > 0L && now > last && now - last < hours * 3_600_000L) return
+            if (last > 0L && now < last) {
+                // Jam dimundurkan (issue #938, pola RESET
+                // DigestSchedule): cap di masa depan — jangkar
+                // ulang ke sekarang TANPA mengirim, agar tak ada
+                // heartbeat ekstra dan interval tak bergeser mundur.
+                try { preferencesManager.setHeartbeatAt(now, nowElapsed) } catch (_: Exception) { }
+                return
+            }
         }
         if (awaitingOwnerLogin()) return
         // Cap sesudah kirim berhasil (issue #798, pola #737);
         // status #806: terantre juga mencap agar tak dobel.
         if (sendToTelegramStatus(aliveReportText()) != SendStatus.DROPPED) {
-            try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
+            try { preferencesManager.setHeartbeatAt(now, nowElapsed) } catch (_: Exception) { }
         }
     }
 
