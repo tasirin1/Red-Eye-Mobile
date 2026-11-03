@@ -6697,7 +6697,12 @@ class MonitoringService : Service() {
                 }
                 if (callHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastCallId, lastCallTs, callPage.map { it.id to it.date })
-                    try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
+                    // Lewati tulisan yang nilainya sama persis
+                    // dengan yang baru ditulis per potongan di atas
+                    // (issue #1177) — cermin penjaga sisi SMS.
+                    if (tuntas.first != callCursorId || tuntas.second != callCursorDate) {
+                        try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
+                    }
                 }
                 if (callSentAny) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }

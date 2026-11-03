@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Penutup halaman panggilan tidak lagi menulis ulang kursor yang nilainya sama persis dengan tulisan per potongan barusan: satu commit sinkron terbuang per siklus berisi panggilan baru hilang, menyamai penjaga yang sudah ada di sisi SMS (#1177).
 - Redaksi log cadangan kini juga menutup bentuk chat ID Telegram (termasuk grup super -100...) bagi jalur log yang tidak memegang rahasia kredensial, setara jalur utama yang meneruskan token/chat/PIN secara eksplisit (#1176).
 - Eviksi peta jangkar render menu kini membuang entri tertua saja, bukan membersihkan total: jangkar pesan yang baru diedit dan menu aktif lain tidak ikut hilang saat peta penuh, sehingga penolakan "menu kedaluwarsa" semu pada proses berumur panjang tidak kambuh sporadis (#1175).
 
