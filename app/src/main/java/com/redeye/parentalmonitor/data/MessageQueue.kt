@@ -52,6 +52,13 @@ class MessageQueue private constructor(context: Context) {
     private val jsonCache = HashMap<String, Pair<QueuedMessage, String>>()
     @Volatile
     private var persistVersion = 0L
+    // Salinan memori JSON antrean terakhir yang berhasil ditulis
+    // (issue #1046): rotasi cadangan di writeSnapshot dulu membaca
+    // ulang dari prefs — dekripsi penuh seluruh JSON lama — pada
+    // SETIAP mutasi antrean. Kini baca dari prefs hanya bila
+    // salinan ini kosong (tulis pertama sesudah proses mulai /
+    // reset penyimpanan). Dijaga persistMutex.
+    private var lastWrittenJson: String? = null
     private var pendingSnapshot: Pair<Long, List<QueuedMessage>>? = null
     private var drainFailCount = 0
     private val generationCounter = java.util.concurrent.atomic.AtomicLong(0L)
@@ -188,6 +195,7 @@ class MessageQueue private constructor(context: Context) {
     fun reopenAfterStorageReset() {
         synchronized(lock) {
             cached = null
+            synchronized(persistMutex) { lastWrittenJson = null }
             volatileQueue.clear()
             dropsDirty = false
             persistVersion++
@@ -589,6 +597,7 @@ class MessageQueue private constructor(context: Context) {
             }
             val cleared = synchronized(persistMutex) {
                 jsonCache.clear()
+                lastWrittenJson = null
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
@@ -822,7 +831,7 @@ class MessageQueue private constructor(context: Context) {
             val json = snapshotJson(snapshot)
             val saved = try {
                 val editor = prefs.edit()
-                val old = try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
+                val old = lastWrittenJson ?: try { prefs.getString(KEY_QUEUE, null) } catch (_: Exception) { null }
                 if (editor != null && replaceBackup) {
                     editor.putString(KEY_QUEUE_BAK, json)
                 } else if (editor != null && old != null && old != json) {
@@ -832,6 +841,7 @@ class MessageQueue private constructor(context: Context) {
             } catch (_: Exception) {
                 false
             }
+            if (saved) lastWrittenJson = json
             if (!saved && persistVersion == version) persistDirty = true
             return saved
         }

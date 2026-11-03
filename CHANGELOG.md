@@ -4,6 +4,7 @@
 
 - Pemeriksaan paritas terjemahan gerbang kini juga membandingkan jumlah item di dalam string-array antar locale — terjemahan yang itemnya lebih sedikit dari bawaan tidak lagi lolos dan berpotensi membuat tampilan kekurangan entri di bahasa Indonesia.
 - Pemeriksaan paritas argumen format gerbang kini juga mencakup isi item plurals dan string-array, bukan hanya string biasa — perbedaan jenis/jumlah argumen (mis. %d vs %s) di dalam item tidak lagi lolos dan berpotensi membuat aplikasi crash saat memformat teks di bahasa Indonesia.
+- Menyimpan antrean pesan tidak lagi membaca ulang dan mendekripsi seluruh isi antrean lama dari penyimpanan pada setiap penambahan pesan: salinan terakhir kini dipegang di memori untuk keperluan rotasi cadangan, sehingga antrean besar yang menumpuk saat offline tidak lagi memperlambat setiap alert baru.
 
 ## [1.6.600] - 2026-11-03
 
