@@ -242,6 +242,12 @@ class PreferencesManager(context: Context) {
         val opened = openPrefs(appContext)
         sharedPreferences = opened.first
         storageEncrypted = opened.second
+        // Penyimpanan diganti (reset): cermin himpunan dikenal
+        // memuat isi berkas LAMA dan wajib dibuang, kalau tidak
+        // jawaban "sudah dikenal" berasal dari data pra-reset
+        // dan penulisan berikutnya membangkitkan himpunan lama
+        // ke prefs baru (issue #1047).
+        synchronized(a11yKnownAppsLock) { knownAppsMirror = null }
         synchronized(listenerLock) {
             for (l in listenerSet) {
                 try { opened.first.registerOnSharedPreferenceChangeListener(l) } catch (_: Exception) { }
