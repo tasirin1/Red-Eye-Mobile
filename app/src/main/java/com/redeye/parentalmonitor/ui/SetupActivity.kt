@@ -618,7 +618,12 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
 
-        updateStatus()
+        // updateStatus() TIDAK dipanggil langsung di sini
+        // (issue #1092): onResume yang selalu mengikuti
+        // onCreate memanggilnya, dan korutin pemuat memanggil
+        // ulang sesudah field terisi — panggilan ketiga di
+        // akhir onCreate dulu murni duplikat (±20 dekripsi +
+        // ±25 cek izin untuk teks yang identik).
     }
 
     override fun onResume() {

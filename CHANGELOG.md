@@ -19,6 +19,7 @@
 - Pembatalan penunggu restart kamera/patroli saat monitoring mulai/berhenti kini memakai kunci yang sama dengan pencatatnya: penunggu yang sedang berjalan tidak lagi bisa lolos dari pembatalan dan menyalakan loop di layanan yang sedang berhenti.
 - Tugas receiver yang meluap saat badai siaran kini punya jalur cadangannya sendiri: pekerjaan berat yang meluap tidak lagi mengantre di depan tugas kritis seperti laporan kebangkitan, sehingga jalur kritis tetap lepas tepat saat sistem sedang sibuk.
 - Pemeriksaan reset basis data pesan/panggilan kini dijatah: dua kueri ke penyedia konten yang dulu dibayar di setiap siklus sinkron kini hanya berjalan tiap 15 menit atau saat kursor berubah, tanpa mengurangi kecepatan deteksi reset yang sebenarnya.
+- Layar Setup tidak lagi menghitung status tiga kali saat dibuka: satu putaran penuh baca setelan dan cek izin yang duplikat di awal pembukaan dihapus, status tetap segar dari panggilan resume dan pemuat field.
 
 ## [1.6.601] - 2026-11-03
 
