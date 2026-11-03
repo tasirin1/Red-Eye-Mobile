@@ -29,14 +29,25 @@ object Liveness {
     private val scheduledAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
     private val alarmLock = Any()
 
-    fun intervalMs(context: Context): Long {
-        return if (SystemClock.elapsedRealtime() < urgentUntilElapsed.get()) {
+    // Inti murni keputusan interval (issue #1043): diekstrak
+    // dari intervalMs agar terkunci uji JVM — dulu menyatu
+    // dengan SystemClock + Context sehingga tak teruji sama
+    // sekali bersama reportDue dan gapText.
+    fun intervalFor(urgent: Boolean, screenOn: Boolean): Long {
+        return if (urgent) {
             URGENT_INTERVAL_MS
-        } else if (isScreenInteractive(context)) {
+        } else if (screenOn) {
             SCREEN_ON_INTERVAL_MS
         } else {
             SCREEN_OFF_INTERVAL_MS
         }
+    }
+
+    fun intervalMs(context: Context): Long {
+        return intervalFor(
+            SystemClock.elapsedRealtime() < urgentUntilElapsed.get(),
+            isScreenInteractive(context)
+        )
     }
 
     fun intervalText(context: Context): String {
