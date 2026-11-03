@@ -1778,8 +1778,12 @@ class PreferencesManager(context: Context) {
             // depan. Margin sehari melindungi koreksi mundur
             // yang menyebrangi tengah malam (slot kini besok
             // tepat masih mungkin data malam yang sah).
-            val todayNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(System.currentTimeMillis()) } catch (_: Exception) { "" }
-            val tomorrowNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(System.currentTimeMillis() + 86_400_000L) } catch (_: Exception) { "" }
+            // Satu titik waktu untuk kedua kunci (issue
+            // #1162): dua panggilan jam terpisah bisa berbeda
+            // hari bila tengah malam jatuh di antaranya.
+            val nowMs = System.currentTimeMillis()
+            val todayNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(nowMs) } catch (_: Exception) { "" }
+            val tomorrowNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(nowMs + 86_400_000L) } catch (_: Exception) { "" }
             val liveGhost = todayNow.isNotEmpty() && tomorrowNow.isNotEmpty() && date == todayNow && curDate > tomorrowNow
             val editor = sharedPreferences.edit()
             when {
