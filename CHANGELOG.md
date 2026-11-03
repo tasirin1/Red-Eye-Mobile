@@ -13,6 +13,7 @@
 - Pemeriksaan paritas format terjemahan kini sadar urutan: terjemahan yang menukar urutan %s/%d tanpa indeks (yang akan crash saat teks diformat) tidak lagi lolos; pertukaran posisi yang memang sah dengan indeks eksplisit (%1$s/%2$d) tetap diterima.
 - Siaran boot kedua yang tiba sangat terlambat (lebih dari 30 menit) kini tetap dikenali sebagai duplikat dari boot yang sama lewat penghitung boot sistem, tidak lagi menaikkan penghitung seolah ada reboot baru.
 - Swasembuh penghitung boot kini juga memakai penghitung boot sistem: reboot yang siarannya hilang tetap terdeteksi walau aplikasi baru dibaca sesudah HP menyala lama (dulu jendela deteksinya bisa tertutup), dan beberapa reboot hilang sekaligus terhitung sesuai jumlahnya.
+- Penulisan swasembuh penghitung boot tidak lagi sinkron ke disk: pembacaan penghitung dari layar Setup dan dari layanan aksesibilitas tidak lagi membayar tulis disk yang bisa membuat jeda sesaat.
 
 ## [1.6.601] - 2026-11-03
 

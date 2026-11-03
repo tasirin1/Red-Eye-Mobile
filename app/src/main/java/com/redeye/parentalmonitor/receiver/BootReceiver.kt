@@ -51,6 +51,15 @@ class BootReceiver : BroadcastReceiver() {
                     // cadangan: elapsed SEKARANG yang lebih kecil
                     // darinya hanya mungkin sesudah reboot —
                     // naikkan sekali dan perbarui cap.
+                    // Penulisan heal memakai apply(), bukan
+                    // commit() (issue #1085): bootCount() dibaca
+                    // dari benang utama Setup dan dari dalam
+                    // gate A11y — tulis disk sinkron di sana
+                    // berisiko jeda/ANR. Heal bersifat idempoten
+                    // (bukti reboot tetap ada sampai cap
+                    // terbarui), jadi kehilangan flush oleh
+                    // kematian proses hanya berarti heal ulang
+                    // pada bacaan berikutnya.
                     val stampElapsed = meta.getLong("boot_count_elapsed", 0L)
                     val nowElapsed = android.os.SystemClock.elapsedRealtime()
                     // Saksi sistem lebih dulu (issue #1084):
@@ -75,7 +84,7 @@ class BootReceiver : BroadcastReceiver() {
                             meta.edit().putLong("boot_count", count)
                                 .putLong("boot_count_wall", System.currentTimeMillis())
                                 .putLong("boot_count_elapsed", nowElapsed)
-                                .putLong("boot_count_sys", sysBoot).commit()
+                                .putLong("boot_count_sys", sysBoot).apply()
                         } catch (_: Exception) {
                         }
                     } else if (stampElapsed > 0L && nowElapsed < stampElapsed) {
@@ -85,7 +94,7 @@ class BootReceiver : BroadcastReceiver() {
                                 .putLong("boot_count_wall", System.currentTimeMillis())
                                 .putLong("boot_count_elapsed", nowElapsed)
                             if (sysBoot >= 0L && sysBoot >= storedSys) ed.putLong("boot_count_sys", sysBoot)
-                            ed.commit()
+                            ed.apply()
                         } catch (_: Exception) {
                         }
                     }
