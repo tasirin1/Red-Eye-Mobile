@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pengambilan lokasi kini memberi jeda singkat bagi hasil penyedia yang tiba tepat di batas waktu untuk ikut terpilih, bukan langsung membatalkannya.
 - /appwatch tambah/hapus dengan nama sebagian kini melaporkan "ambigu" beserta kandidatnya bila cocok ke beberapa aplikasi, bukan lagi memilih sembarang aplikasi pertama secara diam-diam.
 - Pemeriksaan hemat data pada 15 detik pertama sejak HP menyala kini benar-benar memeriksa, bukan memakai hasil bawaan seolah baru saja diperiksa.
 - Berkas penanda versi Gradle (gradle-wrapper.properties) dikembalikan: perkakas analisis CodeQL membacanya untuk memilih versi Gradle — tanpa berkas itu analisisnya gagal memakai versi lama (skrip gradlew-nya sendiri tetap dihapus).

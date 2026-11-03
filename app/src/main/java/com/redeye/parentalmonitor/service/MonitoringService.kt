@@ -5852,6 +5852,20 @@ class MonitoringService : Service() {
                             throw e
                         } catch (_: Exception) {
                         }
+                        // Jeda singkat menitipkan fix di batas
+                        // (issue #1004): tugas penyedia yang
+                        // hasilnya tiba tepat saat settled selesai
+                        // bisa sedang menitipkan ke antrean —
+                        // tunggu sebentar sebelum membatalkan,
+                        // agar fix itu tak hilang dari pilihan.
+                        try {
+                            kotlinx.coroutines.withTimeoutOrNull(250L) {
+                                for (task in pending) task.join()
+                            }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                        }
                         for (task in pending) {
                             try {
                                 task.cancel()
