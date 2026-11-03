@@ -685,11 +685,16 @@ class NotificationForwarderService : NotificationListenerService() {
         val maskedLower = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
         val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
         val idHash = if (sbnKey.isNotEmpty()) try { notifIdHash(sbnKey, sbnPostTime) } catch (_: Exception) { "" } else ""
+        // Cap dedup ditulis SESUDAH penanganan terkonfirmasi
+        // (issue #934): dulu cap ditulis di sini, sebelum kirim —
+        // kirim yang gugur menelan kiriman ulang <10 detik.
+        val capTerkirim = {
+            synchronized(lastSent) { lastSent[key] = now }
+        }
         val alreadyHandled = synchronized(lastSent) {
             val prev = lastSent[key] ?: 0L
             val dupContent = prev > 0L && now - prev < 10_000L
             val dupId = idHash.isNotEmpty() && isForwardedId(idHash)
-            if (!dupContent && !dupId) lastSent[key] = now
             dupContent || dupId
         }
         if (alreadyHandled) {
@@ -705,7 +710,10 @@ class NotificationForwarderService : NotificationListenerService() {
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
-                if (queued) markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
+                if (queued) {
+                    capTerkirim()
+                    markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
+                }
                 return
             }
             val spamLabel = synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg
@@ -718,6 +726,9 @@ class NotificationForwarderService : NotificationListenerService() {
                 dropNoticeAt[pkg] = now
                 forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotify.")
             }
+            // Terbuang SENGAJA oleh penyaring: tetap dicap agar
+            // bukaannya tidak mengulang pemberitahuan spam.
+            capTerkirim()
             record(label, title, text)
             return
         }
@@ -731,11 +742,15 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 false
             }
-            if (delivered) markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
+            if (delivered) {
+                capTerkirim()
+                markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
+            }
             return
         }
         try {
             forwardToTelegram(message, idHash, if (trackGroup) groupKey else "")
+            capTerkirim()
         } catch (_: Exception) {
         }
     }

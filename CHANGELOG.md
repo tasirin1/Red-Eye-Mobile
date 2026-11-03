@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Cap anti-dobel notifikasi kini ditulis sesudah pengiriman terkonfirmasi, bukan sebelumnya — notifikasi yang kirimnya gugur tidak lagi menelan kiriman ulangnya sendiri dalam jendela 10 detik.
 - Klasifikasi notifikasi prioritas perbankan/e-wallet kini mencocokkan per segmen nama paket, bukan substring bebas — aplikasi tak terkait yang namanya kebetulan mengandung potongan seperti "bri" atau "dana" tidak lagi ikut diperlakukan sebagai notifikasi bank.
 - Satu isian notifikasi yang rusak tidak lagi membuang seluruh notifikasi: judul dan isi kini dibaca dengan penjaga masing-masing sehingga medan yang sehat tetap diteruskan.
 - Antrean kerja layanan Aksesibilitas kini terbatas (64) dengan tugas berlebih dibuang diam-diam; sebelumnya antrean tak terbatas bisa menumpuk tanpa batas di belakang satu tugas yang lambat.
