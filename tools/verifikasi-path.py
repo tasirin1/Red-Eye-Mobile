@@ -1211,7 +1211,7 @@ def nama_riwayat(rev):
     while i < len(token):
         status = token[i]
         i += 1
-        if not status or status[0] not in "AMDRC":
+        if not status or status[0] not in "AMDRCTU":
             continue
         ambil = 2 if status[0] in "RC" else 1
         for _ in range(ambil):
