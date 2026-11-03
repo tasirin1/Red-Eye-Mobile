@@ -12,15 +12,20 @@ if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
 # 1. Path vektor harus 0.x (lint InvalidVectorPath menggagalkan build).
 # Tiga tingkat: rg PCRE2, grep -P, grep -E portabel — selalu memeriksa,
 # tak pernah gagal-tertutup karena perkakas hilang.
+# Bentuk kedua (issue #1041): angka yang didahului digit
+# tetapi memulai bilangan baru — "1.5.5" terurai sebagai
+# 1.5 lalu .5 karena bilangan hanya boleh satu titik.
+# Pola tambahannya mengenali titik yang mengikuti digit
+# pecahan/eksponen bilangan sebelumnya: .|e|E [-] digit* .
 if [ "$ADA_RG" = 1 ] && rg --pcre2 -n '' app/src/main/res/drawable* >/dev/null 2>&1; then
-  if rg -q --pcre2 '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+  if rg -q --pcre2 '(?<![0-9])\.-?[0-9]|[.eE]-?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
 elif grep -R -P '' . >/dev/null 2>&1; then
-  if grep -R -q -P '(?<![0-9])\.-?[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+  if grep -R -q -P '(?<![0-9])\.-?[0-9]|[.eE]-?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
-elif grep -R -q -E '(^|[^0-9])\.-?[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+elif grep -R -q -E '(^|[^0-9])\.-?[0-9]|[.eE]-?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
   echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
 fi
 # 2. ID layout portrait vs landscape wajib sama persis (bila dir land ada).
