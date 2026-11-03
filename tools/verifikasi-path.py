@@ -430,19 +430,24 @@ def cek_manifest(gagal):
 
 
 def cek_duplikat_definisi(gagal):
-    """Nama ganda dalam SATU berkas values = galat aapt (override beda
-    berkas seperti values-night tetap sah)."""
+    """Nama ganda dalam SATU konfigurasi values = galat aapt2.
+    Konfigurasi = folder values yang sama; duplikat LINTAS BERKAS
+    di folder itu sama fatalnya dengan dalam satu berkas (issue
+    #904: penghitung dulu direset per berkas). Override antar
+    folder beda (values vs values-night/values-in) tetap sah."""
     pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)\s+name="([^"]+)"')
+    per_folder = {}
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
         if "/values" not in path.replace(os.sep, "/"):
             continue
-        hitung = {}
+        hitung = per_folder.setdefault(os.path.dirname(path), {})
         for jenis, nama in pola.findall(kupas_komentar_xml(baca_teks(path))):
             kunci = jenis + "/" + nama
             hitung[kunci] = hitung.get(kunci, 0) + 1
-        ganda = sorted(k for k, n in hitung.items() if n > 1)
+    for folder in sorted(per_folder):
+        ganda = sorted(k for k, n in per_folder[folder].items() if n > 1)
         if ganda:
-            gagal.append("Definisi ganda di %s: %s" % (path, ", ".join(ganda[:5])))
+            gagal.append("Definisi ganda di %s: %s" % (folder, ", ".join(ganda[:5])))
 
 
 def berkas_dihapus(rentang):
