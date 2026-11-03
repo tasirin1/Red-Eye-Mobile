@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang verifikasi tidak lagi memvonis "import mati" pada impor yang hanya dipakai di dalam template string (${...}/$nama): segmen interpolasi kini dipertahankan saat memeriksa pemakaian impor (sebelumnya seluruh isi string dibuang sehingga impor yang hidup dituduh mati).
 - Gerbang verifikasi kini menangkap definisi resource ganda lintas berkas dalam folder values yang sama (sebelumnya penghitung direset per berkas sehingga duplikat antar berkas lolos dan baru meledak sebagai galat AAPT2 di CI).
 - Tombol menu "🧪 Uji anti-mati" hidup lagi: datanya kini memakai perintah kanonis /checkdead (sebelumnya kata telanjang lama yang diterjemahkan ke perintah yang sudah tidak ada, sehingga bot menjawab "perintah tak dikenal"); pesan menu lama dengan data lama pun kini diarahkan ke perintah yang benar.
 - Perintah darurat dari teks (/lock, /stop) tidak lagi antre di belakang kerja tombol menu yang panjang: jalur tombol kini memilih kunci yang sama seperti jalur teks (hanya perintah kontrol memakai kunci kontrol, perintah lain memakai kunci perintah biasa).

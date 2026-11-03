@@ -517,8 +517,32 @@ def hapus_kode(diff):
                 yield path, baris[1:]
 
 
-def kupas_kode(isi):
-    """Buang komentar + literal sekali-jalan (termasuk string mentah Kotlin)."""
+def _salin_interpolasi(isi, i, keluar):
+    """Salin segmen ${...} mulai dari posisi $ ke keluaran sampai
+    kurung kurawal seimbang; mengembalikan indeks sesudah '}'."""
+    kedalaman = 0
+    n = len(isi)
+    while i < n:
+        ch = isi[i]
+        keluar.append(ch)
+        if ch == "{":
+            kedalaman += 1
+        elif ch == "}":
+            kedalaman -= 1
+            if kedalaman == 0:
+                return i + 1
+        i += 1
+    return i
+
+
+def kupas_kode(isi, simpan_interpolasi=False):
+    """Buang komentar + literal sekali-jalan (termasuk string mentah Kotlin).
+
+    Dengan simpan_interpolasi=True, isi ${...}/$nama di dalam string
+    DIPERTAHANKAN sebagai kode: impor yang hanya dipakai di template
+    string itu HIDUP (issue #905) — tanpa ini cek_import_mati
+    memvonisnya mati. Pemakai lain (cek kurung dsb.) tetap memakai
+    perilaku lama."""
     petik_ganda = chr(34)
     petik_satu = chr(39)
     garis_miring_balik = chr(92)
@@ -530,6 +554,20 @@ def kupas_kode(isi):
         tiga = isi[i:i + 3]
         if tiga == petik_ganda * 3:
             akhir = isi.find(tiga, i + 3)
+            if simpan_interpolasi:
+                batas = n if akhir < 0 else akhir
+                j = i + 3
+                while j < batas:
+                    if isi[j] == "$" and isi[j + 1:j + 2] == "{":
+                        j = _salin_interpolasi(isi, j, keluar)
+                    elif isi[j] == "$" and (isi[j + 1:j + 2].isalnum() or isi[j + 1:j + 2] == "_"):
+                        k = j + 1
+                        while k < batas and (isi[k].isalnum() or isi[k] == "_"):
+                            k += 1
+                        keluar.append(isi[j:k])
+                        j = k
+                    else:
+                        j += 1
             i = n if akhir < 0 else akhir + 3
         elif dua == '//':
             while i < n and isi[i] != chr(10):
@@ -551,6 +589,17 @@ def kupas_kode(isi):
                     break
                 if kutip == petik_ganda and isi[i] == chr(10):
                     break
+                if simpan_interpolasi and kutip == petik_ganda and isi[i] == "$":
+                    if isi[i + 1:i + 2] == "{":
+                        i = _salin_interpolasi(isi, i, keluar)
+                        continue
+                    j = i + 1
+                    while j < n and (isi[j].isalnum() or isi[j] == "_"):
+                        j += 1
+                    if j > i + 1:
+                        keluar.append(isi[i:j])
+                        i = j
+                        continue
                 i += 1
         else:
             keluar.append(c)
@@ -1297,7 +1346,7 @@ def cek_ikon_launcher(gagal):
 def cek_import_mati(gagal):
     """Import Kotlin/Java yang namanya tak dipakai di kode (GAGAL)."""
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        bersih = kupas_kode(baca_teks(path))
+        bersih = kupas_kode(baca_teks(path), simpan_interpolasi=True)
         tanpa = re.sub(r"^\s*import\s+.*$", "", bersih, flags=re.M)
         for m in re.finditer(r"^\s*import\s+([\w.*]+)(\s+as\s+(\w+))?\s*;?\s*$",
                              bersih, flags=re.M):
