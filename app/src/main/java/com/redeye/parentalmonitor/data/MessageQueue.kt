@@ -133,6 +133,13 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = restored
                 volatileOnly = false
                 cached = null
+                // Salinan JSON terakhir adalah cermin objek
+                // prefs LAMA (issue #1087): objek baru bisa
+                // berisi antrean berbeda, jadi nolkan seperti
+                // reopenAfterStorageReset — writeSnapshot
+                // berikutnya membaca isi utama yang sebenarnya
+                // untuk rotasi cadangan, bukan salinan basi.
+                synchronized(persistMutex) { lastWrittenJson = null }
                 persistVersion++
                 pendingSnapshot = null
                 persistDirty = false
