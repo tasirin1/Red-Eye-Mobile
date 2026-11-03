@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Saklar menu tidak lagi bisa membalik hasil perintah ketik yang masuk bersamaan: keadaan setelan kini dibaca ulang dan perintah saklar dihitung di dalam kunci yang sama dengan pelaksanaannya (sebelumnya dibaca di luar kunci sehingga bisa memakai keadaan basi).
 - Penanda "token sama" pada migrasi chat kini memakai sidik SHA-256 token, bukan hashCode 32-bit yang bisa bertabrakan (tabrakan pada pergantian token sungguhan bisa mengonfirmasi offset milik bot lama).
 - Pengurai angka perintah tidak lagi bisa mengembalikan angka negatif untuk masukan raksasa di tepi Long.MAX: penjumlahan pembulatan satuan kini dijaga dari pembungkusan (sebelumnya nilai seperti "9223372036854775807 detik" ke satuan jam menghasilkan Int negatif).
 - Proteksi ubek-ubek (tamper) kini juga memeriksa halaman sensitif yang sudah telanjur terbuka: halaman Settings yang terbuka sebelum proteksi aktif atau sebelum layanan terhubung kini dinilai ulang berkala (sebelumnya hanya pergantian jendela yang memicu pemeriksaan, jadi halaman yang sama tak pernah dicek).

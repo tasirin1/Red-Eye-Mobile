@@ -2540,7 +2540,21 @@ class MonitoringService : Service() {
         // memakai controlLock; sisanya commandLock seperti teks.
         val lock = if (gateCommand in CONTROL_COMMANDS) controlLock else commandLock
         lock.withLock {
-            handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+            // Untuk saklar, keadaan dibaca & perintah dihitung
+            // ULANG di dalam kunci (issue #901): bacaan di luar
+            // kunci bisa basi bila perintah ketik yang mengubah
+            // setelan yang sama masuk di sela — saklar lalu
+            // membalik hasil perintah itu. Perhitungan awal di
+            // luar hanya untuk gerbang kesegaran di atas.
+            val perintahFinal = if (toggle != null) {
+                val kiniSegar = toggleState(toggle.key)
+                if (kiniSegar == null) null else toggleCommand(toggle.key, !kiniSegar)
+            } else {
+                command
+            }
+            if (perintahFinal != null) {
+                handleTelegramCommand(perintahFinal, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+            }
         }
         if (toggle != null) {
             // Segarkan layar di tempat agar label saklar langsung
