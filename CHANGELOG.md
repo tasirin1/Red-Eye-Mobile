@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.601] - 2026-11-03
+
 ### Fixed
 
 - Pemeriksaan paritas terjemahan gerbang kini juga membandingkan jumlah item di dalam string-array antar locale — terjemahan yang itemnya lebih sedikit dari bawaan tidak lagi lolos dan berpotensi membuat tampilan kekurangan entri di bahasa Indonesia.
