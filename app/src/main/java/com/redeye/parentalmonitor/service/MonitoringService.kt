@@ -1951,6 +1951,10 @@ class MonitoringService : Service() {
             }
             val (freshToken, freshChat, freshGeneration) = credsSnapshot()
             if (freshToken.isNotEmpty() && (freshToken != botToken || freshChat != chatId)) {
+                // Respons pertama diganti respons percobaan ulang:
+                // tutup badannya dulu (issue #950), kalau tidak
+                // koneksi OkHttp bocor pada setiap kejadian ini.
+                try { response.errorBody()?.close() } catch (_: Exception) { }
                 responseToken = freshToken
                 responseChat = freshChat
                 responseGeneration = freshGeneration
@@ -2049,7 +2053,15 @@ class MonitoringService : Service() {
             commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
             return false
         }
-        if (!response.isSuccessful || response.body()?.ok != true) return false
+        if (!response.isSuccessful || response.body()?.ok != true) {
+            // Kode HTTP yang tak tertangani cabang mana pun di
+            // atas (mis. 404) sampai sini dengan errorBody belum
+            // ditutup (issue #950) — tutup sebelum kembali.
+            if (!response.isSuccessful) {
+                try { response.errorBody()?.close() } catch (_: Exception) { }
+            }
+            return false
+        }
         offsetFailCount = 0
 
         val updates = response.body()?.result ?: return false

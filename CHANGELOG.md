@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Kebocoran koneksi pada polling perintah ditutup: badan respons pertama kini ditutup sebelum diganti respons percobaan ulang kredensial, dan kode HTTP yang tak tertangani cabang mana pun kini menutup badan galatnya sebelum kembali.
 - Flush akhir pemantau aksesibilitas tidak lagi bisa terbuang diam-diam saat antrean tugas penuh tepat ketika layanan dibongkar: bila executor menolak tugasnya, flush dijalankan langsung di tempat — sesi pemakaian terakhir selalu terpersisten.
 - Orientasi foto/video kamera diperbaiki mengikuti rumus resmi Android: hasil lanskap tidak lagi terbalik 180 derajat (rumus lama menukar tanda putaran untuk lensa depan dan belakang; mode potret tidak berubah).
 - Alert "Kartu SIM berubah" tidak lagi hilang permanen: identitas SIM baru kini dicap hanya sesudah alert terkonfirmasi terkirim atau terantre — bila pengiriman terbuang (mis. sebelum login), perubahan SIM yang sama akan terdeteksi dan dilaporkan lagi pada pemeriksaan berikutnya.
