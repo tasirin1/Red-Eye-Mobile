@@ -149,7 +149,11 @@ class MessageQueue private constructor(context: Context) {
                     }.toMutableList()
                     if (volatileOnly) throw IllegalStateException("queue read failed during restore")
                     queue.addAll(freshPending)
-                    while (queue.size > MAX_QUEUE_SIZE) {
+                    // Kelonggaran prioritas yang sama dengan jalur
+                    // normal (issue #927): batas polos 100 di sini
+                    // mengorbankan maks 5 pesan prioritas tertua
+                    // yang oleh overCapLocked diberi ruang +5.
+                    while (overCapLocked(queue, false)) {
                         evictOldestLocked(queue, persist = false)
                     }
                     if (!persistLocked(queue, force = true, syncOnMain = true)) {
