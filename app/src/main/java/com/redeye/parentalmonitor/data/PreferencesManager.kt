@@ -474,7 +474,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_TRAIL_TRIMMED_FROM = "trail_trimmed_from"
         private const val KEY_DAILY_FACTS = "daily_facts"
         private const val KEY_ANOMALY_ALERTS = "anomaly_alerts"
+        private const val KEY_ANOMALY_ALERTS_AT = "anomaly_alerts_at"
         private const val KEY_BEGADANG_DATE = "begadang_date"
+        private const val KEY_BEGADANG_DATE_AT = "begadang_date_at"
         private const val KEY_JEMPUT_RAD = "jemput_radius_m"
         const val KEY_WATCH_KEYWORDS = "watch_keywords"
         private const val KEY_HOME_LAT = "home_lat_e6"
@@ -495,7 +497,9 @@ class PreferencesManager(context: Context) {
         const val KEY_WATCH_NUMBERS = "watch_numbers"
         private const val KEY_CURFEW_TIME = "curfew_time"
         private const val KEY_CURFEW_DATE = "curfew_alert_date"
+        private const val KEY_CURFEW_DATE_AT = "curfew_alert_date_at"
         private const val KEY_SCHOOL_DATE = "school_alert_date"
+        private const val KEY_SCHOOL_DATE_AT = "school_alert_date_at"
         private const val KEY_LAST_ALIVE_AT = "last_alive_at"
         private const val KEY_LAST_ALIVE_ELAPSED = "last_alive_elapsed"
         private const val KEY_LIVENESS_KILLS = "liveness_kills"
@@ -1556,6 +1560,26 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_ANOMALY_ALERTS, "")
         set(value) = sharedPreferences.edit().putString(KEY_ANOMALY_ALERTS, value).apply()
 
+    // Epoch penulisan cap anomali (issue #1029, pola #852):
+    // pasangan wajib agar cap bertanggal masa depan hasil
+    // excursi jam bisa dikenali sebagai basi oleh DayStamp.
+    var anomalyAlertsAtMs: Long
+        get() = prefLong(KEY_ANOMALY_ALERTS_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_ANOMALY_ALERTS_AT, value).apply()
+
+    // Tulis cap anomali + epoch-nya dalam SATU edit (pola
+    // #890): dua apply() terpisah bisa menyisakan pasangan
+    // tak konsisten bila proses mati di antaranya.
+    fun setAnomalyAlerts(value: String, atMs: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_ANOMALY_ALERTS, value)
+                .putLong(KEY_ANOMALY_ALERTS_AT, atMs)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     val trailTrimmedFrom: Long
         get() = prefLong(KEY_TRAIL_TRIMMED_FROM, 0L)
 
@@ -1576,6 +1600,21 @@ class PreferencesManager(context: Context) {
     var begadangDate: String
         get() = prefString(KEY_BEGADANG_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_BEGADANG_DATE, value).apply()
+
+    // Epoch penulisan cap begadang (issue #1029, pola #852).
+    var begadangDateAtMs: Long
+        get() = prefLong(KEY_BEGADANG_DATE_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_BEGADANG_DATE_AT, value).apply()
+
+    fun setBegadangDone(date: String, atMs: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_BEGADANG_DATE, date)
+                .putLong(KEY_BEGADANG_DATE_AT, atMs)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var jemputRadiusM: Int
         get() = prefInt(KEY_JEMPUT_RAD, 0)
@@ -1957,9 +1996,39 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_CURFEW_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_CURFEW_DATE, value).apply()
 
+    // Epoch penulisan cap jam malam (issue #1029, pola #852).
+    var curfewAlertDateAtMs: Long
+        get() = prefLong(KEY_CURFEW_DATE_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_CURFEW_DATE_AT, value).apply()
+
+    fun setCurfewAlertDone(date: String, atMs: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_CURFEW_DATE, date)
+                .putLong(KEY_CURFEW_DATE_AT, atMs)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var schoolAlertDate: String
         get() = prefString(KEY_SCHOOL_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_SCHOOL_DATE, value).apply()
+
+    // Epoch penulisan cap sekolah (issue #1029, pola #852).
+    var schoolAlertDateAtMs: Long
+        get() = prefLong(KEY_SCHOOL_DATE_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_SCHOOL_DATE_AT, value).apply()
+
+    fun setSchoolAlertDone(date: String, atMs: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_SCHOOL_DATE, date)
+                .putLong(KEY_SCHOOL_DATE_AT, atMs)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     fun writeSmsPendingSync(number: String, text: String, at: Long, owner: String) {
         synchronized(smsPendingLock) {

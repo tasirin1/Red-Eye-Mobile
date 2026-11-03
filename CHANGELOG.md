@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Cap harian alert jam malam, sekolah, begadang, dan anomali kini ditulis bersama epoch penulisannya dan dinilai dengan penilai cap hari yang sama dengan digest malam: cap bertanggal masa depan sisa jam perangkat yang pernah dimajukan tidak lagi menekan alert-alert itu berhari-hari sesudah jam dikoreksi.
+
 ## [1.6.599] - 2026-11-03
 
 ### Fixed

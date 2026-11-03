@@ -32,6 +32,7 @@ import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.HeldPhotos
 import com.redeye.parentalmonitor.utils.CrashReporter
 import com.redeye.parentalmonitor.utils.CurfewLogic
+import com.redeye.parentalmonitor.utils.DayStamp
 import com.redeye.parentalmonitor.utils.DailyFacts
 import com.redeye.parentalmonitor.utils.DigestHighlights
 import com.redeye.parentalmonitor.utils.DigestSchedule
@@ -8096,7 +8097,14 @@ class MonitoringService : Service() {
         val fresh = synchronized(prefsRmwLock) {
             val stamp = try { preferencesManager.anomalyAlerts } catch (_: Exception) { "" }
             val stampDay = stamp.substringBefore(":", "")
-            val already = if (stampDay >= today.day) {
+            // Dedup hanya berlaku dari cap yang memblokir
+            // (issue #1029): cap bertanggal masa depan yang
+            // epoch-nya sudah basi adalah sisa excursi jam —
+            // himpunan dedup-nya tidak lagi menekan anomali
+            // hari ini.
+            val already = if (DayStamp.blocks(stampDay,
+                    try { preferencesManager.anomalyAlertsAtMs } catch (_: Exception) { 0L },
+                    today.day, now)) {
                 stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() }.toSet()
             } else {
                 emptySet()
@@ -8104,7 +8112,7 @@ class MonitoringService : Service() {
             val freshNow = strong.filter { it.type !in already }
             if (freshNow.isNotEmpty()) {
                 try {
-                    preferencesManager.anomalyAlerts = today.day + ":" + (already + freshNow.map { it.type }).joinToString(",")
+                    preferencesManager.setAnomalyAlerts(today.day + ":" + (already + freshNow.map { it.type }).joinToString(","), now)
                 } catch (_: Exception) { }
             }
             freshNow
@@ -8121,7 +8129,7 @@ class MonitoringService : Service() {
                     if (stamp.substringBefore(":", "") == today.day) {
                         val droppedTypes = fresh.map { it.type }.toSet()
                         val keep = stamp.substringAfter(":", "").split(",").filter { it.isNotEmpty() && it !in droppedTypes }
-                        preferencesManager.anomalyAlerts = if (keep.isEmpty()) "" else today.day + ":" + keep.joinToString(",")
+                        preferencesManager.setAnomalyAlerts(if (keep.isEmpty()) "" else today.day + ":" + keep.joinToString(","), now)
                     }
                 } catch (_: Exception) { }
             }
@@ -8509,7 +8517,12 @@ class MonitoringService : Service() {
             if (h !in 5..11) return
             val key = todayKey()
             if (key.isEmpty()) return
-            if (try { preferencesManager.begadangDate } catch (_:Exception) { "" } >= key) return
+            // Cap basi sisa excursi jam tak memblokir (issue
+            // #1029, DayStamp pola #852).
+            if (DayStamp.blocks(
+                    try { preferencesManager.begadangDate } catch (_: Exception) { "" },
+                    try { preferencesManager.begadangDateAtMs } catch (_: Exception) { 0L },
+                    key, now)) return
             val since = now - 24 * 60 * 60_000L
             var nights = 0
             var capped = false
@@ -8532,7 +8545,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             if (nights < 10) {
-                try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+                try { preferencesManager.setBegadangDone(key, now) } catch (_: Exception) { }
                 return
             }
             // Tandai "sudah" hanya sesudah kirim berhasil (pola #699,
@@ -8541,7 +8554,7 @@ class MonitoringService : Service() {
             if (begadangAttemptKey != key) {
                 begadangAttemptKey = key
                 if (sendToTelegramStatus("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /weekly untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "") != SendStatus.DROPPED) {
-                    try { preferencesManager.begadangDate = key } catch (_: Exception) { }
+                    try { preferencesManager.setBegadangDone(key, now) } catch (_: Exception) { }
                 }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -8636,8 +8649,14 @@ class MonitoringService : Service() {
             if (key.isEmpty()) return
             val curfewDone = try { preferencesManager.curfewAlertDate } catch (_: Exception) { "" }
             val schoolDone = try { preferencesManager.schoolAlertDate } catch (_: Exception) { "" }
-            val needCurfew = inCurfew && homeFence && curfewDone < key
-            val needSchool = inSchool && schoolDone < key
+            // Cap yang memblokir hanya yang tanggalnya >= kunci
+            // DAN epoch-nya belum basi (issue #1029, pola #852):
+            // cap bertanggal masa depan sisa excursi jam tidak
+            // lagi menekan alert berhari-hari.
+            val needCurfew = inCurfew && homeFence && !DayStamp.blocks(
+                curfewDone, try { preferencesManager.curfewAlertDateAtMs } catch (_: Exception) { 0L }, key, now)
+            val needSchool = inSchool && !DayStamp.blocks(
+                schoolDone, try { preferencesManager.schoolAlertDateAtMs } catch (_: Exception) { 0L }, key, now)
             if (!needCurfew && !needSchool) return
             var pos = lastSentLatLon()
             var posAccuracy = try { preferencesManager.lastLocAccM } catch (_: Exception) { -1f }
@@ -8667,7 +8686,7 @@ class MonitoringService : Service() {
                     if (curfewAttemptKey != key) {
                         curfewAttemptKey = key
                         if (sendToTelegramStatus("🌙 Jam malam $curfew: perangkat masih di luar rumah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
-                            try { preferencesManager.curfewAlertDate = key } catch (_: Exception) { }
+                            try { preferencesManager.setCurfewAlertDone(key, now) } catch (_: Exception) { }
                         }
                         return
                     }
@@ -8685,7 +8704,7 @@ class MonitoringService : Service() {
                     if (schoolAttemptKey != key) {
                         schoolAttemptKey = key
                         if (sendToTelegramStatus("🏫 Jam sekolah: perangkat di luar area sekolah (±${dist.toInt()} m).") != SendStatus.DROPPED) {
-                            try { preferencesManager.schoolAlertDate = key } catch (_: Exception) { }
+                            try { preferencesManager.setSchoolAlertDone(key, now) } catch (_: Exception) { }
                         }
                     }
                 }
