@@ -74,6 +74,14 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun masksUnderscoreSeparatedCodes() {
+        // #955: pemisah garis-bawah dulu tak dikenal pola grup
+        // digit, jadi OTP "123_456" tampil polos.
+        assertEquals("Kode verifikasi Anda ••••", NotificationPrivacy.mask("Kode verifikasi Anda 123_456"))
+        assertTrue(NotificationPrivacy.hasCode("kode 123_456"))
+    }
+
+    @Test
     fun masksHyphenGroupedAlphanumericCodes() {
         // #660: kode bergrup-strip membelah token jadi potongan 2 karakter
         // yang terlalu pendek untuk pola digit maupun token menyambung.

@@ -15,10 +15,12 @@ object NotificationPrivacy {
     )
     // Pemisah grup mencakup koma/garis-miring/titik-dua (issue
     // #912): format "123,456", "123/456", "123:456" dari bank/
-    // aplikasi dulu lolos karena kelas hanya [ .-]. Konsekuensi
-    // yang diterima: jam "12:30"/tanggal "12/05/2026" di dalam
-    // notifikasi konteks-OTP ikut tertopeng (arah aman privasi).
-    private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ ,./:-]*\\d){3,}(?![ ,./:-]*\\d)")
+    // aplikasi dulu lolos karena kelas hanya [ .-]. Garis-bawah
+    // ditambahkan pada issue #955: "123_456" juga format OTP
+    // nyata yang dulu lolos utuh. Konsekuensi yang diterima:
+    // jam "12:30"/tanggal "12/05/2026" di dalam notifikasi
+    // konteks-OTP ikut tertopeng (arah aman privasi).
+    private val DIGIT_GROUPS = Regex("(?<!\\d)\\d(?:[ ,./:_-]*\\d){3,}(?![ ,./:_-]*\\d)")
     private val CODE_TOKENS = Regex("(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}]{4,16}(?![\\p{L}\\p{N}])")
     // Kode alfanumerik bergrup-strip (AB-12-CD-34): potongan per grup terlalu
     // pendek untuk kedua pola di atas sehingga kode lolos utuh (issue #660).

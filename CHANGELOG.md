@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Masking kode OTP kini juga menutupi format berpemisah garis-bawah (mis. 123_456) yang sebelumnya tampil polos di notifikasi yang diteruskan.
 - Baris "Paling sering dibuka" pada ringkasan pemakaian kini meng-escape HTML nama aplikasinya, sama seperti baris label lain — nama aplikasi berkarakter khusus tidak lagi merusak pesan ringkasan.
 - Label aplikasi yang sedang dibuka pada balasan /status kini di-escape HTML, sehingga nama aplikasi yang mengandung karakter seperti `<` atau `&` tidak lagi merusak pesan status (gagal kirim) atau menyuntikkan format.
 - Pesan panjang yang satu potongannya ditolak permanen oleh Telegram tidak lagi membuat seluruh pesan dikirim ulang tanpa akhir: potongan yang hilang dicatat sebagai pesan terbuang (dengan pemberitahuan ke owner), dan kursor SMS/panggilan tetap maju untuk potongan yang terkirim.
