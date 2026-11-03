@@ -19,15 +19,6 @@ class PackageChangeReceiver : BroadcastReceiver() {
         com.redeye.parentalmonitor.service.MonitoringService.invalidateAppLabel(pkg)
         com.redeye.parentalmonitor.service.A11yMonitor.invalidatePackageCache(pkg)
         if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
-        // Uninstall sungguhan melupakan paket dari himpunan dikenal
-        // (issue #854) — dilakukan tanpa syarat monitoring aktif,
-        // agar pemasangan ulang kapan pun kembali teralert.
-        if (action == Intent.ACTION_PACKAGE_REMOVED) {
-            try {
-                PreferencesManager.getInstance(context).forgetA11yApp(pkg)
-            } catch (_: Exception) {
-            }
-        }
         val appContext = context.applicationContext
         val pendingResult = try {
             goAsync()
@@ -35,6 +26,19 @@ class PackageChangeReceiver : BroadcastReceiver() {
             null
         }
         Background.runReceiver(pendingResult) {
+            // Uninstall sungguhan melupakan paket dari himpunan
+            // dikenal (issue #854) — tanpa syarat monitoring
+            // aktif, agar pemasangan ulang kapan pun kembali
+            // teralert. Dipindah ke jalur async (issue #999):
+            // membuka prefs terenkripsi sinkron di benang
+            // broadcast bisa lambat (I/O keystore) dan makan
+            // jatah waktu onReceive.
+            if (action == Intent.ACTION_PACKAGE_REMOVED) {
+                try {
+                    PreferencesManager.getInstance(appContext).forgetA11yApp(pkg)
+                } catch (_: Exception) {
+                }
+            }
             handle(appContext, action, pkg)
         }
     }
