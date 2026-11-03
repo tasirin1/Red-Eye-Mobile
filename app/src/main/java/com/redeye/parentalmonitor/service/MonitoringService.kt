@@ -6137,15 +6137,50 @@ class MonitoringService : Service() {
     }
 
     private var lastImmediateCheckAt = 0L
+    private val immediateCheckLock = Any()
+    private var immediateCheckRunning = false
+    private var immediateCheckPending = false
 
     private suspend fun triggerImmediateCheck() {
         try {
             if (!preferencesManager.isConfigured() || preferencesManager.userDisabledMonitoring || preferencesManager.monitoringPaused) return
-            val now = android.os.SystemClock.elapsedRealtime()
-            if (lastImmediateCheckAt > 0L && now - lastImmediateCheckAt < 15_000L) return
-            lastImmediateCheckAt = now
-            delay(1_500)
-            checkAndSendNewData()
+            synchronized(immediateCheckLock) {
+                if (immediateCheckRunning) {
+                    // Pemeriksaan sedang berjalan: catat pemicu
+                    // ini sebagai tertunda agar diperiksa sekali
+                    // lagi sesudahnya (issue #951). Pola lama
+                    // mencap throttle SEBELUM cek lalu menelan
+                    // pemicu yang datang selama cek berjalan —
+                    // SMS/panggilan di jendela itu hilang sampai
+                    // putaran berkala berikutnya.
+                    immediateCheckPending = true
+                    return
+                }
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (lastImmediateCheckAt > 0L && now - lastImmediateCheckAt < 15_000L) return
+                immediateCheckRunning = true
+            }
+            try {
+                while (true) {
+                    delay(1_500)
+                    checkAndSendNewData()
+                    // Cap throttle ditulis di AKHIR putaran
+                    // (pola issue #751), bukan sebelum cek.
+                    val again = synchronized(immediateCheckLock) {
+                        lastImmediateCheckAt = android.os.SystemClock.elapsedRealtime()
+                        if (immediateCheckPending) {
+                            immediateCheckPending = false
+                            true
+                        } else {
+                            immediateCheckRunning = false
+                            false
+                        }
+                    }
+                    if (!again) break
+                }
+            } finally {
+                synchronized(immediateCheckLock) { immediateCheckRunning = false }
+            }
         } catch (_: Exception) {
         }
     }
