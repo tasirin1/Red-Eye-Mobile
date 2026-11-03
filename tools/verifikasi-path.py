@@ -273,10 +273,14 @@ def hitung_item_array(badan):
         # lama menghitung SEMUA bukaan <item> termasuk yang
         # bersarang di dalam item lain — lubang yang sama
         # yang ditutup jalur utama. Kini hanya bukaan pada
-        # kedalaman 0 (anak langsung) yang dihitung.
+        # kedalaman 0 (anak langsung) yang dihitung. Pola tag
+        # sadar petik (issue #1149): nilai atribut boleh
+        # memuat > di dalam petik — pola [^>]* berhenti di
+        # sana dan mengacaukan hitungan kedalaman.
+        pola_tag = r"<item(?:\s+(?:[^>\"']|\"[^\"]*\"|'[^']*')*)?/>|<item(?:\s+(?:[^>\"']|\"[^\"]*\"|'[^']*')*)?>|</item\s*>"
         jumlah = 0
         kedalaman = 0
-        for m in re.finditer(r"<item(?:\s[^>]*)?/>|<item(?:\s[^>]*)?>|</item\s*>", bersih_cdata):
+        for m in re.finditer(pola_tag, bersih_cdata):
             tag = m.group(0)
             if tag.startswith("</"):
                 kedalaman = max(0, kedalaman - 1)
