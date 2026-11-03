@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.595] - 2026-11-03
+
 ### Added
 
 - Saklar on/off langsung di menu tombol (permintaan owner): setelan yang selama ini hanya bisa dibalik dengan mengetik perintah — notifikasi, masking OTP, patroli, mode malam, alert app, pantau app, proteksi, dan hemat data — kini berupa satu tombol saklar di menu Komunikasi dan Pengawasan yang menunjukkan keadaannya sekarang (NYALA/MATI); ketuk sekali untuk membalik, dan labelnya langsung berubah di tempat. Perintah ketik seperti `/notif off` tetap jalan seperti biasa.
