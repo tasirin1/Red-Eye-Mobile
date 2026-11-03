@@ -14,7 +14,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 
 > Build JANGAN lokal. Semua APK dibangun di GitHub Actions.
 > `builder.sh` / `builder.bat` itu LEGACY dan sudah dihentikan — kalau dijalankan, keduanya berhenti sendiri tanpa mengubah berkas apa pun.
-> Skrip `gradlew` juga sengaja TIDAK disediakan: jar wrapper-nya tidak pernah masuk repo, jadi skrip itu memang tidak bisa jalan; CI memakai Gradle 8.9 yang diunduh langsung oleh workflow.
+> Skrip `gradlew` juga sengaja TIDAK disediakan: jar wrapper-nya tidak pernah masuk repo, jadi skrip itu memang tidak bisa jalan; CI memakai Gradle 8.9 yang diunduh langsung oleh workflow. Berkas `gradle/wrapper/gradle-wrapper.properties` tetap disimpan sebagai penanda versi Gradle untuk perkakas analisis (CodeQL membacanya).
 >
 > Panduan langkah demi langkah, FAQ, dan skenario harian ada di [Wiki](https://github.com/tasirin1/Red-Eye-Mobile/wiki).
 
