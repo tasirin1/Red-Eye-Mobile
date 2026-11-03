@@ -84,7 +84,8 @@ class BootReceiver : BroadcastReceiver() {
                             meta.edit().putLong("boot_count", count)
                                 .putLong("boot_count_wall", System.currentTimeMillis())
                                 .putLong("boot_count_elapsed", nowElapsed)
-                                .putLong("boot_count_sys", sysBoot).apply()
+                                .putLong("boot_count_sys", sysBoot)
+                                .putLong("boot_count_sys_est", 0L).apply()
                         } catch (_: Exception) {
                         }
                     } else if (stampElapsed > 0L && nowElapsed < stampElapsed) {
@@ -93,8 +94,8 @@ class BootReceiver : BroadcastReceiver() {
                             val ed = meta.edit().putLong("boot_count", count)
                                 .putLong("boot_count_wall", System.currentTimeMillis())
                                 .putLong("boot_count_elapsed", nowElapsed)
-                            if (sysBoot >= 0L && sysBoot >= storedSys) ed.putLong("boot_count_sys", sysBoot)
-                            else if (sysBoot < 0L && storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L)
+                            if (sysBoot >= 0L && sysBoot >= storedSys) ed.putLong("boot_count_sys", sysBoot).putLong("boot_count_sys_est", 0L)
+                            else if (sysBoot < 0L && storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L).putLong("boot_count_sys_est", 1L)
                             // Pasangan +1 saat saksi tak terbaca
                             // (issue #1122): boot yang baru dihitung
                             // ini juga menaikkan BOOT_COUNT tepat
@@ -149,6 +150,11 @@ class BootReceiver : BroadcastReceiver() {
                     -1L
                 }
                 val storedSys = meta.getLong("boot_count_sys", -1L)
+                // Bendera asal-usul saksi (issue #1140): nilai
+                // TAKSIRAN +1 dari #1122 bukan bacaan platform —
+                // kesamaannya dengan bacaan berikutnya TIDAK
+                // membuktikan boot yang sama.
+                val sysEst = meta.getLong("boot_count_sys_est", 0L)
                 if (lastWall > 0L && lastElapsed > 0L) {
                     val nowWall = System.currentTimeMillis()
                     val nowElapsed = android.os.SystemClock.elapsedRealtime()
@@ -156,18 +162,20 @@ class BootReceiver : BroadcastReceiver() {
                     val wallDiff = nowWall - lastWall
                     if (com.redeye.parentalmonitor.utils.BootClock
                             .isDuplicateBroadcast(elapsedDiff, wallDiff, sysBoot, storedSys) ||
-                        (sysBoot >= 0L && storedSys >= 0L && sysBoot == storedSys)) {
+                        (sysBoot >= 0L && storedSys >= 0L && sysBoot == storedSys && sysEst == 0L)) {
                         // Kesamaan penghitung sistem berarti
                         // boot yang sama, berapa pun telatnya
                         // siaran kedua tiba (issue #1083):
                         // jendela waktu dedup tak lagi membatasi.
+                        // Hanya untuk saksi BACAAN NYATA — saksi
+                        // taksiran #1122 dikecualikan (#1140).
                         // Duplikat: bila baseline sistem belum
                         // pernah tersimpan (instalasi lama),
                         // simpan sekarang agar siaran berikutnya
                         // punya saksi — tanpa menaikkan hitungan.
                         if (sysBoot >= 0L && storedSys < 0L) {
                             try {
-                                meta.edit().putLong("boot_count_sys", sysBoot).commit()
+                                meta.edit().putLong("boot_count_sys", sysBoot).putLong("boot_count_sys_est", 0L).commit()
                             } catch (_: Exception) {
                             }
                         }
@@ -176,8 +184,8 @@ class BootReceiver : BroadcastReceiver() {
                     val ed = meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
                         .putLong("boot_count_wall", nowWall)
                         .putLong("boot_count_elapsed", nowElapsed)
-                    if (sysBoot >= 0L) ed.putLong("boot_count_sys", sysBoot)
-                    else if (storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L)
+                    if (sysBoot >= 0L) ed.putLong("boot_count_sys", sysBoot).putLong("boot_count_sys_est", 0L)
+                    else if (storedSys >= 0L) ed.putLong("boot_count_sys", storedSys + 1L).putLong("boot_count_sys_est", 1L)
                     // Pasangan +1 seperti jalur heal (issue #1122).
                     ed.commit()
                     return
@@ -185,7 +193,7 @@ class BootReceiver : BroadcastReceiver() {
                 val edFirst = meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
                     .putLong("boot_count_wall", System.currentTimeMillis())
                     .putLong("boot_count_elapsed", android.os.SystemClock.elapsedRealtime())
-                if (sysBoot >= 0L) edFirst.putLong("boot_count_sys", sysBoot)
+                if (sysBoot >= 0L) edFirst.putLong("boot_count_sys", sysBoot).putLong("boot_count_sys_est", 0L)
                 edFirst.commit()
             } catch (_: Exception) {
             }
