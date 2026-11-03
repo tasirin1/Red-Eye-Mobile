@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Fallback preferensi dalam-memori kini memberi tahu listener tentang kunci yang hilang karena clear(), sesuai kontrak SharedPreferences: pendengar kredensial tidak lagi melewatkan penghapusan massal (#1181).
 - commitWithRetry kini benar-benar mengulang bila commit pertama melempar pengecualian, bukan hanya bila mengembalikan false: pencatatan update-id polling Telegram dan penulisan sinkron lain tidak lagi gagal total pada gangguan sesaat pertama (#1180).
 - Rahasia kode restore kini dijaga kunci khususnya sendiri, bukan meminjam kunci log audit: tidak lagi menyesatkan pembaca kode dan tidak berebut dengan penulisan log audit (#1179).
 - Hitungan "notifikasi gugur dalam 60 detik terakhir" di riwayat kini benar-benar berjendela 60 detik dari gugur pertama: jendela tidak lagi bergeser mengikuti tiap gugur baru sehingga rantai gugur berjeda rapat tidak menumpuk tanpa batas di bawah label yang menyesatkan (#1178).

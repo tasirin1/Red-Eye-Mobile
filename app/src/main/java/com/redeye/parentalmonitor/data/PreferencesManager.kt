@@ -2495,11 +2495,18 @@ private class MemoryPrefs : SharedPreferences {
             return true
         }
         override fun apply() {
+            // Kunci yang hilang karena clear() ikut diberitahu
+            // ke listener (issue #1181): sebelumnya hanya kunci
+            // pending yang diumumkan sehingga pendengar
+            // kredensial melewatkan penghapusan massal — kontrak
+            // SharedPreferences menuntut pemberitahuan itu.
+            val clearedKeys = if (clearAll) HashSet(data.keys) else emptySet()
             if (clearAll) data.clear()
             for ((k, v) in pending) {
                 if (v == null) data.remove(k) else data[k] = v
             }
             val changed = HashSet(pending.keys)
+            changed.addAll(clearedKeys)
             pending.clear()
             clearAll = false
             val copy = synchronized(listeners) { ArrayList(listeners) }
