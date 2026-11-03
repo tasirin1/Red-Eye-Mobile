@@ -1337,6 +1337,7 @@ def utama():
     peringatan = []
     diff = ""
     rentang_lokal = ""
+    rentang_isi = ""
     if args.jalur:
         # Jalur yang salah ketik tak boleh hilang diam-diam menjadi
         # "LOLOS (0 berkas diperiksa)" (issue #681).
@@ -1376,6 +1377,7 @@ def utama():
         hulu = jalan("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
         if hulu:
             rentang_lokal = hulu.strip() + "...HEAD"
+            rentang_isi = hulu.strip() + "..HEAD"
             diff = jalan("git", "diff", rentang_lokal) or ""
             daftar = jalan("git", "diff", "--name-only", rentang_lokal) or ""
             berubah = daftar.splitlines()
@@ -1389,6 +1391,7 @@ def utama():
             akar = (jalan("git", "rev-list", "--max-parents=0", "HEAD") or "").splitlines()
             akar_sha = akar[0].strip() if akar else ""
             rentang_lokal = "HEAD"
+            rentang_isi = "HEAD"
             if akar_sha:
                 diff = (jalan("git", "show", "--format=", "--patch", akar_sha) or "") + \
                     (jalan("git", "diff", akar_sha + "...HEAD") or "")
@@ -1397,6 +1400,14 @@ def utama():
             else:
                 diff = ""
                 berubah = []
+        # Isi pohon tiap commit lokal ikut dipindai (issue #894):
+        # sebelumnya pemindaian per-commit ini hanya jalan di mode
+        # --rentang (CI), sehingga token yang ditambah lalu dihapus
+        # di commit tengah riwayat lokal LOLOS mode bawaan — diff
+        # bersih tak memuatnya. Rentang isi memakai dua titik agar
+        # commit sisi hulu yang bukan bagian cabang ini tak ikut.
+        if rentang_isi:
+            cek_secret_riwayat(gagal, rentang_isi)
         cek_secret_pesan(gagal, rentang_lokal)
         kotor = jalan("git", "status", "--porcelain") or ""
         for baris in kotor.splitlines():
@@ -1421,6 +1432,10 @@ def utama():
                 "yang terunduh, bukan seluruh riwayat — gunakan clone "
                 "penuh (fetch-depth 0) untuk vonis forensik.")
         cek_secret_pesan_semua(gagal)
+        # Forensik penuh ikut memindai isi pohon tiap commit (issue
+        # #894): pesan semua commit saja tak menangkap token yang
+        # hidup di isi commit tengah lalu terhapus di ujung.
+        cek_secret_riwayat(gagal, "HEAD")
 
     ada_uji = os.path.isdir(UJI)
     cek_xml(gagal)
