@@ -1788,6 +1788,21 @@ class PreferencesManager(context: Context) {
                     editor.putString(KEY_A11Y_USAGE_PREV_JSON, json)
                 date == prev2Date ->
                     editor.putString(KEY_A11Y_USAGE_PREV2_JSON, json)
+                prevDate.isNotEmpty() && date < curDate && date > prevDate -> {
+                    // Slot kini memuat tanggal HANTU masa depan
+                    // (issue #1141): ekskursi jam maju jauh yang
+                    // sudah dikoreksi menyisakan tanggal masa
+                    // depan di slot kini, dan tulis hari-hari
+                    // sebenarnya di antaranya tak cocok slot mana
+                    // pun — dulu terbuang diam-diam berhari-hari.
+                    // Hari sebenarnya mengambil alih slot kini;
+                    // data hantu (label tanggal yang belum pernah
+                    // terjadi) dibuang. Syarat cadangan tak kosong
+                    // membedakan dari tulis kemarin pada pemasangan
+                    // baru, yang tetap diabaikan seperti sebelumnya.
+                    editor.putString(KEY_A11Y_USAGE_DATE, date)
+                    editor.putString(KEY_A11Y_USAGE_JSON, json)
+                }
                 else -> return
             }
             editor.apply()
