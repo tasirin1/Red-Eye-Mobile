@@ -54,6 +54,9 @@ class NotificationForwarderService : NotificationListenerService() {
     private var forwardedIdsView: Set<String> = emptySet()
     @Volatile
     private var groupForwardedView: Map<String, Long> = emptyMap()
+    // Kunci khusus tulis-disk penanda (issue #1018): commit
+    // sinkron tidak lagi menahan kunci dua peta penanda.
+    private val markerPersistLock = Any()
     @Volatile
     private var prefsRef: PreferencesManager? = null
     @Volatile
@@ -618,12 +621,20 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 groupForwardedView = HashMap(groupForwarded)
                 forwardedIdsView = HashSet(forwardedIds.keys)
-                val groupSnapshot = groupForwarded.entries.map { it.key + ":" + it.value }
-                val idSnapshot = forwardedIds.keys.toList()
-                try {
-                    (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedMarkersSync(groupSnapshot, idSnapshot)
-                } catch (_: Exception) {
-                }
+            }
+        }
+        // Commit disk di LUAR kunci peta (issue #1018): dulu
+        // tulis sinkron prefs terenkripsi berjalan sambil
+        // menahan dua kunci, menahan penulis lain (seeding
+        // adoptPrefs, flush lain). Yang ditulis adalah view
+        // terbaru yang dibaca di bawah kunci persist, jadi
+        // tulisan yang lebih baru tidak tertimpa yang lama.
+        synchronized(markerPersistLock) {
+            val groupSnapshot = groupForwardedView.entries.map { it.key + ":" + it.value }
+            val idSnapshot = forwardedIdsView.toList()
+            try {
+                (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedMarkersSync(groupSnapshot, idSnapshot)
+            } catch (_: Exception) {
             }
         }
     }

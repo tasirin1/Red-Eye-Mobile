@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penulisan penanda notifikasi terkirim ke penyimpanan tidak lagi menahan kunci data penanda selama penulisan berlangsung — penandaan dan penyemaian ulang penanda tidak lagi saling menunggu pada penulisan yang lambat.
 - Cache daftar pantau aksesibilitas kini dijamin terbaca segar antarbenang — sebelumnya satu-dua peristiwa bisa dinilai memakai daftar pantau versi setelan sebelumnya sesudah daftar diubah.
 - Penerima siaran (boot, alarm anti-mati, ganti paket, jam berubah, admin) tidak lagi mengantre di satu benang bersama — pekerjaan berat saat boot tidak lagi menunda penerima lain sampai melewati batas waktu sistem.
 - Tangkapan layar lewat jalur aksesibilitas kini diskala ke lebar maks 720 piksel seperti jalur proyeksi layar — sebelumnya resolusi penuh, sehingga berkas gambar dan data unggahnya jauh lebih besar dari yang perlu.
