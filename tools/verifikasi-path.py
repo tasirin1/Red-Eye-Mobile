@@ -773,8 +773,9 @@ def cek_sinkron_terjemah(gagal):
 
     def peta_nama(dirpath):
         peta = {"string": set(), "string-array": set(), "plurals": set()}
+        jumlah_item = {}
         if not os.path.isdir(dirpath):
-            return peta
+            return peta, jumlah_item
         for nama_berkas in sorted(os.listdir(dirpath)):
             if not nama_berkas.endswith(".xml"):
                 continue
@@ -785,10 +786,19 @@ def cek_sinkron_terjemah(gagal):
             for jenis in peta:
                 peta[jenis] |= set(re.findall(
                     r'<%s(?:\s[^>]*?)?\bname="([^"]+)"' % jenis, bersih))
-        return peta
+            # Jumlah <item> per string-array (issue #1044): nama
+            # yang sama antar locale tetapi itemnya lebih sedikit
+            # membuat kode yang mengindeks menurut panjang bawaan
+            # kekurangan entri — paritas nama saja tak menangkapnya.
+            for nama_arr, badan in re.findall(
+                    r'<string-array(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</string-array>',
+                    bersih, re.S):
+                jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + \
+                    len(re.findall(r"<item(?:\s[^>]*)?>", badan))
+        return peta, jumlah_item
 
-    inggris = peta_nama(os.path.join(dasar_res, "values"))
-    indonesia = peta_nama(os.path.join(dasar_res, "values-in"))
+    inggris, item_inggris = peta_nama(os.path.join(dasar_res, "values"))
+    indonesia, item_indonesia = peta_nama(os.path.join(dasar_res, "values-in"))
     for jenis in ("string", "string-array", "plurals"):
         kurang = sorted(inggris[jenis] - indonesia[jenis])
         lebih = sorted(indonesia[jenis] - inggris[jenis])
@@ -796,6 +806,13 @@ def cek_sinkron_terjemah(gagal):
             gagal.append("values-in kurang %s: %s" % (jenis, ", ".join(kurang[:10])))
         if lebih:
             gagal.append("values-in berlebih %s: %s" % (jenis, ", ".join(lebih[:10])))
+    beda_item = sorted(
+        nama for nama in item_inggris.keys() & item_indonesia.keys()
+        if item_inggris[nama] != item_indonesia[nama])
+    if beda_item:
+        gagal.append("jumlah item string-array beda antar locale: %s" % ", ".join(
+            "%s (%d vs %d)" % (n, item_inggris[n], item_indonesia[n])
+            for n in beda_item[:10]))
 
 
 def adalah_env(rendah):
