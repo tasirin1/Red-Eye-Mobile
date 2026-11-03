@@ -927,10 +927,15 @@ class CameraService(private val context: Context) {
                 android.view.Surface.ROTATION_270 -> 270
                 else -> 0
             }
+            // Rumus resmi Android (issue #948): tanda putaran
+            // perangkat berlawanan untuk lensa belakang, searah
+            // untuk lensa depan. Rumus lama terbalik — potret
+            // kebetulan benar (putaran 0), tetapi hasil lanskap
+            // terbalik 180 derajat.
             if (facing == CameraCharacteristics.LENS_FACING_FRONT) {
-                (sensor - degrees + 360) % 360
-            } else {
                 (sensor + degrees) % 360
+            } else {
+                (sensor - degrees + 360) % 360
             }
         } catch (_: Exception) {
             0
