@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Perintah slash resmi bertanda baca ekor kini dieksekusi (#882): "/lock." sebelumnya tidak cocok dengan tabel perintah dan hanya memicu saran, sedangkan "/kunci." dieksekusi lewat jalur alias; kini tanda baca ekor kalimat pada kepala perintah slash dibuang sebelum dicocokkan.
 - Karakter tak terlihat tidak lagi memecah kata veto (#881): karakter lebar-nol (U+200B/200C/200D, U+FEFF) dan soft hyphen (U+00AD) bukan pemisah sehingga lolos normalisasi intake dan membuat "jangan" yang disisipi karakter itu tak dikenali sebagai pembatalan; kini karakter-karakter itu dibuang dari teks masuk sebelum diurai.
 - Batas panjang teks pantau kini berlaku di semua jalur pemindaian (#879): batas 8.192 karakter dari #857 sebelumnya hanya diterapkan di satu pintu masuk, sedangkan dua jalur notifikasi memindai teks gabungan tak terbatas untuk kata pantau; kini batasnya tinggal di fungsi pemindai bersama sehingga setiap pemanggil tertutup.
 - Angka raksasa pada argumen bersatuan tidak lagi membungkus menjadi nilai kecil (#880): perkalian konversi satuan dalam Long meluap untuk angka 16–18 digit, sehingga "/syncinterval 5124095576030432 jam" terpasang sebagai 60 menit; kini masukan yang perkaliannya akan meluap ditolak sebelum dihitung.

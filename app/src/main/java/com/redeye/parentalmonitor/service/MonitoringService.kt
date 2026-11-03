@@ -1987,7 +1987,14 @@ class MonitoringService : Service() {
                     val ownUsername = try { preferencesManager.botUsername } catch (_: Exception) { "" }
                     val forOtherBot = atSuffix.isNotEmpty() && ownUsername.isNotEmpty() &&
                         !atSuffix.equals(ownUsername, ignoreCase = true)
-                    val command = if (forOtherBot) "" else head.substringBefore("@").lowercase(java.util.Locale.ROOT)
+                    // Tanda baca ekor kalimat pada kepala slash dibuang
+                    // (issue #882): "/lock." sebelumnya tak cocok tabel
+                    // perintah dan hanya memicu saran, sedangkan jalur
+                    // alias mengeksekusi "/kunci." karena tokenize
+                    // membuang tanda baca. Nama perintah hanya berisi
+                    // huruf, jadi pemangkasan ini tak mengubah perintah
+                    // sah mana pun.
+                    val command = if (forOtherBot) "" else head.substringBefore("@").lowercase(java.util.Locale.ROOT).trimEnd('.', ',', '!', '?', ';', ':')
                     val arg = headArg.getOrNull(1)?.trim().orEmpty()
                     val loginOnly = command == "/login" || (command == "/start" && arg.isEmpty())
                     if (loginOnly) {
