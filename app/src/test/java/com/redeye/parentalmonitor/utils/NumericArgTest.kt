@@ -64,7 +64,7 @@ class NumericArgTest {
         assertEquals(7, NumericArg.parseDecimalHours("6.5 jam"))
         assertEquals(7, NumericArg.parseDecimalHours("6,5jam"))
         assertEquals(1, NumericArg.parseDecimalHours("0,4 jam"))
-        assertEquals(2, NumericArg.parseDecimalHours("2,5"))
+        assertEquals(3, NumericArg.parseDecimalHours("2,5"))
         assertEquals(24, NumericArg.parseDecimalHours("24,4"))
         assertNull(NumericArg.parseDecimalHours("25,5 jam"))
         assertNull(NumericArg.parseDecimalHours("24,5"))
