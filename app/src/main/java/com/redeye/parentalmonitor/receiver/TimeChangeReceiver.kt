@@ -22,16 +22,19 @@ class TimeChangeReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             null
         }
-        Background.runCritical {
+        // Executor receiver khusus, BUKAN antrean critical
+        // bersama (issue #968): pola lama menyelesaikan
+        // broadcast di dalam antrean critical satu-thread —
+        // finish() menunggu di belakang pekerjaan IO/restore
+        // lain, umur broadcast bisa lewat dan proses dibunuh
+        // sebelum jadwal liveness terpasang ulang. runReceiver
+        // (pola LivenessReceiver) menyelesaikan pendingResult
+        // di executornya sendiri termasuk jalur tertolak.
+        Background.runReceiver(pendingResult) {
             try {
                 Liveness.handleWakeUp(appContext, fromAlarm = false)
             } catch (e: Exception) {
                 android.util.Log.e("TimeChangeReceiver", "Liveness wake-up failed", e)
-            } finally {
-                try {
-                    pendingResult?.finish()
-                } catch (_: Exception) {
-                }
             }
         }
     }
