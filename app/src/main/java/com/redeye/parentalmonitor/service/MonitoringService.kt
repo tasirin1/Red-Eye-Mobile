@@ -10495,14 +10495,22 @@ class MonitoringService : Service() {
 
     @Volatile
     private var lastLoopRestartAt = 0L
+    private val loopRestartLock = Any()
 
     @Volatile
     private var loopRelaunchJob: Job? = null
 
     private fun restartAllLoops(fromWatchdog: Boolean = false): Boolean {
         val nowRestart = android.os.SystemClock.elapsedRealtime()
-        if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return false
-        lastLoopRestartAt = nowRestart
+        // Cek-tulis penjaga anti-dobel harus atomik (issue
+        // #963): pola lama membaca lalu menulis tanpa kunci —
+        // dua pemanggil bersamaan (/restart + heal tahap 3)
+        // bisa sama-sama lolos penjaga 10 detik dan saling
+        // membatalkan korutin relaunch.
+        synchronized(loopRestartLock) {
+            if (!fromWatchdog && nowRestart - lastLoopRestartAt < 10_000L) return false
+            lastLoopRestartAt = nowRestart
+        }
         val oldJobs = listOfNotNull(monitoringJob, cameraJob, commandJob, patrolJob)
         for (job in oldJobs) {
             try {
