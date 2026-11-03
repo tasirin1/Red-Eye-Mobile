@@ -1851,8 +1851,31 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_A11Y_DISABLED_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_DISABLED_ALERT_AT, value).apply()
 
+    // Cermin memori himpunan aplikasi dikenal (issue #1038):
+    // prefs ini EncryptedSharedPreferences, jadi getStringSet
+    // mendekripsi SETIAP entri + menyalin himpunan — dan
+    // rememberA11yApp memanggilnya di SETIAP pergantian
+    // aplikasi depan hanya untuk uji keanggotaan. Cermin di
+    // bawah a11yKnownAppsLock yang sudah ada (ketiga penulis
+    // melewatinya) membuat jalur umum O(1); dekripsi penuh
+    // hanya terjadi sekali per proses.
+    @Volatile
+    private var knownAppsMirror: HashSet<String>? = null
+
+    // Hanya dipanggil sambil memegang a11yKnownAppsLock.
+    private fun knownAppsLocked(): HashSet<String> {
+        knownAppsMirror?.let { return it }
+        val loaded = try { sharedPreferences.getStringSet(KEY_A11Y_KNOWN_APPS, emptySet())?.toHashSet() ?: HashSet() } catch (_: Exception) { HashSet() }
+        knownAppsMirror = loaded
+        return loaded
+    }
+
     fun a11yKnownApps(): MutableSet<String> {
-        return try { sharedPreferences.getStringSet(KEY_A11Y_KNOWN_APPS, emptySet())?.toHashSet() ?: HashSet() } catch (_: Exception) { HashSet() }
+        return try {
+            synchronized(a11yKnownAppsLock) { HashSet(knownAppsLocked()) }
+        } catch (_: Exception) {
+            HashSet()
+        }
     }
 
     // Kebalikan rememberA11yApp (issue #854): uninstall menghapus
@@ -1870,9 +1893,9 @@ class PreferencesManager(context: Context) {
         if (packageName.isEmpty()) return
         try {
             synchronized(a11yKnownAppsLock) {
-                val current = a11yKnownApps()
+                val current = knownAppsLocked()
                 if (current.remove(packageName)) {
-                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
                 }
             }
         } catch (_: Exception) {
@@ -1883,10 +1906,10 @@ class PreferencesManager(context: Context) {
         if (packageName.isEmpty()) return false
         return try {
             synchronized(a11yKnownAppsLock) {
-                val current = a11yKnownApps()
+                val current = knownAppsLocked()
                 if (packageName in current) return false
                 current.add(packageName)
-                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
                 true
             }
         } catch (_: Exception) {
@@ -1897,10 +1920,10 @@ class PreferencesManager(context: Context) {
     fun seedA11yKnownApps(packages: Collection<String>) {
         try {
             synchronized(a11yKnownAppsLock) {
-                val current = a11yKnownApps()
+                val current = knownAppsLocked()
                 current.addAll(packages)
                 sharedPreferences.edit()
-                    .putStringSet(KEY_A11Y_KNOWN_APPS, current)
+                    .putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current))
                     .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
                     .apply()
             }
