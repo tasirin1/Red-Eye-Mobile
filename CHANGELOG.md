@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penyalakan ulang loop kamera/patroli kini sungguh menunggu loop lama selesai bergabung sampai batas total 60 detik — sebelumnya pengganti bisa menyala sesudah 5 detik di atas loop lama yang masih menuntaskan putarannya.
 - Gerbang verifikasi kini mengenali definisi resource yang atributnya ditulis sebelum nama (mis. translatable lebih dulu) — string tanpa terjemahan Indonesia tidak lagi lolos senyap dari semua cek resource.
 - Pemantauan aksesibilitas tidak lagi menulis ulang seluruh data pemakaian pada setiap ganti layar saat monitoring mati/dijeda — penyimpanan kini mengikuti jatah berkala biasa, dan pembersihan cap sesi hanya berjalan bila memang ada cap tersimpan.
 - Masa tenggang anti-tamper Setup tidak lagi "hidup lagi" sesudah reboot: cap jam monoton yang tersimpan dari boot sebelumnya kini dikenali sebagai basi (sisa tenggang di boot asalnya tidak pernah melebihi dua menit) sehingga alert tamper tidak lagi tertelan berhari-hari.

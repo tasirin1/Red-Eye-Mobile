@@ -1092,7 +1092,13 @@ class MonitoringService : Service() {
     // itu tetap jalan sebagai jalan keluar) dan hanya menyala
     // bila belum ada pengganti lain yang terpasang.
     private fun relaunchAfterJoin(old: Job?, start: () -> Unit, current: () -> Job?) {
-        if (old == null || !old.isActive) {
+        // Penanda selesai yang benar adalah isCompleted (issue
+        // #1012): isActive sudah false sejak cancel() dipanggil
+        // (state Cancelling) walau korutin lama belum tuntas,
+        // sehingga tunggu join dulu efektif berhenti di 5 detik
+        // pertama dan cabang masuk menyalakan pengganti di atas
+        // loop yang masih menuntaskan putarannya.
+        if (old == null || old.isCompleted) {
             start()
             return
         }
@@ -1107,7 +1113,7 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     false
                 }
-                if (selesai || !old.isActive) break
+                if (selesai || old.isCompleted) break
                 percobaan++
             }
             if (!isActive) return@launch
