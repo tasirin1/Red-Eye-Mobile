@@ -8,6 +8,20 @@ object Background {
         java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
     )
 
+    // Pool luapan receiver khusus (issue #1089): satu benang
+    // tersendiri agar pekerjaan receiver berat yang meluap
+    // tidak mengantre di depan tugas kritis (laporan
+    // kebangkitan Liveness, dll.) di pool critical — badai
+    // siaran dulu membuat jalur kritis ikut tertahan di
+    // belakang handleBoot luapan. Tetap satu benang agar
+    // luapan terserial seperti rancangan #1069.
+    private val receiverOverflow: java.util.concurrent.ExecutorService = java.util.concurrent.ThreadPoolExecutor(
+        0, 1, 60L, java.util.concurrent.TimeUnit.SECONDS,
+        java.util.concurrent.LinkedBlockingQueue(),
+        java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecvOvf").apply { isDaemon = true } },
+        java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+    )
+
     // Maks 3 benang (issue #1016, diperbaiki #1032): dulu
     // SATU benang bersama untuk semua receiver — pekerjaan
     // berat BootReceiver (I/O keystore + retry) membuat
@@ -33,11 +47,12 @@ object Background {
         // CallerRuns menjalankan handleBoot/handle paket DI
         // BENANG PEMANGGIL (benang utama broadcast) — risiko
         // ANR dan jatah broadcast terlewati. Tugas luapan
-        // diserahkan ke pool kritis satu benang: tetap jalan
-        // (tidak hilang), terserial, dan tidak pernah di
-        // benang pemanggil.
+        // diserahkan ke pool luapan khusus satu benang
+        // (issue #1089): tetap jalan (tidak hilang),
+        // terserial, tidak pernah di benang pemanggil, dan
+        // tidak lagi mencuri jalur pool kritis.
         java.util.concurrent.RejectedExecutionHandler { r, _ ->
-            try { critical.execute(r) } catch (_: Exception) { }
+            try { receiverOverflow.execute(r) } catch (_: Exception) { }
         }
     )
 
