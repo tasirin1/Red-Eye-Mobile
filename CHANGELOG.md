@@ -30,6 +30,7 @@
 - Jatah notis petunjuk (pairing, login, tombol saat blokir) kini diklaim secara atomik: notis yang sama tidak lagi bisa terkirim dua kali oleh dua jalur yang menilai jatahnya pada saat bersamaan.
 - Pendaftaran pendengar perubahan setelan dan pembukaan ulang penyimpanan kini terserialkan dengan benar terhadap pertukaran penyimpanan: pendengar baru tidak lagi bisa menempel di objek lama yang ditinggalkan, dan dua pertukaran tidak lagi bisa saling menimpa.
 - Worker pengirim kini menolak run kedua yang bersamaan (pola yang sama dengan worker restart): ekor run lama yang dibatalkan tidak lagi bisa mengirim pesan yang sama bersama run penggantinya.
+- Jatah bangun-ulang monitoring dari layanan notifikasi kini diklaim secara atomik: dua notifikasi yang masuk bersamaan tidak lagi bisa sama-sama meluncurkan upaya mulai yang sama.
 
 ## [1.6.601] - 2026-11-03
 

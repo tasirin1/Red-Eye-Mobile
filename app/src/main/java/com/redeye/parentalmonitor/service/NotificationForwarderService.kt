@@ -153,8 +153,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private var rebindNoticeSent = false
     private val rebindHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val rebindRunnable = Runnable { runRebind() }
-    @Volatile
-    private var lastReviveAt = 0L
+    private val lastReviveAt = java.util.concurrent.atomic.AtomicLong(0L)
     @Volatile
     private var lastWakeStartAt = 0L
     private var wakeJob: Job? = null
@@ -922,9 +921,16 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun reviveMonitoringIfNeeded() {
         try {
             if (MonitoringService.isRunning) return
+            // Klaim jatah 60 detik via CAS (issue #1104):
+            // cek-lalu-tulis telanjang atas @Volatile bisa
+            // dilolosi dua pemanggil bersamaan — tepat satu
+            // yang memenangkan cap yang berhak meluncurkan.
             val now = android.os.SystemClock.elapsedRealtime()
-            if (now - lastReviveAt < 60_000L) return
-            lastReviveAt = now
+            while (true) {
+                val last = lastReviveAt.get()
+                if (now - last < 60_000L) return
+                if (lastReviveAt.compareAndSet(last, now)) break
+            }
             scope.launch {
                 try {
                     val prefs = prefsRef ?: try {
