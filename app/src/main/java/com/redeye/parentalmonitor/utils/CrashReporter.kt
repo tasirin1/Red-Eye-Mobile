@@ -228,7 +228,16 @@ object CrashReporter {
             try {
                 val wallAge = System.currentTimeMillis() - file.lastModified()
                 val savedElapsed = savedElapsed0
-                val monoAge = if (savedElapsed > 0L) android.os.SystemClock.elapsedRealtime() - savedElapsed else wallAge
+                // Usia monoton hanya sah bila awalan elapsed
+                // terbukti dari boot yang sama (issue #1022):
+                // lintas boot, uptime baru yang melampaui
+                // awalan lama membuat laporan basi terbaca
+                // muda dan lolos batas buang 7 hari.
+                val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                val monoSameBoot = savedElapsed > 0L &&
+                    (BootClock.sameBoot(file.lastModified(), savedElapsed, System.currentTimeMillis(), nowElapsed) ||
+                        BootClock.sameBootOrClockShift(file.lastModified(), savedElapsed, System.currentTimeMillis(), nowElapsed))
+                val monoAge = if (monoSameBoot) nowElapsed - savedElapsed else wallAge
                 val age = if (wallAge < 0L && monoAge < 0L) 0L else if (wallAge < 0L) monoAge else if (monoAge < 0L) wallAge else minOf(wallAge, monoAge)
                 if (age > 7 * 24 * 60 * 60_000L) {
                     keepRemainder(file, raw, "", 0L)
