@@ -12,6 +12,7 @@
 - Pemindai anotasi cek cepat kini membedakan bahasa: pelacakan kedalaman komentar bersarang hanya untuk Kotlin; berkas .java memakai semantik Java (penutup pertama mengakhiri komentar), jadi anotasi ganda sesudah komentar bergaya bersarang di .java tidak lagi tersembunyi.
 - Pembersihan cache foto kini menghitung kunci urut umur tiap berkas sekali saja (bukan pada setiap perbandingan urutan): prune pada cache penuh tidak lagi mengulang parse tanggal nama berkas ribuan kali.
 - Penyimpanan daftar foto tertahan kini satu penulisan atomik bersama penolkan hash warisannya: proses yang mati di tengah penulisan tidak lagi bisa membangkitkan entri warisan yang baru dilepas sebagai foto tertahan hantu.
+- Cek cepat kini membaca semua daftar nama berkas dari git dalam bentuk tak-terkutip (-z): berkas sumber bernama non-ASCII benar-benar terpindai anotasi gandanya, dan berkas tak terlacak/terabaikan bernama non-ASCII ikut terpindai isinya.
 
 ## [1.6.604] - 2026-11-03
 

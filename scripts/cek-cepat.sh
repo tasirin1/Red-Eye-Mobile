@@ -88,7 +88,7 @@ tak_lacak_token=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then tak_lacak_token="$f"; break; fi
-done <<< "$(git ls-files --others --exclude-standard 2>/dev/null || true)"
+done <<< "$(git ls-files --others --exclude-standard -z 2>/dev/null | tr '\0' '\n' || true)"
 if [ -n "$tak_lacak_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas tak terlacak $tak_lacak_token (hanya via input SetupActivity)"; gagal=1;
 fi
@@ -107,7 +107,7 @@ while IFS= read -r f; do
     build/*|app/build/*|.gradle/*|app/.gradle/*|__pycache__/*|tools/__pycache__/*) continue ;;
   esac
   if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then ign_token=$f; break; fi
-done <<< "$(git ls-files --others -i --exclude-standard 2>/dev/null || true)"
+done <<< "$(git ls-files --others -i --exclude-standard -z 2>/dev/null | tr '\0' '\n' || true)"
 if [ -n "$ign_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas terabaikan $ign_token (hanya via input SetupActivity)"; gagal=1;
 fi
@@ -144,7 +144,7 @@ fi
 # ada di verifikasi-path sehingga komentar "paritas" menyesatkan) —
 # mentah dan tergabung tanpa "/".
 nama_token=""
-daftar_nama="$({ git diff --cached --name-only 2>/dev/null; git ls-files 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; git ls-files --others -i --exclude-standard 2>/dev/null; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
+daftar_nama="$({ git diff --cached --name-only -z 2>/dev/null | tr '\0' '\n'; git ls-files -z 2>/dev/null | tr '\0' '\n'; git ls-files --others --exclude-standard -z 2>/dev/null | tr '\0' '\n'; git ls-files --others -i --exclude-standard -z 2>/dev/null | tr '\0' '\n'; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   gabung=$(printf '%s' "$f" | tr -d '/')
@@ -200,7 +200,7 @@ fi
 #    (issue #1145): komentar Java TIDAK bersarang — penutup
 #    pertama mengakhiri blok, sisanya kode.
 loop_dup=""
-while IFS= read -r f; do
+while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   isjava=0; case "$f" in *.java) isjava=1 ;; esac
   d=$(awk -v java="$isjava" '
@@ -250,7 +250,7 @@ while IFS= read -r f; do
   if (line ~ /^[[:space:]]*$/) next
   cnt=0; hascode=0; d0=depth; i=1; n=length(line); while (i<=n) { c=substr(line, i, 1); if (depth>0) { if (c=="(") depth++; else if (c==")") depth--; i++; continue } if (c=="@" && substr(line, i+1, 1) ~ /[A-Za-z_]/) { j=i+1; nm=""; while (j<=n && substr(line, j, 1) ~ /[A-Za-z0-9_]/) { nm=nm substr(line, j, 1); j++ } cnt++; if (substr(line, j, 1)==":" && substr(line, j+1, 1) ~ /[A-Za-z_]/) { nm=nm ":"; j++; while (j<=n && substr(line, j, 1) ~ /[A-Za-z0-9_]/) { nm=nm substr(line, j, 1); j++ } } names[cnt]="@" nm; i=j; while (i<=n && substr(line, i, 1) ~ /[[:space:]]/) i++; if (i<=n && substr(line, i, 1)=="(") { depth=1; i++ } continue } if (c==",") { for (k=1; k<=cnt; k++) { if (names[k] in seen) { print FNR; exit } seen[names[k]]=1 } cnt=0; split("", names); split("", seen); hascode=1; i++; continue } if (c !~ /[[:space:]]/) hascode=1; i++ } if (cnt==0 && !hascode && depth==0 && d0==0) { split("", seen); next } for (k=1; k<=cnt; k++) { if (names[k] in seen) { print FNR; exit } seen[names[k]]=1 } if (hascode) split("", seen) }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
-done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
+done < <(git ls-files -z '*.kt' '*.java' 2>/dev/null || true)
 if [ -n "$loop_dup" ]; then
   echo "GAGAL: anotasi ganda berturut-turut (tak repeatable) di $loop_dup"; gagal=1;
 fi
