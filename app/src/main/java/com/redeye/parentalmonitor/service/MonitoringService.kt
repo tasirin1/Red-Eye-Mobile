@@ -8846,7 +8846,12 @@ class MonitoringService : Service() {
         if (stage >= SILENT_MAX_STAGE) {
             val lastHealMax = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
             val nowMax = System.currentTimeMillis()
-            if (lastHealMax > 0L && nowMax > lastHealMax && nowMax - lastHealMax >= 24 * 3_600_000L) {
+            // Cap masa depan (issue #960): jam yang pernah maju
+            // jauh membuat syarat reset tak pernah tercapai
+            // sampai jam dinding melewati cap + 24 jam — tahap
+            // maksimum terkunci. Cap masa depan dianggap sudah
+            // waktunya reset.
+            if (lastHealMax > 0L && (lastHealMax > nowMax || nowMax - lastHealMax >= 24 * 3_600_000L)) {
                 try { preferencesManager.silentHealStage = 0 } catch (_: Exception) { }
                 stage = 0
             } else {
@@ -8856,7 +8861,6 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         val lastHeal = try { preferencesManager.silentHealAt } catch (_: Exception) { 0L }
         if (lastHeal > 0L && now > lastHeal && now - lastHeal < SILENT_HEAL_SPACING_MS) return
-        try { preferencesManager.silentHealAt = now } catch (_: Exception) { }
         val healed = try {
             healSilentLink(stage + 1)
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -8865,6 +8869,11 @@ class MonitoringService : Service() {
             false
         }
         if (!healed) return
+        // Cap jeda ditulis SESUDAH heal berhasil (issue #960):
+        // pola lama mencap sebelum heal, jadi heal yang gagal
+        // tetap menghabiskan jeda dan pemulihan berikutnya
+        // tertahan walau belum ada pemulihan apa pun.
+        try { preferencesManager.silentHealAt = now } catch (_: Exception) { }
         try { preferencesManager.silentHealStage = stage + 1 } catch (_: Exception) { }
         try {
             val heals = preferencesManager.silentHeals
