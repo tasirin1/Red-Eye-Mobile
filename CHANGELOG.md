@@ -8,6 +8,7 @@
 - Pencatatan pemakaian pulih seketika dari tanggal hantu yang terbukti: bila tulis hidup hari ini berhadapan slot berjalan yang melompat dua hari atau lebih ke depan, hari ini mengambil alih dan cadangan yang ikut hantu diruntuhkan — pemasangan baru yang tulis pertamanya hantu dan dua lompatan bertumpuk tidak lagi membuang catatan berhari-hari.
 - Cadangan penghitung item string-array pada gerbang kini memindai tag secara manual (linear): masukan rusak berupa tag tak tertutup dengan deretan spasi panjang tidak lagi menggantung gerbang lewat backtracking.
 - Penilaian kelayakan bangun-ulang monitoring kini berjalan di benang latar sejak awal: sentuhan pertama ke penyimpanan terenkripsi (disk dan brankas kunci) tidak lagi berisiko terjadi sinkron di benang utama saat aplikasi mulai dingin.
+- Semua daftar nama berkas di cek cepat kini NUL-pasti sampai ke pembacanya (termasuk segmen riwayat): berkas bernama mengandung baris-baru tidak lagi terbelah menjadi fragmen yang lolos pindai token isi maupun nama.
 
 ## [1.6.605] - 2026-11-03
 

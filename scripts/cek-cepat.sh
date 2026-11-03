@@ -85,10 +85,10 @@ if [ -n "$pohon_token" ]; then
 fi
 # 5b. Berkas tak terlacak tak terlihat git grep/diff — pindai isinya juga.
 tak_lacak_token=""
-while IFS= read -r f; do
+while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then tak_lacak_token="$f"; break; fi
-done <<< "$(git ls-files --others --exclude-standard -z 2>/dev/null | tr '\0' '\n' || true)"
+done < <(git ls-files --others --exclude-standard -z 2>/dev/null || true)
 if [ -n "$tak_lacak_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas tak terlacak $tak_lacak_token (hanya via input SetupActivity)"; gagal=1;
 fi
@@ -98,7 +98,7 @@ fi
 # jadi pesan GAGAL bisa menuduh berkas tak terlacak sebagai berkas
 # terabaikan walau daftar ignored kosong.
 ign_token=""
-while IFS= read -r f; do
+while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   case "$f" in
     # Direktori sampah hanya dikecualikan di lokasi sungguhan
@@ -107,7 +107,7 @@ while IFS= read -r f; do
     build/*|app/build/*|.gradle/*|app/.gradle/*|__pycache__/*|tools/__pycache__/*) continue ;;
   esac
   if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then ign_token=$f; break; fi
-done <<< "$(git ls-files --others -i --exclude-standard -z 2>/dev/null | tr '\0' '\n' || true)"
+done < <(git ls-files --others -i --exclude-standard -z 2>/dev/null || true)
 if [ -n "$ign_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas terabaikan $ign_token (hanya via input SetupActivity)"; gagal=1;
 fi
@@ -144,12 +144,17 @@ fi
 # ada di verifikasi-path sehingga komentar "paritas" menyesatkan) —
 # mentah dan tergabung tanpa "/".
 nama_token=""
-daftar_nama="$({ git diff --cached --name-only -z 2>/dev/null | tr '\0' '\n'; git ls-files -z 2>/dev/null | tr '\0' '\n'; git ls-files --others --exclude-standard -z 2>/dev/null | tr '\0' '\n'; git ls-files --others -i --exclude-standard -z 2>/dev/null | tr '\0' '\n'; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
-while IFS= read -r f; do
+# Daftar nama disimpan NUL-pasti di berkas sementara (issue
+# #1156): variabel bash tak bisa memuat NUL dan gabungan
+# newline membelah nama ber-newline menjadi fragmen yang
+# lolos pindai. Segmen riwayat kini --name-only -z juga.
+daftar_tmp=$(mktemp)
+{ git diff --cached --name-only -z 2>/dev/null; git ls-files -z 2>/dev/null; git ls-files --others --exclude-standard -z 2>/dev/null; git ls-files --others -i --exclude-standard -z 2>/dev/null; git log --format= --name-only -z -m HEAD 2>/dev/null; } | LC_ALL=C sort -zu > "$daftar_tmp"
+while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   gabung=$(printf '%s' "$f" | tr -d '/')
   if printf '%s' "$f" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' || printf '%s' "$gabung" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then nama_token="$f"; break; fi
-done <<< "$daftar_nama"
+done < "$daftar_tmp"
 # Bentuk terbelah pada nama (issue #896): regex literal di atas
 # tak melihat token yang terbelah titik/pemisah lain di dalam
 # nama — gerbang utama menangkapnya lewat pemindai bersama yang
@@ -157,14 +162,23 @@ done <<< "$daftar_nama"
 # per-nama hanya berjalan bila massal positif, agar vonis tetap
 # menyebut berkasnya dan jalur umum tetap cepat.
 if [ -z "$nama_token" ] && [ -f tools/cek-token.py ]; then
-  daftar_gabung=$(printf '%s\n' "$daftar_nama" | tr -d '/')
-  if { printf '%s\n' "$daftar_nama"; printf '%s\n' "$daftar_gabung"; } | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then
-    while IFS= read -r f; do
+  daftar_gabung=$(tr '\0' '\n' < "$daftar_tmp" | tr -d '/')
+  if { tr '\0' '\n' < "$daftar_tmp"; printf '%s\n' "$daftar_gabung"; } | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then
+    while IFS= read -r -d '' f; do
       [ -n "$f" ] || continue
       gabung=$(printf '%s' "$f" | tr -d '/')
       if printf '%s' "$gabung" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then nama_token="$f"; break; fi
-    done <<< "$daftar_nama"
+    done < "$daftar_tmp"
   fi
+fi
+# Nama ber-newline tak terjangkau pemicu massal (masukannya
+# membaca fragmen): nilai subset itu per-nama tanpa syarat.
+if [ -z "$nama_token" ] && [ -f tools/cek-token.py ]; then
+  while IFS= read -r -d '' f; do
+    case "$f" in *$'\n'*) ;; *) continue ;; esac
+    gabung=$(printf '%s' "$f" | tr -d '/')
+    if printf '%s' "$gabung" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then nama_token="$f"; break; fi
+  done < "$daftar_tmp"
 fi
 if [ -n "$nama_token" ]; then
   echo "GAGAL: kemungkinan token bot asli pada NAMA berkas $nama_token (hanya via input SetupActivity)"; gagal=1;
@@ -254,4 +268,5 @@ done < <(git ls-files -z '*.kt' '*.java' 2>/dev/null || true)
 if [ -n "$loop_dup" ]; then
   echo "GAGAL: anotasi ganda berturut-turut (tak repeatable) di $loop_dup"; gagal=1;
 fi
+rm -f "$daftar_tmp"
 exit $gagal
