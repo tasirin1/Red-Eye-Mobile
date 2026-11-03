@@ -9034,13 +9034,23 @@ class MonitoringService : Service() {
         if (!pending) return
         val startedElapsed = try { preferencesManager.liveTestStartedElapsed } catch (_: Exception) { 0L }
         val byAlarm = try { preferencesManager.liveTestByAlarm } catch (_: Exception) { false }
-        try { preferencesManager.clearLiveTest() } catch (_: Exception) { }
-        if (startedElapsed <= 0L) return
+        // Status uji dibersihkan SESUDAH laporan terkonfirmasi
+        // terkirim/terantre (issue #988): dulu dibersihkan di
+        // awal, jadi laporan yang gugur di antrean hilang
+        // selamanya dan uji tampak tak pernah selesai.
+        if (startedElapsed <= 0L) {
+            try { preferencesManager.clearLiveTest() } catch (_: Exception) { }
+            return
+        }
         val nowElapsed = android.os.SystemClock.elapsedRealtime()
         if (startedElapsed > nowElapsed) {
-            try {
-                sendToTelegram("🧪 Uji anti-mati terputus oleh reboot HP — ulangi bila ingin hasil yang jelas.")
+            val terkirim = try {
+                sendToTelegramStatus("🧪 Uji anti-mati terputus oleh reboot HP — ulangi bila ingin hasil yang jelas.") != SendStatus.DROPPED
             } catch (_: Exception) {
+                false
+            }
+            if (terkirim) {
+                try { preferencesManager.clearLiveTest() } catch (_: Exception) { }
             }
             return
         }
@@ -9053,9 +9063,13 @@ class MonitoringService : Service() {
         } else {
             "🧪 <b>Hasil uji anti-mati</b>\nServis hidup lagi dalam <b>$secs detik</b>.\n⚠️ Jam bangun belum terbukti — yang menghidupkan jalur lain (worker/boot). Kerjakan langkah Anti-kill di Setup lalu uji ulang."
         }
-        try {
-            sendToTelegram(text)
+        val terkirim = try {
+            sendToTelegramStatus(text) != SendStatus.DROPPED
         } catch (_: Exception) {
+            false
+        }
+        if (terkirim) {
+            try { preferencesManager.clearLiveTest() } catch (_: Exception) { }
         }
     }
 
