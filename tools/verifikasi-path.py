@@ -904,7 +904,11 @@ def cek_ukuran_pohon(gagal, sudah_dicek):
             continue
         batas = 5 * 1024 * 1024 if path == "CHANGELOG.md" else 1024 * 1024
         try:
-            ukuran = os.path.getsize(os.path.join(AKAR, path))
+            # Symlink dinilai dari lstat, bukan tujuannya
+            # (issue #1132): yang masuk repo hanya teks tautan
+            # (belasan byte) — mengikuti tautan ke berkas besar
+            # di luar repo menggagalkan secara palsu.
+            ukuran = os.lstat(os.path.join(AKAR, path)).st_size
         except OSError:
             continue
         if ukuran > batas:

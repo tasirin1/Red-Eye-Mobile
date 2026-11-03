@@ -14,6 +14,7 @@
 - Pemeriksaan paritas format gerbang kini juga membaca lebar/presisi dinamis (%*d, %.*f): beda tipe pada specifier berlebar bintang tidak lagi lolos.
 - Konversi %n (baris baru) tidak lagi dihitung sebagai argumen format oleh gerbang: ia tidak mengonsumsi argumen, jadi terjemahan yang memakai baris baru biasa tidak lagi digagalkan palsu.
 - Sapuan ukuran gerbang kini membaca daftar berkas terlacak dalam bentuk tak-terkutip: berkas besar bernama non-ASCII (mis. beraksen) tidak lagi terlewat dari pemeriksaan plafon ukuran.
+- Sapuan ukuran gerbang kini menilai symlink dari ukuran tautannya sendiri, bukan berkas tujuannya: tautan kecil ke berkas besar di luar repo tidak lagi digagalkan palsu sebagai berkas besar yang masuk repo.
 
 ## [1.6.603] - 2026-11-03
 
