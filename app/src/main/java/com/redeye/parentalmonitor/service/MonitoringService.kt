@@ -12237,7 +12237,16 @@ class MonitoringService : Service() {
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     val heldEntriesFlush = heldPhotoEntriesNow()
                     val namedFlush = heldEntriesFlush.firstOrNull { it.name == file.name && it.hash != 0L }
-                    val fileHashFlush = namedFlush?.hash ?: try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
+                    // Decode sidik jari hanya bila ada entri
+                    // warisan ber-hash yang bisa cocok (issue
+                    // #1152): tanpa entri semacam itu hasil
+                    // decode pasti tak terpakai, dan berkas yang
+                    // bertahan dulu di-decode ulang tiap flush.
+                    val fileHashFlush = namedFlush?.hash ?: if (heldEntriesFlush.any { it.raw == null && it.hash != 0L }) {
+                        try { PhotoFingerprint.analyze(file).second } catch (_: Exception) { 0L }
+                    } else {
+                        0L
+                    }
                     val fileIsHeld = if (namedFlush != null) true else fileHashFlush != 0L && heldEntriesFlush.any { it.raw == null && it.hash == fileHashFlush }
                     attempted.add(file.absolutePath)
                     val photoResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) }
