@@ -90,6 +90,15 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_EXHAUSTED_DROPS = "exhausted_drops"
         private const val KEY_REJECTED_DROPS = "rejected_drops"
         private const val MAX_QUEUE_SIZE = 100
+
+        // Batas ukuran SATU pesan (issue #926): tanpa batas,
+        // satu pesan raksasa (teks notifikasi ratusan KB)
+        // membengkakkan blob JSON antrean yang ditulis ulang
+        // utuh (+ .bak) pada tiap persist. Pesan di atas batas
+        // dipotong dengan penanda — laporan menaruh inti di
+        // awal, dan jalur kirim memang memecah teks panjang.
+        private const val MAX_MESSAGE_CHARS = 32_000
+        private const val POTONG = " …[dipotong: pesan terlalu panjang]"
         private const val MAX_TRANSIENT_RETRIES = 20
         private const val MAX_DRAIN_RETRIES = 10
         private const val GIVE_UP_RETRY_MS = 300_000L
@@ -222,7 +231,7 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
+                val item = QueuedMessage(message = potongPesan(message), elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
                 volatileQueue.add(item)
                 while (overCapLocked(volatileQueue, priority)) {
                     evictOldestLocked(volatileQueue)
@@ -238,7 +247,7 @@ class MessageQueue private constructor(context: Context) {
                 // (synchronized bersifat reentrant).
                 return addMessage(message, priority, retryCount)
             }
-            val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
+            val item = QueuedMessage(message = potongPesan(message), elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
             queue.add(item)
             while (overCapLocked(queue, priority)) {
                 evictOldestLocked(queue)
@@ -272,7 +281,7 @@ class MessageQueue private constructor(context: Context) {
             ensureRestored()
             if (volatileOnly) {
                 pruneVolatileLocked()
-                val added = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
+                val added = messages.map { QueuedMessage(message = potongPesan(it), elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
                 volatileQueue.addAll(added)
                 var evictedVolatile = 0
                 while (overCapLocked(volatileQueue, priority)) {
@@ -289,7 +298,7 @@ class MessageQueue private constructor(context: Context) {
                 // volatile, jangan timpa antrean tersimpan.
                 return addMessagesPerItem(messages, priority)
             }
-            val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
+            val addedBatch = messages.map { QueuedMessage(message = potongPesan(it), elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
             queue.addAll(addedBatch)
             var evictedBatch = 0
             while (overCapLocked(queue, priority)) {
@@ -399,6 +408,13 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun bootWallAt(): Long = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
+
+    // Terapkan batas ukuran per pesan (issue #926) pada titik
+    // konstruksi item antrean.
+    private fun potongPesan(message: String): String {
+        if (message.length <= MAX_MESSAGE_CHARS) return message
+        return message.substring(0, MAX_MESSAGE_CHARS - POTONG.length) + POTONG
+    }
 
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
         val now = try {

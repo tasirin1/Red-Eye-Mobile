@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Antrean pesan kini membatasi ukuran satu pesan (32 ribu karakter, dipotong dengan penanda) agar satu pesan raksasa tidak membengkakkan berkas antrean yang ditulis ulang utuh pada tiap penyimpanan.
 - Penerima kejadian instan (SMS/panggilan) tidak lagi menjadwalkan bangun pemulihan saat pemantauan memang sengaja dimatikan, dan antrean pekerjaannya kini terbatas (sebelumnya bangun sia-sia berkala untuk layanan yang diminta berhenti, plus antrean tak terbatas saat rentetan kejadian).
 - Penghitung kematian proses (liveness) kini diubah di bawah kunci baca-ubah-tulis bersama, sehingga laporan jumlah kill tidak bisa dobel atau hilang karena pembaruan bersamaan.
 - Pasangan cap waktu patroli dan penanda prompt kini ditulis dalam satu operasi simpan yang utuh (sebelumnya dua penulisan terpisah yang bisa tercampur bila proses mati di antaranya).
