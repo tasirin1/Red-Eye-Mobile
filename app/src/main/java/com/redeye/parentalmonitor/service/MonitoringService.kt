@@ -2783,11 +2783,13 @@ class MonitoringService : Service() {
             sendToTelegram(layar.text, layar.markup)
             return
         }
-        val pressedAt = try {
+        val lahirAt = try {
             query.message?.date ?: 0L
         } catch (_: Exception) {
             0L
         }
+        val idPesan = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
+        val pressedAt = jangkarMenuSec(lahirAt, idPesan)
         if (aksi is com.redeye.parentalmonitor.utils.MenuCallback.AskInput) {
             if (!ownerOk) return
             if (pressedAt <= 0L || serverNowSec() - pressedAt > MUTATING_MAX_AGE_SEC) {
@@ -2866,6 +2868,30 @@ class MonitoringService : Service() {
         }
     }
 
+    // Jangkar kesegaran menu (issue #1165): Telegram tak
+    // mengubah `date` pesan saat diedit, padahal navigasi &
+    // saklar mengedit pesan yang sama di tempat — menggerbang
+    // umur dari tanggal lahir membuat semua tombol mutasi
+    // mati 300 dtk sesudah menu PERTAMA dikirim. Kini umur
+    // dihitung dari render/edit terakhir pesan itu oleh bot
+    // (dicatat di editMenuMessage); pesan yang tak pernah
+    // diedit tetap menua dari lahirnya, dan peta kosong
+    // sesudah proses hidup lagi (arah aman).
+    private val menuRenderAt = java.util.Collections.synchronizedMap(java.util.LinkedHashMap<Long, Long>())
+
+    private fun catatRenderMenu(messageId: Long) {
+        if (messageId <= 0L) return
+        synchronized(menuRenderAt) {
+            menuRenderAt[messageId] = serverNowSec()
+            if (menuRenderAt.size > 64) menuRenderAt.clear()
+        }
+    }
+
+    private fun jangkarMenuSec(tanggalLahir: Long, messageId: Long): Long {
+        val render = try { menuRenderAt[messageId] ?: 0L } catch (_: Exception) { 0L }
+        return maxOf(tanggalLahir, render)
+    }
+
     private suspend fun editMenuMessage(chatId: String, messageId: Long, layar: MenuScreen): Boolean {
         try {
             if (chatId.isEmpty() || messageId <= 0L) return false
@@ -2879,9 +2905,14 @@ class MonitoringService : Service() {
             )
             val url = "https://api.telegram.org/bot${botToken}/editMessageText"
             val response = TelegramClient.api.editMessageText(url, body)
-            if (response.isSuccessful && response.body()?.ok == true) return true
+            if (response.isSuccessful && response.body()?.ok == true) {
+                catatRenderMenu(messageId)
+                return true
+            }
             val galat = try { response.errorBody()?.string().orEmpty() } catch (_: Exception) { "" }
-            return galat.contains("not modified", ignoreCase = true)
+            val takBerubah = galat.contains("not modified", ignoreCase = true)
+            if (takBerubah) catatRenderMenu(messageId)
+            return takBerubah
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
