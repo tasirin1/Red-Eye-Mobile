@@ -92,7 +92,15 @@ class SettingsBackupTest {
             SettingsBackup.decrypt(cipherText, "pin-cadangan-kuat", salt, iv, 1_000)
             fail("ciphertext rusak harus menggagalkan dekripsi")
         } catch (e: Exception) {
-            // Diharapkan: tag GCM tidak cocok di kedua KDF.
+            // Harus gagal KARENA tag GCM (issue #910): catch umum
+            // tanpa asersi membiarkan regresi KDF/decrypt apa pun
+            // (mis. kunci selalu salah) tetap hijau. decrypt()
+            // melempar ulang kegagalan kandidat pertama, yang
+            // untuk ciphertext rusak adalah AEADBadTagException.
+            assertTrue(
+                "diharapkan AEADBadTagException, dapat: $e",
+                e is javax.crypto.AEADBadTagException || e.cause is javax.crypto.AEADBadTagException
+            )
         }
     }
 }
