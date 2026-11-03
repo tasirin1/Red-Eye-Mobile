@@ -155,11 +155,15 @@ fi
 #    dipisah komentar. Blok = deretan baris anotasi (dengan
 #    atau tanpa argumen) + anotasi sebaris pada baris
 #    deklarasinya; anotasi berargumen dan bentuk sebaris
-#    kini ikut diperiksa (issue #1025).
+#    kini ikut diperiksa (issue #1025). Argumen yang
+#    membentang multi-baris dilacak kedalaman kurungnya
+#    antar baris, jadi blok tidak ter-reset di tengah
+#    argumen (issue #1031); literal string dikupas dulu
+#    agar kurung di dalam string tidak mengacaukan hitungan.
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } { line=$0; sub(/\/\/.*$/, "", line); cnt=0; s=line; while (match(s, /@[A-Za-z_][A-Za-z0-9_]*/)) { cnt++; names[cnt]=substr(s, RSTART, RLENGTH); s=substr(s, RSTART+RLENGTH) } if (cnt==0) { split("", seen); next } u=line; gsub(/@[A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?/, "", u); gsub(/[[:space:]]/, "", u); only=(u==""); for (i=1; i<=cnt; i++) { if (names[i] in seen) { print FNR; exit } seen[names[i]]=1 } if (!only) split("", seen) }' "$f" 2>/dev/null || true)
+  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } { line=$0; sub(/\/\/.*$/, "", line); gsub(/"([^"\\]|\\.)*"/, "\"\"", line); cnt=0; hascode=0; d0=depth; i=1; n=length(line); while (i<=n) { c=substr(line, i, 1); if (depth>0) { if (c=="(") depth++; else if (c==")") depth--; i++; continue } if (c=="@" && substr(line, i+1, 1) ~ /[A-Za-z_]/) { j=i+1; nm=""; while (j<=n && substr(line, j, 1) ~ /[A-Za-z0-9_]/) { nm=nm substr(line, j, 1); j++ } cnt++; names[cnt]="@" nm; i=j; while (i<=n && substr(line, i, 1) ~ /[[:space:]]/) i++; if (i<=n && substr(line, i, 1)=="(") { depth=1; i++ } continue } if (c !~ /[[:space:]]/) hascode=1; i++ } if (cnt==0 && !hascode && depth==0 && d0==0) { split("", seen); next } for (k=1; k<=cnt; k++) { if (names[k] in seen) { print FNR; exit } seen[names[k]]=1 } if (hascode) split("", seen) }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
 done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
 if [ -n "$loop_dup" ]; then
