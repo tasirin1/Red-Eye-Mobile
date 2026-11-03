@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pengosongan antrean pesan kini menghapus per kelompok (checkpoint tiap 10 pesan terkirim) alih-alih per pesan, sehingga satu putaran pengiriman tidak lagi memaksa tulis sinkron seluruh antrean ke disk untuk setiap pesan; sisa yang belum terhapus tetap dibereskan titik flush batch di akhir putaran.
 - Urutan mulai-ulang layanan diperbaiki: foreground kini ditegakkan sebelum loop lama dibatalkan, dan bila penegakan ulang gagal sesaat sementara loop lama masih hidup, layanan tetap berjalan dengan loop lama — satu kegagalan transien pada intent rutin tidak lagi mematikan layanan yang sehat.
 - Tombol menu yang meminta input (mis. atur nilai) tidak lagi mengirim prompt-nya di dalam kunci kontrol, sehingga pengiriman prompt yang lambat tidak menahan perintah darurat /lock dan /stop — menyelaraskan jalur tombol dengan jalur teks.
 - Login owner tidak lagi menahan kunci perintah dan kontrol selama rangkaian jaringan: kedua kunci kini hanya dipegang sebentar saat komit adopsi owner, dan login antar-pengirim diserialkan oleh kunci login tersendiri — perintah darurat seperti /lock dan /stop tidak lagi tertahan jaringan lambat dari pengirim yang belum tentu owner.

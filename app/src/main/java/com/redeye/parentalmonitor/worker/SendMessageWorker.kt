@@ -133,11 +133,23 @@ class SendMessageWorker(
                     is SendOutcome.Sent -> {
                         sentIds.add(queuedMessage.id)
                         noteSendOk()
-                        try {
-                            if (messageQueue.removeMessages(listOf(queuedMessage.id))) {
-                                flushedSent = sentIds.size
+                        // Hapus dari antrean per kelompok, bukan
+                        // per pesan (issue #946): satu penghapusan
+                        // memaksa tulis sinkron SELURUH antrean ke
+                        // disk, jadi drain 20 pesan dulu membayar
+                        // 20 tulis penuh. Checkpoint tiap 10 pesan
+                        // + titik flush batch yang sudah ada di
+                        // bawah membereskan sisanya; bila proses
+                        // mati di tengah drain, paling banyak 9
+                        // pesan terkirim yang terkirim ulang
+                        // (arah gagal aman: ganda, bukan hilang).
+                        if (sentIds.size - flushedSent >= 10) {
+                            try {
+                                if (messageQueue.removeMessages(sentIds)) {
+                                    flushedSent = sentIds.size
+                                }
+                            } catch (_: Exception) {
                             }
-                        } catch (_: Exception) {
                         }
                         delay(100)
                     }
