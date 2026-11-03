@@ -5344,7 +5344,7 @@ class MonitoringService : Service() {
                 } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
                     " · proteksi: " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
                 appendLine("Pantau app: " + (if (preferencesManager.a11yAppWatchEnabled) "nyala (" + preferencesManager.a11yAppWatchPackageSet().size + " app)" else "mati"))
-                appendLine("Sekarang: " + (A11yMonitor.currentAppLabel().ifEmpty { "-" }))
+                appendLine("Sekarang: " + Html.escape(A11yMonitor.currentAppLabel().ifEmpty { "-" }))
                 appendLine("Foto terakhir: ${if (preferencesManager.lastPhotoTime > 0) formatDate(preferencesManager.lastPhotoTime) else "belum pernah"}")
                 appendLine("Jam malam: ${try { preferencesManager.curfewTime.takeIf { it.isNotEmpty() } ?: "mati" } catch (_: Exception) { "?" }}")
             },
