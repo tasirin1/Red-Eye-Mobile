@@ -156,7 +156,7 @@ fi
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } /^[[:space:]]*@[A-Za-z_]+[[:space:]]*$/{ line=$0; gsub(/^[[:space:]]+/, "", line); gsub(/[[:space:]]+$/, "", line); if (line==prev) { print FNR; exit } prev=line; next } { prev="" }' "$f" 2>/dev/null || true)
+  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } /^[[:space:]]*@[A-Za-z_]+[[:space:]]*(\/\/.*)?$/{ line=$0; sub(/\/\/.*$/, "", line); gsub(/^[[:space:]]+/, "", line); gsub(/[[:space:]]+$/, "", line); if (line==prev) { print FNR; exit } prev=line; next } { prev="" }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
 done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
 if [ -n "$loop_dup" ]; then
