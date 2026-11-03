@@ -426,8 +426,11 @@ class NotificationForwarderService : NotificationListenerService() {
                     val nf = notifTitleText(notification)
                     if (nf.title.isNotEmpty() || nf.text.isNotEmpty()) {
                         val squeezedJoined = nf.rawTitle + "\n" + nf.rawBody
-                        val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody, squeezedJoined.lowercase(java.util.Locale.ROOT)) } catch (_: Exception) { false }
+                        // Izin dinilai lebih dulu (issue #1123):
+                        // pindai prioritas hanya dibayar bila
+                        // penerusan memang diperbolehkan.
                         val allowed = forwardingAllowed()
+                        val squeezedPriority = if (allowed) try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody, squeezedJoined.lowercase(java.util.Locale.ROOT)) } catch (_: Exception) { false } else false
                         if (squeezedPriority && allowed) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
                             emitPost(pkg, groupKey, squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), !isSummary && groupKey.isNotEmpty(), nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime, isSummary, squeezedJoined)
@@ -702,9 +705,6 @@ class NotificationForwarderService : NotificationListenerService() {
         }
         val key = android.util.Base64.encodeToString(digest.digest(), android.util.Base64.NO_WRAP)
         val joined = if (rawTitle.isEmpty() && rawBody.isEmpty()) keyTitle + "\n" + keyBody else keyJoined.ifEmpty { keyTitle + "\n" + keyBody }
-        val lowerJoined = joined.lowercase(java.util.Locale.ROOT)
-        val maskedLower = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
-        val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
         val idHash = if (sbnKey.isNotEmpty()) try { notifIdHash(sbnKey, sbnPostTime) } catch (_: Exception) { "" } else ""
         // Cap dedup ditulis SESUDAH penanganan terkonfirmasi
         // (issue #934): dulu cap ditulis di sini, sebelum kirim —
@@ -722,6 +722,14 @@ class NotificationForwarderService : NotificationListenerService() {
             record(label, title, text)
             return
         }
+        // Lowercase teks utuh + pindai prioritas baru dihitung
+        // SESUDAH gerbang dedup (issue #1123): hasilnya tak
+        // dipakai pada jalur buang, dan jalur ini terpanas —
+        // notifikasi chat yang sama diperbarui berkali-kali
+        // dan mayoritas berakhir duplikat.
+        val lowerJoined = joined.lowercase(java.util.Locale.ROOT)
+        val maskedLower = (title + "\n" + text).lowercase(java.util.Locale.ROOT)
+        val priority = try { isPriorityNotif(pkg, keyTitle, keyBody, lowerJoined) } catch (_: Exception) { false }
         if (pkgShouldDrop(pkg, now, if (priority) PRIORITY_RATE_LIMIT else NORMAL_RATE_LIMIT)) {
             if (priority) {
                 record(label, title, text)
