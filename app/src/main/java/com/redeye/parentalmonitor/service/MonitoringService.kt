@@ -2565,7 +2565,13 @@ class MonitoringService : Service() {
                 sendToTelegram("\u231B Menu kedaluwarsa, ini yang baru.", mainMenu())
                 return
             }
-            controlLock.withLock { armInput("/" + aksi.command, aksi.view, originChat) }
+            // Tanpa controlLock (issue #944, sisa inversi
+            // prioritas #914): armInput mengirim prompt lewat
+            // jaringan — menahannya di kunci kontrol menahan
+            // /lock & /stop. State prompt sendiri sudah dijaga
+            // inputLock di dalam armInput, dan jalur teks
+            // memanggilnya tanpa kunci kontrol juga.
+            armInput("/" + aksi.command, aksi.view, originChat)
             return
         }
         val toggle = aksi as? com.redeye.parentalmonitor.utils.MenuCallback.Toggle
