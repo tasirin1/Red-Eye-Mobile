@@ -158,14 +158,19 @@ object NetworkUtils {
 
     fun sweepAuthBlock(prefs: PreferencesManager) {
         try {
-            if (prefs.credentialError.isEmpty()) return
+            val err = prefs.credentialError
+            if (err.isEmpty()) return
             val now = System.currentTimeMillis()
             val at = prefs.credentialErrorAt
-            val age = blockAgeMs(at, prefs.credentialErrorElapsed, now, android.os.SystemClock.elapsedRealtime())
+            val elapsed = prefs.credentialErrorElapsed
+            val age = blockAgeMs(at, elapsed, now, android.os.SystemClock.elapsedRealtime())
             // Pembersihan dini warisan (jam dinding mundur tanpa jangkar)
             // hanya berlaku untuk penanda tanpa jangkar monoton.
-            if (age >= 30 * 60_000L || (prefs.credentialErrorElapsed <= 0L && now < at)) {
-                prefs.setCredentialError("", 0L)
+            // Hapus lewat penjaga kecocokan (issue #1052): penanda
+            // segar yang ditulis di antara baca dan hapus tak
+            // boleh ikut lenyap.
+            if (age >= 30 * 60_000L || (elapsed <= 0L && now < at)) {
+                prefs.clearCredentialErrorIfMatches(err, at, elapsed)
             }
         } catch (_: Exception) {
         }

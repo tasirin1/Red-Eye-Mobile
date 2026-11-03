@@ -998,6 +998,23 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Hapus penanda error hanya bila isinya masih persis yang
+    // dibaca pemanggil (issue #1052): sweepAuthBlock menilai
+    // penanda lama basi, tetapi tanpa penjaga ini penanda
+    // 401/403 SEGAR yang ditulis jalur kirim di antaranya ikut
+    // terhapus dan blokir kredensial runtuh.
+    fun clearCredentialErrorIfMatches(code: String, at: Long, elapsed: Long): Boolean {
+        return try {
+            synchronized(credentialLock) {
+                if (credentialError != code || credentialErrorAt != at || credentialErrorElapsed != elapsed) return@synchronized false
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, "").putLong(KEY_CRED_ERROR_AT, 0L).putLong(KEY_CRED_ERROR_ELAPSED, 0L).apply()
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun setCredentialErrorIfCredentialsMatch(token: String, chat: String, code: String, at: Long): Boolean {
         return synchronized(credentialLock) {
             if (botToken != token || chatId != chat) return@synchronized false

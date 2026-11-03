@@ -10,6 +10,7 @@
 - Penulisan cap masa tenggang Setup (aksesibilitas dan admin perangkat) kini satu operasi atomik: ketiganya (batas jam dinding, batas jam monoton, penanda boot) tidak lagi bisa terputus di tengah oleh matinya proses dan menyisakan pasangan cap yang tidak konsisten.
 - Akru sesi pemakaian pada cabang pergantian aplikasi kini juga langsung ditulis persisten, menutup sisa jendela hilang yang sama seperti cabang lain: durasi sesi terakhir tidak lagi bisa lenyap bila proses mati tepat sesudah berpindah aplikasi.
 - Pemeriksaan dan pencatatan penunggu restart loop kamera/patroli kini atomik di bawah satu kunci: dua perubahan setelan yang datang bersamaan dari jalur berbeda tidak lagi bisa sama-sama lolos saringan dan menyisakan penunggu yatim yang tak bisa dibatalkan saat monitoring berhenti.
+- Pembersihan penanda blokir kredensial kini memakai penjaga kecocokan: penanda error 401/403 segar yang baru ditulis jalur pengiriman tidak lagi bisa ikut terhapus oleh pembersihan penanda lama yang berjalan bersamaan, sehingga masa blokir kredensial tidak runtuh dan error yang sama tidak berulang.
 
 ## [1.6.600] - 2026-11-03
 
