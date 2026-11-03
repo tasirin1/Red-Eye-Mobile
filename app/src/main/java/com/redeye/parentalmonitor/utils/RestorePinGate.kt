@@ -8,13 +8,22 @@ object RestorePinGate {
 
     // Kunci ganda jam dinding + jam monoton (issue #687). elapsedRealtime
     // monoton selama satu boot dan hanya mengulang saat reboot, jadi:
-    // selama elapsedNow >= elapsedAtLock (boot yang sama) keputusan memakai
-    // jam monoton — memajukan jam dinding tidak membuka kunci lebih awal.
-    // Sesudah reboot (elapsedNow < elapsedAtLock) keputusan memakai jam
-    // dinding seperti semula.
+    // selama boot yang sama keputusan memakai jam monoton — memajukan
+    // jam dinding tidak membuka kunci lebih awal. Sesudah reboot
+    // keputusan memakai jam dinding seperti semula.
+    // Boot yang sama WAJIB dibuktikan lewat pasangan jam (issue
+    // #957): syarat lama elapsedNow >= elapsedAtLock terpenuhi
+    // lagi sesudah reboot begitu uptime baru melewati jangkar
+    // lama, dan jendela 15 menit dihitung ulang dari sana —
+    // kunci palsu padahal tenggat dinding sudah lama lewat.
+    // BootClock.sameBootOrClockShift membuktikan boot yang sama
+    // sambil tetap menoleransi koreksi jam di tengah kunci.
     fun locked(lockoutUntilWall: Long, wallNow: Long, elapsedAtLock: Long, elapsedNow: Long): Boolean {
         if (elapsedAtLock > 0L && elapsedNow >= elapsedAtLock) {
-            return elapsedNow - elapsedAtLock < LOCK_MS
+            val wallAtLock = lockoutUntilWall - LOCK_MS
+            if (BootClock.sameBootOrClockShift(wallAtLock, elapsedAtLock, wallNow, elapsedNow)) {
+                return elapsedNow - elapsedAtLock < LOCK_MS
+            }
         }
         return wallNow < lockoutUntilWall
     }

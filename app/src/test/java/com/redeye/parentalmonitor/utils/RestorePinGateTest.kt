@@ -48,6 +48,20 @@ class RestorePinGateTest {
     }
 
     @Test
+    fun rebootPastOldElapsedAnchorDoesNotRelock() {
+        // #957: kunci dipasang pada uptime 3 jam; perangkat reboot
+        // dan 3 hari kemudian uptime baru melewati jangkar lama —
+        // syarat elapsed lama terpenuhi lagi dan gerbang terkunci
+        // palsu selama 15 menit walau tenggat dinding lama lewat.
+        val wallUntil = now + RestorePinGate.LOCK_MS
+        val elapsedAtLock = 10_800_000L
+        val wallThreeDaysLater = now + 3 * 24 * 3_600_000L
+        assertFalse(
+            RestorePinGate.locked(wallUntil, wallThreeDaysLater, elapsedAtLock, elapsedAtLock + 300_000L)
+        )
+    }
+
+    @Test
     fun negativeCountTreatedAsZero() {
         val r = RestorePinGate.registerFailure(-5, now)
         assertEquals(1, r.first)
