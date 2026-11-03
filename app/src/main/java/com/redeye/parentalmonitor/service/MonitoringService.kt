@@ -9396,7 +9396,7 @@ class MonitoringService : Service() {
     private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
         if (cameraAttempt.get() != attempt) return
         finishCaptureAttempt(wd)
-        android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${exception.message}")
+        android.util.Log.e("MonitoringService", "✗ Camera capture failed: ${redactToken(exception.message)}")
         val policyBlocked = ReportFormat.isCameraPolicyError(exception.message) || isCameraDisabledByPolicy()
         if (policyBlocked) autoPausePhotosOnPolicyBlock()
         serviceScope.launch {

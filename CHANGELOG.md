@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Satu-satunya catatan galat kamera yang masih menulis pesan pengecualian mentah ke log kini disamarkan tokennya seperti semua log galat lain.
 - Watchdog unggah tangkapan layar (batas 660 detik) kini ikut dibatalkan pada cabang gagal dan jalur pengecualian, bukan hanya pada jalur sukses.
 - Status uji anti-mati kini dibersihkan hanya sesudah laporannya benar-benar terkirim/terantre — laporan yang gugur di antrean tak lagi hilang tanpa jejak.
 - Skrip gradlew yang tidak bisa jalan sebagaimana tersimpan di repo (jar wrapper-nya memang tidak pernah ikut) kini dihapus dan didokumentasikan — build resmi hanya lewat CI.
