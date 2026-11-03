@@ -129,6 +129,24 @@ object IntentParser {
             collapsedToken.substring(collapsedMarker.length) in MARKER_SUFFIXES
     }
 
+    // Kata sah yang kebetulan tepat satu hapusan dari penanda
+    // veto (issue #956): "kemari" (dari kemarin), "anti" (dari
+    // nanti), "elak" (dari kelak) — ketiganya tak boleh ke-veto.
+    private val MARKER_DELETION_FALSE_FRIENDS = setOf("kemari", "anti", "elak")
+
+    // Pencocokan penanda khusus jalur VETO (rujukan lampau/
+    // masa-depan/hasil tangkapan) dengan toleransi satu huruf
+    // hilang (issue #956), meniru pola #876 pada negasi/batal:
+    // salah ketik "kemarn"/"beso" dulu tak dikenal penanda mana
+    // pun sehingga veto gugur dan tangkapan BARU terpicu.
+    // Basis pendek (< 5 huruf) dikecualikan seperti pola #876.
+    private fun vetoMarkerMatches(token: String, marker: String): Boolean {
+        if (markerMatches(token, marker)) return true
+        if (marker.length < 5) return false
+        if (token in MARKER_DELETION_FALSE_FRIENDS) return false
+        return isOneDeletionOf(token, marker)
+    }
+
     private fun isPhotoReference(tokens: List<String>, padded: String): Boolean {
         if (padded.contains(" kirim ulang ")) return true
         if (padded.contains(" yang lalu ")) return true
@@ -137,12 +155,12 @@ object IntentParser {
         }
         if (padded.contains(" tempo hari ")) return true
         for (token in tokens) {
-            if (markerMatches(token, "kemarin") || markerMatches(token, "kemaren") || markerMatches(token, "fotonya")) return true
-            if (markerMatches(token, "tadi") || markerMatches(token, "terakhir") || markerMatches(token, "barusan")) return true
-            if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) return true
-            if (markerMatches(token, "diambil")) return true
-            if (markerMatches(token, "terkirim") || markerMatches(token, "dikirim")) return true
-            if (markerMatches(token, "lama") || markerMatches(token, "semalam") || markerMatches(token, "sebelumnya")) return true
+            if (vetoMarkerMatches(token, "kemarin") || vetoMarkerMatches(token, "kemaren") || vetoMarkerMatches(token, "fotonya")) return true
+            if (vetoMarkerMatches(token, "tadi") || vetoMarkerMatches(token, "terakhir") || vetoMarkerMatches(token, "barusan")) return true
+            if (CAPTURE_RESULT_NOUNS.any { vetoMarkerMatches(token, it) }) return true
+            if (vetoMarkerMatches(token, "diambil")) return true
+            if (vetoMarkerMatches(token, "terkirim") || vetoMarkerMatches(token, "dikirim")) return true
+            if (vetoMarkerMatches(token, "lama") || vetoMarkerMatches(token, "semalam") || vetoMarkerMatches(token, "sebelumnya")) return true
         }
         return false
     }
@@ -177,9 +195,9 @@ object IntentParser {
         for (i in 0 until tokens.size - 1) {
             if (firmPairMatches(tokens[i], "foto") && firmPairMatches(tokens[i + 1], "baru")) return true
         }
-        val hasPastMarker = tokens.any { token -> PAST_MARKERS.any { markerMatches(token, it) } }
+        val hasPastMarker = tokens.any { token -> PAST_MARKERS.any { vetoMarkerMatches(token, it) } }
         for (token in tokens) {
-            if (CAPTURE_RESULT_NOUNS.any { markerMatches(token, it) }) continue
+            if (CAPTURE_RESULT_NOUNS.any { vetoMarkerMatches(token, it) }) continue
             for (verb in CAPTURE_VERBS) {
                 if (!markerMatches(token, verb)) continue
                 // Penanda masa lalu menggugurkan SEMUA kata kerja tangkap
@@ -363,7 +381,7 @@ object IntentParser {
     private val FUTURE_MARKERS = setOf("besok", "nanti", "lusa", "esok", "kelak")
 
     private fun hasFutureMarker(tokens: List<String>, padded: String): Boolean {
-        if (tokens.any { token -> FUTURE_MARKERS.any { markerMatches(token, it) } }) return true
+        if (tokens.any { token -> FUTURE_MARKERS.any { vetoMarkerMatches(token, it) } }) return true
         // Frasa "malam ini" merujuk malam yang akan datang (issue #665).
         return padded.contains(" malam ini ")
     }

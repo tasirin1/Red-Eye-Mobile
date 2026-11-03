@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Parser perintah bahasa sehari-hari kini mengenali salah ketik satu huruf hilang pada penanda waktu lampau/masa-depan (mis. "kemarn", "beso"), sehingga kalimat rujukan seperti "kirim foto kemarn" tidak lagi memicu tangkapan foto baru; kata sah yang mirip (mis. "kemari", "anti") tetap tidak ter-veto.
 - Masking kode OTP kini juga menutupi format berpemisah garis-bawah (mis. 123_456) yang sebelumnya tampil polos di notifikasi yang diteruskan.
 - Baris "Paling sering dibuka" pada ringkasan pemakaian kini meng-escape HTML nama aplikasinya, sama seperti baris label lain — nama aplikasi berkarakter khusus tidak lagi merusak pesan ringkasan.
 - Label aplikasi yang sedang dibuka pada balasan /status kini di-escape HTML, sehingga nama aplikasi yang mengandung karakter seperti `<` atau `&` tidak lagi merusak pesan status (gagal kirim) atau menyuntikkan format.

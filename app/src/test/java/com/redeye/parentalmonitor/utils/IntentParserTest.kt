@@ -208,6 +208,24 @@ class IntentParserTest {
     }
 
     @Test
+    fun parseRejectsOneDeletionTyposOfTimeMarkers() {
+        // #956: salah ketik satu huruf hilang pada penanda
+        // lampau/masa-depan dulu melewati veto sehingga memicu
+        // tangkapan baru; kini dikenal vetoMarkerMatches.
+        assertNull(IntentParser.parse("kirim foto kemarn dong"))
+        assertNull(IntentParser.parse("ambil foto kemarn dong"))
+        assertNull(IntentParser.parse("kirim foto beso dong"))
+        assertNull(IntentParser.parse("kirim foto nant dong"))
+        assertNull(IntentParser.parse("kirim foto terahir dong"))
+        // Kontrol: kata sah satu hapusan dari penanda tak ke-veto
+        // ("kemari" dari kemarin, "anti" dari nanti).
+        assertEquals("/photo", IntentParser.parse("kirim foto kemari dong"))
+        assertEquals("/photo", IntentParser.parse("kirim foto anti air dong"))
+        // Kontrol: tangkap polos tetap jalan.
+        assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
+    }
+
+    @Test
     fun parseRejectsKemarenAndTempoHariReferences() {
         // #626: ejaan tak baku "kemaren" dan frasa "tempo hari" adalah rujukan
         // masa lalu — sebelumnya tak dikenali sehingga memicu tangkapan baru.
