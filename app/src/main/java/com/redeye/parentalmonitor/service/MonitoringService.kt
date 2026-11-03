@@ -1443,6 +1443,25 @@ class MonitoringService : Service() {
     private val pairGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val pairGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
     private val pairNoticeAt = java.util.concurrent.atomic.AtomicLong(0L)
+    // Eviki peta cap waktu (issue #995): dulu clear() penuh
+    // saat >200 entri ikut menghapus throttle/hint yang
+    // masih berlaku (banjir ID pengirim asing bisa mereset
+    // hitungan gagal login semua orang). Kini buang hanya
+    // entri kedaluwarsa; bila tetap penuh, buang yang
+    // paling tua secukupnya.
+    private fun pruneStampMap(map: java.util.concurrent.ConcurrentHashMap<String, Long>, now: Long, staleMs: Long) {
+        if (map.size <= 200) return
+        val iter = map.entries.iterator()
+        while (iter.hasNext()) {
+            val e = iter.next()
+            if (now - e.value >= staleMs) iter.remove()
+        }
+        if (map.size > 200) {
+            val oldest = map.entries.sortedBy { it.value }.take(map.size - 200)
+            for (e in oldest) map.remove(e.key, e.value)
+        }
+    }
+
     private val loginAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginFails = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
@@ -1481,7 +1500,7 @@ class MonitoringService : Service() {
             try {
                 val last = pairHintAt[senderId] ?: 0L
                 if (last > 0L && now - last < 3_600_000L) return
-                if (pairHintAt.size > 200) pairHintAt.clear()
+                pruneStampMap(pairHintAt, now, 3_600_000L)
                 pairHintAt[senderId] = now
             } catch (_: Exception) {
             }
@@ -1598,14 +1617,25 @@ class MonitoringService : Service() {
         val lastAttempt = try { loginAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
         if (lastAttempt > 0L && now - lastAttempt < LOGIN_ATTEMPT_THROTTLE_MS) return true
         try {
-            if (loginAttemptAt.size > 200) loginAttemptAt.clear()
+            pruneStampMap(loginAttemptAt, now, LOGIN_ATTEMPT_THROTTLE_MS)
             loginAttemptAt[senderId] = now
         } catch (_: Exception) {
         }
         if (!AccessPin.verify(accessPin, arg)) {
             val fails = try { (loginFails[senderId] ?: 0) + 1 } catch (_: Exception) { 1 }
             try {
-                if (loginFails.size > 200) loginFails.clear()
+                if (loginFails.size > 200) {
+                    // Eviki selektif (issue #995): hitungan
+                    // gagal yang percobaan terakhirnya sudah
+                    // lewat satu masa kunci tak relevan lagi;
+                    // sisanya dipertahankan.
+                    val failIter = loginFails.entries.iterator()
+                    while (failIter.hasNext()) {
+                        val key = failIter.next().key
+                        val at = loginAttemptAt[key] ?: 0L
+                        if (at == 0L || now - at >= LOGIN_LOCK_MS) failIter.remove()
+                    }
+                }
                 loginFails[senderId] = fails
             } catch (_: Exception) {
             }
@@ -2228,7 +2258,7 @@ class MonitoringService : Service() {
                         val hintLast = try { pairHintAt["login:$hintTarget"] ?: 0L } catch (_: Exception) { 0L }
                         if (hintLast == 0L || hintNow - hintLast >= 3_600_000L) {
                             try {
-                                if (pairHintAt.size > 200) pairHintAt.clear()
+                                pruneStampMap(pairHintAt, hintNow, 3_600_000L)
                                 pairHintAt["login:$hintTarget"] = hintNow
                             } catch (_: Exception) {
                             }
@@ -2244,7 +2274,7 @@ class MonitoringService : Service() {
                             val lastPair = try { pairAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
                             if (nowPair - lastPair >= 30_000L) {
                                 try {
-                                    if (pairAttemptAt.size > 200) pairAttemptAt.clear()
+                                    pruneStampMap(pairAttemptAt, nowPair, 30_000L)
                                     pairAttemptAt[senderId] = nowPair
                                 } catch (_: Exception) {
                                 }
@@ -2582,7 +2612,7 @@ class MonitoringService : Service() {
             val noticeLast = try { pairHintAt[noticeKey] ?: 0L } catch (_: Exception) { 0L }
             if (noticeLast == 0L || noticeNow - noticeLast >= 3_600_000L) {
                 try {
-                    if (pairHintAt.size > 200) pairHintAt.clear()
+                    pruneStampMap(pairHintAt, noticeNow, 3_600_000L)
                     pairHintAt[noticeKey] = noticeNow
                 } catch (_: Exception) {
                 }
