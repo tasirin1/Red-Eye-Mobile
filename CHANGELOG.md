@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.600] - 2026-11-03
+
 ### Fixed
 
 - Keputusan interval, jatuh tempo laporan, dan teks celah waktu pada watchdog anti-mati kini berupa logika murni yang terkunci uji unit.
