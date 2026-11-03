@@ -79,7 +79,9 @@ object MessageScheduler {
                     outstandingSends.set(1)
                 }
             } catch (e: Exception) {
-                if (replaceDelayed) nextSendAtElapsed.set(prevReplaceMark)
+                // CAS seperti situs utama (issue #1121): pulihkan
+                // hanya bila penanda masih 0 yang kita terbitkan.
+                if (replaceDelayed) nextSendAtElapsed.compareAndSet(0L, prevReplaceMark)
                 outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
                 throw e
             }
@@ -113,6 +115,7 @@ object MessageScheduler {
         // di dalam blok try tidak terlihat dari catch di Kotlin
         // (galat kompilasi yang ditangkap CI pada rilis v1.6.602).
         var prevNextSendAt = 0L
+        var publishedNextSendAt = 0L
         return try {
             val delayMs = initialDelayMs.coerceAtLeast(0L)
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
@@ -127,12 +130,17 @@ object MessageScheduler {
             // dan pesan mendesak menempel di belakang jadwal
             // tertunda. Bila enqueue gagal, nilai lama dipulihkan.
             prevNextSendAt = nextSendAtElapsed.get()
-            nextSendAtElapsed.set(if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L)
+            publishedNextSendAt = if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L
+            nextSendAtElapsed.set(publishedNextSendAt)
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
             true
         } catch (e: Exception) {
-            nextSendAtElapsed.set(prevNextSendAt)
+            // Pulihkan HANYA bila penanda masih nilai yang kita
+            // terbitkan (issue #1121): set buta bisa menimpa
+            // jadwal lebih baru yang diterbitkan benang lain
+            // di antara terbit dan catch.
+            nextSendAtElapsed.compareAndSet(publishedNextSendAt, prevNextSendAt)
             outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule send failed", e)
             false

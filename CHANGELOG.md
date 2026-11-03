@@ -3,6 +3,7 @@
 ### Fixed
 
 - Jalur ganti (REPLACE) pada penjadwalan kirim kini juga memulihkan penanda jadwal bila penempatan kerja gagal, seperti jalur utama: penanda yang terlanjur dinolkan tidak lagi menyembunyikan pekerjaan tertunda yang masih hidup.
+- Pemulihan penanda jadwal saat penempatan kerja gagal kini bersyarat (bandingkan-dan-tukar): nilai lama hanya dipulihkan bila penanda masih persis nilai yang diterbitkan upaya yang gagal itu, sehingga jadwal lebih baru dari penjadwalan lain yang bersamaan tidak tertimpa.
 
 ## [1.6.603] - 2026-11-03
 
