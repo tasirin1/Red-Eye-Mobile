@@ -27,6 +27,7 @@
 - Penanganan bangun watchdog anti-mati kini terserial satu kunci: alarm berkala dan perubahan jam yang tiba bersamaan tidak lagi menjalankan dua kebangkitan sejajar yang berebut memulai layanan.
 - Luapan antrean pool receiver kini diserahkan ke pool cadangan satu benang, bukan dijalankan di benang pemanggil: badai siaran ekstrem tidak lagi berisiko menjalankan penanganan boot di benang utama dan memicu ANR.
 - Penghitung boot kini menyembuhkan diri saat dibaca: reboot yang siaran boot-nya tidak sampai ke aplikasi (mis. aplikasi berstatus berhenti paksa) tetap tercatat lewat saksi jam monoton, sehingga vonis uji anti-mati dan tenggang Setup tidak lagi buta pada reboot itu.
+- Uji anti-mati pertama sesudah aplikasi dipasang/diperbarui tidak lagi buta bukti boot: hitungan boot pertama yang terjadi di dalam masa uji kini dikenali sebagai reboot lewat cap waktu peristiwa hitungnya, tanpa membuka vonis palsu untuk uji lama.
 
 ## [1.6.600] - 2026-11-03
 

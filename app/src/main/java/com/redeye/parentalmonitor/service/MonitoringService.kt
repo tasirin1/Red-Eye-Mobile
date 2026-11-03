@@ -9242,8 +9242,18 @@ class MonitoringService : Service() {
         // peduli jam. Penghitung 0 (uji warisan) = tak diketahui.
         val bootCountThen = try { preferencesManager.liveTestBootCount } catch (_: Exception) { 0L }
         val bootCountNow = com.redeye.parentalmonitor.receiver.BootReceiver.bootCount(this)
+        // Baseline 0 (issue #1071): penghitung belum pernah
+        // bergerak saat uji dimulai (era pasang/update).
+        // Hitungan pertama yang peristiwa cap dindingnya jatuh
+        // DI DALAM masa uji adalah reboot sungguhan di tengah
+        // uji — BOOT_COMPLETED hanya disiarkan saat boot, dan
+        // cap lama dari sebelum uji (baseline 0 hasil gagal
+        // baca) gugur oleh syarat cap >= dinding mulai uji.
+        val bootCountWallNow = com.redeye.parentalmonitor.receiver.BootReceiver.bootCountWall(this)
+        val bootEvidence = (bootCountThen > 0L && bootCountNow != bootCountThen) ||
+            (bootCountThen == 0L && bootCountNow > 0L && startedWall > 0L && bootCountWallNow >= startedWall)
         val rebooted = startedElapsed > nowElapsed ||
-            (bootCountThen > 0L && bootCountNow != bootCountThen) ||
+            bootEvidence ||
             (startedWall > 0L && !BootClock.sameBootOrClockShift(startedWall, startedElapsed, System.currentTimeMillis(), nowElapsed))
         if (rebooted) {
             val terkirim = try {

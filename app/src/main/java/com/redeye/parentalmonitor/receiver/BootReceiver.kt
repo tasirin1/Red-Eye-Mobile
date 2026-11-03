@@ -66,6 +66,18 @@ class BootReceiver : BroadcastReceiver() {
             }
         }
 
+        // Cap dinding peristiwa hitung boot terakhir (issue
+        // #1071): membedakan baseline 0 "belum pernah ada boot
+        // terhitung" dari baseline 0 hasil gagal baca.
+        fun bootCountWall(context: android.content.Context): Long {
+            return try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    .getLong("boot_count_wall", 0L)
+            } catch (_: Exception) {
+                0L
+            }
+        }
+
         private fun noteBootCounted(context: android.content.Context) {
             try {
                 val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
