@@ -118,6 +118,7 @@ class MonitoringService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeErrorHandler)
     private val commandLock = kotlinx.coroutines.sync.Mutex()
     private val controlLock = kotlinx.coroutines.sync.Mutex()
+    private val loginLock = kotlinx.coroutines.sync.Mutex()
     private var lastLoginJob: kotlinx.coroutines.Job? = null
     private var lastLoginSender: String = ""
     private val adoptionGateLock = Any()
@@ -1472,6 +1473,33 @@ class MonitoringService : Service() {
         }
     }
 
+    // Memegang kunci perintah + kontrol hanya selama blok
+    // lokal yang diberikan berjalan (issue #943). Mengembalikan
+    // null bila kedua kunci tak didapat sampai tenggat adopsi.
+    private suspend fun <T> withAdoptionLocks(block: suspend () -> T): T? {
+        var held = false
+        val deadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+        while (!held) {
+            if (controlLock.tryLock()) {
+                if (commandLock.tryLock()) {
+                    held = true
+                } else {
+                    controlLock.unlock()
+                }
+            }
+            if (!held) {
+                if (android.os.SystemClock.elapsedRealtime() >= deadline) return null
+                delay(50)
+            }
+        }
+        return try {
+            block()
+        } finally {
+            commandLock.unlock()
+            controlLock.unlock()
+        }
+    }
+
     private suspend fun handleOwnerLogin(
         command: String,
         arg: String,
@@ -1570,36 +1598,52 @@ class MonitoringService : Service() {
             return true
         }
         val ownerId = senderId.toLongOrNull() ?: return true
-        val adopted = synchronized(ownerLock) {
-            if (cachedOwnerId != 0L) {
-                false
-            } else {
-                val stored = try {
-                    preferencesManager.adoptOwnerChatSync(ownerId, senderId)
-                } catch (_: Exception) {
+        // Hanya komit adopsi yang wajib eksklusif terhadap
+        // perintah lain (issue #943): kunci perintah & kontrol
+        // dipegang selama langkah lokal ini saja — seluruh
+        // panggilan jaringan login berjalan di luar kunci agar
+        // perintah darurat (/lock, /stop) tidak tertahan
+        // jaringan lambat dari pengirim yang belum tentu owner.
+        val adopted = withAdoptionLocks {
+            val stored = synchronized(ownerLock) {
+                if (cachedOwnerId != 0L) {
                     false
-                }
-                if (stored) {
-                    synchronized(credsLock) {
-                        cachedChatId = senderId
-                        cachedOwnerId = ownerId
+                } else {
+                    val ok = try {
+                        preferencesManager.adoptOwnerChatSync(ownerId, senderId)
+                    } catch (_: Exception) {
+                        false
                     }
+                    if (ok) {
+                        synchronized(credsLock) {
+                            cachedChatId = senderId
+                            cachedOwnerId = ownerId
+                        }
+                    }
+                    ok
                 }
-                stored
             }
+            if (stored) {
+                try {
+                    loginAttemptAt.remove(senderId)
+                    loginFails.remove(senderId)
+                    loginLockUntil.remove(senderId)
+                    loginGlobalFails.set(0)
+                    loginGlobalLockoutUntil.set(0L)
+                } catch (_: Exception) {
+                }
+            }
+            stored
+        }
+        if (adopted == null) {
+            android.util.Log.w("MonitoringService", "Login ditolak: kunci perintah sibuk melewati tenggat tunggu adopsi")
+            sendDirect(senderId, "\u23F3\uFE0F Login belum bisa diproses (sistem sibuk terlalu lama). Kirim /login lagi.")
+            return true
         }
         if (!adopted) {
             audit("login pin simpan gagal", "private")
             sendDirect(senderId, "\u26A0\uFE0F PIN benar, tetapi akses gagal disimpan. Coba lagi.")
             return true
-        }
-        try {
-            loginAttemptAt.remove(senderId)
-            loginFails.remove(senderId)
-            loginLockUntil.remove(senderId)
-            loginGlobalFails.set(0)
-            loginGlobalLockoutUntil.set(0L)
-        } catch (_: Exception) {
         }
         refreshCreds()
         audit("login pin ok", "private")
@@ -2099,31 +2143,13 @@ class MonitoringService : Service() {
                         offsetDeferred = true
                         lastLoginSender = senderId
                         lastLoginJob = dispatchTracked(update.updateId, responseGeneration, "Login dispatch error") {
-                            var locksHeld = false
-                            val lockDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
-                            while (!locksHeld) {
-                                if (controlLock.tryLock()) {
-                                    if (commandLock.tryLock()) {
-                                        locksHeld = true
-                                    } else {
-                                        controlLock.unlock()
-                                    }
-                                }
-                                if (!locksHeld) {
-                                    if (android.os.SystemClock.elapsedRealtime() >= lockDeadline) break
-                                    delay(50)
-                                }
-                            }
-                            if (!locksHeld) {
-                                android.util.Log.w("MonitoringService", "Login ditolak: kunci perintah sibuk melewati tenggat tunggu adopsi")
-                                try { sendDirect(senderId, "\u23F3\uFE0F Login belum bisa diproses (sistem sibuk terlalu lama). Kirim /login lagi.") } catch (_: Exception) { }
-                            } else {
-                                try {
-                                    handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
-                                } finally {
-                                    commandLock.unlock()
-                                    controlLock.unlock()
-                                }
+                            // Login diserialkan antar-login saja
+                            // (issue #943): kunci perintah & kontrol
+                            // tidak lagi dipegang selama rangkaian
+                            // jaringan login — adopsi mengambilnya
+                            // sebentar di dalam handler.
+                            loginLock.withLock {
+                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
                             }
                         }
                         continue

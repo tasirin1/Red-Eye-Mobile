@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Login owner tidak lagi menahan kunci perintah dan kontrol selama rangkaian jaringan: kedua kunci kini hanya dipegang sebentar saat komit adopsi owner, dan login antar-pengirim diserialkan oleh kunci login tersendiri — perintah darurat seperti /lock dan /stop tidak lagi tertahan jaringan lambat dari pengirim yang belum tentu owner.
 - Pemulihan penyimpanan terenkripsi kini menggabungkan, bukan menimpa: kunci yang hanya ada di penyimpanan persisten lama (mis. token bot dan chat ID) tidak lagi terhapus saat upgrade dari mode volatile berhasil — snapshot volatile tetap menang untuk kunci yang sama.
 - Jeda foto kini benar-benar berakhir sesudah perangkat menyala ulang: sisa jeda diambil dari nilai terkecil antara jangkar monoton dan tenggat jam dinding, sehingga jangkar monoton yang basi lintas boot tidak lagi membuat jeda bergulir ±8 jam tanpa akhir (perlindungan terhadap jam dimundurkan tetap berlaku).
 
