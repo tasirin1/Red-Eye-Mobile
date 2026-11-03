@@ -1828,6 +1828,33 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_A11Y_ADMIN_GRACE_BOOT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_ADMIN_GRACE_BOOT, value).apply()
 
+    // Penulisan cap tenggang wajib SATU edit (issue #1049):
+    // tiga setter terpisah bisa terputus di tengah oleh mati
+    // proses, menyisakan cap elapsed baru berpasangan penanda
+    // boot lama (atau sebaliknya) dan tenggang diputuskan
+    // dari cabang yang salah.
+    fun setA11ySettingsGrace(until: Long, elapsedUntil: Long, bootCount: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_A11Y_SETTINGS_GRACE, until)
+                .putLong(KEY_A11Y_SETTINGS_GRACE_ELAPSED, elapsedUntil)
+                .putLong(KEY_A11Y_SETTINGS_GRACE_BOOT, bootCount)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    fun setA11yAdminGrace(until: Long, elapsedUntil: Long, bootCount: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_A11Y_ADMIN_GRACE, until)
+                .putLong(KEY_A11Y_ADMIN_GRACE_ELAPSED, elapsedUntil)
+                .putLong(KEY_A11Y_ADMIN_GRACE_BOOT, bootCount)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var a11yAppWatchEnabled: Boolean
         get() = prefBoolean(KEY_A11Y_APP_WATCH, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_A11Y_APP_WATCH, value).apply()
