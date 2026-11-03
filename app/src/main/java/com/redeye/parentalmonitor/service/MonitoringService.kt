@@ -3880,8 +3880,11 @@ class MonitoringService : Service() {
                 // lebih muda dari batas tak pernah ikut terhapus;
                 // harga yang dibayar hanya pembersihan terlambat
                 // sesudah pindah zona jauh. lastModified tak
-                // berzona, tetap memakai batas polos.
-                val melewatiBatas = if (bornMs > 0L) {
+                // berzona, tetap memakai batas polos. Audio juga
+                // batas polos (issue #1142): namanya menyematkan
+                // epoch murni yang kebal zona — margin hanya
+                // menunda tanpa alasan.
+                val melewatiBatas = if (bornMs > 0L && !audio) {
                     ageRef < cutoff - 26L * 3_600_000L
                 } else {
                     ageRef < cutoff

@@ -6,6 +6,7 @@
 - Penerbitan penanda jadwal kirim kini atomik (putaran bandingkan-dan-tukar di kedua jalur penjadwalan): dua penjadwalan yang berjalan bersamaan tidak lagi saling menimpa, dan pemulihan saat gagal tidak bisa mengembalikan nilai basi di atas pekerjaan yang sudah terantre.
 - Saksi penghitung boot sistem kini membedakan bacaan nyata dari taksiran: nilai taksiran (pasangan kenaikan saat bacaan gagal) tidak lagi bisa membuat boot sungguhan berikutnya tertelan sebagai duplikat.
 - Pencatatan pemakaian harian tidak lagi berhenti berhari-hari sesudah jam melompat jauh ke depan lalu dikoreksi: tanggal hari sebenarnya yang terjepit di antara slot cadangan dan tanggal hantu kini mengambil alih slot berjalan, bukan terbuang diam-diam.
+- Pembersihan rekaman suara kembali memakai batas umur persis seperti yang diminta: margin kehati-hatian zona 26 jam kini hanya untuk foto/video (yang cap namanya jam dinding), bukan audio yang cap namanya epoch dan tak terpengaruh zona.
 
 ## [1.6.604] - 2026-11-03
 
