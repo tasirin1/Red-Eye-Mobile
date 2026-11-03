@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksaan data segera kini meneruskan pembatalan korutin dengan benar, tidak lagi menelannya di penangkap pengecualian umum.
 - Penyalakan ulang loop kamera/patroli kini sungguh menunggu loop lama selesai bergabung sampai batas total 60 detik — sebelumnya pengganti bisa menyala sesudah 5 detik di atas loop lama yang masih menuntaskan putarannya.
 - Gerbang verifikasi kini mengenali definisi resource yang atributnya ditulis sebelum nama (mis. translatable lebih dulu) — string tanpa terjemahan Indonesia tidak lagi lolos senyap dari semua cek resource.
 - Pemantauan aksesibilitas tidak lagi menulis ulang seluruh data pemakaian pada setiap ganti layar saat monitoring mati/dijeda — penyimpanan kini mengikuti jatah berkala biasa, dan pembersihan cap sesi hanya berjalan bila memang ada cap tersimpan.

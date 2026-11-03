@@ -6318,6 +6318,10 @@ class MonitoringService : Service() {
             } finally {
                 synchronized(immediateCheckLock) { immediateCheckRunning = false }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Pembatalan korutin diteruskan, tidak ditelan
+            // catch-all (issue #1013, pola #997).
+            throw e
         } catch (_: Exception) {
         }
     }
