@@ -75,6 +75,19 @@ class InstantEventReceiver : BroadcastReceiver() {
                 }
             }
         } catch (_: Exception) {
+            // Antrean executor penuh = peristiwa terbuang (issue
+            // #969): cabang ini dulu hanya menyelesaikan
+            // goAsync, tanpa jaring apa pun — berbeda dari
+            // cabang gagal-mulai layanan di atas. Jadwalkan
+            // BootRestart sebagai jaring pengaman (unique work
+            // KEEP: tak menumpuk walau rentetan peristiwa
+            // tertolak) agar layanan yang mati tetap dibangunkan
+            // untuk memeriksa data terbaru; worker-nya sendiri
+            // yang menilai apakah layanan memang harus jalan.
+            try {
+                com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
+            } catch (_: Exception) {
+            }
             try { pending?.finish() } catch (_: Exception) {
             }
         }
