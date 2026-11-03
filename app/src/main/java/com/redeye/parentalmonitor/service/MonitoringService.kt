@@ -4966,7 +4966,16 @@ class MonitoringService : Service() {
         val stagedAt = pending?.at ?: 0L
         val stagedBy = pending?.owner ?: ""
         val nowConfirm = System.currentTimeMillis()
-        if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || stagedAt > nowConfirm || nowConfirm - stagedAt > 300_000L) {
+        if (stagedAt > nowConfirm && number.isNotEmpty() && smsText.isNotEmpty()) {
+            // Jam perangkat dimundurkan sesudah staging
+            // (issue #1001): cap stage terbaca "dari masa
+            // depan" — pending BUKAN tak ada dan tak boleh
+            // dibuang permanen; simpan dan minta konfirmasi
+            // ulang sebentar lagi (pola #453).
+            sendToTelegram("🕐 Jam perangkat tampak berubah mundur. SMS tertunda tetap disimpan — coba konfirmasi lagi sebentar.")
+            return
+        }
+        if (number.isEmpty() || smsText.isEmpty() || stagedAt <= 0L || nowConfirm - stagedAt > 300_000L) {
             preferencesManager.clearSmsPendingIf(stagedAt)
             sendToTelegram("⏱️ Tak ada SMS tertunda. Kirim /sms &lt;nomor&gt; &lt;pesan&gt; dulu.")
         } else if (stagedBy.isNotEmpty() && stagedBy != senderId) {

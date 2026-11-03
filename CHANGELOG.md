@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Konfirmasi SMS tertunda tidak lagi membuang SMS-nya bila jam perangkat dimundurkan sesudah SMS disiapkan — pending tetap disimpan dan pemilik diminta mengonfirmasi ulang sebentar lagi.
 - Pencarian riwayat nomor kini mengumpulkan kecocokan dari semua halaman pindaian, bukan berhenti di halaman pertama yang berisi kecocokan — riwayat nomor lama tidak lagi tampil sebagian.
 - Pelupaan paket ter-uninstall dari daftar dikenal kini dikerjakan di jalur latar penerima siaran, bukan sinkron di benang broadcast yang jatah waktunya sempit.
 - Pendaftaran percobaan ulang pesan kini juga memulihkan antrean persisten lebih dulu seperti semua jalur tulis lain, bukan berjalan di salinan sementara walau penyimpanan sudah pulih.
