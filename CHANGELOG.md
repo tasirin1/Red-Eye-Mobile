@@ -3,6 +3,7 @@
 ### Fixed
 
 - Pengurai riwayat nama pada gerbang kini mengenal status berubah-tipe (berkas menjadi symlink atau sebaliknya) seperti pengurai hapusannya: satu perubahan tipe tidak lagi mengacaukan pembacaan nama-nama sesudahnya pada pindai riwayat.
+- Hapus kredensial tidak lagi bisa menimpa konfigurasi yang baru disimpan: gelombang tulis keduanya kini berjalan di dalam kunci konfigurasi yang sama dengan jalur simpan dan hanya jalan bila belum ada simpan yang lebih baru sejak ketukan hapus.
 
 ## [1.6.605] - 2026-11-03
 

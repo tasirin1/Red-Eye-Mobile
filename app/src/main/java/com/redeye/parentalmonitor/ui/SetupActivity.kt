@@ -786,6 +786,9 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         persistScope.launch(ioExceptionHandler) {
+            // Generasi milik hapus ini, ditangkap sesudah
+            // kenaikan saveSeq di ketukan hapus (issue #1151).
+            val myClear = saveSeq.get()
             val oldOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
             val oldToken = try { prefs.botToken } catch (_: Exception) { "" }
             try { prefs.botToken = "" } catch (_: Exception) { }
@@ -812,70 +815,83 @@ class SetupActivity : AppCompatActivity() {
                 } catch (_: Exception) {
                 }
             }
-            try { prefs.setCredentialError("", 0L) } catch (_: Exception) { }
-            try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
-            try { prefs.pendingSmsText = "" } catch (_: Exception) { }
-            try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
-            try { prefs.pendingSmsOwner = "" } catch (_: Exception) { }
-            try { prefs.pendingPromptCmd = "" } catch (_: Exception) { }
-            try { prefs.setPendingPrompt("", 0L) } catch (_: Exception) { }
-            try { prefs.clearRingStateSync() } catch (_: Exception) { }
-            try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
-            try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
-            try { prefs.setOwnerPairCode("") } catch (_: Exception) { }
-            try { prefs.accessPin = "" } catch (_: Exception) { }
-            try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
-            try { prefs.cameraInterval = 1 } catch (_: Exception) { }
-            try { prefs.patrolInterval = 30 } catch (_: Exception) { }
-            try {
-                cacheDir?.listFiles { f ->
-                    f.isFile && (f.name.startsWith("camera_") || f.name.startsWith("video_") || f.name.startsWith("audio_") || f.name.startsWith("screenshot_"))
-                }?.forEach {
-                    try { it.delete() } catch (_: Exception) { }
-                }
-            } catch (_: Exception) {
-            }
-            try { prefs.setSmsCursorSync(0L) } catch (_: Exception) { }
-            try { prefs.setCallCursorSync(0L, 0L) } catch (_: Exception) { }
-            try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
-            try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
-            try { prefs.initialSyncDone = false } catch (_: Exception) { }
-            try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
-            try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
-            try { com.redeye.parentalmonitor.service.NotificationForwarderService.resetDropCounters(prefs) } catch (_: Exception) { }
-            try { prefs.monitoringPaused = false } catch (_: Exception) { }
-            try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
-            try { prefs.patrolEnabled = false } catch (_: Exception) { }
-            try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
-            try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
-            val queueCleared = try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { false }
-            try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
-            try { synchronized(prefs.prefsRmwLock) { prefs.trail24 = "" } } catch (_: Exception) { }
-            try { prefs.homeLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
-            try { prefs.homeLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
-            try { prefs.homeRadiusM = 0 } catch (_: Exception) { }
-            try { prefs.homeState = 0 } catch (_: Exception) { }
-            try { prefs.schoolLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
-            try { prefs.schoolLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
-            try { prefs.schoolRadiusM = 0 } catch (_: Exception) { }
-            try { prefs.schoolState = 0 } catch (_: Exception) { }
-            try { prefs.schoolAlertDate = "" } catch (_: Exception) { }
-            try { prefs.clearAuditLog() } catch (_: Exception) { }
-            try { prefs.watchKeywords = "" } catch (_: Exception) { }
-            try { prefs.watchNumbers = "" } catch (_: Exception) { }
+            // Gelombang 2 dikunci + dicek generasinya (issue
+            // #1151): dua panggilan jaringan di atas bisa
+            // menggantung semenit lebih, dan simpan yang dimulai
+            // sesudah ketuk hapus menaikkan saveSeq — simpan itu
+            // yang berhak menang. Tanpa gerbang ini tulisannya
+            // tertimpa gelombang ini walau sudah terkonfirmasi.
+            var queueCleared = false
             var storageReset = false
-            val wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
-            if (wasVolatile) {
-                val outcome = try {
-                    PreferencesManager.resetEncryptedStorage(this@SetupActivity)
+            var wasVolatile = false
+            val gelombang2Jalan = configMutex.withLock {
+                if (saveSeq.get() != myClear) return@withLock false
+                try { prefs.setCredentialError("", 0L) } catch (_: Exception) { }
+                try { prefs.pendingSmsNumber = "" } catch (_: Exception) { }
+                try { prefs.pendingSmsText = "" } catch (_: Exception) { }
+                try { prefs.pendingSmsAt = 0L } catch (_: Exception) { }
+                try { prefs.pendingSmsOwner = "" } catch (_: Exception) { }
+                try { prefs.pendingPromptCmd = "" } catch (_: Exception) { }
+                try { prefs.setPendingPrompt("", 0L) } catch (_: Exception) { }
+                try { prefs.clearRingStateSync() } catch (_: Exception) { }
+                try { prefs.lastSmsSendAt = 0L } catch (_: Exception) { }
+                try { prefs.commandsTokenHash = "" } catch (_: Exception) { }
+                try { prefs.setOwnerPairCode("") } catch (_: Exception) { }
+                try { prefs.accessPin = "" } catch (_: Exception) { }
+                try { prefs.syncInterval = com.redeye.parentalmonitor.BuildConfig.SYNC_INTERVAL } catch (_: Exception) { }
+                try { prefs.cameraInterval = 1 } catch (_: Exception) { }
+                try { prefs.patrolInterval = 30 } catch (_: Exception) { }
+                try {
+                    cacheDir?.listFiles { f ->
+                        f.isFile && (f.name.startsWith("camera_") || f.name.startsWith("video_") || f.name.startsWith("audio_") || f.name.startsWith("screenshot_"))
+                    }?.forEach {
+                        try { it.delete() } catch (_: Exception) { }
+                    }
                 } catch (_: Exception) {
-                    PreferencesManager.StorageRecovery.FAILED
                 }
-                storageReset = outcome == PreferencesManager.StorageRecovery.RESET
-                if (storageReset) {
-                    try { PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
+                try { prefs.setSmsCursorSync(0L) } catch (_: Exception) { }
+                try { prefs.setCallCursorSync(0L, 0L) } catch (_: Exception) { }
+                try { prefs.lastSyncTime = 0L } catch (_: Exception) { }
+                try { prefs.lastPhotoTime = 0L } catch (_: Exception) { }
+                try { prefs.initialSyncDone = false } catch (_: Exception) { }
+                try { com.redeye.parentalmonitor.utils.ScreenCapture.revoke() } catch (_: Exception) { }
+                try { prefs.pendingMsgDrops = 0 } catch (_: Exception) { }
+                try { com.redeye.parentalmonitor.service.NotificationForwarderService.resetDropCounters(prefs) } catch (_: Exception) { }
+                try { prefs.monitoringPaused = false } catch (_: Exception) { }
+                try { prefs.photoPausedUntil = 0L } catch (_: Exception) { }
+                try { prefs.patrolEnabled = false } catch (_: Exception) { }
+                try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
+                try { prefs.setLastAliveMarker(0L, 0L) } catch (_: Exception) { }
+                queueCleared = try { com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@SetupActivity).clearQueue() } catch (_: Exception) { false }
+                try { com.redeye.parentalmonitor.service.NotificationForwarderService.clearHistory() } catch (_: Exception) { }
+                try { synchronized(prefs.prefsRmwLock) { prefs.trail24 = "" } } catch (_: Exception) { }
+                try { prefs.homeLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
+                try { prefs.homeLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
+                try { prefs.homeRadiusM = 0 } catch (_: Exception) { }
+                try { prefs.homeState = 0 } catch (_: Exception) { }
+                try { prefs.schoolLatE6 = Long.MIN_VALUE } catch (_: Exception) { }
+                try { prefs.schoolLonE6 = Long.MIN_VALUE } catch (_: Exception) { }
+                try { prefs.schoolRadiusM = 0 } catch (_: Exception) { }
+                try { prefs.schoolState = 0 } catch (_: Exception) { }
+                try { prefs.schoolAlertDate = "" } catch (_: Exception) { }
+                try { prefs.clearAuditLog() } catch (_: Exception) { }
+                try { prefs.watchKeywords = "" } catch (_: Exception) { }
+                try { prefs.watchNumbers = "" } catch (_: Exception) { }
+                wasVolatile = try { !prefs.isStorageEncrypted } catch (_: Exception) { false }
+                if (wasVolatile) {
+                    val outcome = try {
+                        PreferencesManager.resetEncryptedStorage(this@SetupActivity)
+                    } catch (_: Exception) {
+                        PreferencesManager.StorageRecovery.FAILED
+                    }
+                    storageReset = outcome == PreferencesManager.StorageRecovery.RESET
+                    if (storageReset) {
+                        try { PreferencesManager.getInstance(this@SetupActivity) } catch (_: Exception) { }
+                    }
                 }
+                true
             }
+            if (!gelombang2Jalan) return@launch
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 loadedConfigured = false
