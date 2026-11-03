@@ -5901,7 +5901,11 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 0L
             }
+            // Penyelesaian sisi SMS untuk cap akhir putaran (issue
+            // #886): halaman kosong berarti sisi ini tuntas seketika.
+            var smsTuntas = false
             val smsPage = smsRepository.getNewSms(lastSms, lastSmsTs)
+            smsTuntas = smsPage.isEmpty()
             if (smsPage.isNotEmpty()) {
                 var smsCursor = lastSms
                 var smsDate = lastSmsTs
@@ -5944,6 +5948,7 @@ class MonitoringService : Service() {
                 if (smsHabis) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
+                smsTuntas = smsHabis
             }
             val lastCallTs = try {
                 preferencesManager.lastCallTimestamp
@@ -5955,7 +5960,9 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 0L
             }
+            var callTuntas = false
             val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
+            callTuntas = callPage.isEmpty()
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
                 var callCursorId = lastCallId
@@ -5996,6 +6003,16 @@ class MonitoringService : Service() {
                 if (callHabis) {
                     try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
                 }
+                callTuntas = callHabis
+            }
+            // Putaran tuntas walau KEDUA halaman kosong (issue #886):
+            // cap #850 bersarang di cabang halaman non-kosong, jadi
+            // ponsel sepi (tak ada SMS/panggilan baru) tak pernah
+            // mencap dan /status menampilkan "belum pernah" selamanya
+            // walau sinkron sehat. Cap hanya bila kedua sisi selesai
+            // penuh — putaran yang terputus antrean/drop tak dihitung.
+            if (smsTuntas && callTuntas) {
+                try { preferencesManager.lastSyncTime = System.currentTimeMillis() } catch (_: Exception) { }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
