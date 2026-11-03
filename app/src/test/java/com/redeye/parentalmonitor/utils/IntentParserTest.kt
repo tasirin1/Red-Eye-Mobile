@@ -573,6 +573,16 @@ class IntentParserTest {
     }
 
     @Test
+    fun aliasCoversBareScreenshotAndStatus() {
+        // #884: "screenshot" dan "status" sebelumnya tak punya alias
+        // kata-tunggal dan parse() menuntut 2 grup, jadi sisi tunggal
+        // pada pesan gabungan ("screenshot lalu foto") tak teresolusi
+        // dan janji saran #844 gugur senyap untuk kata itu.
+        assertEquals("/screenshot", IntentParser.intentOrAlias("screenshot", "/screenshot"))
+        assertEquals("/status", IntentParser.intentOrAlias("status", "/status"))
+    }
+
+    @Test
     fun aliasFutureMarkerYieldsToReadOnlyTargets() {
         // #755: penanda masa depan tak memveto target baca-saja di jalur
         // alias, selaras toleransi parse() dan pengecualian #672.
