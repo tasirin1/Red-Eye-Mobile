@@ -984,22 +984,34 @@ class MonitoringService : Service() {
                             initialSyncRetryAt = 0L
                             startInitialSync(force = false)
                         }
+                        // Beat diperbarui di antara flush (issue
+                        // #913): tiap flush dibatasi tenggat 10 mnt
+                        // (MEDIA_FLUSH_DEADLINE_MS) sedangkan ambang
+                        // vonis macet watchdog = cycle + 10 mnt
+                        // (>= 11 mnt) — tanpa beat di sela, rantai
+                        // flush yang sah bisa ±30 mnt tanpa beat dan
+                        // loop sehat direstart paksa di tengah jalan.
+                        monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         try {
                             CrashReporter.flushPending(this@MonitoringService)
                         } catch (_: Exception) {
                         }
+                        monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         try {
                             flushPendingAudio()
                         } catch (_: Exception) {
                         }
+                        monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         try {
                             flushPendingPhotos()
                         } catch (_: Exception) {
                         }
+                        monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         try {
                             flushPendingVideos()
                         } catch (_: Exception) {
                         }
+                        monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         val effSync = effectiveSyncMillis()
                         monitorCycleMs = effSync
                         pauseAwareDelay(effSync)
