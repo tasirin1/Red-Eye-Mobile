@@ -772,6 +772,13 @@ object A11yMonitor {
             recycleNode(root)
             return ScreenSnapshot(emptyList(), false) to null
         }
+        // Sidik jendela di awal penelusuran (issue #929): node
+        // adalah objek hidup — navigasi cepat di tengah
+        // penelusuran mencampur teks dua layar (satu paket,
+        // beda halaman) sehingga alasan tamper berbasis teks
+        // bisa hilang/salah. Di akhir, jendela aktif diverifikasi
+        // masih yang sama; bila sudah berganti, snapshot dibuang.
+        val windowIdAwal = try { root.windowId } catch (_: Exception) { -1 }
         val out = ArrayList<String>()
         var hasPassword = false
         var fullHit: String? = null
@@ -815,6 +822,14 @@ object A11yMonitor {
             }
         } finally {
             while (queue.isNotEmpty()) recycleNode(queue.removeFirst())
+        }
+        if (windowIdAwal >= 0) {
+            val rootKini = try { service.rootInActiveWindow } catch (_: Exception) { null }
+            val windowIdKini = try { rootKini?.windowId ?: -1 } catch (_: Exception) { -1 }
+            if (rootKini != null) recycleNode(rootKini)
+            if (windowIdKini >= 0 && windowIdKini != windowIdAwal) {
+                return ScreenSnapshot(emptyList(), false) to null
+            }
         }
         return ScreenSnapshot(out, hasPassword) to fullHit
     }
