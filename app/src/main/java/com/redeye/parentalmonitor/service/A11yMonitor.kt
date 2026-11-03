@@ -79,6 +79,7 @@ object A11yMonitor {
     private var watchKeywordsRaw: String? = null
     @Volatile
     private var watchKeywordsCache: List<String> = emptyList()
+    private val watchCacheLock = Any()
     private var keywordAlertDay = ""
     private var keywordAlertDayAtMs = 0L
     private var keywordAlertCount = 0
@@ -307,21 +308,30 @@ object A11yMonitor {
     }
 
     private fun watchedPackages(manager: PreferencesManager): Set<String> {
-        val raw = try { manager.a11yAppWatchPackages } catch (_: Exception) { "" }
-        if (raw != watchPackagesRaw) {
-            watchPackagesCache = try { manager.a11yAppWatchPackageSet() } catch (_: Exception) { emptySet() }
-            watchPackagesRaw = raw
+        // Pasangan (raw, cache) dinilai+ditulis atomik
+        // (issue #1100): dua benang (peristiwa + executor)
+        // dulu bisa menyilangkan tulisannya sehingga keadaan
+        // akhir menyatakan raw lama dengan cache baru atau
+        // sebaliknya. Satu kunci untuk kedua pasangan.
+        synchronized(watchCacheLock) {
+            val raw = try { manager.a11yAppWatchPackages } catch (_: Exception) { "" }
+            if (raw != watchPackagesRaw) {
+                watchPackagesCache = try { manager.a11yAppWatchPackageSet() } catch (_: Exception) { emptySet() }
+                watchPackagesRaw = raw
+            }
+            return watchPackagesCache
         }
-        return watchPackagesCache
     }
 
     private fun watchedKeywords(manager: PreferencesManager): List<String> {
-        val raw = try { manager.watchKeywords } catch (_: Exception) { "" }
-        if (raw != watchKeywordsRaw) {
-            watchKeywordsCache = AppWatch.parseKeywords(raw)
-            watchKeywordsRaw = raw
+        synchronized(watchCacheLock) {
+            val raw = try { manager.watchKeywords } catch (_: Exception) { "" }
+            if (raw != watchKeywordsRaw) {
+                watchKeywordsCache = AppWatch.parseKeywords(raw)
+                watchKeywordsRaw = raw
+            }
+            return watchKeywordsCache
         }
-        return watchKeywordsCache
     }
 
     private fun scanWatchedContent(service: AccessibilityService, pkg: String) {

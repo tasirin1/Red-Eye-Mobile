@@ -26,6 +26,7 @@
 - Penanda jadwal kirim tertunda kini diterbitkan sebelum pekerjaan antreannya didaftarkan (dan dinolkan sebelum pekerjaan pengganti didaftarkan): pesan mendesak tidak lagi bisa membaca penanda basi dan ikut menunggu di belakang jadwal tertunda.
 - Penggabungan ulang batas rate-limit dari penyimpanan kini memakai kunci dan aturan maksimum yang sama dengan penulisnya: jendela tunggu 429 yang lebih panjang tidak lagi bisa tertimpa nilai lebih pendek dari jalur pembaca.
 - Cache status jaringan kini disimpan sebagai satu pasangan atomik (waktu cek + hasil): pembaca bersamaan tidak lagi bisa menerima cap segar yang berpasangan dengan hasil lama.
+- Cache paket dan kata pantau aksesibilitas kini dinilai dan diperbarui di bawah satu kunci: dua benang pemindai tidak lagi bisa menyilangkan pasangan nilai mentah dan hasil urainya.
 
 ## [1.6.601] - 2026-11-03
 
