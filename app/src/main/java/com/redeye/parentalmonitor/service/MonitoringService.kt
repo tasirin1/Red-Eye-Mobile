@@ -7445,9 +7445,11 @@ class MonitoringService : Service() {
                         }
                     }
                 }
+                var stateSebelum = -1
                 val transition = try {
                     synchronized(fenceLock) {
                         val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
+                        stateSebelum = state
                         val inside = GeofenceLogic.insideWithHysteresis(state, dist, rad)
                         val t = GeofenceLogic.transition(state, inside, accuracyM, rad)
                         val ws = t.writeState
@@ -7504,6 +7506,19 @@ class MonitoringService : Service() {
                                 synchronized(fenceLock) {
                                     val nowWall = System.currentTimeMillis()
                                     if (isHome) preferencesManager.homeAlertAt = nowWall else preferencesManager.schoolAlertAt = nowWall
+                                }
+                            } catch (_: Exception) {
+                            }
+                        } else if (stateSebelum >= 0) {
+                            // Kirim terbuang (issue #911): pulihkan
+                            // state pagar ke sebelum transisi agar
+                            // pemeriksaan berikutnya mendeteksi ulang
+                            // dan alert dicoba lagi — tanpa ini alert
+                            // hilang permanen walau cap cooldown
+                            // sudah ditahan (issue #795).
+                            try {
+                                synchronized(fenceLock) {
+                                    if (isHome) preferencesManager.homeState = stateSebelum else preferencesManager.schoolState = stateSebelum
                                 }
                             } catch (_: Exception) {
                             }

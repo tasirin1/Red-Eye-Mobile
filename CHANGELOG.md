@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Alert geofence tidak lagi hilang permanen bila kirimnya terbuang (DROPPED): state pagar kini dipulihkan ke keadaan sebelum transisi sehingga pemeriksaan berikutnya mendeteksi ulang dan alert dicoba lagi (sebelumnya hanya cap cooldown yang ditahan, state terlanjur berganti).
+
 ## [1.6.596] - 2026-11-03
 
 ### Changed
