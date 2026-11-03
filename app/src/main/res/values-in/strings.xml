@@ -165,6 +165,7 @@
     <string name="setup_status_storage_enc">terenkripsi</string>
     <string name="setup_status_storage_plain">sementara (keystore tak tersedia)</string>
     <string name="setup_status_storage_plain_reason">sementara (keystore tak tersedia: %1$s)</string>
+    <string name="setup_status_storage_lost">HILANG (kredensial tersimpan tak terbaca — isi ulang di Setup)</string>
     <string name="setup_status_notif_fmt">Notifikasi: %1$s</string>
     <string name="setup_status_forwarded">diteruskan</string>
     <string name="setup_status_off">mati</string>

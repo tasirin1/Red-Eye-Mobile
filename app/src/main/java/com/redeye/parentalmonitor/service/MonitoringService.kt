@@ -921,7 +921,15 @@ class MonitoringService : Service() {
         }
         if (!preferencesManager.isStorageEncrypted && storageWarnAt.compareAndSet(0L, System.currentTimeMillis())) {
             serviceScope.launch {
-                sendToTelegram("Mode cadangan: penyimpanan aman tak tersedia, data ditahan di memori sementara sampai Setup dibuka lagi.")
+                // Bedakan kredensial HILANG (issue #916: berkas
+                // terenkripsi ada tapi tak terbaca) dari sekadar
+                // mode cadangan — pesannya harus memanggil owner
+                // mengisi ulang, bukan menunggu Setup dibuka.
+                val hilang = try { preferencesManager.credentialsLikelyLost } catch (_: Exception) { false }
+                sendToTelegram(
+                    if (hilang) "⚠️ Penyimpanan aman rusak/hilang: token & Chat ID yang tersimpan tak terbaca lagi, jadi monitoring berhenti mengirim. Buka aplikasi dan isi ulang kredensial di Setup."
+                    else "Mode cadangan: penyimpanan aman tak tersedia, data ditahan di memori sementara sampai Setup dibuka lagi."
+                )
             }
         }
 

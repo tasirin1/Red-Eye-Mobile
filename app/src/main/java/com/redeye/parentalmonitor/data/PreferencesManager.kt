@@ -37,6 +37,18 @@ class PreferencesManager(context: Context) {
     val isStorageEncrypted: Boolean
         get() = storageEncrypted
 
+    // Berkas penyimpanan terenkripsi ADA di disk tetapi tak bisa
+    // dibuka (kunci KeyStore hilang/ter-invalidasi): perangkat ini
+    // PERNAH terkonfigurasi dan kredensialnya kini tak terbaca
+    // (issue #916) — keadaan yang harus dibedakan dari pemasangan
+    // baru yang memang belum berisi apa pun.
+    val credentialsLikelyLost: Boolean
+        get() = !storageEncrypted && try {
+            java.io.File(appContext.filesDir.parentFile, "shared_prefs/secure_prefs.xml").exists()
+        } catch (_: Exception) {
+            false
+        }
+
     val prefsRmwLock = Any()
     private val listenerLock = Any()
     private val listenerSet = mutableSetOf<android.content.SharedPreferences.OnSharedPreferenceChangeListener>()

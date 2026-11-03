@@ -2042,6 +2042,7 @@ class SetupActivity : AppCompatActivity() {
             val usageLine = "\n" + getString(R.string.setup_status_usage_fmt, getString(if (usageOn) R.string.setup_status_ready else R.string.setup_status_usage_off))
             val storageReason = try { PreferencesManager.storageFailureReason } catch (_: Exception) { "" }
             val storageLabel = when {
+                try { prefs.credentialsLikelyLost } catch (_: Exception) { false } -> getString(R.string.setup_status_storage_lost)
                 encrypted -> getString(R.string.setup_status_storage_enc)
                 storageReason.isNotEmpty() -> getString(R.string.setup_status_storage_plain_reason, storageReason)
                 else -> getString(R.string.setup_status_storage_plain)
