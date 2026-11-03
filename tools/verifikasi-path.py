@@ -688,8 +688,23 @@ def _deklarasi_tingkat_atas(teks, kelas):
             i = n if j < 0 else j + 1
             continue
         if c == "/" and i + 1 < n and teks[i + 1] == "*":
-            j = teks.find("*/", i + 2)
-            i = n if j < 0 else j + 2
+            # Komentar blok Kotlin bisa BERSARANG (issue
+            # #1184): hitung kedalaman buka/tutup, jangan
+            # berhenti di penutup pertama — sisa komentar luar
+            # yang memuat teks deklarasi atau kurung pernah
+            # terhitung sebagai kode sungguhan dua arah.
+            kedalaman_komentar = 1
+            j = i + 2
+            while j < n and kedalaman_komentar > 0:
+                if teks.startswith("/*", j):
+                    kedalaman_komentar += 1
+                    j += 2
+                elif teks.startswith("*/", j):
+                    kedalaman_komentar -= 1
+                    j += 2
+                else:
+                    j += 1
+            i = j
             continue
         if teks.startswith('"""', i):
             j = teks.find('"""', i + 3)
