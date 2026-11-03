@@ -685,12 +685,16 @@ object A11yMonitor {
             }
             if (!done && !monitoringActive(manager)) {
                 finishSessionLocked(nowWall, nowElapsed)
-                persistSnapshot = persistSnapshotLocked(true)
+                // Persist mengikuti jatah normal (issue #1010):
+                // paksa di sini membuat SETIAP transisi activity
+                // menulis ulang seluruh JSON pemakaian walau
+                // monitoring mati dan tak ada data baru.
+                persistSnapshot = persistSnapshotLocked(false)
                 done = true
             }
             if (!done && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
                 finishSessionLocked(nowWall, nowElapsed)
-                persistSnapshot = persistSnapshotLocked(true)
+                persistSnapshot = persistSnapshotLocked(false)
                 done = true
             }
             if (!done && pkg != currentPackage) {
@@ -976,12 +980,22 @@ object A11yMonitor {
     }
 
     private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {
+        // Pembersih hanya berjalan bila memang ada cap tersimpan
+        // (issue #1010): dulu setiap panggilan membayar dua
+        // apply() prefs walau tidak ada sesi/cap yang berubah.
+        val nightStored = nightAlertedPackage.isNotEmpty() ||
+            try { prefs?.a11yNightAlertPkg?.isNotEmpty() == true } catch (_: Exception) { false }
         nightAlertedPackage = ""
-        try { prefs?.clearA11yNightAlertPkg() } catch (_: Exception) { }
+        if (nightStored) {
+            try { prefs?.clearA11yNightAlertPkg() } catch (_: Exception) { }
+        }
         if (currentPackage.isEmpty() || currentStartElapsed <= 0L) {
             currentPackage = ""
             currentStartElapsed = 0L
-            try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
+            val sessionStored = try { prefs?.a11yOpenSessionPkg?.isNotEmpty() == true } catch (_: Exception) { false }
+            if (sessionStored) {
+                try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
+            }
             return
         }
         accrueSessionLocked(nowWall, nowElapsed)
