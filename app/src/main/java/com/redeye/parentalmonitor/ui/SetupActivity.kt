@@ -259,6 +259,8 @@ class SetupActivity : AppCompatActivity() {
 
     companion object {
         private val persistScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+        // Jatah bangun-ulang dari halaman Setup (issue #1124).
+        private val setupReviveAt = java.util.concurrent.atomic.AtomicLong(0L)
         @Volatile
         private var saveJob: kotlinx.coroutines.Job? = null
         private val saveSeq = java.util.concurrent.atomic.AtomicInteger(0)
@@ -649,6 +651,22 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun reviveMonitoringIfNeeded() {
+        // Layanan sehat tak perlu dibangunkan (issue #1124):
+        // kembarannya di layanan notifikasi sudah memakai cek
+        // berjalan + klaim jatah CAS 60 detik (#1104); situs ini
+        // tertinggal — setiap onResume dan beberapa tombol
+        // membayar rantai cek izin penuh + startForegroundService
+        // yang dijawab layanan dengan siklus start penuh.
+        try {
+            if (com.redeye.parentalmonitor.service.MonitoringService.isRunning) return
+        } catch (_: Exception) {
+        }
+        val nowRevive = android.os.SystemClock.elapsedRealtime()
+        while (true) {
+            val lastRevive = setupReviveAt.get()
+            if (nowRevive - lastRevive < 60_000L) return
+            if (setupReviveAt.compareAndSet(lastRevive, nowRevive)) break
+        }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val shouldRevive = try {
                 prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()

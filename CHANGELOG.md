@@ -6,6 +6,7 @@
 - Pemulihan penanda jadwal saat penempatan kerja gagal kini bersyarat (bandingkan-dan-tukar): nilai lama hanya dipulihkan bila penanda masih persis nilai yang diterbitkan upaya yang gagal itu, sehingga jadwal lebih baru dari penjadwalan lain yang bersamaan tidak tertimpa.
 - Kenaikan penghitung boot yang terjadi saat bacaan penghitung boot sistem gagal kini tetap memajukan saksi sistemnya sebesar satu (pasangan boot yang baru dihitung): swasembuh pada bacaan berikutnya tidak lagi menambahkan boot yang sama untuk kedua kalinya.
 - Penerusan notifikasi kini menghitung penurunan huruf teks utuh dan pindai prioritas hanya sesudah gerbang duplikat (dan pada jalur luapan, hanya bila penerusan memang diperbolehkan): notifikasi duplikat — mayoritas pada aplikasi chat — tidak lagi membayar pindaian yang hasilnya dibuang.
+- Bangun-ulang monitoring dari halaman Setup kini dilewati bila layanan sudah berjalan, dan diklaim dengan jatah 60 detik yang sama seperti jalur bangun dari layanan notifikasi: membuka halaman berulang kali tidak lagi mengirim start penuh ke layanan yang sehat.
 
 ## [1.6.603] - 2026-11-03
 
