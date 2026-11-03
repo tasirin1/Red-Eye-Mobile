@@ -1470,7 +1470,13 @@ def argumen_format(isi):
     # Entitas XML dinormalkan lebih dulu: %< di berkas sumber
     # tertulis %&lt; sehingga tanpa ini tak terlihat pola.
     isi = isi.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'").replace("&amp;", "&")
-    mentah = re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+|\*)?(?:\.(\d+|\*))?([a-zA-Z%])', isi)
+    mentah = []
+    for idx, flags, width, prec, t_konv, t_akhir, konv in re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+|\*)?(?:\.(\d+|\*))?(?:([tT])([a-zA-Z])|([a-zA-Z%]))', isi):
+        mentah.append((idx, flags, width, prec, (t_konv + t_akhir) if t_konv else konv))
+    # Akhiran konversi tanggal ikut dibaca (issue #1136):
+    # untuk %t/%T, huruf penentu makna adalah AKHIRAN
+    # sesudahnya (%tY tahun, %tm bulan) — pola yang berhenti
+    # di t menilai semua akhiran sama.
     # Lebar/presisi dinamis (*) ikut dibaca (issue #1129):
     # %*d dan %.*f mengonsumsi argumen int tambahan — pola
     # angka-saja membuat specifier-nya gugur seluruhnya

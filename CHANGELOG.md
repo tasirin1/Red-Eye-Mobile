@@ -18,6 +18,7 @@
 - Pengecualian translatable pada gerbang kini juga menerima nilai berpetik tunggal, simetris dengan pola nama resource: string merek berpetik tunggal tidak lagi dituntut punya pasangan terjemahan secara palsu.
 - Pemindai anotasi ganda pada cek cepat kini melacak kedalaman komentar blok: komentar bersarang khas Kotlin tidak lagi membuat teks sesudah penutup terdalam terbaca sebagai kode dan digagalkan palsu.
 - Persen literal berlebar (%5%) kini juga disaring dari perbandingan argumen format gerbang, seperti persen polos: persen berlebar tidak mengonsumsi argumen, jadi terjemahan yang menulis persen polos atau kata "persen" tidak lagi digagalkan palsu.
+- Pemeriksaan format gerbang kini membaca akhiran konversi tanggal (%tY vs %tm adalah huruf yang berbeda makna): dua akhiran berbeda tidak lagi dinilai sama.
 
 ## [1.6.603] - 2026-11-03
 
