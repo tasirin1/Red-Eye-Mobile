@@ -242,7 +242,13 @@ object TelegramClient {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(90, TimeUnit.SECONDS)
+        // 60 dtk (issue #935): klien ini khusus panggilan teks
+        // kecil (unggahan media memakai TelegramMediaClient
+        // 600 dtk). Dispatcher pengiriman bersifat serial demi
+        // urutan & kesopanan laju — satu panggilan menggantung
+        // menahan semua kiriman di belakangnya, jadi batas
+        // totalnya dipangkas dari 90 ke 60 dtk.
+        .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private val retrofit = Retrofit.Builder()
