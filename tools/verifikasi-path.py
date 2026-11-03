@@ -450,6 +450,52 @@ def cek_duplikat_definisi(gagal):
             gagal.append("Definisi ganda di %s: %s" % (folder, ", ".join(ganda[:5])))
 
 
+def _versi_dari_teks(teks):
+    """(versionCode, (mayor, minor, patch)) dari isi build.gradle."""
+    kode = re.search(r"versionCode\s+(\d+)", teks or "")
+    nama = re.search(r'versionName\s+"(\d+)\.(\d+)\.(\d+)"', teks or "")
+    if not kode or not nama:
+        return None
+    return int(kode.group(1)), tuple(int(x) for x in nama.groups())
+
+
+def cek_versi(gagal):
+    """Aturan versi AGENTS.md §8 ditegakkan (issue #906): patch
+    tidak mencapai 1000, dan versionCode tidak boleh mundur/
+    stagnan terhadap rilis bertag terakhir. Perbandingan tag
+    dilewati diam-diam bila tag tak tersedia (clone dangkal CI)."""
+    kini = _versi_dari_teks(baca_teks(os.path.join("app", "build.gradle")))
+    if kini is None:
+        gagal.append("versionCode/versionName tak terbaca di app/build.gradle")
+        return
+    kode_kini, nama_kini = kini
+    if nama_kini[2] > 999:
+        gagal.append("versionName patch %d mencapai 1000 — naikkan minor (aturan §8)" % nama_kini[2])
+    daftar = jalan("git", "tag", "--list", "v*")
+    if not daftar:
+        return
+    tag_versi = []
+    for baris in daftar.splitlines():
+        cocok = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", baris.strip())
+        if cocok:
+            tag_versi.append((tuple(int(x) for x in cocok.groups()), baris.strip()))
+    if not tag_versi:
+        return
+    nama_tag, label_tag = max(tag_versi)
+    isi_tag = jalan("git", "show", label_tag + ":app/build.gradle")
+    dulu = _versi_dari_teks(isi_tag)
+    if dulu is None:
+        return
+    kode_tag = dulu[0]
+    if nama_kini < nama_tag:
+        gagal.append("versionName %s mundur dari rilis bertag %s" % (".".join(map(str, nama_kini)), label_tag))
+    elif nama_kini == nama_tag and kode_kini < kode_tag:
+        gagal.append("versionCode %d di bawah versionCode rilis %s (%d)" % (kode_kini, label_tag, kode_tag))
+    elif nama_kini > nama_tag and kode_kini <= kode_tag:
+        gagal.append("versionName baru %s tetapi versionCode %d tidak naik dari rilis %s (%d)"
+                     % (".".join(map(str, nama_kini)), kode_kini, label_tag, kode_tag))
+
+
 def berkas_dihapus(rentang):
     """Daftar path yang dihapus pada diff (butuh status; kosong bila tak tahu)."""
     if rentang and ("..." in rentang or ".." in rentang):
@@ -1524,6 +1570,7 @@ def utama():
     cek_acuan_yatim(gagal)
     cek_manifest(gagal)
     cek_duplikat_definisi(gagal)
+    cek_versi(gagal)
     cek_sinkron_terjemah(gagal)
     cek_import_mati(gagal)
     cek_paritas_resource(gagal)
