@@ -149,14 +149,17 @@ fi
 if [ -n "$nama_token" ]; then
   echo "GAGAL: kemungkinan token bot asli pada NAMA berkas $nama_token (hanya via input SetupActivity)"; gagal=1;
 fi
-# 6. Anotasi ganda berturut-turut (mis. dua @Volatile) = galat kompilasi Kotlin.
+# 6. Anotasi ganda dalam satu blok (mis. dua @Volatile) = galat kompilasi Kotlin.
 #    Baris kosong/komentar di antara dua anotasi TIDAK memutus
 #    urutan (issue #907): anotasi yang sama tetap ganda walau
-#    dipisah komentar.
+#    dipisah komentar. Blok = deretan baris anotasi (dengan
+#    atau tanpa argumen) + anotasi sebaris pada baris
+#    deklarasinya; anotasi berargumen dan bentuk sebaris
+#    kini ikut diperiksa (issue #1025).
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } /^[[:space:]]*@[A-Za-z_]+[[:space:]]*(\/\/.*)?$/{ line=$0; sub(/\/\/.*$/, "", line); gsub(/^[[:space:]]+/, "", line); gsub(/[[:space:]]+$/, "", line); if (line==prev) { print FNR; exit } prev=line; next } { prev="" }' "$f" 2>/dev/null || true)
+  d=$(awk '/^[[:space:]]*$/{ next } /^[[:space:]]*(\/\/|\/\*|\*)/{ next } { line=$0; sub(/\/\/.*$/, "", line); cnt=0; s=line; while (match(s, /@[A-Za-z_][A-Za-z0-9_]*/)) { cnt++; names[cnt]=substr(s, RSTART, RLENGTH); s=substr(s, RSTART+RLENGTH) } if (cnt==0) { split("", seen); next } u=line; gsub(/@[A-Za-z_][A-Za-z0-9_]*(\([^)]*\))?/, "", u); gsub(/[[:space:]]/, "", u); only=(u==""); for (i=1; i<=cnt; i++) { if (names[i] in seen) { print FNR; exit } seen[names[i]]=1 } if (!only) split("", seen) }' "$f" 2>/dev/null || true)
   if [ -n "$d" ]; then loop_dup="$f:$d"; break; fi
 done <<< "$(git ls-files '*.kt' '*.java' 2>/dev/null || true)"
 if [ -n "$loop_dup" ]; then
