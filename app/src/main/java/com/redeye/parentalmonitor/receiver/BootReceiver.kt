@@ -36,8 +36,31 @@ class BootReceiver : BroadcastReceiver() {
         // jam — lihat BootClock).
         fun bootCount(context: android.content.Context): Long {
             return try {
-                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-                    .getLong("boot_count", 0L)
+                synchronized(handleLock) {
+                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    var count = meta.getLong("boot_count", 0L)
+                    // Swasembuh reboot tak tercatat (issue #1070):
+                    // bila BOOT_COMPLETED tak pernah sampai
+                    // (aplikasi berstatus berhenti — force-stop
+                    // atau belum pernah dibuka sesudah update),
+                    // penghitung tak naik dan reboot tak terlihat
+                    // konsumen. Cap elapsed hitungan terakhir
+                    // adalah saksi monoton: elapsed SEKARANG yang
+                    // lebih kecil darinya hanya mungkin sesudah
+                    // reboot — naikkan sekali dan perbarui cap.
+                    val stampElapsed = meta.getLong("boot_count_elapsed", 0L)
+                    val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                    if (stampElapsed > 0L && nowElapsed < stampElapsed) {
+                        count += 1L
+                        try {
+                            meta.edit().putLong("boot_count", count)
+                                .putLong("boot_count_wall", System.currentTimeMillis())
+                                .putLong("boot_count_elapsed", nowElapsed).commit()
+                        } catch (_: Exception) {
+                        }
+                    }
+                    count
+                }
             } catch (_: Exception) {
                 0L
             }
