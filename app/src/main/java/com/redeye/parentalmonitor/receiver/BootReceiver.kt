@@ -84,8 +84,21 @@ class BootReceiver : BroadcastReceiver() {
                 } catch (_: Exception) {
                 }
                 markHandled(context, nowEvent)
+                // Enqueue watchdog periodik cukup sesekali
+                // (issue #1065): enqueueUniquePeriodicWork
+                // adalah transaksi DB WorkManager, dulu dibayar
+                // pada SETIAP buka kunci — dedup 60 detik hanya
+                // dari memori dan hilang saat proses mati.
+                // Periode periodiknya sendiri 15 menit, jadi
+                // cap persisten di boot_meta menahannya ke irama
+                // itu lintas mati proses.
                 try {
-                    MessageScheduler.scheduleWatchdog(context.applicationContext)
+                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    val lastWatchdog = meta.getLong("watchdog_enqueue_elapsed", 0L)
+                    if (lastWatchdog <= 0L || nowEvent < lastWatchdog || nowEvent - lastWatchdog >= 15 * 60_000L) {
+                        MessageScheduler.scheduleWatchdog(context.applicationContext)
+                        meta.edit().putLong("watchdog_enqueue_elapsed", nowEvent).apply()
+                    }
                 } catch (_: Exception) {
                 }
                 return

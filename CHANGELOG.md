@@ -22,6 +22,7 @@
 - Penjaga layout yatim cek cepat kini berlaku untuk semua folder layout berkualifikasi (tablet, versi API, malam, dan lainnya), bukan hanya landscape: berkas layout berkualifikasi tanpa kembaran portrait ditolak sebelum push.
 - Fungsi publik a11yKnownApps() yang sudah tidak punya pemanggil sejak cermin himpunan dikenal dipakai, dihapus agar tidak membingungkan atau terpakai keliru melewati cermin.
 - Penilaian masa tenggang Setup pada pemantauan aksesibilitas kini hanya dihitung bila jendela yang tampil benar-benar terindikasi tamper: peristiwa jendela biasa tidak lagi membayar sembilan bacaan penyimpanan terenkripsi yang hasilnya dibuang.
+- Penjadwalan ulang watchdog berkala saat layar dibuka kini ditahan cap persisten ke irama 15 menit: transaksi basis data WorkManager tidak lagi dibayar pada setiap buka kunci sepanjang hari.
 
 ## [1.6.600] - 2026-11-03
 
