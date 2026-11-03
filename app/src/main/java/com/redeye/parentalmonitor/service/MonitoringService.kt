@@ -3731,8 +3731,17 @@ class MonitoringService : Service() {
         }
         val current = pendingRestore
         if (current?.stage == RESTORE_STAGE_CONFIRM) {
-            sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /restore batal untuk membatalkan.")
-            return
+            // Sesi konfirmasi zombi (issue #994): sesi yang
+            // umurnya jauh melewati jendela batal + masa
+            // berlaku sesi tak akan pernah terapkan (job-nya
+            // sudah lewat/gagal) — bersihkan dan lanjut mulai
+            // sesi baru, jangan menolak selamanya.
+            if (SystemClock.elapsedRealtime() - current.at > RESTORE_TTL_MS) {
+                pendingRestore = null
+            } else {
+                sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /restore batal untuk membatalkan.")
+                return
+            }
         }
         val strict = try { preferencesManager.restoreStrict } catch (_: Exception) { false }
         if (strict) {
@@ -4003,6 +4012,13 @@ class MonitoringService : Service() {
             if (pendingRestore === confirm && confirm.stage == RESTORE_STAGE_CONFIRM && restoreEpoch == ownerEpoch) {
                 pendingRestore = null
                 applyRestoredSettings(data)
+            } else if (pendingRestore === confirm) {
+                // Epoch berubah selama jendela batal (issue
+                // #994): sesi ini tak akan pernah terapkan —
+                // bersihkan sekarang, jangan jadi zombi yang
+                // memblokir /restore selamanya.
+                pendingRestore = null
+                audit("restore konfirmasi gugur (epoch berubah)", "private")
             }
         }
     }

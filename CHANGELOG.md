@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Sesi konfirmasi restore yang gugur di tengah jendela batal (mis. karena logout) kini dibersihkan saat itu juga — /restore tidak lagi terblokir selamanya oleh sesi sisa yang tak akan pernah terapkan.
 - Notifikasi yang tidak diteruskan karena penerusan sedang nonaktif kini tidak lagi dicatat sebagai "gugur antrean" — hitungan dan jurnal gugur tidak lagi menggelembung palsu selama penerusan mati.
 - Hasil jepretan dari sesi kamera yang sudah digantikan sesi baru kini dibuang, tidak lagi diserahkan seolah hasil permintaan yang sedang berjalan.
 - Pelepasan status tertahan sesudah satu foto terkirim kini hanya melepas entri foto itu sendiri — foto tertahan lain yang sidiknya kebetulan sama tidak ikut terlepas sebelum terkirim.
