@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksa cepat kini menangkap anotasi ganda yang dipisah baris komentar/kosong (mis. dua @Volatile terpisah komentar) — sebelumnya baris bukan-anotasi apa pun memutus urutan sehingga duplikat seperti itu lolos.
 - Celah uji ditutup: peta tombol menu lama (LEGACY) dan pemetaan kunci saklar kini terkunci uji terhadap daftar perintah kanonis — rename perintah yang lupa memperbarui peta tombol akan menggagalkan uji, bukan mematikan tombol diam-diam seperti yang pernah terjadi.
 - Menekan saklar pada pesan menu lama tidak lagi membalik setelan secara tak terduga: data tombol kini membawa keadaan yang tertulis di labelnya; bila keadaan sebenarnya sudah berubah sejak menu dibuat, penekanan hanya menyegarkan tampilan ke keadaan yang benar, bukan membalik.
 - Saklar menu tidak lagi bisa membalik hasil perintah ketik yang masuk bersamaan: keadaan setelan kini dibaca ulang dan perintah saklar dihitung di dalam kunci yang sama dengan pelaksanaannya (sebelumnya dibaca di luar kunci sehingga bisa memakai keadaan basi).
