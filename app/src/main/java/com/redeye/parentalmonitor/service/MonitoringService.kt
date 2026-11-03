@@ -939,6 +939,12 @@ class MonitoringService : Service() {
             return
         }
 
+        // Snapshot job lama SEBELUM dibatalkan (issue #1077):
+        // startMonitoring dulu membatalkan lalu langsung
+        // menyalakan pengganti tanpa join — sisa putaran lama
+        // yang sedang memblokir (kueri provider bukan titik
+        // suspensi) berjalan bersama putaran pertama loop baru.
+        val oldJobs = listOfNotNull(monitoringJob, cameraJob, commandJob, initialSyncJob, patrolJob)
         // Cancel any previous loops so a restart never duplicates work
         monitoringJob?.cancel()
         cameraJob?.cancel()
@@ -986,24 +992,58 @@ class MonitoringService : Service() {
         }
 
         lastLoopRestartAt = android.os.SystemClock.elapsedRealtime()
-        startInitialSync(force = false)
-        startPeriodicLoops()
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
-        if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
-        serviceScope.launch {
-            try {
-                messageQueue.tryRestorePersistent()
-            } catch (_: Exception) {
+        val startLoops: () -> Unit = {
+            startInitialSync(force = false)
+            startPeriodicLoops()
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Monitoring loop started")
+            if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "📸 Camera monitoring started")
+            serviceScope.launch {
+                try {
+                    messageQueue.tryRestorePersistent()
+                } catch (_: Exception) {
+                }
+                val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
+                if (!ringingNow) restoreRingVolumeShared()
             }
-            val ringingNow = try { ringBusy.get() || ringJob?.isActive == true } catch (_: Exception) { false }
-            if (!ringingNow) restoreRingVolumeShared()
+            startCommandPolling()
+            startLoopWatchdog()
+            MessageScheduler.scheduleWatchdog(this)
+            MessageScheduler.scheduleMessageSend(this)
+            serviceScope.launch {
+                registerBotCommands()
+            }
         }
-        startCommandPolling()
-        startLoopWatchdog()
-        MessageScheduler.scheduleWatchdog(this)
-        MessageScheduler.scheduleMessageSend(this)
-        serviceScope.launch {
-            registerBotCommands()
+        if (oldJobs.all { it.isCompleted }) {
+            startLoops()
+        } else {
+            // Loop lama belum sungguh berhenti (issue #1077):
+            // tunda penyalaan pengganti sampai join tuntas —
+            // pola tunggu yang sama dengan restartAllLoops
+            // (#918/#1075), dicatat di loopRelaunchJob agar
+            // teardown tetap bisa membatalkannya, dan dibatalkan
+            // diam-diam bila layanan berhenti di sela tunggu.
+            synchronized(loopRestartLock) {
+                try { loopRelaunchJob?.cancel() } catch (_: Exception) { }
+                loopRelaunchJob = serviceScope.launch {
+                    var percobaan = 0
+                    while (percobaan < 12) {
+                        val selesai = try {
+                            kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+                                for (job in oldJobs) job.join()
+                                true
+                            } == true
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            false
+                        }
+                        if (selesai || oldJobs.all { it.isCompleted }) break
+                        percobaan++
+                    }
+                    if (!isActive || !isRunning) return@launch
+                    startLoops()
+                }
+            }
         }
     }
 
