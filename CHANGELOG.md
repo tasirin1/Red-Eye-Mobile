@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penanda "terakhir berhasil kirim" kini dicatat berpasangan (jam dinding + jam monoton) sehingga lama bisunya jalur kirim dihitung dengan benar juga sesudah reboot — sebelumnya bisa terbaca jauh lebih muda dari bisu sebenarnya.
 - Uji anti-mati tidak lagi melaporkan hasil palsu sesudah reboot: waktu mulai uji kini dicatat berpasangan (jam dinding + jam monoton) sehingga reboot di tengah uji selalu terdeteksi, bukan hanya bila uptime baru masih kecil.
 - Pesan gagal simpan kredensial di Setup tidak lagi gagal tampil diam-diam bila pemilik menutup layar saat pemeriksaan jaringan masih berjalan.
 - Penulisan penanda notifikasi terkirim ke penyimpanan tidak lagi menahan kunci data penanda selama penulisan berlangsung — penandaan dan penyemaian ulang penanda tidak lagi saling menunggu pada penulisan yang lambat.

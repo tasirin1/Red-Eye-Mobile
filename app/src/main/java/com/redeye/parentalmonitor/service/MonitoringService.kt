@@ -8979,8 +8979,25 @@ class MonitoringService : Service() {
     private fun silentLinkAgeMs(): Long {
         return try {
             val last = preferencesManager.lastSendOkElapsed
+            val lastWall = preferencesManager.lastSendOkWall
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
-            if (last <= 0L || last > nowElapsed) -1L else nowElapsed - last
+            val nowWall = System.currentTimeMillis()
+            when {
+                last <= 0L -> -1L
+                // Pasangan dinding ada (issue #1021): usia
+                // elapsed hanya sah bila terbukti boot sama;
+                // selain itu pakai usia dinding (usia bisu
+                // sebenarnya lintas reboot), negatif = tak
+                // diketahui.
+                lastWall > 0L -> if (BootClock.sameBoot(lastWall, last, nowWall, nowElapsed)) {
+                    nowElapsed - last
+                } else {
+                    val wallAge = nowWall - lastWall
+                    if (wallAge >= 0L) wallAge else -1L
+                }
+                last > nowElapsed -> -1L
+                else -> nowElapsed - last
+            }
         } catch (_: Exception) {
             -1L
         }
@@ -8990,7 +9007,13 @@ class MonitoringService : Service() {
         try {
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             val last = preferencesManager.lastSendOkElapsed
-            if (last <= 0L || last > nowElapsed) {
+            val lastWall = preferencesManager.lastSendOkWall
+            // Seed ulang juga bila pasangan boot tak terbukti
+            // sama (issue #1021): penanda basi lintas boot
+            // tidak boleh menjadi jangkar usia bisu.
+            val basi = last <= 0L || last > nowElapsed ||
+                (lastWall > 0L && !BootClock.sameBoot(lastWall, last, System.currentTimeMillis(), nowElapsed))
+            if (basi) {
                 preferencesManager.setLastSendOkMarker(nowElapsed)
             }
         } catch (_: Exception) {
