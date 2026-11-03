@@ -6931,20 +6931,21 @@ class MonitoringService : Service() {
             return
         }
         val prev = vehiclePrevFix
-        if (fix.accuracy > 80f) {
+        // Akurasi 0 = tak diketahui, bukan sempurna (issue #921,
+        // konvensi GeofenceLogic): fix seperti itu tak boleh
+        // lolos gerbang mana pun.
+        if (fix.accuracy <= 0f || fix.accuracy > 80f) {
             vehicleFastSamples = 0
             return
         }
         vehiclePrevFix = Triple(fix.latitude, fix.longitude, fix.time)
         var speed = if (fix.hasSpeed()) fix.speed else -1f
-        var hardwareSpeed = speed >= 0f
         if (speed < 0f && prev != null) {
             val dt = fix.time - prev.third
             if (dt in 30_000L..30 * 60_000L) {
                 val dist = ReportFormat.distanceMeters(prev.first, prev.second, fix.latitude, fix.longitude)
                 if (dist >= 20f) {
                     speed = dist / (dt / 1000f)
-                    hardwareSpeed = false
                 }
             }
         }
@@ -6953,7 +6954,11 @@ class MonitoringService : Service() {
             return
         }
         vehicleFastSamples += 1
-        if (!hardwareSpeed && vehicleFastSamples < 2) return
+        // Dua sampel cepat berurutan untuk SEMUA jalur (issue
+        // #921): dulu speed perangkat keras dari SATU fix glitch
+        // langsung memicu alert, sementara jalur hitungan
+        // menuntut 2 sampel.
+        if (vehicleFastSamples < 2) return
         vehicleFastSamples = 0
         val last = try { preferencesManager.lastVehicleAlertAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < VEHICLE_COOLDOWN_MS) return
