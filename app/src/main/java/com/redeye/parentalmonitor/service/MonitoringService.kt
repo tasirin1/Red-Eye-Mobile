@@ -3870,7 +3870,23 @@ class MonitoringService : Service() {
                 // dibersihkan. Nama tak terbaca -> lastModified.
                 val bornMs = if (media) TimeFmt.mediaNameTimeMs(name) else -1L
                 val ageRef = if (bornMs > 0L) bornMs else file.lastModified()
-                if (media && ageRef < cutoff) {
+                // Cap nama ditulis jam dinding zona SAAT ITU dan
+                // diparse dengan zona saat baca (issue #1128):
+                // sesudah perangkat pindah zona, umur terparse
+                // bisa lebih tua dari umur sebenarnya sampai
+                // selisih offset ekstrem (+14 s.d. -12 = 26 jam).
+                // Untuk umur dari nama, hapus hanya bila tetap
+                // melewati batas pada tafsir TERMUDA — media yang
+                // lebih muda dari batas tak pernah ikut terhapus;
+                // harga yang dibayar hanya pembersihan terlambat
+                // sesudah pindah zona jauh. lastModified tak
+                // berzona, tetap memakai batas polos.
+                val melewatiBatas = if (bornMs > 0L) {
+                    ageRef < cutoff - 26L * 3_600_000L
+                } else {
+                    ageRef < cutoff
+                }
+                if (media && melewatiBatas) {
                     val len = file.length()
                     if (file.delete()) {
                         count++

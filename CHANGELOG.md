@@ -10,6 +10,7 @@
 - Pasangan kredensial penerusan notifikasi (token + chat) kini satu jepretan atomik: satu kiriman tidak lagi bisa memakai token baru bercampur chat lama saat kredensial diganti di tengah penerusan.
 - Hasil simpan penolkan penghitung pesan terbuang kini diperiksa: bila simpannya gagal, pemberitahuan "pesan dibuang" ditahan ronde itu dan dicoba lagi pada putaran berikutnya, alih-alih terkirim lalu terduplikat pada mulai berikutnya karena angka lama masih tersimpan.
 - Penyimpanan pemakaian aplikasi harian kini menempatkan data ke slot tanggalnya sendiri: tulis susulan untuk kemarin memperbarui slot kemarin (bukan merotasi), dan tulis bertanggal tak dikenal yang lebih tua diabaikan — perjalanan jam maju yang dikoreksi tidak lagi membuang riwayat dua hari.
+- Pembersihan media berdasar umur dari nama berkas kini berhati-hati sesudah pindah zona: media hanya dihapus bila tetap melewati batas umur pada tafsir termuda yang mungkin (selisih zona ekstrem 26 jam), jadi foto yang sebenarnya lebih muda dari batas tidak lagi ikut terhapus; pembersihan paling jauh hanya terlambat sesudah pindah zona jauh.
 
 ## [1.6.603] - 2026-11-03
 
