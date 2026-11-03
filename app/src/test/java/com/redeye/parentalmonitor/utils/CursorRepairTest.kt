@@ -32,4 +32,21 @@ class CursorRepairTest {
     fun bacaGagalTidakDireset() {
         assertFalse(CursorRepair.shouldReset(500L, -1L))
     }
+
+    @Test
+    fun hapusBarisTeratasTidakDireset() {
+        // Issue #1159: menghapus satu (atau banyak) baris
+        // teratas hanya menurunkan MAX sedikit — basisnya
+        // sama, bukan berganti.
+        assertFalse(CursorRepair.shouldReset(500L, 499L))
+        assertFalse(CursorRepair.shouldReset(500L, 400L))
+        assertFalse(CursorRepair.shouldReset(2L, 1L))
+    }
+
+    @Test
+    fun keruntuhanBesarDireset() {
+        assertTrue(CursorRepair.shouldReset(500L, 249L))
+        assertFalse(CursorRepair.shouldReset(500L, 250L))
+        assertTrue(CursorRepair.shouldReset(1L, 0L))
+    }
 }

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Menghapus SMS atau panggilan teratas tidak lagi memicu pengiriman ulang seluruh riwayat: reset kursor basis data kini hanya terjadi pada keruntuhan besar (id teratas menyusut lebih dari separuh, tanda basis diganti atau direstore), bukan pada penurunan kecil akibat penghapusan biasa.
+
 ## [1.6.606] - 2026-11-03
 
 ### Fixed
