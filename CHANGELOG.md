@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tangkapan layar lewat jalur aksesibilitas kini diskala ke lebar maks 720 piksel seperti jalur proyeksi layar — sebelumnya resolusi penuh, sehingga berkas gambar dan data unggahnya jauh lebih besar dari yang perlu.
 - Pindaian konten pantau aksesibilitas kini sungguh teredam jeda 3 detik per aplikasi juga saat fitur pantau mati atau aplikasinya sensitif — sebelumnya pra-cek penuh berjalan pada setiap peristiwa konten tanpa jeda.
 - Pemeriksaan data segera kini meneruskan pembatalan korutin dengan benar, tidak lagi menelannya di penangkap pengecualian umum.
 - Penyalakan ulang loop kamera/patroli kini sungguh menunggu loop lama selesai bergabung sampai batas total 60 detik — sebelumnya pengganti bisa menyala sesudah 5 detik di atas loop lama yang masih menuntaskan putarannya.

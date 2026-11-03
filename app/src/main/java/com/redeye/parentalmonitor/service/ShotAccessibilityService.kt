@@ -127,6 +127,12 @@ object ShotA11yCapture {
         }
     }
 
+    // Lebar maks sama dengan jalur MediaProjection (issue
+    // #1015): dulu jalur ini memproses resolusi penuh —
+    // salinan bitmap ±10 MB dan JPEG 2–4x lebih besar pada
+    // layar 1080px, untuk pratinjau yang sama.
+    private const val MAX_WIDTH = 720
+
     @RequiresApi(Build.VERSION_CODES.R)
     private fun toBitmap(result: AccessibilityService.ScreenshotResult): Bitmap? {
         return try {
@@ -134,7 +140,19 @@ object ShotA11yCapture {
             try {
                 val wrapped = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
                 try {
-                    wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                    val copy = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                    if (copy == null || copy.width <= MAX_WIDTH) {
+                        copy
+                    } else {
+                        val scale = MAX_WIDTH.toFloat() / copy.width
+                        val scaled = Bitmap.createScaledBitmap(copy, MAX_WIDTH, (copy.height * scale).toInt().coerceAtLeast(1), true)
+                        if (scaled !== copy) {
+                            try { copy.recycle() } catch (_: Exception) { }
+                            scaled
+                        } else {
+                            copy
+                        }
+                    }
                 } finally {
                     try { wrapped?.recycle() } catch (_: Exception) { }
                 }
