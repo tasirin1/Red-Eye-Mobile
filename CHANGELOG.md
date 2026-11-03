@@ -36,6 +36,7 @@
 - Muat ulang penghitung pesan terbuang sesudah reset penyimpanan kini per kunci: satu nilai korup tidak lagi menggagalkan seluruh muatan dan membiarkan angka era lama tertulis kembali ke penyimpanan baru.
 - Penghitung item string-array pada gerbang kini memakai parser XML sungguhan (anak langsung): item self-closing terhitung, teks mirip tag di dalam CDATA dan item bersarang tidak lagi ikut terhitung.
 - Pemeriksaan paritas format gerbang kini membaca specifier utuh — flag, lebar, presisi, dan pakai-ulang argumen (%&lt;) ikut dibandingkan, bukan hanya huruf konversinya: beda tipe pada specifier berflag tidak lagi lolos.
+- Persen literal (%%) tidak lagi dihitung sebagai argumen format oleh gerbang: terjemahan yang menulis kata "persen" tidak lagi digagalkan palsu.
 
 ## [1.6.601] - 2026-11-03
 

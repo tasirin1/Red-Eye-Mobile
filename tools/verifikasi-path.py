@@ -1437,8 +1437,12 @@ def argumen_format(isi):
     # tertulis %&lt; sehingga tanpa ini tak terlihat pola.
     isi = isi.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'").replace("&amp;", "&")
     mentah = re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([a-zA-Z%])', isi)
-    token = [(idx, flags, width, prec, conv) for idx, flags, width, prec, conv in mentah]
-    nyata = [t for t in token if t[4] != "%"]
+    # %% murni adalah persen LITERAL, bukan argumen (issue
+    # #1112): membuangnya dari daftar agar terjemahan yang
+    # menulis "persen" sebagai kata tidak digagalkan palsu.
+    token = [(idx, flags, width, prec, conv) for idx, flags, width, prec, conv in mentah
+             if not (conv == "%" and not flags and not width and not prec)]
+    nyata = token
     if nyata and all(t[0] for t in nyata) and not any("<" in t[1] for t in nyata):
         return ("indeks", tuple(sorted((int(t[0]), t[1], t[2], t[3], t[4]) for t in nyata)))
     return ("urut", tuple(token))
