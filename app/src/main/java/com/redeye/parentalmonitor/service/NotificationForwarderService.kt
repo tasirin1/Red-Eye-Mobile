@@ -479,8 +479,22 @@ class NotificationForwarderService : NotificationListenerService() {
                 try {
                     val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
                     if (!lines.isNullOrEmpty()) {
-                        val gabung = lines.joinToString("\n").trim()
-                        body = if (gabung.length > 20_000) gabung.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(gabung, 20_000)) else gabung
+                        // Gabung dengan batas sejak awal (issue
+                        // #958, sisa #940): joinToString utuh
+                        // mewujudkan seluruh string gabungan (bisa
+                        // sangat besar dari EXTRA_TEXT_LINES
+                        // aplikasi chat) sebelum potongan 20 rb
+                        // berlaku. Akumulasi berhenti di batas;
+                        // safeCut akhir menjaga batas surrogate.
+                        val sb = StringBuilder()
+                        for (line in lines) {
+                            if (sb.length >= 20_000) break
+                            if (sb.isNotEmpty()) sb.append('\n')
+                            val sisa = 20_000 - sb.length
+                            if (line.length <= sisa) sb.append(line) else sb.append(line.substring(0, sisa))
+                        }
+                        val gabung = sb.toString().trim()
+                        body = if (gabung.length >= 20_000) gabung.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(gabung, 20_000)) else gabung
                     }
                 } catch (_: Exception) {
                 }

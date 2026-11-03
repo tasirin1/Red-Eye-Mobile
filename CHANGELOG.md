@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penggabungan baris teks notifikasi (EXTRA_TEXT_LINES) kini dibatasi sejak awal sampai 20 ribu aksara, tidak lagi mewujudkan seluruh string gabungan raksasa di memori sebelum dipotong.
 - Gerbang PIN pemulihan tidak lagi terkunci palsu sesudah perangkat menyala ulang: keputusan kunci monoton kini mensyaratkan bukti boot yang sama (lewat pasangan jam dinding + monoton), sehingga jangkar uptime lama tidak menghidupkan lagi jendela kunci yang tenggat dindingnya sudah lama lewat.
 - Parser perintah bahasa sehari-hari kini mengenali salah ketik satu huruf hilang pada penanda waktu lampau/masa-depan (mis. "kemarn", "beso"), sehingga kalimat rujukan seperti "kirim foto kemarn" tidak lagi memicu tangkapan foto baru; kata sah yang mirip (mis. "kemari", "anti") tetap tidak ter-veto.
 - Masking kode OTP kini juga menutupi format berpemisah garis-bawah (mis. 123_456) yang sebelumnya tampil polos di notifikasi yang diteruskan.
