@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Satu isian notifikasi yang rusak tidak lagi membuang seluruh notifikasi: judul dan isi kini dibaca dengan penjaga masing-masing sehingga medan yang sehat tetap diteruskan.
 - Antrean kerja layanan Aksesibilitas kini terbatas (64) dengan tugas berlebih dibuang diam-diam; sebelumnya antrean tak terbatas bisa menumpuk tanpa batas di belakang satu tugas yang lambat.
 - Peta jeda pindai konten Aksesibilitas kini dipangkas bertahap (yang tertua dulu) saat membesar, bukan dikosongkan sekaligus — pengosongan total mencabut jeda semua aplikasi bersamaan dan memicu ledakan pindai serentak.
 - Cuplikan teks layar untuk pemeriksaan ubek-ubek kini dibuang bila jendela berpindah di tengah pengambilan (navigasi cepat), agar teks dua layar tidak tercampur dan alasan pemeriksaan tidak hilang atau salah tempat.

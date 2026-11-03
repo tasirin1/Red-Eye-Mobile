@@ -451,10 +451,19 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun notifTitleText(notification: Notification): NotifText {
         return try {
             val extras = notification.extras
-            val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-            var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            // Tiap medan dibaca dengan penjaganya sendiri
+            // (issue #932): dulu satu try menyeluruh — satu
+            // extra rusak (Bundle tak bisa diurai) membuang
+            // SELURUH notifikasi walau medan lain sehat.
+            fun teks(key: String): String = try {
+                extras.getCharSequence(key)?.toString()?.trim().orEmpty()
+            } catch (_: Exception) {
+                ""
+            }
+            val title = teks(Notification.EXTRA_TITLE)
+            var body = teks(Notification.EXTRA_TEXT)
             if (body.isEmpty()) {
-                body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+                body = teks(Notification.EXTRA_BIG_TEXT)
             }
             if (body.isEmpty()) {
                 try {
@@ -464,7 +473,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
             }
             if (body.isEmpty()) {
-                body = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
+                body = teks(Notification.EXTRA_SUB_TEXT)
             }
             var safeTitle = title
             var safeBody = body
