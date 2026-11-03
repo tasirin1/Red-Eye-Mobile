@@ -238,7 +238,18 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Pertukaran penyimpanan diserialkan dengan upgrade
+    // (issue #1102): reopenStorage dulu berjalan tanpa
+    // upgradeLock yang dipakai upgradeToPersistent, jadi
+    // reset-dari-Setup dan refresh-upgrade bisa saling
+    // menimpa hasil tukar beserta tulisan di antaranya.
     private fun reopenStorage(): Boolean {
+        synchronized(upgradeLock) {
+            return reopenStorageLocked()
+        }
+    }
+
+    private fun reopenStorageLocked(): Boolean {
         val opened = openPrefs(appContext)
         sharedPreferences = opened.first
         storageEncrypted = opened.second
@@ -852,13 +863,23 @@ class PreferencesManager(context: Context) {
     }
 
     fun registerChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
-        synchronized(listenerLock) { listenerSet.add(listener) }
-        try { sharedPreferences.registerOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+        // Tambah ke himpunan + tempel ke objek prefs yang
+        // SAMA di bawah satu kunci (issue #1102): membaca
+        // field di luar kunci bisa menempelkan listener ke
+        // objek lama yang sedang ditinggalkan pertukaran
+        // penyimpanan — listener tak pernah menerima
+        // perubahan dari objek baru.
+        synchronized(listenerLock) {
+            listenerSet.add(listener)
+            try { sharedPreferences.registerOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+        }
     }
 
     fun unregisterChangeListener(listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
-        synchronized(listenerLock) { listenerSet.remove(listener) }
-        try { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+        synchronized(listenerLock) {
+            listenerSet.remove(listener)
+            try { sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener) } catch (_: Exception) { }
+        }
     }
 
     fun snapshot(): Map<String, Any?> {
