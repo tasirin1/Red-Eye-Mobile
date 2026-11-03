@@ -61,7 +61,15 @@ object NumericArg {
         val n = num ?: return null
         val u = unit ?: native
         if (keluarga(u) != keluarga(native)) return null
-        val dasar = n * faktor(u)
+        // Penjaga luapan Long (issue #880): angka 16-18 digit kali
+        // faktor satuan membungkus Long menjadi nilai kecil yang
+        // lolos pemeriksaan Int.MAX di bawah (5124095576030432 jam
+        // sempat terpasang sebagai 60 menit). Bila perkalian akan
+        // meluap, nilai jujurnya pun jauh di atas rentang Int, jadi
+        // ditolak sebelum dikalikan.
+        val fu = faktor(u)
+        if (n > Long.MAX_VALUE / fu) return null
+        val dasar = n * fu
         val f = faktor(native)
         val hasil = (dasar + f / 2) / f
         if (hasil > Int.MAX_VALUE) return null

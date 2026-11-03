@@ -44,6 +44,18 @@ class NumericArgTest {
     }
 
     @Test
+    fun angkaRaksasaTidakMeluap() {
+        // Issue #880: perkalian Long yang meluap sebelumnya
+        // membungkus jadi nilai kecil yang lolos rentang handler.
+        assertNull(NumericArg.parse("5124095576030432 jam", NumericArg.Satuan.MENIT))
+        assertNull(NumericArg.parse("999999999999999999 jam", NumericArg.Satuan.JAM))
+        assertNull(NumericArg.parse("999999999999999999 detik", NumericArg.Satuan.DETIK))
+        assertNull(NumericArg.parse("1000000 jam", NumericArg.Satuan.DETIK))
+        // Kontrol: besar tapi sah tetap diterima.
+        assertEquals(1800000000, NumericArg.parse("500000 jam", NumericArg.Satuan.DETIK))
+    }
+
+    @Test
     fun satuanKeluargaLainDitolak() {
         assertNull(NumericArg.parse("5 meter", NumericArg.Satuan.DETIK))
         assertNull(NumericArg.parse("5 detik", NumericArg.Satuan.METER))
