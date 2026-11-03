@@ -1772,6 +1772,15 @@ class PreferencesManager(context: Context) {
             val curDate = prefString(KEY_A11Y_USAGE_DATE, "")
             val prevDate = prefString(KEY_A11Y_USAGE_PREV_DATE, "")
             val prev2Date = prefString(KEY_A11Y_USAGE_PREV2_DATE, "")
+            // Hantu yang bisa DIBUKTIKAN (issue #1153): tulis
+            // hidup (tanggalnya = hari ini menurut jam saat ini)
+            // berhadapan slot kini yang melompat >=2 hari ke
+            // depan. Margin sehari melindungi koreksi mundur
+            // yang menyebrangi tengah malam (slot kini besok
+            // tepat masih mungkin data malam yang sah).
+            val todayNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(System.currentTimeMillis()) } catch (_: Exception) { "" }
+            val tomorrowNow = try { com.redeye.parentalmonitor.utils.TimeFmt.dayKey(System.currentTimeMillis() + 86_400_000L) } catch (_: Exception) { "" }
+            val liveGhost = todayNow.isNotEmpty() && tomorrowNow.isNotEmpty() && date == todayNow && curDate > tomorrowNow
             val editor = sharedPreferences.edit()
             when {
                 curDate.isEmpty() || date == curDate ->
@@ -1789,6 +1798,29 @@ class PreferencesManager(context: Context) {
                     editor.putString(KEY_A11Y_USAGE_PREV_JSON, json)
                 date == prev2Date ->
                     editor.putString(KEY_A11Y_USAGE_PREV2_JSON, json)
+                liveGhost -> {
+                    // Slot kini (dan mungkin cadangan) berisi
+                    // tanggal hantu terbukti: tulis hidup hari ini
+                    // mengambil alih slot kini, cadangan hantu
+                    // diruntuhkan — prev2 yang bukan hantu naik
+                    // ke prev, sisanya dikosongkan.
+                    editor.putString(KEY_A11Y_USAGE_DATE, date)
+                    editor.putString(KEY_A11Y_USAGE_JSON, json)
+                    if (prevDate > tomorrowNow) {
+                        if (prev2Date.isNotEmpty() && prev2Date <= tomorrowNow) {
+                            editor.putString(KEY_A11Y_USAGE_PREV_DATE, prev2Date)
+                            editor.putString(KEY_A11Y_USAGE_PREV_JSON, prefString(KEY_A11Y_USAGE_PREV2_JSON, ""))
+                        } else {
+                            editor.putString(KEY_A11Y_USAGE_PREV_DATE, "")
+                            editor.putString(KEY_A11Y_USAGE_PREV_JSON, "")
+                        }
+                        editor.putString(KEY_A11Y_USAGE_PREV2_DATE, "")
+                        editor.putString(KEY_A11Y_USAGE_PREV2_JSON, "")
+                    } else if (prev2Date > tomorrowNow) {
+                        editor.putString(KEY_A11Y_USAGE_PREV2_DATE, "")
+                        editor.putString(KEY_A11Y_USAGE_PREV2_JSON, "")
+                    }
+                }
                 prevDate.isNotEmpty() && date < curDate && date > prevDate -> {
                     // Slot kini memuat tanggal HANTU masa depan
                     // (issue #1141): ekskursi jam maju jauh yang
