@@ -202,7 +202,19 @@ object Liveness {
         }
     }
 
+    // Penjaga serial handleWakeUp (issue #1068): sejak pool
+    // receiver sungguh sejajar (#1032), alarm liveness dan
+    // ACTION_TIME_CHANGED bisa menjalankan handleWakeUp
+    // bersamaan dari dua receiver — startForeground dan
+    // scheduleBootRestart terpanggil ganda. Dulu keduanya
+    // berbagi pool satu benang sehingga terserial sendiri.
+    private val wakeLock = Any()
+
     fun handleWakeUp(context: Context, fromAlarm: Boolean = false) {
+        synchronized(wakeLock) { handleWakeUpLocked(context, fromAlarm) }
+    }
+
+    private fun handleWakeUpLocked(context: Context, fromAlarm: Boolean = false) {
         val manager = try {
             PreferencesManager.refreshInstance(context)
             PreferencesManager.getInstance(context)

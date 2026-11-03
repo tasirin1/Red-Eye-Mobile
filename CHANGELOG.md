@@ -24,6 +24,7 @@
 - Penilaian masa tenggang Setup pada pemantauan aksesibilitas kini hanya dihitung bila jendela yang tampil benar-benar terindikasi tamper: peristiwa jendela biasa tidak lagi membayar sembilan bacaan penyimpanan terenkripsi yang hasilnya dibuang.
 - Penjadwalan ulang watchdog berkala saat layar dibuka kini ditahan cap persisten ke irama 15 menit: transaksi basis data WorkManager tidak lagi dibayar pada setiap buka kunci sepanjang hari.
 - Penghitung boot kini terdeduplikasi per boot: perangkat yang mengirim dua siaran boot untuk satu kali menyala tidak lagi menaikkan hitungan dua kali, sehingga uji anti-mati tidak memvonis reboot palsu dan cap tenggang tidak gugur dini.
+- Penanganan bangun watchdog anti-mati kini terserial satu kunci: alarm berkala dan perubahan jam yang tiba bersamaan tidak lagi menjalankan dua kebangkitan sejajar yang berebut memulai layanan.
 
 ## [1.6.600] - 2026-11-03
 
