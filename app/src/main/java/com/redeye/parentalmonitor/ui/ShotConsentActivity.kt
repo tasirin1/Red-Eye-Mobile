@@ -130,16 +130,6 @@ class ShotConsentActivity : Activity() {
         }
     }
 
-    private fun finishQuietly() {
-        if (isFinishing || isDestroyed) return
-        try {
-            @Suppress("DEPRECATION")
-            overridePendingTransition(0, 0)
-        } catch (_: Exception) {
-        }
-        try { finish() } catch (_: Exception) { }
-    }
-
     companion object {
         private const val REQ_CONSENT = 7041
         private const val SAFETY_MS = 5 * 60_000L

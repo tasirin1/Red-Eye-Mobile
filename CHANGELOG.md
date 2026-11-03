@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Logika tutup-tanpa-transisi kedua activity trampolin (bangun layanan depan dan izin tangkap layar) disatukan ke satu fungsi bersama agar perilakunya tidak menyimpang di kemudian hari.
 - Pemeriksaan path vektor cek cepat kini juga menangkap desimal tanpa nol depan yang didahului digit (mis. "1.5.5" yang terurai menjadi 1.5 lalu .5), bukan hanya yang didahului bukan-digit.
 - Batas ukuran berkas gerbang (maks 1 MB) kini berlaku di semua folder repo, bukan hanya di bawah app/src — blob besar di folder perkakas/dokumentasi tidak lagi bisa masuk diam-diam.
 - Cek cepat kini juga menolak layout landscape tanpa kembaran portrait (varian yatim yang terkemas tetapi tidak pernah tampil).

@@ -60,19 +60,6 @@ class FgsWakeActivity : Activity() {
         }
     }
 
-    private fun finishQuietly() {
-        if (isFinishing || isDestroyed) return
-        try {
-            @Suppress("DEPRECATION")
-            overridePendingTransition(0, 0)
-        } catch (_: Exception) {
-        }
-        try {
-            finish()
-        } catch (_: Exception) {
-        }
-    }
-
     companion object {
         private const val VISIBLE_MS = 2_500L
         private const val SAFETY_MS = 10_000L
