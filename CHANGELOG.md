@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.602] - 2026-11-03
+
 ### Fixed
 
 - Dedup penghitung boot kini memakai saksi penghitung boot sistem: reboot sungguhan yang sangat cepat (yang dulu tertelan karena mirip siaran ganda) kini tetap terhitung; heuristik waktu lama hanya menjadi cadangan bila saksi sistem tak tersedia.
