@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksaan frasa alias perintah kini memakai pola pemisah kata yang sudah terkompilasi, bukan mengompilasi pola baru di setiap pesan.
 - Pemindaian aksesibilitas kini memakai ulang daftar paket pantau dan kata kunci yang sudah diurai selama setelan tidak berubah, bukan mengurai ulang dari awal pada setiap peristiwa jendela/konten.
 - Penanda notifikasi terkirim pada jalur batch kini ditulis dalam satu commit gabungan per potongan (sebelumnya dua commit terpisah yang masing-masing menulis ulang seluruh daftar penanda) — lebih hemat tulis di perangkat.
 - Deteksi berkas Gradle pada auto-merge Dependabot kini membaca daftar berkas PR secara lengkap (API berhalaman + cek silang jumlah) — daftar lama terpotong di 100 berkas sehingga berkas Gradle di ekor daftar bisa lolos dan ikut ter-merge otomatis.

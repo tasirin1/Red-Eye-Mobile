@@ -7592,7 +7592,7 @@ class MonitoringService : Service() {
     // Frasa dua kata (issue #777): kata pertama teks + kata pertama
     // argumen membentuk satu perintah; sisa argumen diteruskan utuh.
     private fun frasaAlias(kataPertama: String, arg: String): String? {
-        val bagian = arg.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val bagian = arg.trim().split(CMD_SPLIT_REGEX).filter { it.isNotEmpty() }
         if (bagian.isEmpty()) return null
         val kedua = bagian[0].trim('"', '\'', '(', ')', '[', ']', '{', '}', '*', '_', '`', '?', '!', '.', ',', ':', ';').lowercase(java.util.Locale.ROOT)
         val mapped = ALIAS_PHRASES["$kataPertama $kedua"] ?: return null
