@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Rahasia kode restore kini dijaga kunci khususnya sendiri, bukan meminjam kunci log audit: tidak lagi menyesatkan pembaca kode dan tidak berebut dengan penulisan log audit (#1179).
 - Hitungan "notifikasi gugur dalam 60 detik terakhir" di riwayat kini benar-benar berjendela 60 detik dari gugur pertama: jendela tidak lagi bergeser mengikuti tiap gugur baru sehingga rantai gugur berjeda rapat tidak menumpuk tanpa batas di bawah label yang menyesatkan (#1178).
 - Penutup halaman panggilan tidak lagi menulis ulang kursor yang nilainya sama persis dengan tulisan per potongan barusan: satu commit sinkron terbuang per siklus berisi panggilan baru hilang, menyamai penjaga yang sudah ada di sisi SMS (#1177).
 - Redaksi log cadangan kini juga menutup bentuk chat ID Telegram (termasuk grup super -100...) bagi jalur log yang tidak memegang rahasia kredensial, setara jalur utama yang meneruskan token/chat/PIN secara eksplisit (#1176).

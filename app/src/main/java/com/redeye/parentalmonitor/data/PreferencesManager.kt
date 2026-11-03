@@ -57,6 +57,7 @@ class PreferencesManager(context: Context) {
     private val pairCodeLock = Any()
     private val smsPendingLock = Any()
     private val auditLock = Any()
+    private val restoreSecretLock = Any()
 
     private enum class UpgradeResult { SUCCESS, UNSTABLE, FAILED }
 
@@ -954,7 +955,10 @@ class PreferencesManager(context: Context) {
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
     fun ensureRestoreCodeSecret(): String {
-        synchronized(auditLock) {
+        // Kunci khusus (issue #1179): sebelumnya meminjam
+        // auditLock milik log audit — menyesatkan pembaca dan
+        // berebut dengan penulisan log.
+        synchronized(restoreSecretLock) {
             try {
                 val cur = sharedPreferences.getString(KEY_RESTORE_SECRET, "") ?: ""
                 if (cur.length == 64 && cur.all { it in '0'..'9' || it in 'a'..'f' }) return cur
