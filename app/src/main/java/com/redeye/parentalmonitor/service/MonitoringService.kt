@@ -2486,7 +2486,14 @@ class MonitoringService : Service() {
                 return
             }
         }
-        controlLock.withLock {
+        // Pilihan kunci meniru jalur teks (issue #914): dulu
+        // SEMUA tombol dieksekusi di controlLock sehingga kerja
+        // tombol yang panjang (/location, /recover, /cleanup)
+        // menahan /lock & /stop dari teks di belakangnya —
+        // prioritas terbalik. Kini hanya perintah kontrol yang
+        // memakai controlLock; sisanya commandLock seperti teks.
+        val lock = if (gateCommand in CONTROL_COMMANDS) controlLock else commandLock
+        lock.withLock {
             handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
         }
         if (toggle != null) {

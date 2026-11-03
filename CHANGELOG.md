@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Perintah darurat dari teks (/lock, /stop) tidak lagi antre di belakang kerja tombol menu yang panjang: jalur tombol kini memilih kunci yang sama seperti jalur teks (hanya perintah kontrol memakai kunci kontrol, perintah lain memakai kunci perintah biasa).
 - Watchdog loop tidak lagi salah menilai loop "macet" saat pengiriman media tertunda yang sah sedang berjalan lama di jaringan lambat: detak loop kini diperbarui di antara tiap tahap flush (audio/foto/video) sehingga loop sehat tidak direstart paksa di tengah unggahan.
 - Penyamaran OTP kini menangkap kode berkelompok dengan pemisah koma, garis miring, dan titik dua ("123,456", "123/456", "123:456") yang sebelumnya tampil polos di notifikasi yang diteruskan.
 - Alert geofence tidak lagi hilang permanen bila kirimnya terbuang (DROPPED): state pagar kini dipulihkan ke keadaan sebelum transisi sehingga pemeriksaan berikutnya mendeteksi ulang dan alert dicoba lagi (sebelumnya hanya cap cooldown yang ditahan, state terlanjur berganti).
