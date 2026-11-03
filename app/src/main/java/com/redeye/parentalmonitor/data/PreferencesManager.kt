@@ -739,11 +739,20 @@ class PreferencesManager(context: Context) {
         set(value) = sharedPreferences.edit().putLong(KEY_LAST_UPDATE_ID, value).apply()
 
     private fun commitWithRetry(build: (android.content.SharedPreferences.Editor) -> android.content.SharedPreferences.Editor): Boolean {
-        return try {
-            build(sharedPreferences.edit()).commit() || build(sharedPreferences.edit()).commit()
-        } catch (_: Exception) {
-            false
+        // Tiap percobaan ditangkap sendiri (issue #1180):
+        // sebelumnya satu try membungkus kedua commit sehingga
+        // commit pertama yang MELEMPAR langsung gagal total
+        // tanpa percobaan kedua — retry hanya berlaku untuk
+        // commit yang mengembalikan false.
+        for (percobaan in 0..1) {
+            val ok = try {
+                build(sharedPreferences.edit()).commit()
+            } catch (_: Exception) {
+                false
+            }
+            if (ok) return true
         }
+        return false
     }
 
     fun setLastUpdateIdSync(id: Long): Boolean {
