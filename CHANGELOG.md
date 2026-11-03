@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penerima siaran (boot, alarm anti-mati, ganti paket, jam berubah, admin) tidak lagi mengantre di satu benang bersama — pekerjaan berat saat boot tidak lagi menunda penerima lain sampai melewati batas waktu sistem.
 - Tangkapan layar lewat jalur aksesibilitas kini diskala ke lebar maks 720 piksel seperti jalur proyeksi layar — sebelumnya resolusi penuh, sehingga berkas gambar dan data unggahnya jauh lebih besar dari yang perlu.
 - Pindaian konten pantau aksesibilitas kini sungguh teredam jeda 3 detik per aplikasi juga saat fitur pantau mati atau aplikasinya sensitif — sebelumnya pra-cek penuh berjalan pada setiap peristiwa konten tanpa jeda.
 - Pemeriksaan data segera kini meneruskan pembatalan korutin dengan benar, tidak lagi menelannya di penangkap pengecualian umum.
