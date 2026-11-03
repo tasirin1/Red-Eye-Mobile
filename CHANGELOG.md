@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Gerbang verifikasi kini menandai hitungan item string-array yang kehabisan anggaran pemindai sebagai tak-terhitung dan memperingatkan namanya, alih-alih mengembalikan hitungan parsial senyap yang bisa kebetulan sama antar locale dan menutupi selisih paritas (#1183).
 - Cap harian kata pantau kini memakai batas basi zona 50 jam seperti dedup anomali: terbang ke barat lintas zona tidak lagi me-reset hitungan harian dan jeda alert pada tanggal lokal yang sama, sehingga alert kata pantau tidak berduplikat atau melebihi kuota (#1182).
 - Fallback preferensi dalam-memori kini memberi tahu listener tentang kunci yang hilang karena clear(), sesuai kontrak SharedPreferences: pendengar kredensial tidak lagi melewatkan penghapusan massal (#1181).
 - commitWithRetry kini benar-benar mengulang bila commit pertama melempar pengecualian, bukan hanya bila mengembalikan false: pencatatan update-id polling Telegram dan penulisan sinkron lain tidak lagi gagal total pada gangguan sesaat pertama (#1180).

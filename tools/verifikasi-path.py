@@ -262,6 +262,10 @@ def kupas_komentar_xml(isi):
     return re.sub(r"<!--.*?-->", "", isi, flags=re.S)
 
 
+class _AnggaranHabis(Exception):
+    """Anggaran telusur pemindai cadangan habis di tengah badan."""
+
+
 def hitung_item_array(badan):
     """Jumlah <item> anak langsung sebuah string-array (issue #1110)."""
     try:
@@ -335,7 +339,12 @@ def hitung_item_array(badan):
                         # (badan memang sudah gagal parse).
                         anggaran[0] -= m - k
                         if anggaran[0] < 0:
-                            return
+                            # Habis di tengah array (issue #1183):
+                            # hitungan parsial yang dikembalikan
+                            # senyap bisa kebetulan sama antar
+                            # locale dan menutupi selisih paritas
+                            # nyata — tandai tak-terhitung.
+                            raise _AnggaranHabis()
                         if m >= n:
                             # Tag tak berujung / petik tak
                             # tertutup (issue #1161): pola lama
@@ -353,16 +362,19 @@ def hitung_item_array(badan):
                 i = j + 1
         jumlah = 0
         kedalaman = 0
-        for jenis, selfclosing in token_tag(bersih_cdata):
-            if jenis == "tutup":
-                kedalaman = max(0, kedalaman - 1)
-            elif selfclosing:
-                if kedalaman == 0:
-                    jumlah += 1
-            else:
-                if kedalaman == 0:
-                    jumlah += 1
-                kedalaman += 1
+        try:
+            for jenis, selfclosing in token_tag(bersih_cdata):
+                if jenis == "tutup":
+                    kedalaman = max(0, kedalaman - 1)
+                elif selfclosing:
+                    if kedalaman == 0:
+                        jumlah += 1
+                else:
+                    if kedalaman == 0:
+                        jumlah += 1
+                    kedalaman += 1
+        except _AnggaranHabis:
+            return None
         return jumlah
 
 
@@ -1049,8 +1061,11 @@ def cek_sinkron_terjemah(gagal):
             for nama_arr, badan in re.findall(
                     r'<string-array(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>',
                     bersih, re.S):
-                jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + \
-                    hitung_item_array(badan)
+                _h = hitung_item_array(badan)
+                if _h is None or jumlah_item.get(nama_arr) is None:
+                    jumlah_item[nama_arr] = None
+                else:
+                    jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + _h
         return peta, jumlah_item, bebas
 
     inggris, item_inggris, bebas_inggris = peta_nama(os.path.join(dasar_res, "values"))
@@ -1062,9 +1077,16 @@ def cek_sinkron_terjemah(gagal):
             gagal.append("values-in kurang %s: %s" % (jenis, ", ".join(kurang[:10])))
         if lebih:
             gagal.append("values-in berlebih %s: %s" % (jenis, ", ".join(lebih[:10])))
+    tak_terhitung = sorted(
+        nama for nama in item_inggris.keys() & item_indonesia.keys()
+        if item_inggris[nama] is None or item_indonesia[nama] is None)
+    if tak_terhitung:
+        print("PERINGATAN: paritas item tak bisa dinilai (anggaran "
+              "pemindai cadangan habis) untuk: %s" % ", ".join(tak_terhitung[:10]))
     beda_item = sorted(
         nama for nama in item_inggris.keys() & item_indonesia.keys()
-        if item_inggris[nama] != item_indonesia[nama])
+        if item_inggris[nama] is not None and item_indonesia[nama] is not None
+        and item_inggris[nama] != item_indonesia[nama])
     if beda_item:
         gagal.append("jumlah item string-array beda antar locale: %s" % ", ".join(
             "%s (%d vs %d)" % (n, item_inggris[n], item_indonesia[n])
