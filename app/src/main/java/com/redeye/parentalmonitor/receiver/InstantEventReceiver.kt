@@ -11,7 +11,21 @@ import com.redeye.parentalmonitor.utils.ServiceStart
 class InstantEventReceiver : BroadcastReceiver() {
 
     companion object {
-        private val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        // Antrean TERBATAS (issue #925): executor lama memakai
+        // antrean tak terbatas sehingga rentetan SMS/panggilan
+        // bisa menumpuk pekerjaan tanpa batas. Bila penuh,
+        // execute() melempar dan penangkap di onReceive
+        // menyelesaikan goAsync sebagaimana mestinya.
+        private val executor = java.util.concurrent.ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            java.util.concurrent.TimeUnit.MILLISECONDS,
+            java.util.concurrent.ArrayBlockingQueue(32),
+            { runnable ->
+                Thread(runnable, "redeye-instant").apply { isDaemon = true }
+            }
+        )
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -46,12 +60,15 @@ class InstantEventReceiver : BroadcastReceiver() {
                             } catch (_: Exception) {
                             }
                         }
-                    } else {
-                        try {
-                            com.redeye.parentalmonitor.utils.MessageScheduler.scheduleBootRestart(appContext)
-                        } catch (_: Exception) {
-                        }
                     }
+                    // Keadaan tak aktif SENGAJA (belum diatur,
+                    // dimatikan owner, belum setuju, dijeda) TIDAK
+                    // lagi menjadwalkan BootRestart (issue #925):
+                    // dulu semua keadaan else menjadwalkannya —
+                    // bangun berkala yang sia-sia untuk layanan
+                    // yang memang diminta berhenti. Penjadwalan
+                    // pemulihan hanya tinggal di cabang gagal-mulai
+                    // di atas, tempat ia memang berguna.
                 } finally {
                     try { pending?.finish() } catch (_: Exception) {
                     }
