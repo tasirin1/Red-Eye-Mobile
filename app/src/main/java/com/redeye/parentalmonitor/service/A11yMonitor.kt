@@ -432,9 +432,14 @@ object A11yMonitor {
         // dengan cap harian lain (issue #1053): hari cocok
         // tetapi epoch penulisan sudah basi berarti state ini
         // sisa excursi jam ke tanggal yang sama — anggaran dan
-        // peta jeda dimulai ulang, bukan diwarisi.
+        // peta jeda dimulai ulang, bukan diwarisi. Batas basi
+        // memakai varian zona 50 jam (issue #1182, kelas yang
+        // sama dengan #1055): cap harian ini tak terikat jendela
+        // jam, dan satu tanggal lokal bisa berumur >24 jam epoch
+        // sesudah terbang ke barat lintas zona — batas ketat
+        // 24 jam me-reset hitungan pada tanggal yang sama.
         val pasanganSah = day == keywordAlertDay &&
-            com.redeye.parentalmonitor.utils.DayStamp.blocks(keywordAlertDay, keywordAlertDayAtMs, day, System.currentTimeMillis())
+            com.redeye.parentalmonitor.utils.DayStamp.blocks(keywordAlertDay, keywordAlertDayAtMs, day, System.currentTimeMillis(), com.redeye.parentalmonitor.utils.DayStamp.STALE_MS_ZONA)
         if (!pasanganSah) {
             keywordAlertDay = day
             keywordAlertCount = 0
