@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.599] - 2026-11-03
+
 ### Fixed
 
 - Hitungan sisa jeda foto dan kesegaran antrean pesan kini berupa logika murni yang terkunci uji unit — regresi pada keluarga bug jam yang sama tidak lagi hanya ketahuan di build penuh atau perangkat.
