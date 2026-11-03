@@ -214,7 +214,7 @@ jobs:
             f && /^## \[/ { exit }
             f { print }
           ' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ] || ! grep -v "^## \[$versi\]" release-notes.md | grep -q '[^[:space:]]'; then
+          if [ ! -s release-notes.md ] || ! grep -v '^#' release-notes.md | grep -q '[^[:space:]]'; then
             # Gagalkan rilis (issue #908): fallback header kosong
             # dulu membuat tag tanpa seksi CHANGELOG tetap
             # terbit dengan catatan rilis hampa. Rilis wajib
@@ -223,7 +223,10 @@ jobs:
             # digagalkan (issue #974): awk selalu mencetak baris
             # judul lebih dulu, jadi uji -s saja lolos untuk
             # berkas berisi judul semata — kini wajib ada baris
-            # isi (non-kosong) selain judul.
+            # isi (non-kosong) selain judul. Semua baris tajuk
+            # (#/##/###) disisihkan sebelum uji isi (issue
+            # #1026): subjudul kategori seperti ### Fixed
+            # tanpa entri pun dulu ikut lolos sebagai "isi".
             echo "::error::Seksi CHANGELOG untuk versi $versi tidak ditemukan/kosong - rilis dibatalkan. Tulis entri ## [$versi] di CHANGELOG.md dulu."
             exit 1
           fi
