@@ -713,10 +713,15 @@ object A11yMonitor {
             ensureLoadedLocked(context)
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
                 val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, selfLabel)
-                val setupGrace = TamperGuard.inSetupGrace(reason, nowWall, manager.a11ySettingsGraceUntil, manager.a11yAdminGraceUntil, nowElapsed, manager.a11ySettingsGraceElapsedUntil, manager.a11yAdminGraceElapsedUntil,
+                // Tenggang hanya dinilai bila ada alasan tamper
+                // (issue #1064): dulu inSetupGrace dievaluasi
+                // penuh — sembilan baca prefs terenkripsi plus
+                // penghitung boot — untuk SETIAP peristiwa
+                // jendela walau hasilnya dibuang.
+                val setupGrace = if (reason != null) TamperGuard.inSetupGrace(reason, nowWall, manager.a11ySettingsGraceUntil, manager.a11yAdminGraceUntil, nowElapsed, manager.a11ySettingsGraceElapsedUntil, manager.a11yAdminGraceElapsedUntil,
                     com.redeye.parentalmonitor.receiver.BootReceiver.bootCount(context),
                     try { manager.a11ySettingsGraceBootCount } catch (_: Exception) { 0L },
-                    try { manager.a11yAdminGraceBootCount } catch (_: Exception) { 0L })
+                    try { manager.a11yAdminGraceBootCount } catch (_: Exception) { 0L }) else false
                 if (reason != null) {
                     if (!setupGrace) {
                         tamperReason = reason
