@@ -814,18 +814,29 @@ def adalah_env(rendah):
 def cek_aturan_repo(gagal, berubah):
     for path in berubah:
         rendah = path.lower()
+        sudah_dilarang = False
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
                              ".keystore", ".p12", ".pfx")) or adalah_env(rendah):
             gagal.append("Berkas terlarang masuk repo: " + path)
+            sudah_dilarang = True
         elif rendah == "local.properties" or rendah.endswith("/local.properties"):
             gagal.append("local.properties tak boleh masuk repo: " + path)
-        elif path.startswith("app/src/main/"):
+            sudah_dilarang = True
+        # Batas ukuran berlaku di SEMUA folder (issue #1040):
+        # dulu bersyarat awalan app/src/main/ sehingga blob
+        # besar berekstensi jinak di tools/docs/akar lolos —
+        # repo membengkak permanen untuk semua clone. Satu
+        # pengecualian bernama: CHANGELOG.md memang sudah
+        # melewati 1 MB secara sah (teks riwayat rilis yang
+        # hanya bertambah) — mengecualikannya per nama, bukan
+        # per folder/ekstensi, agar berkas lain tetap terjaga.
+        if not sudah_dilarang and path != "CHANGELOG.md":
             try:
                 ukuran = os.path.getsize(os.path.join(AKAR, path))
             except OSError:
                 ukuran = 0
             if ukuran > 1024 * 1024:
-                gagal.append("Berkas >1 MB di app/src: " + path)
+                gagal.append("Berkas >1 MB masuk repo: " + path)
 
 
 POLA_TOKEN_ASLI = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
