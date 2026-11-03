@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Larangan berkas rahasia di kedua gerbang kini mencakup varian nama env (.env.local, .env.production, .env.bak, dan sejenisnya), bukan hanya nama persis .env.
 - Rilis kini juga digagalkan bila seksi CHANGELOG versi itu ada tetapi isinya kosong (hanya judul) — sebelumnya berkas catatan berisi judul semata lolos terbit.
 - Gerbang cek-cepat kini juga menangkap anotasi ganda berturut-turut yang salah satunya membawa komentar ekor (sebelumnya lolos dari pola poin 6).
 - Percobaan ulang GPS untuk pagar cadangan kini mundur bertahap bila gagal beruntun (2, 5, 10, lalu 15 menit) alih-alih hampir tiap putaran — menghemat baterai saat GPS lama tak mendapat fix, mis. di dalam gedung.

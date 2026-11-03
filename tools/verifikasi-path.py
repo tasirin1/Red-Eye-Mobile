@@ -771,11 +771,22 @@ def cek_sinkron_terjemah(gagal):
         gagal.append("values-in berlebih string: " + ", ".join(lebih[:10]))
 
 
+def adalah_env(rendah):
+    # Berkas env terlarang (issue #975): bukan hanya nama persis
+    # ".env" — varian ".env.local"/".env.production"/".env.bak"
+    # adalah konvensi nama berkas rahasia yang sama lazimnya
+    # dan dulu lolos kedua gerbang karena pencocokan akhiran
+    # persis. Repo ini tak memakai berkas env sama sekali
+    # (kredensial hanya via Setup), jadi semua ".env.*" dilarang.
+    nama = rendah.rsplit("/", 1)[-1]
+    return nama == ".env" or nama.startswith(".env.")
+
+
 def cek_aturan_repo(gagal, berubah):
     for path in berubah:
         rendah = path.lower()
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
-                             ".keystore", ".p12", ".pfx", ".env")):
+                             ".keystore", ".p12", ".pfx")) or adalah_env(rendah):
             gagal.append("Berkas terlarang masuk repo: " + path)
         elif rendah == "local.properties" or rendah.endswith("/local.properties"):
             gagal.append("local.properties tak boleh masuk repo: " + path)
@@ -1186,7 +1197,7 @@ def cek_secret_terabaikan(gagal, peringatan):
                 continue
         rendah = path.lower()
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
-                            ".keystore", ".p12", ".pfx", ".env")) or \
+                            ".keystore", ".p12", ".pfx")) or adalah_env(rendah) or \
                 rendah == "local.properties" or rendah.endswith("/local.properties"):
             peringatan.append("Berkas sensitif terabaikan di pohon kerja: " + path)
         if mengandung_token(baca(path)):
