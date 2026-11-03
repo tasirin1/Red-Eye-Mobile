@@ -2782,19 +2782,11 @@ class MonitoringService : Service() {
         }
     }
 
+    // Badan pemetaan dipindah ke MenuCallback.toggleCommand
+    // (issue #903) agar murni dan terkunci uji; pembungkus ini
+    // dipertahankan agar pemanggil tak berubah.
     private fun toggleCommand(key: String, nyala: Boolean): String? {
-        val arah = if (nyala) "on" else "off"
-        return when (key) {
-            "notify" -> "/notify $arah"
-            "otp" -> "/notify otp $arah"
-            "patrol" -> "/patrol $arah"
-            "night" -> "/night $arah"
-            "appalert" -> "/appalert $arah"
-            "appwatch" -> "/appwatch $arah"
-            "protect" -> "/protect $arah"
-            "datasaver" -> "/datasaver $arah"
-            else -> null
-        }
+        return com.redeye.parentalmonitor.utils.MenuCallback.toggleCommand(key, nyala)
     }
 
     private fun saklar(emoji: String, nama: String, view: String, key: String): com.redeye.parentalmonitor.network.InlineButton {

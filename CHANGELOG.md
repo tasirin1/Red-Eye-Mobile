@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Celah uji ditutup: peta tombol menu lama (LEGACY) dan pemetaan kunci saklar kini terkunci uji terhadap daftar perintah kanonis — rename perintah yang lupa memperbarui peta tombol akan menggagalkan uji, bukan mematikan tombol diam-diam seperti yang pernah terjadi.
 - Menekan saklar pada pesan menu lama tidak lagi membalik setelan secara tak terduga: data tombol kini membawa keadaan yang tertulis di labelnya; bila keadaan sebenarnya sudah berubah sejak menu dibuat, penekanan hanya menyegarkan tampilan ke keadaan yang benar, bukan membalik.
 - Saklar menu tidak lagi bisa membalik hasil perintah ketik yang masuk bersamaan: keadaan setelan kini dibaca ulang dan perintah saklar dihitung di dalam kunci yang sama dengan pelaksanaannya (sebelumnya dibaca di luar kunci sehingga bisa memakai keadaan basi).
 - Penanda "token sama" pada migrasi chat kini memakai sidik SHA-256 token, bukan hashCode 32-bit yang bisa bertabrakan (tabrakan pada pergantian token sungguhan bisa mengonfirmasi offset milik bot lama).

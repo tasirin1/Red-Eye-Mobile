@@ -35,6 +35,11 @@ object CommandSuggest {
 
     val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notify", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/emergency", "/curfew", "/weekly", "/watchnumber", "/track", "/alertness", "/lost", "/pickup", "/recover", "/driving", "/datasaver", "/shotperm", "/restore", "/cleanup", "/logout", "/appalert", "/protect", "/appwatch", "/photo", "/screenshot")
 
+    // Akses uji (issue #903): apakah kepala perintah ini kanonis
+    // & dikenal (dipakai mengunci peta LEGACY MenuCallback dan
+    // pemetaan saklar ke daftar perintah hidup).
+    fun isKnown(command: String): Boolean = command in KNOWN_COMMANDS
+
     fun suggestCommand(typed: String): String? {
         var best: String? = null
         var bestDist = Int.MAX_VALUE

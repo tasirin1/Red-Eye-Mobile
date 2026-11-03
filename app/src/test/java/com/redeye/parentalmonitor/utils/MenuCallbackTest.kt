@@ -1,6 +1,7 @@
 package com.redeye.parentalmonitor.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -81,5 +82,37 @@ class MenuCallbackTest {
         assertNull(MenuCallback.parse("tombol_lama_tak_dikenal"))
         assertNull(MenuCallback.parse(""))
         assertNull(MenuCallback.parse("   "))
+    }
+
+    @Test
+    fun legacySemuaMenunjukPerintahHidup() {
+        // #903 (jalan lolosnya #898): tiap nilai LEGACY wajib
+        // terurai ke Run yang sama DAN kepalanya perintah kanonis
+        // yang dikenal — rename yang lupa memperbarui peta ini
+        // membuat uji ini merah, bukan tombol yang mati diam-diam.
+        for ((mentah, tujuan) in MenuCallback.LEGACY) {
+            assertEquals("LEGACY[$mentah]", MenuCallback.Run(tujuan), MenuCallback.parse(mentah))
+            assertTrue(
+                "LEGACY[$mentah] -> /${tujuan.substringBefore(' ')} tak dikenal",
+                CommandSuggest.isKnown("/" + tujuan.substringBefore(" "))
+            )
+        }
+    }
+
+    @Test
+    fun saklarSemuaKunciPunyaPerintahHidup() {
+        // #903: tiap kunci saklar wajib punya perintah on & off
+        // yang kepalanya dikenal.
+        for (kunci in MenuCallback.TOGGLE_KEYS) {
+            for (nyala in listOf(true, false)) {
+                val perintah = MenuCallback.toggleCommand(kunci, nyala)
+                assertNotNull("toggleCommand($kunci, $nyala)", perintah)
+                assertTrue(
+                    "toggleCommand($kunci) -> $perintah tak dikenal",
+                    CommandSuggest.isKnown(perintah!!.substringBefore(" "))
+                )
+            }
+        }
+        assertNull(MenuCallback.toggleCommand("takada", true))
     }
 }

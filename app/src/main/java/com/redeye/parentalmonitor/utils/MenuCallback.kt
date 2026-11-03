@@ -23,7 +23,11 @@ sealed class MenuCallback {
         // membalik setelan apa pun.
         val TOGGLE_KEYS = setOf("notify", "otp", "patrol", "night", "appalert", "appwatch", "protect", "datasaver")
 
-        private val LEGACY = mapOf(
+        // Sengaja tidak private (issue #903): uji mengunci tiap
+        // nilai peta ini ke kepala perintah yang hidup di
+        // CommandSuggest.KNOWN_COMMANDS — persis jalan lolosnya
+        // tombol "cekmati" yang mati pada #898.
+        val LEGACY = mapOf(
             "photo" to "photo",
             "location" to "location",
             "lastcalls" to "lastcalls",
@@ -41,6 +45,25 @@ sealed class MenuCallback {
         )
 
         fun viewName(name: String): String = if (name in VIEWS) name else "main"
+
+        // Pemetaan kunci saklar -> perintah ketik (issue #903):
+        // dipindah ke sini dari MonitoringService agar murni dan
+        // terkunci uji — tiap kunci wajib menghasilkan perintah
+        // yang kepalanya dikenal CommandSuggest.
+        fun toggleCommand(key: String, nyala: Boolean): String? {
+            val arah = if (nyala) "on" else "off"
+            return when (key) {
+                "notify" -> "/notify $arah"
+                "otp" -> "/notify otp $arah"
+                "patrol" -> "/patrol $arah"
+                "night" -> "/night $arah"
+                "appalert" -> "/appalert $arah"
+                "appwatch" -> "/appwatch $arah"
+                "protect" -> "/protect $arah"
+                "datasaver" -> "/datasaver $arah"
+                else -> null
+            }
+        }
 
         fun parse(data: String): MenuCallback? {
             val raw = data.trim()
