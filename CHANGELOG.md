@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Teks notifikasi kini dipotong sejak dibaca dari sumbernya (maks 20 ribu aksara per medan): teks raksasa tidak lagi diproses utuh oleh masking, huruf-kecil, dan hash sebelum titik potong akhir.
 - Jeda foto tidak lagi meregang saat jam perangkat dimundurkan: sisa jeda kini dihitung dari jangkar waktu monoton pendamping tenggat jam dinding dan dijepit pada jeda sah maksimum 480 menit.
 - Detak jantung (heartbeat) kini tahan jam yang dimundurkan: cap masa depan dijangkar ulang tanpa mengirim detak ekstra dan tanpa menggeser interval mundur.
 - Tidur diam loop kamera dan patroli tidak lagi melewati akhir mode malam: bangun kini dibatasi sampai 05:00 bila mode malam yang menahan, sehingga foto/patroli tidak telat sampai 30 menit sesudah malam berakhir.
