@@ -524,6 +524,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_DATA_SAVER_NOTICE_AT = "data_saver_notice_at"
         private const val KEY_A11Y_USAGE_DATE = "a11y_usage_date"
         private const val KEY_A11Y_USAGE_JSON = "a11y_usage_json"
+        private const val KEY_A11Y_USAGE_PREV_DATE = "a11y_usage_prev_date"
+        private const val KEY_A11Y_USAGE_PREV_JSON = "a11y_usage_prev_json"
         private const val KEY_A11Y_NIGHT_ALERT_PKG = "a11y_night_alert_pkg"
         private const val KEY_A11Y_NIGHT_ALERT_AT = "a11y_night_alert_at"
         private const val KEY_A11Y_NIGHT_ALERT_ELAPSED = "a11y_night_alert_elapsed"
@@ -1657,9 +1659,31 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_A11Y_USAGE_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_JSON, value).apply()
 
+    // Slot sebelumnya data pemakaian (issue #1037): slot
+    // tunggal yatim saat tanggal perangkat melompat lalu
+    // proses restart di tengah excursi — persist bertanggal
+    // palsu menimpa akumulasi hari asli. Setiap penulisan
+    // yang mengganti tanggal merotasi isi lama ke slot
+    // cadangan dalam edit yang sama; loadUsage memulihkan
+    // dari cadangan bila tanggal slot utama bukan hari ini
+    // tetapi tanggal cadangan adalah hari ini.
+    var a11yUsagePrevDate: String
+        get() = prefString(KEY_A11Y_USAGE_PREV_DATE, "")
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV_DATE, value).apply()
+
+    var a11yUsagePrevJson: String
+        get() = prefString(KEY_A11Y_USAGE_PREV_JSON, "")
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV_JSON, value).apply()
+
     fun setA11yUsage(date: String, json: String) {
         try {
-            sharedPreferences.edit()
+            val editor = sharedPreferences.edit()
+            val lama = prefString(KEY_A11Y_USAGE_DATE, "")
+            if (lama.isNotEmpty() && lama != date) {
+                editor.putString(KEY_A11Y_USAGE_PREV_DATE, lama)
+                editor.putString(KEY_A11Y_USAGE_PREV_JSON, prefString(KEY_A11Y_USAGE_JSON, ""))
+            }
+            editor
                 .putString(KEY_A11Y_USAGE_DATE, date)
                 .putString(KEY_A11Y_USAGE_JSON, json)
                 .apply()

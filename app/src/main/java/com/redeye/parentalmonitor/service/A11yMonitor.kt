@@ -194,7 +194,11 @@ object A11yMonitor {
             val todayKey = TimeFmt.dayKey(nowWall)
             val todayStart = A11yUsageMath.dayStartWallMillis(nowWall)
             val slotDay = try { manager.a11yUsageDate } catch (_: Exception) { "" }
-            if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && slotDay == startDay) {
+            // Slot cadangan ikut sah (issue #1037): loadUsage
+            // di bawah memulihkan dari cadangan bila tanggal
+            // utamanya bukan hari yang diminta.
+            val slotDayPrev = try { manager.a11yUsagePrevDate } catch (_: Exception) { "" }
+            if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && (slotDay == startDay || slotDayPrev == startDay)) {
                 // Akru hanya sampai tengah malam PERTAMA sesudah sesi
                 // mulai (issue #780): sebelumnya sampai tengah malam
                 // hari ini, sehingga sesi yang mulai ≥2 hari lalu
@@ -636,8 +640,16 @@ object A11yMonitor {
     private fun loadUsage(context: Context, today: String): MutableMap<String, AppUsage> {
         val manager = prefs ?: return HashMap()
         return try {
-            if (manager.a11yUsageDate != today) return HashMap()
-            val raw = manager.a11yUsageJson
+            // Slot cadangan lebih dulu (issue #1037): bila
+            // tanggal slot utama bukan hari ini tetapi tanggal
+            // cadangan adalah hari ini, slot utama tertimpa
+            // persist bertanggal palsu selama excursi jam —
+            // data hari ini yang sah ada di cadangan.
+            val raw = when {
+                manager.a11yUsageDate == today -> manager.a11yUsageJson
+                manager.a11yUsagePrevDate == today -> manager.a11yUsagePrevJson
+                else -> return HashMap()
+            }
             if (raw.isEmpty()) return HashMap()
             val parsed: MutableMap<String, AppUsage>? = gson.fromJson(raw, usageType)
             parsed ?: HashMap()

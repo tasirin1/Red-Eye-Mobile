@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Data pemakaian aplikasi kini punya slot cadangan yang terotasi otomatis: akumulasi waktu layar hari ini tidak lagi hilang bila tanggal perangkat melompat lalu proses aplikasi mulai ulang sebelum jam terkoreksi.
 - Akru sesi pemakaian aplikasi di cabang monitoring-mati dan layar utama kini langsung ditulis persisten: menit sesi terakhir tidak lagi bisa hilang bila proses aplikasi mati sesaat sesudah sesi ditutup.
 - Cap masa tenggang Setup kini juga membawa penanda penghitung boot: cap yang ditulis sesaat sesudah HP menyala tidak lagi hidup lagi sebagai tenggang pada boot berikutnya sesudah perangkat mati lama.
 - Uji anti-mati kini mencatat penghitung boot persisten saat dimulai: reboot cepat di tengah uji (yang dari jam saja tak terbedakan dari koreksi jam) terdeteksi pasti dan laporan tidak lagi menyatakan anti-mati bekerja padahal HP sempat reboot.
