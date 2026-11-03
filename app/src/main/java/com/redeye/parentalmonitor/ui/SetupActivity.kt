@@ -661,26 +661,28 @@ class SetupActivity : AppCompatActivity() {
             if (com.redeye.parentalmonitor.service.MonitoringService.isRunning) return
         } catch (_: Exception) {
         }
-        // Kelayakan MURAH dinilai SEBELUM klaim (issue #1143):
-        // dulu jatah dibakar panggilan mana pun — onResume saat
-        // konfigurasi belum lengkap (pasti tak layak) menghanguskan
-        // jatah, lalu simpan sah <60 detik sesudahnya gagal
-        // membangunkan layanan tanpa penjelasan. Empat bendera
-        // prefs ini bacaan murah; rantai izin penuh tetap di
-        // dalam launch sesudah klaim.
-        val layakMurah = try {
-            prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
-        } catch (_: Exception) {
-            false
-        }
-        if (!layakMurah) return
-        val nowRevive = android.os.SystemClock.elapsedRealtime()
-        while (true) {
-            val lastRevive = setupReviveAt.get()
-            if (nowRevive - lastRevive < 60_000L) return
-            if (setupReviveAt.compareAndSet(lastRevive, nowRevive)) break
-        }
+        // Kelayakan MURAH dinilai SEBELUM klaim, di benang IO
+        // (issue #1143 + #1155): dulu jatah dibakar panggilan
+        // mana pun — onResume saat konfigurasi belum lengkap
+        // (pasti tak layak) menghanguskan jatah, lalu simpan
+        // sah <60 detik sesudahnya gagal membangunkan layanan
+        // tanpa penjelasan. Penilaian pindah ke dalam launch
+        // karena sentuhan pertama getter prefs bisa MEMBANGUN
+        // instance (buka penyimpanan terenkripsi = disk +
+        // KeyStore) — itu tak boleh sinkron di benang utama.
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            val layakMurah = try {
+                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring
+            } catch (_: Exception) {
+                false
+            }
+            if (!layakMurah) return@launch
+            val nowRevive = android.os.SystemClock.elapsedRealtime()
+            while (true) {
+                val lastRevive = setupReviveAt.get()
+                if (nowRevive - lastRevive < 60_000L) return@launch
+                if (setupReviveAt.compareAndSet(lastRevive, nowRevive)) break
+            }
             val shouldRevive = try {
                 prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && hasBackgroundLocation()
             } catch (_: Exception) {
