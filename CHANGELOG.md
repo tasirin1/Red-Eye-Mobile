@@ -11,6 +11,7 @@
 - Akru sesi pemakaian pada cabang pergantian aplikasi kini juga langsung ditulis persisten, menutup sisa jendela hilang yang sama seperti cabang lain: durasi sesi terakhir tidak lagi bisa lenyap bila proses mati tepat sesudah berpindah aplikasi.
 - Pemeriksaan dan pencatatan penunggu restart loop kamera/patroli kini atomik di bawah satu kunci: dua perubahan setelan yang datang bersamaan dari jalur berbeda tidak lagi bisa sama-sama lolos saringan dan menyisakan penunggu yatim yang tak bisa dibatalkan saat monitoring berhenti.
 - Pembersihan penanda blokir kredensial kini memakai penjaga kecocokan: penanda error 401/403 segar yang baru ditulis jalur pengiriman tidak lagi bisa ikut terhapus oleh pembersihan penanda lama yang berjalan bersamaan, sehingga masa blokir kredensial tidak runtuh dan error yang sama tidak berulang.
+- Anggaran alert kata pantau harian kini berpasangan epoch seperti cap harian lainnya: anggaran dan jeda yang terakumulasi pada tanggal palsu hasil perubahan jam tidak lagi terwarisi saat tanggal aslinya tiba, dan dimulai ulang sebagaimana mestinya.
 
 ## [1.6.600] - 2026-11-03
 

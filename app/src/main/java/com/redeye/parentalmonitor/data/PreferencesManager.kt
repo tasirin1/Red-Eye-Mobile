@@ -553,6 +553,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
         private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
         private const val KEY_A11Y_KEYWORD_DAY = "a11y_keyword_day"
+        private const val KEY_A11Y_KEYWORD_DAY_AT = "a11y_keyword_day_at"
         private const val KEY_A11Y_KEYWORD_COUNT = "a11y_keyword_count"
         private const val KEY_A11Y_KEYWORD_JSON = "a11y_keyword_json"
         private const val KEY_A11Y_TAMPER_JSON = "a11y_tamper_json"
@@ -1790,12 +1791,21 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_A11Y_TAMPER_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_TAMPER_JSON, value).apply()
 
-    fun setA11yKeywordAlertState(day: String, count: Int, json: String) {
+    // Epoch penulisan pasangan hari kata pantau (issue
+    // #1053, pola DayStamp #1029): tanpa ini, anggaran yang
+    // terakumulasi pada tanggal palsu hasil excursi jam
+    // terwarisi utuh saat tanggal aslinya tiba.
+    var a11yKeywordAlertDayAtMs: Long
+        get() = prefLong(KEY_A11Y_KEYWORD_DAY_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_KEYWORD_DAY_AT, value).apply()
+
+    fun setA11yKeywordAlertState(day: String, count: Int, json: String, atMs: Long) {
         try {
             sharedPreferences.edit()
                 .putString(KEY_A11Y_KEYWORD_DAY, day)
                 .putInt(KEY_A11Y_KEYWORD_COUNT, count)
                 .putString(KEY_A11Y_KEYWORD_JSON, json)
+                .putLong(KEY_A11Y_KEYWORD_DAY_AT, atMs)
                 .apply()
         } catch (_: Exception) {
         }

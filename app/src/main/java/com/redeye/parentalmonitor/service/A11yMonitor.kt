@@ -80,6 +80,7 @@ object A11yMonitor {
     @Volatile
     private var watchKeywordsCache: List<String> = emptyList()
     private var keywordAlertDay = ""
+    private var keywordAlertDayAtMs = 0L
     private var keywordAlertCount = 0
     // Antrean TERBATAS (issue #931): executor lama tak
     // terbatas — satu tugas lambat menumpuk semua event/
@@ -405,6 +406,7 @@ object A11yMonitor {
         if (!keywordStateLoaded) {
             keywordStateLoaded = true
             keywordAlertDay = try { manager.a11yKeywordAlertDay } catch (_: Exception) { "" }
+            keywordAlertDayAtMs = try { manager.a11yKeywordAlertDayAtMs } catch (_: Exception) { 0L }
             keywordAlertCount = try { manager.a11yKeywordAlertCount } catch (_: Exception) { 0 }
             try {
                 val parsed: MutableMap<String, Long>? = gson.fromJson(manager.a11yKeywordAlertJson, alertType)
@@ -415,7 +417,14 @@ object A11yMonitor {
             } catch (_: Exception) {
             }
         }
-        if (day != keywordAlertDay) {
+        // Pasangan (hari, epoch) dinilai penilai yang sama
+        // dengan cap harian lain (issue #1053): hari cocok
+        // tetapi epoch penulisan sudah basi berarti state ini
+        // sisa excursi jam ke tanggal yang sama — anggaran dan
+        // peta jeda dimulai ulang, bukan diwarisi.
+        val pasanganSah = day == keywordAlertDay &&
+            com.redeye.parentalmonitor.utils.DayStamp.blocks(keywordAlertDay, keywordAlertDayAtMs, day, System.currentTimeMillis())
+        if (!pasanganSah) {
             keywordAlertDay = day
             keywordAlertCount = 0
             lastKeywordAlert.clear()
@@ -430,10 +439,12 @@ object A11yMonitor {
 
     private fun saveKeywordState(manager: PreferencesManager) {
         try {
+            keywordAlertDayAtMs = System.currentTimeMillis()
             manager.setA11yKeywordAlertState(
                 keywordAlertDay,
                 keywordAlertCount,
-                try { gson.toJson(lastKeywordAlert) } catch (_: Exception) { "" }
+                try { gson.toJson(lastKeywordAlert) } catch (_: Exception) { "" },
+                keywordAlertDayAtMs
             )
         } catch (_: Exception) {
         }
