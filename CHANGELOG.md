@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.606] - 2026-11-03
+
 ### Fixed
 
 - Pengurai riwayat nama pada gerbang kini mengenal status berubah-tipe (berkas menjadi symlink atau sebaliknya) seperti pengurai hapusannya: satu perubahan tipe tidak lagi mengacaukan pembacaan nama-nama sesudahnya pada pindai riwayat.
