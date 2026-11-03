@@ -11357,9 +11357,20 @@ class MonitoringService : Service() {
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
+            // Korban dipilih berdasar umur SEBENARNYA dari nama
+            // berkas (issue #891): urutan lastModified — termasuk
+            // daftar known dari flush — ditulis ulang oleh rotasi
+            // flush (#824/#856), sehingga foto tua yang baru gagal
+            // kirim tampak baru dan foto lebih muda terbuang lebih
+            // dulu. mediaNameTimeMs memang dibuat #855 untuk menilai
+            // umur dari nama; nama tanpa cap terbaca jatuh ke
+            // lastModified. Urutan flush sendiri tidak diubah.
             val photos = (known ?: cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return -1
+            }?.toList())?.sortedBy { file ->
+                val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
+                if (t > 0L) t else file.lastModified()
+            }?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size
