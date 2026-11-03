@@ -215,7 +215,12 @@ jobs:
             f { print }
           ' CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then
-            printf '## [%s]\n' "$versi" > release-notes.md
+            # Gagalkan rilis (issue #908): fallback header kosong
+            # dulu membuat tag tanpa seksi CHANGELOG tetap
+            # terbit dengan catatan rilis hampa. Rilis wajib
+            # punya catatan yang ditulis manusia.
+            echo "::error::Seksi CHANGELOG untuk versi $versi tidak ditemukan/kosong - rilis dibatalkan. Tulis entri ## [$versi] di CHANGELOG.md dulu."
+            exit 1
           fi
           prev="$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)"
           if [ -n "$prev" ] && [ "$prev" != "$GITHUB_REF_NAME" ]; then
