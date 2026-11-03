@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Akru sesi pemakaian aplikasi di cabang monitoring-mati dan layar utama kini langsung ditulis persisten: menit sesi terakhir tidak lagi bisa hilang bila proses aplikasi mati sesaat sesudah sesi ditutup.
 - Cap masa tenggang Setup kini juga membawa penanda penghitung boot: cap yang ditulis sesaat sesudah HP menyala tidak lagi hidup lagi sebagai tenggang pada boot berikutnya sesudah perangkat mati lama.
 - Uji anti-mati kini mencatat penghitung boot persisten saat dimulai: reboot cepat di tengah uji (yang dari jam saja tak terbedakan dari koreksi jam) terdeteksi pasti dan laporan tidak lagi menyatakan anti-mati bekerja padahal HP sempat reboot.
 - Penunggu restart loop kamera dan patroli kini tercatat dan terdeduplikasi: semburan perubahan setelan tidak lagi melahirkan banyak penunggu yang berebut menyalakan loop, dan penunggu ikut dibatalkan saat monitoring berhenti agar loop tidak menyala sesaat di layanan yang sedang berhenti.

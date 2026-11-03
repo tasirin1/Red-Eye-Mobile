@@ -702,17 +702,22 @@ object A11yMonitor {
                 }
             }
             if (!done && !monitoringActive(manager)) {
-                finishSessionLocked(nowWall, nowElapsed)
+                val terakru = finishSessionLocked(nowWall, nowElapsed)
                 // Persist mengikuti jatah normal (issue #1010):
                 // paksa di sini membuat SETIAP transisi activity
                 // menulis ulang seluruh JSON pemakaian walau
-                // monitoring mati dan tak ada data baru.
-                persistSnapshot = persistSnapshotLocked(false)
+                // monitoring mati dan tak ada data baru. Kecuali
+                // bila finish baru saja mengakru sesi (issue
+                // #1036): akru itu kini hanya di memori dan
+                // penanda sesi-terbukanya sudah terhapus, jadi
+                // persist dipaksa agar tak hilang bila proses
+                // mati sebelum jatah berikutnya.
+                persistSnapshot = persistSnapshotLocked(terakru)
                 done = true
             }
             if (!done && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
-                finishSessionLocked(nowWall, nowElapsed)
-                persistSnapshot = persistSnapshotLocked(false)
+                val terakru = finishSessionLocked(nowWall, nowElapsed)
+                persistSnapshot = persistSnapshotLocked(terakru)
                 done = true
             }
             if (!done && pkg != currentPackage) {
@@ -997,7 +1002,13 @@ object A11yMonitor {
         return try { manager.a11yNightAlertPkg } catch (_: Exception) { "" }
     }
 
-    private fun finishSessionLocked(nowWall: Long, nowElapsed: Long) {
+    // Mengembalikan true bila ada akru sesi nyata yang baru
+    // masuk peta memori (issue #1036): pemanggil di cabang
+    // bertrottle memakai nilai ini untuk memaksa persist,
+    // karena penanda sesi-terbuka persisten sudah dihapus di
+    // sini — akru yang hanya di memori hilang permanen bila
+    // proses mati sebelum persist jatah berikutnya.
+    private fun finishSessionLocked(nowWall: Long, nowElapsed: Long): Boolean {
         // Pembersih hanya berjalan bila memang ada cap tersimpan
         // (issue #1010): dulu setiap panggilan membayar dua
         // apply() prefs walau tidak ada sesi/cap yang berubah.
@@ -1014,12 +1025,14 @@ object A11yMonitor {
             if (sessionStored) {
                 try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
             }
-            return
+            return false
         }
+        val terakru = nowElapsed > currentStartElapsed
         accrueSessionLocked(nowWall, nowElapsed)
         currentPackage = ""
         currentStartElapsed = 0L
         try { prefs?.clearA11yOpenSession() } catch (_: Exception) { }
+        return terakru
     }
 
     private fun requestPeriodicPersist(context: Context) {
