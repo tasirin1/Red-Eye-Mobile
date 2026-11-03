@@ -100,4 +100,18 @@ object HeldPhotos {
     fun withoutHashes(entries: List<Entry>, hashes: Set<Long>): List<Entry> {
         return entries.filter { it.raw != null || it.hash !in hashes }
     }
+
+    // Lepas SATU entri warisan (tanpa nama) ber-hash ini
+    // (issue #991): pelepasan sesudah satu berkas terkirim
+    // tak boleh ikut melepas entri lain ber-hash sama —
+    // sidik serupa bisa dimiliki foto tertahan lain yang
+    // belum terkirim. Entri bernama tak disentuh di sini;
+    // yang bernama dilepas per nama (withoutNames).
+    fun withoutOneHash(entries: List<Entry>, hash: Long): List<Entry> {
+        val idx = entries.indexOfFirst { it.raw == null && it.name == null && it.hash == hash }
+        if (idx < 0) return entries
+        val out = ArrayList<Entry>(entries)
+        out.removeAt(idx)
+        return out
+    }
 }

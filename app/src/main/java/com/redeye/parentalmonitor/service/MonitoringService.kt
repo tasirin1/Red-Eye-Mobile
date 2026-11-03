@@ -11759,7 +11759,14 @@ class MonitoringService : Service() {
                     if (fileIsHeld) {
                         try {
                             if (photoOutcome == MediaSendOutcome.SENT && PhotoFingerprint.isComparableFingerprint(fileHashFlush)) preferencesManager.setLastPhotoHashSync(fileHashFlush)
-                            mutateHeldPhotoEntries { fresh -> HeldPhotos.withoutHashes(fresh, setOf(fileHashFlush)) }
+                            // Lepas hanya entri berkas INI (issue
+                            // #991): entri bernama per nama, entri
+                            // warisan satu saja — entri lain
+                            // ber-hash sama tetap tertahan.
+                            mutateHeldPhotoEntries { fresh ->
+                                if (namedFlush != null) HeldPhotos.withoutNames(fresh, setOf(file.name))
+                                else HeldPhotos.withoutOneHash(fresh, fileHashFlush)
+                            }
                         } catch (_: Exception) {
                         }
                     }

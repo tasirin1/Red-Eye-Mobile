@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pelepasan status tertahan sesudah satu foto terkirim kini hanya melepas entri foto itu sendiri — foto tertahan lain yang sidiknya kebetulan sama tidak ikut terlepas sebelum terkirim.
 - Satu-satunya catatan galat kamera yang masih menulis pesan pengecualian mentah ke log kini disamarkan tokennya seperti semua log galat lain.
 - Watchdog unggah tangkapan layar (batas 660 detik) kini ikut dibatalkan pada cabang gagal dan jalur pengecualian, bukan hanya pada jalur sukses.
 - Status uji anti-mati kini dibersihkan hanya sesudah laporannya benar-benar terkirim/terantre — laporan yang gugur di antrean tak lagi hilang tanpa jejak.

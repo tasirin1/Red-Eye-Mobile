@@ -120,4 +120,17 @@ class HeldPhotosTest {
             HeldPhotos.withoutHashes(entries, setOf(1L, 2L))
         )
     }
+
+    // Issue #991: pelepasan satu berkas hanya melepas SATU
+    // entri warisan ber-hash sama; entri warisan lain dan
+    // entri bernama ber-hash sama tetap tertahan.
+    @Test
+    fun withoutOneHashHanyaSatuEntriWarisan() {
+        val entries = listOf(legacy(7), legacy(7), named("camera_9.jpg", 7), legacy(8))
+        assertEquals(
+            listOf(legacy(7), named("camera_9.jpg", 7), legacy(8)),
+            HeldPhotos.withoutOneHash(entries, 7)
+        )
+        assertEquals(entries, HeldPhotos.withoutOneHash(entries, 99))
+    }
 }
