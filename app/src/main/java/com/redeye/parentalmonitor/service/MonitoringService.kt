@@ -614,12 +614,28 @@ class MonitoringService : Service() {
                 if (!initialSyncRunning.compareAndSet(false, true)) return
                 val syncGen = initialSyncGen.incrementAndGet()
                 initialSyncJob = serviceScope.launch {
+                    var locked = false
                     try {
+                        // Sinkron awal berbagi kunci data dengan cek
+                        // rutin (issue #888): penjaga lama hanya satu
+                        // arah — cek rutin menolak saat sinkron awal
+                        // berjalan, tetapi sinkron awal tak menunggu
+                        // cek yang sudah terlanjur berjalan, jadi
+                        // keduanya bisa membaca kursor yang sama dan
+                        // riwayat terkirim dua kali. Tunggu kunci
+                        // dengan tetap tanggap pada pembatalan dan
+                        // generasi yang lebih baru.
+                        while (!locked) {
+                            if (initialSyncGen.get() != syncGen) return@launch
+                            locked = dataCheckLock.tryAcquire()
+                            if (!locked) delay(200)
+                        }
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
                         sendInitialData()
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
                     } catch (_: Exception) {
                     } finally {
+                        if (locked) dataCheckLock.release()
                         if (initialSyncGen.get() == syncGen) initialSyncRunning.set(false)
                     }
                 }
