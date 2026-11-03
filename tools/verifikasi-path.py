@@ -267,8 +267,8 @@ def himpun_definisi():
     def rapikan(jenis, nama):
         return nama.replace(".", "_") if jenis == "style" else nama
 
-    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool)\s+name="([^"]+)"')
-    pola_array = re.compile(r'<(string-array|integer-array|array)\s+name="([^"]+)"')
+    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool)(?:\s[^>]*?)?\bname="([^"]+)"')
+    pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname="([^"]+)"')
 
     def tambah(kunci, nama):
         definisi.setdefault(kunci, set()).add(rapikan(kunci, nama))
@@ -435,7 +435,7 @@ def cek_duplikat_definisi(gagal):
     di folder itu sama fatalnya dengan dalam satu berkas (issue
     #904: penghitung dulu direset per berkas). Override antar
     folder beda (values vs values-night/values-in) tetap sah."""
-    pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)\s+name="([^"]+)"')
+    pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname="([^"]+)"')
     per_folder = {}
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
         if "/values" not in path.replace(os.sep, "/"):
@@ -736,7 +736,7 @@ def cek_izin_baru(peringatan, diff):
 
 
 def cek_definisi_baru(peringatan, diff):
-    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)\s+name="([^"]+)"')
+    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname="([^"]+)"')
     _, acuan = himpun_definisi()
     sudah = set()
     for baris in diff.splitlines():
@@ -767,7 +767,7 @@ def cek_sinkron_terjemah(gagal):
         return
 
     def nama_string(path):
-        return set(re.findall(r'<string\s+name="([^"]+)"', kupas_komentar_xml(isi[path])))
+        return set(re.findall(r'<string(?:\s[^>]*?)?\bname="([^"]+)"', kupas_komentar_xml(isi[path])))
 
     inggris = nama_string(jalur[0])
     indonesia = nama_string(jalur[1])
@@ -1351,7 +1351,7 @@ def cek_paritas_resource(gagal):
     isi = isi_strings_wajib(gagal)
     if any(teks is None for teks in isi.values()):
         return
-    pola = re.compile(r'<string\s+name="([^"]+)"[^>]*>(.*?)</string>', re.S)
+    pola = re.compile(r'<string(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</string>', re.S)
     inggris = dict(pola.findall(kupas_komentar_xml(isi[jalur[0]])))
     indonesia = dict(pola.findall(kupas_komentar_xml(isi[jalur[1]])))
     for nama, teks in sorted(indonesia.items()):
@@ -1366,7 +1366,7 @@ def cek_plurals(gagal):
     dasar_res = os.path.join(AKAR, "app/src/main/res")
     if not os.path.isdir(dasar_res):
         return
-    pola = re.compile(r'<plurals\s+name="([^"]+)"[^>]*>(.*?)</plurals>', re.S)
+    pola = re.compile(r'<plurals(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</plurals>', re.S)
     pola_item = re.compile(r'<item\s+quantity="([^"]+)"')
 
     def peta_plurals(dirpath):
