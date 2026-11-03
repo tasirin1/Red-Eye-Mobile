@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.598] - 2026-11-03
+
 ### Fixed
 
 - Usia blokir kredensial kini hanya memakai selisih jam monoton bila capnya terbukti dari boot yang sama — penanda lama tidak lagi terbaca muda palsu sesudah reboot dan waktu berjalan lama.
