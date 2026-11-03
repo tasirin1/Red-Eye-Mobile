@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemeriksaan pagar cadangan (geofence fallback) tidak lagi kehilangan jatah 15 menitnya hanya karena satu kali gagal mengambil lokasi: cap jeda kini ditulis sesudah posisi didapat, dan kegagalan GPS hanya menekan pemeriksaan ±2 menit.
 - Batas waktu total panggilan teks Telegram diturunkan 90 → 60 detik: satu pengiriman yang menggantung kini menahan antrean serial lebih singkat (unggahan media tidak terpengaruh — kliennya terpisah dengan batas 600 detik).
 - Cap anti-dobel notifikasi kini ditulis sesudah pengiriman terkonfirmasi, bukan sebelumnya — notifikasi yang kirimnya gugur tidak lagi menelan kiriman ulangnya sendiri dalam jendela 10 detik.
 - Klasifikasi notifikasi prioritas perbankan/e-wallet kini mencocokkan per segmen nama paket, bukan substring bebas — aplikasi tak terkait yang namanya kebetulan mengandung potongan seperti "bri" atau "dana" tidak lagi ikut diperlakukan sebagai notifikasi bank.

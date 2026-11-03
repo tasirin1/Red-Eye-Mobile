@@ -7633,7 +7633,6 @@ class MonitoringService : Service() {
                 false
             }
             if (!hasHome && !hasSchool) return
-            lastGeofenceCheckAt = nowElapsed
             val locAge = System.currentTimeMillis() - try { preferencesManager.lastLocAt } catch (_: Exception) { 0L }
             val cached = lastSentLatLon()
             var accuracyM = -1f
@@ -7643,11 +7642,20 @@ class MonitoringService : Service() {
                 dariCache = true
                 cached
             } else {
-                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null } ?: return
+                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+                if (fix == null) {
+                    // Cap sesudah posisi didapat (issue #936):
+                    // kegagalan GPS hanya menekan ±2 menit, bukan
+                    // seluruh jatah 15 menit seperti dulu saat cap
+                    // ditulis sebelum mengambil lokasi.
+                    lastGeofenceCheckAt = nowElapsed - 13 * 60_000L
+                    return
+                }
                 accuracyM = fix.accuracy
                 try { rememberSentLatLon(fix.latitude, fix.longitude, fix.accuracy) } catch (_: Exception) { }
                 Pair(fix.latitude, fix.longitude)
             }
+            lastGeofenceCheckAt = nowElapsed
             checkGeofence(pos.first, pos.second, accuracyM, izinkanJemput = !dariCache)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
