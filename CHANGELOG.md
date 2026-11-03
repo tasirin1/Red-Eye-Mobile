@@ -19,6 +19,7 @@
 - Pemeriksaan path vektor cek cepat kini juga menangkap bilangan baru diawali titik sesudah eksponen bertanda plus (mis. "1.5e+3.5"), melengkapi bentuk bertanda minus yang sudah ada.
 - Pemeriksaan anotasi ganda cek cepat kini memahami koma pemisah deklarasi: parameter konstruktor/fungsi sebaris yang beranotasi sama adalah deklarasi berbeda dan tidak lagi ditolak sebagai anotasi ganda, sementara duplikat pada satu deklarasi tetap tertangkap.
 - Pemeriksaan anotasi ganda cek cepat kini melacak komentar blok antar baris (isi komentar tidak lagi memicu penolakan palsu) dan membaca anotasi use-site seperti @field: sebagai satu nama (duplikat use-site yang merupakan galat kompilasi sungguhan tidak lagi lolos).
+- Penjaga layout yatim cek cepat kini berlaku untuk semua folder layout berkualifikasi (tablet, versi API, malam, dan lainnya), bukan hanya landscape: berkas layout berkualifikasi tanpa kembaran portrait ditolak sebelum push.
 
 ## [1.6.600] - 2026-11-03
 

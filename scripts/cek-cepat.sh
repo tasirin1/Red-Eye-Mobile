@@ -44,15 +44,17 @@ for f in app/src/main/res/layout/*.xml; do
   fi
 done
 fi
-# Arah sebaliknya (issue #1039): layout-land tanpa kembaran
-# portrait adalah varian yatim — AAPT tetap mengemasnya
-# tetapi tidak pernah tampil. Berjalan walau folder land
-# baru ada satu berkas (blok di atas terlewat diam-diam
-# bila foldernya belum ada).
-for lf in app/src/main/res/layout-land/*.xml; do
+# Arah sebaliknya (issue #1039): layout berkualifikasi tanpa
+# kembaran portrait adalah varian yatim — AAPT tetap
+# mengemasnya tetapi tidak pernah tampil. Berjalan walau
+# folder kualifikasi baru ada satu berkas (blok di atas
+# terlewat diam-diam bila foldernya belum ada). Berlaku
+# untuk SEMUA kualifikasi layout (issue #1062): -land,
+# -sw600dp, -v26, -night, -port, dan kombinasi mereka.
+for lf in app/src/main/res/layout-*/*.xml; do
   [ -e "$lf" ] || continue
   if [ ! -f "app/src/main/res/layout/$(basename "$lf")" ]; then
-    echo "GAGAL: layout-land yatim tanpa kembaran portrait: $lf"; gagal=1;
+    echo "GAGAL: layout berkualifikasi yatim tanpa kembaran portrait: $lf"; gagal=1;
   fi
 done
 # 3. Jangan commit binary/APK/secret ke repo (kredensial hanya via SetupActivity).
