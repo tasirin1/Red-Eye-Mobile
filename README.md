@@ -41,11 +41,12 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 **Notifikasi & aplikasi**
 
 - Teruskan notifikasi HP anak ke Telegram; ringkasan pemakaian layar per aplikasi (`/layar`)
-- Kabar aplikasi dipasang/dihapus
+- Kabar aplikasi dipasang/dihapus, alert aplikasi dibuka (termasuk tengah malam), dan pantau aplikasi tertentu
 
 **Ketahanan, keamanan & cadangan**
 
 - Anti-mati (hidup lagi sendiri habis reboot atau dibunuh sistem), proteksi uninstall via Device Admin
+- Proteksi tamper: perubahan setelan sensitif HP (Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang) diblokir/dilaporkan
 - Antrean offline: pesan dikirim begitu online lagi; masking OTP/bank otomatis
 - Backup/pulihkan setelan terenkripsi (file `.redeyebak`), termasuk pulihkan lewat bot (`/pulihkan`) dan mode restore ketat berkode 6 digit
 - Akses owner aman: link pairing dari Setup, atau `/login <PIN>`; `/logout` mengunci semua perintah sampai login lagi
@@ -56,7 +57,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 
 Bagi pengelola repo, APK diterbitkan dengan dua cara:
 
-1. Cara rilis: `push` tag `vX.Y.Z` → muncul di halaman Releases sebagai `redeye-vX.Y.Z-debug.apk` dan `redeye-vX.Y.Z-release.apk` (signed; wajib keystore rilis di Secrets, kalau tidak build tag gagal tegas).
+1. Cara rilis: `push` tag `vX.Y.Z` → muncul di halaman Releases sebagai `redeye-vX.Y.Z-debug.apk` dan `redeye-vX.Y.Z-release.apk`. Bila secret keystore rilis diisi, varian release ditandatangani keystore itu; tanpa secret pun build tetap jalan dan varian release memakai debug key. Build hanya gagal tegas bila berkas keystore ada tapi password/alias-nya tidak diisi.
 2. Cara coba cepat: tab Actions > Build APK > Run workflow (atau `push` ke `main`) → unduh dari artifacts `apks`: `redeye-debug.apk` + `redeye-release.apk` (tanpa keystore rilis, varian release memakai debug key).
 
 Secret opsional (Settings > Secrets and variables > Actions): `SYNC_INTERVAL` (interval sync menit, default `5`), `ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Tanpa secret pun build tetap jalan. Token bot TIDAK pernah dibake ke APK — selalu diisi manual di aplikasi.
@@ -79,7 +80,7 @@ Secret opsional (Settings > Secrets and variables > Actions): `SYNC_INTERVAL` (i
 
 ## Perintah Telegram
 
-Dikirim dari akun owner yang sudah pairing/login. Daftar lengkap perintah + tombol interaktifnya ada di `/help` di dalam bot. Yang paling sering dipakai:
+Dikirim dari akun owner yang sudah pairing/login. Cara utama memakainya adalah **menu tombol**: kirim `/help`, pilih kategori, ketuk tombolnya — termasuk **saklar on/off** untuk notifikasi, masking OTP, patroli, mode malam, alert app, pantau app, proteksi, dan hemat data (label tombol menunjukkan keadaan sekarang, ketuk untuk membalik). Perintah ketik tetap jalan semua, dan kata sehari-hari juga dikenali (`dimana`, `foto`, `kunci`, …) dengan koreksi salah ketik otomatis. Daftar lengkap ada di `/help` di dalam bot dan di [Wiki](https://github.com/tasirin1/Red-Eye-Mobile/wiki/Perintah). Yang paling sering dipakai:
 
 | Perintah | Fungsi |
 |---|---|
