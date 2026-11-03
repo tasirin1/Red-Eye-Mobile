@@ -275,6 +275,7 @@ def hitung_item_array(badan):
         # dalam nilai atribut berpetik; issue #1154: pola regex
         # sebelumnya backtracking kuadratik pada <item tak
         # tertutup + deret spasi — pemindai ini linear).
+        anggaran = [4 * len(bersih_cdata) + 65536]
         def token_tag(teks):
             i = 0
             n = len(teks)
@@ -306,13 +307,6 @@ def hitung_item_array(badan):
                         petik = ""
                         m = k
                         while m < n:
-                            # Batas panjang isi tag (issue #1161):
-                            # tag item sah jauh di bawah ini; tanpa
-                            # batas, tag rusak beruntun membuat
-                            # lompatan find berkuadratik.
-                            if m - k > 512:
-                                m = n
-                                break
                             if petik:
                                 e = teks.find(petik, m)
                                 if e < 0:
@@ -331,6 +325,17 @@ def hitung_item_array(badan):
                                     break
                                 petik = teks[e]
                                 m = e + 1
+                        # Anggaran kerja telusur (issue #1171,
+                        # menggantikan batas 512 #1161): item sah
+                        # ber-atribut panjang tetap terhitung —
+                        # telusurnya dibayar sekali — sedangkan
+                        # tag rusak beruntun yang memindai ulang
+                        # wilayah yang sama menghabiskan anggaran
+                        # 4x panjang badan lalu hitungan berhenti
+                        # (badan memang sudah gagal parse).
+                        anggaran[0] -= m - k
+                        if anggaran[0] < 0:
+                            return
                         if m >= n:
                             # Tag tak berujung / petik tak
                             # tertutup (issue #1161): pola lama

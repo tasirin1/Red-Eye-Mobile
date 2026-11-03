@@ -8,6 +8,7 @@
 - Tautan penautan pemilik dan kode pemulihan yang disalin ke clipboard kini ditandai sebagai isi sensitif, sehingga pratinjau clipboard menyembunyikannya dari aplikasi/keyboard lain.
 - Memulihkan backup format lama kini disertai peringatan bahwa perlindungannya lebih lemah dan kredensial hasil pulih sebaiknya diganti — sebelumnya peringatan itu tidak ada, padahal berkas lama yang tersebar bisa ditebak kata sandinya secara luring.
 - Semua catatan galat di log kini melewati penyamaran standar yang sama, termasuk jalur pekerja kirim, antrean pesan, dan pelaksana latar — sebelumnya beberapa jalur menulis pesan galat mentah yang bisa memuat serpihan data antrean atau bentuk token.
+- Penghitung item cadangan pada gerbang tidak lagi membuang item sah ber-atribut panjang: batas panjang per tag diganti anggaran kerja keseluruhan, sehingga atribut sepanjang apa pun tetap terhitung sementara tumpukan tag rusak tetap berhenti cepat.
 
 ## [1.6.607] - 2026-11-03
 
