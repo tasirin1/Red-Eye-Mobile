@@ -10834,7 +10834,14 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                     false
                 }
-                if (selesai || oldJobs.none { it.isActive }) break
+                // Selesai yang benar adalah isCompleted (issue
+                // #1075): isActive langsung false sesudah
+                // cancel() walau badan job belum tuntas —
+                // jebakan yang sama yang ditutup #1012 di
+                // relaunchAfterJoin — sehingga syarat lama
+                // mematahkan tunggu pada percobaan pertama dan
+                // jendela 60 detik #918 tak pernah tercapai.
+                if (selesai || oldJobs.all { it.isCompleted }) break
                 percobaan++
             }
             if (!isActive) return@launch
