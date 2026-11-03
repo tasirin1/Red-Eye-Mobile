@@ -328,11 +328,24 @@ class MessageQueue private constructor(context: Context) {
 
     private fun loadDropCountsLocked(add: Boolean = false) {
         try {
-            val overflow = sharedPreferences?.getLong(KEY_OVERFLOW_DROPS, 0L) ?: 0L
-            val expired = sharedPreferences?.getLong(KEY_EXPIRED_DROPS, 0L) ?: 0L
-            val priority = sharedPreferences?.getLong(KEY_PRIORITY_DROPS, 0L) ?: 0L
-            val exhausted = sharedPreferences?.getLong(KEY_EXHAUSTED_DROPS, 0L) ?: 0L
-            val rejected = sharedPreferences?.getLong(KEY_REJECTED_DROPS, 0L) ?: 0L
+            // Tiap kunci dibaca dengan penjaganya sendiri
+            // (issue #1109): satu getLong yang melempar
+            // (mis. nilai korup beda tipe) dulu menggagalkan
+            // SELURUH muat — tak ada setter berjalan, jadi
+            // penghitung era lama bertahan dengan
+            // dropsDirty=false dan persist berikutnya menulis
+            // angka campuran era ke penyimpanan baru sesudah
+            // reset. Kini kunci yang gagal terbaca = 0 dan
+            // kelima setter selalu berjalan sebagai satu
+            // gambar utuh.
+            fun bacaKunci(key: String): Long {
+                return try { sharedPreferences?.getLong(key, 0L) ?: 0L } catch (_: Exception) { 0L }
+            }
+            val overflow = bacaKunci(KEY_OVERFLOW_DROPS)
+            val expired = bacaKunci(KEY_EXPIRED_DROPS)
+            val priority = bacaKunci(KEY_PRIORITY_DROPS)
+            val exhausted = bacaKunci(KEY_EXHAUSTED_DROPS)
+            val rejected = bacaKunci(KEY_REJECTED_DROPS)
             persistedOverflowDrops = overflow
             persistedExpiredDrops = expired
             persistedPriorityDrops = priority
