@@ -931,7 +931,12 @@ def cek_aturan_repo(gagal, berubah):
         batas = 5 * 1024 * 1024 if path == "CHANGELOG.md" else 1024 * 1024
         if not sudah_dilarang:
             try:
-                ukuran = os.path.getsize(os.path.join(AKAR, path))
+                # lstat seperti sapuan pohon (issue #1144):
+                # getsize mengikuti symlink membuat vonis
+                # bergantung mode — tautan kecil ke berkas
+                # besar luar repo digagalkan palsu di jalur ini
+                # sementara sapuan meloloskannya.
+                ukuran = os.lstat(os.path.join(AKAR, path)).st_size
             except OSError:
                 ukuran = 0
             if ukuran > batas:

@@ -8,6 +8,7 @@
 - Pencatatan pemakaian harian tidak lagi berhenti berhari-hari sesudah jam melompat jauh ke depan lalu dikoreksi: tanggal hari sebenarnya yang terjepit di antara slot cadangan dan tanggal hantu kini mengambil alih slot berjalan, bukan terbuang diam-diam.
 - Pembersihan rekaman suara kembali memakai batas umur persis seperti yang diminta: margin kehati-hatian zona 26 jam kini hanya untuk foto/video (yang cap namanya jam dinding), bukan audio yang cap namanya epoch dan tak terpengaruh zona.
 - Bangun-ulang monitoring dari halaman Setup kini menilai kelayakan dasar lebih dulu sebelum memakai jatah 60 detiknya: membuka halaman saat konfigurasi belum lengkap tidak lagi menghanguskan jatah, jadi menekan simpan sesaat sesudahnya tetap membangunkan layanan.
+- Aturan ukuran pada jalur berkas berubah di gerbang kini juga menilai symlink dari ukuran tautannya sendiri (bukan tujuannya), selaras dengan sapuan pohon: vonis tidak lagi bergantung mode pemanggilan gerbang.
 
 ## [1.6.604] - 2026-11-03
 
