@@ -21,8 +21,7 @@ object Redact {
             if (secret.isEmpty()) continue
             out = if (secret.length < 10 && secret.all { it.isDigit() }) replaceDigitBounded(out, secret) else out.replace(secret, "***")
         }
-        out = out.replace(CHAT_ID_FALLBACK, "***")
-        if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return out
+        if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return out.replace(CHAT_ID_FALLBACK, "***")
         val direct = out.replace(TOKEN_FALLBACK, "***")
         // Token terbelah baris: satukan baris di antara karakter token lalu
         // coba lagi — dijalankan juga sesudah penggantian langsung berhasil,
@@ -30,7 +29,13 @@ object Redact {
         // (issue #724). Teks hanya diubah bila pola token benar-benar cocok.
         val joined = direct.replace(LINE_SPLIT, "")
         val rejoined = joined.replace(TOKEN_FALLBACK, "***")
-        return if (rejoined != joined) rejoined else direct
+        val hasil = if (rejoined != joined) rejoined else direct
+        // Fallback chat ID diterapkan PALING AKHIR (perbaikan
+        // urutan): menerapkannya sebelum pola token membuat
+        // kepala digit token tertutup lebih dulu sehingga pola
+        // token tak lagi cocok dan token terbelah lolos utuh —
+        // terbukti oleh CI merah v1.6.609 (2 uji RedactTest).
+        return hasil.replace(CHAT_ID_FALLBACK, "***")
     }
 
     private fun replaceDigitBounded(src: String, secret: String): String {
