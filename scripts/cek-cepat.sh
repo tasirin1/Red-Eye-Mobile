@@ -19,15 +19,18 @@ if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
 # pecahan/eksponen bilangan sebelumnya: .|e|E [-] digit* .
 # Eksponen bertanda + ikut dikenali (issue #1059): "1.5e+3.5"
 # sama-sama bilangan baru yang diawali titik.
+# Cakupan dipersempit ke nilai android:pathData saja (issue
+# #1174): menerapkan pola ke seluruh teks drawable menangkap
+# atribut float sah lain (mis. android:alpha=".5").
 if [ "$ADA_RG" = 1 ] && rg --pcre2 -n '' app/src/main/res/drawable* >/dev/null 2>&1; then
-  if rg -q --pcre2 '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+  if rg --pcre2 -o --no-filename 'android:pathData="[^"]*"' app/src/main/res/drawable* 2>/dev/null | rg -q --pcre2 '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
 elif grep -R -P '' . >/dev/null 2>&1; then
-  if grep -R -q -P '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+  if grep -R -h -o 'android:pathData="[^"]*"' app/src/main/res/drawable* 2>/dev/null | grep -q -P '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
-elif grep -R -q -E '(^|[^0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]' app/src/main/res/drawable* 2>/dev/null; then
+elif grep -R -h -o 'android:pathData="[^"]*"' app/src/main/res/drawable* 2>/dev/null | grep -q -E '(^|[^0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
   echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
 fi
 # 2. ID layout portrait vs landscape wajib sama persis (bila dir land ada).

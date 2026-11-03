@@ -11,6 +11,7 @@
 - Penghitung item cadangan pada gerbang tidak lagi membuang item sah ber-atribut panjang: batas panjang per tag diganti anggaran kerja keseluruhan, sehingga atribut sepanjang apa pun tetap terhitung sementara tumpukan tag rusak tetap berhenti cepat.
 - Pemeriksaan rename pada gerbang kini membedakan kelas tingkat atas dari kelas bersarang: nama lama yang hanya bertahan sebagai kelas bersarang tidak lagi dianggap masih terdeklarasi, sehingga acuan menggantungnya tertangkap.
 - Rename berkas murni yang nama lamanya bukan nama kelas di dalamnya kini tidak lagi diperlakukan sebagai penghapusan oleh gerbang: ganti nama berkas bebas (mis. Util.kt berisi kelas lain) tidak bisa digagalkan hanya oleh kata yang sama di komentar berkas lain.
+- Pola larangan angka tanpa nol di depan pada cek cepat kini hanya memeriksa nilai pathData vektor, bukan seluruh isi berkas drawable: atribut float sah lain seperti ketebalan/alpha bernilai .5 tidak lagi digagalkan.
 
 ## [1.6.607] - 2026-11-03
 
