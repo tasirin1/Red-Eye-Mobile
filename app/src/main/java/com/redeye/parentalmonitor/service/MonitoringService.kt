@@ -248,6 +248,18 @@ class MonitoringService : Service() {
     private var initialSyncJob: Job? = null
     @Volatile
     private var patrolJob: Job? = null
+    // Relauncher relaunchAfterJoin yang sedang menunggu join,
+    // per loop (issue #1033): dulu anonim sehingga semburan
+    // restart bisa melahirkan banyak penunggu untuk join yang
+    // sama dan teardownJobs tak bisa membatalkannya.
+    @Volatile
+    private var cameraRelaunchJob: Job? = null
+    @Volatile
+    private var cameraRelaunchTarget: Job? = null
+    @Volatile
+    private var patrolRelaunchJob: Job? = null
+    @Volatile
+    private var patrolRelaunchTarget: Job? = null
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncGen = java.util.concurrent.atomic.AtomicInteger(0)
     private val initialSyncLock = Any()
@@ -926,6 +938,12 @@ class MonitoringService : Service() {
         commandJob?.cancel()
         initialSyncJob?.cancel()
         patrolJob?.cancel()
+        try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
+        try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
+        cameraRelaunchJob = null
+        cameraRelaunchTarget = null
+        patrolRelaunchJob = null
+        patrolRelaunchTarget = null
         loopRelaunchJob?.cancel()
         idlePolls = 0
         refreshCreds()
@@ -1093,7 +1111,7 @@ class MonitoringService : Service() {
     // (batas total sama seperti #918: 12 x 5 detik, sesudah
     // itu tetap jalan sebagai jalan keluar) dan hanya menyala
     // bila belum ada pengganti lain yang terpasang.
-    private fun relaunchAfterJoin(old: Job?, start: () -> Unit, current: () -> Job?) {
+    private fun relaunchAfterJoin(old: Job?, start: () -> Unit, current: () -> Job?, pending: () -> Job?, pendingTarget: () -> Job?, track: (Job) -> Unit) {
         // Penanda selesai yang benar adalah isCompleted (issue
         // #1012): isActive sudah false sejak cancel() dipanggil
         // (state Cancelling) walau korutin lama belum tuntas,
@@ -1104,8 +1122,15 @@ class MonitoringService : Service() {
             start()
             return
         }
+        // Dedup (issue #1033): relauncher yang masih menunggu
+        // join target yang sama sudah cukup — semburan restart
+        // (listener prefs per kunci menulis banyak kunci
+        // sekaligus) tidak lagi melahirkan penunggu ganda yang
+        // bisa sama-sama lolos cek current() === old.
+        val menunggu = pending()
+        if (menunggu != null && !menunggu.isCompleted && pendingTarget() === old) return
         try { old.cancel() } catch (_: Exception) { }
-        serviceScope.launch {
+        track(serviceScope.launch {
             var percobaan = 0
             while (percobaan < 12) {
                 val selesai = try {
@@ -1120,11 +1145,13 @@ class MonitoringService : Service() {
             }
             if (!isActive) return@launch
             if (current() === old) start()
-        }
+        })
     }
 
     private fun restartCameraLoop() {
-        relaunchAfterJoin(cameraJob, { startCameraLoop() }, { cameraJob })
+        relaunchAfterJoin(cameraJob, { startCameraLoop() }, { cameraJob },
+            { cameraRelaunchJob }, { cameraRelaunchTarget },
+            { job -> cameraRelaunchJob = job; cameraRelaunchTarget = cameraJob })
     }
 
     private fun startCameraLoop() {
@@ -1195,7 +1222,9 @@ class MonitoringService : Service() {
     }
 
     private fun restartPatrolLoop() {
-        relaunchAfterJoin(patrolJob, { startPatrolLoop() }, { patrolJob })
+        relaunchAfterJoin(patrolJob, { startPatrolLoop() }, { patrolJob },
+            { patrolRelaunchJob }, { patrolRelaunchTarget },
+            { job -> patrolRelaunchJob = job; patrolRelaunchTarget = patrolJob })
     }
 
     private fun startPatrolLoop() {
@@ -8796,6 +8825,18 @@ class MonitoringService : Service() {
         commandJob?.cancel()
         initialSyncJob?.cancel()
         patrolJob?.cancel()
+        // Relauncher yang menunggu join ikut dibatalkan dan
+        // field loop di-nol-kan (issue #1033): tanpa ini
+        // relauncher bisa menyalakan loop sesaat di layanan
+        // yang sedang berhenti, di jendela stop ke onDestroy.
+        try { cameraRelaunchJob?.cancel() } catch (_: Exception) { }
+        try { patrolRelaunchJob?.cancel() } catch (_: Exception) { }
+        cameraRelaunchJob = null
+        cameraRelaunchTarget = null
+        patrolRelaunchJob = null
+        patrolRelaunchTarget = null
+        cameraJob = null
+        patrolJob = null
         ringJob?.cancel()
         recordJob?.cancel()
         smsJob?.cancel()

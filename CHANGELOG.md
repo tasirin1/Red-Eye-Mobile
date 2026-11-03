@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penunggu restart loop kamera dan patroli kini tercatat dan terdeduplikasi: semburan perubahan setelan tidak lagi melahirkan banyak penunggu yang berebut menyalakan loop, dan penunggu ikut dibatalkan saat monitoring berhenti agar loop tidak menyala sesaat di layanan yang sedang berhenti.
 - Pool benang receiver kini sungguh berjalan sejajar hingga tiga benang (perbaikan sebelumnya tidak mengubah perilaku karena bentuk pool-nya), dan penanganan boot di-serial dengan kunci dedupnya sendiri agar pesan restart tidak terkirim ganda saat dua siaran boot tiba berbarengan.
 - Pemeriksaan anotasi ganda cek cepat kini melacak argumen anotasi yang membentang multi-baris — duplikat tak-repeatable yang dipisah anotasi berargumen panjang tidak lagi lolos gerbang lokal dan baru ketahuan di kompilasi CI.
 - Pemeriksaan paritas terjemahan gerbang kini mencakup string-array dan plurals serta semua berkas values, bukan hanya elemen string di dua berkas strings.xml utama — resource baru jenis itu tidak lagi bisa masuk tanpa terjemahan Indonesia.
