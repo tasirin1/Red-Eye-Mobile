@@ -303,6 +303,32 @@ class SendMessageWorker(
         return null
     }
 
+    // Pemberitahuan "pesan dibuang" sesudah mentok percobaan
+    // (issue #984): dulu blok ini tersalin persis dua kali —
+    // di jalur kode auth dan di jalur rate-limit.
+    private fun notifyExhaustedDrops(authDropped: Int) {
+        try {
+            messageQueue.noteExhaustedDrops(authDropped.toLong())
+        } catch (_: Exception) {
+        }
+        val queued = try {
+            messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
+        } catch (_: Exception) {
+            false
+        }
+        if (queued) {
+            try {
+                val taken = messageQueue.takeExhaustedDrops()
+                if (taken > authDropped) messageQueue.restoreExhaustedDrops(taken - authDropped)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleMessageSend(applicationContext)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     private fun handleAuthOrRate(
         authCode: Int,
         rateLimitedSecs: Long,
@@ -334,26 +360,7 @@ class SendMessageWorker(
             }
             android.util.Log.e("SendMessageWorker", "Auth rejected ($authCode), keeping queued messages until credentials are fixed")
             if (authDropped > 0 && !queueCleared && sameCreds) {
-                try {
-                    messageQueue.noteExhaustedDrops(authDropped.toLong())
-                } catch (_: Exception) {
-                }
-                val queued = try {
-                    messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
-                } catch (_: Exception) {
-                    false
-                }
-                if (queued) {
-                    try {
-                        val taken = messageQueue.takeExhaustedDrops()
-                        if (taken > authDropped) messageQueue.restoreExhaustedDrops(taken - authDropped)
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
-                }
+                notifyExhaustedDrops(authDropped)
             }
             return Result.success()
         }
@@ -365,26 +372,7 @@ class SendMessageWorker(
             } catch (_: Exception) {
             }
             if (authDropped > 0 && !queueCleared && sameCreds) {
-                try {
-                    messageQueue.noteExhaustedDrops(authDropped.toLong())
-                } catch (_: Exception) {
-                }
-                val queued = try {
-                    messageQueue.addMessage("⚠️ $authDropped pesan dalam antrean dibuang (sudah mentok percobaan).", true)
-                } catch (_: Exception) {
-                    false
-                }
-                if (queued) {
-                    try {
-                        val taken = messageQueue.takeExhaustedDrops()
-                        if (taken > authDropped) messageQueue.restoreExhaustedDrops(taken - authDropped)
-                    } catch (_: Exception) {
-                    }
-                    try {
-                        MessageScheduler.scheduleMessageSend(applicationContext)
-                    } catch (_: Exception) {
-                    }
-                }
+                notifyExhaustedDrops(authDropped)
             }
             return Result.success()
         }
