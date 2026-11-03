@@ -7854,9 +7854,26 @@ class MonitoringService : Service() {
     private fun recordFenceFact(arrive: Boolean) {
         try {
             val now = System.currentTimeMillis()
-            val key = todayKey(now)
             val off = java.util.TimeZone.getDefault().getOffset(now)
-            val minute = (((now + off) / 60_000L) % 1440L).toInt()
+            val minuteOfDay = (((now + off) / 60_000L) % 1440L).toInt()
+            // Atribusi malam (issue #1080): peristiwa sebelum
+            // 05:00 adalah kelanjutan hari sebelumnya —
+            // konvensi yang sama dengan checkCurfew — dan
+            // menitnya dinyatakan pada skala lanjutan hari itu
+            // (02:00 -> 1560) agar median pola tetap sebanding
+            // (tiba larut memang "lebih malam" dari tiba sore).
+            // Tanpa ini, tiba dini hari mengunci slot hari
+            // kalender baru lewat first-wins dan tiba
+            // sesungguhnya sore itu terbuang permanen.
+            val key: String
+            val minute: Int
+            if (minuteOfDay < 5 * 60) {
+                key = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
+                minute = minuteOfDay + 1440
+            } else {
+                key = todayKey(now)
+                minute = minuteOfDay
+            }
             synchronized(prefsRmwLock) {
                 val days = DailyFacts.parse(preferencesManager.dailyFacts)
                 val existing = days.firstOrNull { it.day == key }
