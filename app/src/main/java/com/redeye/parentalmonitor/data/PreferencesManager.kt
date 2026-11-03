@@ -1396,39 +1396,29 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    val forwardedNotifIds: List<String>
-        get() {
-            val raw = prefString(KEY_FORWARDED_NOTIF_IDS, "")
-            if (raw.isEmpty()) return emptyList()
-            val out = ArrayList<String>()
-            var start = 0
-            while (start <= raw.length) {
-                val sep = raw.indexOf(',', start)
-                val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
-                val v = part.trim()
-                if (v.isNotEmpty()) out.add(v)
-                if (sep < 0) break
-                start = sep + 1
-            }
-            return out
+    // Pengurai daftar CSV bersama (issue #986): badan dua
+    // getter daftar penanda dulu salinan persis selain kunci.
+    private fun prefStringList(key: String): List<String> {
+        val raw = prefString(key, "")
+        if (raw.isEmpty()) return emptyList()
+        val out = ArrayList<String>()
+        var start = 0
+        while (start <= raw.length) {
+            val sep = raw.indexOf(',', start)
+            val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
+            val v = part.trim()
+            if (v.isNotEmpty()) out.add(v)
+            if (sep < 0) break
+            start = sep + 1
         }
+        return out
+    }
+
+    val forwardedNotifIds: List<String>
+        get() = prefStringList(KEY_FORWARDED_NOTIF_IDS)
 
     val notifGroupForwarded: List<String>
-        get() {
-            val raw = prefString(KEY_NOTIF_GROUP_FORWARDED, "")
-            if (raw.isEmpty()) return emptyList()
-            val out = ArrayList<String>()
-            var start = 0
-            while (start <= raw.length) {
-                val sep = raw.indexOf(',', start)
-                val part = if (sep >= 0) raw.substring(start, sep) else raw.substring(start)
-                val v = part.trim()
-                if (v.isNotEmpty()) out.add(v)
-                if (sep < 0) break
-                start = sep + 1
-            }
-            return out
-        }
+        get() = prefStringList(KEY_NOTIF_GROUP_FORWARDED)
 
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>): Boolean {
         return try {

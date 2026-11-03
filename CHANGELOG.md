@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Dua pengurai daftar penanda notifikasi yang tersalin persis kini memakai satu fungsi pengurai bersama.
 - Kerangka pengiriman media tertunda untuk video dan audio disatukan jadi satu fungsi bersama (perilaku dibuktikan setara baris demi baris; jalur foto tetap terpisah karena logika foto tertahannya berbeda), dan langkah rotasi berkas sesudah timeout kini satu fungsi untuk ketiga jalur.
 - Blok pemberitahuan "pesan dibuang" pada pengirim antrean yang tersalin persis dua kali kini disatukan jadi satu fungsi bersama.
 - Konstanta yatim batas percobaan PIN restore dihapus (batas yang hidup ada di gerbang PIN restore itu sendiri).
