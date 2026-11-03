@@ -855,13 +855,18 @@ def cek_aturan_repo(gagal, berubah):
         # melewati 1 MB secara sah (teks riwayat rilis yang
         # hanya bertambah) — mengecualikannya per nama, bukan
         # per folder/ekstensi, agar berkas lain tetap terjaga.
-        if not sudah_dilarang and path != "CHANGELOG.md":
+        # Pengecualian bukan tanpa batas (issue #1058): di atas
+        # 5 MB berkas itu tak lagi masuk akal sebagai changelog
+        # dan tetap menggagalkan — isi apa pun tak boleh bisa
+        # diselundupkan lewat satu-satunya nama yang dikecualikan.
+        batas = 5 * 1024 * 1024 if path == "CHANGELOG.md" else 1024 * 1024
+        if not sudah_dilarang:
             try:
                 ukuran = os.path.getsize(os.path.join(AKAR, path))
             except OSError:
                 ukuran = 0
-            if ukuran > 1024 * 1024:
-                gagal.append("Berkas >1 MB masuk repo: " + path)
+            if ukuran > batas:
+                gagal.append("Berkas >%d MB masuk repo: %s" % (batas // (1024 * 1024), path))
 
 
 POLA_TOKEN_ASLI = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
