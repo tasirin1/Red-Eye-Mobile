@@ -8663,8 +8663,15 @@ class MonitoringService : Service() {
                 return
             }
             if (stored == current) return
-            try { preferencesManager.simIdentity = current } catch (_: Exception) { }
-            sendToTelegram("📵 <b>Kartu SIM berubah</b>\nSebelum: $stored\nSekarang: $current\nCek apakah SIM dicabut atau diganti.")
+            // Identitas baru dicap HANYA sesudah alert terkonfirmasi
+            // terkirim/terantre (issue #947): mencap sebelum kirim
+            // membuat alert "SIM berubah" hilang permanen bila
+            // kirim terbuang (mis. pra-login) — cap sudah maju,
+            // jadi perubahan yang sama tak terdeteksi lagi.
+            val status = sendToTelegramStatus("📵 <b>Kartu SIM berubah</b>\nSebelum: $stored\nSekarang: $current\nCek apakah SIM dicabut atau diganti.")
+            if (status != SendStatus.DROPPED) {
+                try { preferencesManager.simIdentity = current } catch (_: Exception) { }
+            }
         } catch (_: Exception) {
         }
     }

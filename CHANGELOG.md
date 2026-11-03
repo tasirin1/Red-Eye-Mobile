@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Alert "Kartu SIM berubah" tidak lagi hilang permanen: identitas SIM baru kini dicap hanya sesudah alert terkonfirmasi terkirim atau terantre — bila pengiriman terbuang (mis. sebelum login), perubahan SIM yang sama akan terdeteksi dan dilaporkan lagi pada pemeriksaan berikutnya.
 - Pengosongan antrean pesan kini menghapus per kelompok (checkpoint tiap 10 pesan terkirim) alih-alih per pesan, sehingga satu putaran pengiriman tidak lagi memaksa tulis sinkron seluruh antrean ke disk untuk setiap pesan; sisa yang belum terhapus tetap dibereskan titik flush batch di akhir putaran.
 - Urutan mulai-ulang layanan diperbaiki: foreground kini ditegakkan sebelum loop lama dibatalkan, dan bila penegakan ulang gagal sesaat sementara loop lama masih hidup, layanan tetap berjalan dengan loop lama — satu kegagalan transien pada intent rutin tidak lagi mematikan layanan yang sehat.
 - Tombol menu yang meminta input (mis. atur nilai) tidak lagi mengirim prompt-nya di dalam kunci kontrol, sehingga pengiriman prompt yang lambat tidak menahan perintah darurat /lock dan /stop — menyelaraskan jalur tombol dengan jalur teks.
