@@ -57,9 +57,14 @@ object TamperGuard {
     private fun graceDecision(nowWall: Long, wallUntil: Long, nowElapsed: Long, elapsedUntil: Long, capBootCount: Long = 0L, currentBootCount: Long = 0L): Boolean {
         // Cabang elapsed hanya sah di boot tempat cap ditulis
         // (issue #1035): cap berpenanda boot yang berbeda
-        // adalah cap basi — putuskan dari dinding. Cap warisan
-        // tanpa penanda (0) memakai aturan #1009 apa adanya.
-        val bootSama = capBootCount == 0L || capBootCount == currentBootCount
+        // adalah cap basi — putuskan dari dinding. Penanda 0
+        // berarti "ditulis sebelum ada boot tercatat" (cap
+        // warisan atau cap dari boot pertama sesudah
+        // pasang/update): ia hanya setara boot yang sama bila
+        // penghitung saat ini juga masih 0 — sesudah boot
+        // pertama tercatat, cap 0 tak lagi boleh memakai
+        // cabang elapsed (issue #1048).
+        val bootSama = capBootCount == currentBootCount
         if (elapsedUntil > 0L && bootSama) {
             val remaining = elapsedUntil - nowElapsed
             // Di boot tempat cap ditulis, sisa elapsed TIDAK

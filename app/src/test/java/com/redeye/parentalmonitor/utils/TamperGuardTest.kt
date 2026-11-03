@@ -177,6 +177,24 @@ class TamperGuardTest {
         assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1_700_000_060_000L, 0L, 1_700_000_120_000L, 100_000L, 0L, 140_000L, 5L, 0L, 5L))
     }
 
+    // Issue #1048: penanda 0 = ditulis sebelum ada boot
+    // tercatat. Selama penghitung masih 0 juga (era yang
+    // sama), cabang elapsed tetap sah; sesudah boot pertama
+    // tercatat, cap 0 adalah cap basi dan keputusan jatuh
+    // ke dinding. Nilai harapan dari porting Python 1:1.
+    @Test
+    fun tenggangCapBertandaNolHanyaDiEraNol() {
+        // Era sama (0 == 0), sisa elapsed 40 detik, dinding
+        // sudah mati -> tetap tenggang dari elapsed.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_700_259_200_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 0L, 0L, 0L))
+        // Boot pertama tercatat (kini 1), dinding mati 3 hari
+        // -> BUKAN tenggang (lubang #1048 tertutup).
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1_700_259_200_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 1L, 0L, 0L))
+        // Boot pertama tercatat tetapi dinding masih aktif
+        // -> tenggang dari dinding.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_700_000_060_000L, 1_700_000_120_000L, 0L, 100_000L, 140_000L, 0L, 1L, 0L, 0L))
+    }
+
     @Test
     fun alasanLainDanTanpaAlasanTidakPernahBebas() {
         assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L, 0L, 0L, 0L))

@@ -6,6 +6,7 @@
 - Pemeriksaan paritas argumen format gerbang kini juga mencakup isi item plurals dan string-array, bukan hanya string biasa — perbedaan jenis/jumlah argumen (mis. %d vs %s) di dalam item tidak lagi lolos dan berpotensi membuat aplikasi crash saat memformat teks di bahasa Indonesia.
 - Menyimpan antrean pesan tidak lagi membaca ulang dan mendekripsi seluruh isi antrean lama dari penyimpanan pada setiap penambahan pesan: salinan terakhir kini dipegang di memori untuk keperluan rotasi cadangan, sehingga antrean besar yang menumpuk saat offline tidak lagi memperlambat setiap alert baru.
 - Cermin memori "aplikasi sudah dikenal" kini dibuang saat penyimpanan terenkripsi di-reset dan dibuka ulang: sesudah pemulihan penyimpanan, aplikasi tidak lagi dianggap sudah dikenal berdasar data lama, dan data yang sudah di-reset tidak bangkit lagi pada penulisan berikutnya.
+- Cap masa tenggang Setup yang ditulis sebelum ada boot tercatat (mis. tepat sesudah aplikasi dipasang/diperbarui) tidak lagi diperlakukan sebagai cap warisan selamanya: sesudah boot pertama tercatat, cap lama itu diputuskan dari jam dinding, sehingga tenggang basi tidak hidup lagi di awal boot berikutnya.
 
 ## [1.6.600] - 2026-11-03
 
