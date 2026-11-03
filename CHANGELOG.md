@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Ekstraksi pathData pada pemeriksaan vektor kini menangkap petik tunggal, spasi di sekitar tanda sama dengan, dan nilai multi-baris: tiga bentuk XML sah yang sebelumnya membuat angka tanpa nol depan lolos dari gerbang (#1185).
 - Pelacak deklarasi tingkat atas gerbang kini menghitung kedalaman komentar blok bersarang ala Kotlin: teks deklarasi atau kurung di sisa komentar luar tidak lagi terhitung sebagai kode, menutup positif dan negatif palsu pada penilaian rename berisiko (#1184).
 - Gerbang verifikasi kini menandai hitungan item string-array yang kehabisan anggaran pemindai sebagai tak-terhitung dan memperingatkan namanya, alih-alih mengembalikan hitungan parsial senyap yang bisa kebetulan sama antar locale dan menutupi selisih paritas (#1183).
 - Cap harian kata pantau kini memakai batas basi zona 50 jam seperti dedup anomali: terbang ke barat lintas zona tidak lagi me-reset hitungan harian dan jeda alert pada tanggal lokal yang sama, sehingga alert kata pantau tidak berduplikat atau melebihi kuota (#1182).
