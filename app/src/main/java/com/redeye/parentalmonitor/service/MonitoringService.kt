@@ -313,9 +313,8 @@ class MonitoringService : Service() {
     @Volatile
     private var credsCheckAt = 0L
     @Volatile
-    private var netCheckAt = 0L
-    @Volatile
-    private var netCached = false
+    private var netSnapshot: Pair<Long, Boolean> = 0L to false
+    private val netLock = Any()
     @Volatile
     private var cachedCameraInterval = -1
     @Volatile
@@ -1946,11 +1945,19 @@ class MonitoringService : Service() {
     }
 
     private fun hasNetwork(): Boolean {
+        // Pasangan (cap, nilai) sebagai SATU referensi
+        // atomik (issue #1099): dua field @Volatile terpisah
+        // bisa terbaca tak sepasang (cap segar + nilai lama)
+        // oleh korutin lain. Penilaian mahal tetap di luar
+        // kunci; penulisan hanya maju (cap lebih baru menang).
         val now = android.os.SystemClock.elapsedRealtime()
-        if (now - netCheckAt < 20_000L) return netCached
-        netCheckAt = now
-        netCached = NetworkUtils.isNetworkAvailable(this)
-        return netCached
+        val snap = netSnapshot
+        if (now - snap.first < 20_000L) return snap.second
+        val fresh = NetworkUtils.isNetworkAvailable(this)
+        synchronized(netLock) {
+            if (now >= netSnapshot.first) netSnapshot = now to fresh
+        }
+        return fresh
     }
 
     // ═══════════════════════════════════════════════════════════
