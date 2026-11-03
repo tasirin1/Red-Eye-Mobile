@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penyamaran OTP kini menangkap kode berkelompok dengan pemisah koma, garis miring, dan titik dua ("123,456", "123/456", "123:456") yang sebelumnya tampil polos di notifikasi yang diteruskan.
 - Alert geofence tidak lagi hilang permanen bila kirimnya terbuang (DROPPED): state pagar kini dipulihkan ke keadaan sebelum transisi sehingga pemeriksaan berikutnya mendeteksi ulang dan alert dicoba lagi (sebelumnya hanya cap cooldown yang ditahan, state terlanjur berganti).
 
 ## [1.6.596] - 2026-11-03

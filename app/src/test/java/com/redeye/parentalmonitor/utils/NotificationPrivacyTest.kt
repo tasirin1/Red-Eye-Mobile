@@ -63,6 +63,17 @@ class NotificationPrivacyTest {
     }
 
     @Test
+    fun masksCommaSlashColonSeparatedCodes() {
+        // #912: pemisah koma/garis-miring/titik-dua dulu tidak
+        // dikenal pola grup digit sehingga OTP tampil polos.
+        assertEquals("Kode verifikasi Anda ••••", NotificationPrivacy.mask("Kode verifikasi Anda 123,456"))
+        assertEquals("OTP ••••", NotificationPrivacy.mask("OTP 123/456"))
+        assertEquals("kode ••••", NotificationPrivacy.mask("kode 123:456:789"))
+        assertTrue(NotificationPrivacy.hasCode("kode 123,456"))
+        assertTrue(NotificationPrivacy.hasCode("kode 123/456"))
+    }
+
+    @Test
     fun masksHyphenGroupedAlphanumericCodes() {
         // #660: kode bergrup-strip membelah token jadi potongan 2 karakter
         // yang terlalu pendek untuk pola digit maupun token menyambung.
