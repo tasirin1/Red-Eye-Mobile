@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Eviksi peta jangkar render menu kini membuang entri tertua saja, bukan membersihkan total: jangkar pesan yang baru diedit dan menu aktif lain tidak ikut hilang saat peta penuh, sehingga penolakan "menu kedaluwarsa" semu pada proses berumur panjang tidak kambuh sporadis (#1175).
 
 - Tombol menu tidak lagi mati 300 detik sesudah pesan menu pertama dikirim: umur tombol kini dihitung dari terakhir kali menu itu ditampilkan/diperbarui, bukan dari tanggal lahir pesan — navigasi dan penyegaran saklar memang mengubah pesan yang sama di tempat. Aliran darurat, mode hilang, dan kunci yang dijalankan dari menu berumur panjang kini bisa dipakai lagi.
 - Kursor SMS/panggilan warisan yang cap waktunya kosong kini dipulihkan dengan menjangkar ulang ke baris teratas yang benar-benar ada bila baris kursornya sudah hilang dari basis data (mis. sesudah restore), sehingga pesan baru berikutnya tetap tertangkap — sebelumnya pesan dengan nomor urut pakai-ulang bisa terlewat.

@@ -2877,13 +2877,21 @@ class MonitoringService : Service() {
     // (dicatat di editMenuMessage); pesan yang tak pernah
     // diedit tetap menua dari lahirnya, dan peta kosong
     // sesudah proses hidup lagi (arah aman).
-    private val menuRenderAt = java.util.Collections.synchronizedMap(java.util.LinkedHashMap<Long, Long>())
+    private val menuRenderAt = java.util.Collections.synchronizedMap(java.util.LinkedHashMap<Long, Long>(16, 0.75f, true))
 
     private fun catatRenderMenu(messageId: Long) {
         if (messageId <= 0L) return
         synchronized(menuRenderAt) {
             menuRenderAt[messageId] = serverNowSec()
-            if (menuRenderAt.size > 64) menuRenderAt.clear()
+            // Eviksi entri TERTUA saja (issue #1175): clear()
+            // total membuang juga jangkar yang baru dicatat dan
+            // semua menu aktif lain; peta berurutan-akses
+            // (accessOrder) membuat keys.first() = yang paling
+            // lama tak disentuh.
+            while (menuRenderAt.size > 64) {
+                val tertua = menuRenderAt.keys.firstOrNull() ?: break
+                menuRenderAt.remove(tertua)
+            }
         }
     }
 
