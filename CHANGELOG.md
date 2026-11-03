@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang verifikasi kini menjaga skrip build legacy (builder.sh/builder.bat) tetap mati: berkasnya wajib ada, tetap berhenti sendiri, dan tak boleh memuat pola alur build aktif — pengaktifan ulang kini tertangkap sebelum push, bukan hanya dilarang di dokumen aturan.
 - Rilis kini gagal tegas bila versi yang ditag tidak punya seksi catatan di CHANGELOG (sebelumnya workflow menerbitkan rilis dengan catatan hampa berisi judul saja).
 - Pemeriksa cepat kini menangkap anotasi ganda yang dipisah baris komentar/kosong (mis. dua @Volatile terpisah komentar) — sebelumnya baris bukan-anotasi apa pun memutus urutan sehingga duplikat seperti itu lolos.
 - Celah uji ditutup: peta tombol menu lama (LEGACY) dan pemetaan kunci saklar kini terkunci uji terhadap daftar perintah kanonis — rename perintah yang lupa memperbarui peta tombol akan menggagalkan uji, bukan mematikan tombol diam-diam seperti yang pernah terjadi.

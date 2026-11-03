@@ -496,6 +496,24 @@ def cek_versi(gagal):
                      % (".".join(map(str, nama_kini)), kode_kini, label_tag, kode_tag))
 
 
+def cek_builder_legacy(gagal):
+    """Aturan AGENTS.md §3 ditegakkan (issue #909): builder.sh/
+    builder.bat LEGACY wajib tetap berhenti sendiri (exit)
+    sebelum menulis apa pun — keduanya tak boleh diaktifkan
+    ulang menjadi alur build yang menulis token ke
+    app/build.gradle."""
+    for nama, penanda_exit in (("builder.sh", "exit 1"), ("builder.bat", "exit /b 1")):
+        isi = baca_teks(nama)
+        if not isi:
+            gagal.append("%s hilang — berkas legacy wajib dipertahankan sebagai rintisan berhenti" % nama)
+            continue
+        if penanda_exit not in isi:
+            gagal.append("%s tak lagi berhenti sendiri (%s hilang) — aturan §3: jangan aktifkan ulang" % (nama, penanda_exit))
+        for terlarang in ("gradlew", "assembleRelease", "BOT_TOKEN="):
+            if terlarang in isi:
+                gagal.append("%s memuat pola alur build aktif (%s) — aturan §3: legacy harus tetap mati" % (nama, terlarang))
+
+
 def berkas_dihapus(rentang):
     """Daftar path yang dihapus pada diff (butuh status; kosong bila tak tahu)."""
     if rentang and ("..." in rentang or ".." in rentang):
@@ -1575,6 +1593,7 @@ def utama():
     cek_acuan_yatim(gagal)
     cek_manifest(gagal)
     cek_duplikat_definisi(gagal)
+    cek_builder_legacy(gagal)
     cek_versi(gagal)
     cek_sinkron_terjemah(gagal)
     cek_import_mati(gagal)
