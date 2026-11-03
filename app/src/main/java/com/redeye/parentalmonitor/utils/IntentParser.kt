@@ -876,11 +876,13 @@ object IntentParser {
         while (args.size > 1 && (stripEdgePunct(args.last().lowercase(Locale.ROOT)) in TAIL_FILLERS || args.last().none { it.isLetterOrDigit() })) {
             args = args.dropLast(1)
         }
-        // Satuan sesudah angka dibuang dari argumen yang dikembalikan
-        // (issue #731): "/jemput 500 meter" menjadi "/jemput 500".
-        if (args.size == 2 && args[0].all { it.isDigit() } && stripEdgePunct(args[1].lowercase(Locale.ROOT)) in ARG_UNITS) {
-            args = listOf(args[0])
-        }
+        // Satuan sesudah angka TIDAK lagi dibuang (issue #883,
+        // membatalkan sebagian #731): sejak #776 handler menilai
+        // satuan lewat NumericArg — mengonversi yang sekeluarga dan
+        // menolak yang lintas keluarga. Membuangnya di sini membuat
+        // "jemput 500 jam" terpasang senyap sebagai 500 meter dan
+        // "photointerval 1 jam" terbaca 1 menit; kini satuan diteruskan
+        // utuh agar handler yang memutuskan.
         val lastClean = stripEdgePunct(args.last())
         return (listOf(parts[0]) + args.dropLast(1) + lastClean).joinToString(" ")
     }

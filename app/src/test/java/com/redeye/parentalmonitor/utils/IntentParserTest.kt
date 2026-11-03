@@ -560,10 +560,16 @@ class IntentParserTest {
 
     @Test
     fun aliasUnitsMatchNumericArg() {
-        // #754: satuan "min"/"s" dari NumericArg kini dikenal gerbang alias.
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 min", "/jemput 500 min"))
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 s", "/jemput 500 s"))
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 mnt", "/jemput 500 mnt"))
+        // #754: satuan "min"/"s" dari NumericArg dikenal gerbang alias
+        // (angka + satuan tetap teresolusi sebagai satu argumen).
+        // #883: satuannya kini DITERUSKAN utuh ke handler, bukan
+        // dibuang — handler menolak satuan lintas keluarga lewat
+        // NumericArg, jadi "jemput 500 min" tidak lagi terpasang
+        // senyap sebagai 500 meter.
+        assertEquals("/jemput 500 min", IntentParser.intentOrAlias("jemput 500 min", "/jemput 500 min"))
+        assertEquals("/jemput 500 s", IntentParser.intentOrAlias("jemput 500 s", "/jemput 500 s"))
+        assertEquals("/jemput 500 mnt", IntentParser.intentOrAlias("jemput 500 mnt", "/jemput 500 mnt"))
+        assertEquals("/jemput 500 jam", IntentParser.intentOrAlias("jemput 500 jam", "/jemput 500 jam"))
     }
 
     @Test
@@ -737,10 +743,11 @@ class IntentParserTest {
         assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 DONG", "/jampulang 21:30 DONG"))
         assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 😀", "/jampulang 21:30 😀"))
         assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on 😀", "/hematdata on 😀"))
-        // Angka + satuan = satu argumen (issue #731).
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 meter", "/jemput 500 meter"))
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 m", "/jemput 500 m"))
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 meter dong", "/jemput 500 meter dong"))
+        // Angka + satuan = satu argumen (issue #731); satuannya
+        // diteruskan ke handler sejak #883 (NumericArg yang menilai).
+        assertEquals("/jemput 500 meter", IntentParser.intentOrAlias("jemput 500 meter", "/jemput 500 meter"))
+        assertEquals("/jemput 500 m", IntentParser.intentOrAlias("jemput 500 m", "/jemput 500 m"))
+        assertEquals("/jemput 500 meter", IntentParser.intentOrAlias("jemput 500 meter dong", "/jemput 500 meter dong"))
         // mergeTextArgs setoleran parse(): elongasi, tanda hubung, kata
         // kunci berulang tidak lagi menelan argumen (issue #727).
         assertEquals("/photo depan", IntentParser.intentOrAlias("kirim footo depan sekarang", null))
