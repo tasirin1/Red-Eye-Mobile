@@ -806,7 +806,9 @@ def cek_sinkron_terjemah(gagal):
                     # (issue #1113): spasi di sekitar = dan
                     # kapital nilai adalah XML sah yang aapt
                     # terima, bukan hanya substring persis.
-                    if re.search(r'translatable\s*=\s*"false"', (m.group(1) or "") + m.group(3), re.I):
+                    # Petik tunggal juga diterima (issue #1133),
+                    # simetris dengan pola nama di #1114.
+                    if re.search(r'translatable\s*=\s*["\x27]false["\x27]', (m.group(1) or "") + m.group(3), re.I):
                         bebas[jenis].add(m.group(2))
             # Jumlah <item> per string-array (issue #1044): nama
             # yang sama antar locale tetapi itemnya lebih sedikit
