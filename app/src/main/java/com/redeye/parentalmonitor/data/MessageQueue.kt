@@ -515,6 +515,11 @@ class MessageQueue private constructor(context: Context) {
     private fun registerWithBudget(messageIds: Collection<String>, budget: Int): Pair<List<String>, Int> {
         if (messageIds.isEmpty()) return Pair(emptyList(), 0)
         synchronized(lock) {
+            // Samakan dengan semua mutasi lain (issue #998):
+            // coba pulihkan antrean persisten dulu; tanpa ini
+            // pendaftaran retry berjalan di salinan volatile
+            // walau penyimpanan sudah bisa dibuka lagi.
+            ensureRestored()
             var maxRetry = 0
             if (volatileOnly) {
                 pruneVolatileLocked()

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pendaftaran percobaan ulang pesan kini juga memulihkan antrean persisten lebih dulu seperti semua jalur tulis lain, bukan berjalan di salinan sementara walau penyimpanan sudah pulih.
 - Job sinkron awal kini meneruskan pembatalan korutin dengan benar, tidak lagi menelannya di penangkap pengecualian umum.
 - Reset state masukan tertunda saat /logout kini memakai kunci yang sama dengan jalur masukan lain, menutup celah balapan dengan penyiapan/konsumsi masukan yang berjalan bersamaan.
 - Pembersihan peta throttle login/pairing kini membuang hanya entri kedaluwarsa (dan yang tertua bila tetap penuh), bukan mengosongkan seluruh peta — banjir ID pengirim asing tidak lagi mereset hitungan gagal login yang sedang berjalan.
