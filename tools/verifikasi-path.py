@@ -1427,10 +1427,20 @@ def argumen_format(isi):
     # berindeks eksplisit, urutan bebas sah -> bandingkan peta
     # indeks->tipe; bila ada yang tanpa indeks, bandingkan
     # urutan token persis seperti tertulis.
-    token = re.findall(r'%(?:(\d+)\$)?([a-zA-Z%])', isi)
-    nyata = [(idx, tipe) for idx, tipe in token if tipe != "%"]
-    if nyata and all(idx for idx, _ in nyata):
-        return ("indeks", tuple(sorted((int(idx), tipe) for idx, tipe in nyata)))
+    # Token kini specifier UTUH (issue #1111): pola lama hanya
+    # membaca huruf konversi sesudah indeks opsional, jadi
+    # specifier berflag/lebar (%5s vs %5d) dan pakai-ulang
+    # (%<s vs %<d) gugur dari daftar dan beda tipenya lolos.
+    # Specifier yang memakai %< (pakai ulang argumen
+    # sebelumnya) memaksa mode urut karena maknanya posisional.
+    # Entitas XML dinormalkan lebih dulu: %< di berkas sumber
+    # tertulis %&lt; sehingga tanpa ini tak terlihat pola.
+    isi = isi.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'").replace("&amp;", "&")
+    mentah = re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([a-zA-Z%])', isi)
+    token = [(idx, flags, width, prec, conv) for idx, flags, width, prec, conv in mentah]
+    nyata = [t for t in token if t[4] != "%"]
+    if nyata and all(t[0] for t in nyata) and not any("<" in t[1] for t in nyata):
+        return ("indeks", tuple(sorted((int(t[0]), t[1], t[2], t[3], t[4]) for t in nyata)))
     return ("urut", tuple(token))
 
 
