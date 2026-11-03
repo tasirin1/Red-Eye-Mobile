@@ -124,11 +124,28 @@ fi
 # ada di verifikasi-path sehingga komentar "paritas" menyesatkan) —
 # mentah dan tergabung tanpa "/".
 nama_token=""
+daftar_nama="$({ git diff --cached --name-only 2>/dev/null; git ls-files 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; git ls-files --others -i --exclude-standard 2>/dev/null; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   gabung=$(printf '%s' "$f" | tr -d '/')
   if printf '%s' "$f" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' || printf '%s' "$gabung" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then nama_token="$f"; break; fi
-done <<< "$({ git diff --cached --name-only 2>/dev/null; git ls-files 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; git ls-files --others -i --exclude-standard 2>/dev/null; git log --format= --name-status -m HEAD 2>/dev/null | cut -f2- | tr '\t' '\n'; } | sort -u)"
+done <<< "$daftar_nama"
+# Bentuk terbelah pada nama (issue #896): regex literal di atas
+# tak melihat token yang terbelah titik/pemisah lain di dalam
+# nama — gerbang utama menangkapnya lewat pemindai bersama yang
+# memadatkan pemisah. Satu panggilan massal sebagai pemicu; loop
+# per-nama hanya berjalan bila massal positif, agar vonis tetap
+# menyebut berkasnya dan jalur umum tetap cepat.
+if [ -z "$nama_token" ] && [ -f tools/cek-token.py ]; then
+  daftar_gabung=$(printf '%s\n' "$daftar_nama" | tr -d '/')
+  if { printf '%s\n' "$daftar_nama"; printf '%s\n' "$daftar_gabung"; } | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      gabung=$(printf '%s' "$f" | tr -d '/')
+      if printf '%s' "$gabung" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q DITEMUKAN; then nama_token="$f"; break; fi
+    done <<< "$daftar_nama"
+  fi
+fi
 if [ -n "$nama_token" ]; then
   echo "GAGAL: kemungkinan token bot asli pada NAMA berkas $nama_token (hanya via input SetupActivity)"; gagal=1;
 fi
