@@ -984,25 +984,33 @@ class PreferencesManager(context: Context) {
         get() = prefLong(KEY_LIVENESS_REPORT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_LIVENESS_REPORT_AT, value).apply()
 
+    // Dua fungsi penghitung liveness di bawah satu kunci
+    // (issue #924): baca-ubah-tulis tanpa kunci berhadapan
+    // dengan penolan penghitung di markLivenessReported bisa
+    // membuat laporan kill dobel atau hilang.
     fun incrementLivenessKills(): Int {
-        val unreported = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) + 1
-        try {
-            sharedPreferences.edit()
-                .putInt(KEY_LIVENESS_KILLS, prefInt(KEY_LIVENESS_KILLS, 0) + 1)
-                .putInt(KEY_LIVENESS_KILLS_UNREPORTED, unreported)
-                .apply()
-        } catch (_: Exception) {
+        synchronized(prefsRmwLock) {
+            val unreported = prefInt(KEY_LIVENESS_KILLS_UNREPORTED, 0) + 1
+            try {
+                sharedPreferences.edit()
+                    .putInt(KEY_LIVENESS_KILLS, prefInt(KEY_LIVENESS_KILLS, 0) + 1)
+                    .putInt(KEY_LIVENESS_KILLS_UNREPORTED, unreported)
+                    .apply()
+            } catch (_: Exception) {
+            }
+            return unreported
         }
-        return unreported
     }
 
     fun markLivenessReported(reportAt: Long) {
-        try {
-            sharedPreferences.edit()
-                .putLong(KEY_LIVENESS_REPORT_AT, reportAt)
-                .putInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
-                .apply()
-        } catch (_: Exception) {
+        synchronized(prefsRmwLock) {
+            try {
+                sharedPreferences.edit()
+                    .putLong(KEY_LIVENESS_REPORT_AT, reportAt)
+                    .putInt(KEY_LIVENESS_KILLS_UNREPORTED, 0)
+                    .apply()
+            } catch (_: Exception) {
+            }
         }
     }
 
