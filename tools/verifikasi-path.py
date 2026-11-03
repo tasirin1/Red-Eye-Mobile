@@ -1406,6 +1406,48 @@ def cek_paritas_resource(gagal):
     for nama, teks in sorted(indonesia.items()):
         if nama in inggris and argumen_format(teks) != argumen_format(inggris[nama]):
             gagal.append("Argumen format beda di values-in: " + nama)
+    # Argumen format di dalam <item> plurals/string-array juga wajib
+    # paritas (issue #1045): cek di atas hanya melihat <string>, jadi
+    # plurals "%d files" vs "%s berkas" lolos — padahal kelas crash
+    # formatnya sama persis. Plurals dibandingkan per quantity,
+    # string-array per indeks item.
+    dasar_res = os.path.join(AKAR, "app/src/main/res")
+    pola_plurals = re.compile(r'<plurals(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</plurals>', re.S)
+    pola_item_q = re.compile(r'<item\s+quantity="([^"]+)"[^>]*>(.*?)</item>', re.S)
+    pola_array = re.compile(r'<string-array(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</string-array>', re.S)
+    pola_item = re.compile(r'<item(?:\s[^>]*)?>(.*?)</item>', re.S)
+
+    def peta_item(dirpath):
+        plurals, arrays = {}, {}
+        if not os.path.isdir(dirpath):
+            return plurals, arrays
+        for nama_berkas in sorted(os.listdir(dirpath)):
+            if not nama_berkas.endswith(".xml"):
+                continue
+            isi_b = baca(os.path.relpath(os.path.join(dirpath, nama_berkas), AKAR))
+            if isi_b is None:
+                continue
+            bersih_b = kupas_komentar_xml(isi_b)
+            for nama, badan in pola_plurals.findall(bersih_b):
+                plurals.setdefault(nama, {}).update(dict(pola_item_q.findall(badan)))
+            for nama, badan in pola_array.findall(bersih_b):
+                arrays.setdefault(nama, []).extend(pola_item.findall(badan))
+        return plurals, arrays
+
+    pl_en, ar_en = peta_item(os.path.join(dasar_res, "values"))
+    pl_id, ar_id = peta_item(os.path.join(dasar_res, "values-in"))
+    for nama, per_q in sorted(pl_id.items()):
+        if nama not in pl_en:
+            continue
+        for q, teks in sorted(per_q.items()):
+            if q in pl_en[nama] and argumen_format(teks) != argumen_format(pl_en[nama][q]):
+                gagal.append("Argumen format plurals beda di values-in: %s (%s)" % (nama, q))
+    for nama, daftar in sorted(ar_id.items()):
+        if nama not in ar_en:
+            continue
+        for i, teks in enumerate(daftar):
+            if i < len(ar_en[nama]) and argumen_format(teks) != argumen_format(ar_en[nama][i]):
+                gagal.append("Argumen format string-array beda di values-in: %s (item %d)" % (nama, i))
 
 
 def cek_plurals(gagal):
