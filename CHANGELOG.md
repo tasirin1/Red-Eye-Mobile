@@ -7,6 +7,7 @@
 - Cadangan penghitung item pada gerbang tidak lagi berhenti total pada tag dengan petik tak tertutup: tag rusak dilewati dan item sah sesudahnya tetap terhitung, sama seperti perilaku pola sebelumnya.
 - Penilaian tanggal hantu pada pencatatan pemakaian kini menurunkan kedua kunci harinya dari satu titik waktu yang sama, menutup celah bila tengah malam jatuh di antara dua pembacaan jam.
 - Kanal berkas terabaikan pada cek cepat kini menyaring daftarnya tetap dalam bentuk NUL: berkas terabaikan bernama mengandung baris-baru tidak lagi terbelah dan lolos dari pindai token bentuk base64/terbelah.
+- Gerbang kini memperlakukan rename berkas yang sekaligus mengganti nama kelasnya seperti penghapusan untuk cek acuan: acuan tertinggal ke kelas lama tertangkap, sementara rename yang sah (acuan diperbarui atau kelas tetap dideklarasikan di berkas baru) tetap lolos.
 
 ## [1.6.606] - 2026-11-03
 

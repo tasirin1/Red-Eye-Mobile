@@ -653,6 +653,45 @@ def _ambil_terhapus(out):
     return hasil
 
 
+def _ambil_rename_berisiko(out):
+    # Rename (R) yang mengganti nama berkas kode (issue #1164):
+    # kelas bernama sama dengan nama lama hilang bersama
+    # berkasnya — acuan yang tertinggal sama berbahayanya
+    # dengan hapusan murni, tetapi status D tak pernah
+    # mengumpulkannya. Path lama diperlakukan terhapus HANYA
+    # bila berkas baru tak lagi mendeklarasikan nama lama
+    # (rename murni yang kelasnya ikut berganti nama dengan
+    # benar lolos; vonis akhir tetap di penyebutan nama).
+    token = pecah_nama(out)
+    hasil = []
+    i = 0
+    while i < len(token):
+        status = token[i]
+        i += 1
+        if not status or status[0] not in "AMDRCTU":
+            continue
+        ambil = 2 if status[0] in "RC" else 1
+        pasangan = []
+        for _ in range(ambil):
+            if i >= len(token):
+                break
+            pasangan.append(token[i])
+            i += 1
+        if status[0] != "R" or len(pasangan) != 2:
+            continue
+        lama, baru = pasangan
+        if not (lama.startswith("app/src/main/java/")
+                and lama.endswith(EKSTENSI_KODE)):
+            continue
+        kelas = os.path.splitext(os.path.basename(lama))[0]
+        if os.path.splitext(os.path.basename(baru))[0] == kelas:
+            continue
+        pola = re.compile(r"(?:class|object|interface|enum)\s+%s\b" % re.escape(kelas))
+        if not pola.search(baca_teks(baru)):
+            hasil.append(lama)
+    return hasil
+
+
 def berkas_dihapus(rentang):
     """Daftar path yang dihapus pada diff (butuh status; kosong bila tak tahu)."""
     if rentang and ("..." in rentang or ".." in rentang):
@@ -664,9 +703,9 @@ def berkas_dihapus(rentang):
                 out = jalan("git", "diff", "--name-status", "-z", a + pemisah + b)
                 if out is None:
                     return []
-                return _ambil_terhapus(out)
+                return _ambil_terhapus(out) + _ambil_rename_berisiko(out)
     out = jalan("git", "diff", "--name-status", "-z")
-    return _ambil_terhapus(out)
+    return _ambil_terhapus(out) + _ambil_rename_berisiko(out)
 
 
 def disebut_kata(nama, lewat=()):
@@ -2008,9 +2047,9 @@ def utama():
         # (issue #1157): uraian per baris tanpa -z mematahkan
         # nama non-ASCII terkuotasi sehingga hapusan staged
         # berkas beraksen yang masih dirujuk lolos vonis.
-        hapus += _ambil_terhapus(
-            jalan("git", "diff", "--cached", "--name-status", "-z") or ""
-        )
+        keluar_staged = jalan("git", "diff", "--cached", "--name-status", "-z") or ""
+        hapus += _ambil_terhapus(keluar_staged)
+        hapus += _ambil_rename_berisiko(keluar_staged)
     cek_berkas_kode_dihapus(gagal, hapus)
     if not args.semua:
         cek_pengingat_changelog(peringatan, berubah)
