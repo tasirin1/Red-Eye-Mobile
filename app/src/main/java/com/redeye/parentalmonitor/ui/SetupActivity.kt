@@ -1151,7 +1151,18 @@ class SetupActivity : AppCompatActivity() {
     private fun copyToClipboard(label: String, value: String) {
         try {
             val manager = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            manager.setPrimaryClip(android.content.ClipData.newPlainText(label, value))
+            val data = android.content.ClipData.newPlainText(label, value)
+            // Tandai sensitif (issue #1168): kedua pemakai
+            // fungsi ini menyalin kredensial (tautan penautan
+            // pemilik & kode restore) — tanda ini membuat
+            // pratinjau clipboard menyembunyikannya.
+            try {
+                data.description.extras = android.os.PersistableBundle().apply {
+                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            } catch (_: Exception) {
+            }
+            manager.setPrimaryClip(data)
         } catch (_: Exception) {
         }
     }

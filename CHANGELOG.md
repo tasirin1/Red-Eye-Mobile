@@ -5,6 +5,7 @@
 - Tombol menu tidak lagi mati 300 detik sesudah pesan menu pertama dikirim: umur tombol kini dihitung dari terakhir kali menu itu ditampilkan/diperbarui, bukan dari tanggal lahir pesan — navigasi dan penyegaran saklar memang mengubah pesan yang sama di tempat. Aliran darurat, mode hilang, dan kunci yang dijalankan dari menu berumur panjang kini bisa dipakai lagi.
 - Kursor SMS/panggilan warisan yang cap waktunya kosong kini dipulihkan dengan menjangkar ulang ke baris teratas yang benar-benar ada bila baris kursornya sudah hilang dari basis data (mis. sesudah restore), sehingga pesan baru berikutnya tetap tertangkap — sebelumnya pesan dengan nomor urut pakai-ulang bisa terlewat.
 - Teks penyebab gagal memotret/merekam kini diloloskan dari penanda HTML sebelum disisipkan ke pesan, sama seperti situs kembarnya — pesan galat tampil utuh dalam sekali kirim, bukan jatuh ke pengiriman ulang teks polos.
+- Tautan penautan pemilik dan kode pemulihan yang disalin ke clipboard kini ditandai sebagai isi sensitif, sehingga pratinjau clipboard menyembunyikannya dari aplikasi/keyboard lain.
 
 ## [1.6.607] - 2026-11-03
 
