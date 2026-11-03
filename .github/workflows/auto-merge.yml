@@ -26,12 +26,25 @@ jobs:
         run: |
           # Gagal-TERTUTUP: kegagalan API / daftar kosong tidak boleh jatuh
           # ke "bukan dependensi Gradle" lalu auto-merge aktif.
-          if ! FILES=$(gh pr view ${{ github.event.pull_request.number }} -R ${{ github.repository }} --json files --jq '.files[].path'); then
+          # Daftar berkas wajib LENGKAP (issue #978): --json files
+          # pada gh pr view terpotong di 100 berkas, jadi PR besar
+          # bisa menyembunyikan berkas Gradle di ekor daftar dan
+          # lolos auto-merge. Kini REST API ber-paginate + cek
+          # silang jumlah terhadap changedFiles; selisih = batal.
+          if ! FILES=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files?per_page=100" --jq '.[].filename'); then
             echo "::error::Gagal membaca daftar file PR - auto-merge dibatalkan."
             exit 1
           fi
           if [ -z "$FILES" ]; then
             echo "::error::Daftar file PR kosong - auto-merge dibatalkan."
+            exit 1
+          fi
+          if ! JUMLAH=$(gh pr view ${{ github.event.pull_request.number }} -R ${{ github.repository }} --json changedFiles --jq '.changedFiles'); then
+            echo "::error::Gagal membaca jumlah file PR - auto-merge dibatalkan."
+            exit 1
+          fi
+          if [ "$(printf '%s\n' "$FILES" | wc -l)" -ne "$JUMLAH" ]; then
+            echo "::error::Daftar file PR tidak lengkap ($JUMLAH berkas menurut PR) - auto-merge dibatalkan."
             exit 1
           fi
           echo "File berubah di PR:"

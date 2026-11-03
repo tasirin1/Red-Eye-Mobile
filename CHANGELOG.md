@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Deteksi berkas Gradle pada auto-merge Dependabot kini membaca daftar berkas PR secara lengkap (API berhalaman + cek silang jumlah) — daftar lama terpotong di 100 berkas sehingga berkas Gradle di ekor daftar bisa lolos dan ikut ter-merge otomatis.
 - Empat logika murni yang tadinya tak teruji kini diekstrak ke util terpisah dan terkunci uji unit (batas antrean, sisa jendela malam, klasifikasi paket prioritas); pemotongan pesan antrean kini juga aman dari membelah pasangan emoji tepat di batas potong.
 - Gerbang verifikasi kini memperingatkan dengan jelas bila perbandingan versi terhadap rilis bertag terakhir dilewati karena clone tak punya tag (dulu separuh penegakan versi tidur diam-diam).
 - Larangan berkas rahasia di kedua gerbang kini mencakup varian nama env (.env.local, .env.production, .env.bak, dan sejenisnya), bukan hanya nama persis .env.
