@@ -37,6 +37,7 @@
 - Penghitung item string-array pada gerbang kini memakai parser XML sungguhan (anak langsung): item self-closing terhitung, teks mirip tag di dalam CDATA dan item bersarang tidak lagi ikut terhitung.
 - Pemeriksaan paritas format gerbang kini membaca specifier utuh — flag, lebar, presisi, dan pakai-ulang argumen (%&lt;) ikut dibandingkan, bukan hanya huruf konversinya: beda tipe pada specifier berflag tidak lagi lolos.
 - Persen literal (%%) tidak lagi dihitung sebagai argumen format oleh gerbang: terjemahan yang menulis kata "persen" tidak lagi digagalkan palsu.
+- Pengecualian translatable pada gerbang kini dikenali juga dalam bentuk XML sah lain (spasi di sekitar tanda sama-dengan, kapital pada nilai), tidak hanya substring persis.
 
 ## [1.6.601] - 2026-11-03
 

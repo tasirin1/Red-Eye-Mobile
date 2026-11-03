@@ -802,7 +802,11 @@ def cek_sinkron_terjemah(gagal):
                     # pasangan terjemahan (issue #1057): nama
                     # aplikasi/brand yang hanya ada di values/
                     # dulu menggagalkan gerbang sebagai "kurang".
-                    if 'translatable="false"' in ((m.group(1) or "") + m.group(3)):
+                    # Pencocokan kini pola atribut toleran
+                    # (issue #1113): spasi di sekitar = dan
+                    # kapital nilai adalah XML sah yang aapt
+                    # terima, bukan hanya substring persis.
+                    if re.search(r'translatable\s*=\s*"false"', (m.group(1) or "") + m.group(3), re.I):
                         bebas[jenis].add(m.group(2))
             # Jumlah <item> per string-array (issue #1044): nama
             # yang sama antar locale tetapi itemnya lebih sedikit
