@@ -30,7 +30,7 @@ sealed class MenuCallback {
             "camback" to "camera back",
             "pause60" to "pause 60",
             "shot" to "screenshot",
-            "cekmati" to "cekmati",
+            "cekmati" to "checkdead",
             "alive" to "alive"
         )
 

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tombol menu "🧪 Uji anti-mati" hidup lagi: datanya kini memakai perintah kanonis /checkdead (sebelumnya kata telanjang lama yang diterjemahkan ke perintah yang sudah tidak ada, sehingga bot menjawab "perintah tak dikenal"); pesan menu lama dengan data lama pun kini diarahkan ke perintah yang benar.
 - Perintah darurat dari teks (/lock, /stop) tidak lagi antre di belakang kerja tombol menu yang panjang: jalur tombol kini memilih kunci yang sama seperti jalur teks (hanya perintah kontrol memakai kunci kontrol, perintah lain memakai kunci perintah biasa).
 - Watchdog loop tidak lagi salah menilai loop "macet" saat pengiriman media tertunda yang sah sedang berjalan lama di jaringan lambat: detak loop kini diperbarui di antara tiap tahap flush (audio/foto/video) sehingga loop sehat tidak direstart paksa di tengah unggahan.
 - Penyamaran OTP kini menangkap kode berkelompok dengan pemisah koma, garis miring, dan titik dua ("123,456", "123/456", "123:456") yang sebelumnya tampil polos di notifikasi yang diteruskan.

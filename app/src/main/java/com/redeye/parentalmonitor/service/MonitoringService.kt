@@ -2777,7 +2777,7 @@ class MonitoringService : Service() {
                     listOf(button("\uD83C\uDFF7\uFE0F Versi", "x:version"), button("\uD83D\uDD10 Izin", "x:perms")),
                     listOf(button("\uD83D\uDCBE Penyimpanan", "x:storage"), button("\uD83D\uDCE6 Aplikasi", "x:apps")),
                     listOf(button("\uD83D\uDCC8 Pemakaian layar", "i:info:screentime"), button("\uD83D\uDC93 Sinyal hidup", "alive")),
-                    listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83E\uDDFE Audit", "x:audit")),
+                    listOf(button("\uD83E\uDDEA Uji anti-mati", "x:checkdead"), button("\uD83E\uDDFE Audit", "x:audit")),
                     listOf(menuUtama)
                 )
             )
