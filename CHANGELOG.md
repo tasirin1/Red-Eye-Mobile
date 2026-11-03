@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pasangan cap waktu patroli dan penanda prompt kini ditulis dalam satu operasi simpan yang utuh (sebelumnya dua penulisan terpisah yang bisa tercampur bila proses mati di antaranya).
 - Uji dekripsi cadangan pengaturan diperketat: ciphertext rusak kini wajib gagal dengan galat tag GCM secara spesifik (sebelumnya tangkapan pengecualian umum tanpa asersi membiarkan regresi dekripsi apa pun tetap hijau).
 - Gerbang verifikasi kini menjaga skrip build legacy (builder.sh/builder.bat) tetap mati: berkasnya wajib ada, tetap berhenti sendiri, dan tak boleh memuat pola alur build aktif — pengaktifan ulang kini tertangkap sebelum push, bukan hanya dilarang di dokumen aturan.
 - Rilis kini gagal tegas bila versi yang ditag tidak punya seksi catatan di CHANGELOG (sebelumnya workflow menerbitkan rilis dengan catatan hampa berisi judul saja).

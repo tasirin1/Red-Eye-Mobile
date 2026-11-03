@@ -1254,8 +1254,7 @@ class MonitoringService : Service() {
         // putaran berikutnya. Laporan yang terantre tetap terhitung
         // berjalan — memang sudah diterima antrean untuk dikirim.
         try {
-            preferencesManager.patrolLastAt = System.currentTimeMillis()
-            preferencesManager.patrolLastElapsed = android.os.SystemClock.elapsedRealtime()
+            preferencesManager.setPatrolLast(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
         } catch (_: Exception) { }
     }
 
@@ -2918,16 +2917,14 @@ class MonitoringService : Service() {
 
     private fun markPendingPrompt(command: String) {
         try {
-            preferencesManager.pendingPromptCmd = command
-            preferencesManager.pendingPromptAt = System.currentTimeMillis()
+            preferencesManager.setPendingPrompt(command, System.currentTimeMillis())
         } catch (_: Exception) {
         }
     }
 
     private fun clearPendingPromptMarker() {
         try {
-            preferencesManager.pendingPromptCmd = ""
-            preferencesManager.pendingPromptAt = 0L
+            preferencesManager.setPendingPrompt("", 0L)
         } catch (_: Exception) {
         }
     }
@@ -2937,8 +2934,7 @@ class MonitoringService : Service() {
             val cmd = preferencesManager.pendingPromptCmd
             val at = preferencesManager.pendingPromptAt
             if (cmd.isEmpty()) return
-            preferencesManager.pendingPromptCmd = ""
-            preferencesManager.pendingPromptAt = 0L
+            preferencesManager.setPendingPrompt("", 0L)
             val age = System.currentTimeMillis() - at
             if (at > 0L && age >= 0L && age <= PENDING_PROMPT_REPORT_MAX_AGE_MS) {
                 messageQueue.addMessage("\u231B\uFE0F Prompt $cmd hilang karena layanan dimulai ulang sebelum sempat dijawab. Tekan tombolnya lagi atau ketik perintah lengkapnya.")

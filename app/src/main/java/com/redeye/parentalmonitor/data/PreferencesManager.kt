@@ -1108,6 +1108,20 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Penulis pasangan prompt dalam SATU edit (issue #923, pola
+    // #890): cmd+cap yang ditulis dua apply() terpisah bisa
+    // tercampur oleh kematian proses di antaranya (cmd baru
+    // dengan cap lama/nol).
+    fun setPendingPrompt(command: String, at: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_PENDING_PROMPT_CMD, command)
+                .putLong(KEY_PENDING_PROMPT_AT, at)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     var pendingPromptCmd: String
         get() = prefString(KEY_PENDING_PROMPT_CMD, "")
         set(value) = sharedPreferences.edit().putString(KEY_PENDING_PROMPT_CMD, value).apply()
@@ -1441,6 +1455,19 @@ class PreferencesManager(context: Context) {
     var patrolLastElapsed: Long
         get() = prefLong(KEY_PATROL_LAST_ELAPSED, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PATROL_LAST_ELAPSED, value).apply()
+
+    // Penulis pasangan cap patroli (dinding+monoton) dalam SATU
+    // edit (issue #923, pola #890) agar tak tercampur oleh
+    // kematian proses di antara dua penulisan terpisah.
+    fun setPatrolLast(at: Long, elapsed: Long) {
+        try {
+            sharedPreferences.edit()
+                .putLong(KEY_PATROL_LAST_AT, at)
+                .putLong(KEY_PATROL_LAST_ELAPSED, elapsed)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
 
     var batteryAlertAt: Long
         get() = prefLong(KEY_BATTERY_ALERT_AT, 0L)
