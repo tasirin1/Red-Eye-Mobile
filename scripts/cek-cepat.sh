@@ -196,11 +196,14 @@ fi
 #    teks (bukan kode) sehingga tak memicu positif palsu.
 #    Komentar blok dilacak KEDALAMANNYA (issue #1134): Kotlin
 #    membolehkan komentar bersarang — penutup terdalam tidak
-#    mengakhiri blok luar.
+#    mengakhiri blok luar. Untuk .java kedalaman dimatikan
+#    (issue #1145): komentar Java TIDAK bersarang — penutup
+#    pertama mengakhiri blok, sisanya kode.
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
-  d=$(awk '
+  isjava=0; case "$f" in *.java) isjava=1 ;; esac
+  d=$(awk -v java="$isjava" '
 {
   line = ""
   i = 1; n = length($0)
@@ -210,7 +213,7 @@ while IFS= read -r f; do
       continue
     }
     if (inblock) {
-      if (substr($0, i, 2) == "/*") { blockdepth++; i += 2 }
+      if (substr($0, i, 2) == "/*") { if (!java) blockdepth++; i += 2 }
       else if (substr($0, i, 2) == "*/") { blockdepth--; if (blockdepth <= 0) { inblock = 0; blockdepth = 0 } i += 2 }
       else i++
       continue
