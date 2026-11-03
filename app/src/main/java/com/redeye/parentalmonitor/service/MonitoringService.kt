@@ -7400,7 +7400,16 @@ class MonitoringService : Service() {
                         val alertNow = if (t.alert) {
                             val nowWall = System.currentTimeMillis()
                             val lastAlert = if (isHome) preferencesManager.homeAlertAt else preferencesManager.schoolAlertAt
-                            !(lastAlert > 0L && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS)
+                            // Jam dimundurkan (issue #889): cap yang
+                            // berada di masa depan membuat selisih
+                            // negatif dan cooldown dianggap aktif
+                            // selama seluruh kemunduran + 20 menit,
+                            // menelan alert yang transisinya sudah
+                            // tercatat — hilang permanen. Cap masa
+                            // depan tak bisa membuktikan jeda, jadi
+                            // cooldown dianggap kedaluwarsa (pola
+                            // self-heal alert baterai).
+                            !(lastAlert > 0L && lastAlert <= nowWall && nowWall - lastAlert < FENCE_ALERT_COOLDOWN_MS)
                         } else {
                             false
                         }
