@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Penanda notifikasi terkirim pada jalur batch kini ditulis dalam satu commit gabungan per potongan (sebelumnya dua commit terpisah yang masing-masing menulis ulang seluruh daftar penanda) — lebih hemat tulis di perangkat.
 - Deteksi berkas Gradle pada auto-merge Dependabot kini membaca daftar berkas PR secara lengkap (API berhalaman + cek silang jumlah) — daftar lama terpotong di 100 berkas sehingga berkas Gradle di ekor daftar bisa lolos dan ikut ter-merge otomatis.
 - Empat logika murni yang tadinya tak teruji kini diekstrak ke util terpisah dan terkunci uji unit (batas antrean, sisa jendela malam, klasifikasi paket prioritas); pemotongan pesan antrean kini juga aman dari membelah pasangan emoji tepat di batas potong.
 - Gerbang verifikasi kini memperingatkan dengan jelas bila perbandingan versi terhadap rilis bertag terakhir dilewati karena clone tak punya tag (dulu separuh penegakan versi tidur diam-diam).

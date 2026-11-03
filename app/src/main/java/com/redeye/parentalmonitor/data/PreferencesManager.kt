@@ -1413,14 +1413,6 @@ class PreferencesManager(context: Context) {
             return out
         }
 
-    fun setForwardedNotifIdsSync(values: List<String>): Boolean {
-        return try {
-            sharedPreferences.edit().putString(KEY_FORWARDED_NOTIF_IDS, values.joinToString(",")).commit()
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     val notifGroupForwarded: List<String>
         get() {
             val raw = prefString(KEY_NOTIF_GROUP_FORWARDED, "")
@@ -1437,14 +1429,6 @@ class PreferencesManager(context: Context) {
             }
             return out
         }
-
-    fun setNotifGroupForwardedSync(values: List<String>): Boolean {
-        return try {
-            sharedPreferences.edit().putString(KEY_NOTIF_GROUP_FORWARDED, values.joinToString(",")).commit()
-        } catch (_: Exception) {
-            false
-        }
-    }
 
     fun setForwardedMarkersSync(groupValues: List<String>, idValues: List<String>): Boolean {
         return try {

@@ -584,37 +584,31 @@ class NotificationForwarderService : NotificationListenerService() {
         return groupForwardedView[hash] ?: 0L
     }
 
-    private fun markGroupForwarded(groupKey: String) {
-        markGroupsForwarded(listOf(groupKey))
-    }
-
-    private fun markGroupsForwarded(groupKeys: Collection<String>) {
-        if (groupKeys.isEmpty()) return
-        val now = System.currentTimeMillis()
-        synchronized(groupForwarded) {
-            for (groupKey in groupKeys) {
-                val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { continue }
-                groupForwarded[hash] = now
-            }
-            groupForwardedView = HashMap(groupForwarded)
-            val snapshot = groupForwarded.entries.map { it.key + ":" + it.value }
-            try {
-                (prefsRef ?: PreferencesManager.getInstance(this)).setNotifGroupForwardedSync(snapshot)
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     private fun markGroupAndIdForwarded(groupKey: String, idHash: String) {
-        if (groupKey.isEmpty() && idHash.isEmpty()) return
+        markMarkersForwarded(
+            if (groupKey.isEmpty()) emptyList() else listOf(groupKey),
+            if (idHash.isEmpty()) emptyList() else listOf(idHash)
+        )
+    }
+
+    // Penanda gabungan banyak grup + banyak id dalam SATU
+    // tulis commit (issue #979): jalur batch sebelumnya
+    // memanggil penanda id dan penanda grup terpisah, jadi
+    // tiap potongan membayar dua commit yang masing-masing
+    // menulis ulang snapshot peta penuh.
+    private fun markMarkersForwarded(groupKeys: Collection<String>, idHashes: Collection<String>) {
+        if (groupKeys.isEmpty() && idHashes.isEmpty()) return
         val now = System.currentTimeMillis()
         synchronized(groupForwarded) {
             synchronized(forwardedIds) {
-                if (groupKey.isNotEmpty()) {
+                for (groupKey in groupKeys) {
+                    if (groupKey.isEmpty()) continue
                     val hash = try { groupKeyHash(groupKey) } catch (_: Exception) { null }
                     if (hash != null) groupForwarded[hash] = now
                 }
-                if (idHash.isNotEmpty()) forwardedIds[idHash] = true
+                for (idHash in idHashes) {
+                    if (idHash.isNotEmpty()) forwardedIds[idHash] = true
+                }
                 groupForwardedView = HashMap(groupForwarded)
                 forwardedIdsView = HashSet(forwardedIds.keys)
                 val groupSnapshot = groupForwarded.entries.map { it.key + ":" + it.value }
@@ -623,23 +617,6 @@ class NotificationForwarderService : NotificationListenerService() {
                     (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedMarkersSync(groupSnapshot, idSnapshot)
                 } catch (_: Exception) {
                 }
-            }
-        }
-    }
-
-    private fun markForwardedId(idHash: String) {
-        markForwardedIds(listOf(idHash))
-    }
-
-    private fun markForwardedIds(idHashes: Collection<String>) {
-        if (idHashes.isEmpty()) return
-        synchronized(forwardedIds) {
-            for (idHash in idHashes) forwardedIds[idHash] = true
-            forwardedIdsView = HashSet(forwardedIds.keys)
-            val snapshot = forwardedIds.keys.toList()
-            try {
-                (prefsRef ?: PreferencesManager.getInstance(this)).setForwardedNotifIdsSync(snapshot)
-            } catch (_: Exception) {
             }
         }
     }
@@ -983,8 +960,10 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 val survived = leftover.filterIndexed { idx, _ -> results.getOrElse(idx) { false } }
                 if (survived.isNotEmpty()) {
-                    markForwardedIds(survived.map { it.second }.filter { it.isNotEmpty() })
-                    markGroupsForwarded(survived.map { it.third }.filter { it.isNotEmpty() }.distinct())
+                    markMarkersForwarded(
+                        survived.map { it.third }.filter { it.isNotEmpty() }.distinct(),
+                        survived.map { it.second }.filter { it.isNotEmpty() }
+                    )
                 }
                 try {
                     MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
@@ -1209,8 +1188,7 @@ class NotificationForwarderService : NotificationListenerService() {
             if (curCount <= 0) return
             val delivered = forwardLocked(cur.toString(), curCount, queueOnCancel = false)
             if (delivered) {
-                markForwardedIds(curHashes)
-                markGroupsForwarded(curGroups.distinct())
+                markMarkersForwarded(curGroups.distinct(), curHashes)
             }
             cur = StringBuilder()
             curCount = 0
@@ -1256,8 +1234,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     splitRest = null
                     splitHash = ""
                     splitGroup = ""
-                    if (splitDelivered && item.second.isNotEmpty()) markForwardedId(item.second)
-                    if (splitDelivered && item.third.isNotEmpty()) markGroupForwarded(item.third)
+                    if (splitDelivered) markMarkersForwarded(listOf(item.third), listOf(item.second))
                     synchronized(batchLock) { flushInFlight = items.drop(index) }
                     continue
                 }
@@ -1331,8 +1308,7 @@ class NotificationForwarderService : NotificationListenerService() {
                             okGroups.addAll(groupLists[idx])
                         }
                     }
-                    markForwardedIds(okHashes)
-                    markGroupsForwarded(okGroups.distinct())
+                    markMarkersForwarded(okGroups.distinct(), okHashes)
                     try {
                         MessageScheduler.scheduleMessageSend(this)
                     } catch (_: Exception) {
