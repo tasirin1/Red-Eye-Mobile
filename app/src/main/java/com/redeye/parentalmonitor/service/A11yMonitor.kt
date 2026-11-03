@@ -275,7 +275,18 @@ object A11yMonitor {
         if (AppWatch.isSensitivePackage(pkg)) return
         val manager = prefs ?: return
         if (!manager.a11yAppWatchEnabled) return
-        if (lastContentScan.size > 120) lastContentScan.clear()
+        if (lastContentScan.size > 120) {
+            // Pangkas yang TERTUA saja (issue #930): clear()
+            // total mencabut throttle semua paket sekaligus
+            // sehingga pemindaian meledak serentak.
+            val urut = lastContentScan.entries.sortedBy { it.value }
+            var buang = lastContentScan.size - 60
+            for (entri in urut) {
+                if (buang <= 0) break
+                lastContentScan.remove(entri.key)
+                buang--
+            }
+        }
         lastContentScan[pkg] = now
         if (pkg !in manager.a11yAppWatchPackageSet()) return
         val keywords = AppWatch.parseKeywords(manager.watchKeywords)

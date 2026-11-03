@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Peta jeda pindai konten Aksesibilitas kini dipangkas bertahap (yang tertua dulu) saat membesar, bukan dikosongkan sekaligus — pengosongan total mencabut jeda semua aplikasi bersamaan dan memicu ledakan pindai serentak.
 - Cuplikan teks layar untuk pemeriksaan ubek-ubek kini dibuang bila jendela berpindah di tengah pengambilan (navigasi cepat), agar teks dua layar tidak tercampur dan alasan pemeriksaan tidak hilang atau salah tempat.
 - Pekerja pemulih boot tidak lagi menyerah tanpa jaring pengaman: sesudah 5 kali gagal ia kini selalu memasang watchdog periodik sebelum berhenti, sehingga layanan tidak bisa tertidur seterusnya hanya karena pemicu awal boot itu gagal semua.
 - Pemulihan antrean sesudah penyimpanan pulih kini memakai kelonggaran prioritas yang sama dengan jalur normal, sehingga sampai 5 pesan prioritas tertua tidak lagi tereviksi percuma saat restore.
