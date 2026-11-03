@@ -1056,6 +1056,20 @@ class NotificationForwarderService : NotificationListenerService() {
         return MessageQueue.getInstance(this).also { queueRef = it }
     }
 
+    // Klasifikasi paket perbankan/e-wallet per SEGMEN nama
+    // paket (issue #933): pencocokan substring lama membuat
+    // paket tak terkait ikut prioritas ("bri" di "bright…",
+    // "dana" di "danais…"). Token pendek wajib sama persis
+    // dengan satu segmen; merek majemuk boleh sebagai awalan
+    // segmen.
+    private fun pkgPrioritas(lowPkg: String): Boolean {
+        val eksak = setOf("bank", "bri", "bca", "bni", "btn", "ovo", "dana", "mandiri", "pay")
+        val awalan = listOf("brimo", "livin", "gopay", "shopeepay", "mbanking", "m-banking", "wallet", "paypal", "paytm", "spay")
+        return lowPkg.split('.').any { seg ->
+            seg in eksak || awalan.any { seg.startsWith(it) }
+        }
+    }
+
     private fun isPriorityNotif(pkg: String, title: String, text: String, lowText: String): Boolean {
         return try {
             val lowPkg = pkg.lowercase(java.util.Locale.ROOT)
@@ -1071,7 +1085,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
             }
             if (lowText.contains("missed call") || lowText.contains("panggilan tak terjawab") || lowText.contains("tak terjawab") || lowText.contains("missed video call")) return true
-            if (lowPkg.contains("bank") || lowPkg.contains("brimo") || lowPkg.contains("livin") || lowPkg.contains("bca") || lowPkg.contains("mandiri") || lowPkg.contains("bni") || lowPkg.contains("bri") || lowPkg.contains("btn") || lowPkg.contains("ovo") || lowPkg.contains("dana") || lowPkg.contains("gopay") || lowPkg.contains("shopeepay") || lowPkg.contains("mbanking") || lowPkg.contains("m-banking") || lowPkg.contains("wallet") || lowPkg.contains("pay")) return true
+            if (pkgPrioritas(lowPkg)) return true
             if (PRIORITY_CODE_REGEX.containsMatchIn(title + " " + text) && (lowText.contains("otp") || lowText.contains("kode") || lowText.contains("verif") || lowText.contains("pin") || lowText.contains("token") || lowText.contains("auth"))) return true
             false
         } catch (_: Exception) {
