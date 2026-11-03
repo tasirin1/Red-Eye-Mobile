@@ -230,12 +230,18 @@ class NotificationForwarderService : NotificationListenerService() {
                     dropSummaryCount += 1
                 } else {
                     dropSummaryCount = 1
+                    // Jangkar jendela dipasang di gugur PERTAMA
+                    // rantai ini dan tidak digeser oleh gugur
+                    // berikutnya (issue #1178): sebelumnya jendela
+                    // diukur dari gugur terakhir sehingga rantai
+                    // berjeda <60 dtk menumpuk tanpa batas di bawah
+                    // label "60 detik terakhir".
+                    dropSummaryAt = now
                 }
                 val summaryIndex = history.indexOfLast { it.app == DROP_SUMMARY_APP }
                 if (summaryIndex >= 0) history.removeAt(summaryIndex)
                 history.addLast(NotifRecord(DROP_SUMMARY_APP, "", "$dropSummaryCount notifikasi gugur dalam 60 detik terakhir (antrean penuh)", now))
                 while (history.size > MAX_HISTORY) history.removeFirst()
-                dropSummaryAt = now
             }
         }
 
