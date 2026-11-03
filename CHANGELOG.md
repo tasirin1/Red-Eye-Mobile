@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pesan panjang yang satu potongannya ditolak permanen oleh Telegram tidak lagi membuat seluruh pesan dikirim ulang tanpa akhir: potongan yang hilang dicatat sebagai pesan terbuang (dengan pemberitahuan ke owner), dan kursor SMS/panggilan tetap maju untuk potongan yang terkirim.
 - Pemicu SMS/panggilan masuk tidak lagi hilang: pemeriksaan seketika kini mencap throttle di akhir putaran dan menjalankan satu putaran lanjutan bila ada pemicu yang datang selama pemeriksaan berjalan — sebelumnya pemicu di jendela itu tertelan dan laporan menunggu putaran berkala.
 - Kebocoran koneksi pada polling perintah ditutup: badan respons pertama kini ditutup sebelum diganti respons percobaan ulang kredensial, dan kode HTTP yang tak tertangani cabang mana pun kini menutup badan galatnya sebelum kembali.
 - Flush akhir pemantau aksesibilitas tidak lagi bisa terbuang diam-diam saat antrean tugas penuh tepat ketika layanan dibongkar: bila executor menolak tugasnya, flush dijalankan langsung di tempat — sesi pemakaian terakhir selalu terpersisten.

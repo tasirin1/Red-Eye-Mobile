@@ -6534,6 +6534,7 @@ class MonitoringService : Service() {
         }
         var sentAny = false
         var permanentLoss = false
+        var permanentLost = 0
         val failed = mutableListOf<String>()
         val chunks = mutableListOf<String>()
         var rest = message
@@ -6555,6 +6556,7 @@ class MonitoringService : Service() {
                         break
                     }
                     permanentLoss = true
+                    permanentLost++
                 } else {
                     lastSentIdx = idx
                     sentAny = true
@@ -6584,7 +6586,15 @@ class MonitoringService : Service() {
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (queuedTail) MessageScheduler.scheduleMessageSend(this)
             }
-            return SendStatus.DROPPED
+            // Potongan yang ditolak permanen tak akan pernah
+            // terkirim (issue #952): catat sebagai pesan terbuang
+            // agar owner diberi tahu. Bila potongan lain terkirim,
+            // hasil keseluruhan BUKAN dropped — menilai DROPPED
+            // membuat pemanggil berkursor (SMS/panggilan) tidak
+            // memajukan kursor dan mengirim ulang seluruh pesan
+            // pada setiap putaran: duplikat tanpa akhir.
+            repeat(permanentLost) { noteDroppedMessage() }
+            return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
         }
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
