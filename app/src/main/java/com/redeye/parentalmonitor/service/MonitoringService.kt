@@ -973,6 +973,31 @@ class MonitoringService : Service() {
         }
     }
 
+    // Kumpulan cek sensitif-waktu (issue #920). Dulu hanya
+    // dinilai di awal putaran loop data — dengan syncinterval
+    // besar (sah sampai 1440 mnt) loop bangun ±sekali sehari
+    // pada fase acak sehingga jendela digest malam/susulan bisa
+    // tak pernah kedapatan jatuh tempo. Kini kumpulan ini juga
+    // dipanggil dari sela tidur loop (lihat pauseAwareDelay),
+    // maksimal tiap 5 menit tidur, agar jendelanya tertangkap
+    // tanpa mengubah irama sinkron data. Tiap cek menahan
+    // dirinya sendiri (cap/jendela di prefs), jadi pemanggilan
+    // lebih sering aman.
+    private suspend fun runScheduledChecks() {
+        runPeriodicCheck { maybeSendHeartbeat() }
+        runPeriodicCheck { checkBatteryAlert() }
+        runPeriodicCheck { maybeSendDigest() }
+        runPeriodicCheck { maybeSendNightDigest() }
+        runPeriodicCheck { maybeRetryBotCommands() }
+        runPeriodicCheck { checkBegadang() }
+        runPeriodicCheck { checkCurfew() }
+        runPeriodicCheck { checkGeofenceFallback() }
+        runPeriodicCheck { checkQuietHealth() }
+        runPeriodicCheck { checkAccessibilityHealth() }
+        runPeriodicCheck { checkSilentLink() }
+        runPeriodicCheck { checkVehicle() }
+    }
+
     private fun startPeriodicLoops() {
         val monitoring = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
@@ -981,18 +1006,7 @@ class MonitoringService : Service() {
                     monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                     monitorCycleMs = if (!cachedMonitoringPaused) syncIntervalMillis() else 15 * 60_000L
                     try { Liveness.markAlive(preferencesManager) } catch (_: Exception) { }
-                    runPeriodicCheck { maybeSendHeartbeat() }
-                    runPeriodicCheck { checkBatteryAlert() }
-                    runPeriodicCheck { maybeSendDigest() }
-                    runPeriodicCheck { maybeSendNightDigest() }
-                    runPeriodicCheck { maybeRetryBotCommands() }
-                    runPeriodicCheck { checkBegadang() }
-                    runPeriodicCheck { checkCurfew() }
-                    runPeriodicCheck { checkGeofenceFallback() }
-                    runPeriodicCheck { checkQuietHealth() }
-                    runPeriodicCheck { checkAccessibilityHealth() }
-                    runPeriodicCheck { checkSilentLink() }
-                    runPeriodicCheck { checkVehicle() }
+                    runScheduledChecks()
                     if (!cachedMonitoringPaused) {
                         val dataAuthBlocked = try { NetworkUtils.isAuthBlocked(preferencesManager) } catch (_: Exception) { false }
                         if (checkAndSendNewData()) idleDataCycles = 0 else if (!dataAuthBlocked) idleDataCycles = (idleDataCycles + 1).coerceAtMost(3)
@@ -1031,7 +1045,7 @@ class MonitoringService : Service() {
                         monitorBeatAt = android.os.SystemClock.elapsedRealtime()
                         val effSync = effectiveSyncMillis()
                         monitorCycleMs = effSync
-                        pauseAwareDelay(effSync)
+                        pauseAwareDelay(effSync) { runScheduledChecks() }
                     } else {
                         pauseAwareDelay(15 * 60_000L)
                     }
@@ -1251,15 +1265,27 @@ class MonitoringService : Service() {
         delay(totalMs)
     }
 
-    private suspend fun pauseAwareDelay(totalMs: Long) {
+    // betweenChecks (issue #920): dipanggil berkala di sela
+    // tidur panjang (tiap ±5 menit) agar cek sensitif-waktu tak
+    // menumpang irama sinkron data; null = perilaku lama.
+    private suspend fun pauseAwareDelay(totalMs: Long, betweenChecks: (suspend () -> Unit)? = null) {
         val pausedAtStart = cachedMonitoringPaused
         val genAtStart = loopConfigGen
         var remaining = totalMs.coerceAtLeast(0L)
+        var sejakCek = 0L
         while (remaining > 0L) {
             val slice = remaining.coerceAtMost(30_000L)
             delay(slice)
             remaining -= slice
             if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
+            if (betweenChecks != null && remaining > 0L) {
+                sejakCek += slice
+                if (sejakCek >= 5 * 60_000L) {
+                    sejakCek = 0L
+                    betweenChecks.invoke()
+                    if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
+                }
+            }
         }
     }
 
