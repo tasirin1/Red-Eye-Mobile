@@ -69,7 +69,18 @@ object NetworkUtils {
             val mem = (rateLimitedUntil - nowElapsed).coerceAtLeast(0L)
             if (mem > 0L) return mem
             val stored = storedRateLimitRemainMs()
-            if (stored > 0L) rateLimitedUntil = nowElapsed + stored
+            if (stored > 0L) {
+                // Tulis gabung di bawah kunci yang sama dengan
+                // noteRateLimited + maxOf (issue #1098): tulis
+                // telanjang di sini bisa menimpa jendela 429
+                // yang lebih panjang yang baru dipasang penulis
+                // terkunci, membuat pemanggil bangun lebih awal
+                // dari retry_after.
+                synchronized(rateLimitLock) {
+                    val candidate = nowElapsed + stored
+                    if (candidate > rateLimitedUntil) rateLimitedUntil = candidate
+                }
+            }
             stored
         } catch (_: Exception) {
             0L

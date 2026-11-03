@@ -24,6 +24,7 @@
 - Pemeriksaan pagar kini membaca enam nilai konfigurasinya sekali per panggilan, bukan dua kali: blok pagar bersarang dan daftar pagar memakai bacaan lokal yang sama.
 - Pemindaian kata pantau aksesibilitas kini mengingat hasil ubah huruf kecil untuk teks pendek yang berulang antar peristiwa pada layar yang sama (memo berbatas), mengurangi pekerjaan berulang tanpa mengubah cakupan pemindaian sama sekali.
 - Penanda jadwal kirim tertunda kini diterbitkan sebelum pekerjaan antreannya didaftarkan (dan dinolkan sebelum pekerjaan pengganti didaftarkan): pesan mendesak tidak lagi bisa membaca penanda basi dan ikut menunggu di belakang jadwal tertunda.
+- Penggabungan ulang batas rate-limit dari penyimpanan kini memakai kunci dan aturan maksimum yang sama dengan penulisnya: jendela tunggu 429 yang lebih panjang tidak lagi bisa tertimpa nilai lebih pendek dari jalur pembaca.
 
 ## [1.6.601] - 2026-11-03
 
