@@ -351,6 +351,12 @@ class MonitoringService : Service() {
         // dinormalkan ke ASCII agar belah kepala intake konsisten
         // dengan tokenize yang membuang semua non-alfanumerik.
         private val UNICODE_SEP_REGEX = Regex("[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFF1A\u060C]")
+        // Karakter lebar-nol dan soft hyphen (issue #881): tak
+        // terlihat dan bukan pemisah, jadi lolos normalisasi #845
+        // dan memecah kata di tengah: "jan<ZWSP>gan" tak lagi sama
+        // dengan "jangan" sehingga veto bisa diakali salin-tempel.
+        // Dibuang utuh, bukan diganti spasi (ia di dalam kata).
+        private val ZERO_WIDTH_REGEX = Regex("[\u200B\u200C\u200D\uFEFF\u00AD]")
         private val WATCH_SPLIT_REGEX = "[,;\\s]+".toRegex()
         private val PROMO_KEYWORDS = arrayOf("promo", "diskon", "discount", "cashback", "bonus", "hadiah", "undian", "pinjaman", "kredit", "cicilan", "belanja", "sale", "gratis", "klaim", "voucher", "kupon", "poin", "tukar")
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
@@ -1969,7 +1975,7 @@ class MonitoringService : Service() {
                             "\u060C" -> ","
                             else -> " "
                         }
-                    }
+                    }.replace(ZERO_WIDTH_REGEX, "")
                     val headArg = rawText.split(CMD_SPLIT_REGEX, limit = 2)
                     val head = headArg.getOrNull(0).orEmpty()
                     // Perintah beralamat @BotLain bukan untuk bot ini

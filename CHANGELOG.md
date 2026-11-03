@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Karakter tak terlihat tidak lagi memecah kata veto (#881): karakter lebar-nol (U+200B/200C/200D, U+FEFF) dan soft hyphen (U+00AD) bukan pemisah sehingga lolos normalisasi intake dan membuat "jangan" yang disisipi karakter itu tak dikenali sebagai pembatalan; kini karakter-karakter itu dibuang dari teks masuk sebelum diurai.
 - Batas panjang teks pantau kini berlaku di semua jalur pemindaian (#879): batas 8.192 karakter dari #857 sebelumnya hanya diterapkan di satu pintu masuk, sedangkan dua jalur notifikasi memindai teks gabungan tak terbatas untuk kata pantau; kini batasnya tinggal di fungsi pemindai bersama sehingga setiap pemanggil tertutup.
 - Angka raksasa pada argumen bersatuan tidak lagi membungkus menjadi nilai kecil (#880): perkalian konversi satuan dalam Long meluap untuk angka 16–18 digit, sehingga "/syncinterval 5124095576030432 jam" terpasang sebagai 60 menit; kini masukan yang perkaliannya akan meluap ditolak sebelum dihitung.
 - Durasi pendek bersatuan kecil tidak lagi mematikan fitur dengan senyap (#878): konversi satuan membulatkan ke satuan bawaan terdekat, sehingga "/heartbeat 15 menit" menjadi 0 jam dan "/photointerval 20 detik" menjadi 0 menit — padahal 0 berarti heartbeat mati dan foto otomatis manual; kini masukan positif yang terkonversi menjadi 0 ditolak sebagai salah pakai (angka 0 eksplisit untuk mematikan tetap diterima).
