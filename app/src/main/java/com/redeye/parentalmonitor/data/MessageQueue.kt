@@ -230,6 +230,14 @@ class MessageQueue private constructor(context: Context) {
                 return volatileQueue.any { it === item }
             }
             val queue = readLocked().toMutableList()
+            if (volatileOnly) {
+                // readLocked baru saja gagal total dan membalik
+                // mode ke volatile (issue #915): daftar ini kosong
+                // semu — mempersistensikannya akan menimpa antrean
+                // tersimpan. Ulangi sebagai tambah-volatile
+                // (synchronized bersifat reentrant).
+                return addMessage(message, priority, retryCount)
+            }
             val item = QueuedMessage(message = message, elapsedAt = android.os.SystemClock.elapsedRealtime(), retryCount = retryCount.coerceAtLeast(0), priority = priority, bootAt = bootWallAt())
             queue.add(item)
             while (overCapLocked(queue, priority)) {
@@ -275,6 +283,12 @@ class MessageQueue private constructor(context: Context) {
                 return added.map { item -> volatileQueue.any { it === item } }
             }
             val queue = readLocked().toMutableList()
+            if (volatileOnly) {
+                // Sama seperti addMessage (issue #915): baca gagal
+                // total di tengah operasi — ulangi sebagai batch
+                // volatile, jangan timpa antrean tersimpan.
+                return addMessagesPerItem(messages, priority)
+            }
             val addedBatch = messages.map { QueuedMessage(message = it, elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
             queue.addAll(addedBatch)
             var evictedBatch = 0
@@ -453,6 +467,14 @@ class MessageQueue private constructor(context: Context) {
                 return true
             }
             val queue = readLocked().toMutableList()
+            if (volatileOnly) {
+                // Baca gagal total di tengah operasi (issue #915):
+                // penghapusan BELUM terjadi di penyimpanan —
+                // laporkan gagal agar pemanggil mencoba lagi,
+                // bukan sukses semu yang membuat pesan terkirim
+                // bangkit dan terkirim ulang.
+                return false
+            }
             val removed = queue.removeAll { it.id in messageIds }
             if (!removed && !persistDirty) return true
             val saved = persistWithRetriesLocked(queue)
@@ -485,6 +507,12 @@ class MessageQueue private constructor(context: Context) {
                 return Pair(drop, maxRetry)
             }
             val original = readLocked().toMutableList()
+            if (volatileOnly) {
+                // Baca gagal total di tengah operasi (issue #915):
+                // jangan catat percobaan ulang dari daftar kosong
+                // semu; batalkan putaran ini dengan aman.
+                return Pair(emptyList(), 0)
+            }
             val queue = original.toMutableList()
             val drop = mutableListOf<String>()
             for (i in queue.indices) {
