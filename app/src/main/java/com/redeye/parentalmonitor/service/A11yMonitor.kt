@@ -394,7 +394,9 @@ object A11yMonitor {
 
     fun flush(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            started.set(true)
             synchronized(gate) {
                 lastEventKey = ""
                 suspendedPackage = ""
@@ -402,6 +404,18 @@ object A11yMonitor {
                 finishSessionLocked(System.currentTimeMillis(), SystemClock.elapsedRealtime())
                 persistLocked(app, true)
             }
+        }
+        executor.execute(task)
+        // Flush akhir tak boleh ikut nasib DiscardPolicy (issue
+        // #949): antrean penuh tepat saat layanan dibongkar
+        // membuang flush diam-diam dan sesi pemakaian terakhir
+        // hilang tanpa pernah terpersisten. DiscardPolicy
+        // membuang secara sinkron di dalam execute(), jadi bila
+        // tugas tak mulai dan tak ada di antrean, ia terbuang —
+        // jalankan langsung di thread pemanggil (badan kecil,
+        // terkurung gate yang sama, aman dijalankan dua kali).
+        if (!started.get() && !executor.queue.contains(task)) {
+            task.run()
         }
     }
 
