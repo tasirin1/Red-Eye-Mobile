@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Gerbang kini juga melarang berkas env berakhiran (mis. production.env), bukan hanya yang diawali .env — berkas kredensial format env tidak lagi bisa ter-commit tanpa disadari gerbang nama.
 - Pemeriksaan catatan rilis di alur build kini menyisihkan semua baris tajuk sebelum menguji isi — rilis dengan catatan berisi judul dan subjudul kategori kosong tidak lagi bisa terbit.
 - Cek cepat kini juga menangkap anotasi ganda yang dipisah anotasi berargumen atau ditulis sebaris pada deklarasinya — sebelumnya dua bentuk itu lolos gerbang dan baru gagal di kompilasi CI.
 - Cek cepat kini memindai semua folder drawable berkualifikasi (mis. mode malam) untuk path vektor tanpa nol depan, bukan hanya folder drawable polos.

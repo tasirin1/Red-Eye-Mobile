@@ -786,8 +786,10 @@ def adalah_env(rendah):
     # dan dulu lolos kedua gerbang karena pencocokan akhiran
     # persis. Repo ini tak memakai berkas env sama sekali
     # (kredensial hanya via Setup), jadi semua ".env.*" dilarang.
+    # Konvensi berakhiran juga dilarang (issue #1027):
+    # "production.env"/"staging.env" sama-sama berkas env.
     nama = rendah.rsplit("/", 1)[-1]
-    return nama == ".env" or nama.startswith(".env.")
+    return nama == ".env" or nama.startswith(".env.") or nama.endswith(".env")
 
 
 def cek_aturan_repo(gagal, berubah):
