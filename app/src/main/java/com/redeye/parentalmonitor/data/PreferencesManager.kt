@@ -1757,18 +1757,40 @@ class PreferencesManager(context: Context) {
 
     fun setA11yUsage(date: String, json: String) {
         try {
+            // Penempatan slot sadar tanggal (issue #1127):
+            // rotasi lama berjalan pada SETIAP ganti tanggal
+            // tulis — satu tulis bertanggal palsu (perjalanan
+            // jam maju) + satu tulis koreksi merotasi dua kali
+            // dan membuang riwayat kemarin/kemarin-lusa,
+            // digantikan hari hantu. Kini: tanggal maju merotasi
+            // seperti biasa; tanggal yang cocok slot cadangan
+            // memperbarui slot ITU (tulis susulan hari kemarin
+            // memang sah); tanggal tak dikenal yang lebih tua
+            // dari semua slot diabaikan. Kunci hari yyyy-MM-dd
+            // terurut leksikografis.
+            val curDate = prefString(KEY_A11Y_USAGE_DATE, "")
+            val prevDate = prefString(KEY_A11Y_USAGE_PREV_DATE, "")
+            val prev2Date = prefString(KEY_A11Y_USAGE_PREV2_DATE, "")
             val editor = sharedPreferences.edit()
-            val lama = prefString(KEY_A11Y_USAGE_DATE, "")
-            if (lama.isNotEmpty() && lama != date) {
-                editor.putString(KEY_A11Y_USAGE_PREV2_DATE, prefString(KEY_A11Y_USAGE_PREV_DATE, ""))
-                editor.putString(KEY_A11Y_USAGE_PREV2_JSON, prefString(KEY_A11Y_USAGE_PREV_JSON, ""))
-                editor.putString(KEY_A11Y_USAGE_PREV_DATE, lama)
-                editor.putString(KEY_A11Y_USAGE_PREV_JSON, prefString(KEY_A11Y_USAGE_JSON, ""))
+            when {
+                curDate.isEmpty() || date == curDate ->
+                    editor.putString(KEY_A11Y_USAGE_DATE, date)
+                        .putString(KEY_A11Y_USAGE_JSON, json)
+                date > curDate -> {
+                    editor.putString(KEY_A11Y_USAGE_PREV2_DATE, prevDate)
+                    editor.putString(KEY_A11Y_USAGE_PREV2_JSON, prefString(KEY_A11Y_USAGE_PREV_JSON, ""))
+                    editor.putString(KEY_A11Y_USAGE_PREV_DATE, curDate)
+                    editor.putString(KEY_A11Y_USAGE_PREV_JSON, prefString(KEY_A11Y_USAGE_JSON, ""))
+                    editor.putString(KEY_A11Y_USAGE_DATE, date)
+                    editor.putString(KEY_A11Y_USAGE_JSON, json)
+                }
+                date == prevDate ->
+                    editor.putString(KEY_A11Y_USAGE_PREV_JSON, json)
+                date == prev2Date ->
+                    editor.putString(KEY_A11Y_USAGE_PREV2_JSON, json)
+                else -> return
             }
-            editor
-                .putString(KEY_A11Y_USAGE_DATE, date)
-                .putString(KEY_A11Y_USAGE_JSON, json)
-                .apply()
+            editor.apply()
         } catch (_: Exception) {
         }
     }
