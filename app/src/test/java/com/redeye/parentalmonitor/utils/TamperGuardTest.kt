@@ -141,6 +141,25 @@ class TamperGuardTest {
         assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 999_999L, 5000L, 0L, 2000L))
     }
 
+    // Issue #1009: cap elapsed persisten dari boot sebelumnya
+    // tak boleh menghidupkan lagi tenggang sesudah reboot —
+    // sisa elapsed di boot tempat cap ditulis tak pernah
+    // melebihi GRACE_MS, jadi sisa raksasa = cap basi dan
+    // keputusan jatuh ke dinding (sudah kedaluwarsa).
+    @Test
+    fun tenggangElapsedCapBasiLintasBootDitolak() {
+        // Ditulis pada uptime 10 hari; reboot; uptime baru 1 jam,
+        // dinding +1 jam dari penulisan -> bukan tenggang.
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1_700_003_600_000L, 1_700_000_120_000L, 0L, 3_600_000L, 864_120_000L, 0L))
+        // Boot sama, sisa elapsed 119 detik -> masih tenggang.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_700_000_001_000L, 1_700_000_120_000L, 0L, 864_001_000L, 864_120_000L, 0L))
+        // Boot sama, jam dimundurkan 1 jam di tengah tenggang,
+        // sisa elapsed 60 detik -> tetap tenggang.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1_699_996_460_000L, 1_700_000_120_000L, 0L, 864_060_000L, 864_120_000L, 0L))
+        // Cap basi yang elapsed-nya sudah terlampaui uptime baru -> habis.
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1_700_003_600_000L, 1_700_000_120_000L, 0L, 900_000_000L, 864_120_000L, 0L))
+    }
+
     @Test
     fun alasanLainDanTanpaAlasanTidakPernahBebas() {
         assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L, 0L, 0L, 0L))

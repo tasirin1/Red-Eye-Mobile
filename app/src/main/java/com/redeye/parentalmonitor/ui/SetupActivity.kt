@@ -1958,8 +1958,8 @@ class SetupActivity : AppCompatActivity() {
     private fun launchAccessibilitySettings() {
         try {
             try {
-                prefs.a11ySettingsGraceUntil = System.currentTimeMillis() + 120_000L
-                prefs.a11ySettingsGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + 120_000L
+                prefs.a11ySettingsGraceUntil = System.currentTimeMillis() + com.redeye.parentalmonitor.utils.TamperGuard.GRACE_MS
+                prefs.a11ySettingsGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + com.redeye.parentalmonitor.utils.TamperGuard.GRACE_MS
             } catch (_: Exception) {
             }
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -1986,8 +1986,8 @@ class SetupActivity : AppCompatActivity() {
                 putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.admin_description))
             }
             try {
-                prefs.a11yAdminGraceUntil = System.currentTimeMillis() + 120_000L
-                prefs.a11yAdminGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + 120_000L
+                prefs.a11yAdminGraceUntil = System.currentTimeMillis() + com.redeye.parentalmonitor.utils.TamperGuard.GRACE_MS
+                prefs.a11yAdminGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + com.redeye.parentalmonitor.utils.TamperGuard.GRACE_MS
             } catch (_: Exception) {
             }
             deviceAdminLauncher.launch(intent)

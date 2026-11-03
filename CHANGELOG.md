@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Masa tenggang anti-tamper Setup tidak lagi "hidup lagi" sesudah reboot: cap jam monoton yang tersimpan dari boot sebelumnya kini dikenali sebagai basi (sisa tenggang di boot asalnya tidak pernah melebihi dua menit) sehingga alert tamper tidak lagi tertelan berhari-hari.
+
 ## [1.6.598] - 2026-11-03
 
 ### Fixed

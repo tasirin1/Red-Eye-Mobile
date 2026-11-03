@@ -25,6 +25,10 @@ object TamperGuard {
         "permissioncontroller"
     )
 
+    // Lama masa tenggang Setup (ditulis SetupActivity saat
+    // memberi izin; satu-satunya penulis cap tenggang).
+    const val GRACE_MS = 120_000L
+
     fun inSetupGrace(
         reason: String?,
         nowWall: Long,
@@ -41,10 +45,25 @@ object TamperGuard {
         // cap warisan tanpa pasangan elapsed jatuh ke
         // perbandingan dinding seperti sebelumnya.
         return when (reason) {
-            "aksesibilitas" -> if (settingsGraceElapsedUntil > 0L) nowElapsed < settingsGraceElapsedUntil else nowWall < settingsGraceUntil
-            "admin perangkat" -> if (adminGraceElapsedUntil > 0L) nowElapsed < adminGraceElapsedUntil else nowWall < adminGraceUntil
+            "aksesibilitas" -> graceDecision(nowWall, settingsGraceUntil, nowElapsed, settingsGraceElapsedUntil)
+            "admin perangkat" -> graceDecision(nowWall, adminGraceUntil, nowElapsed, adminGraceElapsedUntil)
             else -> false
         }
+    }
+
+    private fun graceDecision(nowWall: Long, wallUntil: Long, nowElapsed: Long, elapsedUntil: Long): Boolean {
+        if (elapsedUntil > 0L) {
+            val remaining = elapsedUntil - nowElapsed
+            // Di boot tempat cap ditulis, sisa elapsed TIDAK
+            // PERNAH melebihi GRACE_MS. Sisa yang lebih besar
+            // berarti cap basi dari boot sebelumnya (issue
+            // #1009: elapsed persisten terlampaui lagi oleh
+            // boot baru, tenggang "hidup lagi" berhari-hari)
+            // — putuskan dari dinding, yang untuk cap basi
+            // sudah kedaluwarsa.
+            if (remaining <= GRACE_MS) return remaining > 0L
+        }
+        return nowWall < wallUntil
     }
 
     fun mayBeSensitive(packageName: String): Boolean {
