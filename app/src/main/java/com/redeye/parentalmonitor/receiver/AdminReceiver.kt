@@ -81,22 +81,25 @@ class AdminReceiver : DeviceAdminReceiver() {
             ServiceStart.startForeground(appContext, alert)
         } catch (_: Exception) {
         }
-        try {
-            com.redeye.parentalmonitor.utils.Background.runCritical {
-                try {
-                    com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext)
-                    val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
-                    if (prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
-                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage(
-                            "🚨 <b>Ada percobaan mematikan Device Admin</b>\nProteksi hapus aplikasi sebentar lagi mati. Foto + lokasi saya siapkan.",
-                            true
-                        )
-                        com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(appContext)
-                    }
-                } catch (_: Exception) {
+        // goAsync + runReceiver seperti onDisabled/onPasswordFailed
+        // (issue #964): pola lama melempar pekerjaan ke executor
+        // bersama lalu return tanpa goAsync — proses boleh dibunuh
+        // sistem sesudah callback kembali, dan alert prioritas
+        // "proteksi mau mati" hilang sebelum sempat terantre.
+        val pending = try { goAsync() } catch (_: Exception) { null }
+        com.redeye.parentalmonitor.utils.Background.runReceiver(pending) {
+            try {
+                com.redeye.parentalmonitor.data.PreferencesManager.refreshInstance(appContext)
+                val prefs = com.redeye.parentalmonitor.data.PreferencesManager.getInstance(appContext)
+                if (prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring) {
+                    com.redeye.parentalmonitor.data.MessageQueue.getInstance(appContext).addMessage(
+                        "🚨 <b>Ada percobaan mematikan Device Admin</b>\nProteksi hapus aplikasi sebentar lagi mati. Foto + lokasi saya siapkan.",
+                        true
+                    )
+                    com.redeye.parentalmonitor.utils.MessageScheduler.scheduleMessageSend(appContext)
                 }
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
         }
         return try {
             context.getString(R.string.admin_disable_warning)

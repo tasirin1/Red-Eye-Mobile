@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Alert percobaan mematikan Device Admin kini memakai goAsync seperti jalur receiver lain, sehingga proses tidak bisa dibunuh sistem sebelum alert prioritas itu terantre.
 - Penjaga anti-dobel pada restart menyeluruh kini atomik (cek dan tulis cap waktu di dalam kunci yang sama), sehingga dua pemicu restart yang bersamaan tidak bisa sama-sama lolos dan saling membatalkan.
 - Restart loop kamera dan patroli kini menunggu loop lama benar-benar berhenti (join) sebelum menyalakan penggantinya, sama seperti restart menyeluruh — tidak ada lagi dua putaran berjalan bersamaan yang berebut kamera.
 - Tekanan tombol menu yang gagal diproses kini bisa dicoba lagi oleh pengiriman ulang Telegram: tanda "sudah ditangani" pada callback dihapus saat handler gagal, tidak lagi membuat pengiriman ulang dibuang sebagai duplikat.
