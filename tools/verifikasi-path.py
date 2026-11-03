@@ -258,7 +258,25 @@ def hitung_item_array(badan):
         return len(root.findall("item"))
     except Exception:
         bersih_cdata = re.sub(r"<!\[CDATA\[.*?\]\]>", "", badan, flags=re.S)
-        return len(re.findall(r"<item(?:\s[^>]*)?/?>", bersih_cdata))
+        # Cadangan sadar kedalaman (issue #1137): jalur regex
+        # lama menghitung SEMUA bukaan <item> termasuk yang
+        # bersarang di dalam item lain — lubang yang sama
+        # yang ditutup jalur utama. Kini hanya bukaan pada
+        # kedalaman 0 (anak langsung) yang dihitung.
+        jumlah = 0
+        kedalaman = 0
+        for m in re.finditer(r"<item(?:\s[^>]*)?/>|<item(?:\s[^>]*)?>|</item\s*>", bersih_cdata):
+            tag = m.group(0)
+            if tag.startswith("</"):
+                kedalaman = max(0, kedalaman - 1)
+            elif tag.endswith("/>"):
+                if kedalaman == 0:
+                    jumlah += 1
+            else:
+                if kedalaman == 0:
+                    jumlah += 1
+                kedalaman += 1
+        return jumlah
 
 
 def jalan_repo(rel, ext=EKSTENSI_KODE):

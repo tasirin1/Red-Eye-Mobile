@@ -19,6 +19,7 @@
 - Pemindai anotasi ganda pada cek cepat kini melacak kedalaman komentar blok: komentar bersarang khas Kotlin tidak lagi membuat teks sesudah penutup terdalam terbaca sebagai kode dan digagalkan palsu.
 - Persen literal berlebar (%5%) kini juga disaring dari perbandingan argumen format gerbang, seperti persen polos: persen berlebar tidak mengonsumsi argumen, jadi terjemahan yang menulis persen polos atau kata "persen" tidak lagi digagalkan palsu.
 - Pemeriksaan format gerbang kini membaca akhiran konversi tanggal (%tY vs %tm adalah huruf yang berbeda makna): dua akhiran berbeda tidak lagi dinilai sama.
+- Cadangan penghitung item string-array pada gerbang (dipakai bila badan tak ter-parse XML) kini sadar kedalaman: item yang bersarang di dalam item lain tidak lagi terhitung sebagai item tersendiri, sama seperti jalur utamanya.
 
 ## [1.6.603] - 2026-11-03
 
