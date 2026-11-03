@@ -109,29 +109,43 @@ class TamperGuardTest {
 
     @Test
     fun tenggangAksesibilitasDariJendelaAksesibilitas() {
-        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 1120L, 0L))
-        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1120L, 1120L, 0L))
-        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 0L, 0L))
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 1120L, 0L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1120L, 1120L, 0L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 0L, 0L, 0L, 0L, 0L))
     }
 
     @Test
     fun tenggangAdminDariJendelaAdmin() {
-        assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 1120L))
-        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1120L, 0L, 1120L))
-        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 2000L, 0L, 1120L))
+        assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 1120L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1120L, 0L, 1120L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 2000L, 0L, 1120L, 0L, 0L, 0L))
     }
 
     @Test
     fun tenggangTidakMenularAntarAlasan() {
-        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1000L, 5000L, 0L))
-        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 2000L, 1120L, 5000L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1000L, 5000L, 0L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 2000L, 1120L, 5000L, 0L, 0L, 0L))
+    }
+
+    // Issue #1007: bila cap elapsed ada, keputusan memakai
+    // jam monoton — memundurkan jam dinding tak memperpanjang
+    // tenggang, memajukannya tak memotong tenggang.
+    @Test
+    fun tenggangBerjangkarElapsedTahanGeseranJam() {
+        // Dinding masih di dalam jendela, elapsed sudah lewat -> habis.
+        assertFalse(TamperGuard.inSetupGrace("aksesibilitas", 1000L, 999_999L, 0L, 5000L, 2000L, 0L))
+        // Dinding sudah jauh lewat (jam dimajukan), elapsed masih di dalam -> tetap tenggang.
+        assertTrue(TamperGuard.inSetupGrace("aksesibilitas", 999_999L, 1120L, 0L, 1000L, 2000L, 0L))
+        // Admin memakai cap elapsed admin, bukan cap settings.
+        assertTrue(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 0L, 1000L, 0L, 2000L))
+        assertFalse(TamperGuard.inSetupGrace("admin perangkat", 1000L, 0L, 999_999L, 5000L, 0L, 2000L))
     }
 
     @Test
     fun alasanLainDanTanpaAlasanTidakPernahBebas() {
-        assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L))
-        assertFalse(TamperGuard.inSetupGrace("sumber tak dikenal", 1000L, 5000L, 5000L))
-        assertFalse(TamperGuard.inSetupGrace(null, 1000L, 5000L, 5000L))
+        assertFalse(TamperGuard.inSetupGrace("hapus aplikasi", 1000L, 5000L, 5000L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace("sumber tak dikenal", 1000L, 5000L, 5000L, 0L, 0L, 0L))
+        assertFalse(TamperGuard.inSetupGrace(null, 1000L, 5000L, 5000L, 0L, 0L, 0L))
     }
 
     @Test

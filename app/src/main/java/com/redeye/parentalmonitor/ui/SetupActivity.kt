@@ -1959,6 +1959,7 @@ class SetupActivity : AppCompatActivity() {
         try {
             try {
                 prefs.a11ySettingsGraceUntil = System.currentTimeMillis() + 120_000L
+                prefs.a11ySettingsGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + 120_000L
             } catch (_: Exception) {
             }
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -1986,6 +1987,7 @@ class SetupActivity : AppCompatActivity() {
             }
             try {
                 prefs.a11yAdminGraceUntil = System.currentTimeMillis() + 120_000L
+                prefs.a11yAdminGraceElapsedUntil = android.os.SystemClock.elapsedRealtime() + 120_000L
             } catch (_: Exception) {
             }
             deviceAdminLauncher.launch(intent)

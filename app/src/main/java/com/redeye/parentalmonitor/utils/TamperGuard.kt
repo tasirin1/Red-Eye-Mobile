@@ -25,10 +25,24 @@ object TamperGuard {
         "permissioncontroller"
     )
 
-    fun inSetupGrace(reason: String?, nowWall: Long, settingsGraceUntil: Long, adminGraceUntil: Long): Boolean {
+    fun inSetupGrace(
+        reason: String?,
+        nowWall: Long,
+        settingsGraceUntil: Long,
+        adminGraceUntil: Long,
+        nowElapsed: Long,
+        settingsGraceElapsedUntil: Long,
+        adminGraceElapsedUntil: Long
+    ): Boolean {
+        // Jangkar elapsed didahulukan (issue #1007): masa
+        // tenggang yang hanya berjangkar jam dinding bisa
+        // diperpanjang tanpa batas dengan memundurkan jam
+        // perangkat. Cap elapsed ditulis Setup bersamaan;
+        // cap warisan tanpa pasangan elapsed jatuh ke
+        // perbandingan dinding seperti sebelumnya.
         return when (reason) {
-            "aksesibilitas" -> nowWall < settingsGraceUntil
-            "admin perangkat" -> nowWall < adminGraceUntil
+            "aksesibilitas" -> if (settingsGraceElapsedUntil > 0L) nowElapsed < settingsGraceElapsedUntil else nowWall < settingsGraceUntil
+            "admin perangkat" -> if (adminGraceElapsedUntil > 0L) nowElapsed < adminGraceElapsedUntil else nowWall < adminGraceUntil
             else -> false
         }
     }
