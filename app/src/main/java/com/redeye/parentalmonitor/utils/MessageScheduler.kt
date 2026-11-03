@@ -57,18 +57,29 @@ object MessageScheduler {
 
             val replaceDelayed = shouldReplaceDelayed(now, nextSendAtElapsed.get(), SendMessageWorker.isRunning())
             val policy = if (replaceDelayed) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
+            // Nilai penanda sebelum penolakan ditangkap di LUAR
+            // try (variabel try tak terlihat dari catch) agar
+            // bisa dipulihkan bila enqueue gagal (issue #1120):
+            // situs utama #1097 sudah memulihkan, situs REPLACE
+            // ini tertinggal — penanda 0 menetap sementara
+            // pekerjaan tertunda yang hendak diganti tetap hidup.
+            var prevReplaceMark = 0L
             try {
                 // Nolkan penanda SEBELUM enqueue REPLACE
                 // (pola sama #1097): urutan lama bisa menimpa
                 // nilai masa depan yang baru diterbitkan
                 // scheduleMessageSendNext bersamaan.
-                if (replaceDelayed) nextSendAtElapsed.set(0L)
+                if (replaceDelayed) {
+                    prevReplaceMark = nextSendAtElapsed.get()
+                    nextSendAtElapsed.set(0L)
+                }
                 WorkManager.getInstance(context.applicationContext)
                     .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
                 if (replaceDelayed) {
                     outstandingSends.set(1)
                 }
             } catch (e: Exception) {
+                if (replaceDelayed) nextSendAtElapsed.set(prevReplaceMark)
                 outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
                 throw e
             }

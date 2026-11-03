@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Jalur ganti (REPLACE) pada penjadwalan kirim kini juga memulihkan penanda jadwal bila penempatan kerja gagal, seperti jalur utama: penanda yang terlanjur dinolkan tidak lagi menyembunyikan pekerjaan tertunda yang masih hidup.
+
 ## [1.6.603] - 2026-11-03
 
 ### Fixed
