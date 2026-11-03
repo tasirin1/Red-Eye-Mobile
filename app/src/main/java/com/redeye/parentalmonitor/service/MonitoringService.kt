@@ -7934,9 +7934,25 @@ class MonitoringService : Service() {
         return if (sisa.isEmpty()) mapped else "$mapped $sisa"
     }
 
+    // Cache urai kata pantau (issue #1160): pasangan
+    // (mentah, hasil) seperti A11yMonitor (#980/#1100) —
+    // watchHit dipanggil per SMS (s.d. 100x per siklus) dan
+    // dulu tiap panggilan membaca prefs terenkripsi +
+    // mengurai ulang string yang hampir tak pernah berubah.
+    private val watchListLock = Any()
+    private var watchListRaw: String? = null
+    private var watchListCache: List<String> = emptyList()
+
     private fun watchList(): List<String> {
         return try {
-            AppWatch.parseKeywords(preferencesManager.watchKeywords)
+            synchronized(watchListLock) {
+                val raw = preferencesManager.watchKeywords
+                if (raw != watchListRaw) {
+                    watchListCache = AppWatch.parseKeywords(raw)
+                    watchListRaw = raw
+                }
+                watchListCache
+            }
         } catch (_: Exception) {
             emptyList()
         }
