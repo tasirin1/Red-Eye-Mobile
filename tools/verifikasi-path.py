@@ -459,11 +459,13 @@ def _versi_dari_teks(teks):
     return int(kode.group(1)), tuple(int(x) for x in nama.groups())
 
 
-def cek_versi(gagal):
+def cek_versi(gagal, peringatan):
     """Aturan versi AGENTS.md §8 ditegakkan (issue #906): patch
     tidak mencapai 1000, dan versionCode tidak boleh mundur/
-    stagnan terhadap rilis bertag terakhir. Perbandingan tag
-    dilewati diam-diam bila tag tak tersedia (clone dangkal CI)."""
+    stagnan terhadap rilis bertag terakhir. Bila tag tak
+    tersedia (clone tanpa tag), perbandingan DILEWATI tetapi
+    kini selalu dengan PERINGATAN (issue #976) — dulu diam-diam
+    sehingga separuh penegakan tidur tanpa terasa."""
     kini = _versi_dari_teks(baca_teks(os.path.join("app", "build.gradle")))
     if kini is None:
         gagal.append("versionCode/versionName tak terbaca di app/build.gradle")
@@ -473,6 +475,8 @@ def cek_versi(gagal):
         gagal.append("versionName patch %d mencapai 1000 — naikkan minor (aturan §8)" % nama_kini[2])
     daftar = jalan("git", "tag", "--list", "v*")
     if not daftar:
+        peringatan.append("cek_versi: tak ada tag v* — perbandingan versi vs rilis "
+                          "bertag terakhir DILEWATI (aturan patch<1000 tetap diperiksa)")
         return
     tag_versi = []
     for baris in daftar.splitlines():
@@ -480,11 +484,15 @@ def cek_versi(gagal):
         if cocok:
             tag_versi.append((tuple(int(x) for x in cocok.groups()), baris.strip()))
     if not tag_versi:
+        peringatan.append("cek_versi: tag v* ada tetapi tak satu pun berbentuk vX.Y.Z — "
+                          "perbandingan versi vs rilis bertag terakhir DILEWATI")
         return
     nama_tag, label_tag = max(tag_versi)
     isi_tag = jalan("git", "show", label_tag + ":app/build.gradle")
     dulu = _versi_dari_teks(isi_tag)
     if dulu is None:
+        peringatan.append("cek_versi: app/build.gradle di tag %s tak terbaca — "
+                          "perbandingan versionCode DILEWATI" % label_tag)
         return
     kode_tag = dulu[0]
     if nama_kini < nama_tag:
@@ -1605,7 +1613,7 @@ def utama():
     cek_manifest(gagal)
     cek_duplikat_definisi(gagal)
     cek_builder_legacy(gagal)
-    cek_versi(gagal)
+    cek_versi(gagal, peringatan)
     cek_sinkron_terjemah(gagal)
     cek_import_mati(gagal)
     cek_paritas_resource(gagal)
