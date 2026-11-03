@@ -6,9 +6,16 @@ sealed class MenuCallback {
     data class Navigate(val view: String, val editInPlace: Boolean) : MenuCallback()
     data class Run(val command: String) : MenuCallback()
     data class AskInput(val command: String, val view: String) : MenuCallback()
+    data class Toggle(val key: String, val view: String) : MenuCallback()
 
     companion object {
         val VIEWS = setOf("main", "media", "lokasi", "komu", "info", "pantau", "alat")
+
+        // Kunci saklar on/off (permintaan owner: tombol toggle di
+        // menu, tak perlu ketik "/notif off"). Kunci di luar daftar
+        // ini ditolak parser agar data callback liar tak bisa
+        // membalik setelan apa pun.
+        val TOGGLE_KEYS = setOf("notif", "otp", "patrol", "night", "appalert", "pantauapp", "lindungi", "hematdata")
 
         private val LEGACY = mapOf(
             "photo" to "photo",
@@ -38,6 +45,14 @@ sealed class MenuCallback {
             if (raw.startsWith("x:")) {
                 val command = perintah(raw.removePrefix("x:"))
                 return if (command.isEmpty()) null else Run(command)
+            }
+            if (raw.startsWith("tg:")) {
+                val isi = raw.removePrefix("tg:")
+                val pisah = isi.indexOf(':')
+                if (pisah < 0) return null
+                val key = isi.substring(pisah + 1).trim().lowercase(Locale.ROOT)
+                if (key !in TOGGLE_KEYS) return null
+                return Toggle(key, viewName(isi.substring(0, pisah).trim()))
             }
             val angka = raw.startsWith("num:")
             if (angka || raw.startsWith("i:")) {

@@ -48,6 +48,22 @@ class MenuCallbackTest {
     }
 
     @Test
+    fun saklarToggle() {
+        assertEquals(MenuCallback.Toggle("notif", "komu"), MenuCallback.parse("tg:komu:notif"))
+        assertEquals(MenuCallback.Toggle("patrol", "pantau"), MenuCallback.parse("tg:pantau:patrol"))
+        assertEquals(MenuCallback.Toggle("hematdata", "pantau"), MenuCallback.parse("tg:pantau:hematdata"))
+        assertEquals(MenuCallback.Toggle("otp", "komu"), MenuCallback.parse("tg:komu:OTP"))
+        // View tak dikenal jatuh ke menu utama (seperti Navigate).
+        assertEquals(MenuCallback.Toggle("night", "main"), MenuCallback.parse("tg:entah:night"))
+        // Kunci di luar daftar saklar ditolak: data liar tak boleh
+        // membalik setelan.
+        assertNull(MenuCallback.parse("tg:pantau:lock"))
+        assertNull(MenuCallback.parse("tg:komu:"))
+        assertNull(MenuCallback.parse("tg:notif"))
+        assertNull(MenuCallback.parse("tg:"))
+    }
+
+    @Test
     fun tombolLamaTetapJalan() {
         assertEquals(MenuCallback.Run("photo"), MenuCallback.parse("photo"))
         assertEquals(MenuCallback.Run("screenshot"), MenuCallback.parse("shot"))

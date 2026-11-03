@@ -2458,7 +2458,14 @@ class MonitoringService : Service() {
             controlLock.withLock { armInput("/" + aksi.command, aksi.view, originChat) }
             return
         }
-        val command = "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
+        val toggle = aksi as? com.redeye.parentalmonitor.utils.MenuCallback.Toggle
+        val command = if (toggle != null) {
+            if (!ownerOk) return
+            val kini = toggleState(toggle.key) ?: return
+            toggleCommand(toggle.key, !kini) ?: return
+        } else {
+            "/" + (aksi as com.redeye.parentalmonitor.utils.MenuCallback.Run).command
+        }
         val originOk = originChat.isNotEmpty() && originChat == chatId
         val gateCommand = command.substringBefore(" ")
         if (gateCommand in MUTATING_COMMANDS || gateCommand in SENSITIVE_COMMANDS) {
@@ -2469,6 +2476,17 @@ class MonitoringService : Service() {
         }
         controlLock.withLock {
             handleTelegramCommand(command, pressedAt, ownerOk, originOk, sender, originChat.isNotEmpty() && originChat == sender)
+        }
+        if (toggle != null) {
+            // Segarkan layar di tempat agar label saklar langsung
+            // membalik. Keadaan dibaca ulang dari prefs, jadi label
+            // tetap benar walau perintahnya menolak berubah.
+            val layar = menuScreen(toggle.view)
+            val pesanId = try { query.message?.messageId ?: 0L } catch (_: Exception) { 0L }
+            val targetChat = originChat.ifEmpty { chatId }
+            if (pesanId <= 0L || !editMenuMessage(targetChat, pesanId, layar)) {
+                sendToTelegram(layar.text, layar.markup)
+            }
         }
     }
 
@@ -2652,6 +2670,50 @@ class MonitoringService : Service() {
         return menuBarGson.toJson(quickMenuBar()).toRequestBody("text/plain".toMediaTypeOrNull())
     }
 
+    // Saklar on/off di menu (permintaan owner): satu tombol
+    // menunjukkan keadaan setelan sekarang dan membaliknya saat
+    // diketuk — tak perlu lagi ketik "/notif off". Pembalikan
+    // menjalankan perintah ketik yang sama persis agar perilaku,
+    // gerbang, dan pesan konfirmasinya identik.
+    private fun toggleState(key: String): Boolean? {
+        return try {
+            when (key) {
+                "notif" -> preferencesManager.notifForwardEnabled
+                "otp" -> preferencesManager.otpMaskEnabled
+                "patrol" -> preferencesManager.patrolEnabled
+                "night" -> preferencesManager.nightMode
+                "appalert" -> preferencesManager.a11yAppAlert
+                "pantauapp" -> preferencesManager.a11yAppWatchEnabled
+                "lindungi" -> preferencesManager.a11yTamperEnabled
+                "hematdata" -> preferencesManager.dataSaverEnabled
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun toggleCommand(key: String, nyala: Boolean): String? {
+        val arah = if (nyala) "on" else "off"
+        return when (key) {
+            "notif" -> "/notif $arah"
+            "otp" -> "/notif otp $arah"
+            "patrol" -> "/patrol $arah"
+            "night" -> "/night $arah"
+            "appalert" -> "/appalert $arah"
+            "pantauapp" -> "/pantauapp $arah"
+            "lindungi" -> "/lindungi $arah"
+            "hematdata" -> "/hematdata $arah"
+            else -> null
+        }
+    }
+
+    private fun saklar(emoji: String, nama: String, view: String, key: String): com.redeye.parentalmonitor.network.InlineButton {
+        val on = toggleState(key) ?: false
+        val label = "$emoji $nama: " + if (on) "NYALA \uD83D\uDFE2" else "MATI \uD83D\uDD34"
+        return com.redeye.parentalmonitor.network.InlineButton(label, "tg:$view:$key")
+    }
+
     private fun menuScreen(id: String): MenuScreen {
         fun button(text: String, data: String) =
             com.redeye.parentalmonitor.network.InlineButton(text, data)
@@ -2682,9 +2744,9 @@ class MonitoringService : Service() {
                 papan(
                     listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS terakhir", "lastsms")),
                     listOf(button("\u2709\uFE0F Kirim SMS", "i:komu:sms"), button("\u2705 SMS tertunda", "x:smsconfirm")),
-                    listOf(button("\uD83D\uDD14 Notifikasi", "x:notif status"), button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotif")),
+                    listOf(saklar("\uD83D\uDD14", "Notifikasi", "komu", "notif"), saklar("\uD83D\uDD10", "Masking OTP", "komu", "otp")),
+                    listOf(button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotif"), button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
                     listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCC7 Semua kontak", "x:contacts 1")),
-                    listOf(button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
                     listOf(menuUtama)
                 )
             )
@@ -2701,14 +2763,13 @@ class MonitoringService : Service() {
                 )
             )
             "pantau" -> MenuScreen(
-                "\uD83D\uDEE1\uFE0F <b>Pengawasan</b>\nTombol nyala/mati langsung jalan.",
+                "\uD83D\uDEE1\uFE0F <b>Pengawasan</b>\nSaklar menunjukkan keadaan sekarang — ketuk untuk membalik.",
                 papan(
-                    listOf(button("\u25B6\uFE0F Patroli nyala", "x:patrol on"), button("\u23F9\uFE0F Patroli mati", "x:patrol off")),
-                    listOf(button("\uD83C\uDF19 Malam nyala", "x:night on"), button("\uD83C\uDF11 Malam mati", "x:night off")),
+                    listOf(saklar("\uD83D\uDEF0", "Patroli", "pantau", "patrol"), saklar("\uD83C\uDF19", "Malam", "pantau", "night")),
+                    listOf(saklar("\uD83D\uDCF1", "Alert app", "pantau", "appalert"), saklar("\uD83D\uDD75\uFE0F", "Pantau app", "pantau", "pantauapp")),
+                    listOf(saklar("\uD83D\uDEE1\uFE0F", "Proteksi", "pantau", "lindungi"), saklar("\uD83D\uDCF6", "Hemat data", "pantau", "hematdata")),
                     listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
-                    listOf(button("\uD83D\uDCF1 Alert app", "x:appalert status"), button("\uD83D\uDD75\uFE0F Pantau app", "x:pantauapp status")),
-                    listOf(button("\uD83D\uDEE1\uFE0F Proteksi", "x:lindungi status"), button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang")),
-                    listOf(button("\uD83D\uDCF6 Hemat data", "x:hematdata status"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
+                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
                     listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
                     listOf(menuUtama)
                 )
