@@ -4228,6 +4228,11 @@ class MonitoringService : Service() {
         try { preferencesManager.restorePinLockoutUntil = 0L } catch (_: Exception) { }
         try { preferencesManager.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
         pendingRestore = null
+        if (data.legacy) {
+            // Format warisan lemah (issue #1169): anjurkan
+            // rotasi kredensial sesudah restore selesai.
+            sendToTelegram("⚠️ Backup ini format lama (REDEYE1) yang perlindungannya lebih lemah — bila berkasnya pernah tersebar, kredensial di dalamnya bisa ditebak luring. Sesudah restore, ganti PIN akses dan pertimbangkan token bot baru, lalu buat backup baru.")
+        }
         val restoreEpoch = ownerEpoch
         if (!validateRestoreTarget(data)) {
             audit("restore validasi gagal", "private")

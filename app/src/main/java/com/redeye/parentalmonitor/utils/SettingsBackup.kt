@@ -11,7 +11,7 @@ object SettingsBackup {
     private const val MIN_PIN = 10
     private const val MIN_PIN_LEGACY = 4
 
-    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "")
+    data class BackupData(val token: String, val chatId: String, val syncInterval: Int, val cameraInterval: Int, val ownerId: Long = 0L, val accessPin: String = "", val legacy: Boolean = false)
 
     fun looksStructurallyValid(blob: String): Boolean {
         val raw = blob.trim()
@@ -66,7 +66,7 @@ object SettingsBackup {
         val owner = o.optLong("owner", 0L)
         require(owner >= 0L)
         val accessPin = o.optString("accessPin", "").takeIf { AccessPin.isValid(it) } ?: ""
-        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin)
+        return BackupData(token, chat, o.optInt("interval", 5).coerceIn(1, 1440), o.optInt("camera", 1).coerceIn(0, 60), owner, accessPin, legacy)
     }
 
     internal fun decrypt(cipherText: ByteArray, pin: String, salt: ByteArray, iv: ByteArray, iterations: Int): ByteArray {

@@ -112,6 +112,7 @@
     <string name="restore_pin_hint">PIN/frasa sandi (min 4 karakter)</string>
     <string name="restore_pin_short">PIN terlalu pendek, minimal 4 karakter</string>
     <string name="restore_done">Backup dimuat, periksa lalu tap Simpan</string>
+    <string name="restore_legacy_warn">Backup ini format lama yang lebih lemah. Sesudah menyimpan, ganti PIN aksesmu dan pertimbangkan token bot baru, lalu ekspor backup baru.</string>
     <string name="restore_bad">Backup tak bisa dibuka (PIN salah atau file rusak)</string>
     <string name="restore_same_attempt">Berkas + PIN ini sudah dicoba dan tetap gagal. Bila PIN yakin benar, kemungkinan berkas cadangannya rusak — buat ekspor baru.</string>
     <string name="restore_pin_locked">PIN backup dikunci sementara karena terlalu banyak percobaan salah. Coba lagi 15 menit.</string>

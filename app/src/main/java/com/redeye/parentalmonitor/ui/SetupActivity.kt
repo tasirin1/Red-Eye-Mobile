@@ -170,6 +170,12 @@ class SetupActivity : AppCompatActivity() {
                             } catch (_: Exception) {
                             }
                             Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
+                            if (data.legacy) {
+                                // Format warisan lemah (issue #1169):
+                                // blob bocor bisa ditebak luring, jadi
+                                // kredensial hasil impor harus dirotasi.
+                                Toast.makeText(this@SetupActivity, getString(R.string.restore_legacy_warn), Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
