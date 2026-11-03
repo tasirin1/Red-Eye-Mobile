@@ -40,7 +40,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 
 **Notifikasi & aplikasi**
 
-- Teruskan notifikasi HP anak ke Telegram; ringkasan pemakaian layar per aplikasi (`/layar`)
+- Teruskan notifikasi HP anak ke Telegram; ringkasan pemakaian layar per aplikasi (`/screentime`)
 - Kabar aplikasi dipasang/dihapus, alert aplikasi dibuka (termasuk tengah malam), dan pantau aplikasi tertentu
 
 **Ketahanan, keamanan & cadangan**
@@ -48,7 +48,7 @@ Buat orang tua memantau HP anaknya sendiri — bukan buat iseng. Dari luar, apli
 - Anti-mati (hidup lagi sendiri habis reboot atau dibunuh sistem), proteksi uninstall via Device Admin
 - Proteksi tamper: perubahan setelan sensitif HP (Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang) diblokir/dilaporkan
 - Antrean offline: pesan dikirim begitu online lagi; masking OTP/bank otomatis
-- Backup/pulihkan setelan terenkripsi (file `.redeyebak`), termasuk pulihkan lewat bot (`/pulihkan`) dan mode restore ketat berkode 6 digit
+- Backup/restore setelan terenkripsi (file `.redeyebak`), termasuk pulihkan lewat bot (`/restore`) dan mode restore ketat berkode 6 digit
 - Akses owner aman: link pairing dari Setup, atau `/login <PIN>`; `/logout` mengunci semua perintah sampai login lagi
 
 ## Ambil APK-nya
@@ -85,13 +85,13 @@ Dikirim dari akun owner yang sudah pairing/login. Cara utama memakainya adalah *
 | Perintah | Fungsi |
 |---|---|
 | `/photo`, `/screenshot` | Foto / screenshot sekarang |
-| `/location`, `/jejak` | Lokasi terakhir / jejak + rute peta |
+| `/location`, `/track` | Lokasi terakhir / jejak + rute peta |
 | `/lastcalls`, `/lastsms` | 5 panggilan / SMS terakhir |
-| `/lastnotif` | 10 notifikasi terakhir |
-| `/layar` | Ringkasan pemakaian layar per aplikasi |
+| `/lastnotify` | 10 notifikasi terakhir |
+| `/screentime` | Ringkasan pemakaian layar per aplikasi |
 | `/status`, `/battery`, `/alive` | Status monitoring, baterai, denyut service |
-| `/darurat` | Lokasi + foto + baterai sekaligus |
-| `/digest`, `/minggu` | Ringkasan harian / laporan 7 hari |
+| `/emergency` | Lokasi + foto + baterai sekaligus |
+| `/digest`, `/weekly` | Ringkasan harian / laporan 7 hari |
 | `/stop`, `/resume` | Jeda / lanjut monitoring |
 
 ## Kalau Error
@@ -100,7 +100,7 @@ Dikirim dari akun owner yang sudah pairing/login. Cara utama memakainya adalah *
 |---|---|
 | Play Protect blokir | Install anyway |
 | Sepi, tidak ada pesan | Test Connection ulang, cek token/Chat ID, lalu Send Status |
-| Monitoring mati | Cek izin + matikan optimasi baterai + Anti-kill & Autostart; cek `/alive`, `/cekmati`, atau `/sembuh` |
+| Monitoring mati | Cek izin + matikan optimasi baterai + Anti-kill & Autostart; cek `/alive`, `/checkdead`, atau `/recover` |
 | `/screenshot` selalu gagal | Nyalakan Aktifkan Aksesibilitas di Setup (tahan reboot); Capture Screen biasa hangus tiap reboot |
 | Android 13+ blokir Aksesibilitas/notifikasi | Info aplikasi → menu tiga titik → Izinkan setelan terbatas |
 | Tidak bisa uninstall | Matikan Device Admin dulu di Settings |
