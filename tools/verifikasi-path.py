@@ -1979,7 +1979,7 @@ def utama():
         # nama non-ASCII terkuotasi sehingga hapusan staged
         # berkas beraksen yang masih dirujuk lolos vonis.
         hapus += _ambil_terhapus(
-            pecah_nama(jalan("git", "diff", "--cached", "--name-status", "-z") or "")
+            jalan("git", "diff", "--cached", "--name-status", "-z") or ""
         )
     cek_berkas_kode_dihapus(gagal, hapus)
     if not args.semua:
