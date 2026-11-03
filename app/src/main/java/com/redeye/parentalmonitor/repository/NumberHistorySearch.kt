@@ -34,20 +34,39 @@ class NumberHistorySearch<T>(
         val cutoff = now - 365L * 24 * 60 * 60_000L
         var upperDate = now
         var upperId = Long.MAX_VALUE
+        // Kumpulkan kecocokan dari SEMUA halaman (issue #1000):
+        // dulu pencarian berhenti di halaman pertama yang berisi
+        // kecocokan, jadi riwayat nomor yang tersebar di beberapa
+        // halaman tampil sebagian saja tanpa tanda.
+        val acc = ArrayList<T>()
+        var scanComplete = false
         for (pageIndex in 0 until 4) {
             val page = query("${dateColumn} >= ? AND (${dateColumn} < ? OR (${dateColumn} = ? AND ${idColumn} < ?))", arrayOf(cutoff.toString(), upperDate.toString(), upperDate.toString(), upperId.toString()), "${dateColumn} DESC, ${idColumn} DESC", 500)
-            if (page.isEmpty()) return NumberHistoryResult(emptyList())
-            val pageMatched = filterByNumber(page, norm, wantAlt)
-            if (pageMatched.isNotEmpty()) return NumberHistoryResult(pageMatched.take(safeLimit), truncated = pageMatched.size > safeLimit || page.size >= 500)
-            if (page.size < 500) return NumberHistoryResult(emptyList())
+            if (page.isEmpty()) {
+                scanComplete = true
+                break
+            }
+            acc.addAll(filterByNumber(page, norm, wantAlt))
+            if (acc.size >= safeLimit) return NumberHistoryResult(acc.take(safeLimit), truncated = true)
+            if (page.size < 500) {
+                scanComplete = true
+                break
+            }
             val oldest = page.last()
-            if (dateOf(oldest) <= cutoff) return NumberHistoryResult(emptyList())
-            if (dateOf(oldest) > upperDate || (dateOf(oldest) == upperDate && idOf(oldest) >= upperId)) return NumberHistoryResult(emptyList())
+            if (dateOf(oldest) <= cutoff) {
+                scanComplete = true
+                break
+            }
+            if (dateOf(oldest) > upperDate || (dateOf(oldest) == upperDate && idOf(oldest) >= upperId)) break
             upperDate = dateOf(oldest)
             upperId = idOf(oldest)
         }
-        android.util.Log.w(logTag, "paged scan truncated")
-        return NumberHistoryResult(emptyList(), truncated = true)
+        if (acc.isNotEmpty()) return NumberHistoryResult(acc.take(safeLimit), truncated = !scanComplete)
+        if (!scanComplete) {
+            android.util.Log.w(logTag, "paged scan truncated")
+            return NumberHistoryResult(emptyList(), truncated = true)
+        }
+        return NumberHistoryResult(emptyList())
     }
 
     private fun filterByNumber(rows: List<T>, want: String, wantAlt: String?): List<T> {
