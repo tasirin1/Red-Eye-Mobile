@@ -162,9 +162,11 @@ class NotificationForwarderService : NotificationListenerService() {
     @Volatile
     private var netCached = false
     @Volatile
-    private var cachedFwdToken = ""
-    @Volatile
-    private var cachedFwdChat = ""
+    private var cachedFwdCreds: Pair<String, String> = "" to ""
+    // Pasangan kredensial SATU snapshot atomik (issue #1125,
+    // pola #1099): dua field terpisah yang ditulis berurutan
+    // dari benang listener dan dibaca terpisah di dispatcher
+    // bisa sobek — satu kiriman memakai token baru + chat lama.
     private var fwdCredsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
     private var cfgCacheAt = 0L
@@ -328,8 +330,7 @@ class NotificationForwarderService : NotificationListenerService() {
 
     private fun refreshFwdCreds() {
         try {
-            cachedFwdToken = prefsRef?.botToken.orEmpty()
-            cachedFwdChat = prefsRef?.chatId.orEmpty()
+            cachedFwdCreds = prefsRef?.botToken.orEmpty() to prefsRef?.chatId.orEmpty()
         } catch (_: Exception) {
         }
     }
@@ -1664,9 +1665,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
-            if (cachedFwdToken.isEmpty() || cachedFwdChat.isEmpty()) refreshFwdCreds()
-            val botToken = cachedFwdToken
-            val chatId = cachedFwdChat
+            if (cachedFwdCreds.first.isEmpty() || cachedFwdCreds.second.isEmpty()) refreshFwdCreds()
+            val (botToken, chatId) = cachedFwdCreds
             if (botToken.isEmpty() || chatId.isEmpty()) {
                 val queued = queue().addMessage(message)
                 MessageScheduler.scheduleMessageSend(this)
