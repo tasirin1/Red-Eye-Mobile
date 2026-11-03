@@ -710,7 +710,7 @@ def _deklarasi_tingkat_atas(teks, kelas):
     return False
 
 
-def _ambil_rename_berisiko(out):
+def _ambil_rename_berisiko(out, ref_lama=None):
     # Rename (R) yang mengganti nama berkas kode (issue #1164):
     # kelas bernama sama dengan nama lama hilang bersama
     # berkasnya — acuan yang tertinggal sama berbahayanya
@@ -743,6 +743,19 @@ def _ambil_rename_berisiko(out):
         kelas = os.path.splitext(os.path.basename(lama))[0]
         if os.path.splitext(os.path.basename(baru))[0] == kelas:
             continue
+        # Hanya berkas yang memang mendeklarasikan tipe
+        # bernama sama dengan nama berkasnya yang bisa
+        # meninggalkan acuan menggantung (issue #1173):
+        # berkas bernama bebas (Util.kt berisi class
+        # Pembantu) tak punya "kelas nama berkas" untuk
+        # dirujuk, dan memasukkannya membuat vonis bergantung
+        # pada kata sama di komentar mana pun. Isi lama
+        # dibaca dari ref sumber diff; tak terbaca = sikap
+        # lama (tetap dimasukkan, arah aman).
+        if ref_lama is not None:
+            isi_lama = jalan("git", "show", "%s:%s" % (ref_lama, lama))
+            if isi_lama is not None and not _deklarasi_tingkat_atas(isi_lama, kelas):
+                continue
         if not _deklarasi_tingkat_atas(baca_teks(baru), kelas):
             hasil.append(lama)
     return hasil
@@ -759,9 +772,9 @@ def berkas_dihapus(rentang):
                 out = jalan("git", "diff", "--name-status", "-z", a + pemisah + b)
                 if out is None:
                     return []
-                return _ambil_terhapus(out) + _ambil_rename_berisiko(out)
+                return _ambil_terhapus(out) + _ambil_rename_berisiko(out, a)
     out = jalan("git", "diff", "--name-status", "-z")
-    return _ambil_terhapus(out) + _ambil_rename_berisiko(out)
+    return _ambil_terhapus(out) + _ambil_rename_berisiko(out, "HEAD")
 
 
 def disebut_kata(nama, lewat=()):
@@ -2105,7 +2118,7 @@ def utama():
         # berkas beraksen yang masih dirujuk lolos vonis.
         keluar_staged = jalan("git", "diff", "--cached", "--name-status", "-z") or ""
         hapus += _ambil_terhapus(keluar_staged)
-        hapus += _ambil_rename_berisiko(keluar_staged)
+        hapus += _ambil_rename_berisiko(keluar_staged, "HEAD")
     cek_berkas_kode_dihapus(gagal, hapus)
     if not args.semua:
         cek_pengingat_changelog(peringatan, berubah)
