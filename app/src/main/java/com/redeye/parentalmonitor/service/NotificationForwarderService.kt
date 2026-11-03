@@ -425,10 +425,17 @@ class NotificationForwarderService : NotificationListenerService() {
                     if (nf.title.isNotEmpty() || nf.text.isNotEmpty()) {
                         val squeezedJoined = nf.rawTitle + "\n" + nf.rawBody
                         val squeezedPriority = try { isPriorityNotif(pkg, nf.rawTitle, nf.rawBody, squeezedJoined.lowercase(java.util.Locale.ROOT)) } catch (_: Exception) { false }
-                        if (squeezedPriority && forwardingAllowed()) {
+                        val allowed = forwardingAllowed()
+                        if (squeezedPriority && allowed) {
                             val squeezedLabel = try { synchronized(appLabelCache) { appLabelCache[pkg] } ?: pkg } catch (_: Exception) { pkg }
                             emitPost(pkg, groupKey, squeezedLabel, nf.title, nf.text, android.os.SystemClock.elapsedRealtime(), !isSummary && groupKey.isNotEmpty(), nf.rawTitle, nf.rawBody, sbnKey, sbnPostTime, isSummary, squeezedJoined)
-                        } else recordOverflow(pkg, nf.title, nf.text)
+                        } else if (allowed) recordOverflow(pkg, nf.title, nf.text)
+                        // Bila penerusan memang mati/nonaktif
+                        // (issue #993): notifikasi ini bukan
+                        // "gugur antrean" — jangan dicatat
+                        // sebagai luapan, agar hitungan dan
+                        // jurnal gugur tak menggelembung palsu
+                        // selama penerusan nonaktif.
                     }
                 } catch (_: Exception) {
                 } finally {
