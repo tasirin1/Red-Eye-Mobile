@@ -2,11 +2,10 @@
 
 ### Fixed
 
-## [1.6.609] - 2026-11-04
-
-## [1.6.608] - 2026-11-03
+## [1.6.610] - 2026-11-04
 
 ### Fixed
+- Urutan redaksi log diperbaiki: penutup bentuk chat ID diterapkan sesudah pola token bot, bukan sebelumnya, agar token yang terbelah baris tetap tertangkap pola tokennya (kegagalan uji pada percobaan rilis 1.6.609, yang tidak terbit).
 - Pola deklarasi gerbang kini juga mengenal Java record sebagai deklarasi tipe tingkat atas, sehingga rename berkas record dinilai dengan benar oleh pemeriksaan acuan menggantung (#1186).
 - Ekstraksi pathData pada pemeriksaan vektor kini menangkap petik tunggal, spasi di sekitar tanda sama dengan, dan nilai multi-baris: tiga bentuk XML sah yang sebelumnya membuat angka tanpa nol depan lolos dari gerbang (#1185).
 - Pelacak deklarasi tingkat atas gerbang kini menghitung kedalaman komentar blok bersarang ala Kotlin: teks deklarasi atau kurung di sisa komentar luar tidak lagi terhitung sebagai kode, menutup positif dan negatif palsu pada penilaian rename berisiko (#1184).
@@ -19,6 +18,10 @@
 - Penutup halaman panggilan tidak lagi menulis ulang kursor yang nilainya sama persis dengan tulisan per potongan barusan: satu commit sinkron terbuang per siklus berisi panggilan baru hilang, menyamai penjaga yang sudah ada di sisi SMS (#1177).
 - Redaksi log cadangan kini juga menutup bentuk chat ID Telegram (termasuk grup super -100...) bagi jalur log yang tidak memegang rahasia kredensial, setara jalur utama yang meneruskan token/chat/PIN secara eksplisit (#1176).
 - Eviksi peta jangkar render menu kini membuang entri tertua saja, bukan membersihkan total: jangkar pesan yang baru diedit dan menu aktif lain tidak ikut hilang saat peta penuh, sehingga penolakan "menu kedaluwarsa" semu pada proses berumur panjang tidak kambuh sporadis (#1175).
+
+## [1.6.608] - 2026-11-03
+
+### Fixed
 
 - Tombol menu tidak lagi mati 300 detik sesudah pesan menu pertama dikirim: umur tombol kini dihitung dari terakhir kali menu itu ditampilkan/diperbarui, bukan dari tanggal lahir pesan — navigasi dan penyegaran saklar memang mengubah pesan yang sama di tempat. Aliran darurat, mode hilang, dan kunci yang dijalankan dari menu berumur panjang kini bisa dipakai lagi.
 - Kursor SMS/panggilan warisan yang cap waktunya kosong kini dipulihkan dengan menjangkar ulang ke baris teratas yang benar-benar ada bila baris kursornya sudah hilang dari basis data (mis. sesudah restore), sehingga pesan baru berikutnya tetap tertangkap — sebelumnya pesan dengan nomor urut pakai-ulang bisa terlewat.
