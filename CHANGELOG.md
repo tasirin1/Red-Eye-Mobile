@@ -16,6 +16,7 @@
 - Sapuan ukuran gerbang kini membaca daftar berkas terlacak dalam bentuk tak-terkutip: berkas besar bernama non-ASCII (mis. beraksen) tidak lagi terlewat dari pemeriksaan plafon ukuran.
 - Sapuan ukuran gerbang kini menilai symlink dari ukuran tautannya sendiri, bukan berkas tujuannya: tautan kecil ke berkas besar di luar repo tidak lagi digagalkan palsu sebagai berkas besar yang masuk repo.
 - Pengecualian translatable pada gerbang kini juga menerima nilai berpetik tunggal, simetris dengan pola nama resource: string merek berpetik tunggal tidak lagi dituntut punya pasangan terjemahan secara palsu.
+- Pemindai anotasi ganda pada cek cepat kini melacak kedalaman komentar blok: komentar bersarang khas Kotlin tidak lagi membuat teks sesudah penutup terdalam terbaca sebagai kode dan digagalkan palsu.
 
 ## [1.6.603] - 2026-11-03
 

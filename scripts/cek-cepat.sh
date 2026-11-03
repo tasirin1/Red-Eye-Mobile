@@ -194,6 +194,9 @@ fi
 #    penutup */ di awal baris menutup blok lalu sisa baris tetap
 #    dipindai, dan isi raw string """...""" dilewati sebagai
 #    teks (bukan kode) sehingga tak memicu positif palsu.
+#    Komentar blok dilacak KEDALAMANNYA (issue #1134): Kotlin
+#    membolehkan komentar bersarang — penutup terdalam tidak
+#    mengakhiri blok luar.
 loop_dup=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
@@ -207,7 +210,9 @@ while IFS= read -r f; do
       continue
     }
     if (inblock) {
-      if (substr($0, i, 2) == "*/") { inblock = 0; i += 2 } else i++
+      if (substr($0, i, 2) == "/*") { blockdepth++; i += 2 }
+      else if (substr($0, i, 2) == "*/") { blockdepth--; if (blockdepth <= 0) { inblock = 0; blockdepth = 0 } i += 2 }
+      else i++
       continue
     }
     c = substr($0, i, 1)
@@ -235,7 +240,7 @@ while IFS= read -r f; do
       continue
     }
     if (c == "/" && substr($0, i + 1, 1) == "/") break
-    if (c == "/" && substr($0, i + 1, 1) == "*") { inblock = 1; i += 2; continue }
+    if (c == "/" && substr($0, i + 1, 1) == "*") { inblock = 1; blockdepth = 1; i += 2; continue }
     line = line c
     i++
   }
