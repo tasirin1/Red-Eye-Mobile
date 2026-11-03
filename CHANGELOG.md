@@ -12,6 +12,7 @@
 - Penyimpanan pemakaian aplikasi harian kini menempatkan data ke slot tanggalnya sendiri: tulis susulan untuk kemarin memperbarui slot kemarin (bukan merotasi), dan tulis bertanggal tak dikenal yang lebih tua diabaikan — perjalanan jam maju yang dikoreksi tidak lagi membuang riwayat dua hari.
 - Pembersihan media berdasar umur dari nama berkas kini berhati-hati sesudah pindah zona: media hanya dihapus bila tetap melewati batas umur pada tafsir termuda yang mungkin (selisih zona ekstrem 26 jam), jadi foto yang sebenarnya lebih muda dari batas tidak lagi ikut terhapus; pembersihan paling jauh hanya terlambat sesudah pindah zona jauh.
 - Pemeriksaan paritas format gerbang kini juga membaca lebar/presisi dinamis (%*d, %.*f): beda tipe pada specifier berlebar bintang tidak lagi lolos.
+- Konversi %n (baris baru) tidak lagi dihitung sebagai argumen format oleh gerbang: ia tidak mengonsumsi argumen, jadi terjemahan yang memakai baris baru biasa tidak lagi digagalkan palsu.
 
 ## [1.6.603] - 2026-11-03
 

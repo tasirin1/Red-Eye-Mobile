@@ -1469,8 +1469,12 @@ def argumen_format(isi):
     # %% murni adalah persen LITERAL, bukan argumen (issue
     # #1112): membuangnya dari daftar agar terjemahan yang
     # menulis "persen" sebagai kata tidak digagalkan palsu.
+    # %n juga bukan argumen (issue #1130): newline khusus
+    # platform yang tidak mengonsumsi argumen apa pun —
+    # bentuk berindeks tak sah dan tetap dibandingkan.
     token = [(idx, flags, width, prec, conv) for idx, flags, width, prec, conv in mentah
-             if not (conv == "%" and not flags and not width and not prec)]
+             if not (conv == "%" and not flags and not width and not prec)
+             and not (conv == "n" and not idx and not width and not prec)]
     nyata = token
     if nyata and all(t[0] for t in nyata) and not any("<" in t[1] for t in nyata):
         return ("indeks", tuple(sorted((int(t[0]), t[1], t[2], t[3], t[4]) for t in nyata)))
