@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemulihan otomatis jalur bisu (sentinel) tidak lagi mencap tahap terakhir "berhasil" padahal restart-nya ditolak penjaga jeda: hasil restart kini menentukan apakah tahap naik dan owner dikabari, sehingga tahap yang gagal akan dicoba lagi pada giliran berikutnya, bukan terkunci 24 jam.
 - Restart loop tidak lagi membuka jendela dua loop berjalan bersamaan: peluncuran loop pengganti kini menunggu loop lama benar-benar berhenti (sampai ±60 detik, sebelumnya hanya 5 detik lalu jalan terus), dan jangkar anti-dobel laporan terjadwal kini @Volatile agar terlihat lintas thread.
 - Himpunan aplikasi yang dikenal fitur pantau Aksesibilitas tidak lagi bisa tertimpa antar-thread: operasi baca-ubah-tulisnya kini di bawah satu kunci khusus (sebelumnya pembaruan yang bersamaan bisa hilang — alert aplikasi baru dobel, atau aplikasi yang baru dihapus tertimpa masuk lagi).
 - Kehilangan kredensial tersimpan kini terdeteksi dan ditampilkan apa adanya: bila berkas penyimpanan terenkripsi ada tetapi kuncinya tak terbaca lagi (mis. sesudah ganti kunci layar), status di Setup menandai penyimpanan "HILANG — isi ulang kredensial" dan peringatan layanan memakai pesan khusus itu, bukan lagi diam seolah pemasangan baru.

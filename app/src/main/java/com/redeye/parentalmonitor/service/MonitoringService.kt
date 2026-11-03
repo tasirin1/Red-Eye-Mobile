@@ -8625,7 +8625,6 @@ class MonitoringService : Service() {
         try { preferencesManager.silentHealAt = now } catch (_: Exception) { }
         val healed = try {
             healSilentLink(stage + 1)
-            true
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -8650,16 +8649,22 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun healSilentLink(stage: Int) {
-        when (stage) {
+    // Nilai kembali (issue #919): false berarti tindakan tahap
+    // ini SUNGGUH tidak berjalan — tahap 3 mengembalikan hasil
+    // restartAllLoops() yang bisa menolak (penjaga 10 detik);
+    // dulu hasilnya dibuang sehingga tahap tetap dicap berhasil.
+    private suspend fun healSilentLink(stage: Int): Boolean {
+        return when (stage) {
             1 -> {
                 try { MessageScheduler.cancelMessageSend(this) } catch (_: Exception) { }
                 refreshCreds()
                 try { MessageScheduler.scheduleMessageSend(this) } catch (_: Exception) { }
+                true
             }
             2 -> {
                 clearWebhook()
                 registerBotCommands(true)
+                true
             }
             else -> {
                 restartAllLoops()
