@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.597] - 2026-11-03
+
 ### Fixed
 
 - Teks notifikasi kini dipotong sejak dibaca dari sumbernya (maks 20 ribu aksara per medan): teks raksasa tidak lagi diproses utuh oleh masking, huruf-kecil, dan hash sebelum titik potong akhir.
