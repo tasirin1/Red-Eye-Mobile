@@ -2388,11 +2388,14 @@ class MonitoringService : Service() {
     // membedakan generasi naik karena migrasi chat (token sama —
     // aliran update tetap milik bot yang sama) dari pergantian
     // token (aliran berbeda, konfirmasi lama memang harus gugur).
-    private val updateTokenHashes = java.util.Collections.synchronizedMap(HashMap<Long, Int>())
+    // Sidik token = SHA-256, BUKAN hashCode() 32-bit (issue #900):
+    // tabrakan hash pada pergantian token sungguhan akan terbaca
+    // "token sama" dan mengonfirmasi offset milik bot lama.
+    private val updateTokenHashes = java.util.Collections.synchronizedMap(HashMap<Long, String>())
 
     private fun beginUpdateTrack(updateId: Long, generation: Long) {
         updateOffsetTracker.begin(updateId, generation)
-        try { updateTokenHashes[updateId] = preferencesManager.botToken.hashCode() } catch (_: Exception) { }
+        try { updateTokenHashes[updateId] = com.redeye.parentalmonitor.utils.Sha256Hex.hex(preferencesManager.botToken) } catch (_: Exception) { }
     }
 
     private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
@@ -2407,7 +2410,7 @@ class MonitoringService : Service() {
             // restart dan dieksekusi dua kali. Bila token terbukti
             // sama, tag ulang entri ke generasi kini dan selesaikan
             // seperti biasa; pergantian token tetap membuangnya.
-            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == preferencesManager.botToken.hashCode() } catch (_: Exception) { false }
+            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == com.redeye.parentalmonitor.utils.Sha256Hex.hex(preferencesManager.botToken) } catch (_: Exception) { false }
             if (tokenSame) {
                 updateOffsetTracker.forget(updateId, generation)
                 updateOffsetTracker.begin(updateId, currentGeneration)
