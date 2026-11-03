@@ -70,13 +70,26 @@ release.p12
 # dari pengujian jangan terangkat git add -A — termasuk cadangan
 # .redeyebak yang berisi kredensial terenkripsi dan media yang
 # bisa memuat data anak.
+# Ekstensi media dilengkapi + PNG di kedalaman mana pun (issue
+# #897): sebelumnya .mov/.mkv/.wav/.mp3/.ogg/.jpeg/.webp/.gif/
+# .sqlite tak tertahan sama sekali dan /*.png hanya di akar,
+# sehingga docs/foto.png tetap terangkat.
 *.mp4
 *.m4a
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.ogg
+*.jpeg
+*.webp
+*.gif
+*.sqlite
 *.hprof
 *.redeyebak
 *.db
 *.zip
-/*.png
+*.png
 screenshot_*.png
 screenshot_*.jpg
 camera_*.jpg
