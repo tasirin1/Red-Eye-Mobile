@@ -8348,8 +8348,9 @@ class MonitoringService : Service() {
             val key = todayKey()
             val done = try { preferencesManager.nightDigestDate } catch (_: Exception) { "" }
             val doneAt = try { preferencesManager.nightDigestDoneAtMs } catch (_: Exception) { 0L }
+            val doneOff = try { preferencesManager.nightDigestOffsetMs } catch (_: Exception) { Long.MIN_VALUE }
             if (DigestSchedule.nightDue(h, done, key) ||
-                DigestSchedule.nightZoneShiftDue(done, key, h, doneAt, now)) {
+                DigestSchedule.nightZoneShiftDue(done, key, h, doneAt, now, doneOff, off.toLong())) {
                 if (awaitingOwnerLogin()) return
                 // Tandai selesai SESUDAH kirim berhasil (issue #699):
                 // menandai sebelum kirim membuat digest hari itu hilang
@@ -8362,19 +8363,19 @@ class MonitoringService : Service() {
                 if (nightDigestAttemptKey != key) {
                     nightDigestAttemptKey = key
                     if (sendDailyDigest(manual = false)) {
-                        preferencesManager.setNightDigestDone(key, now)
+                        preferencesManager.setNightDigestDone(key, now, off.toLong())
                     }
                 }
                 return
             }
             val yesterday = todayKey(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now))
             if (DigestSchedule.nightCatchUpDue(done, yesterday, key, h) ||
-                DigestSchedule.nightZoneShiftCatchUpDue(done, yesterday, h, doneAt, now)) {
+                DigestSchedule.nightZoneShiftCatchUpDue(done, yesterday, h, doneAt, now, doneOff, off.toLong())) {
                 if (awaitingOwnerLogin()) return
                 if (nightDigestAttemptKey != yesterday) {
                     nightDigestAttemptKey = yesterday
                     if (sendDailyDigest(manual = false)) {
-                        preferencesManager.setNightDigestDone(yesterday, now)
+                        preferencesManager.setNightDigestDone(yesterday, now, off.toLong())
                     }
                 }
             }

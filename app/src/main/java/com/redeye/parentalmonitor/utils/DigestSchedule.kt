@@ -45,13 +45,31 @@ object DigestSchedule {
     // cap terbaca "hari ini/di depan" tetapi umur epoch-nya sudah
     // >= 16 jam, cap itu tidak mungkin ditulis malam ini — malam
     // zona baru tetap jatuh tempo.
-    fun nightZoneShiftDue(doneKey: String, todayKey: String, hour: Int, doneAtMs: Long, nowMs: Long): Boolean {
-        return hour >= 21 && doneKey.isNotEmpty() && doneAtMs > 0L &&
-            nowMs - doneAtMs >= 16 * 3_600_000L && doneKey >= todayKey
+    // Perpindahan kecil 1–2 jam ke barat (issue #1079 — kasus
+    // domestik WIB/WITA/WIT yang paling umum) tak pernah mencapai
+    // 16 jam di jendela mana pun. Saksi pembedanya adalah OFFSET
+    // zona saat cap ditulis vs sekarang: pindah ke barat
+    // menurunkan offset, jam dimundurkan manual tidak mengubah
+    // offset sama sekali. Bila offset turun sebesar delta, pukul
+    // 21:00 zona baru terjadi tepat delta sesudah cap (dan
+    // jendela susulan pagi 8–14 jam sesudahnya), jadi umur cap
+    // sebesar itu — dengan toleransi jadwal 30 menit — sudah
+    // membuktikan malam zona baru. Offset tak dikenal (cap
+    // warisan sebelum #1079, Long.MIN_VALUE) -> aturan 16 jam.
+    private fun zoneShiftProven(ageMs: Long, doneOffsetMs: Long, nowOffsetMs: Long, extraMs: Long): Boolean {
+        if (ageMs >= 16 * 3_600_000L) return true
+        if (doneOffsetMs == Long.MIN_VALUE) return false
+        val delta = doneOffsetMs - nowOffsetMs
+        return delta > 0L && ageMs >= delta + extraMs
     }
 
-    fun nightZoneShiftCatchUpDue(doneKey: String, yesterdayKey: String, hour: Int, doneAtMs: Long, nowMs: Long): Boolean {
-        return hour in 5..11 && doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneAtMs > 0L &&
-            nowMs - doneAtMs >= 16 * 3_600_000L && doneKey >= yesterdayKey
+    fun nightZoneShiftDue(doneKey: String, todayKey: String, hour: Int, doneAtMs: Long, nowMs: Long, doneOffsetMs: Long, nowOffsetMs: Long): Boolean {
+        return hour >= 21 && doneKey.isNotEmpty() && doneAtMs > 0L && doneKey >= todayKey &&
+            zoneShiftProven(nowMs - doneAtMs, doneOffsetMs, nowOffsetMs, -30 * 60_000L)
+    }
+
+    fun nightZoneShiftCatchUpDue(doneKey: String, yesterdayKey: String, hour: Int, doneAtMs: Long, nowMs: Long, doneOffsetMs: Long, nowOffsetMs: Long): Boolean {
+        return hour in 5..11 && doneKey.isNotEmpty() && yesterdayKey.isNotEmpty() && doneAtMs > 0L && doneKey >= yesterdayKey &&
+            zoneShiftProven(nowMs - doneAtMs, doneOffsetMs, nowOffsetMs, 7 * 3_600_000L + 30 * 60_000L)
     }
 }
