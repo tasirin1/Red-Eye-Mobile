@@ -65,6 +65,13 @@ object NumericArg {
         val f = faktor(native)
         val hasil = (dasar + f / 2) / f
         if (hasil > Int.MAX_VALUE) return null
+        // Masukan positif yang terkonversi menjadi 0 ditolak (issue
+        // #878): di beberapa perintah 0 berarti mati/manual
+        // (heartbeat, photointerval), jadi meneruskannya akan
+        // mematikan fitur yang justru diminta pemilik dengan durasi
+        // pendek. Angka 0 eksplisit tetap sah (mematikan dengan
+        // sengaja memang arti 0 di perintah-perintah itu).
+        if (hasil == 0L && n > 0L) return null
         return hasil.toInt()
     }
 }

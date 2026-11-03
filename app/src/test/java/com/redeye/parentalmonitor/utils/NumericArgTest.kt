@@ -32,8 +32,15 @@ class NumericArgTest {
         // Pembulatan setengah ke atas ke satuan bawaan terdekat.
         assertEquals(2, NumericArg.parse("90 detik", NumericArg.Satuan.MENIT))
         assertEquals(1, NumericArg.parse("30 detik", NumericArg.Satuan.MENIT))
-        assertEquals(0, NumericArg.parse("20 detik", NumericArg.Satuan.MENIT))
-        assertEquals(0, NumericArg.parse("1 menit", NumericArg.Satuan.JAM))
+        // Issue #878: masukan positif yang membulat ke 0 DITOLAK —
+        // 0 berarti mati/manual di heartbeat & photointerval, jadi
+        // durasi pendek tak boleh mematikan fitur dengan senyap.
+        assertNull(NumericArg.parse("20 detik", NumericArg.Satuan.MENIT))
+        assertNull(NumericArg.parse("1 menit", NumericArg.Satuan.JAM))
+        assertNull(NumericArg.parse("15 menit", NumericArg.Satuan.JAM))
+        // Angka 0 eksplisit tetap sah (mematikan dengan sengaja).
+        assertEquals(0, NumericArg.parse("0", NumericArg.Satuan.JAM))
+        assertEquals(0, NumericArg.parse("0 detik", NumericArg.Satuan.MENIT))
     }
 
     @Test
