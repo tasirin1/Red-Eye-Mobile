@@ -17,6 +17,7 @@
 - Pemeriksaan paritas terjemahan gerbang kini menghormati atribut translatable="false": string yang memang tidak untuk diterjemahkan (nama aplikasi/brand) tidak lagi menggagalkan pemeriksaan hanya karena tidak punya pasangan bahasa Indonesia.
 - Pengecualian batas ukuran untuk CHANGELOG.md kini punya plafon sendiri (5 MB): berkas riwayat itu tetap boleh tumbuh melewati batas umum 1 MB, tetapi tidak lagi tanpa batas sama sekali.
 - Pemeriksaan path vektor cek cepat kini juga menangkap bilangan baru diawali titik sesudah eksponen bertanda plus (mis. "1.5e+3.5"), melengkapi bentuk bertanda minus yang sudah ada.
+- Pemeriksaan anotasi ganda cek cepat kini memahami koma pemisah deklarasi: parameter konstruktor/fungsi sebaris yang beranotasi sama adalah deklarasi berbeda dan tidak lagi ditolak sebagai anotasi ganda, sementara duplikat pada satu deklarasi tetap tertangkap.
 
 ## [1.6.600] - 2026-11-03
 
