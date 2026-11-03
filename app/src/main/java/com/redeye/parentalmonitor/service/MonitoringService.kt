@@ -1116,7 +1116,12 @@ class MonitoringService : Service() {
                             }
                         } else {
                             val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
-                            val idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
+                            var idle = if (remaining > 0) remaining.coerceAtMost(30 * 60_000L) else 30 * 60_000L
+                            // Bila penghentinya mode malam, tidur
+                            // tak melewati akhir jendela malam
+                            // (issue #937): resume foto bisa telat
+                            // s.d. 30 mnt sesudah 05:00.
+                            if (isNightPaused()) idle = minOf(idle, millisUntilNightEnd())
                             cameraCycleMs = idle
                             delayMs(idle)
                         }
@@ -1185,7 +1190,10 @@ class MonitoringService : Service() {
                     } else if (cachedMonitoringPaused) {
                         15 * 60_000L
                     } else {
-                        30 * 60_000L
+                        // Sama seperti loop kamera (issue #937):
+                        // mode malam tak menahan bangun melewati
+                        // akhir jendelanya.
+                        if (isNightPaused()) minOf(30 * 60_000L, millisUntilNightEnd()) else 30 * 60_000L
                     }
                     patrolCycleMs = sleepMs
                     delayMs(sleepMs)
@@ -1256,6 +1264,25 @@ class MonitoringService : Service() {
         try {
             preferencesManager.setPatrolLast(System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
         } catch (_: Exception) { }
+    }
+
+    // Sisa waktu sampai akhir jendela malam (05:00) terdekat
+    // (issue #937); Long.MAX_VALUE bila tak bisa dihitung.
+    private fun millisUntilNightEnd(): Long {
+        return try {
+            val now = System.currentTimeMillis()
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = now
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 5)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.set(java.util.Calendar.MILLISECOND, 0)
+            var end = cal.timeInMillis
+            if (end <= now) end += 24 * 3_600_000L
+            (end - now).coerceAtLeast(5_000L)
+        } catch (_: Exception) {
+            Long.MAX_VALUE
+        }
     }
 
     private suspend fun delayMs(totalMs: Long) {
