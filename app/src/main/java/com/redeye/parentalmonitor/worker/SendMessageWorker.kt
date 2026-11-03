@@ -44,6 +44,11 @@ class SendMessageWorker(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // Catat kegagalan total (issue #965): pola lama
+                // menelannya senyap sebagai sukses — kegagalan
+                // deterministik berputar tiap ±60 detik tanpa
+                // jejak apa pun untuk didiagnosis.
+                android.util.Log.e("SendMessageWorker", "doWork gagal total, jadwal ulang 60 dtk: ${e.message}", e)
                 try {
                     MessageScheduler.scheduleMessageSendNext(applicationContext, 60_000L)
                 } catch (_: Exception) {
