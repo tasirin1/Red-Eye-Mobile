@@ -1475,14 +1475,16 @@ def argumen_format(isi):
     # %*d dan %.*f mengonsumsi argumen int tambahan — pola
     # angka-saja membuat specifier-nya gugur seluruhnya
     # sehingga beda tipenya lolos seperti lubang #1111.
-    # %% murni adalah persen LITERAL, bukan argumen (issue
-    # #1112): membuangnya dari daftar agar terjemahan yang
-    # menulis "persen" sebagai kata tidak digagalkan palsu.
+    # Konversi % TIDAK PERNAH argumen (issue #1112 + #1135):
+    # %% polos maupun berlebar/berflag (%5%, %-%) sama-sama
+    # persen LITERAL — membuang SEMUA token berkonversi %
+    # dari daftar agar terjemahan yang menulis "persen"
+    # sebagai kata atau %% polos tidak digagalkan palsu.
     # %n juga bukan argumen (issue #1130): newline khusus
     # platform yang tidak mengonsumsi argumen apa pun —
     # bentuk berindeks tak sah dan tetap dibandingkan.
     token = [(idx, flags, width, prec, conv) for idx, flags, width, prec, conv in mentah
-             if not (conv == "%" and not flags and not width and not prec)
+             if conv != "%"
              and not (conv == "n" and not idx and not width and not prec)]
     nyata = token
     if nyata and all(t[0] for t in nyata) and not any("<" in t[1] for t in nyata):
