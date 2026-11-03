@@ -6,6 +6,7 @@
 - Pemeriksaan kata pantau pada SMS kini memakai cache urai: daftar kata hanya diurai ulang bila isinya benar-benar berubah, bukan dibaca dari penyimpanan terenkripsi dan diurai ulang untuk setiap pesan.
 - Cadangan penghitung item pada gerbang tidak lagi berhenti total pada tag dengan petik tak tertutup: tag rusak dilewati dan item sah sesudahnya tetap terhitung, sama seperti perilaku pola sebelumnya.
 - Penilaian tanggal hantu pada pencatatan pemakaian kini menurunkan kedua kunci harinya dari satu titik waktu yang sama, menutup celah bila tengah malam jatuh di antara dua pembacaan jam.
+- Kanal berkas terabaikan pada cek cepat kini menyaring daftarnya tetap dalam bentuk NUL: berkas terabaikan bernama mengandung baris-baru tidak lagi terbelah dan lolos dari pindai token bentuk base64/terbelah.
 
 ## [1.6.606] - 2026-11-03
 

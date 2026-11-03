@@ -123,7 +123,7 @@ if [ -f tools/cek-token.py ]; then
   if [ -n "$b64_tak_lacak" ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas tak terlacak $b64_tak_lacak (hanya via input SetupActivity)"; gagal=1;
   fi
-  b64_ign=$(git ls-files --others -z -i --exclude-standard 2>/dev/null | tr '\0' '\n' | grep -v -E '^(build/|app/build/|\.gradle/|app/\.gradle/|__pycache__/|tools/__pycache__/)' | tr '\n' '\0' | python3 tools/cek-token.py --berkas 2>/dev/null || true)
+  b64_ign=$(git ls-files --others -z -i --exclude-standard 2>/dev/null | grep -zv -E '^(build/|app/build/|\.gradle/|app/\.gradle/|__pycache__/|tools/__pycache__/)' | python3 tools/cek-token.py --berkas 2>/dev/null || true)
   if [ -n "$b64_ign" ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas terabaikan $b64_ign (hanya via input SetupActivity)"; gagal=1;
   fi
