@@ -61,7 +61,7 @@ object Background {
             try {
                 block()
             } catch (e: Exception) {
-                android.util.Log.e("Background", "runCritical block failed (${e.javaClass.simpleName}): ${e.message}", e)
+                android.util.Log.e("Background", "runCritical block failed (${e.javaClass.simpleName}): ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}", e)
             }
         }
     }

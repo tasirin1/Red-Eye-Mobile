@@ -7,6 +7,7 @@
 - Teks penyebab gagal memotret/merekam kini diloloskan dari penanda HTML sebelum disisipkan ke pesan, sama seperti situs kembarnya — pesan galat tampil utuh dalam sekali kirim, bukan jatuh ke pengiriman ulang teks polos.
 - Tautan penautan pemilik dan kode pemulihan yang disalin ke clipboard kini ditandai sebagai isi sensitif, sehingga pratinjau clipboard menyembunyikannya dari aplikasi/keyboard lain.
 - Memulihkan backup format lama kini disertai peringatan bahwa perlindungannya lebih lemah dan kredensial hasil pulih sebaiknya diganti — sebelumnya peringatan itu tidak ada, padahal berkas lama yang tersebar bisa ditebak kata sandinya secara luring.
+- Semua catatan galat di log kini melewati penyamaran standar yang sama, termasuk jalur pekerja kirim, antrean pesan, dan pelaksana latar — sebelumnya beberapa jalur menulis pesan galat mentah yang bisa memuat serpihan data antrean atau bentuk token.
 
 ## [1.6.607] - 2026-11-03
 

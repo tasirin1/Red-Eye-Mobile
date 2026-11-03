@@ -217,7 +217,7 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = null
                 volatileOnly = true
                 keepUnpersistedDropsLocked()
-                android.util.Log.w("MessageQueue", "Queue reopen failed, using volatile: ${e.message}")
+                android.util.Log.w("MessageQueue", "Queue reopen failed, using volatile: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
             }
         }
     }
@@ -679,7 +679,7 @@ class MessageQueue private constructor(context: Context) {
         val json = try {
             sharedPreferences?.getString(KEY_QUEUE, null)
         } catch (e: Exception) {
-            android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${e.message}")
+            android.util.Log.w("MessageQueue", "Queue read failed, falling back to volatile: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
             volatileOnly = true
             keepUnpersistedDropsLocked()
             cached = null
@@ -708,7 +708,7 @@ class MessageQueue private constructor(context: Context) {
             if (bakJson != null) {
                 android.util.Log.w("MessageQueue", "Queue storage corrupt, recovered ${recovered.size} message(s) from backup")
             } else {
-                android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${e.message}")
+                android.util.Log.w("MessageQueue", "Queue storage corrupt, clearing poison blob: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}")
             }
             try {
                 persistLocked(recovered, force = true, syncOnMain = true, replaceBackup = true)

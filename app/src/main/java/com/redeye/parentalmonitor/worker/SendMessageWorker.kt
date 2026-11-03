@@ -58,7 +58,7 @@ class SendMessageWorker(
                 // menelannya senyap sebagai sukses — kegagalan
                 // deterministik berputar tiap ±60 detik tanpa
                 // jejak apa pun untuk didiagnosis.
-                android.util.Log.e("SendMessageWorker", "doWork gagal total, jadwal ulang 60 dtk: ${e.message}", e)
+                android.util.Log.e("SendMessageWorker", "doWork gagal total, jadwal ulang 60 dtk: ${com.redeye.parentalmonitor.utils.Redact.token(e.message)}", e)
                 try {
                     MessageScheduler.scheduleMessageSendNext(applicationContext, 60_000L)
                 } catch (_: Exception) {
@@ -193,11 +193,10 @@ class SendMessageWorker(
                 }
                 throw e
             } catch (e: Exception) {
-                val detail = (e.message ?: "").let { m ->
-                    var out = if (runToken.isNotEmpty()) m.replace(runToken, "***") else m
-                    out = if (runChatId.isNotEmpty()) out.replace(runChatId, "***") else out
-                    out
-                }
+                // Redaksi standar (issue #1170): Redact.token
+                // juga menangkap bentuk token dari pola, bukan
+                // hanya snapshot berjalan.
+                val detail = com.redeye.parentalmonitor.utils.Redact.token(e.message, runToken, runChatId)
                 android.util.Log.e("SendMessageWorker", "Exception processing message: $detail")
                 failedIds.add(queuedMessage.id)
                 continue
