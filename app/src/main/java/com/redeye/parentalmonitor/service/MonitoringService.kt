@@ -296,6 +296,12 @@ class MonitoringService : Service() {
     private var pendingRestore: PendingRestore? = null
     @Volatile
     private var ownerEpoch = 0
+    // Klaim terapkan restore harus atomik terhadap batal/
+    // logout (issue #1078): cek-lalu-terapkan telanjang
+    // menyisakan jendela milidetik di ujung masa batal.
+    private val restoreLock = Any()
+    @Volatile
+    private var restoreApplying = false
     private val offsetPersistLock = Any()
     private val heldPhotosLock = Any()
     private val heldEntriesCacheLock = Any()
@@ -1835,7 +1841,7 @@ class MonitoringService : Service() {
             sendToTelegram("⚠️ Logout gagal. Coba lagi.")
             return
         }
-        pendingRestore = null
+        synchronized(restoreLock) { pendingRestore = null }
         // Reset state input di bawah kunci yang sama dengan
         // semua penulis/pembaca lain (issue #996): penulisan
         // telanjang bisa berlomba dengan armInput/konsumsi
@@ -1846,7 +1852,7 @@ class MonitoringService : Service() {
             pendingInputChat = ""
         }
         clearPendingPromptMarker()
-        ownerEpoch++
+        synchronized(restoreLock) { ownerEpoch++ }
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
         }
@@ -3853,10 +3859,24 @@ class MonitoringService : Service() {
         // "pembatalan" yang lolos parser jatuh sebagai tebakan kode
         // (mode ketat: penghitung gagal ikut naik).
         if (lower == "cancel" || lower == "off" || (!lower.contains(' ') && IntentParser.isCancellation(lower))) {
-            val had = pendingRestore != null
-            pendingRestore = null
+            // Baca+bersihkan di bawah restoreLock (issue
+            // #1078) agar tak berlomba dengan klaim terapkan;
+            // sesi yang sudah terklaim dijawab jujur.
+            var had = false
+            var applying = false
+            synchronized(restoreLock) {
+                had = pendingRestore != null
+                pendingRestore = null
+                applying = restoreApplying
+            }
             audit("restore batal", "private")
-            sendToTelegram(if (had) "Pemulihan dibatalkan." else "Tidak ada sesi pemulihan yang berjalan.")
+            sendToTelegram(
+                when {
+                    had -> "Pemulihan dibatalkan."
+                    applying -> "Pemulihan sudah jatuh tempo dan sedang diterapkan — tidak bisa dibatalkan lagi."
+                    else -> "Tidak ada sesi pemulihan yang berjalan."
+                }
+            )
             return
         }
         val current = pendingRestore
@@ -4139,15 +4159,38 @@ class MonitoringService : Service() {
         )
         serviceScope.launch {
             delay(RESTORE_CANCEL_WINDOW_MS)
-            if (pendingRestore === confirm && confirm.stage == RESTORE_STAGE_CONFIRM && restoreEpoch == ownerEpoch) {
-                pendingRestore = null
-                applyRestoredSettings(data)
-            } else if (pendingRestore === confirm) {
-                // Epoch berubah selama jendela batal (issue
-                // #994): sesi ini tak akan pernah terapkan —
-                // bersihkan sekarang, jangan jadi zombi yang
-                // memblokir /restore selamanya.
-                pendingRestore = null
+            // Klaim atomik (issue #1078): nilai + ambil sesi di
+            // dalam restoreLock — /restore batal atau /logout
+            // yang menang lomba ke kunci membatalkan klaim;
+            // yang kalah menerima keadaan sesudah klaim
+            // (restoreApplying) dan gerbang epoch kedua di
+            // applyRestoredSettings tepat sebelum simpan.
+            var zombie = false
+            val claimed = synchronized(restoreLock) {
+                when {
+                    pendingRestore === confirm && confirm.stage == RESTORE_STAGE_CONFIRM && restoreEpoch == ownerEpoch -> {
+                        pendingRestore = null
+                        restoreApplying = true
+                        true
+                    }
+                    pendingRestore === confirm -> {
+                        // Epoch berubah selama jendela batal
+                        // (issue #994): bersihkan sekarang,
+                        // jangan jadi zombi.
+                        pendingRestore = null
+                        zombie = true
+                        false
+                    }
+                    else -> false
+                }
+            }
+            if (claimed) {
+                try {
+                    applyRestoredSettings(data, restoreEpoch)
+                } finally {
+                    restoreApplying = false
+                }
+            } else if (zombie) {
                 audit("restore konfirmasi gugur (epoch berubah)", "private")
             }
         }
@@ -4192,7 +4235,7 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun applyRestoredSettings(data: SettingsBackup.BackupData) {
+    private suspend fun applyRestoredSettings(data: SettingsBackup.BackupData, epochAtClaim: Int) {
         val oldToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
         val oldChat = try { preferencesManager.chatId } catch (_: Exception) { "" }
         val oldOwner = try { preferencesManager.ownerUserId } catch (_: Exception) { 0L }
@@ -4217,6 +4260,15 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
             audit("restore batal validasi ulang", "private")
             sendToTelegram("⚠️ Validasi ulang gagal (jaringan?). Setelan lama tetap dipakai.")
+            return
+        }
+        // Gerbang epoch terakhir sebelum simpan (issue
+        // #1078): logout yang terjadi selama validasi ulang
+        // jaringan di atas membatalkan penerapan di sini,
+        // bukan sesudah kredensial telanjur tertimpa.
+        if (epochAtClaim != ownerEpoch) {
+            audit("restore gugur sebelum simpan (epoch berubah)", "private")
+            sendToTelegram("ℹ️ Pemulihan dibatalkan karena sesi owner berubah selama penerapan. Setelan lama tetap dipakai.")
             return
         }
         val targetOwner = RestoreRules.ownerFallback(data.ownerId, newChat, oldOwner)
