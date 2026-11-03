@@ -435,8 +435,20 @@ class MessageQueue private constructor(context: Context) {
         if (items.all { isFresh(it, wallCutoff, now, bootAt) }) return items
         val fresh = items.filter { isFresh(it, wallCutoff, now, bootAt) }
         if (fresh.size * 2 < items.size && items.all { it.bootAt <= 0L }) {
-            android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
-            return items
+            // Penyelamatan "jam melompat" hanya dengan bukti
+            // (issue #967): antrean warisan yang sungguh tua
+            // memenuhi syarat yang sama persis (mayoritas basi +
+            // semua bootAt<=0) dan dulu dipertahankan selamanya
+            // — banjir laporan basi terkirim dan tak pernah
+            // tercatat gugur. Bukti lompatan jam yang sah: ada
+            // pesan bertanggal masa depan terhadap jam dinding
+            // sekarang (jam pernah dimajukan lalu terkoreksi).
+            // Tanpa bukti itu yang basi memang basi: buang.
+            val nowWall = System.currentTimeMillis()
+            if (items.any { it.timestamp > nowWall + 5 * 60_000L }) {
+                android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
+                return items
+            }
         }
         return fresh
     }

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Antrean pesan warisan yang sungguh kedaluwarsa tidak lagi dipertahankan selamanya oleh heuristik "jam melompat": penyelamatan kini mensyaratkan bukti lompatan jam (ada pesan bertanggal masa depan), selain itu pesan basi dibuang seperti biasa.
 - Kode HTTP Telegram yang tak terdaftar (mis. 404/409/413/422) tidak lagi diperlakukan sebagai penolakan permanen: pesan kini dipertahankan dan dicoba lagi lewat anggaran retry seperti kegagalan sementara, bukan dihapus permanen.
 - Kegagalan total worker pengirim pesan kini tercatat di log (bukan ditelan senyap sebagai sukses), sehingga kegagalan berulang bisa didiagnosis.
 - Alert percobaan mematikan Device Admin kini memakai goAsync seperti jalur receiver lain, sehingga proses tidak bisa dibunuh sistem sebelum alert prioritas itu terantre.
