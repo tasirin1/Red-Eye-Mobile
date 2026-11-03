@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Himpunan aplikasi yang dikenal fitur pantau Aksesibilitas tidak lagi bisa tertimpa antar-thread: operasi baca-ubah-tulisnya kini di bawah satu kunci khusus (sebelumnya pembaruan yang bersamaan bisa hilang — alert aplikasi baru dobel, atau aplikasi yang baru dihapus tertimpa masuk lagi).
 - Kehilangan kredensial tersimpan kini terdeteksi dan ditampilkan apa adanya: bila berkas penyimpanan terenkripsi ada tetapi kuncinya tak terbaca lagi (mis. sesudah ganti kunci layar), status di Setup menandai penyimpanan "HILANG — isi ulang kredensial" dan peringatan layanan memakai pesan khusus itu, bukan lagi diam seolah pemasangan baru.
 - Antrean pesan tidak lagi tertimpa atau bangkit dari kubur saat baca penyimpanan gagal sesaat di tengah operasi: penambahan dialihkan ke antrean volatile dan penghapusan dilaporkan gagal agar dicoba lagi (sebelumnya daftar kosong semu hasil kegagalan baca diproses seolah isi antrean sebenarnya).
 - Aturan versi kini ditegakkan gerbang verifikasi: komponen patch versionName tidak boleh mencapai 1000, dan versionCode tidak boleh mundur atau stagnan terhadap rilis bertag terakhir (sebelumnya aturan ini hanya tertulis tanpa penegakan apa pun).

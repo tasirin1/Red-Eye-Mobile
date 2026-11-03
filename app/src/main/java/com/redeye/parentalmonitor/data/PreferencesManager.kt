@@ -1681,12 +1681,21 @@ class PreferencesManager(context: Context) {
     // nama dari himpunan dikenal agar pemasangan ulang di kemudian
     // hari kembali memicu alert "aplikasi baru dibuka". Tanpa ini
     // himpunan bersifat tambah-saja seumur pemasangan.
+    // Kunci khusus baca-ubah-tulis himpunan aplikasi dikenal
+    // (issue #917): tiga fungsi di bawah dipanggil lintas thread
+    // (receiver paket vs layanan Aksesibilitas); tanpa kunci,
+    // lost-update membuat alert aplikasi baru dobel atau aplikasi
+    // yang baru di-uninstall tertimpa masuk lagi.
+    private val a11yKnownAppsLock = Any()
+
     fun forgetA11yApp(packageName: String) {
         if (packageName.isEmpty()) return
         try {
-            val current = a11yKnownApps()
-            if (current.remove(packageName)) {
-                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+            synchronized(a11yKnownAppsLock) {
+                val current = a11yKnownApps()
+                if (current.remove(packageName)) {
+                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+                }
             }
         } catch (_: Exception) {
         }
@@ -1695,11 +1704,13 @@ class PreferencesManager(context: Context) {
     fun rememberA11yApp(packageName: String): Boolean {
         if (packageName.isEmpty()) return false
         return try {
-            val current = a11yKnownApps()
-            if (packageName in current) return false
-            current.add(packageName)
-            sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
-            true
+            synchronized(a11yKnownAppsLock) {
+                val current = a11yKnownApps()
+                if (packageName in current) return false
+                current.add(packageName)
+                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, current).apply()
+                true
+            }
         } catch (_: Exception) {
             false
         }
@@ -1707,12 +1718,14 @@ class PreferencesManager(context: Context) {
 
     fun seedA11yKnownApps(packages: Collection<String>) {
         try {
-            val current = a11yKnownApps()
-            current.addAll(packages)
-            sharedPreferences.edit()
-                .putStringSet(KEY_A11Y_KNOWN_APPS, current)
-                .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
-                .apply()
+            synchronized(a11yKnownAppsLock) {
+                val current = a11yKnownApps()
+                current.addAll(packages)
+                sharedPreferences.edit()
+                    .putStringSet(KEY_A11Y_KNOWN_APPS, current)
+                    .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
+                    .apply()
+            }
         } catch (_: Exception) {
         }
     }
