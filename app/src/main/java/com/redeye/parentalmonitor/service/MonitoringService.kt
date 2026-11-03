@@ -7944,15 +7944,26 @@ class MonitoringService : Service() {
             // rumah membuat transisi keluar rumah tak pernah terjadi,
             // jadi fakta berangkat harian hilang; dan dua pagar
             // bertitik hampir sama menggandakan alert satu kejadian.
+            // Enam nilai konfigurasi dibaca SEKALI (issue
+            // #1095): dulu blok bersarang dan daftar pagar
+            // membaca himpunan yang sama dua kali dalam satu
+            // panggilan (tiap get = dekripsi) tanpa penulisan
+            // pagar di antaranya.
+            val homeLatE6 = try { preferencesManager.homeLatE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val homeLonE6 = try { preferencesManager.homeLonE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val homeRad = try { preferencesManager.homeRadiusM } catch (_: Exception) { 0 }
+            val schoolLatE6 = try { preferencesManager.schoolLatE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val schoolLonE6 = try { preferencesManager.schoolLonE6 } catch (_: Exception) { Long.MIN_VALUE }
+            val schoolRad = try { preferencesManager.schoolRadiusM } catch (_: Exception) { 0 }
             val schoolNestedInHome = try {
-                val hCfg = GeofenceLogic.configured(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM)
-                val sCfg = GeofenceLogic.configured(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM)
+                val hCfg = GeofenceLogic.configured(homeLatE6, homeLonE6, homeRad)
+                val sCfg = GeofenceLogic.configured(schoolLatE6, schoolLonE6, schoolRad)
                 if (hCfg && sCfg) {
                     val centerDist = ReportFormat.distanceMeters(
-                        preferencesManager.homeLatE6 / 1_000_000.0, preferencesManager.homeLonE6 / 1_000_000.0,
-                        preferencesManager.schoolLatE6 / 1_000_000.0, preferencesManager.schoolLonE6 / 1_000_000.0
+                        homeLatE6 / 1_000_000.0, homeLonE6 / 1_000_000.0,
+                        schoolLatE6 / 1_000_000.0, schoolLonE6 / 1_000_000.0
                     )
-                    centerDist >= 0f && centerDist <= preferencesManager.homeRadiusM
+                    centerDist >= 0f && centerDist <= homeRad
                 } else {
                     false
                 }
@@ -7961,8 +7972,8 @@ class MonitoringService : Service() {
             }
             var homeAlertedInside: Boolean? = null
             val fences = listOf(
-                Triple(preferencesManager.homeLatE6, preferencesManager.homeLonE6, preferencesManager.homeRadiusM) to true,
-                Triple(preferencesManager.schoolLatE6, preferencesManager.schoolLonE6, preferencesManager.schoolRadiusM) to false
+                Triple(homeLatE6, homeLonE6, homeRad) to true,
+                Triple(schoolLatE6, schoolLonE6, schoolRad) to false
             )
             for ((cfg, isHome) in fences) {
                 val (laE6, loE6, rad) = cfg

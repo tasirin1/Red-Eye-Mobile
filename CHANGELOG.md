@@ -21,6 +21,7 @@
 - Pemeriksaan reset basis data pesan/panggilan kini dijatah: dua kueri ke penyedia konten yang dulu dibayar di setiap siklus sinkron kini hanya berjalan tiap 15 menit atau saat kursor berubah, tanpa mengurangi kecepatan deteksi reset yang sebenarnya.
 - Layar Setup tidak lagi menghitung status tiga kali saat dibuka: satu putaran penuh baca setelan dan cek izin yang duplikat di awal pembukaan dihapus, status tetap segar dari panggilan resume dan pemuat field.
 - Notifikasi layanan depan yang isinya tetap kini dibangun sekali dan dipakai ulang (dibangun ulang hanya bila bahasa perangkat berubah), tidak lagi dibangun dari nol untuk setiap intent yang masuk termasuk tiap kali kalkulator dibuka.
+- Pemeriksaan pagar kini membaca enam nilai konfigurasinya sekali per panggilan, bukan dua kali: blok pagar bersarang dan daftar pagar memakai bacaan lokal yang sama.
 
 ## [1.6.601] - 2026-11-03
 
