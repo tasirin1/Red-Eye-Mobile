@@ -1018,6 +1018,34 @@ def modul_settings():
     return modul
 
 
+_MODUL_CACHE = None
+
+
+def _modul_repo():
+    global _MODUL_CACHE
+    if _MODUL_CACHE is None:
+        _MODUL_CACHE = modul_settings()
+    return _MODUL_CACHE
+
+
+def dir_sampah_sungguhan(bagian):
+    """True bila path memuat direktori sampah (.gradle/__pycache__)
+    di lokasi SUNGGUHAN (issue #895): .gradle di akar repo atau di
+    akar modul settings.gradle; __pycache__ di akar atau di bawah
+    tools/ (satu-satunya tempat berkas .py terlacak tinggal, jadi
+    satu-satunya tempat Python menaruh cache-nya). Sebelumnya nama
+    itu dikecualikan di komponen path MANA PUN sehingga
+    docs/__pycache__/sembunyi.txt lolos kedua gerbang — pola yang
+    sama yang ditutup untuk "build" di #706/#719."""
+    modul = _modul_repo()
+    for i, b in enumerate(bagian):
+        if b == ".gradle" and (i == 0 or tuple(bagian[:i]) in modul):
+            return True
+        if b == "__pycache__" and (i == 0 or bagian[0] == "tools"):
+            return True
+    return False
+
+
 def cek_secret_terabaikan(gagal, peringatan):
     """Berkas ignored + tak terlacak tak terlihat ls-files biasa: berkas
     berisi token di sana tak terlihat kedua gerbang sampai seseorang
@@ -1025,7 +1053,7 @@ def cek_secret_terabaikan(gagal, peringatan):
     modul = modul_settings()
     for path in nama_terabaikan():
         bagian = path.split("/")
-        if any(b in (".gradle", "__pycache__") for b in bagian):
+        if dir_sampah_sungguhan(bagian):
             continue
         # Pengecualian direktori build hanya untuk direktori build SUNGGUHAN
         # (issue #706): komponen bernama "build" di mana pun sebelumnya ikut
@@ -1468,7 +1496,7 @@ def utama():
         # Nama berkas ignored ikut dipindai (issue #864).
         nama_pindai += [p for p in nama_terabaikan()
                         if p not in nama_pindai and
-                        not any(b in (".gradle", "__pycache__") for b in p.split("/"))]
+                        not dir_sampah_sungguhan(p.split("/"))]
         cek_secret_nama(gagal, nama_pindai)
     else:
         cek_secret(gagal, diff)
@@ -1480,7 +1508,7 @@ def utama():
         # sudah dipindai cek_secret_terabaikan, namanya belum.
         nama_pindai += [p for p in nama_terabaikan()
                         if p not in nama_pindai and
-                        not any(b in (".gradle", "__pycache__") for b in p.split("/"))]
+                        not dir_sampah_sungguhan(p.split("/"))]
         cek_secret_nama(gagal, nama_pindai)
     cek_secret_tak_lacak(gagal)
     cek_secret_terabaikan(gagal, peringatan)

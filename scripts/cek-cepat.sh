@@ -81,7 +81,10 @@ ign_token=""
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in
-    build/*|app/build/*|*/.gradle/*|.gradle/*|*/__pycache__/*) continue ;;
+    # Direktori sampah hanya dikecualikan di lokasi sungguhan
+    # (issue #895): pola */ sebelumnya mengecualikan komponen di
+    # tengah path mana pun (docs/__pycache__/ lolos).
+    build/*|app/build/*|.gradle/*|app/.gradle/*|__pycache__/*|tools/__pycache__/*) continue ;;
   esac
   if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then ign_token=$f; break; fi
 done <<< "$(git ls-files --others -i --exclude-standard 2>/dev/null || true)"
@@ -100,7 +103,7 @@ if [ -f tools/cek-token.py ]; then
   if [ -n "$b64_tak_lacak" ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas tak terlacak $b64_tak_lacak (hanya via input SetupActivity)"; gagal=1;
   fi
-  b64_ign=$(git ls-files --others -z -i --exclude-standard 2>/dev/null | tr '\0' '\n' | grep -v -E '^(build/|app/build/|.*/\.gradle/|\.gradle/|.*__pycache__/)' | tr '\n' '\0' | python3 tools/cek-token.py --berkas 2>/dev/null || true)
+  b64_ign=$(git ls-files --others -z -i --exclude-standard 2>/dev/null | tr '\0' '\n' | grep -v -E '^(build/|app/build/|\.gradle/|app/\.gradle/|__pycache__/|tools/__pycache__/)' | tr '\n' '\0' | python3 tools/cek-token.py --berkas 2>/dev/null || true)
   if [ -n "$b64_ign" ]; then
     echo "GAGAL: kemungkinan token bot asli (base64/terbelah) di berkas terabaikan $b64_ign (hanya via input SetupActivity)"; gagal=1;
   fi
