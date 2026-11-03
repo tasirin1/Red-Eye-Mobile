@@ -8460,6 +8460,14 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         val last = try { preferencesManager.heartbeatAt } catch (_: Exception) { 0L }
         if (last > 0L && now > last && now - last < hours * 3_600_000L) return
+        if (last > 0L && now < last) {
+            // Jam dimundurkan (issue #938, pola RESET
+            // DigestSchedule): cap di masa depan — jangkar
+            // ulang ke sekarang TANPA mengirim, agar tak ada
+            // heartbeat ekstra dan interval tak bergeser mundur.
+            try { preferencesManager.heartbeatAt = now } catch (_: Exception) { }
+            return
+        }
         if (awaitingOwnerLogin()) return
         // Cap sesudah kirim berhasil (issue #798, pola #737);
         // status #806: terantre juga mencap agar tak dobel.

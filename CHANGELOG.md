@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Detak jantung (heartbeat) kini tahan jam yang dimundurkan: cap masa depan dijangkar ulang tanpa mengirim detak ekstra dan tanpa menggeser interval mundur.
 - Tidur diam loop kamera dan patroli tidak lagi melewati akhir mode malam: bangun kini dibatasi sampai 05:00 bila mode malam yang menahan, sehingga foto/patroli tidak telat sampai 30 menit sesudah malam berakhir.
 - Pemeriksaan pagar cadangan (geofence fallback) tidak lagi kehilangan jatah 15 menitnya hanya karena satu kali gagal mengambil lokasi: cap jeda kini ditulis sesudah posisi didapat, dan kegagalan GPS hanya menekan pemeriksaan ±2 menit.
 - Batas waktu total panggilan teks Telegram diturunkan 90 → 60 detik: satu pengiriman yang menggantung kini menahan antrean serial lebih singkat (unggahan media tidak terpengaruh — kliennya terpisah dengan batas 600 detik).
