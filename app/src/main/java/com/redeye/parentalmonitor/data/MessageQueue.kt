@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.redeye.parentalmonitor.data.models.QueuedMessage
 import com.redeye.parentalmonitor.utils.MessageTrim
 import com.redeye.parentalmonitor.utils.QueueCap
+import com.redeye.parentalmonitor.utils.QueueFresh
 
 class MessageQueue private constructor(context: Context) {
 
@@ -414,6 +415,8 @@ class MessageQueue private constructor(context: Context) {
     }
 
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {
+        // Hitungan kesegarannya di QueueFresh (logika murni
+        // teruji, issue #1028).
         val now = try {
             android.os.SystemClock.elapsedRealtime()
         } catch (_: Exception) {
@@ -424,39 +427,20 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
             0L
         }
-        if (items.size <= 5) return items.filter { isFresh(it, wallCutoff, now, bootAt) }
-        if (items.all { isFresh(it, wallCutoff, now, bootAt) }) return items
-        val fresh = items.filter { isFresh(it, wallCutoff, now, bootAt) }
-        if (fresh.size * 2 < items.size && items.all { it.bootAt <= 0L }) {
-            // Penyelamatan "jam melompat" hanya dengan bukti
-            // (issue #967): antrean warisan yang sungguh tua
-            // memenuhi syarat yang sama persis (mayoritas basi +
-            // semua bootAt<=0) dan dulu dipertahankan selamanya
-            // — banjir laporan basi terkirim dan tak pernah
-            // tercatat gugur. Bukti lompatan jam yang sah: ada
-            // pesan bertanggal masa depan terhadap jam dinding
-            // sekarang (jam pernah dimajukan lalu terkoreksi).
-            // Tanpa bukti itu yang basi memang basi: buang.
-            val nowWall = System.currentTimeMillis()
-            if (items.any { it.timestamp > nowWall + 5 * 60_000L }) {
-                android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
-                return items
-            }
+        if (items.size <= 5) return items.filter { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }
+        if (items.all { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }) return items
+        val fresh = items.filter { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }
+        // Penyelamatan "jam melompat" hanya dengan bukti
+        // (issue #967): antrean warisan yang sungguh tua
+        // memenuhi syarat yang sama persis (mayoritas basi +
+        // semua bootAt<=0) dan dulu dipertahankan selamanya.
+        // Bukti yang sah: ada pesan bertanggal masa depan.
+        val nowWall = System.currentTimeMillis()
+        if (QueueFresh.clockJumpRescue(items.size, fresh.size, items.all { it.bootAt <= 0L }, items.any { it.timestamp > nowWall + QueueFresh.FUTURE_PROOF_MS })) {
+            android.util.Log.w("MessageQueue", "Clock jump suspected, keeping ${items.size} messages")
+            return items
         }
         return fresh
-    }
-
-    private fun isFresh(q: QueuedMessage, wallCutoff: Long, now: Long, bootAt: Long): Boolean {
-        val mark = q.elapsedAt
-        val sameBoot = q.bootAt > 0L && bootAt > 0L && kotlin.math.abs(q.bootAt - bootAt) <= 120_000L
-        if (mark > 0L && sameBoot) {
-            return if (now < mark) {
-                q.timestamp >= wallCutoff
-            } else {
-                now - mark <= 7 * 24 * 60 * 60_000L || q.timestamp >= wallCutoff
-            }
-        }
-        return q.timestamp >= wallCutoff
     }
 
     private fun pruneVolatileLocked() {

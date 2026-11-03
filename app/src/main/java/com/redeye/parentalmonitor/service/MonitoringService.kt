@@ -26,6 +26,7 @@ import com.redeye.parentalmonitor.network.TelegramPollClient
 import com.redeye.parentalmonitor.utils.AccessPin
 import com.redeye.parentalmonitor.utils.AppWatch
 import com.redeye.parentalmonitor.utils.BootClock
+import com.redeye.parentalmonitor.utils.PhotoPause
 import com.redeye.parentalmonitor.utils.CommandSuggest
 import com.redeye.parentalmonitor.utils.ContactsPaging
 import com.redeye.parentalmonitor.utils.HeldPhotos
@@ -5617,58 +5618,28 @@ class MonitoringService : Service() {
     }
 
     private fun photoPausedElapsed(): Long {
+        // Keputusan hitungnya di PhotoPause (logika murni
+        // teruji, issue #1028); di sini hanya baca/tulis
+        // prefs-nya.
         val stored = try {
             preferencesManager.photoPausedUntil
         } catch (_: Exception) {
             0L
         }
-        if (stored <= 0L) return 0L
-        if (stored < 1_000_000_000_000L) {
-            val remaining = stored - android.os.SystemClock.elapsedRealtime()
-            val migrated = if (remaining > 0L) System.currentTimeMillis() + remaining else 0L
-            try {
-                preferencesManager.photoPausedUntil = migrated
-            } catch (_: Exception) {
-            }
-            return migrated
-        }
-        // Jangkar monoton (issue #939): sisa jeda dihitung
-        // dari tenggat elapsedRealtime pendamping, jadi
-        // kemunduran jam dinding tidak lagi memperpanjang
-        // jeda (dulu jeda 60 mnt bisa meregang jadi ±4 jam).
-        // Sisa dijepit 480 mnt: jeda sah maksimum sekaligus
-        // pengaman jangkar basi sesudah perangkat menyala ulang
-        // (elapsedRealtime mulai dari nol lagi).
         val elapsedDeadline = try {
             preferencesManager.photoPausedElapsedUntil
         } catch (_: Exception) {
             0L
         }
-        if (elapsedDeadline > 0L) {
-            val sisaElapsed = elapsedDeadline - android.os.SystemClock.elapsedRealtime()
-            if (sisaElapsed <= 0L) return 0L
-            // Jangkar elapsed tak sah lintas reboot (issue #941):
-            // sesudah perangkat menyala ulang elapsedRealtime
-            // mulai dari nol, jadi sisaElapsed membengkak sebesar
-            // uptime lama dan horizon 480 mnt bergulir tak pernah
-            // berakhir. Sisa dinding adalah batas kedua yang
-            // selalu sah — ambil yang LEBIH KECIL: kemunduran jam
-            // tetap diatur sisa elapsed (perlindungan #939),
-            // reboot diatur sisa dinding, keduanya dijepit 480.
-            val sisaDinding = stored - System.currentTimeMillis()
-            if (sisaDinding <= 0L) return 0L
-            val sisa = minOf(sisaElapsed, sisaDinding).coerceAtMost(480 * 60_000L)
-            return System.currentTimeMillis() + sisa
-        }
-        if (stored - System.currentTimeMillis() > 480 * 60_000L) {
-            val clamped = System.currentTimeMillis() + 480 * 60_000L
+        val hasil = PhotoPause.effectiveUntil(stored, elapsedDeadline, System.currentTimeMillis(), android.os.SystemClock.elapsedRealtime())
+        val tulis = hasil.second
+        if (tulis != null && tulis != stored) {
             try {
-                preferencesManager.photoPausedUntil = clamped
+                preferencesManager.photoPausedUntil = tulis
             } catch (_: Exception) {
             }
-            return clamped
         }
-        return stored
+        return hasil.first
     }
 
     private fun hasBackgroundLocation(): Boolean {
