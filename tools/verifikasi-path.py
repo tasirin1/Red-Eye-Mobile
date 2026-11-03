@@ -79,6 +79,17 @@ def jalan(*args):
     return hasil.stdout if hasil.returncode == 0 else None
 
 
+def pecah_nama(out):
+    """Pecah keluaran daftar nama git berformat -z (issue #1138).
+
+    Tanpa -z git mengutip nama non-ASCII gaya C sehingga nama
+    terkuotasi tak pernah cocok dengan berkas nyata: berkas
+    terlarang lolos aturan repo dan isi berkas tak terpindai.
+    Semua daftar nama di gerbang ini wajib -z + pecah NUL.
+    """
+    return [x for x in (out or "").split("\x00") if x]
+
+
 def jalan_biner(*args):
     # Varian biner (issue #801): isi blob riwayat harus didekode
     # mengikuti BOM lewat _dekode; jalan() teks memutus pola token
@@ -99,16 +110,16 @@ def daftar_berkas_berubah(rentang):
                 a, b = rentang.split(pemisah, 1)
                 if set(a) == {"0"} or not a:
                     return None  # push pertama: tak ada pembanding
-                out = jalan("git", "diff", "--name-only", a + pemisah + b)
+                out = jalan("git", "diff", "--name-only", "-z", a + pemisah + b)
                 if out is not None:
-                    return [x for x in out.splitlines() if x]
+                    return pecah_nama(out)
                 return None
     return None
 
 
 def nama_tak_lacak():
-    out = jalan("git", "ls-files", "--others", "--exclude-standard")
-    return out.splitlines() if out else []
+    out = jalan("git", "ls-files", "--others", "--exclude-standard", "-z")
+    return pecah_nama(out)
 
 
 def _utf16_tanpa_bom(data):
@@ -550,6 +561,27 @@ def cek_builder_legacy(gagal):
                 gagal.append("%s memuat pola alur build aktif (%s) — aturan §3: legacy harus tetap mati" % (nama, terlarang))
 
 
+def _ambil_terhapus(out):
+    # Token -z --name-status berurutan posisi: status, path
+    # (dua path untuk R/C). Ambil path milik status D saja.
+    token = pecah_nama(out)
+    hasil = []
+    i = 0
+    while i < len(token):
+        status = token[i]
+        i += 1
+        if not status or status[0] not in "AMDRCTU":
+            continue
+        ambil = 2 if status[0] in "RC" else 1
+        for _ in range(ambil):
+            if i >= len(token):
+                break
+            if status[0] == "D":
+                hasil.append(token[i])
+            i += 1
+    return hasil
+
+
 def berkas_dihapus(rentang):
     """Daftar path yang dihapus pada diff (butuh status; kosong bila tak tahu)."""
     if rentang and ("..." in rentang or ".." in rentang):
@@ -558,13 +590,12 @@ def berkas_dihapus(rentang):
                 a, b = rentang.split(pemisah, 1)
                 if set(a) == {"0"} or not a:
                     return []
-                out = jalan("git", "diff", "--name-status", a + pemisah + b)
+                out = jalan("git", "diff", "--name-status", "-z", a + pemisah + b)
                 if out is None:
                     return []
-                return [x.split(None, 1)[1] for x in out.splitlines()
-                        if x.startswith("D")]
-    out = jalan("git", "diff", "--name-status")
-    return [x.split(None, 1)[1] for x in (out or "").splitlines() if x.startswith("D")]
+                return _ambil_terhapus(out)
+    out = jalan("git", "diff", "--name-status", "-z")
+    return _ambil_terhapus(out)
 
 
 def disebut_kata(nama, lewat=()):
@@ -988,9 +1019,7 @@ def cek_secret_pohon(gagal):
     # Per berkas lewat mengandung_token (issue #765): git grep literal
     # saja melewatkan bentuk base64/terbelah; baca() mendekode toleran
     # sehingga berkas biner ikut terbaca seperti issue #695/#742.
-    for path in (jalan("git", "ls-files") or "").splitlines():
-        if not path:
-            continue
+    for path in pecah_nama(jalan("git", "ls-files", "-z")):
         if mengandung_token(baca(path)):
             gagal.append("Kemungkinan token bot asli terlacak di %s "
                          "(termasuk biner/base64/terbelah) — periksa dan "
@@ -1080,8 +1109,8 @@ def cek_secret_riwayat(gagal, rentang):
         # untuk commit root dan commit merge, jadi berkas UTF-16
         # yang lahir di sana tak pernah terjangkau kanal ini.
         berubah = jalan("git", "diff-tree", "--no-commit-id",
-                        "--name-only", "-r", "--root", "-m", sha) or ""
-        for path in dict.fromkeys(berubah.splitlines()):
+                        "--name-only", "-z", "-r", "--root", "-m", sha) or ""
+        for path in dict.fromkeys(pecah_nama(berubah)):
             path = path.strip()
             if not path:
                 continue
@@ -1163,12 +1192,24 @@ def nama_riwayat(rev):
     # -m (issue #835): tanpa itu git log tak menampilkan diff commit
     # merge sama sekali, jadi nama yang hanya hidup di resolusi
     # merge tak terlihat daftar ini.
-    out = jalan("git", "log", "--format=", "--name-status", "-m", rev) or ""
+    out = jalan("git", "log", "--format=", "--name-status", "-z", "-m", rev) or ""
+    # Token -z berurutan posisi seperti berkas_dihapus:
+    # status lalu satu path (dua untuk R/C) — kumpulkan semua
+    # pathnya (nama lama rename ikut, sesuai maksud #816).
     hasil = []
-    for baris in out.splitlines():
-        kolom = baris.split("\t")
-        if len(kolom) >= 2 and kolom[0] and kolom[0][0] in "AMDRC":
-            hasil.extend(kolom[1:])
+    token = pecah_nama(out)
+    i = 0
+    while i < len(token):
+        status = token[i]
+        i += 1
+        if not status or status[0] not in "AMDRC":
+            continue
+        ambil = 2 if status[0] in "RC" else 1
+        for _ in range(ambil):
+            if i >= len(token):
+                break
+            hasil.append(token[i])
+            i += 1
     return hasil
 
 
@@ -1202,8 +1243,8 @@ def cek_secret_tak_lacak(gagal):
 
 
 def nama_terabaikan():
-    out = jalan("git", "ls-files", "--others", "-i", "--exclude-standard")
-    return out.splitlines() if out else []
+    out = jalan("git", "ls-files", "--others", "-i", "--exclude-standard", "-z")
+    return pecah_nama(out)
 
 
 def kupas_komentar_gradle(teks):
@@ -1762,8 +1803,8 @@ def utama():
             rentang_lokal = hulu.strip() + "...HEAD"
             rentang_isi = hulu.strip() + "..HEAD"
             diff = jalan("git", "diff", rentang_lokal) or ""
-            daftar = jalan("git", "diff", "--name-only", rentang_lokal) or ""
-            berubah = daftar.splitlines()
+            daftar = jalan("git", "diff", "--name-only", "-z", rentang_lokal) or ""
+            berubah = pecah_nama(daftar)
         else:
             # Tanpa upstream (issue #869): fallback lama HEAD~1...HEAD
             # hanya melihat commit terakhir — isi dan pesan commit
@@ -1778,8 +1819,8 @@ def utama():
             if akar_sha:
                 diff = (jalan("git", "show", "--format=", "--patch", akar_sha) or "") + \
                     (jalan("git", "diff", akar_sha + "...HEAD") or "")
-                berubah = (jalan("git", "show", "--format=", "--name-only", akar_sha) or "").splitlines()
-                berubah += (jalan("git", "diff", "--name-only", akar_sha + "...HEAD") or "").splitlines()
+                berubah = pecah_nama(jalan("git", "show", "--format=", "--name-only", "-z", akar_sha))
+                berubah += pecah_nama(jalan("git", "diff", "--name-only", "-z", akar_sha + "...HEAD"))
             else:
                 diff = ""
                 berubah = []
@@ -1792,11 +1833,25 @@ def utama():
         if rentang_isi:
             cek_secret_riwayat(gagal, rentang_isi)
         cek_secret_pesan(gagal, rentang_lokal)
-        kotor = jalan("git", "status", "--porcelain") or ""
-        for baris in kotor.splitlines():
-            nama = baris[3:].strip().strip('"')
+        kotor = jalan("git", "status", "--porcelain", "-z") or ""
+        # Format -z: tiap entri "XY <path>"; untuk rename urutan
+        # dibalik git menjadi "R  <baru>" lalu entri berikutnya
+        # path asal polos — keduanya ikut diperiksa.
+        token_kotor = pecah_nama(kotor)
+        i_kotor = 0
+        while i_kotor < len(token_kotor):
+            entri = token_kotor[i_kotor]
+            i_kotor += 1
+            if len(entri) < 4:
+                continue
+            nama = entri[3:]
             if nama and nama not in berubah:
                 berubah.append(nama)
+            if ("R" in entri[:2] or "C" in entri[:2]) and i_kotor < len(token_kotor):
+                asal = token_kotor[i_kotor]
+                i_kotor += 1
+                if asal and asal not in berubah:
+                    berubah.append(asal)
         # Diff kerja yang belum commit ikut diperiksa agar hapusan salah
         # tertangkap sebelum commit, bukan sesudah push.
         diff += (jalan("git", "diff") or "")
@@ -1835,14 +1890,14 @@ def utama():
     if args.semua:
         # Mode audit penuh: aturan berkas terlarang harus melihat SELURUH
         # berkas terlacak, bukan hanya kode di app/ (issue #679).
-        terlacak = (jalan("git", "ls-files") or "").splitlines()
+        terlacak = pecah_nama(jalan("git", "ls-files", "-z"))
         cek_aturan_repo(gagal, terlacak)
     else:
         cek_aturan_repo(gagal, berubah)
         cek_ukuran_pohon(gagal, set(berubah))
     if args.semua:
         cek_secret_pohon(gagal)
-        nama_pindai = (jalan("git", "ls-files") or "").splitlines()
+        nama_pindai = pecah_nama(jalan("git", "ls-files", "-z"))
         nama_pindai += [p for p in nama_riwayat("HEAD")
                         if p not in nama_pindai]
         # Berkas tak terlacak ikut dipindai namanya (issue #863):
