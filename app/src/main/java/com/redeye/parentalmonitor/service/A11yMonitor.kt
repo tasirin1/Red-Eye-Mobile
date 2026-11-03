@@ -65,9 +65,19 @@ object A11yMonitor {
     // dari string prefs di SETIAP pindaian. Kini diurai hanya
     // bila string mentahnya berubah (pola cache yang sama
     // dengan NotificationForwarderService).
+    // @Volatile (issue #1017): cache ini dibaca dari dua
+    // benang (benang peristiwa aksesibilitas dan executor
+    // redeye-a11y). Penulis menulis cache SEBELUM raw, jadi
+    // pembaca yang melihat raw baru pasti melihat cache
+    // barunya juga; tanpa penghalang memori pasangan
+    // (raw, cache) bisa terbaca tak konsisten sesaat.
+    @Volatile
     private var watchPackagesRaw: String? = null
+    @Volatile
     private var watchPackagesCache: Set<String> = emptySet()
+    @Volatile
     private var watchKeywordsRaw: String? = null
+    @Volatile
     private var watchKeywordsCache: List<String> = emptyList()
     private var keywordAlertDay = ""
     private var keywordAlertCount = 0
