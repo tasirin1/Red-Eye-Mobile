@@ -7747,8 +7747,7 @@ class MonitoringService : Service() {
                 if (nightDigestAttemptKey != key) {
                     nightDigestAttemptKey = key
                     if (sendDailyDigest(manual = false)) {
-                        try { preferencesManager.nightDigestDate = key } catch (_: Exception) { }
-                        try { preferencesManager.nightDigestDoneAtMs = now } catch (_: Exception) { }
+                        preferencesManager.setNightDigestDone(key, now)
                     }
                 }
                 return
@@ -7760,8 +7759,7 @@ class MonitoringService : Service() {
                 if (nightDigestAttemptKey != yesterday) {
                     nightDigestAttemptKey = yesterday
                     if (sendDailyDigest(manual = false)) {
-                        try { preferencesManager.nightDigestDate = yesterday } catch (_: Exception) { }
-                        try { preferencesManager.nightDigestDoneAtMs = now } catch (_: Exception) { }
+                        preferencesManager.setNightDigestDone(yesterday, now)
                     }
                 }
             }

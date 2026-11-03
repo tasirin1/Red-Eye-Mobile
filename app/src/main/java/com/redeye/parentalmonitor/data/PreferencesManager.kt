@@ -1797,6 +1797,21 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_NIGHT_DIGEST_DATE, "")
         set(value) = sharedPreferences.edit().putString(KEY_NIGHT_DIGEST_DATE, value).apply()
 
+    // Pasangan cap digest malam ditulis dalam SATU transaksi
+    // (issue #890): dua apply() terpisah bisa menyisakan pasangan
+    // tak konsisten bila proses mati di antaranya — tanggal baru
+    // dengan epoch lama terbaca DigestSchedule sebagai geser zona
+    // waktu sehingga digest malam yang sama terkirim ulang.
+    fun setNightDigestDone(date: String, atMs: Long) {
+        try {
+            sharedPreferences.edit()
+                .putString(KEY_NIGHT_DIGEST_DATE, date)
+                .putLong(KEY_NIGHT_DIGEST_DONE_AT, atMs)
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
     // Epoch saat cap digest malam ditulis (issue #852): membedakan
     // pindah zona waktu (epoch normal) dari jam dimundurkan (epoch
     // mundur) pada kunci hari yang sama-sama terbaca mundur.
