@@ -313,6 +313,12 @@ object A11yMonitor {
         val now = SystemClock.elapsedRealtime()
         val last = lastContentScan[pkg] ?: 0L
         if (last > 0L && now - last < CONTENT_SCAN_GAP_MS) return
+        // Cap throttle ditulis SEBELUM gerbang (issue #1014):
+        // dulu cap hanya ditulis sesudah semua gerbang lolos,
+        // jadi pada keadaan bawaan (pantau mati) dan paket
+        // sensitif jatah 3 dtk tak pernah berlaku dan pra-cek
+        // penuh jalan di setiap peristiwa konten.
+        lastContentScan[pkg] = now
         if (AppWatch.isSensitivePackage(pkg)) return
         val manager = prefs ?: return
         if (!manager.a11yAppWatchEnabled) return
@@ -328,7 +334,6 @@ object A11yMonitor {
                 buang--
             }
         }
-        lastContentScan[pkg] = now
         if (pkg !in watchedPackages(manager)) return
         val keywords = watchedKeywords(manager)
         if (keywords.isEmpty()) return
