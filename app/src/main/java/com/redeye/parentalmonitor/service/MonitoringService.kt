@@ -644,6 +644,11 @@ class MonitoringService : Service() {
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Starting initial data collection...")
                         sendInitialData()
                         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Initial data collection completed")
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        // Pembatalan tak boleh ditelan (issue
+                        // #997): delay/sendInitialData yang dibatalkan
+                        // harus menghentikan job ini sungguhan.
+                        throw e
                     } catch (_: Exception) {
                     } finally {
                         if (locked) dataCheckLock.release()
