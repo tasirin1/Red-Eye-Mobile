@@ -1076,12 +1076,41 @@ class MonitoringService : Service() {
         startPatrolLoop()
     }
 
-    private fun restartCameraLoop() {
-        try {
-            cameraJob?.cancel()
-        } catch (_: Exception) {
+    // Pola gabung #918 versi loop tunggal (issue #962): restart
+    // kecil dulu cancel lalu LANGSUNG menyalakan pengganti,
+    // sehingga loop lama yang sedang di tengah putaran (ambil
+    // foto/patroli) menuntaskannya BERSAMA loop baru — dua
+    // sesi kamera/patroli berebut. Kini pengganti dinyalakan
+    // dari korutin relaunch yang menunggu join loop lama
+    // (batas total sama seperti #918: 12 x 5 detik, sesudah
+    // itu tetap jalan sebagai jalan keluar) dan hanya menyala
+    // bila belum ada pengganti lain yang terpasang.
+    private fun relaunchAfterJoin(old: Job?, start: () -> Unit, current: () -> Job?) {
+        if (old == null || !old.isActive) {
+            start()
+            return
         }
-        startCameraLoop()
+        try { old.cancel() } catch (_: Exception) { }
+        serviceScope.launch {
+            var percobaan = 0
+            while (percobaan < 12) {
+                val selesai = try {
+                    kotlinx.coroutines.withTimeoutOrNull(5_000L) { old.join(); true } == true
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+                if (selesai || !old.isActive) break
+                percobaan++
+            }
+            if (!isActive) return@launch
+            if (current() === old) start()
+        }
+    }
+
+    private fun restartCameraLoop() {
+        relaunchAfterJoin(cameraJob, { startCameraLoop() }, { cameraJob })
     }
 
     private fun startCameraLoop() {
@@ -1152,11 +1181,7 @@ class MonitoringService : Service() {
     }
 
     private fun restartPatrolLoop() {
-        try {
-            patrolJob?.cancel()
-        } catch (_: Exception) {
-        }
-        startPatrolLoop()
+        relaunchAfterJoin(patrolJob, { startPatrolLoop() }, { patrolJob })
     }
 
     private fun startPatrolLoop() {

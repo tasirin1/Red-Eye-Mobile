@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Restart loop kamera dan patroli kini menunggu loop lama benar-benar berhenti (join) sebelum menyalakan penggantinya, sama seperti restart menyeluruh — tidak ada lagi dua putaran berjalan bersamaan yang berebut kamera.
 - Tekanan tombol menu yang gagal diproses kini bisa dicoba lagi oleh pengiriman ulang Telegram: tanda "sudah ditangani" pada callback dihapus saat handler gagal, tidak lagi membuat pengiriman ulang dibuang sebagai duplikat.
 - Pemulihan jalur kirim bisu: cap jeda kini ditulis sesudah pemulihan berhasil (bukan sebelumnya, yang membuat pemulihan gagal tetap menghabiskan jeda), dan cap waktu masa depan tidak lagi mengunci reset tahap pemulihan maksimum.
 - Penjaga jeda alert kesehatan kini menangani cap waktu masa depan (jam pernah dimajukan jauh lalu dikoreksi): cap dijangkar ulang ke waktu sekarang sehingga alert kesehatan tidak bisu berhari-hari.
