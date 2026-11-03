@@ -773,9 +773,10 @@ def cek_sinkron_terjemah(gagal):
 
     def peta_nama(dirpath):
         peta = {"string": set(), "string-array": set(), "plurals": set()}
+        bebas = {"string": set(), "string-array": set(), "plurals": set()}
         jumlah_item = {}
         if not os.path.isdir(dirpath):
-            return peta, jumlah_item
+            return peta, jumlah_item, bebas
         for nama_berkas in sorted(os.listdir(dirpath)):
             if not nama_berkas.endswith(".xml"):
                 continue
@@ -784,8 +785,15 @@ def cek_sinkron_terjemah(gagal):
                 continue
             bersih = kupas_komentar_xml(isi)
             for jenis in peta:
-                peta[jenis] |= set(re.findall(
-                    r'<%s(?:\s[^>]*?)?\bname="([^"]+)"' % jenis, bersih))
+                for m in re.finditer(
+                        r'<%s(?:\s([^>]*?))?\bname="([^"]+)"([^>]*)>' % jenis, bersih):
+                    peta[jenis].add(m.group(2))
+                    # translatable="false" memang tak perlu
+                    # pasangan terjemahan (issue #1057): nama
+                    # aplikasi/brand yang hanya ada di values/
+                    # dulu menggagalkan gerbang sebagai "kurang".
+                    if 'translatable="false"' in ((m.group(1) or "") + m.group(3)):
+                        bebas[jenis].add(m.group(2))
             # Jumlah <item> per string-array (issue #1044): nama
             # yang sama antar locale tetapi itemnya lebih sedikit
             # membuat kode yang mengindeks menurut panjang bawaan
@@ -795,13 +803,13 @@ def cek_sinkron_terjemah(gagal):
                     bersih, re.S):
                 jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + \
                     len(re.findall(r"<item(?:\s[^>]*)?>", badan))
-        return peta, jumlah_item
+        return peta, jumlah_item, bebas
 
-    inggris, item_inggris = peta_nama(os.path.join(dasar_res, "values"))
-    indonesia, item_indonesia = peta_nama(os.path.join(dasar_res, "values-in"))
+    inggris, item_inggris, bebas_inggris = peta_nama(os.path.join(dasar_res, "values"))
+    indonesia, item_indonesia, _bebas_id = peta_nama(os.path.join(dasar_res, "values-in"))
     for jenis in ("string", "string-array", "plurals"):
-        kurang = sorted(inggris[jenis] - indonesia[jenis])
-        lebih = sorted(indonesia[jenis] - inggris[jenis])
+        kurang = sorted((inggris[jenis] - bebas_inggris[jenis]) - indonesia[jenis])
+        lebih = sorted(indonesia[jenis] - (inggris[jenis] - bebas_inggris[jenis]) - bebas_inggris[jenis])
         if kurang:
             gagal.append("values-in kurang %s: %s" % (jenis, ", ".join(kurang[:10])))
         if lebih:

@@ -14,6 +14,7 @@
 - Anggaran alert kata pantau harian kini berpasangan epoch seperti cap harian lainnya: anggaran dan jeda yang terakumulasi pada tanggal palsu hasil perubahan jam tidak lagi terwarisi saat tanggal aslinya tiba, dan dimulai ulang sebagaimana mestinya.
 - Data pemakaian aplikasi kini punya dua generasi slot cadangan: akumulasi hari ini tetap bisa dipulihkan walau tanggal perangkat melompat dua kali ke dua tanggal palsu berbeda sebelum jam terkoreksi.
 - Dedup anomali harian kini memakai batas basi yang longgar terhadap perjalanan lintas zona waktu: anomali yang sudah dilaporkan pagi hari tidak lagi terkirim ulang pada tanggal lokal yang sama hanya karena tanggal itu berumur lebih dari 24 jam epoch sesudah terbang ke barat.
+- Pemeriksaan paritas terjemahan gerbang kini menghormati atribut translatable="false": string yang memang tidak untuk diterjemahkan (nama aplikasi/brand) tidak lagi menggagalkan pemeriksaan hanya karena tidak punya pasangan bahasa Indonesia.
 
 ## [1.6.600] - 2026-11-03
 
