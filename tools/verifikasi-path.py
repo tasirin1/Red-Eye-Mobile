@@ -1461,7 +1461,11 @@ def argumen_format(isi):
     # Entitas XML dinormalkan lebih dulu: %< di berkas sumber
     # tertulis %&lt; sehingga tanpa ini tak terlihat pola.
     isi = isi.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&apos;", "'").replace("&amp;", "&")
-    mentah = re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+)?(?:\.(\d+))?([a-zA-Z%])', isi)
+    mentah = re.findall(r'%(?:(\d+)\$)?([-#+ 0,(<]*)(\d+|\*)?(?:\.(\d+|\*))?([a-zA-Z%])', isi)
+    # Lebar/presisi dinamis (*) ikut dibaca (issue #1129):
+    # %*d dan %.*f mengonsumsi argumen int tambahan — pola
+    # angka-saja membuat specifier-nya gugur seluruhnya
+    # sehingga beda tipenya lolos seperti lubang #1111.
     # %% murni adalah persen LITERAL, bukan argumen (issue
     # #1112): membuangnya dari daftar agar terjemahan yang
     # menulis "persen" sebagai kata tidak digagalkan palsu.
