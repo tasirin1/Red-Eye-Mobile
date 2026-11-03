@@ -287,7 +287,10 @@ def hitung_item_array(badan):
                     if k < n and (teks[k] == ">" or teks[k].isspace()):
                         e = teks.find(">", k)
                         if e < 0:
-                            return
+                            # Tag tutup tak berujung: lewati dan
+                            # lanjutkan sesudahnya (issue #1161).
+                            i = j + 1
+                            continue
                         yield ("tutup", False)
                         i = e + 1
                     else:
@@ -296,20 +299,47 @@ def hitung_item_array(badan):
                 if teks.startswith("<item", j):
                     k = j + 5
                     if k < n and (teks[k] == ">" or teks[k] == "/" or teks[k].isspace()):
+                        # Loncati isi tag sadar petik dengan find
+                        # (mesin C): setara telusur per karakter
+                        # tetapi tak kuadratik pada tag rusak
+                        # beruntun (issue #1161).
                         petik = ""
                         m = k
                         while m < n:
-                            c = teks[m]
-                            if petik:
-                                if c == petik:
-                                    petik = ""
-                            elif c == '"' or c == "'":
-                                petik = c
-                            elif c == ">":
+                            # Batas panjang isi tag (issue #1161):
+                            # tag item sah jauh di bawah ini; tanpa
+                            # batas, tag rusak beruntun membuat
+                            # lompatan find berkuadratik.
+                            if m - k > 512:
+                                m = n
                                 break
-                            m += 1
+                            if petik:
+                                e = teks.find(petik, m)
+                                if e < 0:
+                                    m = n
+                                    break
+                                m = e + 1
+                                petik = ""
+                            else:
+                                cand = [x for x in (teks.find(">", m), teks.find('"', m), teks.find("'", m)) if x >= 0]
+                                if not cand:
+                                    m = n
+                                    break
+                                e = min(cand)
+                                if teks[e] == ">":
+                                    m = e
+                                    break
+                                petik = teks[e]
+                                m = e + 1
                         if m >= n:
-                            return
+                            # Tag tak berujung / petik tak
+                            # tertutup (issue #1161): pola lama
+                            # melewatkan tag rusak ini dan tetap
+                            # menghitung item sah berikutnya —
+                            # jangan hentikan seluruh hitungan,
+                            # lanjutkan dari sesudah '<' ini.
+                            i = j + 1
+                            continue
                         yield ("buka", teks[m - 1] == "/")
                         i = m + 1
                     else:

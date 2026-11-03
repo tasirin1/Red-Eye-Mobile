@@ -4,6 +4,7 @@
 
 - Menghapus SMS atau panggilan teratas tidak lagi memicu pengiriman ulang seluruh riwayat: reset kursor basis data kini hanya terjadi pada keruntuhan besar (id teratas menyusut lebih dari separuh, tanda basis diganti atau direstore), bukan pada penurunan kecil akibat penghapusan biasa.
 - Pemeriksaan kata pantau pada SMS kini memakai cache urai: daftar kata hanya diurai ulang bila isinya benar-benar berubah, bukan dibaca dari penyimpanan terenkripsi dan diurai ulang untuk setiap pesan.
+- Cadangan penghitung item pada gerbang tidak lagi berhenti total pada tag dengan petik tak tertutup: tag rusak dilewati dan item sah sesudahnya tetap terhitung, sama seperti perilaku pola sebelumnya.
 
 ## [1.6.606] - 2026-11-03
 
