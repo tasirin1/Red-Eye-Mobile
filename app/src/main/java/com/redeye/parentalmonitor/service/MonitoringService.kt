@@ -277,6 +277,7 @@ class MonitoringService : Service() {
     private var ownerEpoch = 0
     private val offsetPersistLock = Any()
     private val heldPhotosLock = Any()
+    private val heldEntriesCacheLock = Any()
     private var credsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
     @Volatile
     private var credsCheckAt = 0L
@@ -9395,12 +9396,28 @@ class MonitoringService : Service() {
         }
     }
 
+    // Cache urai daftar foto tertahan (issue #982): dulu
+    // daftar diurai ulang dari prefs untuk SETIAP berkas di
+    // loop flush. Kini urai hanya bila string mentah / hash
+    // warisan berubah; daftar hasil perlakuan baca-saja oleh
+    // semua pemanggil (mutasi selalu membangun daftar baru).
+    private var heldEntriesCacheRaw: String? = null
+    private var heldEntriesCacheLegacy: Long = 0L
+    private var heldEntriesCache: List<HeldPhotos.Entry> = emptyList()
+
     private fun heldPhotoEntriesNow(): List<HeldPhotos.Entry> {
-        val entries = ArrayList<HeldPhotos.Entry>()
-        try { entries.addAll(HeldPhotos.parse(preferencesManager.heldPhotoEntriesRaw)) } catch (_: Exception) { }
+        val raw = try { preferencesManager.heldPhotoEntriesRaw } catch (_: Exception) { "" }
         val legacy = try { preferencesManager.heldPhotoHash } catch (_: Exception) { 0L }
-        if (legacy != 0L && entries.none { it.raw == null && it.hash == legacy }) entries.add(HeldPhotos.Entry(null, legacy))
-        return entries
+        synchronized(heldEntriesCacheLock) {
+            if (heldEntriesCacheRaw == raw && heldEntriesCacheLegacy == legacy) return heldEntriesCache
+            val entries = ArrayList<HeldPhotos.Entry>()
+            try { entries.addAll(HeldPhotos.parse(raw)) } catch (_: Exception) { }
+            if (legacy != 0L && entries.none { it.raw == null && it.hash == legacy }) entries.add(HeldPhotos.Entry(null, legacy))
+            heldEntriesCache = entries
+            heldEntriesCacheRaw = raw
+            heldEntriesCacheLegacy = legacy
+            return entries
+        }
     }
 
     private fun storeHeldPhotoEntries(entries: List<HeldPhotos.Entry>) {
