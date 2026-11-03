@@ -55,7 +55,8 @@ object MessageScheduler {
             val requestBuilder = OneTimeWorkRequestBuilder<SendMessageWorker>()
                 .setConstraints(netConstraints)
 
-            val replaceDelayed = shouldReplaceDelayed(now, nextSendAtElapsed.get(), SendMessageWorker.isRunning())
+            val markAtDecision = nextSendAtElapsed.get()
+            val replaceDelayed = shouldReplaceDelayed(now, markAtDecision, SendMessageWorker.isRunning())
             val policy = if (replaceDelayed) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.APPEND_OR_REPLACE
             // Nilai penanda sebelum penolakan ditangkap di LUAR
             // try (variabel try tak terlihat dari catch) agar
@@ -64,14 +65,19 @@ object MessageScheduler {
             // ini tertinggal — penanda 0 menetap sementara
             // pekerjaan tertunda yang hendak diganti tetap hidup.
             var prevReplaceMark = 0L
+            var zeroInstalled = false
             try {
                 // Nolkan penanda SEBELUM enqueue REPLACE
                 // (pola sama #1097): urutan lama bisa menimpa
                 // nilai masa depan yang baru diterbitkan
                 // scheduleMessageSendNext bersamaan.
+                // Penolakan dicoba SEKALI via CAS dari nilai yang
+                // dibaca saat keputusan (issue #1139): bila
+                // penanda sudah berubah, penerbit lain sudah
+                // memasang jadwalnya — jangan ditimpa buta.
                 if (replaceDelayed) {
-                    prevReplaceMark = nextSendAtElapsed.get()
-                    nextSendAtElapsed.set(0L)
+                    prevReplaceMark = markAtDecision
+                    zeroInstalled = nextSendAtElapsed.compareAndSet(markAtDecision, 0L)
                 }
                 WorkManager.getInstance(context.applicationContext)
                     .enqueueUniqueWork(UNIQUE_WORK, policy, requestBuilder.build())
@@ -80,8 +86,8 @@ object MessageScheduler {
                 }
             } catch (e: Exception) {
                 // CAS seperti situs utama (issue #1121): pulihkan
-                // hanya bila penanda masih 0 yang kita terbitkan.
-                if (replaceDelayed) nextSendAtElapsed.compareAndSet(0L, prevReplaceMark)
+                // hanya penolakan yang BENAR kita pasang (#1139).
+                if (replaceDelayed && zeroInstalled) nextSendAtElapsed.compareAndSet(0L, prevReplaceMark)
                 outstandingSends.updateAndGet { if (it > 0) it - 1 else 0 }
                 throw e
             }
@@ -129,9 +135,18 @@ object MessageScheduler {
             // di mana scheduleMessageSend membaca nilai basi
             // dan pesan mendesak menempel di belakang jadwal
             // tertunda. Bila enqueue gagal, nilai lama dipulihkan.
-            prevNextSendAt = nextSendAtElapsed.get()
-            publishedNextSendAt = if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L
-            nextSendAtElapsed.set(publishedNextSendAt)
+            // Penerbitan kini putaran CAS (issue #1139): get-then-
+            // set telanjang membuat dua penerbit bersamaan
+            // saling menimpa buta, dan pemulihan CAS #1121 milik
+            // yang gagal bisa mengembalikan nilai basi di atas
+            // pekerjaan pemenang yang sudah ter-enqueue. Yang
+            // kalah putaran membaca ulang nilai pemenang sebagai
+            // nilai lamanya.
+            while (true) {
+                prevNextSendAt = nextSendAtElapsed.get()
+                publishedNextSendAt = if (delayMs > 0L) android.os.SystemClock.elapsedRealtime() + delayMs else 0L
+                if (nextSendAtElapsed.compareAndSet(prevNextSendAt, publishedNextSendAt)) break
+            }
             WorkManager.getInstance(context.applicationContext)
                 .enqueueUniqueWork(UNIQUE_WORK, policyNext, requestBuilder.build())
             true
