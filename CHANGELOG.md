@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- /layar kini menerima jam desimal juga lewat jalur slash (#885): "layar 6,5 jam" dalam bahasa alami menghasilkan laporan 7 jam, tetapi "/layar 6,5 jam" sebelumnya hanya dijawab pesan cara pakai karena pengurai argumen slash hanya menerima bilangan bulat; kini bentuk desimal yang sama diterima dan dibulatkan dengan aturan yang sama.
 - Kata "screenshot" dan "status" kini dikenali sebagai perintah kata-tunggal (#884): keduanya sebelumnya tidak punya alias dan pengurai frasa menuntut dua kelompok kata, sehingga pesan gabungan seperti "screenshot lalu foto" gugur senyap tanpa saran kirim-terpisah yang dijanjikan #844; kini keduanya terdaftar sebagai alias perintahnya, sejajar "foto" dan "baterai".
 - Satuan pada perintah bahasa alami kini dinilai handler, bukan dibuang di tengah jalan (#883): pembersih argumen alias sebelumnya membuang kata satuan apa pun sesudah angka, sehingga "jemput 500 jam" terpasang senyap sebagai radius 500 meter dan "photointerval 1 jam" terbaca 1 menit; kini satuan diteruskan utuh dan NumericArg di handler mengonversi yang sekeluarga serta menolak yang lintas keluarga — sama seperti jalur slash.
 - Perintah slash resmi bertanda baca ekor kini dieksekusi (#882): "/lock." sebelumnya tidak cocok dengan tabel perintah dan hanya memicu saran, sedangkan "/kunci." dieksekusi lewat jalur alias; kini tanda baca ekor kalimat pada kepala perintah slash dibuang sebelum dicocokkan.

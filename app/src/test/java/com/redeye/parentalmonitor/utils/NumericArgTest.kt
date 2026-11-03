@@ -56,6 +56,24 @@ class NumericArgTest {
     }
 
     @Test
+    fun jamDesimalLayar() {
+        // Issue #885: "/layar 6,5 jam" sebelumnya ditolak jalur slash
+        // padahal jalur alami menerimanya (dibulatkan, #774/#790).
+        assertEquals(7, NumericArg.parseDecimalHours("6,5 jam"))
+        assertEquals(7, NumericArg.parseDecimalHours("6,5"))
+        assertEquals(7, NumericArg.parseDecimalHours("6.5 jam"))
+        assertEquals(7, NumericArg.parseDecimalHours("6,5jam"))
+        assertEquals(1, NumericArg.parseDecimalHours("0,4 jam"))
+        assertEquals(2, NumericArg.parseDecimalHours("2,5"))
+        assertEquals(24, NumericArg.parseDecimalHours("24,4"))
+        assertNull(NumericArg.parseDecimalHours("25,5 jam"))
+        assertNull(NumericArg.parseDecimalHours("24,5"))
+        assertNull(NumericArg.parseDecimalHours("0"))
+        assertNull(NumericArg.parseDecimalHours("6,5 menit"))
+        assertNull(NumericArg.parseDecimalHours("abc"))
+    }
+
+    @Test
     fun satuanKeluargaLainDitolak() {
         assertNull(NumericArg.parse("5 meter", NumericArg.Satuan.DETIK))
         assertNull(NumericArg.parse("5 detik", NumericArg.Satuan.METER))

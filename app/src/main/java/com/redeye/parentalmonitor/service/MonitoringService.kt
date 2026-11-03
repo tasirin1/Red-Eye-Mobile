@@ -3211,7 +3211,10 @@ class MonitoringService : Service() {
             }
             "/layar" -> {
                 val raw = arg.trim()
-                val parsed = NumericArg.parse(raw, NumericArg.Satuan.JAM)
+                // Jam desimal (issue #885): jalur alami menerima
+                // "6,5 jam" sejak #774; jalur slash kini menerima
+                // bentuk yang sama sebagai jalan kedua.
+                val parsed = NumericArg.parse(raw, NumericArg.Satuan.JAM) ?: NumericArg.parseDecimalHours(raw)
                 if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
                     sendToTelegram("Cara pakai: /layar &lt;1-24&gt; (jam, bawaan 24)")
                 } else {

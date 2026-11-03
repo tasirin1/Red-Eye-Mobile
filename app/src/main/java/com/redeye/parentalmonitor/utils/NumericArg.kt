@@ -82,4 +82,32 @@ object NumericArg {
         if (hasil == 0L && n > 0L) return null
         return hasil.toInt()
     }
+
+    private val DECIMAL_HOURS = Regex("^[0-9]+([.,][0-9]+)?$")
+
+    // Jam desimal khusus /layar (issue #885): jalur bahasa alami
+    // menerima "6,5 jam" sejak #774/#790 — dibulatkan ke jam
+    // terdekat (floor(x + 0,5)) dan positif di bawah 0,5 dijepit
+    // ke 1 — sedangkan jalur slash menolaknya karena grammar
+    // parse() hanya bilangan bulat. Fungsi ini menjembatani
+    // bentuk desimal itu saja (satuan selain jam tak diterima);
+    // handler /layar memakainya sebagai jalan kedua sesudah
+    // parse() agar kedua jalur konsisten.
+    fun parseDecimalHours(raw: String): Int? {
+        val t = raw.trim().lowercase(Locale.ROOT)
+        if (t.isEmpty()) return null
+        val numText = when {
+            t.endsWith(" jam") -> t.dropLast(4).trim()
+            t.endsWith("jam") && t.length > 3 -> t.dropLast(3).trim()
+            else -> t
+        }
+        if (numText.contains(' ')) return null
+        if (!DECIMAL_HOURS.matches(numText)) return null
+        val v = numText.replace(',', '.').toDoubleOrNull() ?: return null
+        if (v <= 0.0) return null
+        val rounded = (v + 0.5).toInt()
+        if (rounded == 0) return 1
+        if (rounded !in 1..24) return null
+        return rounded
+    }
 }
