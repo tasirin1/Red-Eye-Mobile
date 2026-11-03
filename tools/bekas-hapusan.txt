@@ -92,3 +92,5 @@ markGroupsForwarded
 setForwardedNotifIdsSync
 setNotifGroupForwardedSync
 a11yKnownApps
+setHeldPhotoHashSync
+setHeldPhotoEntriesRawSync

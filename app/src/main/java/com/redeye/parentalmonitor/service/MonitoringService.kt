@@ -9909,8 +9909,9 @@ class MonitoringService : Service() {
     }
 
     private fun storeHeldPhotoEntries(entries: List<HeldPhotos.Entry>) {
-        try { preferencesManager.setHeldPhotoEntriesRawSync(HeldPhotos.serialize(entries)) } catch (_: Exception) { }
-        try { preferencesManager.setHeldPhotoHashSync(0L) } catch (_: Exception) { }
+        // Satu edit atomik untuk pasangan daftar + penolkan
+        // warisan (issue #1147).
+        try { preferencesManager.setHeldPhotoEntriesAndClearLegacySync(HeldPhotos.serialize(entries)) } catch (_: Exception) { }
     }
 
     // Baca-ubah-tulis daftar foto tertahan di bawah satu kunci: situs-situs

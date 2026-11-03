@@ -1562,20 +1562,21 @@ class PreferencesManager(context: Context) {
     val heldPhotoHash: Long
         get() = prefLong(KEY_HELD_PHOTO_HASH, 0L)
 
-    fun setHeldPhotoHashSync(value: Long): Boolean {
-        return try {
-            sharedPreferences.edit().putLong(KEY_HELD_PHOTO_HASH, value).commit()
-        } catch (_: Exception) {
-            false
-        }
-    }
-
     val heldPhotoEntriesRaw: String
         get() = prefString(KEY_HELD_PHOTO_HASHES, "")
 
-    fun setHeldPhotoEntriesRawSync(value: String): Boolean {
+    // Pasangan daftar entri + penolkan hash warisan dalam SATU
+    // edit atomik (issue #1147): dua commit terpisah menyisakan
+    // jendela mati-proses di mana daftar baru tersimpan tetapi
+    // hash warisan belum dinolkan, dan bacaan berikutnya
+    // menggabungkan entri warisan yang baru dilepas itu kembali
+    // sebagai entri hantu (kelas #923).
+    fun setHeldPhotoEntriesAndClearLegacySync(value: String): Boolean {
         return try {
-            sharedPreferences.edit().putString(KEY_HELD_PHOTO_HASHES, value).commit()
+            sharedPreferences.edit()
+                .putString(KEY_HELD_PHOTO_HASHES, value)
+                .putLong(KEY_HELD_PHOTO_HASH, 0L)
+                .commit()
         } catch (_: Exception) {
             false
         }
