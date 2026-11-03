@@ -269,22 +269,59 @@ def hitung_item_array(badan):
         return len(root.findall("item"))
     except Exception:
         bersih_cdata = re.sub(r"<!\[CDATA\[.*?\]\]>", "", badan, flags=re.S)
-        # Cadangan sadar kedalaman (issue #1137): jalur regex
-        # lama menghitung SEMUA bukaan <item> termasuk yang
-        # bersarang di dalam item lain — lubang yang sama
-        # yang ditutup jalur utama. Kini hanya bukaan pada
-        # kedalaman 0 (anak langsung) yang dihitung. Pola tag
-        # sadar petik (issue #1149): nilai atribut boleh
-        # memuat > di dalam petik — pola [^>]* berhenti di
-        # sana dan mengacaukan hitungan kedalaman.
-        pola_tag = r"<item(?:\s+(?:[^>\"']|\"[^\"]*\"|'[^']*')*)?/>|<item(?:\s+(?:[^>\"']|\"[^\"]*\"|'[^']*')*)?>|</item\s*>"
+        # Cadangan sadar kedalaman (issue #1137): hanya bukaan
+        # pada kedalaman 0 (anak langsung) yang dihitung. Tag
+        # dipindai manual sadar petik (issue #1149: > sah di
+        # dalam nilai atribut berpetik; issue #1154: pola regex
+        # sebelumnya backtracking kuadratik pada <item tak
+        # tertutup + deret spasi — pemindai ini linear).
+        def token_tag(teks):
+            i = 0
+            n = len(teks)
+            while i < n:
+                j = teks.find("<", i)
+                if j < 0:
+                    return
+                if teks.startswith("</item", j):
+                    k = j + 6
+                    if k < n and (teks[k] == ">" or teks[k].isspace()):
+                        e = teks.find(">", k)
+                        if e < 0:
+                            return
+                        yield ("tutup", False)
+                        i = e + 1
+                    else:
+                        i = j + 1
+                    continue
+                if teks.startswith("<item", j):
+                    k = j + 5
+                    if k < n and (teks[k] == ">" or teks[k] == "/" or teks[k].isspace()):
+                        petik = ""
+                        m = k
+                        while m < n:
+                            c = teks[m]
+                            if petik:
+                                if c == petik:
+                                    petik = ""
+                            elif c == '"' or c == "'":
+                                petik = c
+                            elif c == ">":
+                                break
+                            m += 1
+                        if m >= n:
+                            return
+                        yield ("buka", teks[m - 1] == "/")
+                        i = m + 1
+                    else:
+                        i = j + 1
+                    continue
+                i = j + 1
         jumlah = 0
         kedalaman = 0
-        for m in re.finditer(pola_tag, bersih_cdata):
-            tag = m.group(0)
-            if tag.startswith("</"):
+        for jenis, selfclosing in token_tag(bersih_cdata):
+            if jenis == "tutup":
                 kedalaman = max(0, kedalaman - 1)
-            elif tag.endswith("/>"):
+            elif selfclosing:
                 if kedalaman == 0:
                     jumlah += 1
             else:

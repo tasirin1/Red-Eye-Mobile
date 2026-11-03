@@ -6,6 +6,7 @@
 - Hapus kredensial tidak lagi bisa menimpa konfigurasi yang baru disimpan: gelombang tulis keduanya kini berjalan di dalam kunci konfigurasi yang sama dengan jalur simpan dan hanya jalan bila belum ada simpan yang lebih baru sejak ketukan hapus.
 - Flush foto tertunda tidak lagi mendecode sidik jari berkas bila tak ada entri tertahan warisan yang bisa dibandingkan: berkas yang bertahan tidak di-decode ulang pada setiap putaran flush.
 - Pencatatan pemakaian pulih seketika dari tanggal hantu yang terbukti: bila tulis hidup hari ini berhadapan slot berjalan yang melompat dua hari atau lebih ke depan, hari ini mengambil alih dan cadangan yang ikut hantu diruntuhkan — pemasangan baru yang tulis pertamanya hantu dan dua lompatan bertumpuk tidak lagi membuang catatan berhari-hari.
+- Cadangan penghitung item string-array pada gerbang kini memindai tag secara manual (linear): masukan rusak berupa tag tak tertutup dengan deretan spasi panjang tidak lagi menggantung gerbang lewat backtracking.
 
 ## [1.6.605] - 2026-11-03
 
