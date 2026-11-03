@@ -14,6 +14,7 @@
 - Siaran boot kedua yang tiba sangat terlambat (lebih dari 30 menit) kini tetap dikenali sebagai duplikat dari boot yang sama lewat penghitung boot sistem, tidak lagi menaikkan penghitung seolah ada reboot baru.
 - Swasembuh penghitung boot kini juga memakai penghitung boot sistem: reboot yang siarannya hilang tetap terdeteksi walau aplikasi baru dibaca sesudah HP menyala lama (dulu jendela deteksinya bisa tertutup), dan beberapa reboot hilang sekaligus terhitung sesuai jumlahnya.
 - Penulisan swasembuh penghitung boot tidak lagi sinkron ke disk: pembacaan penghitung dari layar Setup dan dari layanan aksesibilitas tidak lagi membayar tulis disk yang bisa membuat jeda sesaat.
+- Bukti boot untuk uji anti-mati pertama kini tahan jam dimundurkan di tengah uji sampai batas toleransi geser jam yang wajar: reboot sungguhan di tengah uji tidak lagi gugur buktinya hanya karena cap peristiwanya tertulis di bawah jam mulai uji.
 
 ## [1.6.601] - 2026-11-03
 

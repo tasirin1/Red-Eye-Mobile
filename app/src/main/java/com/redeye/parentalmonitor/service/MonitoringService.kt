@@ -9368,9 +9368,16 @@ class MonitoringService : Service() {
         // uji — BOOT_COMPLETED hanya disiarkan saat boot, dan
         // cap lama dari sebelum uji (baseline 0 hasil gagal
         // baca) gugur oleh syarat cap >= dinding mulai uji.
+        // Syarat itu dilonggarkan sebesar toleransi geser jam
+        // repo (issue #1086): jam yang dimundurkan di tengah
+        // uji membuat cap peristiwa hitung tertulis di bawah
+        // dinding mulai — bukti reboot ikut gugur. Cap yang
+        // sungguh lama (berhari-hari sebelum uji) tetap jauh
+        // di bawah toleransi, jadi kasus gagal-baca tetap
+        // tertolak.
         val bootCountWallNow = com.redeye.parentalmonitor.receiver.BootReceiver.bootCountWall(this)
         val bootEvidence = (bootCountThen > 0L && bootCountNow != bootCountThen) ||
-            (bootCountThen == 0L && bootCountNow > 0L && startedWall > 0L && bootCountWallNow >= startedWall)
+            (bootCountThen == 0L && bootCountNow > 0L && startedWall > 0L && bootCountWallNow >= startedWall - BootClock.MAX_CLOCK_SHIFT_MS)
         val rebooted = startedElapsed > nowElapsed ||
             bootEvidence ||
             (startedWall > 0L && !BootClock.sameBootOrClockShift(startedWall, startedElapsed, System.currentTimeMillis(), nowElapsed))
