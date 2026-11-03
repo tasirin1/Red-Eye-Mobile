@@ -463,7 +463,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 // lowercase, dan hash sebelum titik potong akhir
                 // 200/300 — 20 rb aksara jauh di atas kebutuhan.
                 if (mentah.length > 20_000) {
-                    com.redeye.parentalmonitor.utils.TextChunk.safeCut(mentah, 20_000)
+                    mentah.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(mentah, 20_000))
                 } else {
                     mentah
                 }
@@ -480,7 +480,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.asSequence()?.mapNotNull { it?.toString()?.trim() }?.filter { it.isNotEmpty() }?.toList()
                     if (!lines.isNullOrEmpty()) {
                         val gabung = lines.joinToString("\n").trim()
-                        body = if (gabung.length > 20_000) com.redeye.parentalmonitor.utils.TextChunk.safeCut(gabung, 20_000) else gabung
+                        body = if (gabung.length > 20_000) gabung.take(com.redeye.parentalmonitor.utils.TextChunk.safeCut(gabung, 20_000)) else gabung
                     }
                 } catch (_: Exception) {
                 }
