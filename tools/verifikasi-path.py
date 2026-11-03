@@ -761,22 +761,41 @@ def cek_pengingat_changelog(peringatan, berubah):
 
 
 def cek_sinkron_terjemah(gagal):
-    jalur = JALUR_STRINGS_WAJIB
-    isi = isi_strings_wajib(gagal)
-    if any(teks is None for teks in isi.values()):
-        return
+    # Keberadaan pasangan strings.xml utama tetap wajib.
+    isi_strings_wajib(gagal)
+    # Paritas nama kini untuk TIGA jenis elemen yang bisa
+    # diterjemahkan (string, string-array, plurals) di SEMUA
+    # berkas values/ dan values-in/ (issue #1030): dulu hanya
+    # <string> di dua strings.xml, jadi string-array/plurals
+    # baru dan <string> di berkas values kedua lolos tanpa
+    # terjemahan Indonesia dan UI jatuh ke teks Inggris diam-diam.
+    dasar_res = os.path.join(AKAR, "app/src/main/res")
 
-    def nama_string(path):
-        return set(re.findall(r'<string(?:\s[^>]*?)?\bname="([^"]+)"', kupas_komentar_xml(isi[path])))
+    def peta_nama(dirpath):
+        peta = {"string": set(), "string-array": set(), "plurals": set()}
+        if not os.path.isdir(dirpath):
+            return peta
+        for nama_berkas in sorted(os.listdir(dirpath)):
+            if not nama_berkas.endswith(".xml"):
+                continue
+            isi = baca(os.path.relpath(os.path.join(dirpath, nama_berkas), AKAR))
+            if isi is None:
+                continue
+            bersih = kupas_komentar_xml(isi)
+            for jenis in peta:
+                peta[jenis] |= set(re.findall(
+                    r'<%s(?:\s[^>]*?)?\bname="([^"]+)"' % jenis, bersih))
+        return peta
 
-    inggris = nama_string(jalur[0])
-    indonesia = nama_string(jalur[1])
-    kurang = sorted(inggris - indonesia)
-    lebih = sorted(indonesia - inggris)
-    if kurang:
-        gagal.append("values-in kurang string: " + ", ".join(kurang[:10]))
-    if lebih:
-        gagal.append("values-in berlebih string: " + ", ".join(lebih[:10]))
+    inggris = peta_nama(os.path.join(dasar_res, "values"))
+    indonesia = peta_nama(os.path.join(dasar_res, "values-in"))
+    for jenis in ("string", "string-array", "plurals"):
+        kurang = sorted(inggris[jenis] - indonesia[jenis])
+        lebih = sorted(indonesia[jenis] - inggris[jenis])
+        if kurang:
+            gagal.append("values-in kurang %s: %s" % (jenis, ", ".join(kurang[:10])))
+        if lebih:
+            gagal.append("values-in berlebih %s: %s" % (jenis, ", ".join(lebih[:10])))
 
 
 def adalah_env(rendah):
