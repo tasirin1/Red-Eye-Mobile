@@ -12314,10 +12314,18 @@ class MonitoringService : Service() {
             // lastModified. Urutan flush sendiri tidak diubah.
             val photos = (known ?: cacheDir.listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
-            }?.toList())?.sortedBy { file ->
-                val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
-                if (t > 0L) t else file.lastModified()
-            }?.filter { !isMediaActive(it) } ?: return -1
+            }?.toList())
+                ?.map { file ->
+                    // Kunci urut dihitung SEKALI per berkas
+                    // (issue #1146): sortedBy menilai selektor
+                    // pada setiap perbandingan, jadi parse
+                    // tanggalnya berjalan n log n kali per prune.
+                    val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
+                    (if (t > 0L) t else file.lastModified()) to file
+                }
+                ?.sortedBy { it.first }
+                ?.map { it.second }
+                ?.filter { !isMediaActive(it) } ?: return -1
             if (photos.size <= maxKept) return photos.size
             val dropped = photos.dropLast(maxKept)
             val remaining = photos.size - dropped.size

@@ -10,6 +10,7 @@
 - Bangun-ulang monitoring dari halaman Setup kini menilai kelayakan dasar lebih dulu sebelum memakai jatah 60 detiknya: membuka halaman saat konfigurasi belum lengkap tidak lagi menghanguskan jatah, jadi menekan simpan sesaat sesudahnya tetap membangunkan layanan.
 - Aturan ukuran pada jalur berkas berubah di gerbang kini juga menilai symlink dari ukuran tautannya sendiri (bukan tujuannya), selaras dengan sapuan pohon: vonis tidak lagi bergantung mode pemanggilan gerbang.
 - Pemindai anotasi cek cepat kini membedakan bahasa: pelacakan kedalaman komentar bersarang hanya untuk Kotlin; berkas .java memakai semantik Java (penutup pertama mengakhiri komentar), jadi anotasi ganda sesudah komentar bergaya bersarang di .java tidak lagi tersembunyi.
+- Pembersihan cache foto kini menghitung kunci urut umur tiap berkas sekali saja (bukan pada setiap perbandingan urutan): prune pada cache penuh tidak lagi mengulang parse tanggal nama berkas ribuan kali.
 
 ## [1.6.604] - 2026-11-03
 
