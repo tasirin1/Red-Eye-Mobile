@@ -919,7 +919,9 @@ class SendMessageWorker(
             } else if (response.code() == 408 || response.code() >= 500) {
                 SendOutcome.Failed
             } else {
-                SendOutcome.Rejected
+                // Situs ketiga pola yang sama (issue #966):
+                // kode tak terdaftar = gagal sementara.
+                SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
