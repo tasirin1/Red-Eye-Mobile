@@ -22,6 +22,7 @@
 - Layar Setup tidak lagi menghitung status tiga kali saat dibuka: satu putaran penuh baca setelan dan cek izin yang duplikat di awal pembukaan dihapus, status tetap segar dari panggilan resume dan pemuat field.
 - Notifikasi layanan depan yang isinya tetap kini dibangun sekali dan dipakai ulang (dibangun ulang hanya bila bahasa perangkat berubah), tidak lagi dibangun dari nol untuk setiap intent yang masuk termasuk tiap kali kalkulator dibuka.
 - Pemeriksaan pagar kini membaca enam nilai konfigurasinya sekali per panggilan, bukan dua kali: blok pagar bersarang dan daftar pagar memakai bacaan lokal yang sama.
+- Pemindaian kata pantau aksesibilitas kini mengingat hasil ubah huruf kecil untuk teks pendek yang berulang antar peristiwa pada layar yang sama (memo berbatas), mengurangi pekerjaan berulang tanpa mengubah cakupan pemindaian sama sekali.
 
 ## [1.6.601] - 2026-11-03
 

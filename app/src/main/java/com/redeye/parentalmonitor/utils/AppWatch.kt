@@ -86,10 +86,29 @@ object AppWatch {
     // notifikasi tanpa batas.
     private const val MAX_HIT_TEXT_CHARS = 8192
 
+    // Memo lowercase berbatas (issue #1096): pemindaian A11y
+    // menilai teks node yang sama berulang kali antar
+    // peristiwa pada layar yang sama; lowercase atas teks
+    // utuh (s.d. 8.192 karakter) per node per pindai adalah
+    // biaya berulang terbesarnya. Hanya teks pendek yang
+    // di-memo (yang paling sering berulang); isi peta dibatasi
+    // 32 entri LRU. Semantik hit() tidak berubah sama sekali.
+    private val lowerCache = object : java.util.LinkedHashMap<String, String>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 32
+    }
+
+    private fun lowered(text: String): String {
+        if (text.length > 512) return text.lowercase(Locale.ROOT)
+        synchronized(lowerCache) { lowerCache[text]?.let { return it } }
+        val hasil = text.lowercase(Locale.ROOT)
+        synchronized(lowerCache) { lowerCache[text] = hasil }
+        return hasil
+    }
+
     fun hit(keywords: List<String>, text: String): String? {
         if (keywords.isEmpty() || text.isEmpty()) return null
         val bounded = if (text.length > MAX_HIT_TEXT_CHARS) text.substring(0, MAX_HIT_TEXT_CHARS) else text
-        return hitLowered(keywords, bounded.lowercase(Locale.ROOT))
+        return hitLowered(keywords, lowered(bounded))
     }
 
     fun hitLowered(keywords: List<String>, lowerRaw: String): String? {
