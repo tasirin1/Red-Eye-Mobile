@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Konstanta yatim batas percobaan PIN restore dihapus (batas yang hidup ada di gerbang PIN restore itu sendiri).
 - Daftar foto tertahan kini diurai sekali dan dipakai ulang selama isinya tidak berubah, bukan diurai ulang dari penyimpanan untuk setiap berkas saat antrean foto dikirim.
 - Pemeriksaan frasa alias perintah kini memakai pola pemisah kata yang sudah terkompilasi, bukan mengompilasi pola baru di setiap pesan.
 - Pemindaian aksesibilitas kini memakai ulang daftar paket pantau dan kata kunci yang sudah diurai selama setelan tidak berubah, bukan mengurai ulang dari awal pada setiap peristiwa jendela/konten.

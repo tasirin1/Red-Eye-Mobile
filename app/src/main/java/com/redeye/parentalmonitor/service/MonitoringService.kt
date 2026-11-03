@@ -374,7 +374,6 @@ class MonitoringService : Service() {
         private val CONNECT_HELPER_REGEX = Regex("(?i)connectHelper:\\d+:\\s*")
         private const val RESTORE_TTL_MS = 10 * 60_000L
         private const val RESTORE_CANCEL_WINDOW_MS = 60_000L
-        private const val RESTORE_MAX_PIN_TRIES = 3
         private const val RESTORE_STAGE_DOC = 1
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
