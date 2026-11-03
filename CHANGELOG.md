@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Usia blokir kredensial kini hanya memakai selisih jam monoton bila capnya terbukti dari boot yang sama — penanda lama tidak lagi terbaca muda palsu sesudah reboot dan waktu berjalan lama.
 - Masa tenggang anti-tamper saat memberi izin di Setup kini juga berjangkar jam monoton, bukan hanya jam dinding — memundurkan jam perangkat tidak lagi memperpanjang masa tenggang tanpa batas.
 - Tombol Salin pada dialog kode restore Setup kini menyalin kode terkini saat tombol ditekan, bukan kode saat dialog dibuka yang bisa sudah kedaluwarsa karena dialog lama terbuka.
 - Deteksi "servis dibunuh lalu hidup lagi" kini tetap mengenali penanda hidup dari boot yang sama walau jam perangkat terkoreksi lebih dari dua menit, memakai pemeriksaan toleran-geseran yang sama seperti gerbang PIN restore.

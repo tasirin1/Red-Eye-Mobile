@@ -14,6 +14,13 @@ class NetworkUtilsTest {
         assertEquals(-1L, NetworkUtils.blockAgeMs(1_000_000L, 0L, 500_000L, 500_000L))
         // Sesudah reboot (elapsed mengecil): kembali ke jam dinding.
         assertEquals(1_900_000L, NetworkUtils.blockAgeMs(1_000_000L, 500_000L, 2_900_000L, 100_000L))
+        // Issue #1008: cap elapsed boot LAMA terlampaui lagi oleh
+        // elapsed boot baru (penanda di elapsed 5 hari; kini 6 hari
+        // dinding kemudian, elapsed boot baru 5 hari + 1 jam) —
+        // usia harus dari jam dinding (6 hari), bukan selisih
+        // elapsed palsu (1 jam).
+        val hari = 86_400_000L
+        assertEquals(6 * hari, NetworkUtils.blockAgeMs(10 * hari, 5 * hari, 16 * hari, 5 * hari + 3_600_000L))
     }
 
     @Test

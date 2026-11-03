@@ -23,8 +23,14 @@ object NetworkUtils {
     // jangkar (penanda warisan) atau sesudah reboot, jam dinding dipakai;
     // jam dinding yang mundur tanpa jangkar mengembalikan -1 (tak
     // diketahui) agar perilaku warisan pemanggil tetap berlaku.
+    // Jangkar elapsed wajib terbukti boot yang sama (issue #1008,
+    // keluarga #941/#957): cap elapsed tersimpan bisa terlewati lagi
+    // oleh elapsedRealtime boot BARU (mis. penanda di elapsed 5 hari,
+    // reboot, 5 hari kemudian terlampaui) dan selisihnya terbaca
+    // sebagai usia muda palsu — sameBootOrClockShift menolaknya,
+    // lalu usia jam dinding yang dipakai.
     fun blockAgeMs(atWall: Long, atElapsed: Long, nowWall: Long, nowElapsed: Long): Long {
-        if (atElapsed > 0L && nowElapsed >= atElapsed) return nowElapsed - atElapsed
+        if (atElapsed > 0L && nowElapsed >= atElapsed && BootClock.sameBootOrClockShift(atWall, atElapsed, nowWall, nowElapsed)) return nowElapsed - atElapsed
         if (nowWall < atWall) return -1L
         return nowWall - atWall
     }
