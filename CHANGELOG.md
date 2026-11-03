@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemulihan penyimpanan terenkripsi kini menggabungkan, bukan menimpa: kunci yang hanya ada di penyimpanan persisten lama (mis. token bot dan chat ID) tidak lagi terhapus saat upgrade dari mode volatile berhasil — snapshot volatile tetap menang untuk kunci yang sama.
 - Jeda foto kini benar-benar berakhir sesudah perangkat menyala ulang: sisa jeda diambil dari nilai terkecil antara jangkar monoton dan tenggat jam dinding, sehingga jangkar monoton yang basi lintas boot tidak lagi membuat jeda bergulir ±8 jam tanpa akhir (perlindungan terhadap jam dimundurkan tetap berlaku).
 
 ## [1.6.597] - 2026-11-03

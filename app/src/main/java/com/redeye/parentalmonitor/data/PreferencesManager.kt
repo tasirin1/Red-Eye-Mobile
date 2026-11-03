@@ -174,15 +174,34 @@ class PreferencesManager(context: Context) {
                 while (!stable && attempts < 5) {
                     attempts++
                     val cur: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    if (!syncPrefsInto(mem, fresh, cur)) return UpgradeResult.FAILED
+                    // Gabung, jangan timpa (issue #942): kunci yang
+                    // hanya ada di store persisten lama (mis.
+                    // kredensial) wajib selamat dari upgrade —
+                    // snapshot volatile menang per kunci yang sama,
+                    // bukan menghapus sisanya. Penghapusan yang
+                    // terjadi selama sesi volatile memang tak ikut
+                    // terbawa; kehilangan penghapusan jauh lebih
+                    // aman daripada kehilangan kredensial.
+                    val merged = HashMap(firstTarget)
+                    merged.putAll(cur)
+                    if (!syncPrefsInto(mem, fresh, merged)) return UpgradeResult.FAILED
                     val after: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
                     val freshNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
-                    stable = after == cur && freshNow == cur
+                    stable = after == cur && freshNow == merged
                     if (!stable && attempts < 5) {
-                        try { Thread.sleep(50L) } catch (_: InterruptedException) { }
+                        try { Thread.sleep(50L) } catch (_: Exception) { }
                     }
                 }
                 if (!stable) return UpgradeResult.UNSTABLE
+                // Samakan isi volatile dengan state gabungan agar
+                // loop konvergensi sesudah saklar membandingkan
+                // dua store yang setara (issue #942). Kegagalan di
+                // sini tak menggagalkan upgrade: loop konvergensi
+                // tetap menyelaraskan tulisan yang datang telat.
+                try {
+                    val targetNow: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
+                    if (mem != null) syncPrefsInto(fresh, mem, targetNow)
+                } catch (_: Exception) { }
             }
             val baseMem: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
             val baseFresh: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
