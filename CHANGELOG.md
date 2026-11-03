@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Cek cepat kini juga menolak layout landscape tanpa kembaran portrait (varian yatim yang terkemas tetapi tidak pernah tampil).
 - Pemeriksaan "aplikasi sudah dikenal" kini memakai cermin memori: himpunan aplikasi dikenal tidak lagi didekripsi ulang seluruhnya dari penyimpanan terenkripsi di setiap pergantian aplikasi depan.
 - Data pemakaian aplikasi kini punya slot cadangan yang terotasi otomatis: akumulasi waktu layar hari ini tidak lagi hilang bila tanggal perangkat melompat lalu proses aplikasi mulai ulang sebelum jam terkoreksi.
 - Akru sesi pemakaian aplikasi di cabang monitoring-mati dan layar utama kini langsung ditulis persisten: menit sesi terakhir tidak lagi bisa hilang bila proses aplikasi mati sesaat sesudah sesi ditutup.
