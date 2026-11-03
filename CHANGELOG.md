@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pekerja pemulih boot tidak lagi menyerah tanpa jaring pengaman: sesudah 5 kali gagal ia kini selalu memasang watchdog periodik sebelum berhenti, sehingga layanan tidak bisa tertidur seterusnya hanya karena pemicu awal boot itu gagal semua.
 - Pemulihan antrean sesudah penyimpanan pulih kini memakai kelonggaran prioritas yang sama dengan jalur normal, sehingga sampai 5 pesan prioritas tertua tidak lagi tereviksi percuma saat restore.
 - Antrean pesan kini membatasi ukuran satu pesan (32 ribu karakter, dipotong dengan penanda) agar satu pesan raksasa tidak membengkakkan berkas antrean yang ditulis ulang utuh pada tiap penyimpanan.
 - Penerima kejadian instan (SMS/panggilan) tidak lagi menjadwalkan bangun pemulihan saat pemantauan memang sengaja dimatikan, dan antrean pekerjaannya kini terbatas (sebelumnya bangun sia-sia berkala untuk layanan yang diminta berhenti, plus antrean tak terbatas saat rentetan kejadian).

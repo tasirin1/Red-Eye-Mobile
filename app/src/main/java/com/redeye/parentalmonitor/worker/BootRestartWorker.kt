@@ -22,6 +22,21 @@ class BootRestartWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    // Menyerah dengan jaring pengaman (issue #928): titik-titik
+    // menyerah sesudah 5x retry dulu berakhir Result.success()
+    // polos — bila watchdog periodik belum terpasang pada boot
+    // ini, layanan bisa tertidur sampai pemicu eksternal.
+    // Menyerah kini selalu memasang watchdog (kebijakan KEEP:
+    // tak mengganggu yang sudah terpasang; worker-nya sendiri
+    // yang kelak membatalkan bila pemantauan dimatikan owner).
+    private fun menyerahDenganJaring(): Result {
+        try {
+            com.redeye.parentalmonitor.utils.MessageScheduler.scheduleWatchdog(applicationContext)
+        } catch (_: Exception) {
+        }
+        return Result.success()
+    }
+
     override suspend fun getForegroundInfo(): ForegroundInfo {
         return try {
             buildForegroundInfo()
@@ -75,7 +90,7 @@ class BootRestartWorker(
                 throw e
             } catch (t: Throwable) {
                 android.util.Log.e("BootRestartWorker", "doWork failed", t)
-                if (runAttemptCount < 5) Result.retry() else Result.success()
+                if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
             }
         } finally {
             activeRuns.decrementAndGet()
@@ -105,7 +120,7 @@ class BootRestartWorker(
             PreferencesManager.refreshInstance(appContext)
             PreferencesManager.getInstance(appContext)
         } catch (_: Exception) {
-            return if (runAttemptCount < 5) Result.retry() else Result.success()
+            return if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         }
         try {
             com.redeye.parentalmonitor.utils.NetworkUtils.sweepAuthBlock(prefs)
@@ -113,11 +128,11 @@ class BootRestartWorker(
         }
         // If auth is blocked, schedule retry instead of giving up
         if (com.redeye.parentalmonitor.utils.NetworkUtils.isAuthBlocked(prefs)) {
-            return if (runAttemptCount < 5) Result.retry() else Result.success()
+            return if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         }
         if (!prefs.isStorageEncrypted) {
             postStorageFallbackReminder(appContext)
-            return if (runAttemptCount < 5) Result.retry() else Result.success()
+            return if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         }
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             MessageScheduler.cancelWatchdog(appContext)
@@ -146,17 +161,17 @@ class BootRestartWorker(
             android.util.Log.w("BootRestartWorker", "FGS start denied, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
-            if (runAttemptCount < 5) Result.retry() else Result.success()
+            if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         } catch (e: IllegalStateException) {
             android.util.Log.w("BootRestartWorker", "FGS start blocked by system, will retry", e)
             MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
-            if (runAttemptCount < 5) Result.retry() else Result.success()
+            if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         } catch (e: Exception) {
             android.util.Log.w("BootRestartWorker", "Restart attempt failed", e)
             MessageScheduler.scheduleMessageSend(appContext)
             postResumeReminder(appContext)
-            if (runAttemptCount < 5) Result.retry() else Result.success()
+            if (runAttemptCount < 5) Result.retry() else menyerahDenganJaring()
         }
         return startResult
     }
