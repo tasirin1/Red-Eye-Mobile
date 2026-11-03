@@ -7718,6 +7718,7 @@ class MonitoringService : Service() {
                     }
                 }
                 var stateSebelum = -1
+                var stateSesudah = -1
                 val transition = try {
                     synchronized(fenceLock) {
                         val state = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
@@ -7728,6 +7729,7 @@ class MonitoringService : Service() {
                         if (ws != null) {
                             if (isHome) preferencesManager.homeState = ws else preferencesManager.schoolState = ws
                         }
+                        stateSesudah = ws ?: state
                         // Cap cooldown TIDAK ditulis di sini (issue
                         // #795): cap ditulis sesudah kirim berhasil di
                         // bawah, agar transisi yang kabarnya terbuang
@@ -7788,9 +7790,20 @@ class MonitoringService : Service() {
                             // dan alert dicoba lagi — tanpa ini alert
                             // hilang permanen walau cap cooldown
                             // sudah ditahan (issue #795).
+                            // Banding-tulis (issue #971): pulihkan
+                            // HANYA bila state sekarang masih state
+                            // yang ditulis transisi ini — kirim
+                            // berjalan di luar kunci dan pemeriksaan
+                            // lain bisa memajukan pagar yang sama
+                            // selama kirim menggantung; pemulihan
+                            // mutlak akan menimpa transisi yang
+                            // lebih baru itu.
                             try {
                                 synchronized(fenceLock) {
-                                    if (isHome) preferencesManager.homeState = stateSebelum else preferencesManager.schoolState = stateSebelum
+                                    val kini = if (isHome) preferencesManager.homeState else preferencesManager.schoolState
+                                    if (stateSesudah < 0 || kini == stateSesudah) {
+                                        if (isHome) preferencesManager.homeState = stateSebelum else preferencesManager.schoolState = stateSebelum
+                                    }
                                 }
                             } catch (_: Exception) {
                             }

@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Pemulihan state pagar (rumah/sekolah) sesudah alert terbuang kini memakai banding-tulis: state hanya dipulihkan bila belum ada pemeriksaan lain yang memajukannya selama pengiriman — transisi yang lebih baru tidak lagi tertimpa.
 - Klasifikasi prioritas notifikasi bank/e-wallet kembali mengenali merek bertoken menyatu (SeaBank, Allo Bank, Bank Mega, Maybank, mobile banking, CIMB Niaga) yang sempat kehilangan status prioritas — tanpa kembali ke pencocokan substring bebas.
 - Peristiwa SMS/panggilan yang tertolak karena antrean receiver penuh kini menjadwalkan pemulihan BootRestart sebagai jaring pengaman (sebelumnya peristiwa hilang begitu saja), sama seperti cabang gagal-mulai layanan.
 - Receiver perubahan jam/zona kini memakai executor receiver khusus (bukan antrean critical bersama), sehingga penyelesaian broadcast tidak lagi menunggu di belakang pekerjaan berat lain dan jadwal liveness pasti terpasang ulang.
