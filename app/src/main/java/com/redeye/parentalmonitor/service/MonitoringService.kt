@@ -211,6 +211,10 @@ class MonitoringService : Service() {
     @Volatile
     private var appliedFgsTypes = 0
     @Volatile
+    private var cachedForegroundNotification: android.app.Notification? = null
+    @Volatile
+    private var cachedNotificationLocale: String? = null
+    @Volatile
     private var rejectedFgsTypes = 0
     @Volatile
     private var rejectedFgsAt = 0L
@@ -688,6 +692,13 @@ class MonitoringService : Service() {
     }
 
     private fun buildForegroundNotification(): android.app.Notification {
+        // Isi notifikasi statis (judul/teks/ikon tetap, tap
+        // intent sudah ter-cache): bangun sekali per locale
+        // (issue #1094) — dulu dibangun ulang untuk SETIAP
+        // intent onStartCommand termasuk REFRESH_FGS per
+        // onResume kalkulator, padahal hasilnya identik.
+        val localeTag = try { java.util.Locale.getDefault().toLanguageTag() } catch (_: Exception) { "" }
+        cachedForegroundNotification?.let { if (cachedNotificationLocale == localeTag) return it }
         val builder = NotificationCompat.Builder(this, ParentalMonitorApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.notification_title))
@@ -703,7 +714,10 @@ class MonitoringService : Service() {
             builder.setContentIntent(setupTapIntent())
         } catch (_: Exception) {
         }
-        return builder.build()
+        val built = builder.build()
+        cachedForegroundNotification = built
+        cachedNotificationLocale = localeTag
+        return built
     }
 
     private fun startForegroundImmediate(): Boolean {
