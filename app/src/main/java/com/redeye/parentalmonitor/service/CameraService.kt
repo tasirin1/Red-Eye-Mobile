@@ -245,10 +245,22 @@ class CameraService(private val context: Context) {
 
         fun finishWithPhoto(file: File) {
             if (done.compareAndSet(false, true)) {
-                if (sessionSeq.get() == mySeq) capturing.set(false)
+                val current = sessionSeq.get() == mySeq
+                if (current) capturing.set(false)
                 removeEverywhere(timeoutRunnable)
-                onPhotoTaken(file)
-                if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Photo saved")
+                if (current) {
+                    onPhotoTaken(file)
+                    if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Photo saved")
+                } else {
+                    // Sesi sudah digantikan (issue #992):
+                    // hasil sesi lama tak boleh diserahkan
+                    // sebagai hasil sesi yang meminta kini —
+                    // berkas dibuang seperti jalur ganda.
+                    try {
+                        file.delete()
+                    } catch (_: Exception) {
+                    }
+                }
             } else {
                 try {
                     file.delete()
