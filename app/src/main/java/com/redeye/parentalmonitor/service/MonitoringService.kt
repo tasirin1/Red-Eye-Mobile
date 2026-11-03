@@ -260,6 +260,13 @@ class MonitoringService : Service() {
     private var patrolRelaunchJob: Job? = null
     @Volatile
     private var patrolRelaunchTarget: Job? = null
+    // Kunci cek-lalu-catat relauncher (issue #1051): dedup
+    // #1033 membaca pending() lalu track() tanpa kunci, jadi
+    // dua pemanggil beda benang (listener prefs di benang
+    // utama, handler perintah di korutin IO) bisa sama-sama
+    // lolos dan relauncher pertama yatim tak terlacak —
+    // teardownJobs tak bisa membatalkannya.
+    private val relaunchLock = Any()
     private val initialSyncRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val initialSyncGen = java.util.concurrent.atomic.AtomicInteger(0)
     private val initialSyncLock = Any()
@@ -1127,25 +1134,30 @@ class MonitoringService : Service() {
         // (listener prefs per kunci menulis banyak kunci
         // sekaligus) tidak lagi melahirkan penunggu ganda yang
         // bisa sama-sama lolos cek current() === old.
-        val menunggu = pending()
-        if (menunggu != null && !menunggu.isCompleted && pendingTarget() === old) return
-        try { old.cancel() } catch (_: Exception) { }
-        track(serviceScope.launch {
-            var percobaan = 0
-            while (percobaan < 12) {
-                val selesai = try {
-                    kotlinx.coroutines.withTimeoutOrNull(5_000L) { old.join(); true } == true
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    false
+        // Cek dan pencatatan kini atomik di bawah relaunchLock
+        // (issue #1051): tanpa kunci, dua benang bisa sama-sama
+        // lolos dedup dan track kedua menimpa yang pertama.
+        synchronized(relaunchLock) {
+            val menunggu = pending()
+            if (menunggu != null && !menunggu.isCompleted && pendingTarget() === old) return
+            try { old.cancel() } catch (_: Exception) { }
+            track(serviceScope.launch {
+                var percobaan = 0
+                while (percobaan < 12) {
+                    val selesai = try {
+                        kotlinx.coroutines.withTimeoutOrNull(5_000L) { old.join(); true } == true
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        false
+                    }
+                    if (selesai || old.isCompleted) break
+                    percobaan++
                 }
-                if (selesai || old.isCompleted) break
-                percobaan++
-            }
-            if (!isActive) return@launch
-            if (current() === old) start()
-        })
+                if (!isActive) return@launch
+                if (current() === old) start()
+            })
+        }
     }
 
     private fun restartCameraLoop() {
