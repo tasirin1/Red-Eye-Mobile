@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Deteksi "servis dibunuh lalu hidup lagi" kini tetap mengenali penanda hidup dari boot yang sama walau jam perangkat terkoreksi lebih dari dua menit, memakai pemeriksaan toleran-geseran yang sama seperti gerbang PIN restore.
 - Pengambilan lokasi kini memberi jeda singkat bagi hasil penyedia yang tiba tepat di batas waktu untuk ikut terpilih, bukan langsung membatalkannya.
 - /appwatch tambah/hapus dengan nama sebagian kini melaporkan "ambigu" beserta kandidatnya bila cocok ke beberapa aplikasi, bukan lagi memilih sembarang aplikasi pertama secara diam-diam.
 - Pemeriksaan hemat data pada 15 detik pertama sejak HP menyala kini benar-benar memeriksa, bukan memakai hasil bawaan seolah baru saja diperiksa.
