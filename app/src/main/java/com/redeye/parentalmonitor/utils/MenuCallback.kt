@@ -12,10 +12,10 @@ sealed class MenuCallback {
         val VIEWS = setOf("main", "media", "lokasi", "komu", "info", "pantau", "alat")
 
         // Kunci saklar on/off (permintaan owner: tombol toggle di
-        // menu, tak perlu ketik "/notif off"). Kunci di luar daftar
+        // menu, tak perlu ketik "/notify off"). Kunci di luar daftar
         // ini ditolak parser agar data callback liar tak bisa
         // membalik setelan apa pun.
-        val TOGGLE_KEYS = setOf("notif", "otp", "patrol", "night", "appalert", "pantauapp", "lindungi", "hematdata")
+        val TOGGLE_KEYS = setOf("notify", "otp", "patrol", "night", "appalert", "appwatch", "protect", "datasaver")
 
         private val LEGACY = mapOf(
             "photo" to "photo",
@@ -26,8 +26,8 @@ sealed class MenuCallback {
             "status" to "status",
             "stop" to "stop",
             "resume" to "resume",
-            "camfront" to "camera depan",
-            "camback" to "camera belakang",
+            "camfront" to "camera front",
+            "camback" to "camera back",
             "pause60" to "pause 60",
             "shot" to "screenshot",
             "cekmati" to "cekmati",

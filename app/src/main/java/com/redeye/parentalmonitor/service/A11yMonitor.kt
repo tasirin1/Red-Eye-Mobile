@@ -289,7 +289,7 @@ object A11yMonitor {
                 "\nKata: " + Html.escape(hit) +
                 (if (snippet != null) "\nKonteks: " + Html.escape(snippet) else "") +
                 "\nWaktu: " + TimeFmt.short(nowWall) +
-                "\nMatikan: /pantauapp off"
+                "\nMatikan: /appwatch off"
         )
         if (!queued) {
             // Antre menolak (issue #811): kembalikan cap jeda +

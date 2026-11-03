@@ -23,26 +23,26 @@ class IntentParserTest {
             "status hp sekarang" to "/status",
             "kabar anak gimana" to "/status",
             "kondisi monitoring terkini" to "/status",
-            "anak main hp berapa lama hari ini" to "/layar",
-            "berapa lama anak pakai aplikasi hari ini" to "/layar",
-            "total waktu layar kemarin" to "/layar",
-            "screen time hari ini berapa" to "/layar",
+            "anak main hp berapa lama hari ini" to "/screentime",
+            "berapa lama anak pakai aplikasi hari ini" to "/screentime",
+            "total waktu layar kemarin" to "/screentime",
+            "screen time hari ini berapa" to "/screentime",
             "laporan hari ini" to "/digest",
             "ringkasan hari ini dong" to "/digest",
             "rekap aktivitas hari ini" to "/digest",
-            "rekap seminggu terakhir" to "/minggu",
-            "7 hari terakhir" to "/minggu",
-            "laporan minggu ini" to "/minggu",
-            "ringkasan minggu lalu" to "/minggu",
-            "tadi habis dari mana saja" to "/jejak",
-            "jejak anak hari ini" to "/jejak",
-            "riwayat lokasi kemarin" to "/jejak",
-            "riwayat lokasi anak hari ini" to "/jejak",
-            "riwayat lokasi hp sekarang" to "/jejak",
-            "ada yang mencurigakan semalam" to "/waspada",
-            "ada kejadian aneh tadi malam" to "/waspada",
-            "notif apa saja yang masuk" to "/lastnotif",
-            "pemberitahuan terakhir apa" to "/lastnotif",
+            "rekap seminggu terakhir" to "/weekly",
+            "7 hari terakhir" to "/weekly",
+            "laporan minggu ini" to "/weekly",
+            "ringkasan minggu lalu" to "/weekly",
+            "tadi habis dari mana saja" to "/track",
+            "jejak anak hari ini" to "/track",
+            "riwayat lokasi kemarin" to "/track",
+            "riwayat lokasi anak hari ini" to "/track",
+            "riwayat lokasi hp sekarang" to "/track",
+            "ada yang mencurigakan semalam" to "/alertness",
+            "ada kejadian aneh tadi malam" to "/alertness",
+            "notif apa saja yang masuk" to "/lastnotify",
+            "pemberitahuan terakhir apa" to "/lastnotify",
             "sms terakhir dari siapa" to "/lastsms",
             "sms masuk terbaru apa" to "/lastsms",
             "sms dari bank masuk" to "/lastsms",
@@ -143,9 +143,9 @@ class IntentParserTest {
     @Test
     fun parseToleratesAttachedDigitUnitTokens() {
         // #617: angka+satuan yang menempel dikenali seperti bentuk berspasi.
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6jam dong", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6jam", "/layar 6jam"))
-        assertEquals("/minggu", IntentParser.parse("7hari terakhir"))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar 6jam dong", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("layar 6jam", "/screentime 6jam"))
+        assertEquals("/weekly", IntentParser.parse("7hari terakhir"))
         assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
     }
 
@@ -155,9 +155,9 @@ class IntentParserTest {
         // menggugurkan intent yang sah.
         assertEquals("/location", IntentParser.parse("hpnya dimana"))
         assertEquals("/screenshot", IntentParser.parse("kirim tangkapan layarnya sekarang"))
-        assertEquals("/layar", IntentParser.parse("anak main hpnya berapa lama hari ini"))
+        assertEquals("/screentime", IntentParser.parse("anak main hpnya berapa lama hari ini"))
         assertEquals("/lastsms", IntentParser.parse("smsnya terakhir apa"))
-        assertEquals("/jejak", IntentParser.parse("riwayat lokasinya kemarin"))
+        assertEquals("/track", IntentParser.parse("riwayat lokasinya kemarin"))
         assertEquals("/status", IntentParser.parse("status hpnya sekarang"))
         assertNull(IntentParser.parse("hp rusak"))
     }
@@ -166,9 +166,9 @@ class IntentParserTest {
     fun aliasFallbackRejectsFutureTimeWords() {
         // Kata masa depan pada alias mutating = niat menjadwalkan, bukan eksekusi sekarang.
         assertNull(IntentParser.intentOrAlias("kunci besok", "/lock besok"))
-        assertNull(IntentParser.intentOrAlias("hilang besok", "/hilang besok"))
+        assertNull(IntentParser.intentOrAlias("hilang besok", "/lost besok"))
         assertNull(IntentParser.intentOrAlias("lanjut nanti", "/resume nanti"))
-        assertNull(IntentParser.intentOrAlias("darurat lusa", "/darurat lusa"))
+        assertNull(IntentParser.intentOrAlias("darurat lusa", "/emergency lusa"))
         assertTrue(IntentParser.isVetoedText("kunci besok", "/lock besok"))
         // Kontrol positif & cermin masa lalu tetap seperti sebelumnya.
         assertEquals("/lock", IntentParser.intentOrAlias("kunci", "/lock"))
@@ -199,12 +199,12 @@ class IntentParserTest {
         assertNull(IntentParser.intentOrAlias("kunci apa", "/lock apa"))
         assertNull(IntentParser.intentOrAlias("kunci kapan", "/lock kapan"))
         assertNull(IntentParser.intentOrAlias("kunci kenapa", "/lock kenapa"))
-        assertNull(IntentParser.intentOrAlias("hilang apa", "/hilang apa"))
-        assertNull(IntentParser.intentOrAlias("hilang kenapa", "/hilang kenapa"))
-        assertNull(IntentParser.intentOrAlias("darurat gimana", "/darurat gimana"))
+        assertNull(IntentParser.intentOrAlias("hilang apa", "/lost apa"))
+        assertNull(IntentParser.intentOrAlias("hilang kenapa", "/lost kenapa"))
+        assertNull(IntentParser.intentOrAlias("darurat gimana", "/emergency gimana"))
         // Kontrol: alias polos dan alias + argumen sah tetap jalan.
         assertEquals("/lock", IntentParser.intentOrAlias("kunci", "/lock"))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan dong", "/photo depan dong"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto depan dong", "/photo depan dong"))
     }
 
     @Test
@@ -214,8 +214,8 @@ class IntentParserTest {
         assertNull(IntentParser.parse("kirim foto kemaren dong"))
         assertNull(IntentParser.parse("foto kemaren bagus dong"))
         assertNull(IntentParser.parse("kirim foto tempo hari dong"))
-        assertNull(IntentParser.intentOrAlias("hilang kemaren", "/hilang kemaren"))
-        assertNull(IntentParser.intentOrAlias("darurat kemaren", "/darurat kemaren"))
+        assertNull(IntentParser.intentOrAlias("hilang kemaren", "/lost kemaren"))
+        assertNull(IntentParser.intentOrAlias("darurat kemaren", "/emergency kemaren"))
         // Kontrol: tangkap sekarang dan ejaan baku tetap seperti sebelumnya.
         assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
         assertNull(IntentParser.parse("kirim foto kemarin dong"))
@@ -245,7 +245,7 @@ class IntentParserTest {
         assertNull(IntentParser.parse("tidk kirim foto sekarang"))
         assertNull(IntentParser.parse("nggk kirim foto sekarang"))
         assertNull(IntentParser.intentOrAlias("kunci jangn", "/lock jangn"))
-        // Kosakata batal untuk /pulihkan berbagi celah yang sama.
+        // Kosakata batal untuk /restore berbagi celah yang sama.
         assertTrue(IntentParser.isCancellation("batl"))
         // Kontrol: kata sah berjarak satu hapusan dari basis negasi
         // tidak ikut tertelan ("buka" dari bukan, "agak" dari kagak,
@@ -266,11 +266,11 @@ class IntentParserTest {
         assertNull(IntentParser.parse("foto batal dikirim sekarang dong"))
         assertNull(IntentParser.intentOrAlias("kunci batal", "/lock batal"))
         assertNull(IntentParser.intentOrAlias("lanjut batal", "/resume batal"))
-        assertNull(IntentParser.intentOrAlias("pulih batal", "/sembuh batal"))
+        assertNull(IntentParser.intentOrAlias("pulih batal", "/recover batal"))
         // Pengecualian: "restore batal" adalah perintah batal-restore itu
-        // sendiri (/pulihkan batal) dan harus tetap sampai ke handler-nya.
-        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal", "/pulihkan batal"))
-        assertFalse(IntentParser.isVetoedText("restore batal", "/pulihkan batal"))
+        // sendiri (/restore batal) dan harus tetap sampai ke handler-nya.
+        assertEquals("/restore batal", IntentParser.intentOrAlias("restore batal", "/restore batal"))
+        assertFalse(IntentParser.isVetoedText("restore batal", "/restore batal"))
         // Kontrol positif tetap jalan.
         assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
     }
@@ -297,10 +297,10 @@ class IntentParserTest {
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto pekan depan dong", null))
         // Lensa betulan tetap dikenali: tepat sesudah kata foto, sesudah kata
         // sisipan "dong", atau sesudah "kamera".
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto kamera depan dong", null))
-        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto kamera belakang dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto kamera depan dong", null))
+        assertEquals("/photo back", IntentParser.intentOrAlias("kirim foto kamera belakang dong", null))
     }
 
     @Test
@@ -312,7 +312,7 @@ class IntentParserTest {
         assertNull(IntentParser.intentOrAlias("katanya kunci", "/lock"))
         // Kontrol: perintah langsung dan argumen berkutip di tengah tetap jalan.
         assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
     }
 
     @Test
@@ -417,9 +417,9 @@ class IntentParserTest {
     @Test
     fun readOnlyCommandsAcceptPastArguments() {
         // #672: penanda masa lalu adalah argumen sah perintah baca-saja.
-        assertEquals("/waspada kemarin", IntentParser.intentOrAlias("waspada kemarin", "/waspada kemarin"))
+        assertEquals("/alertness kemarin", IntentParser.intentOrAlias("waspada kemarin", "/alertness kemarin"))
         assertEquals("/location kemarin", IntentParser.intentOrAlias("lokasi kemarin", "/location kemarin"))
-        assertEquals("/hematdata kemarin", IntentParser.intentOrAlias("kuota kemarin", "/hematdata kemarin"))
+        assertEquals("/datasaver kemarin", IntentParser.intentOrAlias("kuota kemarin", "/datasaver kemarin"))
         // Perintah tangkap tetap terveto rujukan seperti sebelumnya.
         assertNull(IntentParser.intentOrAlias("foto kemarin", "/photo kemarin"))
         // Veto keras (negasi) tetap berlaku untuk semua perintah.
@@ -462,7 +462,7 @@ class IntentParserTest {
         assertNull(IntentParser.parse("pesan masuk bunyinya \"kirim foto sekarang\""))
         assertNull(IntentParser.parse("bunyi notifnya “ambil foto depan”"))
         // Kontrol terkunci: kutipan satu kata adalah penekanan, tetap sah.
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
     }
 
     @Test
@@ -507,11 +507,11 @@ class IntentParserTest {
         assertNull(IntentParser.parse("kirim foto kah"))
         assertNull(IntentParser.parse("kirim foto kan"))
         assertNull(IntentParser.parse("kirim screenshot kah"))
-        assertNull(IntentParser.intentOrAlias("darurat kah", "/darurat kah"))
-        assertNull(IntentParser.intentOrAlias("darurat kan", "/darurat kan"))
+        assertNull(IntentParser.intentOrAlias("darurat kah", "/emergency kah"))
+        assertNull(IntentParser.intentOrAlias("darurat kan", "/emergency kan"))
         assertNull(IntentParser.intentOrAlias("kunci kah", "/lock kah"))
-        assertNull(IntentParser.intentOrAlias("sembuh kah", "/sembuh kah"))
-        assertNull(IntentParser.intentOrAlias("hilang kah", "/hilang kah"))
+        assertNull(IntentParser.intentOrAlias("sembuh kah", "/recover kah"))
+        assertNull(IntentParser.intentOrAlias("hilang kah", "/lost kah"))
         // Kontrol: imbuhan -kan pada kata kerja bukan partikel tanya.
         assertEquals("/photo", IntentParser.parse("kirimkan foto sekarang"))
         assertEquals("/photo", IntentParser.parse("kirim foto sekarang"))
@@ -524,24 +524,24 @@ class IntentParserTest {
         assertNull(IntentParser.intentOrAlias("kunci apa dong", "/lock apa dong"))
         assertNull(IntentParser.intentOrAlias("kunci apa sekarang", "/lock apa sekarang"))
         assertNull(IntentParser.intentOrAlias("kunci kapan ya", "/lock kapan ya"))
-        assertNull(IntentParser.intentOrAlias("hilang kenapa sih", "/hilang kenapa sih"))
-        assertNull(IntentParser.intentOrAlias("darurat gimana sekarang", "/darurat gimana sekarang"))
+        assertNull(IntentParser.intentOrAlias("hilang kenapa sih", "/lost kenapa sih"))
+        assertNull(IntentParser.intentOrAlias("darurat gimana sekarang", "/emergency gimana sekarang"))
         assertNull(IntentParser.intentOrAlias("kunci kah dong", "/lock kah dong"))
         assertNull(IntentParser.intentOrAlias("kunci kan sih", "/lock kan sih"))
         assertTrue(IntentParser.isVetoedText("kunci apa dong", "/lock apa dong"))
         // Kontrol: "kok" sendiri tetap penanda tanya; perintah sah berpenegas jalan.
         assertNull(IntentParser.intentOrAlias("kunci kok", "/lock kok"))
-        assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on dong", "/hematdata on dong"))
+        assertEquals("/datasaver on", IntentParser.intentOrAlias("kuota on dong", "/datasaver on dong"))
         assertEquals("/lock hp", IntentParser.intentOrAlias("kunci hp sekarang", "/lock hp sekarang"))
     }
 
     @Test
     fun aliasPulihkanBatalSurvivesTailFillers() {
         // #752: pengecualian batal-restore dinilai dari token inti.
-        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal dong", "/pulihkan batal dong"))
-        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal sih", "/pulihkan batal sih"))
-        assertEquals("/pulihkan batal", IntentParser.intentOrAlias("restore batal", "/pulihkan batal"))
-        assertFalse(IntentParser.isVetoedText("restore batal dong", "/pulihkan batal dong"))
+        assertEquals("/restore batal", IntentParser.intentOrAlias("restore batal dong", "/restore batal dong"))
+        assertEquals("/restore batal", IntentParser.intentOrAlias("restore batal sih", "/restore batal sih"))
+        assertEquals("/restore batal", IntentParser.intentOrAlias("restore batal", "/restore batal"))
+        assertFalse(IntentParser.isVetoedText("restore batal dong", "/restore batal dong"))
         // Kontrol: veto batal untuk perintah lain tidak ikut longgar.
         assertNull(IntentParser.intentOrAlias("kunci batal dong", "/lock batal dong"))
     }
@@ -549,13 +549,13 @@ class IntentParserTest {
     @Test
     fun mergeTextArgsSkipsTailFillers() {
         // #753: penegas tidak menghabiskan anggaran pindai argumen.
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto sekarang dong depan", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto sekarang dong depan", "/photo sekarang dong depan"))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar dong dong 6 jam", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("screen time dong dong 6 jam", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto sekarang dong depan", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto sekarang dong depan", "/photo sekarang dong depan"))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar dong dong 6 jam", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("screen time dong dong 6 jam", null))
         // Kontrol terkunci tetap: satu penegas memang sudah bekerja.
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto dong depan", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar dong 6 jam", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto dong depan", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar dong 6 jam", null))
     }
 
     @Test
@@ -566,10 +566,10 @@ class IntentParserTest {
         // dibuang — handler menolak satuan lintas keluarga lewat
         // NumericArg, jadi "jemput 500 min" tidak lagi terpasang
         // senyap sebagai 500 meter.
-        assertEquals("/jemput 500 min", IntentParser.intentOrAlias("jemput 500 min", "/jemput 500 min"))
-        assertEquals("/jemput 500 s", IntentParser.intentOrAlias("jemput 500 s", "/jemput 500 s"))
-        assertEquals("/jemput 500 mnt", IntentParser.intentOrAlias("jemput 500 mnt", "/jemput 500 mnt"))
-        assertEquals("/jemput 500 jam", IntentParser.intentOrAlias("jemput 500 jam", "/jemput 500 jam"))
+        assertEquals("/pickup 500 min", IntentParser.intentOrAlias("jemput 500 min", "/pickup 500 min"))
+        assertEquals("/pickup 500 s", IntentParser.intentOrAlias("jemput 500 s", "/pickup 500 s"))
+        assertEquals("/pickup 500 mnt", IntentParser.intentOrAlias("jemput 500 mnt", "/pickup 500 mnt"))
+        assertEquals("/pickup 500 jam", IntentParser.intentOrAlias("jemput 500 jam", "/pickup 500 jam"))
     }
 
     @Test
@@ -590,7 +590,7 @@ class IntentParserTest {
         assertEquals("/location kemarin", IntentParser.intentOrAlias("lokasi kemarin", "/location kemarin"))
         // Target mutasi tetap terveto masa depan.
         assertNull(IntentParser.intentOrAlias("kunci besok", "/lock besok"))
-        assertNull(IntentParser.intentOrAlias("darurat besok", "/darurat besok"))
+        assertNull(IntentParser.intentOrAlias("darurat besok", "/emergency besok"))
     }
 
     @Test
@@ -645,13 +645,13 @@ class IntentParserTest {
         assertTrue(IntentParser.isVetoedText("foto kemarin", "/photo kemarin"))
         assertTrue(IntentParser.isVetoedText("kunci tidak", "/lock tidak"))
         assertTrue(IntentParser.isVetoedText("foto yang diambil kemarin dong", "/photo yang diambil kemarin dong"))
-        assertTrue(IntentParser.isVetoedText("hilang kemarinn", "/hilang kemarinn"))
-        assertFalse(IntentParser.isVetoedText("jejak kemarin", "/jejak kemarin"))
-        assertFalse(IntentParser.isVetoedText("layar kemarin", "/layar kemarin"))
+        assertTrue(IntentParser.isVetoedText("hilang kemarinn", "/lost kemarinn"))
+        assertFalse(IntentParser.isVetoedText("jejak kemarin", "/track kemarin"))
+        assertFalse(IntentParser.isVetoedText("layar kemarin", "/screentime kemarin"))
         assertFalse(IntentParser.isVetoedText("sms 0812 jangan lupa", "/sms 0812 jangan lupa"))
-        assertFalse(IntentParser.isVetoedText("kuota bulan ini habis", "/hematdata bulan ini habis"))
+        assertFalse(IntentParser.isVetoedText("kuota bulan ini habis", "/datasaver bulan ini habis"))
         assertFalse(IntentParser.isVetoedText("foto bukaan dong", "/photo bukaan dong"))
-        assertFalse(IntentParser.isVetoedText("waspada tadi malam", "/waspada tadi malam"))
+        assertFalse(IntentParser.isVetoedText("waspada tadi malam", "/alertness tadi malam"))
     }
 
     @Test
@@ -738,79 +738,79 @@ class IntentParserTest {
 
     @Test
     fun intentOrAliasMergesArgsWrappedInQuotesBracketsOrStars() {
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto (depan) dong", "/photo (depan) dong"))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto *depan* dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto \"depan\" dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto (depan) dong", "/photo (depan) dong"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto *depan* dong", null))
         // Kata penegas ekor dibuang dari argumen alias yang dikembalikan
         // (issue #728): handler memeriksa argumen secara persis.
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 dong", "/jampulang 21:30 dong"))
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30,", "/jampulang 21:30,"))
-        assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on dong", "/hematdata on dong"))
-        assertEquals("/jemput 500", IntentParser.intentOrAlias("jemput 500 dong", "/jemput 500 dong"))
-        assertEquals("/cekmati dong", IntentParser.intentOrAlias("cekmati dong", "/cekmati dong"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("pulang 21:30 dong", "/curfew 21:30 dong"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("pulang 21:30,", "/curfew 21:30,"))
+        assertEquals("/datasaver on", IntentParser.intentOrAlias("kuota on dong", "/datasaver on dong"))
+        assertEquals("/pickup 500", IntentParser.intentOrAlias("jemput 500 dong", "/pickup 500 dong"))
+        assertEquals("/checkdead dong", IntentParser.intentOrAlias("cekmati dong", "/checkdead dong"))
         // Batas kata ternormalkan: kapital penegas & emoji penutup tidak
         // lagi menggugurkan perintah (issue #729).
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 DONG", "/jampulang 21:30 DONG"))
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang 21:30 😀", "/jampulang 21:30 😀"))
-        assertEquals("/hematdata on", IntentParser.intentOrAlias("kuota on 😀", "/hematdata on 😀"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("pulang 21:30 DONG", "/curfew 21:30 DONG"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("pulang 21:30 😀", "/curfew 21:30 😀"))
+        assertEquals("/datasaver on", IntentParser.intentOrAlias("kuota on 😀", "/datasaver on 😀"))
         // Angka + satuan = satu argumen (issue #731); satuannya
         // diteruskan ke handler sejak #883 (NumericArg yang menilai).
-        assertEquals("/jemput 500 meter", IntentParser.intentOrAlias("jemput 500 meter", "/jemput 500 meter"))
-        assertEquals("/jemput 500 m", IntentParser.intentOrAlias("jemput 500 m", "/jemput 500 m"))
-        assertEquals("/jemput 500 meter", IntentParser.intentOrAlias("jemput 500 meter dong", "/jemput 500 meter dong"))
+        assertEquals("/pickup 500 meter", IntentParser.intentOrAlias("jemput 500 meter", "/pickup 500 meter"))
+        assertEquals("/pickup 500 m", IntentParser.intentOrAlias("jemput 500 m", "/pickup 500 m"))
+        assertEquals("/pickup 500 meter", IntentParser.intentOrAlias("jemput 500 meter dong", "/pickup 500 meter dong"))
         // mergeTextArgs setoleran parse(): elongasi, tanda hubung, kata
         // kunci berulang tidak lagi menelan argumen (issue #727).
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim footo depan sekarang", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("laayar 6 jam", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6-jam dong", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto foto foto depan dong", null))
-        // Frasa grup-1 /layar ikut menjadi jangkar argumen jam (issue #726).
-        assertEquals("/layar 6", IntentParser.intentOrAlias("screen time 6 jam hari ini", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("anak main hp 6 jam hari ini", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("pemakaian aplikasi 6 jam hari ini", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("screen_time 6 jam hari ini", null))
-        assertEquals("/layar", IntentParser.intentOrAlias("screen time hari ini", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar (6) jam dong", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar \"6\" jam", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim footo depan sekarang", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("laayar 6 jam", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar 6-jam dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto foto foto depan dong", null))
+        // Frasa grup-1 /screentime ikut menjadi jangkar argumen jam (issue #726).
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("screen time 6 jam hari ini", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("anak main hp 6 jam hari ini", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("pemakaian aplikasi 6 jam hari ini", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("screen_time 6 jam hari ini", null))
+        assertEquals("/screentime", IntentParser.intentOrAlias("screen time hari ini", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar (6) jam dong", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar \"6\" jam", null))
     }
 
     @Test
     fun intentOrAliasMergesArgsDespitePunctuation() {
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto depan, dong", "/photo depan, dong"))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6, jam", "/layar 6, jam"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto depan, dong", "/photo depan, dong"))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("layar 6, jam", "/screentime 6, jam"))
     }
 
     @Test
     fun intentOrAliasRecognizesPhotoKeyword() {
-        assertEquals("/photo depan", IntentParser.intentOrAlias("photo depan dong", "/photo depan dong"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("photo depan dong", "/photo depan dong"))
         assertEquals("/photo", IntentParser.intentOrAlias("photo sekarang dong", "/photo sekarang dong"))
     }
 
     @Test
     fun intentOrAliasMergesArgsFromParsedText() {
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("tolong kirim foto depan sekarang", "/help kirim foto depan sekarang"))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("tolong kirim foto depan sekarang", "/help kirim foto depan sekarang"))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("foto dong depan", "/photo dong depan"))
         assertEquals("/photo", IntentParser.intentOrAlias("tolong kirim foto sekarang", null))
-        assertEquals("/layar", IntentParser.intentOrAlias("layar 25 jam", "/layar 25 jam"))
+        assertEquals("/screentime", IntentParser.intentOrAlias("layar 25 jam", "/screentime 25 jam"))
     }
 
     @Test
     fun intentOrAliasDoesNotMergeDistantArgs() {
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto sekarang, anak lagi di depan rumah dong", null))
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto sekarang, yang belakang itu adiknya dong", null))
-        assertEquals("/layar", IntentParser.intentOrAlias("cek layar kemarin, anak main 6 jam dong", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
+        assertEquals("/screentime", IntentParser.intentOrAlias("cek layar kemarin, anak main 6 jam dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto depan sekarang", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("cek layar 6 jam", null))
     }
 
     @Test
     fun intentOrAliasMergesLensAfterYangAtEnd() {
-        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto yang belakang", null))
-        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto pakai yang belakang", null))
-        assertEquals("/photo belakang", IntentParser.intentOrAlias("foto yang belakang dong", null))
-        assertEquals("/photo depan", IntentParser.intentOrAlias("kirim foto yang depan dong ya", null))
+        assertEquals("/photo back", IntentParser.intentOrAlias("kirim foto yang belakang", null))
+        assertEquals("/photo back", IntentParser.intentOrAlias("kirim foto pakai yang belakang", null))
+        assertEquals("/photo back", IntentParser.intentOrAlias("foto yang belakang dong", null))
+        assertEquals("/photo front", IntentParser.intentOrAlias("kirim foto yang depan dong ya", null))
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang belakang rumah", null))
     }
 
@@ -821,22 +821,22 @@ class IntentParserTest {
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang kedua belakang itu adiknya dong", null))
         assertEquals("/photo", IntentParser.intentOrAlias("kirim foto yang baru belakang itu temannya", null))
         // Kontrol: lensa di akhir klausa tetap pilihan lensa.
-        assertEquals("/photo belakang", IntentParser.intentOrAlias("kirim foto yang kedua belakang", null))
+        assertEquals("/photo back", IntentParser.intentOrAlias("kirim foto yang kedua belakang", null))
     }
 
     @Test
     fun intentOrAliasMergesDecimalScreenHours() {
         // Issue #774: jam desimal sebelumnya jatuh diam-diam ke laporan
         // bawaan 24 jam; kini dibulatkan ke jam terdekat.
-        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6,5 jam", null))
-        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6.5 jam", null))
-        assertEquals("/layar 6", IntentParser.intentOrAlias("layar 6,4 jam", null))
-        assertEquals("/layar 7", IntentParser.intentOrAlias("layar 6,5jam", null))
-        assertEquals("/layar", IntentParser.intentOrAlias("layar 25,5 jam", null))
+        assertEquals("/screentime 7", IntentParser.intentOrAlias("layar 6,5 jam", null))
+        assertEquals("/screentime 7", IntentParser.intentOrAlias("layar 6.5 jam", null))
+        assertEquals("/screentime 6", IntentParser.intentOrAlias("layar 6,4 jam", null))
+        assertEquals("/screentime 7", IntentParser.intentOrAlias("layar 6,5jam", null))
+        assertEquals("/screentime", IntentParser.intentOrAlias("layar 25,5 jam", null))
         // #790: desimal positif di bawah 0,5 dijepit ke 1 jam, bukan
         // jatuh diam-diam ke laporan bawaan 24 jam.
-        assertEquals("/layar 1", IntentParser.intentOrAlias("layar 0,4 jam", null))
-        assertEquals("/layar", IntentParser.intentOrAlias("layar 0 jam", null))
+        assertEquals("/screentime 1", IntentParser.intentOrAlias("layar 0,4 jam", null))
+        assertEquals("/screentime", IntentParser.intentOrAlias("layar 0 jam", null))
     }
 
     @Test
@@ -844,10 +844,10 @@ class IntentParserTest {
         // Issue #777: frasa perintah dua kata ("jam pulang") dihitung
         // satu perintah oleh gerbang kata bila ekor teks persis argumen
         // alias yang dibentuk resolveAliasInput.
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("jam pulang 21:30", "/jampulang 21:30"))
-        assertEquals("/jampulang 21:30", IntentParser.intentOrAlias("pulang jam 21:30", "/jampulang 21:30"))
-        assertEquals("/hematdata on", IntentParser.intentOrAlias("hemat kuota on", "/hematdata on"))
-        assertEquals("/cekmati", IntentParser.intentOrAlias("cek mati", "/cekmati"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("jam pulang 21:30", "/curfew 21:30"))
+        assertEquals("/curfew 21:30", IntentParser.intentOrAlias("pulang jam 21:30", "/curfew 21:30"))
+        assertEquals("/datasaver on", IntentParser.intentOrAlias("hemat kuota on", "/datasaver on"))
+        assertEquals("/checkdead", IntentParser.intentOrAlias("cek mati", "/checkdead"))
         // Kontrol: kalimat tiga kata biasa tetap gugur.
         assertNull(IntentParser.intentOrAlias("kunci hp 1234", "/lock hp 1234"))
     }
@@ -863,9 +863,9 @@ class IntentParserTest {
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))
         }
-        assertNull(IntentParser.intentOrAlias("hilang kemarinn", "/hilang kemarinn"))
-        assertNull(IntentParser.intentOrAlias("hilang tadii", "/hilang tadii"))
-        assertNull(IntentParser.intentOrAlias("hilang barusann", "/hilang barusann"))
+        assertNull(IntentParser.intentOrAlias("hilang kemarinn", "/lost kemarinn"))
+        assertNull(IntentParser.intentOrAlias("hilang tadii", "/lost tadii"))
+        assertNull(IntentParser.intentOrAlias("hilang barusann", "/lost barusann"))
         assertNull(IntentParser.intentOrAlias("kunci kemarinn", "/lock kemarinn"))
     }
 
@@ -883,9 +883,9 @@ class IntentParserTest {
         for (text in cases) {
             assertNull("frasa: $text", IntentParser.parse(text))
         }
-        assertNull(IntentParser.intentOrAlias("hilang kemarinnlah", "/hilang kemarinnlah"))
+        assertNull(IntentParser.intentOrAlias("hilang kemarinnlah", "/lost kemarinnlah"))
         assertNull(IntentParser.intentOrAlias("kunci kemarinnlah", "/lock kemarinnlah"))
-        assertTrue(IntentParser.isVetoedText("hilang kemarinnlah", "/hilang kemarinnlah"))
+        assertTrue(IntentParser.isVetoedText("hilang kemarinnlah", "/lost kemarinnlah"))
     }
 
     @Test
@@ -958,8 +958,8 @@ class IntentParserTest {
     @Test
     fun parseNeverReturnsMutatingCommands() {
         val allowed = setOf(
-            "/location", "/battery", "/status", "/layar", "/digest", "/minggu", "/jejak",
-            "/waspada", "/lastnotif", "/lastsms", "/lastcalls", "/help", "/photo", "/screenshot"
+            "/location", "/battery", "/status", "/screentime", "/digest", "/weekly", "/track",
+            "/alertness", "/lastnotify", "/lastsms", "/lastcalls", "/help", "/photo", "/screenshot"
         )
         val probes = listOf(
             "tolong kunci hp sekarang", "matikan monitoring sekarang", "berhenti memantau sekarang",
@@ -979,8 +979,8 @@ class IntentParserTest {
             Triple("tolong kirim foto sekarang", "/help kirim foto sekarang", "/photo"),
             Triple("tolong foto", "/help foto", "/photo"),
             Triple("sms terakhir dari siapa", "/sms terakhir dari siapa", "/lastsms"),
-            Triple("laporan hari ini", "/minggu hari ini", "/digest"),
-            Triple("minggu depan ada acara apa", "/minggu depan ada acara apa", null),
+            Triple("laporan hari ini", "/weekly hari ini", "/digest"),
+            Triple("minggu depan ada acara apa", "/weekly depan ada acara apa", null),
             Triple("lokasi baterai di gudang", "/location baterai di gudang", null),
             Triple("foto sekarang dong", "/photo sekarang dong", "/photo"),
             Triple("foto yang diambil kemarin dong", "/photo yang diambil kemarin dong", null),
@@ -999,13 +999,13 @@ class IntentParserTest {
     fun intentOrAliasFallbackRespectsParserVeto() {
         val cases: List<Triple<String, String?, String?>> = listOf(
             Triple("kunci tidak", "/lock tidak", null),
-            Triple("hilang kemarin", "/hilang kemarin", null),
-            Triple("hilang tadi", "/hilang tadi", null),
-            Triple("sembuh sekarang", "/sembuh sekarang", "/sembuh sekarang"),
-            Triple("darurat sekarang", "/darurat sekarang", "/darurat sekarang"),
-            Triple("hilang hpku", "/hilang hpku", "/hilang hpku"),
+            Triple("hilang kemarin", "/lost kemarin", null),
+            Triple("hilang tadi", "/lost tadi", null),
+            Triple("sembuh sekarang", "/recover sekarang", "/recover sekarang"),
+            Triple("darurat sekarang", "/emergency sekarang", "/emergency sekarang"),
+            Triple("hilang hpku", "/lost hpku", "/lost hpku"),
             Triple("kunci sekarang", "/lock sekarang", "/lock sekarang"),
-            Triple("foto depan", "/photo depan", "/photo depan")
+            Triple("foto depan", "/photo front", "/photo front")
         )
         for ((text, alias, expected) in cases) {
             assertEquals("frasa: $text", expected, IntentParser.intentOrAlias(text, alias))
@@ -1015,10 +1015,10 @@ class IntentParserTest {
     @Test
     fun intentOrAliasParserWinMergesRelevantAliasArgs() {
         val cases: List<Triple<String, String?, String?>> = listOf(
-            Triple("foto depan dong", "/photo depan dong", "/photo depan"),
-            Triple("foto belakang dong", "/photo belakang dong", "/photo belakang"),
-            Triple("layar 6 jam", "/layar 6 jam", "/layar 6"),
-            Triple("layar 25 jam", "/layar 25 jam", "/layar"),
+            Triple("foto depan dong", "/photo depan dong", "/photo front"),
+            Triple("foto belakang dong", "/photo belakang dong", "/photo back"),
+            Triple("layar 6 jam", "/screentime 6 jam", "/screentime 6"),
+            Triple("layar 25 jam", "/screentime 25 jam", "/screentime"),
             Triple("foto sekarang dong", "/photo sekarang dong", "/photo"),
             Triple("tolong kirim foto sekarang", "/help kirim foto sekarang", "/photo")
         )
@@ -1050,8 +1050,8 @@ class IntentParserTest {
             Triple("kunci sekarang", "/lock sekarang", "/lock sekarang"),
             Triple("tolong", "/help", "/help"),
             Triple("foto", "/photo", "/photo"),
-            Triple("foto depan", "/photo depan", "/photo depan"),
-            Triple("foto belakang", "/photo belakang", "/photo belakang"),
+            Triple("foto depan", "/photo front", "/photo front"),
+            Triple("foto belakang", "/photo back", "/photo back"),
             Triple("sms 0812 halo", "/sms 0812 halo", "/sms 0812 halo"),
             Triple("sms 0812 3456 7890 apa kabar", "/sms 0812 3456 7890 apa kabar", "/sms 0812 3456 7890 apa kabar"),
             Triple("sms +62812 3456 7890 sampai jumpa", "/sms +62812 3456 7890 sampai jumpa", "/sms +62812 3456 7890 sampai jumpa")

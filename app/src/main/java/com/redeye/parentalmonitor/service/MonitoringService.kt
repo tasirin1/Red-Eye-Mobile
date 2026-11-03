@@ -366,7 +366,7 @@ class MonitoringService : Service() {
         private const val RESTORE_STAGE_DOC = 1
         private const val RESTORE_STAGE_PIN = 2
         private const val RESTORE_STAGE_CONFIRM = 3
-        private val AUDIT_COMMANDS = setOf("/pulihkan", "/stop", "/sms", "/lock", "/hilang", "/sembuh", "/restart", "/clearqueue", "/logout")
+        private val AUDIT_COMMANDS = setOf("/restore", "/stop", "/sms", "/lock", "/lost", "/recover", "/restart", "/clearqueue", "/logout")
         private val MUTATING_COMMANDS = CommandSuggest.MUTATING_COMMANDS
         private val DEFAULT_APP_WATCH_PACKAGES = listOf(
             "com.whatsapp",
@@ -386,12 +386,12 @@ class MonitoringService : Service() {
             "com.android.mms"
         )
         private val CONTROL_COMMANDS = setOf("/stop", "/pause", "/resume", "/restart", "/logout", "/clearqueue", "/lock")
-        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotif", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/ringkas", "/alive", "/cekmati", "/layar", "/audit")
-        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/darurat", "minggu" to "/minggu", "laporan" to "/minggu", "pulang" to "/jampulang", "jejak" to "/jejak", "waspada" to "/waspada", "hilang" to "/hilang", "jemput" to "/jemput", "cekmati" to "/cekmati", "ujimati" to "/cekmati", "sembuh" to "/sembuh", "pulih" to "/sembuh", "layar" to "/layar", "screentime" to "/layar", "kendara" to "/kendara", "berkendara" to "/kendara", "kendaraan" to "/kendara", "hematdata" to "/hematdata", "hematkuota" to "/hematdata", "kuota" to "/hematdata", "restore" to "/pulihkan", "screenshot" to "/screenshot", "status" to "/status")
+        private val SENSITIVE_COMMANDS = setOf("/screenshot", "/photo", "/location", "/lastcalls", "/lastsms", "/lastnotify", "/contacts", "/history", "/apps", "/log", "/version", "/status", "/battery", "/uptime", "/storage", "/perms", "/brief", "/alive", "/checkdead", "/screentime", "/audit")
+        private val ALIAS_COMMANDS = mapOf("dimana" to "/location", "lokasi" to "/location", "posisi" to "/location", "foto" to "/photo", "photo" to "/photo", "ding" to "/ring", "bunyi" to "/ring", "kunci" to "/lock", "baterai" to "/battery", "batre" to "/battery", "bantu" to "/help", "tolong" to "/help", "menu" to "/help", "lanjut" to "/resume", "versi" to "/version", "sms" to "/sms", "darurat" to "/emergency", "minggu" to "/weekly", "laporan" to "/weekly", "pulang" to "/curfew", "jejak" to "/track", "waspada" to "/alertness", "hilang" to "/lost", "jemput" to "/pickup", "cekmati" to "/checkdead", "ujimati" to "/checkdead", "sembuh" to "/recover", "pulih" to "/recover", "layar" to "/screentime", "screentime" to "/screentime", "kendara" to "/driving", "berkendara" to "/driving", "kendaraan" to "/driving", "datasaver" to "/datasaver", "hematkuota" to "/datasaver", "kuota" to "/datasaver", "restore" to "/restore", "screenshot" to "/screenshot", "status" to "/status")
         // Frasa perintah dua kata (issue #777): bentuk berjarak dari
         // perintah yang sama — sebelumnya hanya kata pertama yang
         // dipetakan sehingga bentuk ini gugur diam-diam.
-        private val ALIAS_PHRASES = mapOf("jam pulang" to "/jampulang", "pulang jam" to "/jampulang", "hemat kuota" to "/hematdata", "cek mati" to "/cekmati")
+        private val ALIAS_PHRASES = mapOf("jam pulang" to "/curfew", "pulang jam" to "/curfew", "hemat kuota" to "/datasaver", "cek mati" to "/checkdead")
         private const val COMMAND_MAX_AGE_SEC = 900L
         private const val ADOPTION_WAIT_DEADLINE_MS = COMMAND_MAX_AGE_SEC * 1000L
         private const val COMMAND_SILENT_AGE_SEC = 3600L
@@ -2145,7 +2145,7 @@ class MonitoringService : Service() {
                         // rawAliasInput-nya null, sementara "/kunci
                         // jangan" tertahan. Target kanonisnya perintah
                         // itu sendiri; penjaga di isVetoedText (formulir
-                        // SMS, "/pulihkan batal", target baca-saja)
+                        // SMS, "/restore batal", target baca-saja)
                         // tetap berlaku lewat aliasInput ini.
                         val slashVetoed = command.startsWith("/") && try {
                             IntentParser.isVetoedText(
@@ -2672,20 +2672,20 @@ class MonitoringService : Service() {
 
     // Saklar on/off di menu (permintaan owner): satu tombol
     // menunjukkan keadaan setelan sekarang dan membaliknya saat
-    // diketuk — tak perlu lagi ketik "/notif off". Pembalikan
+    // diketuk — tak perlu lagi ketik "/notify off". Pembalikan
     // menjalankan perintah ketik yang sama persis agar perilaku,
     // gerbang, dan pesan konfirmasinya identik.
     private fun toggleState(key: String): Boolean? {
         return try {
             when (key) {
-                "notif" -> preferencesManager.notifForwardEnabled
+                "notify" -> preferencesManager.notifForwardEnabled
                 "otp" -> preferencesManager.otpMaskEnabled
                 "patrol" -> preferencesManager.patrolEnabled
                 "night" -> preferencesManager.nightMode
                 "appalert" -> preferencesManager.a11yAppAlert
-                "pantauapp" -> preferencesManager.a11yAppWatchEnabled
-                "lindungi" -> preferencesManager.a11yTamperEnabled
-                "hematdata" -> preferencesManager.dataSaverEnabled
+                "appwatch" -> preferencesManager.a11yAppWatchEnabled
+                "protect" -> preferencesManager.a11yTamperEnabled
+                "datasaver" -> preferencesManager.dataSaverEnabled
                 else -> null
             }
         } catch (_: Exception) {
@@ -2696,14 +2696,14 @@ class MonitoringService : Service() {
     private fun toggleCommand(key: String, nyala: Boolean): String? {
         val arah = if (nyala) "on" else "off"
         return when (key) {
-            "notif" -> "/notif $arah"
-            "otp" -> "/notif otp $arah"
+            "notify" -> "/notify $arah"
+            "otp" -> "/notify otp $arah"
             "patrol" -> "/patrol $arah"
             "night" -> "/night $arah"
             "appalert" -> "/appalert $arah"
-            "pantauapp" -> "/pantauapp $arah"
-            "lindungi" -> "/lindungi $arah"
-            "hematdata" -> "/hematdata $arah"
+            "appwatch" -> "/appwatch $arah"
+            "protect" -> "/protect $arah"
+            "datasaver" -> "/datasaver $arah"
             else -> null
         }
     }
@@ -2733,8 +2733,8 @@ class MonitoringService : Service() {
             "lokasi" -> MenuScreen(
                 "\uD83D\uDCCD <b>Lokasi &amp; jejak</b>\nGeofence rumah/sekolah + jemput.",
                 papan(
-                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak 24 jam", "x:jejak")),
-                    listOf(button("\uD83C\uDFE0 Jemput", "num:lokasi:jemput"), button("\uD83D\uDE97 Kendara", "x:kendara status")),
+                    listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83E\uDDB6 Jejak 24 jam", "x:track")),
+                    listOf(button("\uD83C\uDFE0 Jemput", "num:lokasi:pickup"), button("\uD83D\uDE97 Kendara", "x:driving status")),
                     listOf(button("\uD83D\uDDFA\uFE0F Rumah", "i:lokasi:home"), button("\uD83C\uDFEB Sekolah", "i:lokasi:school")),
                     listOf(menuUtama)
                 )
@@ -2744,8 +2744,8 @@ class MonitoringService : Service() {
                 papan(
                     listOf(button("\uD83D\uDCDE Panggilan", "lastcalls"), button("\uD83D\uDCAC SMS terakhir", "lastsms")),
                     listOf(button("\u2709\uFE0F Kirim SMS", "i:komu:sms"), button("\u2705 SMS tertunda", "x:smsconfirm")),
-                    listOf(saklar("\uD83D\uDD14", "Notifikasi", "komu", "notif"), saklar("\uD83D\uDD10", "Masking OTP", "komu", "otp")),
-                    listOf(button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotif"), button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
+                    listOf(saklar("\uD83D\uDD14", "Notifikasi", "komu", "notify"), saklar("\uD83D\uDD10", "Masking OTP", "komu", "otp")),
+                    listOf(button("\uD83D\uDCE8 Notifikasi terakhir", "x:lastnotify"), button("\uD83D\uDCDC Riwayat nomor", "i:komu:history")),
                     listOf(button("\uD83D\uDC65 Cari kontak", "i:komu:contacts"), button("\uD83D\uDCC7 Semua kontak", "x:contacts 1")),
                     listOf(menuUtama)
                 )
@@ -2753,11 +2753,11 @@ class MonitoringService : Service() {
             "info" -> MenuScreen(
                 "\u2139\uFE0F <b>Info &amp; data</b>\nStatus, izin, penyimpanan, aplikasi.",
                 papan(
-                    listOf(button("\uD83D\uDCCA Status", "status"), button("\uD83D\uDCCB Ringkas", "x:ringkas")),
+                    listOf(button("\uD83D\uDCCA Status", "status"), button("\uD83D\uDCCB Ringkas", "x:brief")),
                     listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\u23F1\uFE0F Uptime", "x:uptime")),
                     listOf(button("\uD83C\uDFF7\uFE0F Versi", "x:version"), button("\uD83D\uDD10 Izin", "x:perms")),
                     listOf(button("\uD83D\uDCBE Penyimpanan", "x:storage"), button("\uD83D\uDCE6 Aplikasi", "x:apps")),
-                    listOf(button("\uD83D\uDCC8 Pemakaian layar", "i:info:layar"), button("\uD83D\uDC93 Sinyal hidup", "alive")),
+                    listOf(button("\uD83D\uDCC8 Pemakaian layar", "i:info:screentime"), button("\uD83D\uDC93 Sinyal hidup", "alive")),
                     listOf(button("\uD83E\uDDEA Uji anti-mati", "cekmati"), button("\uD83E\uDDFE Audit", "x:audit")),
                     listOf(menuUtama)
                 )
@@ -2766,11 +2766,11 @@ class MonitoringService : Service() {
                 "\uD83D\uDEE1\uFE0F <b>Pengawasan</b>\nSaklar menunjukkan keadaan sekarang — ketuk untuk membalik.",
                 papan(
                     listOf(saklar("\uD83D\uDEF0", "Patroli", "pantau", "patrol"), saklar("\uD83C\uDF19", "Malam", "pantau", "night")),
-                    listOf(saklar("\uD83D\uDCF1", "Alert app", "pantau", "appalert"), saklar("\uD83D\uDD75\uFE0F", "Pantau app", "pantau", "pantauapp")),
-                    listOf(saklar("\uD83D\uDEE1\uFE0F", "Proteksi", "pantau", "lindungi"), saklar("\uD83D\uDCF6", "Hemat data", "pantau", "hematdata")),
-                    listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnomor")),
-                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:jampulang"), button("\uD83D\uDC9A Pemulihan", "x:sembuh")),
-                    listOf(button("\uD83D\uDCCA Kewaspadaan", "x:waspada"), button("\uD83C\uDD98 HP hilang", "x:hilang")),
+                    listOf(saklar("\uD83D\uDCF1", "Alert app", "pantau", "appalert"), saklar("\uD83D\uDD75\uFE0F", "Pantau app", "pantau", "appwatch")),
+                    listOf(saklar("\uD83D\uDEE1\uFE0F", "Proteksi", "pantau", "protect"), saklar("\uD83D\uDCF6", "Hemat data", "pantau", "datasaver")),
+                    listOf(button("\uD83D\uDD24 Awasi kata", "i:pantau:watch"), button("\uD83D\uDD22 Awasi nomor", "i:pantau:watchnumber")),
+                    listOf(button("\uD83D\uDD58 Jam pulang", "i:pantau:curfew"), button("\uD83D\uDC9A Pemulihan", "x:recover")),
+                    listOf(button("\uD83D\uDCCA Kewaspadaan", "x:alertness"), button("\uD83C\uDD98 HP hilang", "x:lost")),
                     listOf(menuUtama)
                 )
             )
@@ -2781,8 +2781,8 @@ class MonitoringService : Service() {
                     listOf(button("\uD83D\uDD12 Kunci layar", "x:lock"), button("\uD83D\uDD14 Bunyi HP", "num:alat:ring")),
                     listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
                     listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
-                    listOf(button("\uD83E\uDDF9 Bersihkan media 30 hari", "x:bersihkan media 30")),
-                    listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:pulihkan"), button("\uD83D\uDEAA Logout owner", "x:logout")),
+                    listOf(button("\uD83E\uDDF9 Bersihkan media 30 hari", "x:cleanup media 30")),
+                    listOf(button("\uD83D\uDCE5 Pulihkan setelan", "x:restore"), button("\uD83D\uDEAA Logout owner", "x:logout")),
                     listOf(menuUtama)
                 )
             )
@@ -2791,7 +2791,7 @@ class MonitoringService : Service() {
                 papan(
                     listOf(button("\uD83D\uDCF8 Foto", "photo"), button("\uD83D\uDDA5\uFE0F Tangkap layar", "shot")),
                     listOf(button("\uD83D\uDCCD Lokasi", "location"), button("\uD83D\uDCCA Status", "status")),
-                    listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDEA8 Darurat", "x:darurat")),
+                    listOf(button("\uD83D\uDD0B Baterai", "battery"), button("\uD83D\uDEA8 Darurat", "x:emergency")),
                     listOf(button("\uD83D\uDCF7 Media", "m:media"), button("\uD83D\uDCF1 Komunikasi", "m:komu")),
                     listOf(button("\uD83D\uDDFA\uFE0F Lokasi & jejak", "m:lokasi"), button("\uD83D\uDEE1\uFE0F Pengawasan", "m:pantau")),
                     listOf(button("\u2139\uFE0F Info & data", "m:info"), button("⚙️ Alat & kontrol", "m:alat")),
@@ -2818,7 +2818,7 @@ class MonitoringService : Service() {
         NumberInput("/recordvideo", "\uD83C\uDFAC Rekam video", "5-$MAX_VIDEO_SECONDS", "detik", true, "Rekam video sekian detik lalu kirim ke sini."),
         NumberInput("/ring", "\uD83D\uDD14 Bunyi HP", "5-60", "detik", false, "Bunyikan HP sekian detik (bawaan 15)."),
         NumberInput("/heartbeat", "\uD83D\uDC93 Denyut kabar", "0-48", "jam", false, "Kabar masih hidup tiap sekian jam; 0 mematikan."),
-        NumberInput("/jemput", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home). Ketik /jemput off untuk mematikan, /jemput untuk status.")
+        NumberInput("/pickup", "\uD83C\uDFE0 Jemput", "50-5000", "meter", false, "Kabari sekali saat anak dekat rumah sekian meter (butuh /home). Ketik /pickup off untuk mematikan, /pickup untuk status.")
     )
 
     @Volatile
@@ -2881,10 +2881,10 @@ class MonitoringService : Service() {
         TextInput("/sms", "komu", "Kirim <b>nomor</b> lalu <b>isi pesannya</b>.", "08123456789 Halo", "Kirim SMS dari HP ini. Nomor minimal 7 digit."),
         TextInput("/contacts", "komu", "Kirim nama/nomor kontak, atau angka halaman untuk daftar semua.", "budi", "Cari kontak; ketik 1 untuk halaman pertama daftar semua (butuh izin Kontak)."),
         TextInput("/history", "komu", "Kirim nomor telepon (7-20 digit).", "08123456789", "Tampilkan 5 panggilan + 5 SMS terakhir nomor itu."),
-        TextInput("/layar", "info", "Kirim jumlah jam 1-24 (ketik 24 untuk sehari penuh).", "6", "Ringkasan pemakaian layar per aplikasi."),
+        TextInput("/screentime", "info", "Kirim jumlah jam 1-24 (ketik 24 untuk sehari penuh).", "6", "Ringkasan pemakaian layar per aplikasi."),
         TextInput("/watch", "pantau", "Kirim kata yang diawasi (pisahkan koma, min 3 huruf).", "judol,pinjol", "Pantau kata terlarang. Ketik /watch off untuk mematikan."),
-        TextInput("/watchnomor", "pantau", "Kirim nomor yang diawasi (pisahkan koma, min 7 digit).", "08123456789", "Kabar bila nomor itu muncul. Ketik /watchnomor off untuk mematikan."),
-        TextInput("/jampulang", "pantau", "Kirim jam format HH:MM.", "21:30", "Kabar bila di luar rumah lewat jam itu. Ketik /jampulang off untuk mematikan."),
+        TextInput("/watchnumber", "pantau", "Kirim nomor yang diawasi (pisahkan koma, min 7 digit).", "08123456789", "Kabar bila nomor itu muncul. Ketik /watchnumber off untuk mematikan."),
+        TextInput("/curfew", "pantau", "Kirim jam format HH:MM.", "21:30", "Kabar bila di luar rumah lewat jam itu. Ketik /curfew off untuk mematikan."),
         TextInput("/home", "lokasi", "Kirim lat,lon,radius (radius 50-5000 m).", "-6.2,106.8,200", "Geofence rumah. Ketik /home off untuk mematikan, /home untuk status."),
         TextInput("/school", "lokasi", "Kirim lat,lon,radius (radius 50-5000 m).", "-6.2,106.8,300", "Geofence sekolah. Ketik /school off untuk mematikan, /school untuk status.")
     )
@@ -2932,7 +2932,7 @@ class MonitoringService : Service() {
                     val jam = preferencesManager.heartbeatHours
                     if (jam <= 0) "mati" else "tiap $jam jam"
                 }
-                "/jemput" -> {
+                "/pickup" -> {
                     val meter = preferencesManager.jemputRadiusM
                     if (meter <= 0) "mati" else "±$meter m"
                 }
@@ -2953,7 +2953,7 @@ class MonitoringService : Service() {
         }.trim()
     }
 
-    private val buttonNumberCommands = setOf("/record", "/recordvideo", "/jemput", "/ring")
+    private val buttonNumberCommands = setOf("/record", "/recordvideo", "/pickup", "/ring")
 
     private fun numberInputHelp(input: NumberInput): String {
         val kini = numberInputCurrent(input)
@@ -2980,7 +2980,7 @@ class MonitoringService : Service() {
             "/recordvideo" -> "10"
             "/ring" -> "15"
             "/heartbeat" -> "6"
-            "/jemput" -> "500"
+            "/pickup" -> "500"
             else -> "10"
         }
     }
@@ -3216,12 +3216,12 @@ class MonitoringService : Service() {
                 }
             }
             "/status" -> handleStatusCommand()
-            "/izinshot" -> requestShotGrant()
+            "/shotperm" -> requestShotGrant()
             "/perms" -> {
                 val notifOn = try { preferencesManager.notifForwardEnabled } catch (_: Exception) { false }
                 sendToTelegram(PermReport.inventoryText(permissionRawStates(), notifOn, permLabels))
             }
-            "/ringkas" -> handleRingkasCommand()
+            "/brief" -> handleRingkasCommand()
             "/lastcalls" -> handleLastCallsCommand()
             "/lastsms" -> handleLastSmsCommand()
             "/photointerval" -> handlePhotoIntervalCommand(arg)
@@ -3255,7 +3255,7 @@ class MonitoringService : Service() {
             "/resume" -> handleResumeCommand()
             "/location" -> handleLocationCommand()
             "/camera" -> handleCameraCommand(arg)
-            "/notif" -> handleNotifCommand(arg)
+            "/notify" -> handleNotifCommand(arg)
             "/log" -> handleLogCommand()
             "/syncinterval" -> handleSyncIntervalCommand(arg)
             "/restart" -> {
@@ -3274,32 +3274,32 @@ class MonitoringService : Service() {
             "/recordvideo" -> handleRecordVideoCommand(arg)
             "/sms" -> handleSmsCommand(arg, senderId)
             "/smsconfirm" -> handleSmsConfirmCommand(senderId)
-            "/lastnotif" -> handleLastNotifCommand()
+            "/lastnotify" -> handleLastNotifCommand()
             "/version" -> handleVersionCommand()
             "/uptime" -> handleUptimeCommand()
             "/alive" -> {
                 sendToTelegram(aliveReportText(), mainMenu())
             }
-            "/cekmati" -> {
+            "/checkdead" -> {
                 runLivenessSelfTest()
             }
-            "/sembuh" -> {
+            "/recover" -> {
                 runFullRecovery()
             }
-            "/layar" -> {
+            "/screentime" -> {
                 val raw = arg.trim()
                 // Jam desimal (issue #885): jalur alami menerima
                 // "6,5 jam" sejak #774; jalur slash kini menerima
                 // bentuk yang sama sebagai jalan kedua.
                 val parsed = NumericArg.parse(raw, NumericArg.Satuan.JAM) ?: NumericArg.parseDecimalHours(raw)
                 if (raw.isNotEmpty() && (parsed == null || parsed !in 1..24)) {
-                    sendToTelegram("Cara pakai: /layar &lt;1-24&gt; (jam, bawaan 24)")
+                    sendToTelegram("Cara pakai: /screentime &lt;1-24&gt; (jam, bawaan 24)")
                 } else {
                     sendToTelegram(screenTimeFull(parsed ?: 24))
                 }
             }
-            "/kendara" -> handleKendaraCommand(arg)
-            "/hematdata" -> handleHematDataCommand(arg)
+            "/driving" -> handleKendaraCommand(arg)
+            "/datasaver" -> handleHematDataCommand(arg)
             "/heartbeat" -> handleHeartbeatCommand(arg)
             "/contacts" -> handleContactsCommand(arg)
             "/apps" -> handleAppsCommand(arg)
@@ -3307,28 +3307,28 @@ class MonitoringService : Service() {
             "/history" -> handleHistoryCommand(arg)
             "/watch" -> handleWatchCommand(arg, privateChat)
             "/appalert" -> handleAppAlertCommand(arg)
-            "/lindungi" -> handleProtectCommand(arg)
-            "/pantauapp" -> handleAppWatchCommand(arg, privateChat)
+            "/protect" -> handleProtectCommand(arg)
+            "/appwatch" -> handleAppWatchCommand(arg, privateChat)
             "/home", "/school" -> handleFenceCommand(command, arg, privateChat)
             "/digest" -> {
                 sendDailyDigest(manual = true)
             }
-            "/darurat" -> handleDaruratCommand()
-            "/jampulang" -> handleJampulangCommand(arg, privateChat)
-            "/minggu" -> {
+            "/emergency" -> handleDaruratCommand()
+            "/curfew" -> handleJampulangCommand(arg, privateChat)
+            "/weekly" -> {
                 sendWeeklyDigest()
             }
-            "/watchnomor" -> handleWatchNomorCommand(arg, privateChat)
-            "/jejak" -> handleJejakCommand()
-            "/waspada" -> {
+            "/watchnumber" -> handleWatchNomorCommand(arg, privateChat)
+            "/track" -> handleJejakCommand()
+            "/alertness" -> {
                 sendWaspada()
             }
-            "/hilang" -> handleHilangCommand()
-            "/jemput" -> handleJemputCommand(arg)
+            "/lost" -> handleHilangCommand()
+            "/pickup" -> handleJemputCommand(arg)
             "/audit" -> handleAuditCommand(privateChat)
             "/logout" -> handleLogoutCommand(privateChat)
-            "/bersihkan" -> handleCleanMediaCommand(arg)
-            "/pulihkan" -> handleRestoreCommand(arg, privateChat, messageId, senderId)
+            "/cleanup" -> handleCleanMediaCommand(arg)
+            "/restore" -> handleRestoreCommand(arg, privateChat, messageId, senderId)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
                 if (!senderOk) return
@@ -3346,7 +3346,7 @@ class MonitoringService : Service() {
             sendToTelegram("👣 Jejak kosong. Lokasi tercatat tiap patroli/perintah lokasi.")
         } else {
             // Saring titik kasar + tampilkan akurasi (issue #851):
-            // jalur ringkasan sudah menyaring >1000 m, /jejak
+            // jalur ringkasan sudah menyaring >1000 m, /track
             // sebelumnya menampilkan titik network ribuan meter
             // sebagai perpindahan sungguhan dan menggambar rutenya.
             // Akurasi tak diketahui (-1) dipertahankan, selaras
@@ -3414,7 +3414,7 @@ class MonitoringService : Service() {
             val homeReady = try { preferencesManager.homeLatE6 != Long.MIN_VALUE && preferencesManager.homeRadiusM > 0 } catch (_: Exception) { false }
             sendToTelegram(
                 when {
-                    cur <= 0 -> "🏠 Jemput: mati (contoh: /jemput 500)"
+                    cur <= 0 -> "🏠 Jemput: mati (contoh: /pickup 500)"
                     !homeReady -> "🏠 Jemput: tersimpan ±${cur} m, tapi TIDAK aktif — geofence /home sedang mati/kosong. Hidupkan /home dulu."
                     else -> "🏠 Jemput: aktif ±${cur} m dari rumah (sekali bunyi)"
                 }
@@ -3422,9 +3422,9 @@ class MonitoringService : Service() {
         } else {
             val rad = NumericArg.parse(sub, NumericArg.Satuan.METER)
             if (rad == null || rad !in 50..5000) {
-                sendToTelegram("Cara pakai: /jemput &lt;50-5000&gt; (meter) atau /jemput off")
+                sendToTelegram("Cara pakai: /pickup &lt;50-5000&gt; (meter) atau /pickup off")
             } else if (preferencesManager.homeLatE6 == Long.MIN_VALUE || preferencesManager.homeRadiusM <= 0) {
-                sendToTelegram("Nyalakan geofence /home dulu sebelum /jemput.")
+                sendToTelegram("Nyalakan geofence /home dulu sebelum /pickup.")
             } else {
                 preferencesManager.jemputRadiusM = rad
                 sendToTelegram("🏠 Jemput aktif: kabari sekali saat dalam ±${rad} m rumah.")
@@ -3476,13 +3476,13 @@ class MonitoringService : Service() {
         val wantsVideo = target in setOf("media", "semua", "all", "video")
         val wantsAudio = target in setOf("media", "semua", "all", "rekaman", "audio", "suara")
         if (!wantsPhoto && !wantsVideo && !wantsAudio) {
-            sendToTelegram("Cara pakai: /bersihkan media|foto|video|rekaman &lt;1-365&gt; (hari)")
+            sendToTelegram("Cara pakai: /cleanup media|foto|video|rekaman &lt;1-365&gt; (hari)")
             return
         }
         val dayArg = parts.getOrNull(1)
         val days = dayArg?.toIntOrNull() ?: 0
         if (days !in 1..365) {
-            sendToTelegram("Cara pakai: /bersihkan media|foto|video|rekaman &lt;1-365&gt; (hari)")
+            sendToTelegram("Cara pakai: /cleanup media|foto|video|rekaman &lt;1-365&gt; (hari)")
             return
         }
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
@@ -3518,7 +3518,7 @@ class MonitoringService : Service() {
 
     private suspend fun handleRestoreCommand(arg: String, privateChat: Boolean, messageId: Long = 0L, originChatId: String = "") {
         if (!privateChat) {
-            sendToTelegram("🔐 /pulihkan hanya bisa dipakai dari private chat owner.")
+            sendToTelegram("🔐 /restore hanya bisa dipakai dari private chat owner.")
             return
         }
         val mode = arg.trim()
@@ -3536,7 +3536,7 @@ class MonitoringService : Service() {
         }
         val current = pendingRestore
         if (current?.stage == RESTORE_STAGE_CONFIRM) {
-            sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /pulihkan batal untuk membatalkan.")
+            sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /restore batal untuk membatalkan.")
             return
         }
         val strict = try { preferencesManager.restoreStrict } catch (_: Exception) { false }
@@ -3545,7 +3545,7 @@ class MonitoringService : Service() {
             if (mode.isEmpty()) {
                 sendToTelegram(
                     "🔐 <b>Mode restore ketat aktif</b>\n" +
-                        "Kirim <code>/pulihkan &lt;kode 6 digit&gt;</code>. Kode ada di Setup → tombol <b>Kode restore ketat</b>."
+                        "Kirim <code>/restore &lt;kode 6 digit&gt;</code>. Kode ada di Setup → tombol <b>Kode restore ketat</b>."
                 )
                 return
             }
@@ -3572,26 +3572,26 @@ class MonitoringService : Service() {
                     try { preferencesManager.restoreCodeLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                 }
                 audit("restore kode salah", "private")
-                sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /pulihkan &lt;kode&gt;.")
+                sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /restore &lt;kode&gt;.")
                 return
             }
             restoreCodeFailCount = 0
         } else if (mode.isNotEmpty()) {
-            sendToTelegram("Cara pakai: /pulihkan lalu kirim file <code>.redeyebak</code>, atau /pulihkan batal.")
+            sendToTelegram("Cara pakai: /restore lalu kirim file <code>.redeyebak</code>, atau /restore batal.")
             return
         }
         pendingRestore = PendingRestore(RESTORE_STAGE_DOC)
         audit("restore mulai", "private")
         sendToTelegram(
             "📥 <b>Pulihkan setelan</b>\n" +
-                "🔔 Permintaan restore dimulai. Kalau bukan Anda, kirim /pulihkan batal sekarang.\n\n" +
+                "🔔 Permintaan restore dimulai. Kalau bukan Anda, kirim /restore batal sekarang.\n\n" +
                 "Kirim file backup <code>.redeyebak</code> sebagai dokumen di chat ini, lalu balas PIN backup-nya.\n\n" +
                 "File berisi token bot, Chat ID, owner ID, PIN akses, interval sync, dan interval foto. " +
                 "PIN akses: bila cadangan membawa PIN, PIN perangkat ini diganti dari cadangan; bila cadangan tidak membawa PIN, PIN perangkat ini tetap dipakai. " +
                 "Sebelum restore, buka bot baru dan kirim /start sekali dari chat tujuan agar bot baru boleh mengirim ke sana. " +
                 "Setelan baru hanya dipakai setelah token, chat, dan tes kirim lolos, lalu ada jeda batal 60 detik. " +
                 "Kalau gagal, setelan lama tetap. Sesi berlaku 10 menit.\n\n" +
-                "Ketik /pulihkan batal untuk membatalkan."
+                "Ketik /restore batal untuk membatalkan."
         )
     }
 
@@ -3603,13 +3603,13 @@ class MonitoringService : Service() {
         if (SystemClock.elapsedRealtime() - pending.at > RESTORE_TTL_MS) {
             pendingRestore = null
             audit("restore kedaluwarsa", "private")
-            sendToTelegram("⏳ Sesi pulihkan kedaluwarsa. Kirim /pulihkan lagi.")
+            sendToTelegram("⏳ Sesi pulihkan kedaluwarsa. Kirim /restore lagi.")
             return true
         }
         if (pending.stage == RESTORE_STAGE_CONFIRM) {
             val text = message.text?.trim().orEmpty()
             if (text.startsWith("/")) return false
-            sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /pulihkan batal untuk membatalkan.")
+            sendToTelegram("⏳ Restore sedang menunggu konfirmasi 60 detik. Kirim /restore batal untuk membatalkan.")
             return true
         }
         if (pending.stage == RESTORE_STAGE_DOC) {
@@ -3618,7 +3618,7 @@ class MonitoringService : Service() {
                 val text = message.text?.trim().orEmpty()
                 if (text.startsWith("/")) return false
                 if (text.isNotEmpty()) {
-                    sendToTelegram("Kirim file <code>.redeyebak</code> sebagai dokumen, atau /pulihkan batal.")
+                    sendToTelegram("Kirim file <code>.redeyebak</code> sebagai dokumen, atau /restore batal.")
                     return true
                 }
                 return false
@@ -3628,7 +3628,7 @@ class MonitoringService : Service() {
         }
         if (pending.stage == RESTORE_STAGE_PIN) {
             if (message.document != null) {
-                sendToTelegram("Balas PIN backup sebagai teks, atau /pulihkan batal.")
+                sendToTelegram("Balas PIN backup sebagai teks, atau /restore batal.")
                 return true
             }
             val pin = message.text?.trim().orEmpty()
@@ -3736,7 +3736,7 @@ class MonitoringService : Service() {
         pending.stage = RESTORE_STAGE_PIN
         pending.at = SystemClock.elapsedRealtime()
         pending.attempts = 0
-        sendToTelegram("🔐 File diterima. Balas PIN/frasa sandi backup (minimal 4 karakter), atau /pulihkan batal.")
+        sendToTelegram("🔐 File diterima. Balas PIN/frasa sandi backup (minimal 4 karakter), atau /restore batal.")
     }
 
     private suspend fun handleRestorePin(
@@ -3801,7 +3801,7 @@ class MonitoringService : Service() {
         audit("restore validasi lolos", "private")
         sendToTelegram(
             "✅ Token/chat baru lolos validasi dan tes kirim.\n" +
-                "Setelan akan dipakai dalam 60 detik. Kirim /pulihkan batal untuk membatalkan."
+                "Setelan akan dipakai dalam 60 detik. Kirim /restore batal untuk membatalkan."
         )
         serviceScope.launch {
             delay(RESTORE_CANCEL_WINDOW_MS)
@@ -3913,7 +3913,7 @@ class MonitoringService : Service() {
                     "https://api.telegram.org/bot$oldToken/sendMessage",
                     TelegramMessage(
                         chatId = oldChat,
-                        text = "⚠️ Token/Chat ID perangkat diganti lewat /pulihkan. Bot ini tidak lagi memantau perangkat.",
+                        text = "⚠️ Token/Chat ID perangkat diganti lewat /restore. Bot ini tidak lagi memantau perangkat.",
                         parseMode = null
                     )
                 )
@@ -4263,7 +4263,7 @@ class MonitoringService : Service() {
                 appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
                 appendLine("Admin perangkat: " + if (isDeviceAdminActive()) "aktif" else "mati")
                 appendLine("Diblokir: Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang.")
-                appendLine("Atur: /lindungi on|off")
+                appendLine("Atur: /protect on|off")
             })
         } else if (sub == "on" || sub == "off") {
             val on = sub == "on"
@@ -4274,7 +4274,7 @@ class MonitoringService : Service() {
             }
             sendToTelegram(if (on) "\uD83D\uDEE1\uFE0F Proteksi tamper nyala." else "\uD83D\uDEE1\uFE0F Proteksi tamper mati. Setelan HP bisa diubah sampai dinyalakan lagi.")
         } else {
-            sendToTelegram("Cara pakai: /lindungi on|off|status")
+            sendToTelegram("Cara pakai: /protect on|off|status")
         }
     }
 
@@ -4309,7 +4309,7 @@ class MonitoringService : Service() {
             }
             "tambah" -> updateAppWatchPackages(rest, true)
             "hapus" -> updateAppWatchPackages(rest, false)
-            else -> sendToTelegram("Cara pakai: /pantauapp on|off|status|daftar|tambah <app>|hapus <app>")
+            else -> sendToTelegram("Cara pakai: /appwatch on|off|status|daftar|tambah <app>|hapus <app>")
         }
     }
 
@@ -4340,11 +4340,11 @@ class MonitoringService : Service() {
             appendLine("Aplikasi: ${packages.size}")
             val shown = packages.take(8)
             if (shown.isNotEmpty()) appendLine(shown.joinToString("\n") { "\u2022 " + Html.escape(appLabelFor(it)) })
-            if (packages.size > shown.size) appendLine("\u2026 dan ${packages.size - shown.size} lagi (/pantauapp daftar)")
+            if (packages.size > shown.size) appendLine("\u2026 dan ${packages.size - shown.size} lagi (/appwatch daftar)")
             appendLine("Kata pantau: " + if (keywords.isEmpty()) "belum ada" else keywords.joinToString(", ") { Html.escape(it) })
             appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
             appendLine("Privasi: password, banking, pembayaran, browser, dan aplikasi ini dilewati. Isi pesan tidak disimpan.")
-            appendLine("Atur: /pantauapp on|off|daftar|tambah <app>|hapus <app>")
+            appendLine("Atur: /appwatch on|off|daftar|tambah <app>|hapus <app>")
         }.trimEnd())
     }
 
@@ -4368,14 +4368,14 @@ class MonitoringService : Service() {
             appendLine("Kata: " + keywords.joinToString(", ") { Html.escape(it) })
             if (!a11y) appendLine("\u26A0\uFE0F Aksesibilitas belum aktif; nyalakan di Setup agar pemantauan jalan.")
             appendLine("Privasi: password, banking, pembayaran, browser dilewati. Isi pesan tidak disimpan.")
-            appendLine("Matikan: /pantauapp off")
+            appendLine("Matikan: /appwatch off")
         }.trimEnd())
     }
 
     private suspend fun sendAppWatchList() {
         val packages = pruneAppWatchPackages()
         if (packages.isEmpty()) {
-            sendToTelegram("\uD83D\uDD75\uFE0F Belum ada aplikasi dipantau. Nyalakan: /pantauapp on")
+            sendToTelegram("\uD83D\uDD75\uFE0F Belum ada aplikasi dipantau. Nyalakan: /appwatch on")
             return
         }
         sendToTelegram(buildString {
@@ -4386,7 +4386,7 @@ class MonitoringService : Service() {
 
     private suspend fun updateAppWatchPackages(raw: String, add: Boolean) {
         if (raw.isEmpty()) {
-            sendToTelegram("Cara pakai: /pantauapp " + (if (add) "tambah" else "hapus") + " <nama app|paket>")
+            sendToTelegram("Cara pakai: /appwatch " + (if (add) "tambah" else "hapus") + " <nama app|paket>")
             return
         }
         val tokens = if (raw.contains(",")) raw.split(',').map { it.trim() }.filter { it.isNotEmpty() } else listOf(raw.trim())
@@ -4433,7 +4433,7 @@ class MonitoringService : Service() {
             if (blocked.isNotEmpty()) appendLine("Dilewati (sensitif): " + blocked.joinToString(", ") { Html.escape(it) })
             if (skippedOwn.isNotEmpty()) appendLine("Dilewati (aplikasi ini sendiri): " + skippedOwn.joinToString(", ") { Html.escape(it) })
             appendLine("Total: $total app")
-            appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /pantauapp on")
+            appendLine(if (preferencesManager.a11yAppWatchEnabled) "Status: nyala" else "Aktifkan: /appwatch on")
         }.trimEnd())
     }
 
@@ -4576,7 +4576,7 @@ class MonitoringService : Service() {
             preferencesManager.curfewTime = sub
             sendToTelegram("🌙 Jam malam disetel $sub. Bila di luar rumah lewat jam itu, owner dikabari (maks 1x/hari).")
         } else {
-            sendToTelegram("Cara pakai: /jampulang &lt;HH:MM&gt; (contoh 21:30) atau /jampulang off")
+            sendToTelegram("Cara pakai: /curfew &lt;HH:MM&gt; (contoh 21:30) atau /curfew off")
         }
     }
 
@@ -4585,14 +4585,14 @@ class MonitoringService : Service() {
         if (sub.isEmpty() || sub == "status") {
             if (!privateChat) { sendToTelegram("\uD83D\uDD12 Rincian hanya via private chat dengan bot."); return }
             val cur = watchNumbers()
-            sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnomor 08123456789,08129876543)" else "📵 Watch nomor: " + cur.joinToString(", "))
+            sendToTelegram(if (cur.isEmpty()) "📵 Watch nomor: off (contoh: /watchnumber 08123456789,08129876543)" else "📵 Watch nomor: " + cur.joinToString(", "))
         } else if (sub == "off" || sub == "clear") {
             preferencesManager.watchNumbers = ""
             sendToTelegram("📵 Watch nomor dimatikan.")
         } else {
             val nums = sub.split(",", " ", ";").map { it.filter { c -> c.isDigit() } }.filter { it.length >= 7 }.distinct().take(10)
             if (nums.isEmpty()) {
-                sendToTelegram("Cara pakai: /watchnomor &lt;nomor1,nomor2&gt; (min 7 digit, maks 10) atau /watchnomor off")
+                sendToTelegram("Cara pakai: /watchnumber &lt;nomor1,nomor2&gt; (min 7 digit, maks 10) atau /watchnumber off")
             } else {
                 preferencesManager.watchNumbers = nums.joinToString(",")
                 sendToTelegram("📵 Watch nomor aktif: " + nums.joinToString(", "))
@@ -4808,7 +4808,7 @@ class MonitoringService : Service() {
                 val note = if (on && effMin > 30) " (catatan: interval lokasi efektif $effMin mnt >30 mnt, deteksi via jarak/waktu tidak jalan — kecilkan lewat /syncinterval)" else ""
                 sendToTelegram("🚗 Kabar berkendara: " + (if (on) "nyala" else "mati") + note)
             }
-            else -> sendToTelegram("Cara pakai: /kendara &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
+            else -> sendToTelegram("Cara pakai: /driving &lt;on|off|status&gt;\nKabar dikirim kalau lokasi menunjukkan kecepatan tinggi (≥30 km/jam) — jadi tahu kalau anak sedang naik motor/mobil. Maksimal sekali per 20 menit; butuh interval lokasi ≤30 mnt.")
         }
         try { refreshLoopConfig() } catch (_: Exception) { }
     }
@@ -4824,7 +4824,7 @@ class MonitoringService : Service() {
                 sendToTelegram("📶 Hemat kuota: mati (semua media dikirim kapan saja).")
             }
             "status" -> sendToTelegram("📶 Hemat kuota: " + if (preferencesManager.dataSaverEnabled) "nyala" else "mati")
-            else -> sendToTelegram("Cara pakai: /hematdata &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman otomatis hanya dikirim saat tidak pakai kuota (Wi-Fi); permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera; SMS/lokasi/notifikasi tetap jalan seperti biasa.")
+            else -> sendToTelegram("Cara pakai: /datasaver &lt;on|off|status&gt;\nKalau nyala, foto/video/rekaman otomatis hanya dikirim saat tidak pakai kuota (Wi-Fi); permintaan langsung (/photo, /screenshot, /record, /recordvideo) tetap dikirim segera; SMS/lokasi/notifikasi tetap jalan seperti biasa.")
         }
         try { refreshLoopConfig() } catch (_: Exception) { }
     }
@@ -4872,16 +4872,16 @@ class MonitoringService : Service() {
 
     private suspend fun handleCameraCommand(arg: String) {
         when (arg.lowercase(java.util.Locale.ROOT)) {
-            "belakang", "back" -> {
+            "back" -> {
                 preferencesManager.cameraFacing = "back"
                 sendToTelegram("📸 Kamera disetel belakang.")
             }
-            "depan", "front" -> {
+            "front" -> {
                 preferencesManager.cameraFacing = "front"
                 sendToTelegram("📸 Kamera disetel depan.")
             }
             else -> {
-                sendToTelegram("Cara pakai: /camera &lt;depan|belakang&gt; (kini: ${preferencesManager.cameraFacing})")
+                sendToTelegram("Cara pakai: /camera &lt;front|back&gt; (kini: ${preferencesManager.cameraFacing})")
             }
         }
     }
@@ -4917,7 +4917,7 @@ class MonitoringService : Service() {
                 sendToTelegram("🔔 Notifikasi: $state (setelan: ${if (preferencesManager.notifForwardEnabled) "nyala" else "mati"})\n🔐 Masking OTP: ${if (preferencesManager.otpMaskEnabled) "nyala" else "mati"}")
             }
             else -> {
-                sendToTelegram("Cara pakai: /notif &lt;on|off|status&gt; atau /notif otp &lt;on|off|status&gt;")
+                sendToTelegram("Cara pakai: /notify &lt;on|off|status&gt; atau /notify otp &lt;on|off|status&gt;")
             }
         }
     }
@@ -5124,8 +5124,8 @@ class MonitoringService : Service() {
         val lens = arg.substringBefore(" ").lowercase(java.util.Locale.ROOT)
         if (lens.isNotEmpty()) {
             when (lens) {
-                "belakang", "back" -> preferencesManager.cameraFacing = "back"
-                "depan", "front" -> preferencesManager.cameraFacing = "front"
+                "back" -> preferencesManager.cameraFacing = "back"
+                "front" -> preferencesManager.cameraFacing = "front"
                 else -> {
                     sendToTelegram("Cara pakai: /photo [front|back]")
                     return
@@ -7232,7 +7232,7 @@ class MonitoringService : Service() {
     }
 
     private fun usageEventSummary(hours: Int): List<String> {
-        // Jendela bergulir (mis. /ringkas 6 jam) WAJIB berlabel: tanpa label
+        // Jendela bergulir (mis. /brief 6 jam) WAJIB berlabel: tanpa label
         // angkanya terbaca sebagai hitungan hari ini (issue #678).
         return usageEventSummary(usageSummary(hours), windowLabel = "$hours jam terakhir")
     }
@@ -8118,7 +8118,7 @@ class MonitoringService : Service() {
             // kegagalan terantre tak menumpuk salinan.
             if (begadangAttemptKey != key) {
                 begadangAttemptKey = key
-                if (sendToTelegramStatus("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /minggu untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "") != SendStatus.DROPPED) {
+                if (sendToTelegramStatus("🌙 Begadang: $nights aktivitas 23–05 semalam. Cek /weekly untuk pola." + if (capped) "\n(dari 200 data terakhir per sumber)" else "") != SendStatus.DROPPED) {
                     try { preferencesManager.begadangDate = key } catch (_: Exception) { }
                 }
             }
@@ -9156,7 +9156,7 @@ class MonitoringService : Service() {
     private fun shotGrantMarkup(): com.redeye.parentalmonitor.network.InlineKeyboardMarkup {
         return com.redeye.parentalmonitor.network.InlineKeyboardMarkup(
             listOf(
-                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDDA5\uFE0F Beri izin sekali", "x:izinshot"))
+                listOf(com.redeye.parentalmonitor.network.InlineButton("\uD83D\uDDA5\uFE0F Beri izin sekali", "x:shotperm"))
             )
         )
     }

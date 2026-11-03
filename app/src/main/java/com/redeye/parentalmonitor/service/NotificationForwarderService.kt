@@ -707,7 +707,7 @@ class NotificationForwarderService : NotificationListenerService() {
                     dropNoticeAt.entries.removeIf { it.value < cutoff }
                 }
                 dropNoticeAt[pkg] = now
-                forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotif.")
+                forwardToTelegram("Penyaring spam: 10+ pembaruan dari " + Html.escape(spamLabel) + " dalam 2 menit, sisanya disimpan di riwayat /lastnotify.")
             }
             record(label, title, text)
             return
@@ -789,7 +789,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 rebindNoticeSent = true
                 scope.launch {
                     try {
-                        queue().addMessage("⚠️ Akses notifikasi terputus dan belum pulih walau sudah dicoba berulang. Buka aplikasi → Setup → izinkan akses notifikasi, atau kirim /sembuh. Aplikasi tetap mencoba menyambung tiap 30 menit.")
+                        queue().addMessage("⚠️ Akses notifikasi terputus dan belum pulih walau sudah dicoba berulang. Buka aplikasi → Setup → izinkan akses notifikasi, atau kirim /recover. Aplikasi tetap mencoba menyambung tiap 30 menit.")
                         MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
                     } catch (_: Exception) {
                     }
@@ -1585,7 +1585,7 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (prefs.accessPin.isNotEmpty() && prefs.ownerUserId == 0L) {
                 // Antrekan seperti cabang jeda/kredensial kosong: sebelumnya
-                // batch terbuang diam-diam (hanya tersisa di /lastnotif).
+                // batch terbuang diam-diam (hanya tersisa di /lastnotify).
                 // SendMessageWorker sendiri menahan pengiriman selama
                 // owner belum login, jadi tak ada yang keluar pra-login
                 // (issue #675).

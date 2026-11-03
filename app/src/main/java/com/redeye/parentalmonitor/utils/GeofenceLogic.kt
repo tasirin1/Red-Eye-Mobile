@@ -24,7 +24,7 @@ object GeofenceLogic {
         // Gerbang akurasi diselaraskan dengan transition (#716) dan
         // jemputHit (#740) — issue #759: fungsi ini tertinggal di
         // "akurasi <= radius penuh", sehingga alert jam malam/sekolah
-        // dan skor /waspada bisa digerakkan fix yang ketidakpastiannya
+        // dan skor /alertness bisa digerakkan fix yang ketidakpastiannya
         // selebar radius. Kini sama ketatnya: paling tidak setengah
         // radius.
         // Lantai akurasi perubahan state yang sama seperti transition

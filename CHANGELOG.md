@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- Semua nama perintah dasar kini bahasa Inggris (keputusan owner; nama lama dihapus total, tidak jadi alias): `/jejak`→`/track`, `/layar`→`/screentime`, `/darurat`→`/emergency`, `/ringkas`→`/brief`, `/minggu`→`/weekly`, `/waspada`→`/alertness`, `/hilang`→`/lost`, `/sembuh`→`/recover`, `/cekmati`→`/checkdead`, `/notif`→`/notify`, `/lastnotif`→`/lastnotify`, `/jemput`→`/pickup`, `/kendara`→`/driving`, `/jampulang`→`/curfew`, `/pantauapp`→`/appwatch`, `/lindungi`→`/protect`, `/hematdata`→`/datasaver`, `/pulihkan`→`/restore`, `/bersihkan`→`/cleanup`, `/watchnomor`→`/watchnumber`, `/izinshot`→`/shotperm`. Argumen lensa ikut Inggris: `/photo` dan `/camera` kini `front|back` (bukan `depan|belakang`). Menu tombol, saklar, kunci input, saran koreksi ketik, dan teks bantuan mengikuti nama baru. Kata sehari-hari bahasa Indonesia (`dimana`, `foto depan`, …) tetap dikenali seperti biasa dan diterjemahkan bot ke perintah Inggrisnya.
+
 ## [1.6.595] - 2026-11-03
 
 ### Added

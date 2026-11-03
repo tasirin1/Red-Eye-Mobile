@@ -4,7 +4,7 @@ import java.util.Locale
 
 // Pengurai argumen angka perintah: menerima angka polos, angka + satuan
 // terpisah ("500 meter", "30 detik"), atau angka + satuan menempel
-// ("500m", "30detik") — menyamai kelonggaran /layar untuk "6 jam"
+// ("500m", "30detik") — menyamai kelonggaran /screentime untuk "6 jam"
 // (issue #731). Sejak keputusan owner atas issue #776, satuan yang
 // diberikan pengguna DIKONVERSI ke satuan bawaan perintah:
 // "/photointerval 1 jam" berarti 60 menit dan "/heartbeat 30 menit"
@@ -85,13 +85,13 @@ object NumericArg {
 
     private val DECIMAL_HOURS = Regex("^[0-9]+([.,][0-9]+)?$")
 
-    // Jam desimal khusus /layar (issue #885): jalur bahasa alami
+    // Jam desimal khusus /screentime (issue #885): jalur bahasa alami
     // menerima "6,5 jam" sejak #774/#790 — dibulatkan ke jam
     // terdekat (floor(x + 0,5)) dan positif di bawah 0,5 dijepit
     // ke 1 — sedangkan jalur slash menolaknya karena grammar
     // parse() hanya bilangan bulat. Fungsi ini menjembatani
     // bentuk desimal itu saja (satuan selain jam tak diterima);
-    // handler /layar memakainya sebagai jalan kedua sesudah
+    // handler /screentime memakainya sebagai jalan kedua sesudah
     // parse() agar kedua jalur konsisten.
     fun parseDecimalHours(raw: String): Int? {
         val t = raw.trim().lowercase(Locale.ROOT)

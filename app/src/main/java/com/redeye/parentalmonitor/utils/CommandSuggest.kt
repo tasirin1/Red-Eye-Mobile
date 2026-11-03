@@ -1,7 +1,7 @@
 package com.redeye.parentalmonitor.utils
 
 object CommandSuggest {
-    private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notif", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotif", "/version", "/uptime", "/alive", "/cekmati", "/sembuh", "/layar", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/ringkas", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/audit", "/bersihkan", "/appalert", "/lindungi", "/pantauapp")
+    private val KNOWN_COMMANDS = setOf("/photo", "/screenshot", "/status", "/perms", "/lastcalls", "/lastsms", "/photointerval", "/patrol", "/patrolinterval", "/pause", "/battery", "/stop", "/resume", "/location", "/camera", "/notify", "/log", "/syncinterval", "/restart", "/flush", "/clearqueue", "/lock", "/ring", "/ping", "/record", "/recordvideo", "/sms", "/smsconfirm", "/lastnotify", "/version", "/uptime", "/alive", "/checkdead", "/recover", "/screentime", "/heartbeat", "/contacts", "/apps", "/storage", "/history", "/help", "/start", "/login", "/logout", "/night", "/brief", "/watch", "/home", "/school", "/digest", "/emergency", "/curfew", "/weekly", "/watchnumber", "/track", "/alertness", "/lost", "/pickup", "/driving", "/datasaver", "/shotperm", "/restore", "/audit", "/cleanup", "/appalert", "/protect", "/appwatch")
 
     fun editDistance(a: String, b: String): Int {
         if (a == b) return 0
@@ -33,7 +33,7 @@ object CommandSuggest {
         return true
     }
 
-    val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notif", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/darurat", "/jampulang", "/minggu", "/watchnomor", "/jejak", "/waspada", "/hilang", "/jemput", "/sembuh", "/kendara", "/hematdata", "/izinshot", "/pulihkan", "/bersihkan", "/logout", "/appalert", "/lindungi", "/pantauapp", "/photo", "/screenshot")
+    val MUTATING_COMMANDS = setOf("/lock", "/ring", "/sms", "/smsconfirm", "/record", "/recordvideo", "/stop", "/resume", "/pause", "/photointerval", "/syncinterval", "/camera", "/notify", "/restart", "/flush", "/clearqueue", "/patrol", "/patrolinterval", "/heartbeat", "/night", "/watch", "/home", "/school", "/digest", "/emergency", "/curfew", "/weekly", "/watchnumber", "/track", "/alertness", "/lost", "/pickup", "/recover", "/driving", "/datasaver", "/shotperm", "/restore", "/cleanup", "/logout", "/appalert", "/protect", "/appwatch", "/photo", "/screenshot")
 
     fun suggestCommand(typed: String): String? {
         var best: String? = null

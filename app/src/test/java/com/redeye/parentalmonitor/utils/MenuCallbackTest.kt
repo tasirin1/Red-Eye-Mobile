@@ -49,9 +49,9 @@ class MenuCallbackTest {
 
     @Test
     fun saklarToggle() {
-        assertEquals(MenuCallback.Toggle("notif", "komu"), MenuCallback.parse("tg:komu:notif"))
+        assertEquals(MenuCallback.Toggle("notify", "komu"), MenuCallback.parse("tg:komu:notif"))
         assertEquals(MenuCallback.Toggle("patrol", "pantau"), MenuCallback.parse("tg:pantau:patrol"))
-        assertEquals(MenuCallback.Toggle("hematdata", "pantau"), MenuCallback.parse("tg:pantau:hematdata"))
+        assertEquals(MenuCallback.Toggle("datasaver", "pantau"), MenuCallback.parse("tg:pantau:hematdata"))
         assertEquals(MenuCallback.Toggle("otp", "komu"), MenuCallback.parse("tg:komu:OTP"))
         // View tak dikenal jatuh ke menu utama (seperti Navigate).
         assertEquals(MenuCallback.Toggle("night", "main"), MenuCallback.parse("tg:entah:night"))
@@ -67,8 +67,8 @@ class MenuCallbackTest {
     fun tombolLamaTetapJalan() {
         assertEquals(MenuCallback.Run("photo"), MenuCallback.parse("photo"))
         assertEquals(MenuCallback.Run("screenshot"), MenuCallback.parse("shot"))
-        assertEquals(MenuCallback.Run("camera depan"), MenuCallback.parse("camfront"))
-        assertEquals(MenuCallback.Run("camera belakang"), MenuCallback.parse("camback"))
+        assertEquals(MenuCallback.Run("camera front"), MenuCallback.parse("camfront"))
+        assertEquals(MenuCallback.Run("camera back"), MenuCallback.parse("camback"))
         assertEquals(MenuCallback.Run("pause 60"), MenuCallback.parse("pause60"))
         assertEquals(MenuCallback.Run("status"), MenuCallback.parse("status"))
         assertEquals(MenuCallback.Navigate("main", false), MenuCallback.parse("num:menu"))

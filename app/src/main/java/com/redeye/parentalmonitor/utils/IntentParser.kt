@@ -39,7 +39,7 @@ object IntentParser {
             )
         ),
         Intent(
-            "/layar",
+            "/screentime",
             listOf(
                 Group(setOf("layar", "screentime"), setOf("screen time", "main hp", "main hape", "pemakaian aplikasi", "pakai aplikasi", "waktu layar")),
                 Group(setOf("berapa", "lama", "hari", "kemarin", "total", "durasi", "jam", "seharian"), setOf("hari ini", "berapa lama"))
@@ -53,28 +53,28 @@ object IntentParser {
             )
         ),
         Intent(
-            "/minggu",
+            "/weekly",
             listOf(
                 Group(setOf("minggu", "mingguan", "seminggu"), setOf("laporan minggu", "rekap minggu", "ringkasan minggu", "7 hari")),
                 Group(setOf("laporan", "rekap", "ringkasan", "ini", "lalu", "terakhir", "anak"), setOf("minggu ini", "minggu lalu"))
             )
         ),
         Intent(
-            "/jejak",
+            "/track",
             listOf(
                 Group(setOf("jejak", "rute"), setOf("riwayat lokasi", "riwayat perjalanan", "dari mana saja", "ke mana saja", "habis dari mana")),
                 Group(setOf("tadi", "seharian", "kemarin", "anak", "dia", "lengkap"), setOf("hari ini"))
             )
         ),
         Intent(
-            "/waspada",
+            "/alertness",
             listOf(
                 Group(setOf("waspada", "kewaspadaan", "mencurigakan", "aneh", "janggal", "ganjil"), emptySet()),
                 Group(setOf("semalam", "malam", "tadi", "anak", "dia", "kejadian"), setOf("tadi malam", "ada yang", "malam ini"))
             )
         ),
         Intent(
-            "/lastnotif",
+            "/lastnotify",
             listOf(
                 Group(setOf("notifikasi", "notif", "pemberitahuan"), emptySet()),
                 Group(setOf("terakhir", "terbaru", "masuk", "apa", "saja", "tadi"), setOf("apa saja"))
@@ -370,7 +370,7 @@ object IntentParser {
 
     private val QUESTION_TAIL = setOf("apa", "apakah", "kapan", "kenapa", "mengapa", "gimana", "bagaimana", "siapa", "berapa", "mana", "kok", "kah", "kan")
 
-    // Publik agar handler /pulihkan memakai kosakata batal yang sama
+    // Publik agar handler /restore memakai kosakata batal yang sama
     // dengan parser (issue #789).
     fun isCancellation(token: String): Boolean {
         if (token == "batalin") return true
@@ -448,19 +448,19 @@ object IntentParser {
     // Perintah baca-saja: argumen masa lalu sah ("waspada kemarin").
     // Perintah mutasi (hilang/kunci/dll.) tetap menerima veto rujukan.
     private val READ_ONLY_HEADS = setOf(
-        "/location", "/battery", "/help", "/version", "/waspada", "/minggu",
-        "/layar", "/hematdata", "/jejak", "/kendara", "/lastsms", "/lastcalls"
+        "/location", "/battery", "/help", "/version", "/alertness", "/weekly",
+        "/screentime", "/datasaver", "/track", "/driving", "/lastsms", "/lastcalls"
     )
 
     private val MUTATION_ARGS = setOf("on", "off", "nyala", "mati")
 
-    // /hematdata & /kendara dwifungsi: tanpa argumen/status mereka laporan
+    // /datasaver & /driving dwifungsi: tanpa argumen/status mereka laporan
     // baca-saja, tetapi dengan argumen on/off/nyala/mati mereka MUTASI —
     // bentuk mutasinya tidak boleh melewati veto rujukan (issue #696).
     private fun isReadOnlyTarget(aliasInput: String): Boolean {
         val head = aliasInput.substringBefore(" ")
         if (head !in READ_ONLY_HEADS) return false
-        if (head == "/hematdata" || head == "/kendara") {
+        if (head == "/datasaver" || head == "/driving") {
             val arg = aliasInput.substringAfter(" ", "").trim()
             val first = arg.split(WHITESPACE).firstOrNull().orEmpty()
             if (first in MUTATION_ARGS) return false
@@ -528,7 +528,7 @@ object IntentParser {
         // tegas (issue #689): tanpa ini, /location ikut menilai kata
         // "lokasi" sehingga seri 2-2 (-> null) atau menang salah
         // ("...hp sekarang" -> lokasi saat ini). Tekan /location dan beri
-        // /jejak bonus agar frasa riwayat selalu menang sebagai /jejak.
+        // /track bonus agar frasa riwayat selalu menang sebagai /track.
         val historyLocation = padded.contains(" riwayat lokasi ") || padded.contains(" riwayat perjalanan ")
         var best: String? = null
         var bestScore = 0
@@ -542,7 +542,7 @@ object IntentParser {
                 for (group in intent.groups) {
                     if (groupHit(tokens, padded, group)) score++
                 }
-                if (historyLocation && intent.command == "/jejak") score++
+                if (historyLocation && intent.command == "/track") score++
             }
             if (score > bestScore) {
                 best = intent.command
@@ -562,7 +562,7 @@ object IntentParser {
         if (tie && bestScore >= 2 && "/digest" in top &&
             !(padded.contains(" hari ini ") && padded.contains(" minggu ini "))
         ) {
-            for ((cmd, noun) in listOf("/layar" to "layar", "/minggu" to "minggu")) {
+            for ((cmd, noun) in listOf("/screentime" to "layar", "/weekly" to "minggu")) {
                 if (cmd in top && tokens.any { markerMatches(it, noun) }) return cmd
             }
         }
@@ -587,14 +587,24 @@ object IntentParser {
 
     private val PHOTO_LENS_WORDS = setOf("depan", "belakang", "front", "back")
 
+    // Kata lensa bahasa alami diterjemahkan ke argumen perintah
+    // kanonis (front/back) — nama perintah + argumennya Inggris.
+    private fun lensCanon(word: String): String {
+        return when (word) {
+            "depan" -> "front"
+            "belakang" -> "back"
+            else -> word
+        }
+    }
+
     private val PHOTO_LENS_BLOCKED_PREV = setOf("minggu", "bulan", "tahun", "di", "pekan", "yang")
 
     private fun mergeAliasArgs(parsed: String, aliasInput: String): String {
         val parts = aliasInput.split(WHITESPACE, limit = 2)
         if (parts.size != 2 || parts[0] != parsed) return parsed
         val first = parts[1].split(WHITESPACE).firstOrNull()?.lowercase(Locale.ROOT)?.let { stripEdgePunct(it) }.orEmpty()
-        if (parsed == "/photo" && first in PHOTO_LENS_WORDS) return "$parsed $first"
-        if (parsed == "/layar") {
+        if (parsed == "/photo" && first in PHOTO_LENS_WORDS) return "$parsed " + lensCanon(first)
+        if (parsed == "/screentime") {
             val hours = first.toIntOrNull()
             if (hours != null && hours in 1..24) return "$parsed $hours"
         }
@@ -644,7 +654,7 @@ object IntentParser {
                     val word = stripEdgePunct(tokens[i])
                     if (word in PHOTO_LENS_WORDS) {
                         val prev = if (i > 0) stripEdgePunct(tokens[i - 1]) else ""
-                        if (prev !in PHOTO_LENS_BLOCKED_PREV && !adaYang) return "$parsed $word"
+                        if (prev !in PHOTO_LENS_BLOCKED_PREV && !adaYang) return "$parsed " + lensCanon(word)
                         // Klausa "yang" hanya memblokir bila frasanya
                         // berlanjut jadi keterangan ("yang belakang itu
                         // adiknya", "yang kedua belakang itu adiknya");
@@ -653,13 +663,13 @@ object IntentParser {
                         // (issue #770, diperluas #787).
                         if ((prev == "yang" || adaYang) && prev !in (PHOTO_LENS_BLOCKED_PREV - "yang") &&
                             (i + 1 until tokens.size).none { stripEdgePunct(tokens[it]) !in TAIL_FILLERS }
-                        ) return "$parsed $word"
+                        ) return "$parsed " + lensCanon(word)
                     }
                 }
             }
             return parsed
         }
-        if (parsed == "/layar") {
+        if (parsed == "/screentime") {
             var start = tokens.indexOfFirst { token -> LAYAR_KEYWORDS.any { mergeKeywordMatch(token, it) || mergeKeywordMatch(token.replace("_", ""), it) } }
             var anchorLen = 1
             if (start < 0) {
@@ -753,7 +763,7 @@ object IntentParser {
         if (isSmsSendForm(aliasInput)) return false
         val tk = tokenize(text) ?: return false
         val core = coreTokens(tk.first)
-        if (aliasInput.substringBefore(" ") == "/pulihkan" && core.size == 2 && isCancellation(core[1])) return false
+        if (aliasInput.substringBefore(" ") == "/restore" && core.size == 2 && isCancellation(core[1])) return false
         if (!isVetoed(tk.first, tk.second, isReadOnlyTarget(aliasInput))) return false
         val parsed = parse(text)
         if (parsed != null && aliasInput.substringBefore(" ") == parsed) return false
@@ -821,14 +831,14 @@ object IntentParser {
             words = words.dropLast(1)
         }
         // Angka + satuan dihitung satu argumen (issue #731): "jemput 500
-        // meter" sebelumnya 3 kata dan gugur total, padahal /layar menerima
+        // meter" sebelumnya 3 kata dan gugur total, padahal /screentime menerima
         // bentuk yang sama.
         if (words.size == 3 && words[1].all { it.isDigit() } && stripEdgePunct(words[2]) in ARG_UNITS) {
             words = listOf(words[0], words[1])
         }
         // Frasa perintah multi-kata (issue #777): resolveAliasInput dapat
         // mengonsumsi lebih dari satu kata teks sebagai satu perintah
-        // ("jam pulang" → /jampulang). Bila ekor teks persis argumen
+        // ("jam pulang" → /curfew). Bila ekor teks persis argumen
         // alias, kepala frasa dihitung satu kata perintah.
         val aliasParts = aliasInput.split(WHITESPACE).filter { it.isNotEmpty() }
         if (aliasParts.size > 1 && words.size > aliasParts.size) {
@@ -844,7 +854,7 @@ object IntentParser {
         // (issue #752): "restore batal dong" sebelumnya gugur karena
         // token mentahnya 3. Yang dikembalikan bentuk bersihnya agar
         // argumen handler persis "batal".
-        if (aliasInput.substringBefore(" ") == "/pulihkan" && tk != null) {
+        if (aliasInput.substringBefore(" ") == "/restore" && tk != null) {
             val core = coreTokens(tk.first)
             if (core.size == 2 && isCancellation(core[1])) return cleanAliasTail(aliasInput)
         }
@@ -865,7 +875,7 @@ object IntentParser {
 
     // Kata penegas ekor juga dibuang dari argumen alias yang dikembalikan
     // (issue #728): handler hilir memeriksa argumen secara persis, jadi
-    // "/jampulang 21:30 dong" dan "/hematdata on dong" sebelumnya ditolak
+    // "/curfew 21:30 dong" dan "/datasaver on dong" sebelumnya ditolak
     // "Cara pakai". Tanda baca tepi pada token argumen terakhir juga
     // dibersihkan. Argumen tunggal yang hanya berisi penegas dibiarkan
     // (perilaku terkunci perintah tanpa argumen, mis. "cekmati dong").

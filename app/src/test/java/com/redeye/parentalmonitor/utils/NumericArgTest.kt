@@ -57,7 +57,7 @@ class NumericArgTest {
 
     @Test
     fun jamDesimalLayar() {
-        // Issue #885: "/layar 6,5 jam" sebelumnya ditolak jalur slash
+        // Issue #885: "/screentime 6,5 jam" sebelumnya ditolak jalur slash
         // padahal jalur alami menerimanya (dibulatkan, #774/#790).
         assertEquals(7, NumericArg.parseDecimalHours("6,5 jam"))
         assertEquals(7, NumericArg.parseDecimalHours("6,5"))

@@ -30,7 +30,7 @@ object PermReport {
             for (i in raw.indices) {
                 appendLine("${if (raw[i]) "✅" else "❌"} ${labels[i]}")
             }
-            if (!notifEnabled) appendLine("Penerusan notif dimatikan (/notif off).")
+            if (!notifEnabled) appendLine("Penerusan notif dimatikan (/notify off).")
             appendLine("Cabut/pasang ulang? Buka Setup di perangkat.")
         }
     }

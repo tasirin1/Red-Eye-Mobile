@@ -92,10 +92,10 @@
     <string name="setup_pair_link_pin_active">Link pairing dimatikan selama PIN akses aktif. Pakai /login &lt;PIN&gt; dari Telegram.</string>
     <string name="setup_restore_code">Kode restore ketat</string>
     <string name="setup_restore_code_title">Restore ketat</string>
-    <string name="setup_restore_code_fmt">Kode: %1$s\nBerlaku sampai %2$s (berputar tiap 10 menit).\n\nSaat mode ketat nyala, kirim /pulihkan &lt;kode&gt; sebelum mengunggah file backup.</string>
-    <string name="setup_restore_switch">Wajib kode perangkat untuk /pulihkan</string>
-    <string name="setup_restore_switch_on">Restore ketat NYALA. /pulihkan sekarang wajib kode ini.</string>
-    <string name="setup_restore_switch_off">Restore ketat MATI. /pulihkan cukup dengan PIN backup.</string>
+    <string name="setup_restore_code_fmt">Kode: %1$s\nBerlaku sampai %2$s (berputar tiap 10 menit).\n\nSaat mode ketat nyala, kirim /restore &lt;kode&gt; sebelum mengunggah file backup.</string>
+    <string name="setup_restore_switch">Wajib kode perangkat untuk /restore</string>
+    <string name="setup_restore_switch_on">Restore ketat NYALA. /restore sekarang wajib kode ini.</string>
+    <string name="setup_restore_switch_off">Restore ketat MATI. /restore cukup dengan PIN backup.</string>
     <string name="setup_restore_copy">Salin kode</string>
     <string name="setup_restore_code_fail">Gagal membuat kode restore. Coba buka Setup lagi.</string>
     <string name="setup_restore_code_need_setup">Buka dialog ini lagi untuk kode terbaru.</string>

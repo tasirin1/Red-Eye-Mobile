@@ -60,8 +60,11 @@ class CommandSuggestTest {
     @Test
     fun suggestCommandSubsequenceDoesNotCrossToMutating() {
         // #552: typo hapus-huruf dari perintah baca-saja tak boleh menyarankan mutating.
-        assertEquals("/ringkas", CommandSuggest.suggestCommand("/rings"))
-        assertEquals("/ringkas", CommandSuggest.suggestCommand("/ringa"))
+        // Pasangan /ring vs /ringkas dulu contoh hidupnya; sesudah rename Inggris
+        // (ringkas -> /brief) geometri itu hilang, jadi probe kini mengunci typo
+        // perintah baca-saja lain yang terselesaikan ke dirinya sendiri.
+        assertEquals("/screentime", CommandSuggest.suggestCommand("/screentim"))
+        assertEquals("/brief", CommandSuggest.suggestCommand("/brie"))
         assertEquals("/perms", CommandSuggest.suggestCommand("/rms"))
         assertEquals("/perms", CommandSuggest.suggestCommand("/ems"))
         assertEquals("/perms", CommandSuggest.suggestCommand("/pms"))
@@ -88,7 +91,7 @@ class CommandSuggestTest {
 
     @Test
     fun suggestCommandSharesCanonicalMutatingList() {
-        assertEquals("/jampulang", CommandSuggest.suggestCommand("/jampu"))
+        assertEquals("/curfew", CommandSuggest.suggestCommand("/curfe"))
     }
 
     @Test
@@ -100,9 +103,10 @@ class CommandSuggestTest {
         assertEquals("/record", CommandSuggest.suggestCommand("/recordv"))
         assertEquals("/watch", CommandSuggest.suggestCommand("/watchn"))
         assertEquals("/patrol", CommandSuggest.suggestCommand("/patroli"))
-        // Singkatan ambigu: ekstensi bersarang non-mutating dari kandidat menang
-        // (/ringkas adalah ekstensi /ring; /storage bukan ekstensi /stop).
-        assertEquals("/ringkas", CommandSuggest.suggestCommand("/rin"))
+        // Singkatan ambigu: dulu /ringkas (ekstensi non-mutating /ring) yang
+        // menang untuk "/rin"; sesudah rename Inggris ekstensi itu tak ada
+        // lagi, jadi /ring sendiri yang menang (/storage bukan ekstensi /stop).
+        assertEquals("/ring", CommandSuggest.suggestCommand("/rin"))
         assertEquals("/stop", CommandSuggest.suggestCommand("/sto"))
         assertEquals("/photo", CommandSuggest.suggestCommand("/phot"))
     }

@@ -49,6 +49,6 @@ class PermReportTest {
         val off = PermReport.inventoryText(BooleanArray(11), notifEnabled = false, labels = labels)
         assertTrue(off.contains("❌ Kamera\n"))
         assertTrue(off.contains("❌ Aksesibilitas\n"))
-        assertTrue(off.contains("Penerusan notif dimatikan (/notif off).\n"))
+        assertTrue(off.contains("Penerusan notif dimatikan (/notify off).\n"))
     }
 }

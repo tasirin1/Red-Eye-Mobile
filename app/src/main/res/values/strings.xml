@@ -92,10 +92,10 @@
     <string name="setup_pair_link_pin_active">Pairing link is disabled while the access PIN is active. Use /login &lt;PIN&gt; from Telegram.</string>
     <string name="setup_restore_code">Strict restore code</string>
     <string name="setup_restore_code_title">Strict restore</string>
-    <string name="setup_restore_code_fmt">Code: %1$s\nValid until %2$s (rotates every 10 minutes).\n\nIn strict mode, send /pulihkan &lt;code&gt; before uploading the backup file.</string>
-    <string name="setup_restore_switch">Require device code for /pulihkan</string>
-    <string name="setup_restore_switch_on">Strict restore ON. /pulihkan now requires this code.</string>
-    <string name="setup_restore_switch_off">Strict restore OFF. /pulihkan only needs the backup PIN.</string>
+    <string name="setup_restore_code_fmt">Code: %1$s\nValid until %2$s (rotates every 10 minutes).\n\nIn strict mode, send /restore &lt;code&gt; before uploading the backup file.</string>
+    <string name="setup_restore_switch">Require device code for /restore</string>
+    <string name="setup_restore_switch_on">Strict restore ON. /restore now requires this code.</string>
+    <string name="setup_restore_switch_off">Strict restore OFF. /restore only needs the backup PIN.</string>
     <string name="setup_restore_copy">Copy code</string>
     <string name="setup_restore_code_fail">Could not create the restore code. Try reopening Setup.</string>
     <string name="setup_restore_code_need_setup">Open this dialog again for the latest code.</string>
