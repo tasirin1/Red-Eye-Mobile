@@ -251,6 +251,16 @@ def kupas_komentar_xml(isi):
     return re.sub(r"<!--.*?-->", "", isi, flags=re.S)
 
 
+def hitung_item_array(badan):
+    """Jumlah <item> anak langsung sebuah string-array (issue #1110)."""
+    try:
+        root = ET.fromstring("<root>" + badan + "</root>")
+        return len(root.findall("item"))
+    except Exception:
+        bersih_cdata = re.sub(r"<!\[CDATA\[.*?\]\]>", "", badan, flags=re.S)
+        return len(re.findall(r"<item(?:\s[^>]*)?/?>", bersih_cdata))
+
+
 def jalan_repo(rel, ext=EKSTENSI_KODE):
     for akar, dirs, berkas in os.walk(os.path.join(AKAR, rel)):
         dirs[:] = [d for d in dirs if d not in ("build", ".gradle", "__pycache__")]
@@ -798,11 +808,15 @@ def cek_sinkron_terjemah(gagal):
             # yang sama antar locale tetapi itemnya lebih sedikit
             # membuat kode yang mengindeks menurut panjang bawaan
             # kekurangan entri — paritas nama saja tak menangkapnya.
+            # Hitungan persis anak langsung via parser XML (issue
+            # #1110): pola tekstual lama tak menghitung <item/>
+            # self-closing dan ikut menghitung teks <item> di
+            # dalam CDATA serta item bersarang.
             for nama_arr, badan in re.findall(
                     r'<string-array(?:\s[^>]*?)?\bname="([^"]+)"[^>]*>(.*?)</string-array>',
                     bersih, re.S):
                 jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + \
-                    len(re.findall(r"<item(?:\s[^>]*)?>", badan))
+                    hitung_item_array(badan)
         return peta, jumlah_item, bebas
 
     inggris, item_inggris, bebas_inggris = peta_nama(os.path.join(dasar_res, "values"))
