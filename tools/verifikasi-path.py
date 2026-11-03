@@ -1974,8 +1974,13 @@ def utama():
     cek_kurung_kode(gagal, berubah)
     hapus = berkas_dihapus(args.rentang)
     if not args.rentang:
-        keluar = jalan("git", "diff", "--cached", "--name-status") or ""
-        hapus += [x.split(None, 1)[1] for x in keluar.splitlines() if x.startswith("D")]
+        # -z + tokenisasi posisional seperti berkas_dihapus
+        # (issue #1157): uraian per baris tanpa -z mematahkan
+        # nama non-ASCII terkuotasi sehingga hapusan staged
+        # berkas beraksen yang masih dirujuk lolos vonis.
+        hapus += _ambil_terhapus(
+            pecah_nama(jalan("git", "diff", "--cached", "--name-status", "-z") or "")
+        )
     cek_berkas_kode_dihapus(gagal, hapus)
     if not args.semua:
         cek_pengingat_changelog(peringatan, berubah)
