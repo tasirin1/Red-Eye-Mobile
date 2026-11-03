@@ -892,6 +892,26 @@ class MonitoringService : Service() {
         serviceStartElapsed = android.os.SystemClock.elapsedRealtime()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "=== Starting monitoring service ===")
 
+        // Foreground ditegakkan SEBELUM loop lama dibatalkan
+        // (issue #945): urutan lama membatalkan semua loop dulu,
+        // jadi satu kegagalan transien saat menegakkan foreground
+        // pada intent rutin mematikan layanan yang sebenarnya
+        // sehat. Bila loop lama masih hidup dan foreground gagal
+        // ditegakkan ulang, biarkan loop lama tetap berjalan —
+        // jangan stopSelf.
+        val hadLoops = monitoringJob?.isActive == true || cameraJob?.isActive == true ||
+            commandJob?.isActive == true || patrolJob?.isActive == true
+        val foregroundNotification = try {
+            buildForegroundNotification()
+        } catch (_: Exception) {
+            if (!hadLoops) stopSelf()
+            return
+        }
+        if (!applyForegroundTypes(foregroundNotification)) {
+            if (!hadLoops) stopSelf()
+            return
+        }
+
         // Cancel any previous loops so a restart never duplicates work
         monitoringJob?.cancel()
         cameraJob?.cancel()
@@ -902,17 +922,6 @@ class MonitoringService : Service() {
         idlePolls = 0
         refreshCreds()
         refreshLoopConfig()
-
-        val foregroundNotification = try {
-            buildForegroundNotification()
-        } catch (_: Exception) {
-            stopSelf()
-            return
-        }
-        if (!applyForegroundTypes(foregroundNotification)) {
-            stopSelf()
-            return
-        }
         isRunning = true
         ensureForegroundTypes()
         if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.d("MonitoringService", "Foreground notification started")

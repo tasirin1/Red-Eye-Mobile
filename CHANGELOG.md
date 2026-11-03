@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Urutan mulai-ulang layanan diperbaiki: foreground kini ditegakkan sebelum loop lama dibatalkan, dan bila penegakan ulang gagal sesaat sementara loop lama masih hidup, layanan tetap berjalan dengan loop lama — satu kegagalan transien pada intent rutin tidak lagi mematikan layanan yang sehat.
 - Tombol menu yang meminta input (mis. atur nilai) tidak lagi mengirim prompt-nya di dalam kunci kontrol, sehingga pengiriman prompt yang lambat tidak menahan perintah darurat /lock dan /stop — menyelaraskan jalur tombol dengan jalur teks.
 - Login owner tidak lagi menahan kunci perintah dan kontrol selama rangkaian jaringan: kedua kunci kini hanya dipegang sebentar saat komit adopsi owner, dan login antar-pengirim diserialkan oleh kunci login tersendiri — perintah darurat seperti /lock dan /stop tidak lagi tertahan jaringan lambat dari pengirim yang belum tentu owner.
 - Pemulihan penyimpanan terenkripsi kini menggabungkan, bukan menimpa: kunci yang hanya ada di penyimpanan persisten lama (mis. token bot dan chat ID) tidak lagi terhapus saat upgrade dari mode volatile berhasil — snapshot volatile tetap menang untuk kunci yang sama.
