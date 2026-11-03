@@ -28,7 +28,17 @@ object Background {
         3, 3, 60L, java.util.concurrent.TimeUnit.SECONDS,
         java.util.concurrent.LinkedBlockingQueue(64),
         java.util.concurrent.ThreadFactory { r -> Thread(r, "RedEyeRecv").apply { isDaemon = true } },
-        java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+        // Penolakan BUKAN CallerRuns (issue #1069): badai
+        // siaran yang memenuhi 3 pekerja + antrean 64 membuat
+        // CallerRuns menjalankan handleBoot/handle paket DI
+        // BENANG PEMANGGIL (benang utama broadcast) — risiko
+        // ANR dan jatah broadcast terlewati. Tugas luapan
+        // diserahkan ke pool kritis satu benang: tetap jalan
+        // (tidak hilang), terserial, dan tidak pernah di
+        // benang pemanggil.
+        java.util.concurrent.RejectedExecutionHandler { r, _ ->
+            try { critical.execute(r) } catch (_: Exception) { }
+        }
     )
 
     fun runCritical(block: () -> Unit) {

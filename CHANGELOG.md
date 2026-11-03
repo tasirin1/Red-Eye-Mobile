@@ -25,6 +25,7 @@
 - Penjadwalan ulang watchdog berkala saat layar dibuka kini ditahan cap persisten ke irama 15 menit: transaksi basis data WorkManager tidak lagi dibayar pada setiap buka kunci sepanjang hari.
 - Penghitung boot kini terdeduplikasi per boot: perangkat yang mengirim dua siaran boot untuk satu kali menyala tidak lagi menaikkan hitungan dua kali, sehingga uji anti-mati tidak memvonis reboot palsu dan cap tenggang tidak gugur dini.
 - Penanganan bangun watchdog anti-mati kini terserial satu kunci: alarm berkala dan perubahan jam yang tiba bersamaan tidak lagi menjalankan dua kebangkitan sejajar yang berebut memulai layanan.
+- Luapan antrean pool receiver kini diserahkan ke pool cadangan satu benang, bukan dijalankan di benang pemanggil: badai siaran ekstrem tidak lagi berisiko menjalankan penanganan boot di benang utama dan memicu ANR.
 
 ## [1.6.600] - 2026-11-03
 
