@@ -49,9 +49,9 @@ class MenuCallbackTest {
 
     @Test
     fun saklarToggle() {
-        assertEquals(MenuCallback.Toggle("notify", "komu"), MenuCallback.parse("tg:komu:notif"))
+        assertEquals(MenuCallback.Toggle("notify", "komu"), MenuCallback.parse("tg:komu:notify"))
         assertEquals(MenuCallback.Toggle("patrol", "pantau"), MenuCallback.parse("tg:pantau:patrol"))
-        assertEquals(MenuCallback.Toggle("datasaver", "pantau"), MenuCallback.parse("tg:pantau:hematdata"))
+        assertEquals(MenuCallback.Toggle("datasaver", "pantau"), MenuCallback.parse("tg:pantau:datasaver"))
         assertEquals(MenuCallback.Toggle("otp", "komu"), MenuCallback.parse("tg:komu:OTP"))
         // View tak dikenal jatuh ke menu utama (seperti Navigate).
         assertEquals(MenuCallback.Toggle("night", "main"), MenuCallback.parse("tg:entah:night"))
