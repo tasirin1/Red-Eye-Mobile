@@ -896,8 +896,11 @@ def cek_ukuran_pohon(gagal, sudah_dicek):
     # dinilai ukurannya di sini dengan ambang dan pengecualian
     # bernama yang sama; berkas yang baru dinilai lewat jalur
     # berubah dilewati agar laporannya tak dobel.
-    for path in (jalan("git", "ls-files") or "").splitlines():
-        if path in sudah_dicek:
+    # Daftar terlacak memakai -z (issue #1131): tanpa itu git
+    # mengutip nama non-ASCII gaya C sehingga getsize pada
+    # nama terutip gagal dan berkas besarnya terlewat diam-diam.
+    for path in (jalan("git", "ls-files", "-z") or "").split("\x00"):
+        if not path or path in sudah_dicek:
             continue
         batas = 5 * 1024 * 1024 if path == "CHANGELOG.md" else 1024 * 1024
         try:
