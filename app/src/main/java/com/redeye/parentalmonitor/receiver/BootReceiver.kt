@@ -92,21 +92,48 @@ class BootReceiver : BroadcastReceiver() {
                 // memuat waktu mati + sisa uptime boot lama).
                 val lastWall = meta.getLong("boot_count_wall", 0L)
                 val lastElapsed = meta.getLong("boot_count_elapsed", 0L)
+                // Saksi independen platform (issue #1074):
+                // penghitung boot sistem menelan reboot cepat
+                // yang heuristik waktu samakan dengan duplikat.
+                val sysBoot = try {
+                    android.provider.Settings.Global.getInt(
+                        context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, -1
+                    ).toLong()
+                } catch (_: Exception) {
+                    -1L
+                }
+                val storedSys = meta.getLong("boot_count_sys", -1L)
                 if (lastWall > 0L && lastElapsed > 0L) {
                     val nowWall = System.currentTimeMillis()
                     val nowElapsed = android.os.SystemClock.elapsedRealtime()
                     val elapsedDiff = nowElapsed - lastElapsed
                     val wallDiff = nowWall - lastWall
-                    if (elapsedDiff >= 0L && elapsedDiff <= 30 * 60_000L &&
-                        kotlin.math.abs(wallDiff - elapsedDiff) <= 120_000L) return
-                    meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
+                    if (com.redeye.parentalmonitor.utils.BootClock
+                            .isDuplicateBroadcast(elapsedDiff, wallDiff, sysBoot, storedSys)) {
+                        // Duplikat: bila baseline sistem belum
+                        // pernah tersimpan (instalasi lama),
+                        // simpan sekarang agar siaran berikutnya
+                        // punya saksi — tanpa menaikkan hitungan.
+                        if (sysBoot >= 0L && storedSys < 0L) {
+                            try {
+                                meta.edit().putLong("boot_count_sys", sysBoot).commit()
+                            } catch (_: Exception) {
+                            }
+                        }
+                        return
+                    }
+                    val ed = meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
                         .putLong("boot_count_wall", nowWall)
-                        .putLong("boot_count_elapsed", nowElapsed).commit()
+                        .putLong("boot_count_elapsed", nowElapsed)
+                    if (sysBoot >= 0L) ed.putLong("boot_count_sys", sysBoot)
+                    ed.commit()
                     return
                 }
-                meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
+                val edFirst = meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L)
                     .putLong("boot_count_wall", System.currentTimeMillis())
-                    .putLong("boot_count_elapsed", android.os.SystemClock.elapsedRealtime()).commit()
+                    .putLong("boot_count_elapsed", android.os.SystemClock.elapsedRealtime())
+                if (sysBoot >= 0L) edFirst.putLong("boot_count_sys", sysBoot)
+                edFirst.commit()
             } catch (_: Exception) {
             }
         }

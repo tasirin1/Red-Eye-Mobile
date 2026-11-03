@@ -85,4 +85,21 @@ class BootClockTest {
         // Koreksi NTP besar 1,5 jam tetap diterima.
         assertTrue(BootClock.sameBootOrClockShift(w, e, w + 1_800_000L + 5_400_000L, e + 1_800_000L))
     }
+
+    @Test
+    fun dedupSiaranBootDenganSaksiSistem() {
+        // Nilai harapan dari porting Python 1:1 (kasus yang sama).
+        // Reboot cepat sungguhan (selisih dinding-elapsed 115 dtk)
+        // yang penghitung sistemnya naik -> BUKAN duplikat (#1074).
+        assertFalse(BootClock.isDuplicateBroadcast(60_000L, 175_000L, 5L, 4L))
+        // Duplikat sejati: kedua jam berjalan bersama, sistem sama.
+        assertTrue(BootClock.isDuplicateBroadcast(60_000L, 60_500L, 5L, 5L))
+        // Tanpa saksi sistem, heuristik lama berlaku apa adanya.
+        assertTrue(BootClock.isDuplicateBroadcast(60_000L, 175_000L, -1L, -1L))
+        assertTrue(BootClock.isDuplicateBroadcast(60_000L, 175_000L, 5L, 5L))
+        // Duplikat telat > 30 menit tetap terhitung (dikenal #1083).
+        assertFalse(BootClock.isDuplicateBroadcast(1_900_000L, 1_900_500L, 5L, 5L))
+        // Reboot normal: selisih jauh -> terhitung.
+        assertFalse(BootClock.isDuplicateBroadcast(60_000L, 3_600_000L, 5L, 5L))
+    }
 }

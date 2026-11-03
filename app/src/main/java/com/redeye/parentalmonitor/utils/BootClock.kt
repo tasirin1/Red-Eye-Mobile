@@ -38,4 +38,21 @@ object BootClock {
 
     const val MAX_ELAPSED_SPAN_MS = 24 * 60 * 60_000L
     const val MAX_CLOCK_SHIFT_MS = 2 * 60 * 60_000L
+
+    // Keputusan dedup siaran boot (issue #1067, diperkuat
+    // #1074): duplikat = selang elapsed pendek DAN selisih
+    // dinding-elapsed kecil (kedua jam berjalan bersama dalam
+    // satu boot). Kelemahan heuristik murni: reboot SUNGGUHAN
+    // yang sangat cepat (uptime boot lama + waktu mati <= 120
+    // detik) tak terbedakan dari duplikat. Penghitung boot
+    // SISTEM (Settings.Global.BOOT_COUNT, dikelola platform)
+    // adalah saksi independen: bila nilainya naik dari yang
+    // tersimpan, ini boot baru — apa pun kata heuristik waktu.
+    // Nilai -1 = tak tersedia/tak tersimpan -> heuristik saja.
+    fun isDuplicateBroadcast(elapsedDiffMs: Long, wallDiffMs: Long, sysBoot: Long, storedSys: Long): Boolean {
+        val timing = elapsedDiffMs >= 0L && elapsedDiffMs <= 30 * 60_000L &&
+            kotlin.math.abs(wallDiffMs - elapsedDiffMs) <= SAME_BOOT_TOLERANCE_MS
+        val sysSaysNewBoot = sysBoot >= 0L && storedSys >= 0L && sysBoot > storedSys
+        return timing && !sysSaysNewBoot
+    }
 }
