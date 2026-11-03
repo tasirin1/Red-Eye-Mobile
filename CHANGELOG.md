@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Watchdog unggah tangkapan layar (batas 660 detik) kini ikut dibatalkan pada cabang gagal dan jalur pengecualian, bukan hanya pada jalur sukses.
 - Status uji anti-mati kini dibersihkan hanya sesudah laporannya benar-benar terkirim/terantre — laporan yang gugur di antrean tak lagi hilang tanpa jejak.
 - Skrip gradlew yang tidak bisa jalan sebagaimana tersimpan di repo (jar wrapper-nya memang tidak pernah ikut) kini dihapus dan didokumentasikan — build resmi hanya lewat CI.
 - Dua pengurai daftar penanda notifikasi yang tersalin persis kini memakai satu fungsi pengurai bersama.

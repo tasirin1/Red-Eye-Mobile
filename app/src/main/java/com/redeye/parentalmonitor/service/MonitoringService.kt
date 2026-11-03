@@ -9652,6 +9652,11 @@ class MonitoringService : Service() {
                 }
                 shotWatchdog = wdUp
                 if (shotFile == null) {
+                    // Watchdog unggah ikut dibatalkan (issue
+                    // #989): cabang gagal ini dulu kembali tanpa
+                    // membatalkannya, menyisakan watchdog yatim
+                    // 660 detik yang hanya tertolong penjaga seq.
+                    try { wdUp.cancel() } catch (_: Exception) { }
                     clearShotBusy(shotSeq)
                     if (shotNoFrameFailAt == noFrameMarkBefore) shotNoFrameFailAt = 0L
                     sendToTelegram(
@@ -9688,10 +9693,12 @@ class MonitoringService : Service() {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 clearShotBusy(shotSeq)
                 try { wd.cancel() } catch (_: Exception) { }
+                try { shotWatchdog?.cancel() } catch (_: Exception) { }
                 throw e
             } catch (e: Exception) {
                 clearShotBusy(shotSeq)
                 try { wd.cancel() } catch (_: Exception) { }
+                try { shotWatchdog?.cancel() } catch (_: Exception) { }
                 android.util.Log.e("MonitoringService", "✗ Error in captureAndSendScreenshot: ${redactToken(e.message)}")
                 serviceScope.launch {
                     sendToTelegram(
