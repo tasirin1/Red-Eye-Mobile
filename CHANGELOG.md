@@ -16,6 +16,7 @@
 - Dedup anomali harian kini memakai batas basi yang longgar terhadap perjalanan lintas zona waktu: anomali yang sudah dilaporkan pagi hari tidak lagi terkirim ulang pada tanggal lokal yang sama hanya karena tanggal itu berumur lebih dari 24 jam epoch sesudah terbang ke barat.
 - Pemeriksaan paritas terjemahan gerbang kini menghormati atribut translatable="false": string yang memang tidak untuk diterjemahkan (nama aplikasi/brand) tidak lagi menggagalkan pemeriksaan hanya karena tidak punya pasangan bahasa Indonesia.
 - Pengecualian batas ukuran untuk CHANGELOG.md kini punya plafon sendiri (5 MB): berkas riwayat itu tetap boleh tumbuh melewati batas umum 1 MB, tetapi tidak lagi tanpa batas sama sekali.
+- Pemeriksaan path vektor cek cepat kini juga menangkap bilangan baru diawali titik sesudah eksponen bertanda plus (mis. "1.5e+3.5"), melengkapi bentuk bertanda minus yang sudah ada.
 
 ## [1.6.600] - 2026-11-03
 
