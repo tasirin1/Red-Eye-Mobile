@@ -134,10 +134,19 @@ class MonitoringService : Service() {
     private val photoSendMutex = kotlinx.coroutines.sync.Mutex()
     @Volatile
     private var curfewFetchFailAt = 0L
+    // @Volatile (issue #918): jangkar anti-dobel laporan ini
+    // dibaca/ditulis loop pemantau; saat restart loop tumpang
+    // tindih sesaat, visibilitas antar-thread menentukan apakah
+    // dedup-nya terlihat oleh loop pengganti.
+    @Volatile
     private var digestAttemptAnchor = 0L
+    @Volatile
     private var curfewAttemptKey = ""
+    @Volatile
     private var schoolAttemptKey = ""
+    @Volatile
     private var nightDigestAttemptKey = ""
+    @Volatile
     private var begadangAttemptKey = ""
     private var trailMirrorRaw: String? = null
     private var trailMirrorPts: List<String>? = null
@@ -10231,13 +10240,27 @@ class MonitoringService : Service() {
         refreshLoopConfig()
         try { loopRelaunchJob?.cancel() } catch (_: Exception) { }
         loopRelaunchJob = serviceScope.launch {
-            try {
-                kotlinx.coroutines.withTimeoutOrNull(5_000L) {
-                    for (job in oldJobs) job.join()
+            // Tunggu loop lama SUNGGUH berhenti sebelum menyalakan
+            // penggantinya (issue #918): batas lama 5 detik lalu
+            // jalan terus walau job lama masih hidup membuka
+            // jendela dua loop bersamaan (laporan terjadwal bisa
+            // dobel). Kini menunggu sampai 12 x 5 detik; sesudah
+            // itu tetap dilanjutkan sebagai jalan keluar terakhir
+            // agar pemulihan tak tersandera job yang membandel.
+            var percobaan = 0
+            while (percobaan < 12) {
+                val selesai = try {
+                    kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+                        for (job in oldJobs) job.join()
+                        true
+                    } == true
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
                 }
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
+                if (selesai || oldJobs.none { it.isActive }) break
+                percobaan++
             }
             if (!isActive) return@launch
             startPeriodicLoops()
