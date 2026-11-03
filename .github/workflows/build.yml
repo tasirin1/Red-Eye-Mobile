@@ -45,11 +45,21 @@ jobs:
           fi
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
             case "$GITHUB_REF" in
-              refs/tags/*) BASE=$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true) ;;
+              refs/tags/*)
+                BASE=$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)
+                if [ -z "$BASE" ]; then
+                  BASE=$(git rev-parse "${GITHUB_SHA}^" 2>/dev/null || true)
+                fi
+                ;;
+              *)
+                # Cabang baru (issue #893): before kosong/nol berarti
+                # seluruh cabang baru bagi remote — cadangan lama
+                # sha^ hanya memindai commit ujung. BASE menjadi
+                # commit akar agar seluruh riwayat cabang ikut
+                # terpindai (isi tiap commit + pesan + diff bersih).
+                BASE=$(git rev-list --max-parents=0 "${GITHUB_SHA}" 2>/dev/null | head -n 1 || true)
+                ;;
             esac
-            if [ -z "$BASE" ]; then
-              BASE=$(git rev-parse "${GITHUB_SHA}^" 2>/dev/null || true)
-            fi
           fi
           if [ -n "$BASE" ]; then
             # Dua titik (issue #838): tiga titik = beda simetris,
