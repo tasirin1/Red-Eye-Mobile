@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Proteksi ubek-ubek (tamper) kini juga memeriksa halaman sensitif yang sudah telanjur terbuka: halaman Settings yang terbuka sebelum proteksi aktif atau sebelum layanan terhubung kini dinilai ulang berkala (sebelumnya hanya pergantian jendela yang memicu pemeriksaan, jadi halaman yang sama tak pernah dicek).
 - Deteksi berkendara lebih ketat terhadap lonjakan GPS: fix berakurasi 0 (tak diketahui) kini ditolak seperti akurasi buruk, dan kecepatan dari perangkat pun menuntut dua sampel cepat berurutan sebelum alert — satu fix menyimpang tidak lagi cukup memicu kabar berkendara palsu.
 - Laporan dan pemeriksaan sensitif-waktu (heartbeat, digest, digest malam, begadang, jam pulang, sentinel) tidak lagi menumpang irama sinkron data: dengan interval sinkron besar (mis. 1440 menit) mereka tetap dinilai tiap ±5 menit di sela tidur loop, sehingga jendela digest malam tidak bisa terlewat diam-diam seharian.
 - Pemulihan otomatis jalur bisu (sentinel) tidak lagi mencap tahap terakhir "berhasil" padahal restart-nya ditolak penjaga jeda: hasil restart kini menentukan apakah tahap naik dan owner dikabari, sehingga tahap yang gagal akan dicoba lagi pada giliran berikutnya, bukan terkunci 24 jam.

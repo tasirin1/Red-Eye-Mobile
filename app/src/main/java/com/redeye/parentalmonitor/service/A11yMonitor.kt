@@ -52,6 +52,13 @@ object A11yMonitor {
     private val lastTamperAlert = HashMap<String, Long>()
     private var tamperStateLoaded = false
     private val lastContentScan = HashMap<String, Long>()
+    // Jejak jendela terakhir untuk cek ulang tamper (issue #922).
+    @Volatile
+    private var lastWindowPkg = ""
+    @Volatile
+    private var lastSensitiveCls = ""
+    @Volatile
+    private var lastTamperRecheckAt = 0L
     private val lastKeywordAlert = HashMap<String, Long>()
     private var keywordAlertDay = ""
     private var keywordAlertCount = 0
@@ -219,7 +226,9 @@ object A11yMonitor {
                 val key = pkg + "|" + cls
                 if (key == lastEventKey) return
                 lastEventKey = key
+                lastWindowPkg = pkg
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
+                if (sensitive) lastSensitiveCls = cls
                 val app = service.applicationContext
                 executor.execute {
                     val texts = if (sensitive) collectSnapshot(service, pkg).first.texts else emptyList()
@@ -231,6 +240,26 @@ object A11yMonitor {
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 val pkg = try { event.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
                 if (pkg.isNotEmpty()) {
+                    // Cek ulang tamper untuk halaman sensitif yang
+                    // SUDAH terbuka (issue #922): halaman Settings
+                    // yang terbuka sebelum proteksi aktif/service
+                    // bind tak pernah memicu state-changed lagi,
+                    // jadi tanpa ini tak pernah dinilai TamperGuard.
+                    // Dijatah 10 detik & hanya untuk jendela
+                    // terakhir yang tercatat sensitif; alert-nya
+                    // sendiri tetap dijatah persisten per alasan.
+                    if (pkg == lastWindowPkg && TamperGuard.mayBeSensitive(pkg)) {
+                        val nowE = SystemClock.elapsedRealtime()
+                        if (nowE - lastTamperRecheckAt >= 10_000L) {
+                            lastTamperRecheckAt = nowE
+                            val cls = lastSensitiveCls
+                            val app = service.applicationContext
+                            executor.execute {
+                                val texts = collectSnapshot(service, pkg).first.texts
+                                handleWindow(app, pkg, cls, texts)
+                            }
+                        }
+                    }
                     scanWatchedContent(service, pkg)
                     requestPeriodicPersist(service.applicationContext)
                 }
