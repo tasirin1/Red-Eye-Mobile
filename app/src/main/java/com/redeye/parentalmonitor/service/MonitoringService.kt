@@ -5469,9 +5469,20 @@ class MonitoringService : Service() {
             0L
         }
         if (elapsedDeadline > 0L) {
-            val sisa = elapsedDeadline - android.os.SystemClock.elapsedRealtime()
-            if (sisa <= 0L) return 0L
-            return System.currentTimeMillis() + sisa.coerceAtMost(480 * 60_000L)
+            val sisaElapsed = elapsedDeadline - android.os.SystemClock.elapsedRealtime()
+            if (sisaElapsed <= 0L) return 0L
+            // Jangkar elapsed tak sah lintas reboot (issue #941):
+            // sesudah perangkat menyala ulang elapsedRealtime
+            // mulai dari nol, jadi sisaElapsed membengkak sebesar
+            // uptime lama dan horizon 480 mnt bergulir tak pernah
+            // berakhir. Sisa dinding adalah batas kedua yang
+            // selalu sah — ambil yang LEBIH KECIL: kemunduran jam
+            // tetap diatur sisa elapsed (perlindungan #939),
+            // reboot diatur sisa dinding, keduanya dijepit 480.
+            val sisaDinding = stored - System.currentTimeMillis()
+            if (sisaDinding <= 0L) return 0L
+            val sisa = minOf(sisaElapsed, sisaDinding).coerceAtMost(480 * 60_000L)
+            return System.currentTimeMillis() + sisa
         }
         if (stored - System.currentTimeMillis() > 480 * 60_000L) {
             val clamped = System.currentTimeMillis() + 480 * 60_000L
