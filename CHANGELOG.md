@@ -27,6 +27,7 @@
 - Penggabungan ulang batas rate-limit dari penyimpanan kini memakai kunci dan aturan maksimum yang sama dengan penulisnya: jendela tunggu 429 yang lebih panjang tidak lagi bisa tertimpa nilai lebih pendek dari jalur pembaca.
 - Cache status jaringan kini disimpan sebagai satu pasangan atomik (waktu cek + hasil): pembaca bersamaan tidak lagi bisa menerima cap segar yang berpasangan dengan hasil lama.
 - Cache paket dan kata pantau aksesibilitas kini dinilai dan diperbarui di bawah satu kunci: dua benang pemindai tidak lagi bisa menyilangkan pasangan nilai mentah dan hasil urainya.
+- Jatah notis petunjuk (pairing, login, tombol saat blokir) kini diklaim secara atomik: notis yang sama tidak lagi bisa terkirim dua kali oleh dua jalur yang menilai jatahnya pada saat bersamaan.
 
 ## [1.6.601] - 2026-11-03
 

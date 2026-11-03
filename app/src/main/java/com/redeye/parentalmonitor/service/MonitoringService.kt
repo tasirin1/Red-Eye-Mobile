@@ -1559,6 +1559,33 @@ class MonitoringService : Service() {
     }
 
     private val pairHintAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    // Klaim slot jatah notis 1 jam secara atomik (issue
+    // #1101): pola baca-banding-tulis telanjang di tiga
+    // jalur korutin berbeda bisa sama-sama lolos gerbang
+    // dan mengirim notis yang sama dua kali. CAS
+    // (putIfAbsent/replace) membuat tepat satu pemanggil
+    // memenangkan slot; prune tetap jalan pada klaim.
+    private fun claimHintSlot(key: String, now: Long): Boolean {
+        return try {
+            while (true) {
+                val last = pairHintAt[key]
+                if (last != null && last > 0L && now - last < 3_600_000L) return false
+                val claimed = if (last == null) {
+                    pairHintAt.putIfAbsent(key, now) == null
+                } else {
+                    pairHintAt.replace(key, last, now)
+                }
+                if (claimed) {
+                    pruneStampMap(pairHintAt, now, 3_600_000L)
+                    return true
+                }
+            }
+            @Suppress("UNREACHABLE_CODE") false
+        } catch (_: Exception) {
+            false
+        }
+    }
     private val pairAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val pairGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val pairGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
@@ -1617,13 +1644,7 @@ class MonitoringService : Service() {
                 ""
             }.ifEmpty { return }
             val now = android.os.SystemClock.elapsedRealtime()
-            try {
-                val last = pairHintAt[senderId] ?: 0L
-                if (last > 0L && now - last < 3_600_000L) return
-                pruneStampMap(pairHintAt, now, 3_600_000L)
-                pairHintAt[senderId] = now
-            } catch (_: Exception) {
-            }
+            if (!claimHintSlot(senderId, now)) return
             val url = "https://api.telegram.org/bot${token}/sendMessage"
             TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: buka link pairing dari Setup, atau kirim /start <chat ID> <kode pairing>.", parseMode = null))
         } catch (_: Exception) {
@@ -2389,13 +2410,7 @@ class MonitoringService : Service() {
                     if (!followsLogin && awaitingOwnerLogin() && command.startsWith("/") && command != "/login" && command != "/start") {
                         val hintTarget = senderId.ifEmpty { msgChatId }
                         val hintNow = android.os.SystemClock.elapsedRealtime()
-                        val hintLast = try { pairHintAt["login:$hintTarget"] ?: 0L } catch (_: Exception) { 0L }
-                        if (hintLast == 0L || hintNow - hintLast >= 3_600_000L) {
-                            try {
-                                pruneStampMap(pairHintAt, hintNow, 3_600_000L)
-                                pairHintAt["login:$hintTarget"] = hintNow
-                            } catch (_: Exception) {
-                            }
+                        if (claimHintSlot("login:$hintTarget", hintNow)) {
                             sendDirect(hintTarget, loginHintText())
                         }
                         offsetDeferred = true
@@ -2743,13 +2758,7 @@ class MonitoringService : Service() {
             try { answerCallback(query.id) } catch (_: Exception) { }
             val noticeKey = "authblock:$sender"
             val noticeNow = android.os.SystemClock.elapsedRealtime()
-            val noticeLast = try { pairHintAt[noticeKey] ?: 0L } catch (_: Exception) { 0L }
-            if (noticeLast == 0L || noticeNow - noticeLast >= 3_600_000L) {
-                try {
-                    pruneStampMap(pairHintAt, noticeNow, 3_600_000L)
-                    pairHintAt[noticeKey] = noticeNow
-                } catch (_: Exception) {
-                }
+            if (claimHintSlot(noticeKey, noticeNow)) {
                 try {
                     if (messageQueue.addMessage("⚠️ Sebuah tombol menu ditekan saat kredensial bot sedang diblokir (token ditolak Telegram), jadi tombol itu tidak dijalankan. Tunggu sampai blokir berakhir (maks ±30 menit sejak token ditolak), lalu tekan lagi.")) {
                         MessageScheduler.scheduleMessageSend(this)
