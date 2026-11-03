@@ -733,7 +733,13 @@ object A11yMonitor {
                 done = true
             }
             if (!done && pkg != currentPackage) {
-                finishSessionLocked(nowWall, nowElapsed)
+                // Akru sesi yang baru selesai wajib ikut memaksa
+                // persist (issue #1050, pola #1036): nilainya dulu
+                // dibuang dan persistSnapshotLocked(false) membuat
+                // akru hanya di memori sementara penanda sesi-
+                // terbukanya sudah terhapus — proses mati sebelum
+                // jatah berikutnya menghilangkan akru permanen.
+                val terakru = finishSessionLocked(nowWall, nowElapsed)
                 currentPackage = pkg
                 currentLabel = pkgLabel
                 currentStartWall = nowWall
@@ -755,7 +761,7 @@ object A11yMonitor {
                     stampNightAlert(manager, pkg, nowWall, nowElapsed)
                     alertText = "\uD83C\uDF19 <b>Aplikasi dibuka malam</b>\n" + Html.escape(currentLabel) + "\n<code>" + pkg + "</code>\n" + TimeFmt.short(nowWall)
                 }
-                persistSnapshot = persistSnapshotLocked(false)
+                persistSnapshot = persistSnapshotLocked(terakru)
             }
         }
         tamperReason?.let { blockTamper(context, it) }

@@ -8,6 +8,7 @@
 - Cermin memori "aplikasi sudah dikenal" kini dibuang saat penyimpanan terenkripsi di-reset dan dibuka ulang: sesudah pemulihan penyimpanan, aplikasi tidak lagi dianggap sudah dikenal berdasar data lama, dan data yang sudah di-reset tidak bangkit lagi pada penulisan berikutnya.
 - Cap masa tenggang Setup yang ditulis sebelum ada boot tercatat (mis. tepat sesudah aplikasi dipasang/diperbarui) tidak lagi diperlakukan sebagai cap warisan selamanya: sesudah boot pertama tercatat, cap lama itu diputuskan dari jam dinding, sehingga tenggang basi tidak hidup lagi di awal boot berikutnya.
 - Penulisan cap masa tenggang Setup (aksesibilitas dan admin perangkat) kini satu operasi atomik: ketiganya (batas jam dinding, batas jam monoton, penanda boot) tidak lagi bisa terputus di tengah oleh matinya proses dan menyisakan pasangan cap yang tidak konsisten.
+- Akru sesi pemakaian pada cabang pergantian aplikasi kini juga langsung ditulis persisten, menutup sisa jendela hilang yang sama seperti cabang lain: durasi sesi terakhir tidak lagi bisa lenyap bila proses mati tepat sesudah berpindah aplikasi.
 
 ## [1.6.600] - 2026-11-03
 
