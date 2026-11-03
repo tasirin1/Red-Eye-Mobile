@@ -532,6 +532,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_USAGE_JSON = "a11y_usage_json"
         private const val KEY_A11Y_USAGE_PREV_DATE = "a11y_usage_prev_date"
         private const val KEY_A11Y_USAGE_PREV_JSON = "a11y_usage_prev_json"
+        private const val KEY_A11Y_USAGE_PREV2_DATE = "a11y_usage_prev2_date"
+        private const val KEY_A11Y_USAGE_PREV2_JSON = "a11y_usage_prev2_json"
         private const val KEY_A11Y_NIGHT_ALERT_PKG = "a11y_night_alert_pkg"
         private const val KEY_A11Y_NIGHT_ALERT_AT = "a11y_night_alert_at"
         private const val KEY_A11Y_NIGHT_ALERT_ELAPSED = "a11y_night_alert_elapsed"
@@ -1699,11 +1701,26 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_A11Y_USAGE_PREV_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV_JSON, value).apply()
 
+    // Generasi cadangan kedua (issue #1054): satu slot
+    // cadangan hanya tahan satu lompatan tanggal — excursi
+    // dua langkah (D -> F1 -> F2, restart di antaranya)
+    // menimpa cadangan berisi D sebelum jam terkoreksi.
+    // Rotasi kini dua generasi: utama -> prev -> prev2.
+    var a11yUsagePrev2Date: String
+        get() = prefString(KEY_A11Y_USAGE_PREV2_DATE, "")
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV2_DATE, value).apply()
+
+    var a11yUsagePrev2Json: String
+        get() = prefString(KEY_A11Y_USAGE_PREV2_JSON, "")
+        set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV2_JSON, value).apply()
+
     fun setA11yUsage(date: String, json: String) {
         try {
             val editor = sharedPreferences.edit()
             val lama = prefString(KEY_A11Y_USAGE_DATE, "")
             if (lama.isNotEmpty() && lama != date) {
+                editor.putString(KEY_A11Y_USAGE_PREV2_DATE, prefString(KEY_A11Y_USAGE_PREV_DATE, ""))
+                editor.putString(KEY_A11Y_USAGE_PREV2_JSON, prefString(KEY_A11Y_USAGE_PREV_JSON, ""))
                 editor.putString(KEY_A11Y_USAGE_PREV_DATE, lama)
                 editor.putString(KEY_A11Y_USAGE_PREV_JSON, prefString(KEY_A11Y_USAGE_JSON, ""))
             }

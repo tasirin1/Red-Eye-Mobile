@@ -199,7 +199,8 @@ object A11yMonitor {
             // di bawah memulihkan dari cadangan bila tanggal
             // utamanya bukan hari yang diminta.
             val slotDayPrev = try { manager.a11yUsagePrevDate } catch (_: Exception) { "" }
-            if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && (slotDay == startDay || slotDayPrev == startDay)) {
+            val slotDayPrev2 = try { manager.a11yUsagePrev2Date } catch (_: Exception) { "" }
+            if (startDay != todayKey && todayStart > startWall && loaded && loadedDay == todayKey && (slotDay == startDay || slotDayPrev == startDay || slotDayPrev2 == startDay)) {
                 // Akru hanya sampai tengah malam PERTAMA sesudah sesi
                 // mulai (issue #780): sebelumnya sampai tengah malam
                 // hari ini, sehingga sesi yang mulai ≥2 hari lalu
@@ -659,6 +660,7 @@ object A11yMonitor {
             val raw = when {
                 manager.a11yUsageDate == today -> manager.a11yUsageJson
                 manager.a11yUsagePrevDate == today -> manager.a11yUsagePrevJson
+                manager.a11yUsagePrev2Date == today -> manager.a11yUsagePrev2Json
                 else -> return HashMap()
             }
             if (raw.isEmpty()) return HashMap()
