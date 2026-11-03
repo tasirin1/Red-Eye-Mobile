@@ -91,3 +91,4 @@ markGroupForwarded
 markGroupsForwarded
 setForwardedNotifIdsSync
 setNotifGroupForwardedSync
+a11yKnownApps

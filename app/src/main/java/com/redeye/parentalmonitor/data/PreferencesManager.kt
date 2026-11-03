@@ -1947,14 +1947,6 @@ class PreferencesManager(context: Context) {
         return loaded
     }
 
-    fun a11yKnownApps(): MutableSet<String> {
-        return try {
-            synchronized(a11yKnownAppsLock) { HashSet(knownAppsLocked()) }
-        } catch (_: Exception) {
-            HashSet()
-        }
-    }
-
     // Kebalikan rememberA11yApp (issue #854): uninstall menghapus
     // nama dari himpunan dikenal agar pemasangan ulang di kemudian
     // hari kembali memicu alert "aplikasi baru dibuka". Tanpa ini
