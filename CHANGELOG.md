@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Tekanan tombol menu yang gagal diproses kini bisa dicoba lagi oleh pengiriman ulang Telegram: tanda "sudah ditangani" pada callback dihapus saat handler gagal, tidak lagi membuat pengiriman ulang dibuang sebagai duplikat.
 - Pemulihan jalur kirim bisu: cap jeda kini ditulis sesudah pemulihan berhasil (bukan sebelumnya, yang membuat pemulihan gagal tetap menghabiskan jeda), dan cap waktu masa depan tidak lagi mengunci reset tahap pemulihan maksimum.
 - Penjaga jeda alert kesehatan kini menangani cap waktu masa depan (jam pernah dimajukan jauh lalu dikoreksi): cap dijangkar ulang ke waktu sekarang sehingga alert kesehatan tidak bisu berhari-hari.
 - Penggabungan baris teks notifikasi (EXTRA_TEXT_LINES) kini dibatasi sejak awal sampai 20 ribu aksara, tidak lagi mewujudkan seluruh string gabungan raksasa di memori sebelum dipotong.

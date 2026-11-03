@@ -2104,6 +2104,15 @@ class MonitoringService : Service() {
                         } catch (e: kotlinx.coroutines.CancellationException) {
                             throw e
                         } catch (e: Exception) {
+                            // Lupakan tanda seen callback (issue
+                            // #961): handler menandai seen SEBELUM
+                            // eksekusi, jadi tanpa ini pengiriman
+                            // ulang update oleh Telegram — yang
+                            // memang dipicu forgetSeen level update
+                            // di dispatchTracked — dibuang sebagai
+                            // duplikat dan tekanan tombol hilang
+                            // permanen walau handler gagal.
+                            synchronized(handledCallbackIds) { handledCallbackIds.remove(callback.id) }
                             try {
                                 sendToTelegram("\u26A0\uFE0F Tombol gagal diproses. Coba lagi atau kirim /help.")
                             } catch (_: Exception) {
