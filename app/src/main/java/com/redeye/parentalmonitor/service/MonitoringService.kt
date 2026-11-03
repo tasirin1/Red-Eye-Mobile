@@ -6445,7 +6445,21 @@ class MonitoringService : Service() {
             val currentSms = preferencesManager.lastSmsId
             if (currentSms > 0L && preferencesManager.lastSmsTimestamp <= 0L) {
                 val ts = smsRepository.smsDateForId(currentSms)
-                if (ts > 0L) preferencesManager.setSmsCursorSync(currentSms, ts)
+                if (ts > 0L) {
+                    preferencesManager.setSmsCursorSync(currentSms, ts)
+                } else {
+                    // Baris kursor tak ada lagi di basis (issue
+                    // #1166): kursor warisan bertimestamp 0 pada
+                    // basis yang menyusut (restore dangkal/hapus
+                    // teratas) — jangkar ulang ke baris teratas
+                    // yang benar-benar ada agar lengan DATE
+                    // predikat keyset bisa bekerja lagi.
+                    val newestId = smsRepository.newestSmsId()
+                    if (newestId in 1 until currentSms) {
+                        val nts = smsRepository.smsDateForId(newestId)
+                        if (nts > 0L) preferencesManager.setSmsCursorSync(newestId, nts)
+                    }
+                }
             }
         } catch (_: Exception) {
         }
@@ -6465,7 +6479,17 @@ class MonitoringService : Service() {
             val currentCall = preferencesManager.lastCallId
             if (currentCall > 0L && preferencesManager.lastCallTimestamp <= 0L) {
                 val ts = callLogRepository.callDateForId(currentCall)
-                if (ts > 0L) preferencesManager.setCallCursorSync(ts, currentCall)
+                if (ts > 0L) {
+                    preferencesManager.setCallCursorSync(ts, currentCall)
+                } else {
+                    // Padanan SMS (issue #1166): jangkar ulang
+                    // ke baris teratas yang ada.
+                    val newestId = callLogRepository.newestCallId()
+                    if (newestId in 1 until currentCall) {
+                        val nts = callLogRepository.callDateForId(newestId)
+                        if (nts > 0L) preferencesManager.setCallCursorSync(nts, newestId)
+                    }
+                }
             }
         } catch (_: Exception) {
         }
