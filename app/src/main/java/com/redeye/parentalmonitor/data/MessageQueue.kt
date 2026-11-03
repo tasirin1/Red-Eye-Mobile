@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.redeye.parentalmonitor.data.models.QueuedMessage
+import com.redeye.parentalmonitor.utils.MessageTrim
+import com.redeye.parentalmonitor.utils.QueueCap
 
 class MessageQueue private constructor(context: Context) {
 
@@ -89,16 +91,9 @@ class MessageQueue private constructor(context: Context) {
         private const val KEY_PRIORITY_DROPS = "priority_drops"
         private const val KEY_EXHAUSTED_DROPS = "exhausted_drops"
         private const val KEY_REJECTED_DROPS = "rejected_drops"
-        private const val MAX_QUEUE_SIZE = 100
-
-        // Batas ukuran SATU pesan (issue #926): tanpa batas,
-        // satu pesan raksasa (teks notifikasi ratusan KB)
-        // membengkakkan blob JSON antrean yang ditulis ulang
-        // utuh (+ .bak) pada tiap persist. Pesan di atas batas
-        // dipotong dengan penanda — laporan menaruh inti di
-        // awal, dan jalur kirim memang memecah teks panjang.
-        private const val MAX_MESSAGE_CHARS = 32_000
-        private const val POTONG = " …[dipotong: pesan terlalu panjang]"
+        // Batas ukuran antrean & SATU pesan (issue #842/#926)
+        // kini di utils/QueueCap & utils/MessageTrim agar
+        // terkunci uji (issue #977).
         private const val MAX_TRANSIENT_RETRIES = 20
         private const val MAX_DRAIN_RETRIES = 10
         private const val GIVE_UP_RETRY_MS = 300_000L
@@ -396,8 +391,7 @@ class MessageQueue private constructor(context: Context) {
     // antrean berisi 105 prioritas menyusutkan batas ke 100 dan
     // mengorbankan 5 prioritas tertua.
     private fun overCapLocked(queue: List<QueuedMessage>, incomingPriority: Boolean): Boolean {
-        val cap = MAX_QUEUE_SIZE + if (incomingPriority || queue.any { it.priority }) 5 else 0
-        return queue.size > cap
+        return QueueCap.overCap(queue.size, queue.any { it.priority }, incomingPriority)
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {
@@ -416,8 +410,7 @@ class MessageQueue private constructor(context: Context) {
     // Terapkan batas ukuran per pesan (issue #926) pada titik
     // konstruksi item antrean.
     private fun potongPesan(message: String): String {
-        if (message.length <= MAX_MESSAGE_CHARS) return message
-        return message.substring(0, MAX_MESSAGE_CHARS - POTONG.length) + POTONG
+        return MessageTrim.trim(message)
     }
 
     private fun filterFresh(items: List<QueuedMessage>, wallCutoff: Long): List<QueuedMessage> {

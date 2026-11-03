@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Empat logika murni yang tadinya tak teruji kini diekstrak ke util terpisah dan terkunci uji unit (batas antrean, sisa jendela malam, klasifikasi paket prioritas); pemotongan pesan antrean kini juga aman dari membelah pasangan emoji tepat di batas potong.
 - Gerbang verifikasi kini memperingatkan dengan jelas bila perbandingan versi terhadap rilis bertag terakhir dilewati karena clone tak punya tag (dulu separuh penegakan versi tidur diam-diam).
 - Larangan berkas rahasia di kedua gerbang kini mencakup varian nama env (.env.local, .env.production, .env.bak, dan sejenisnya), bukan hanya nama persis .env.
 - Rilis kini juga digagalkan bila seksi CHANGELOG versi itu ada tetapi isinya kosong (hanya judul) — sebelumnya berkas catatan berisi judul semata lolos terbit.

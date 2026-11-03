@@ -1313,9 +1313,9 @@ class MonitoringService : Service() {
             cal.set(java.util.Calendar.MINUTE, 0)
             cal.set(java.util.Calendar.SECOND, 0)
             cal.set(java.util.Calendar.MILLISECOND, 0)
-            var end = cal.timeInMillis
-            if (end <= now) end += 24 * 3_600_000L
-            (end - now).coerceAtLeast(5_000L)
+            // Hitungan murninya di utils/NightWindow agar
+            // terkunci uji (issue #977).
+            com.redeye.parentalmonitor.utils.NightWindow.millisUntilNightEnd(now, cal.timeInMillis)
         } catch (_: Exception) {
             Long.MAX_VALUE
         }
