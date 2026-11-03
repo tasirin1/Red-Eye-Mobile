@@ -9816,7 +9816,7 @@ class MonitoringService : Service() {
             android.util.Log.e("MonitoringService", "✗ Error in captureAndSendPhoto: ${redactToken(e.message)}")
             val policyBlocked = ReportFormat.isCameraPolicyError(e.message)
             if (policyBlocked) autoPausePhotosOnPolicyBlock()
-            reportPhotoResult(reportResult, "⚠️ Gagal memotret: " + sanitizedCameraError(e.message) + ".", sanitizedCameraError(e.message))
+            reportPhotoResult(reportResult, "⚠️ Gagal memotret: " + Html.escape(sanitizedCameraError(e.message)) + ".", sanitizedCameraError(e.message))
         }
     }
 
@@ -11639,7 +11639,7 @@ class MonitoringService : Service() {
             try { deleteQuietly(audioTmp) } catch (_: Exception) { }
             try { deleteQuietly(audioFile) } catch (_: Exception) { }
             android.util.Log.e("MonitoringService", "✗ Audio record failed: ${redactToken(e.message)}")
-            sendToTelegram("\u26A0\uFE0F Gagal merekam: " + sanitizedCameraError(e.message) + ".")
+            sendToTelegram("\u26A0\uFE0F Gagal merekam: " + Html.escape(sanitizedCameraError(e.message)) + ".")
         } finally {
             recorderActive.set(false)
             releaseOpWakeLock(audioLock)
@@ -11837,7 +11837,7 @@ class MonitoringService : Service() {
                     recorderActive.set(false)
                     recordingKind = ""
                     serviceScope.launch {
-                        sendToTelegram("⚠️ Gagal merekam video: " + sanitizedCameraError(e.message))
+                        sendToTelegram("⚠️ Gagal merekam video: " + Html.escape(sanitizedCameraError(e.message)))
                     }
                 },
                 timeoutMs = seconds * 1000L + 60_000L
