@@ -26,6 +26,30 @@ class BootReceiver : BroadcastReceiver() {
         )
 
         private val handleLock = Any()
+
+        // Penghitung boot persisten (issue #1034): bertambah
+        // sekali per boot di handleBoot untuk aksi keluarga
+        // BOOT_COMPLETED, ditulis commit() agar selamat dari
+        // kematian proses. Bukti reboot yang kebal pergeseran
+        // jam untuk uji anti-mati (pasangan wall+elapsed punya
+        // residu reboot-cepat yang tak terbedakan dari koreksi
+        // jam — lihat BootClock).
+        fun bootCount(context: android.content.Context): Long {
+            return try {
+                context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                    .getLong("boot_count", 0L)
+            } catch (_: Exception) {
+                0L
+            }
+        }
+
+        private fun noteBootCounted(context: android.content.Context) {
+            try {
+                val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
+                meta.edit().putLong("boot_count", meta.getLong("boot_count", 0L) + 1L).commit()
+            } catch (_: Exception) {
+            }
+        }
         @Volatile
         private var lastHandleAt = 0L
 
@@ -98,6 +122,13 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun handleBootLocked(context: Context, intentAction: String? = null) {
+        // Paling atas, sebelum return dedup mana pun (issue
+        // #1034): penghitung hanya untuk aksi boot sungguhan.
+        if (intentAction == Intent.ACTION_BOOT_COMPLETED ||
+            intentAction == ACTION_QUICKBOOT_POWERON ||
+            intentAction == ACTION_HTC_QUICKBOOT) {
+            noteBootCounted(context)
+        }
         val nowBoot = android.os.SystemClock.elapsedRealtime()
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         val freshBoot = nowBoot <= 120_000L

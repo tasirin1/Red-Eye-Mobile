@@ -510,6 +510,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LIVE_TEST_PENDING = "live_test_pending"
         private const val KEY_LIVE_TEST_STARTED_ELAPSED = "live_test_started_elapsed"
         private const val KEY_LIVE_TEST_STARTED_WALL = "live_test_started_wall"
+        private const val KEY_LIVE_TEST_BOOT_COUNT = "live_test_boot_count"
         private const val KEY_LIVE_TEST_BY_ALARM = "live_test_by_alarm"
         private const val KEY_LIVE_TEST_LAST_SEC = "live_test_last_sec"
         private const val KEY_LAST_SEND_OK_ELAPSED = "last_send_ok_elapsed"
@@ -1099,12 +1100,21 @@ class PreferencesManager(context: Context) {
     val liveTestStartedWall: Long
         get() = prefLong(KEY_LIVE_TEST_STARTED_WALL, 0L)
 
-    fun beginLiveTest(startedElapsed: Long, startedWall: Long) {
+    // Penghitung boot persisten saat uji dimulai (issue
+    // #1034): bukti reboot yang kebal jam — penghitung di
+    // boot_meta bertambah sekali per boot oleh BootReceiver.
+    // 0 = tak diketahui (uji warisan) → vonis memakai jam.
+    var liveTestBootCount: Long
+        get() = prefLong(KEY_LIVE_TEST_BOOT_COUNT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_LIVE_TEST_BOOT_COUNT, value).apply()
+
+    fun beginLiveTest(startedElapsed: Long, startedWall: Long, bootCount: Long = 0L) {
         try {
             sharedPreferences.edit()
                 .putBoolean(KEY_LIVE_TEST_PENDING, true)
                 .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, startedElapsed)
                 .putLong(KEY_LIVE_TEST_STARTED_WALL, startedWall)
+                .putLong(KEY_LIVE_TEST_BOOT_COUNT, bootCount)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
                 .apply()
         } catch (_: Exception) {
@@ -1117,6 +1127,7 @@ class PreferencesManager(context: Context) {
                 .putBoolean(KEY_LIVE_TEST_PENDING, false)
                 .putLong(KEY_LIVE_TEST_STARTED_ELAPSED, 0L)
                 .putLong(KEY_LIVE_TEST_STARTED_WALL, 0L)
+                .putLong(KEY_LIVE_TEST_BOOT_COUNT, 0L)
                 .putBoolean(KEY_LIVE_TEST_BY_ALARM, false)
                 .apply()
         } catch (_: Exception) {

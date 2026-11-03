@@ -9174,7 +9174,8 @@ class MonitoringService : Service() {
 
     private fun runLivenessSelfTest() {
         try {
-            preferencesManager.beginLiveTest(android.os.SystemClock.elapsedRealtime(), System.currentTimeMillis())
+            preferencesManager.beginLiveTest(android.os.SystemClock.elapsedRealtime(), System.currentTimeMillis(),
+                com.redeye.parentalmonitor.receiver.BootReceiver.bootCount(this))
         } catch (_: Exception) {
         }
         try {
@@ -9222,7 +9223,15 @@ class MonitoringService : Service() {
         // dulu lolos karena cap lama tetap < uptime baru.
         // Cap warisan tanpa pasangan dinding (0) memakai
         // deteksi lama saja.
+        // Bukti terkuat: penghitung boot berubah (issue
+        // #1034) — reboot cepat dengan jeda dinding beberapa
+        // menit lolos pasangan jam karena tak terbedakan dari
+        // koreksi jam, tetapi penghitung boot persisten tidak
+        // peduli jam. Penghitung 0 (uji warisan) = tak diketahui.
+        val bootCountThen = try { preferencesManager.liveTestBootCount } catch (_: Exception) { 0L }
+        val bootCountNow = com.redeye.parentalmonitor.receiver.BootReceiver.bootCount(this)
         val rebooted = startedElapsed > nowElapsed ||
+            (bootCountThen > 0L && bootCountNow != bootCountThen) ||
             (startedWall > 0L && !BootClock.sameBootOrClockShift(startedWall, startedElapsed, System.currentTimeMillis(), nowElapsed))
         if (rebooted) {
             val terkirim = try {
