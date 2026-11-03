@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.594] - 2026-11-03
+
 ### Fixed
 
 - Daftar abaikan git kini menahan seluruh ekstensi media artefak uji (#897): ekstensi `.mov`, `.mkv`, `.wav`, `.mp3`, `.ogg`, `.jpeg`, `.webp`, `.gif`, dan `.sqlite` sebelumnya tak tertahan sama sekali dan pola PNG hanya berlaku di akar repo, sehingga media uji di subdirektori (mis. `docs/foto.png`) tetap bisa terangkat `git add -A`; kini semuanya tertahan di kedalaman mana pun — terbukti dengan `git check-ignore`.
