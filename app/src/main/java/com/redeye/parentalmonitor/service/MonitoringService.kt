@@ -2337,7 +2337,7 @@ class MonitoringService : Service() {
 
     private fun beginUpdateTrack(updateId: Long, generation: Long) {
         updateOffsetTracker.begin(updateId, generation)
-        try { updateTokenHashes[updateId] = botToken.hashCode() } catch (_: Exception) { }
+        try { updateTokenHashes[updateId] = preferencesManager.botToken.hashCode() } catch (_: Exception) { }
     }
 
     private fun finishUpdateTrack(updateId: Long, generation: Long, delivered: Boolean) {
@@ -2352,7 +2352,7 @@ class MonitoringService : Service() {
             // restart dan dieksekusi dua kali. Bila token terbukti
             // sama, tag ulang entri ke generasi kini dan selesaikan
             // seperti biasa; pergantian token tetap membuangnya.
-            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == botToken.hashCode() } catch (_: Exception) { false }
+            val tokenSame = tokenHashAtBegin != null && try { tokenHashAtBegin == preferencesManager.botToken.hashCode() } catch (_: Exception) { false }
             if (tokenSame) {
                 updateOffsetTracker.forget(updateId, generation)
                 updateOffsetTracker.begin(updateId, currentGeneration)
