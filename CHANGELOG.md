@@ -10,6 +10,7 @@
 - Digest malam tidak lagi hilang permanen sesudah pindah zona waktu 1–2 jam ke barat (mis. WITA ke WIB): cap selesai kini menyimpan offset zona saat ditulis, dan offset yang turun membuktikan malam zona baru memang jatuh tempo walau ambang umur 16 jam belum tercapai; jam yang dimundurkan manual tetap tidak memicu kirim ulang karena offset-nya tidak berubah.
 - Fakta tiba/berangkat pagar pada dini hari (sebelum 05:00) kini dicatat sebagai kelanjutan hari sebelumnya, mengikuti konvensi jam malam yang sudah ada: tiba pukul 02:00 tidak lagi mengunci catatan hari baru dan membuang tiba sesungguhnya di sore hari dari riwayat pola.
 - Fakta tiba/berangkat pagar kini dicatat memakai waktu posisi GPS-nya, bukan waktu proses: transisi yang baru terdeteksi dari posisi cadangan berumur sampai 30 menit tidak lagi tertulis di hari yang salah hanya karena pemrosesannya melewati tengah malam.
+- Pemeriksaan paritas format terjemahan kini sadar urutan: terjemahan yang menukar urutan %s/%d tanpa indeks (yang akan crash saat teks diformat) tidak lagi lolos; pertukaran posisi yang memang sah dengan indeks eksplisit (%1$s/%2$d) tetap diterima.
 
 ## [1.6.601] - 2026-11-03
 

@@ -1404,7 +1404,20 @@ def cek_locale_baru(gagal, diff):
 
 
 def argumen_format(isi):
-    return sorted(re.findall(r'%(?:\d+\$)?[a-zA-Z%]', isi))
+    # Paritas format yang sadar urutan (issue #1082): perbandingan
+    # multiset terurut lama membuang urutan, padahal untuk
+    # specifier TANPA indeks urutan adalah satu-satunya pengikat
+    # ke argumen pemanggil — ID yang menukar %s/%d lolos gerbang
+    # tetapi crash IllegalFormatConversionException di perangkat.
+    # Bentuk kanonik: bila SEMUA specifier (selain %% literal)
+    # berindeks eksplisit, urutan bebas sah -> bandingkan peta
+    # indeks->tipe; bila ada yang tanpa indeks, bandingkan
+    # urutan token persis seperti tertulis.
+    token = re.findall(r'%(?:(\d+)\$)?([a-zA-Z%])', isi)
+    nyata = [(idx, tipe) for idx, tipe in token if tipe != "%"]
+    if nyata and all(idx for idx, _ in nyata):
+        return ("indeks", tuple(sorted((int(idx), tipe) for idx, tipe in nyata)))
+    return ("urut", tuple(token))
 
 
 def cek_paritas_resource(gagal):
