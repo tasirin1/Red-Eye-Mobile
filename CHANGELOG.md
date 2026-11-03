@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Reset state masukan tertunda saat /logout kini memakai kunci yang sama dengan jalur masukan lain, menutup celah balapan dengan penyiapan/konsumsi masukan yang berjalan bersamaan.
 - Pembersihan peta throttle login/pairing kini membuang hanya entri kedaluwarsa (dan yang tertua bila tetap penuh), bukan mengosongkan seluruh peta — banjir ID pengirim asing tidak lagi mereset hitungan gagal login yang sedang berjalan.
 - Sesi konfirmasi restore yang gugur di tengah jendela batal (mis. karena logout) kini dibersihkan saat itu juga — /restore tidak lagi terblokir selamanya oleh sesi sisa yang tak akan pernah terapkan.
 - Notifikasi yang tidak diteruskan karena penerusan sedang nonaktif kini tidak lagi dicatat sebagai "gugur antrean" — hitungan dan jurnal gugur tidak lagi menggelembung palsu selama penerusan mati.

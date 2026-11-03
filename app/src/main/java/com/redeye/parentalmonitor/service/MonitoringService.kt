@@ -1742,9 +1742,15 @@ class MonitoringService : Service() {
             return
         }
         pendingRestore = null
-        pendingInputCommand = ""
-        pendingInputAt = 0L
-        pendingInputChat = ""
+        // Reset state input di bawah kunci yang sama dengan
+        // semua penulis/pembaca lain (issue #996): penulisan
+        // telanjang bisa berlomba dengan armInput/konsumsi
+        // yang berjalan bersamaan.
+        synchronized(inputLock) {
+            pendingInputCommand = ""
+            pendingInputAt = 0L
+            pendingInputChat = ""
+        }
         clearPendingPromptMarker()
         ownerEpoch++
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
