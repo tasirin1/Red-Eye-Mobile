@@ -5,6 +5,12 @@ object Redact {
     // pesan galat yang memuat URL ber-token sebelumnya lolos fallback
     // (issue #707, sisa #724).
     private val TOKEN_FALLBACK = Regex("[0-9]{5,15}(?::|(?i:%3A))[A-Za-z0-9_-]{35,}")
+    // Bentuk chat ID Telegram untuk pemanggil yang tak memegang
+    // rahasia (issue #1176): grup super "-100" + 10 digit, atau
+    // deret 9-10 digit berdiri sendiri (ID pengguna/bot). Deret
+    // 11+ digit (stempel epoch milidetik, nomor telepon) sengaja
+    // dibiarkan agar log tetap bisa didiagnosis.
+    private val CHAT_ID_FALLBACK = Regex("-100[0-9]{10}(?![0-9])|(?<![0-9])[0-9]{9,10}(?![0-9])")
     private val LINE_SPLIT = Regex("(?<=[A-Za-z0-9_:-])\r?\n(?=[A-Za-z0-9_:-])")
 
     fun token(value: String?, vararg secrets: String): String {
@@ -15,6 +21,7 @@ object Redact {
             if (secret.isEmpty()) continue
             out = if (secret.length < 10 && secret.all { it.isDigit() }) replaceDigitBounded(out, secret) else out.replace(secret, "***")
         }
+        out = out.replace(CHAT_ID_FALLBACK, "***")
         if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return out
         val direct = out.replace(TOKEN_FALLBACK, "***")
         // Token terbelah baris: satukan baris di antara karakter token lalu

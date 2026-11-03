@@ -57,6 +57,16 @@ class RedactTest {
     }
 
     @Test
+    fun chatIdCadanganDitopeng() {
+        // #1176: tanpa rahasia eksplisit, bentuk chat ID tetap
+        // tertutup; deret 11+ digit (epoch milidetik) dibiarkan.
+        assertEquals("ke *** gagal", Redact.token("ke 123456789 gagal"))
+        assertEquals("grup *** ok", Redact.token("grup -1001234567890 ok"))
+        assertEquals("ts 1730000000000 ok", Redact.token("ts 1730000000000 ok"))
+        assertEquals("kode 12345678 ok", Redact.token("kode 12345678 ok"))
+    }
+
+    @Test
     fun tokenTelegramTertangkapPolaCadangan() {
         val token = "12345:" + "A".repeat(35)
         assertEquals("x *** y", Redact.token("x $token y"))

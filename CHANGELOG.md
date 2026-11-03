@@ -3,6 +3,7 @@
 ## [1.6.608] - 2026-11-03
 
 ### Fixed
+- Redaksi log cadangan kini juga menutup bentuk chat ID Telegram (termasuk grup super -100...) bagi jalur log yang tidak memegang rahasia kredensial, setara jalur utama yang meneruskan token/chat/PIN secara eksplisit (#1176).
 - Eviksi peta jangkar render menu kini membuang entri tertua saja, bukan membersihkan total: jangkar pesan yang baru diedit dan menu aktif lain tidak ikut hilang saat peta penuh, sehingga penolakan "menu kedaluwarsa" semu pada proses berumur panjang tidak kambuh sporadis (#1175).
 
 - Tombol menu tidak lagi mati 300 detik sesudah pesan menu pertama dikirim: umur tombol kini dihitung dari terakhir kali menu itu ditampilkan/diperbarui, bukan dari tanggal lahir pesan — navigasi dan penyegaran saklar memang mengubah pesan yang sama di tempat. Aliran darurat, mode hilang, dan kunci yang dijalankan dari menu berumur panjang kini bisa dipakai lagi.
