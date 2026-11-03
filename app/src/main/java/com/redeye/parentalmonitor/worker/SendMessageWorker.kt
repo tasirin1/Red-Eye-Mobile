@@ -36,7 +36,17 @@ class SendMessageWorker(
     }
 
     override suspend fun doWork(): Result {
-        activeRuns.incrementAndGet()
+        // Penjaga run-tunggal (issue #1103): pola yang sama
+        // dengan BootRestartWorker. Tanpa ini, ekor run lama
+        // yang dibatalkan REPLACE bisa berjalan bersama run
+        // pengganti dari snapshot antrean yang sama — pesan
+        // terkirim dua kali dan kegagalan terhitung dua kali.
+        // Run yang ditolak selesai sebagai sukses senyap;
+        // run yang sedang berjalan tetap menguras antrean.
+        if (activeRuns.getAndIncrement() > 0) {
+            activeRuns.decrementAndGet()
+            return Result.success()
+        }
         try { preferencesManager.registerChangeListener(credListener) } catch (_: Exception) { }
         try {
             return try {
