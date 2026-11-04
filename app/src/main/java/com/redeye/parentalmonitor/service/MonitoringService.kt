@@ -4199,7 +4199,16 @@ class MonitoringService : Service() {
             restoreCodeFailCount = 0
             // Kode lolos = kode hangus (issue #1250): putar
             // rahasianya sekarang juga, sebelum sesi dibuka.
-            try { preferencesManager.rotateRestoreCodeSecret() } catch (_: Exception) { }
+            // Hasil rotasi WAJIB dihormati (issue #1258): rotasi
+            // gagal berarti kode yang sama masih hidup — membuka
+            // sesi akan menghidupkan lagi kelemahan #1250 tanpa
+            // jejak, jadi sesi tidak dibuka.
+            val diputar = try { preferencesManager.rotateRestoreCodeSecret() } catch (_: Exception) { false }
+            if (!diputar) {
+                audit("restore rotasi rahasia gagal", "private")
+                sendToTelegram("⚠️ Kode benar, tetapi rahasia restore gagal diputar (penyimpanan bermasalah). Sesi tidak dibuka agar kode tidak bisa dipakai ulang — coba lagi nanti.")
+                return
+            }
         } else if (mode.isNotEmpty()) {
             sendToTelegram("Cara pakai: /restore lalu kirim file <code>.redeyebak</code>, atau /restore batal.")
             return
