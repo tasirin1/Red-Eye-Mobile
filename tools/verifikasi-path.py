@@ -936,7 +936,18 @@ def disebut_kata(nama, lewat=()):
     for path in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",)):
         if path in lewat:
             continue
-        for i, baris in enumerate(baca_teks(path).splitlines(), 1):
+        teks = baca_teks(path)
+        if path.endswith(EKSTENSI_KODE):
+            # Komentar dikupas dulu (issue #1308, keluarga
+            # #1254/#1218): sebutan nama kelas di komentar
+            # bukan rujukan — tanpa kupasan, menghapus berkas
+            # kelas ter-GAGAL-kan oleh baris komentar berkas
+            # lain. _kupas_komentar_kode mempertahankan
+            # newline sehingga nomor baris tetap tepat.
+            # Berkas XML tetap dibaca mentah (komentar XML
+            # bukan komentar kode).
+            teks = _kupas_komentar_kode(teks, bersarang=not path.endswith(".java"))
+        for i, baris in enumerate(teks.splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
                 if len(temu) >= 6:
