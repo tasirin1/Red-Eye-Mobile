@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Peringatan "metode baru" di alat verifikasi kini hanya mengenali deklarasi sungguhan — bentuk `fun` Kotlin atau bentuk Java bertipe jelas: sebelumnya slot pola yang longgar menelan indentasi dan kata kepala baris, sehingga panggilan fungsi biasa yang berindentasi, kelanjutan konstruktor, dan baris `else`/`yield`/`new` ikut dicap metode baru. Terbukti lewat harness dua arah (8 kasus palsu diam, 6 deklarasi asli tertangkap).
+
 - Adopsi migrasi grup Telegram kini digerbang perbandingan-dan-tukar: Chat ID hanya diganti bila isinya masih persis chat tujuan kiriman yang memicu migrasi. Sebelumnya respons migrasi yang basi — tiba sesudah pemilik mengganti kredensial — menimpa chat kredensial baru dengan grup era lama secara senyap dan menetap.
 
 - Balapan simpan-versus-tes di layar Setup ditutup: memulai tes koneksi kini juga menua-nomori proses simpan yang sedang berjalan, sama seperti simpan menua-nomori tes. Sebelumnya verifikasi simpan lama yang menggantung bisa selesai belakangan dan menimpa kredensial hasil tes yang lebih baru secara senyap, sehingga kredensial aktif bisa bukan yang terakhir dikonfirmasi pemilik.

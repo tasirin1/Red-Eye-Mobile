@@ -2812,29 +2812,34 @@ def disebut_di_uji(nama):
 
 
 def cek_uji_baru(peringatan, diff):
-    pola = re.compile(
-        r"\s*(?:public\s+|private\s+|protected\s+)?(?:static\s+|fun\s+)?[\w<>\[\].,? ]+\s+(\w+)\s*\(")
+    # Pengenal deklarasi (issue #1378, menyempurnakan #1364):
+    # pola lama "slot tipe + nama" menelan indentasi dan kata
+    # kepala baris, sehingga panggilan polos berindentasi,
+    # kelanjutan konstruktor, dan kepala else/yield/new ikut
+    # tercap metode baru. Kini deklarasi hanya diakui dalam
+    # dua bentuk: (1) Kotlin — ada kata "fun" sebelum nama;
+    # (2) Java — <pengubah*> <Tipe> <nama>( dengan Tipe
+    # berawalan huruf besar atau primitif/void. Nama
+    # berawalan huruf besar (kelas/konstruktor) dilewati,
+    # seperti di cek_uji_ubah.
+    pola_fun = re.compile(
+        r"^\s*(?:@\w+\s+)*(?:\w+\s+)*?fun\s+(?:<[^>]+>\s*)?(\w+)\s*\(")
+    pola_java = re.compile(
+        r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*"
+        r"(?:void|int|long|boolean|double|float|byte|short|char|[A-Z][\w<>\[\],.?]*)\s+(\w+)\s*\(")
     sudah = set()
     for _, baris in tambah_kode(diff):
-        # Baris pernyataan berkepala kata kerja bahasa bukan
-        # deklarasi (issue #1364): pola di bawah menelan
-        # "return"/"throw" sebagai slot tipe dan mencap nama
-        # yang DIPANGGIL sebagai metode baru — peringatan
-        # palsu yang mengikis kepercayaan pada yang sah.
-        lepas = baris.strip()
-        if lepas.startswith("return ") or lepas.startswith("return\t") \
-                or lepas == "return" or lepas.startswith("throw ") \
-                or lepas.startswith("throw\t") or lepas == "throw":
+        cocok = pola_fun.match(baris) or pola_java.match(baris)
+        if not cocok:
             continue
-        cocok = pola.match(baris)
-        if cocok and cocok.group(1) not in KATA_KUNCI:
-            nama = cocok.group(1)
-            if nama not in sudah:
-                sudah.add(nama)
-                if not disebut_di_uji(nama):
-                    peringatan.append(
-                        "Metode baru %s() tanpa jejak di app/src/test "
-                        "(aturan: uji logika murni baru)" % nama)
+        nama = cocok.group(1)
+        if nama in KATA_KUNCI or nama in sudah or nama[:1].isupper():
+            continue
+        sudah.add(nama)
+        if not disebut_di_uji(nama):
+            peringatan.append(
+                "Metode baru %s() tanpa jejak di app/src/test "
+                "(aturan: uji logika murni baru)" % nama)
 
 
 def cek_pola_berisiko(peringatan, diff, rentang=""):
