@@ -1631,7 +1631,19 @@ class NotificationForwarderService : NotificationListenerService() {
                 MessageScheduler.scheduleMessageSend(this)
                 queued
             }
-            TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> false
+            TelegramSendPolicy.Kind.PARSE_ENTITIES -> false
+            TelegramSendPolicy.Kind.REJECTED -> {
+                // Aturan #966 (issue #1192): selain 400 persis
+                // bersifat sementara — antrekan seperti jalur
+                // utama, jangan buang permanen.
+                if (outcome.code == 400) {
+                    false
+                } else {
+                    val queued = queue().addMessage(original)
+                    MessageScheduler.scheduleMessageSend(this)
+                    queued
+                }
+            }
         }
     }
 

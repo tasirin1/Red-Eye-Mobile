@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jalur kirim cadangan teks polos kini mengikuti aturan yang sama dengan jalur utama: kode penolakan selain 400 persis (mis. 413/404/422) dianggap sementara dan pesannya diantrekan, bukan dibuang permanen (#1192).
 - Penutup halaman SMS/panggilan kini juga menulis bila ada tulisan kursor per potongan yang gagal di tengah jalan: sebelumnya kegagalan commit yang senyap terlewat karena penjaga hanya membandingkan variabel di memori, sehingga satu putaran log terkirim duplikat di siklus berikutnya (#1191).
 - Penutup bentuk chat ID pada redaksi log kini hanya berlaku bagi jalur yang tidak memegang rahasia: jalur ber-rahasia sudah menutup chat ID-nya sendiri, dan angka sah lain (mis. penanda waktu detik, nomor update) tidak lagi ikut tertutup sehingga log tetap bisa dipakai mendiagnosis (#1190).
 - Redaksi log cadangan kini juga menutup ID grup super Telegram berawalan -100 dengan 9 digit (sebelumnya hanya 10 digit yang tertutup, yang 9 digit tampil utuh di log) (#1189).
