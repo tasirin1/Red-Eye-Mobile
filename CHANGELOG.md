@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Daftar ekstensi peringatan berkas sensitif terabaikan di gerbang kini mencakup `.pem`/`.key`, menyusul daftar terlarang terlacak dari #1288 yang sempat meninggalkannya (issue #1306).
 - Token bot hasil impor cadangan tidak lagi ditulis teks polos ke `onSaveInstanceState` — ia kini hanya hidup di holder memori seperti PIN impor; sesudah aktivitas dibuat ulang sistem, impor cukup diulang (issue #1305).
 - Dialog kesehatan Setup kini ditandai FLAG_SECURE seperti dialog sensitif lain — teks statusnya memuat kode penautan selama jendela belum-tertaut (issue #1304).
 - Dialog kode restore ketat di Setup (tampil + salin) kini digerbang verifikasi PIN akses bila PIN terpasang — konsisten dengan sakelar mode ketat dan tindakan sensitif lain (issue #1303).

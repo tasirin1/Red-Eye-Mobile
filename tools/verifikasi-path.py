@@ -1829,7 +1829,7 @@ def cek_secret_terabaikan(gagal, peringatan):
                 continue
         rendah = path.lower()
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
-                            ".keystore", ".p12", ".pfx")) or adalah_env(rendah) or \
+                            ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah) or \
                 rendah == "local.properties" or rendah.endswith("/local.properties"):
             peringatan.append("Berkas sensitif terabaikan di pohon kerja: " + path)
         if mengandung_token(baca(path)):
