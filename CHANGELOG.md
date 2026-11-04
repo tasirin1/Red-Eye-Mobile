@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Dialog kode restore ketat di Setup (tampil + salin) kini digerbang verifikasi PIN akses bila PIN terpasang — konsisten dengan sakelar mode ketat dan tindakan sensitif lain (issue #1303).
 - Gerbang bekas-hapusan tidak lagi positif palsu pada isi string mentah multi-baris: pengupasan komentar/string kini berjalan atas gabungan baris tambah per berkas sehingga buka/tutup string mentah dan komentar blok antarbaris terlihat benar (issue #1302).
 - Rekonsiliasi aplikasi dikenal A11y tidak lagi terlewat seumur proses bila `prefs` null pada panggilan seed pertama — penanda selesai kini hanya terkunci sesudah rekonsiliasi benar-benar berjalan (issue #1301).
 - `clearPersistedLoginLocks()` kini menulis di bawah `loginPersistLock`, memulihkan invarian serialisasi #1262 untuk semua penulisan simpanan kunci /login (issue #1300).

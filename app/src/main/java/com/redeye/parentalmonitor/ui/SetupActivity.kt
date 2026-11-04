@@ -597,7 +597,12 @@ class SetupActivity : AppCompatActivity() {
         }
         findViewById<MaterialButton>(R.id.setupHealthButton).setOnClickListener { showHealthDialog() }
         findViewById<MaterialButton>(R.id.setupPairLinkButton).setOnClickListener { copyPairingLink() }
-        findViewById<MaterialButton>(R.id.setupRestoreCodeButton).setOnClickListener { showRestoreCodeDialog() }
+        // Kode restore = faktor kedua /restore: dialog yang
+        // menampilkan + menyalinnya digerbang PIN akses bila
+        // terpasang (issue #1303) — sakelar mode ketat di
+        // dialog induknya saja sudah digerbang (#766), jadi
+        // kode mentahnya tak boleh lebih terbuka dari itu.
+        findViewById<MaterialButton>(R.id.setupRestoreCodeButton).setOnClickListener { verifyStoredAccessPin { showRestoreCodeDialog() } }
         permissionButton.setOnClickListener {
             requestLocationPermissions()
         }
