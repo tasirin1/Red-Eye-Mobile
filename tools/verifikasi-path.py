@@ -509,13 +509,19 @@ def _kupas_komentar_kode(teks, bersarang=True):
     # pelacak deklarasi (#1198). Sadar string/char sederhana
     # (komentar di dalam string tidak dibuang); isi komentar
     # diganti spasi dengan newline dipertahankan. String
-    # mentah Kotlin (tiga petik) diperlakukan sebagai string
-    # biasa — batas yang sama dengan perkakas lain di berkas
-    # ini.
+    # mentah Kotlin (tiga petik) dikenali utuh (issue #1234,
+    # meniru pemindai saudara di berkas ini): petik ganjil di
+    # dalamnya tak lagi membalik pemindai ke mode komentar.
     out = []
     i, n = 0, len(teks)
     while i < n:
         c = teks[i]
+        if teks.startswith('"""', i):
+            j = teks.find('"""', i + 3)
+            j = n if j < 0 else j + 3
+            out.append(teks[i:j])
+            i = j
+            continue
         if c == '"' or c == "'":
             j = i + 1
             while j < n:
