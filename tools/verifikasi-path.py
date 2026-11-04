@@ -969,9 +969,18 @@ def disebut_kata(nama, lewat=()):
             # kelas ter-GAGAL-kan oleh baris komentar berkas
             # lain. _kupas_komentar_kode mempertahankan
             # newline sehingga nomor baris tetap tepat.
-            # Berkas XML tetap dibaca mentah (komentar XML
-            # bukan komentar kode).
             teks = _kupas_komentar_kode(teks, bersarang=not path.endswith(".java"))
+        elif path.endswith(".xml"):
+            # Komentar XML ikut dikupas (issue #1329):
+            # sebutan di dalam <!-- --> juga bukan rujukan.
+            # Isi komentar diganti spasi dengan newline
+            # dipertahankan agar nomor baris laporan tetap
+            # tepat (kupas_komentar_xml bawaan membuang
+            # rentang utuh termasuk newline-nya).
+            teks = re.sub(
+                r"<!--.*?-->",
+                lambda m: "".join("\n" if c == "\n" else " " for c in m.group(0)),
+                teks, flags=re.S)
         for i, baris in enumerate(teks.splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
