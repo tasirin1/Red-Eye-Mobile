@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sisa selipan bahasa Inggris di balasan Telegram dibersihkan: pemberitahuan perekaman video, satuan "(seconds)" pada cara pakai /recordvideo dan /ring, balasan /restart, dan dua pesan "Command kedaluwarsa" kini sepenuhnya bahasa Indonesia seperti seluruh permukaan bot lainnya.
+
 - /help kini benar-benar memuat semua perintah: sesudah menu tombol, pemilik juga menerima daftar perintah ketik yang tak punya tombol (interval data/foto/patroli, detak pantauan, izin tangkapan layar, log, ringkasan, laporan mingguan) — sebelumnya delapan perintah hidup itu tak bisa ditemukan dari dalam bot padahal teks bot dan README mengklaim daftar lengkap ada di /help.
 
 - Notifikasi prioritas kini mempertahankan jalur prioritasnya saat terantre sebagai cadangan: status prioritas diteruskan ke seluruh cabang pengantrean di jalur penerusan (termasuk fallback teks polos dan penyelamatan saat batal) serta dua situs antre langsung, sehingga notifikasi penting seperti OTP tidak lagi dikuras paling akhir atau tereviksi lebih dulu saat antrean penuh.

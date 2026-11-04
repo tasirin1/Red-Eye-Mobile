@@ -3934,7 +3934,7 @@ class MonitoringService : Service() {
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
-                sendToTelegram("\u23F3\uFE0F Command kedaluwarsa, kirim lagi.")
+                sendToTelegram("\u23F3\uFE0F Perintah kedaluwarsa, kirim lagi.")
             }
             return
         } else if (sentAtSec > 0 && sentAtSec - nowSec > COMMAND_MAX_AGE_SEC) {
@@ -3969,7 +3969,7 @@ class MonitoringService : Service() {
                 else -> serverNowSec() - sentAtSec
             }
             if (ageSec > MUTATING_MAX_AGE_SEC) {
-                sendToTelegram("\u23F3\uFE0F Command ${Html.escape(command)} kedaluwarsa, kirim lagi.")
+                sendToTelegram("\u23F3\uFE0F Perintah ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
             }
             if (!senderOk) {
@@ -4046,7 +4046,7 @@ class MonitoringService : Service() {
             "/syncinterval" -> handleSyncIntervalCommand(arg)
             "/restart" -> {
                 if (restartAllLoops()) {
-                    replyLater("\u267B\uFE0F Loops restarted.")
+                    replyLater("\u267B\uFE0F Loop dijalankan ulang.")
                 } else {
                     sendToTelegram("⏳️ Restart dibatasi, coba lagi sebentar.")
                 }
@@ -5550,7 +5550,7 @@ class MonitoringService : Service() {
         }
         val seconds = NumericArg.parse(arg, NumericArg.Satuan.DETIK)
         if (seconds == null || seconds !in 5..MAX_VIDEO_SECONDS.toInt()) {
-            sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (seconds)")
+            sendToTelegram("Cara pakai: /recordvideo &lt;5-$MAX_VIDEO_SECONDS&gt; (detik)")
         } else if (seconds * VIDEO_BYTES_PER_SEC > MAX_VIDEO_BYTES) {
             val maxSecs = MAX_VIDEO_SECONDS.toInt().coerceAtLeast(5)
             sendToTelegram("⚠️ /recordvideo $seconds dtk ≈ ${(seconds * VIDEO_BYTES_PER_SEC) / (1024L * 1024L)} MB, melebihi batas ${MAX_VIDEO_BYTES / (1024L * 1024L)} MB. Coba ≤$maxSecs dtk.")
@@ -5564,7 +5564,7 @@ class MonitoringService : Service() {
             recordBusy.set(false)
             sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
         } else {
-            sendToTelegram("\uD83C\uDFA5 Recording video $seconds s\u2026")
+            sendToTelegram("\uD83C\uDFA5 Merekam video $seconds dtk\u2026")
             try { recordJob?.cancel() } catch (_: Exception) { }
             recordingKind = "video"
             recordJob = serviceScope.launch {
@@ -5978,7 +5978,7 @@ class MonitoringService : Service() {
         // sebelumnya toIntOrNull mentah menolak "/ring 30 detik".
         val seconds = if (arg.isEmpty()) 15 else NumericArg.parse(arg, NumericArg.Satuan.DETIK)
         if (seconds == null || seconds !in 5..60) {
-            sendToTelegram("Cara pakai: /ring [5-60] (seconds)")
+            sendToTelegram("Cara pakai: /ring [5-60] (detik)")
         } else if (!ringBusy.compareAndSet(false, true)) {
             sendToTelegram("⏱️ Sedang berdering, tunggu sebentar.")
         } else if (recordBusy.get() || recorderActive.get()) {
