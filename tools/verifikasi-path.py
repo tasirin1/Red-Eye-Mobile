@@ -1165,7 +1165,13 @@ def cek_sinkron_terjemah(gagal):
                     r'<string-array(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>',
                     bersih, re.S):
                 _h = hitung_item_array(badan)
-                if _h is None or jumlah_item.get(nama_arr) is None:
+                # Bedakan "belum tercatat" dari "sudah None" (issue
+                # #1237): .get(nama, 0) membuat kemunculan pertama
+                # array menjumlah dari 0, bukan meracuni hitungan jadi
+                # None; hanya _h None atau racun yang sudah ada yang
+                # meracuni. Tanpa beda ini paritas jumlah item mati
+                # sejak lahir dan beda item antar locale lolos total.
+                if _h is None or jumlah_item.get(nama_arr, 0) is None:
                     jumlah_item[nama_arr] = None
                 else:
                     jumlah_item[nama_arr] = jumlah_item.get(nama_arr, 0) + _h
