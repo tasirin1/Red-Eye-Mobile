@@ -303,6 +303,15 @@ class BootReceiver : BroadcastReceiver() {
                 MessageScheduler.cancelWatchdog(context)
             } catch (_: Exception) {
             }
+            // Alarm Liveness yang terpasang tanpa syarat di
+            // onReceive ikut dibatalkan (issue #1274): pola
+            // #1245 di BootRestartWorker — perangkat yang
+            // pemantauannya sengaja dimatikan tak boleh
+            // dibangunkan alarm yang tak seharusnya ada.
+            try {
+                com.redeye.parentalmonitor.utils.Liveness.cancel(context)
+            } catch (_: Exception) {
+            }
             return
         }
         if (!preferencesManager.isConfigured()) {
