@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengeditan pesan menu kini menghormati gerbang rate-limit global Telegram: selama jendela rate-limit aktif edit tidak ditembak (pemanggil jatuh ke jalur kirim yang sadar gerbang), dan respons 429 yang diterima ikut mengajari gerbang — sebelumnya situs ini satu-satunya konsumen 429 yang tidak melakukannya, sehingga tiap ketukan menu selama rate-limit menghasilkan tembakan sia-sia.
+
 - Pemberitahuan antrean yang membuang pesan kini menutup badan error respons Telegram yang gagal seperti semua jalur kirim lainnya: sebelumnya respons gagal dibuang begitu saja sehingga koneksinya tertahan di kumpulan koneksi bersama tepat saat antrean sedang bermasalah.
 
 - Alat verifikasi kini juga mengenali definisi sumber daya values lewat elemen generik `<item name="..." type="...">` (kedua urutan atribut): sebelumnya hanya tag bernama-sama-dengan-jenis yang terdaftar, sehingga acuan sah ke sumber daya berbentuk item divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.

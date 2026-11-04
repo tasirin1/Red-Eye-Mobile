@@ -3262,6 +3262,11 @@ class MonitoringService : Service() {
             if (chatId.isEmpty() || messageId <= 0L) return false
             val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
             if (botToken.isEmpty() || !hasNetwork()) return false
+            // Gerbang rate-limit global (issue #1368): jangan
+            // tembak edit yang pasti 429 selama jendela aktif —
+            // pemanggil jatuh ke kirim pesan baru yang jalurnya
+            // sadar gerbang.
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return false
             val body = com.redeye.parentalmonitor.network.EditMessageRequest(
                 chatId = chatId,
                 messageId = messageId,
@@ -3275,6 +3280,12 @@ class MonitoringService : Service() {
                 return true
             }
             val galat = try { response.errorBody()?.string().orEmpty() } catch (_: Exception) { "" }
+            // 429 ikut mengajari gerbang global (issue #1368),
+            // seperti semua konsumen lain sesudah #1354.
+            if (response.code() == 429) {
+                val retryAfter = try { NetworkUtils.parseRetryAfter(galat) } catch (_: Exception) { 5L }
+                NetworkUtils.noteRateLimited(retryAfter)
+            }
             val takBerubah = galat.contains("not modified", ignoreCase = true)
             if (takBerubah) catatRenderMenu(messageId)
             return takBerubah
