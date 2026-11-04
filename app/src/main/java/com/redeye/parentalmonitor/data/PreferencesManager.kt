@@ -1043,6 +1043,23 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Padanan reset atomik untuk gerbang KODE restore (issue
+    // #1279): gerbang terakhir yang reset suksesnya masih berupa
+    // setter polos di luar prefsRmwLock, tak saling mengecualikan
+    // dengan registerRestoreCodeFailure yang terkunci.
+    fun resetRestoreCodeGate() {
+        synchronized(prefsRmwLock) {
+            try {
+                sharedPreferences.edit()
+                    .putInt(KEY_RESTORE_CODE_FAIL_COUNT, 0)
+                    .putLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, 0L)
+                    .putLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, 0L)
+                    .commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     fun resetAccessPinGate() {
         synchronized(prefsRmwLock) {
             try {

@@ -1789,9 +1789,6 @@ class MonitoringService : Service() {
         try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
         try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
     }
-    private var restoreCodeFailCount: Int
-        get() = try { preferencesManager.restoreCodeFailCount } catch (_: Exception) { 0 }
-        set(value) { try { preferencesManager.restoreCodeFailCount = value } catch (_: Exception) { } }
     private var restoreCodeLockoutUntil: Long
         get() = try { preferencesManager.restoreCodeLockoutUntil } catch (_: Exception) { 0L }
         set(value) { try { preferencesManager.restoreCodeLockoutUntil = value } catch (_: Exception) { } }
@@ -4227,7 +4224,9 @@ class MonitoringService : Service() {
                 sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /restore &lt;kode&gt;.")
                 return
             }
-            restoreCodeFailCount = 0
+            // Reset sukses atomik di bawah prefsRmwLock
+            // (issue #1279) — bukan setter polos lagi.
+            try { preferencesManager.resetRestoreCodeGate() } catch (_: Exception) { }
             // Kode lolos = kode hangus (issue #1250): putar
             // rahasianya sekarang juga, sebelum sesi dibuka.
             // Hasil rotasi WAJIB dihormati (issue #1258): rotasi
