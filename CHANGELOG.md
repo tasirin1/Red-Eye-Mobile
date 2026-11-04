@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Semua pola nama resource pada gerbang kini menoleransi spasi di sekitar '=': resource yang ditulis 'name = "x"' tak lagi tak terlihat pemeriksa (dulu selisih format antar bahasa lolos, atau memicu vonis berlebih palsu). (Issue #1255)
 - Pemindai pemanggil pada gerbang metode-hilang kini mengupas komentar lebih dulu: sebutan nama metode di dalam komentar tak lagi dinilai pemanggil (vonis gagal palsu yang menamai baris komentar). (Issue #1254)
 - Pemeriksa definisi metode pada gerbang kini mengenali generik sesudah nama metode: metode hidup berbentuk 'fun nama<T>(...)' tak lagi dinilai sudah terhapus (vonis gagal palsu). (Issue #1253)
 - Pelacak penghapusan metode pada gerbang kini mengenali fungsi extension dan fungsi bergenerik di depan nama: menghapus keduanya sambil menyisakan pemanggil tak lagi lolos dari pemeriksaan. (Issue #1252)

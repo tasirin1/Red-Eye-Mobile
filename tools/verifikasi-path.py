@@ -394,8 +394,8 @@ def himpun_definisi():
     def rapikan(jenis, nama):
         return nama.replace(".", "_") if jenis == "style" else nama
 
-    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool)(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27]')
-    pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27]')
+    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
+    pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
 
     def tambah(kunci, nama):
         definisi.setdefault(kunci, set()).add(rapikan(kunci, nama))
@@ -636,7 +636,7 @@ def cek_duplikat_definisi(gagal):
     di folder itu sama fatalnya dengan dalam satu berkas (issue
     #904: penghitung dulu direset per berkas). Override antar
     folder beda (values vs values-night/values-in) tetap sah."""
-    pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27]')
+    pola = re.compile(r'<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     per_folder = {}
     for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
         if "/values" not in path.replace(os.sep, "/"):
@@ -1145,7 +1145,7 @@ def cek_izin_baru(peringatan, diff):
 
 
 def cek_definisi_baru(peringatan, diff):
-    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27]')
+    pola = re.compile(r'\+\s*<(style|string|color|dimen|plurals|bool|string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     _, acuan = himpun_definisi()
     sudah = set()
     for baris in diff.splitlines():
@@ -1195,7 +1195,7 @@ def cek_sinkron_terjemah(gagal):
             bersih = kupas_komentar_xml(isi)
             for jenis in peta:
                 for m in re.finditer(
-                        r'<%s(?:\s([^>]*?))?\bname=["\x27]([^"\x27]+)["\x27]([^>]*)>' % jenis, bersih):
+                        r'<%s(?:\s([^>]*?))?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]([^>]*)>' % jenis, bersih):
                     peta[jenis].add(m.group(2))
                     # translatable="false" memang tak perlu
                     # pasangan terjemahan (issue #1057): nama
@@ -1218,7 +1218,7 @@ def cek_sinkron_terjemah(gagal):
             # self-closing dan ikut menghitung teks <item> di
             # dalam CDATA serta item bersarang.
             for nama_arr, badan in re.findall(
-                    r'<string-array(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>',
+                    r'<string-array(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>',
                     bersih, re.S):
                 _h = hitung_item_array(badan)
                 # Bedakan "belum tercatat" dari "sudah None" (issue
@@ -1960,7 +1960,7 @@ def cek_paritas_resource(gagal):
     isi = isi_strings_wajib(gagal)
     if any(teks is None for teks in isi.values()):
         return
-    pola = re.compile(r'<string(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string>', re.S)
+    pola = re.compile(r'<string(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string>', re.S)
     inggris = dict(pola.findall(kupas_komentar_xml(isi[jalur[0]])))
     indonesia = dict(pola.findall(kupas_komentar_xml(isi[jalur[1]])))
     for nama, teks in sorted(indonesia.items()):
@@ -1972,9 +1972,9 @@ def cek_paritas_resource(gagal):
     # formatnya sama persis. Plurals dibandingkan per quantity,
     # string-array per indeks item.
     dasar_res = os.path.join(AKAR, "app/src/main/res")
-    pola_plurals = re.compile(r'<plurals(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
+    pola_plurals = re.compile(r'<plurals(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
     pola_item_q = re.compile(r'<item\s+quantity="([^"]+)"[^>]*>(.*?)</item>', re.S)
-    pola_array = re.compile(r'<string-array(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>', re.S)
+    pola_array = re.compile(r'<string-array(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>', re.S)
     pola_item = re.compile(r'<item(?:\s[^>]*)?>(.*?)</item>', re.S)
 
     def peta_item(dirpath):
@@ -2017,7 +2017,7 @@ def cek_plurals(gagal):
     dasar_res = os.path.join(AKAR, "app/src/main/res")
     if not os.path.isdir(dasar_res):
         return
-    pola = re.compile(r'<plurals(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
+    pola = re.compile(r'<plurals(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
     pola_item = re.compile(r'<item\s+quantity=["\x27]([^"\x27]+)["\x27]')
 
     def peta_plurals(dirpath):
