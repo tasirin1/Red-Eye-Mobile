@@ -46,5 +46,6 @@
 # AppUsage dipersistensikan sebagai JSON Gson dengan nama
 # field sebagai kunci (A11yMonitor): nama field-nya wajib utuh.
 -keepclassmembers class com.redeye.parentalmonitor.service.A11yMonitor$AppUsage {
+    <init>();
     <fields>;
 }
