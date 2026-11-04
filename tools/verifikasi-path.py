@@ -458,6 +458,11 @@ def himpun_definisi():
         # #1383): AAPT menerbitkan R.styleable.<Nama> dan
         # R.styleable.<Nama>_<attr> untuk tiap attr bersarang;
         # keduanya didaftarkan agar acuan sah tak yatim.
+        # Tag pembuka pola blok menuntut karakter terakhir
+        # bukan '/' (issue #1408): tanpa itu pola menambatkan
+        # diri pada declare-styleable self-closing dan menelan
+        # blok berikutnya — namanya hilang, turunannya menempel
+        # ke nama self-closing.
         # Attr kerangka (android:textColor) diterbitkan dengan
         # titik dua menjadi garis bawah (issue #1390), dan
         # bentuk self-closing tanpa blok isi ikut terhimpun.
@@ -466,7 +471,7 @@ def himpun_definisi():
                 isi):
             tambah("styleable", nama_sb)
         for nama_sb, blok in re.findall(
-                r'<declare-styleable\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</declare-styleable>',
+                r'<declare-styleable\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27](?:[^>]*[^/>])?>(.*?)</declare-styleable>',
                 isi, re.S):
             tambah("styleable", nama_sb)
             for nama_attr in re.findall(
