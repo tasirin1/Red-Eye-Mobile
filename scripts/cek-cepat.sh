@@ -41,8 +41,11 @@ fi
 # Mesin kerja BusyBox sering tanpa rg: pakai rg bila ada, grep -o bila tidak.
 if [ -d app/src/main/res/layout-land ]; then
 ekstrak_id() {
-  if [ "$ADA_RG" = 1 ]; then rg -o 'android:id="@\+id/[A-Za-z0-9_]+"' "$1" | sort -u;
-  else grep -o 'android:id="@+id/[A-Za-z0-9_]*"' "$1" | sort -u; fi
+  # Petik tunggal & spasi sekitar = ikut sah (issue #1201,
+  # kelas #1185): keluaran dinormalkan (petik & spasi dibuang)
+  # agar ID yang sama tak gagal palsu dan ID berbeda tak lolos.
+  if [ "$ADA_RG" = 1 ]; then rg --pcre2 -o 'android:id\s*=\s*("@\+id/[A-Za-z0-9_]+"|\x27@\+id/[A-Za-z0-9_]+\x27)' "$1" | tr -d "\"' " | sort -u;
+  else { grep -o -E 'android:id[[:space:]]*=[[:space:]]*"@\+id/[A-Za-z0-9_]+"' "$1"; grep -o -E "android:id[[:space:]]*=[[:space:]]*'@\+id/[A-Za-z0-9_]+'" "$1"; } | tr -d "\"' " | sort -u; fi
 }
 for f in app/src/main/res/layout/*.xml; do
   land="app/src/main/res/layout-land/$(basename "$f")"
