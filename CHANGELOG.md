@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.617] - 2026-11-04
+
 ### Fixed
 - Logika penggabungan laporan crash (`stripElapsed`/`keepRemainder` di CrashReporter) kini terkunci uji JVM — sebelumnya berkas yang aktif dirawat itu tanpa uji sama sekali; kedua fungsi dibuka `internal` mengikuti pola SettingsBackup (issue #1312).
 - Validasi manifest gerbang kini ikut memeriksa `activity-alias`: targetActivity wajib ada dan kelas targetnya wajib ada di repo (issue #1311).
