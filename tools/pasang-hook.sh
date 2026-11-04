@@ -31,7 +31,13 @@ siapkan_rantai() {
     # dijangkar ke awal baris (sesudah spasi indentasi kait kita
     # sendiri) — komentar berawalan # dan string di tengah baris
     # tak lagi dihitung menjalankan.
-    if [ -f "$1" ] && ! grep -Eq '^[[:space:]]*python3 tools/verifikasi-path\.py([[:space:]]|$)' "$1" 2>/dev/null; then
+    # Penanda baris-gerbang saja masih salah mengira kait ASING
+    # yang memanggil gerbang dari dalam fungsi (barisnya
+    # berindentasi, persis pola penanda) sebagai kait kita lalu
+    # menimpanya tanpa cadangan/rantai/peringatan (issue
+    # #1386). Kait kita selalu juga memuat baris K_LAMA="..." yang hanya ditulis pemasang ini — kepemilikan kini syarat
+    # ganda: baris gerbang DAN baris K_LAMA.
+    if [ -f "$1" ] && ! { grep -Eq '^[[:space:]]*python3 tools/verifikasi-path\.py([[:space:]]|$)' "$1" 2>/dev/null && grep -Eq '^K_LAMA=".*"$' "$1" 2>/dev/null; }; then
         BAK="$1.bak-$(date +%Y%m%d%H%M%S)"
         if cp "$1" "$BAK" 2>/dev/null; then
             # Salinan wajib bisa-dijalankan (issue #861): cp dari kait

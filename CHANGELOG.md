@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemasang kait pre-push tak lagi menimpa kait asing yang memanggil alat verifikasi dari dalam fungsi: penanda kepemilikan kini syarat ganda (baris pemanggil gerbang DAN baris penanda rantai yang hanya ditulis pemasang ini), sehingga kait asing seperti itu kini dicadangkan dan dirantai seperti kait asing lainnya, bukan lenyap senyap. Terbukti di sandbox dua arah.
+
 - Pemeriksa keseimbangan kurung pada mode rentang kini membaca isi berkas dari pohon ujung rentang, bukan dari berkas kerja: sebelumnya rentang berisi kode tak seimbang bisa lolos hanya karena checkout saat ini sudah memuat perbaikannya (dan sebaliknya). Terbukti di sandbox dua checkout — gerbang baru menamai berkas yang tak seimbang, gerbang lama melewatkannya.
 
 - Alat verifikasi tak lagi memvonis yatim acuan ke sumber daya publik pustaka Android (awalan nama Material 3, Material Components, AppCompat, dan Design): definisi sumber daya itu memang tinggal di pustaka, bukan di repo, jadi rujukan sah seperti warna Material 3 dari tema sebelumnya selalu menggagalkan gerbang. Terbukti lewat uji fungsi dua arah.
