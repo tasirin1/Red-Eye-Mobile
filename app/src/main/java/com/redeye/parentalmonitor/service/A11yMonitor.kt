@@ -57,6 +57,7 @@ object A11yMonitor {
     private var lastWindowCls = ""
     @Volatile
     private var lastSensitiveCls = ""
+    private var lastSensitivePkg = ""
     @Volatile
     private var lastTamperRecheckAt = 0L
     private val lastKeywordAlert = HashMap<String, Long>()
@@ -341,7 +342,10 @@ object A11yMonitor {
                 lastWindowPkg = pkg
                 lastWindowCls = cls
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
-                if (sensitive) lastSensitiveCls = cls
+                if (sensitive) {
+                    lastSensitiveCls = cls
+                    lastSensitivePkg = pkg
+                }
                 val app = service.applicationContext
                 // Transisi jendela digerbang KLAIM atomik seperti
                 // transisi sesi lain (issue #1358, keluarga
@@ -375,9 +379,16 @@ object A11yMonitor {
                     // bind tak pernah memicu state-changed lagi,
                     // jadi tanpa ini tak pernah dinilai TamperGuard.
                     // Dijatah 10 detik & hanya untuk jendela
-                    // terakhir yang tercatat sensitif; alert-nya
+                    // sensitif terakhir yang tercatat; alert-nya
                     // sendiri tetap dijatah persisten per alasan.
-                    if (pkg == lastWindowPkg && TamperGuard.mayBeSensitive(pkg)) {
+                    // Syaratnya paket SENSITIF terakhir, BUKAN
+                    // lastWindowPkg (issue #1387): lastWindowPkg
+                    // ditimpa setiap peristiwa jendela paket apa
+                    // pun, jadi satu jendela selintas (panel
+                    // notifikasi, gelembung chat) melumpuhkan
+                    // cek-ulang halaman sensitif yang masih
+                    // terbuka secara senyap.
+                    if (pkg == lastSensitivePkg && TamperGuard.mayBeSensitive(pkg)) {
                         val nowE = SystemClock.elapsedRealtime()
                         if (nowE - lastTamperRecheckAt >= 10_000L) {
                             lastTamperRecheckAt = nowE
