@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pemeriksaan ulang anti-tamper kini murni menilai tanpa menggerakkan sesi waktu-layar: sebelumnya, bila pemeriksaan terpicu dari jendela sensitif yang tidak di depan (layar terbagi), ia ikut menutup sesi aplikasi yang sedang di depan dan menambah hitungan buka paket sensitif, memecah catatan waktu-layar. Transisi sesi kini hanya digerakkan peristiwa jendela depan sungguhan; penilaian tampernya tetap penuh.
+
 ## [1.6.623] - 2026-11-05
 
 ### Fixed

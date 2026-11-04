@@ -407,7 +407,17 @@ object A11yMonitor {
                             val task = Runnable {
                                 if (!claimed.compareAndSet(false, true)) return@Runnable
                                 val texts = collectSnapshot(service, pkg).first.texts
-                                handleWindow(app, pkg, cls, texts)
+                                // Nilai-saja (issue #1404): cek
+                                // ulang bisa berasal dari jendela
+                                // TAK di depan (split-screen);
+                                // penilaian tamper tetap penuh,
+                                // tetapi transisi sesi screentime
+                                // hanya milik peristiwa jendela
+                                // depan sungguhan — tanpa ini sesi
+                                // aplikasi depan terpotong dan
+                                // hitungan buka paket sensitif
+                                // bertambah semu.
+                                handleWindow(app, pkg, cls, texts, nilaiSaja = true)
                             }
                             executor.execute(task)
                             if (!executor.queue.contains(task)) {
@@ -900,7 +910,7 @@ object A11yMonitor {
         }
     }
 
-    private fun handleWindow(context: Context, pkg: String, cls: String, texts: List<String>) {
+    private fun handleWindow(context: Context, pkg: String, cls: String, texts: List<String>, nilaiSaja: Boolean = false) {
         ensurePrefs(context)
         val manager = prefs ?: return
         val nowWall = System.currentTimeMillis()
@@ -945,7 +955,7 @@ object A11yMonitor {
                     done = true
                 }
             }
-            if (!done && !monitoringActive(manager)) {
+            if (!done && !nilaiSaja && !monitoringActive(manager)) {
                 val terakru = finishSessionLocked(nowWall, nowElapsed)
                 // Persist mengikuti jatah normal (issue #1010):
                 // paksa di sini membuat SETIAP transisi activity
@@ -959,12 +969,12 @@ object A11yMonitor {
                 persistSnapshot = persistSnapshotLocked(terakru)
                 done = true
             }
-            if (!done && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
+            if (!done && !nilaiSaja && (pkg == context.packageName || pkg == launcherPkg || !launchable)) {
                 val terakru = finishSessionLocked(nowWall, nowElapsed)
                 persistSnapshot = persistSnapshotLocked(terakru)
                 done = true
             }
-            if (!done && pkg != currentPackage) {
+            if (!done && !nilaiSaja && pkg != currentPackage) {
                 // Akru sesi yang baru selesai wajib ikut memaksa
                 // persist (issue #1050, pola #1036): nilainya dulu
                 // dibuang dan persistSnapshotLocked(false) membuat
