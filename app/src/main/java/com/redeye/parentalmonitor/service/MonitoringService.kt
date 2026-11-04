@@ -12095,9 +12095,21 @@ class MonitoringService : Service() {
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
             }
+            // Korban berdasar umur sebenarnya dari nama
+            // berkas (issue #1206, pola #891 di prune foto):
+            // lastModified ditulis ulang rotasi flush,
+            // sehingga berkas tua yang gagal terus tampak
+            // baru dan lolos buangan.
             val files = (known ?: cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
-            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return
+            }?.toList())
+                ?.map { file ->
+                    val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
+                    (if (t > 0L) t else file.lastModified()) to file
+                }
+                ?.sortedBy { it.first }
+                ?.map { it.second }
+                ?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
@@ -12133,7 +12145,14 @@ class MonitoringService : Service() {
             }?.forEach { deleteQuietly(it) }
             val files = (known ?: cacheDir.listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
-            }?.sortedBy { it.lastModified() })?.filter { !isMediaActive(it) } ?: return
+            }?.toList())
+                ?.map { file ->
+                    val t = try { TimeFmt.mediaNameTimeMs(file.name) } catch (_: Exception) { -1L }
+                    (if (t > 0L) t else file.lastModified()) to file
+                }
+                ?.sortedBy { it.first }
+                ?.map { it.second }
+                ?.filter { !isMediaActive(it) } ?: return
             val dropped = files.dropLast(maxKept)
             if (dropped.isEmpty()) return
             dropped.forEach { deleteQuietly(it) }
