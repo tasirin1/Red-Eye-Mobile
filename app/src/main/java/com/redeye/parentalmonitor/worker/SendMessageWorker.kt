@@ -56,6 +56,19 @@ class SendMessageWorker(
             // hanya menemukan antrean kosong, pada ekor sekarat
             // ia yang menyelamatkan antrean dari menunggu
             // watchdog +-15 menit.
+            // Lepaskan slot outstandingSends milik run ini
+            // (issue #1313): reservasi dibuat saat penjadwalan
+            // dan jalur lolos penjaga melepaskannya di finally —
+            // cabang tertolak kembali TANPA finally itu, jadi
+            // tiap penolakan membocorkan satu slot permanen dan
+            // ±3 penolakan menjenuhkan MAX_OUTSTANDING_SEND,
+            // meredam semua penjadwalan kirim per jendela
+            // self-heal. Invariant kini: setiap doWork
+            // melepaskan tepat satu slot (di sini, atau finally).
+            try {
+                MessageScheduler.onSendRunFinished()
+            } catch (_: Exception) {
+            }
             try {
                 MessageScheduler.scheduleMessageSendNext(applicationContext, 15_000L)
             } catch (_: Exception) {

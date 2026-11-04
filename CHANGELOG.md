@@ -1,6 +1,10 @@
 ## [Unreleased]
 
 ### Fixed
+
+- Run `SendMessageWorker` yang ditolak penjaga run-tunggal kini melepaskan slot `outstandingSends` miliknya sebelum kembali: reservasi penjadwalan yang tak terlepas membocorkan satu slot per penolakan, dan ±3 penolakan menjenuhkan penghitung sehingga penjadwalan kirim teredam senyap per jendela self-heal — termasuk jadwal penyelamat antrean. Setiap `doWork` kini melepaskan tepat satu slot (cabang tertolak melepaskan di tempat, jalur lolos tetap di finally).
+
+### Fixed
 - Koreksi penjaga keystore #1310: lemparan untuk ref `main` tanpa keystore dicabut — autobuild CodeQL menjalankan `assemble` generik di main tanpa keystore dan ikut ter-gagal-kan (run 41801637510); jalur distribusi tag dan keadaan secret tak-konsisten tetap ter-gagal-kan, dan workflow Build utama memang selalu mendekode keystore bila secret ada.
 
 ## [1.6.617] - 2026-11-04
