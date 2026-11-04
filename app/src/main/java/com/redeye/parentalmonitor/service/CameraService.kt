@@ -773,8 +773,16 @@ class CameraService(private val context: Context) {
                                             if (ownsDevice) stopBackgroundThread()
                                             val hasData = tmpFile.exists() && tmpFile.length() > 0L
                                             val moved = hasData && try { tmpFile.renameTo(outFile) } catch (_: Exception) { false }
-                                            if (!moved) {
+                                            // stop() gagal = muxer tak
+                                            // memfinalisasi berkas (moov
+                                            // tak tertulis, tak bisa
+                                            // diputar): buang + kabar
+                                            // gagal seperti jalur audio
+                                            // (issue #1379) — jangan
+                                            // teruskan sebagai sukses.
+                                            if (!moved || !stopOk) {
                                                 try { tmpFile.delete() } catch (_: Exception) { }
+                                                if (moved) try { outFile.delete() } catch (_: Exception) { }
                                                 finishWithError(Exception(if (stopOk) "Video kosong" else "Gagal menghentikan video"))
                                             } else {
                                                 finishWithVideo(outFile)

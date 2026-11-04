@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Rekaman video yang penghentian rekamannya gagal kini dibuang dengan kabar gagal, bukan diteruskan sebagai terkirim: penghentian yang gagal berarti berkas video tidak terfinalisasi dan tidak bisa diputar, sama seperti perlakuan jalur rekaman audio selama ini.
+
 - Peringatan "metode baru" di alat verifikasi kini hanya mengenali deklarasi sungguhan — bentuk `fun` Kotlin atau bentuk Java bertipe jelas: sebelumnya slot pola yang longgar menelan indentasi dan kata kepala baris, sehingga panggilan fungsi biasa yang berindentasi, kelanjutan konstruktor, dan baris `else`/`yield`/`new` ikut dicap metode baru. Terbukti lewat harness dua arah (8 kasus palsu diam, 6 deklarasi asli tertangkap).
 
 - Adopsi migrasi grup Telegram kini digerbang perbandingan-dan-tukar: Chat ID hanya diganti bila isinya masih persis chat tujuan kiriman yang memicu migrasi. Sebelumnya respons migrasi yang basi — tiba sesudah pemilik mengganti kredensial — menimpa chat kredensial baru dengan grup era lama secara senyap dan menetap.
