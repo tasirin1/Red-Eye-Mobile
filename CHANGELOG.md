@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mengenali definisi atribut kustom `<attr name="...">` di berkas values: sebelumnya penghimpun definisi sumber daya tidak pernah mendaftarkan attr, sehingga acuan `R.attr.…`/`@attr/…` pertama yang sah pasti divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
+
 - Peringatan "metode baru" di alat verifikasi tak lagi salah alamat: baris pernyataan yang diawali `return`/`throw` sebelumnya tertelan sebagai deklarasi sehingga nama fungsi yang hanya *dipanggil* dicap metode baru tanpa uji. Terbukti lewat baterai sandbox terhadap gerbang lama.
 
 - Mode rentang alat verifikasi kini juga memvalidasi revisi ujung rentang: sebelumnya hanya revisi awal yang diperiksa keberadaannya, sehingga salah ketik ref ujung membuat diff kosong dan seluruh pemeriksaan berbasis diff terlewati senyap dengan vonis bersih palsu. Terbukti lewat baterai sandbox (ujung ngawur kini menggagalkan; rentang sah dan simulasi push pertama tak berubah).
