@@ -1710,6 +1710,11 @@ class MonitoringService : Service() {
         } catch (_: Exception) { }
     }
 
+    // Satu kunci untuk semua baca-ubah-tulis simpanan kunci
+    // /login (issue #1262): tanpa ini dua penulisan yang rapat
+    // bisa saling menimpa entri.
+    private val loginPersistLock = Any()
+
     // Penyimpanan kunci /login persisten (issue #1251): entri
     // "senderId,untilWall,elapsedStart" di prefs, dipangkas saat
     // menulis (kedaluwarsa dibuang, maks 16 entri terakhir).
@@ -1727,30 +1732,43 @@ class MonitoringService : Service() {
     }
 
     private fun persistLoginSenderLock(senderId: String, untilWall: Long, elapsedStart: Long) {
-        val wallNow = System.currentTimeMillis()
-        val entries = LinkedHashMap<String, Pair<Long, Long>>()
-        val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
-        for (part in raw.split(";")) {
-            val f = part.split(",")
-            if (f.size == 3) {
-                val u = f[1].toLongOrNull()
-                val st = f[2].toLongOrNull()
-                if (u != null && st != null && u > wallNow && f[0] != senderId) entries[f[0]] = u to st
+        synchronized(loginPersistLock) {
+            val wallNow = System.currentTimeMillis()
+            val nowElapsed = SystemClock.elapsedRealtime()
+            val entries = LinkedHashMap<String, Pair<Long, Long>>()
+            val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
+            for (part in raw.split(";")) {
+                val f = part.split(",")
+                if (f.size == 3) {
+                    val u = f[1].toLongOrNull()
+                    val st = f[2].toLongOrNull()
+                    // Pemangkasan memakai semantik penilai kuncinya
+                    // sendiri (issue #1262): entri hanya dibuang
+                    // bila RestorePinGate menyatakan TIDAK terkunci
+                    // — jam dinding yang melompat maju tak lagi
+                    // membuang kunci yang menurut jam monoton
+                    // masih berlaku.
+                    if (u != null && st != null && f[0] != senderId &&
+                        com.redeye.parentalmonitor.utils.RestorePinGate.locked(u, wallNow, st, nowElapsed, LOGIN_LOCK_MS)
+                    ) entries[f[0]] = u to st
+                }
             }
+            entries[senderId] = untilWall to elapsedStart
+            while (entries.size > 16) {
+                entries.remove(entries.keys.first())
+            }
+            val joined = entries.entries.joinToString(";") { "${it.key},${it.value.first},${it.value.second}" }
+            try { preferencesManager.loginSenderLockouts = joined } catch (_: Exception) { }
         }
-        entries[senderId] = untilWall to elapsedStart
-        while (entries.size > 16) {
-            entries.remove(entries.keys.first())
-        }
-        val joined = entries.entries.joinToString(";") { "${it.key},${it.value.first},${it.value.second}" }
-        try { preferencesManager.loginSenderLockouts = joined } catch (_: Exception) { }
     }
 
     private fun clearPersistedLoginSenderLock(senderId: String) {
-        val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
-        if (raw.isEmpty()) return
-        val kept = raw.split(";").filter { it.isNotEmpty() && it.split(",").firstOrNull() != senderId }
-        try { preferencesManager.loginSenderLockouts = kept.joinToString(";") } catch (_: Exception) { }
+        synchronized(loginPersistLock) {
+            val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
+            if (raw.isEmpty()) return
+            val kept = raw.split(";").filter { it.isNotEmpty() && it.split(",").firstOrNull() != senderId }
+            try { preferencesManager.loginSenderLockouts = kept.joinToString(";") } catch (_: Exception) { }
+        }
     }
 
     private fun clearPersistedLoginLocks() {
