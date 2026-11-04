@@ -670,7 +670,7 @@ def _ambil_terhapus(out):
     return hasil
 
 
-def _deklarasi_tingkat_atas(teks, kelas):
+def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
     # Deklarasi class/object/interface/enum/record bernama `kelas`
     # pada kedalaman kurung 0 (tingkat atas berkas), sadar
     # komentar/string secara sederhana (kurung di dalam
@@ -698,6 +698,13 @@ def _deklarasi_tingkat_atas(teks, kelas):
             # berhenti di penutup pertama — sisa komentar luar
             # yang memuat teks deklarasi atau kurung pernah
             # terhitung sebagai kode sungguhan dua arah.
+            if not bersarang:
+                # Java: komentar blok TIDAK bersarang (issue
+                # #1198) — penutup pertama mengakhiri, walau
+                # isinya memuat "/*" literal (mis. glob).
+                j = teks.find("*/", i + 2)
+                i = n if j < 0 else j + 2
+                continue
             kedalaman_komentar = 1
             j = i + 2
             while j < n and kedalaman_komentar > 0:
@@ -788,9 +795,9 @@ def _ambil_rename_berisiko(out, ref_lama=None):
         # lama (tetap dimasukkan, arah aman).
         if ref_lama is not None:
             isi_lama = jalan("git", "show", "%s:%s" % (ref_lama, lama))
-            if isi_lama is not None and not _deklarasi_tingkat_atas(isi_lama, kelas):
+            if isi_lama is not None and not _deklarasi_tingkat_atas(isi_lama, kelas, bersarang=not lama.endswith(".java")):
                 continue
-        if not _deklarasi_tingkat_atas(baca_teks(baru), kelas):
+        if not _deklarasi_tingkat_atas(baca_teks(baru), kelas, bersarang=not baru.endswith(".java")):
             hasil.append(lama)
     return hasil
 
