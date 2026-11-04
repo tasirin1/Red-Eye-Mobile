@@ -105,11 +105,11 @@ class BootRestartWorker(
             throw e
         } catch (_: Exception) {
         }
-        try {
-            Liveness.schedule(appContext)
-        } catch (_: Exception) {
-        }
         if (MonitoringService.isRunning) {
+            try {
+                Liveness.schedule(appContext)
+            } catch (_: Exception) {
+            }
             try {
                 MessageScheduler.scheduleMessageSend(appContext)
             } catch (_: Exception) {
@@ -137,6 +137,15 @@ class BootRestartWorker(
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             MessageScheduler.cancelWatchdog(appContext)
             return Result.success()
+        }
+        // Liveness dipasang SESUDAH cek nonaktif di atas (issue
+        // #1245): run sisa pekerjaan boot-restart yang menembak
+        // sesudah pemilik mematikan pemantauan tak boleh memasang
+        // ulang alarm Liveness lewat prolognya sebelum tahu
+        // pemantauan sudah mati.
+        try {
+            Liveness.schedule(appContext)
+        } catch (_: Exception) {
         }
         if (!prefs.isConfigured()) {
             return Result.success()
