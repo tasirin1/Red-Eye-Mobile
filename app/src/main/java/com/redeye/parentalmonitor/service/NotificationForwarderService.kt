@@ -1786,11 +1786,23 @@ class NotificationForwarderService : NotificationListenerService() {
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             if (queueOnCancel) {
+                // Hasil penyelamatan menentukan vonis (issue
+                // #1369): dulu hasil addMessage dibuang dan
+                // pemanggil jalur prioritas memetakan batal ->
+                // delivered=true tanpa syarat, jadi notifikasi
+                // yang GAGAL diselamatkan tetap dicap terkirim
+                // + diteruskan persisten — hilang permanen.
+                // Kini seperti cabang TRANSIENT: antrean adalah
+                // pipa pengiriman yang tahan, jadi rescued=true
+                // berarti terkirim-ke-pipa; gagal = false agar
+                // pemanggil tak memasang cap.
+                var rescued = false
                 try {
-                    queue().addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
+                    rescued = queue().addMessage(message)
+                    if (rescued) MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
+                return rescued
             }
             throw e
         } catch (e: Exception) {

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penerusan notifikasi prioritas tak lagi mencatat notifikasi sebagai terkirim bila penyelamatannya ke antrean gagal saat proses dibatalkan di tengah pengiriman: sebelumnya hasil penyelamatan dibuang dan pembatalan selalu dihitung terkirim, sehingga notifikasi bisa hilang permanen tetapi tercatat sudah diteruskan dan tak pernah dicoba lagi.
+
 - Pengeditan pesan menu kini menghormati gerbang rate-limit global Telegram: selama jendela rate-limit aktif edit tidak ditembak (pemanggil jatuh ke jalur kirim yang sadar gerbang), dan respons 429 yang diterima ikut mengajari gerbang — sebelumnya situs ini satu-satunya konsumen 429 yang tidak melakukannya, sehingga tiap ketukan menu selama rate-limit menghasilkan tembakan sia-sia.
 
 - Pemberitahuan antrean yang membuang pesan kini menutup badan error respons Telegram yang gagal seperti semua jalur kirim lainnya: sebelumnya respons gagal dibuang begitu saja sehingga koneksinya tertahan di kumpulan koneksi bersama tepat saat antrean sedang bermasalah.
