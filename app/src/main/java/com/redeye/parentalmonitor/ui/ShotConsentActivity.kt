@@ -67,7 +67,7 @@ class ShotConsentActivity : Activity() {
             // sekaligus mematikan jaring safetyFinish.
             if (!outcomeHandled) {
                 outcomeHandled = true
-                reportConsentFailure(timeout = false)
+                reportConsentFailure(timeout = false, gagalBuka = true)
             }
             finishQuietly()
         }
@@ -107,10 +107,12 @@ class ShotConsentActivity : Activity() {
         super.onDestroy()
     }
 
-    private fun reportConsentFailure(timeout: Boolean) {
+    private fun reportConsentFailure(timeout: Boolean, gagalBuka: Boolean = false) {
         try {
             val appContext = applicationContext
-            val text = if (timeout) {
+            val text = if (gagalBuka) {
+                "⚠️ <b>Dialog izin tangkap layar gagal dibuka</b>\nSistem menolak membuka dialog izin di HP ini, jadi tangkapan layar tidak bisa diambil. Ini bukan penolakan pengguna."
+            } else if (timeout) {
                 "⌛ <b>Izin tangkap layar tidak dijawab</b>\nDialog izin di HP ini dibiarkan sampai batas 5 menit tanpa jawaban, jadi tangkapan layar tidak bisa diambil."
             } else {
                 "🚫 <b>Izin tangkap layar ditolak</b>\nDialog izin di HP ini ditutup tanpa persetujuan, jadi tangkapan layar tidak bisa diambil."
