@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Daftar aplikasi yang sudah dikenal kini disimpan secara sinkron (bukan asinkron): sebelumnya perangkat yang mati mendadak tepat sesudah aplikasi dicatat/dilupakan bisa membangkitkan catatan lama saat menyala lagi — aplikasi yang dicopot lalu dipasang ulang bisa lolos dari peringatan, atau peringatan tampil dua kali.
+
 - Peringatan "aplikasi baru dibuka" tak lagi bisa tertelan diam-diam: bila pengambilan daftar aplikasi awal (seed) gagal sesaat, aplikasi pertama yang dibuka pada jendela itu sebelumnya langsung dicatat sebagai sudah dikenal tanpa peringatan dan tak pernah memicu peringatan selamanya. Kini aplikasi hanya dicatat sebagai dikenal sesudah seed berhasil, dan seed yang gagal dicoba ulang berkala (paling sering semenit sekali), bukan menunggu ganti hari.
 
 - Tombol kirim status di layar Setup kini ikut aturan rate-limit global: 429 yang diterimanya mengajari gerbang pembatas bersama (sebelumnya satu-satunya konsumen 429 yang tidak), dan sebelum mengirim ia memeriksa sisa jendela rate-limit — bila masih aktif, pesan diantrekan alih-alih menembak dan memanen 429 tambahan.

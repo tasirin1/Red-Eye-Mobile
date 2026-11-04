@@ -2325,7 +2325,12 @@ class PreferencesManager(context: Context) {
             synchronized(a11yKnownAppsLock) {
                 val current = knownAppsLocked()
                 if (current.remove(packageName)) {
-                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
+                    // commit(), bukan apply() (issue #1356):
+                    // himpunan dikenal menentukan alert aplikasi
+                    // baru; tulisan apply() yang hilang karena
+                    // proses dibunuh sebelum flush asinkron
+                    // membangkitkan entri yang sudah dilupakan.
+                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).commit()
                 }
             }
         } catch (_: Exception) {
@@ -2339,7 +2344,7 @@ class PreferencesManager(context: Context) {
                 val current = knownAppsLocked()
                 if (packageName in current) return false
                 current.add(packageName)
-                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
+                sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).commit()
                 true
             }
         } catch (_: Exception) {
@@ -2366,7 +2371,7 @@ class PreferencesManager(context: Context) {
                 val current = knownAppsLocked()
                 val terpasang = installed.toHashSet()
                 if (current.removeAll { it !in terpasang }) {
-                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
+                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).commit()
                 }
             }
             true
@@ -2383,7 +2388,7 @@ class PreferencesManager(context: Context) {
                 sharedPreferences.edit()
                     .putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current))
                     .putBoolean(KEY_A11Y_KNOWN_SEEDED, true)
-                    .apply()
+                    .commit()
             }
         } catch (_: Exception) {
         }
