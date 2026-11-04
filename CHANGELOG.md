@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Nama berkas mengandung karakter kontrol (mis. newline di tengah ekstensi) kini ditolak kedua gerbang: nama semacam itu mengalahkan pencocokan akhiran daftar terlarang dan tidak punya alasan sah (#1202).
 - Ekstraksi ID layout pada pemeriksaan paritas kini mengenal petik tunggal dan spasi di sekitar tanda sama dengan, dengan keluaran yang dinormalkan: ID yang sama tidak lagi gagal palsu dan ID berbeda berkutik tunggal tidak lagi lolos (#1201).
 - Pemindai token pada riwayat commit kini menangkap token terenkode yang dipecah 40 karakter per baris: ambang saringan kandidat diturunkan ke 40 agar berkas semacam itu benar-benar diperiksa pemindai (vonisnya tetap dari pemindai bersama) (#1200).
 - Berkas .envrc (direnv) kini ikut dilarang masuk repo oleh kedua gerbang, sejajar dengan berkas .env lain yang sama-sama lazim memuat rahasia (#1199).

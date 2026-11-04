@@ -1140,6 +1140,13 @@ def adalah_env(rendah):
 
 def cek_aturan_repo(gagal, berubah):
     for path in berubah:
+        # Karakter kontrol di nama berkas (issue #1202): newline
+        # di tengah ekstensi ("jahat.j\nks") mengalahkan
+        # pencocokan akhiran kedua gerbang — nama semacam itu
+        # tak punya alasan sah, tolak apa pun ekstensinya.
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
+            gagal.append("Nama berkas mengandung karakter kontrol: %r" % path)
+            continue
         rendah = path.lower()
         sudah_dilarang = False
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",

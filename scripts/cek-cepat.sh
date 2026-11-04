@@ -89,6 +89,14 @@ fi
 if git ls-files -z | tr '\0' '\n' | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx)$|local\.properties$|((^|/)\.env(\.[^/]*)?|\.env|\.envrc)$' >/dev/null; then
   echo "GAGAL: binary/APK/secret terlacak di repo (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
+# 5b. Nama berkas berkarakter kontrol (issue #1202): newline
+# di tengah ekstensi mengalahkan pencocokan akhiran poin 3/5.
+# Buang semua bita yang sah (cetak ASCII + bita tinggi UTF-8);
+# sisa apa pun berarti ada karakter kontrol di sebuah nama.
+sisa_kontrol=$( { git ls-files -z; git diff --cached --name-only -z; } | tr -d '\000' | LC_ALL=C tr -d '\040-\176' | LC_ALL=C tr -d '\200-\377' | wc -c )
+if [ "$sisa_kontrol" -gt 0 ]; then
+  echo "GAGAL: nama berkas mengandung karakter kontrol (newline/tab di nama dilarang)"; gagal=1;
+fi
 pohon_token=$(git grep -l -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null || true)
 if [ -n "$pohon_token" ]; then
   echo "GAGAL: kemungkinan token bot asli terlacak di repo pada: $pohon_token (berkas biner dilaporkan per nama — deret byte mirip token; hanya via input SetupActivity)"; gagal=1;
