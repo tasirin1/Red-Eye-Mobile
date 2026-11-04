@@ -12642,7 +12642,18 @@ class MonitoringService : Service() {
                     val remainMs = flushDeadline - android.os.SystemClock.elapsedRealtime()
                     if (remainMs < MEDIA_FLUSH_MIN_START_MS) break@drain
                     attempted.add(file.absolutePath)
-                    val result = kotlinx.coroutines.withTimeoutOrNull(remainMs) { send(file) }
+                    // Tandai aktif selama unggahan flush
+                    // (issue #1410): /cleanup dan penghapus
+                    // lain melewati berkas aktif, tetapi
+                    // unggahan flush dulu tak pernah ditandai
+                    // — penjaga mereka buta terhadap unggahan
+                    // yang justru menyasar berkas tua.
+                    markMediaActive(file)
+                    val result = try {
+                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { send(file) }
+                    } finally {
+                        clearMediaActive(file)
+                    }
                     if (result == null) {
                         rotateFlushFile(file)
                         continue
@@ -13029,7 +13040,13 @@ class MonitoringService : Service() {
                     }
                     val fileIsHeld = if (namedFlush != null) true else fileHashFlush != 0L && heldEntriesFlush.any { it.raw == null && it.hash == fileHashFlush }
                     attempted.add(file.absolutePath)
-                    val photoResult = kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) }
+                    // Tandai aktif selama unggahan (issue #1410).
+                    markMediaActive(file)
+                    val photoResult = try {
+                        kotlinx.coroutines.withTimeoutOrNull(remainMs) { sendPhotoFile(file) }
+                    } finally {
+                        clearMediaActive(file)
+                    }
                     if (photoResult == null) {
                         // Timeout flush (issue #824): putar ke belakang
                         // urutan siklus berikut, jangan kelaparkan

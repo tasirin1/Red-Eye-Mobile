@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Berkas yang sedang diunggah oleh jalur flush kini ditandai aktif seperti unggahan langsung, sehingga /cleanup dan penghapus lain melewatinya: sebelumnya unggahan flush tidak pernah ditandai, dan /cleanup bisa menghapus berkas di tengah unggahan sampai medianya hilang permanen.
+
 - Kegagalan membuka dialog izin tangkapan layar kini juga dilaporkan ke pemilik lewat Telegram, sama seperti penolakan dan timeout: sebelumnya jalur pengecualian saat membuka dialog itu diam total sehingga pemilik yang mengetuk tombol izin tidak menerima kabar apa pun.
 
 - Penghimpun definisi alat verifikasi tak lagi menelan blok `<declare-styleable>` yang didahului bentuk self-closing: sebelumnya pola blok menambatkan diri pada tag self-closing dan menelan blok berikutnya, sehingga nama blok hilang dan turunannya menempel ke nama yang salah. Terbukti lewat uji unit penghimpun.
