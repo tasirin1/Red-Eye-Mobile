@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemeriksa kesamaan ID layout potret/landscape kini menyapu komentar XML dulu: ID palsu yang tertulis di dalam komentar tak lagi menggagalkan pasangan layout yang sebenarnya sama. (Issue #1233)
 - Batas tunggu respons klien media dinaikkan dari 45 ke 300 detik: unggahan video besar yang sudah selesai dikirim tak lagi dinilai gagal hanya karena server lambat memproses, sehingga berkas yang sama tak diunggah ulang penuh. (Issue #1232)
 - Kiriman Telegram tak lagi berisiko ganda gara-gara ulangan koneksi senyap OkHttp: klien teks dan media kini menyerahkan kegagalan koneksi ke antrean aplikasi sendiri (Bot API tak punya idempotensi, jadi POST yang responsnya hilang bisa terkirim dua kali). (Issue #1231)
 - Catatan penerimaan risiko ditambahkan di getter prefs Setup: balapan sentuhan-pertama di benang utama dari penangan ketuk dinilai dan diterima secara sadar (pemuatan IO onCreate menghangatkan lebih dulu; dampak terburuk jank satu kali, tanpa risiko data). (Issue #1230)

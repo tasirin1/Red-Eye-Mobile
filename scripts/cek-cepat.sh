@@ -65,8 +65,11 @@ ekstrak_id() {
   # baris ikut sah (issue #1201 + #1217, kelas #1185): berkas
   # diratakan dulu, keluaran dinormalkan (petik, spasi, TAB
   # dibuang) agar ID sama tak gagal palsu & beda tak lolos.
-  if [ "$ADA_RG" = 1 ]; then tr '\n' ' ' < "$1" | rg --pcre2 -o 'android:id\s*=\s*("@\+id/[A-Za-z0-9_]+"|\x27@\+id/[A-Za-z0-9_]+\x27)' | tr -d "\"' \011" | sort -u;
-  else { tr '\n' ' ' < "$1" | grep -o -E 'android:id[[:space:]]*=[[:space:]]*"@\+id/[A-Za-z0-9_]+"'; tr '\n' ' ' < "$1" | grep -o -E "android:id[[:space:]]*=[[:space:]]*'@\+id/[A-Za-z0-9_]+'"; } | tr -d "\"' \011" | sort -u; fi
+  # Komentar XML disapu dulu (issue #1233, sama seperti titik 1
+  # sejak #1203): android:id palsu di dalam komentar pada satu
+  # sisi tak boleh menggagalkan pasangan yang sebenarnya sama.
+  if [ "$ADA_RG" = 1 ]; then sapu_komentar_xml < "$1" | tr '\n' ' ' | rg --pcre2 -o 'android:id\s*=\s*("@\+id/[A-Za-z0-9_]+"|\x27@\+id/[A-Za-z0-9_]+\x27)' | tr -d "\"' \011" | sort -u;
+  else { sapu_komentar_xml < "$1" | tr '\n' ' ' | grep -o -E 'android:id[[:space:]]*=[[:space:]]*"@\+id/[A-Za-z0-9_]+"'; sapu_komentar_xml < "$1" | tr '\n' ' ' | grep -o -E "android:id[[:space:]]*=[[:space:]]*'@\+id/[A-Za-z0-9_]+'"; } | tr -d "\"' \011" | sort -u; fi
 }
 for f in app/src/main/res/layout/*.xml; do
   land="app/src/main/res/layout-land/$(basename "$f")"
