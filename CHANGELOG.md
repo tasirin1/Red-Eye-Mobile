@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Klasifikasi hasil kirim Telegram kini menegakkan aturan "kode tak dikenal berarti sementara" di sumbernya: label "ditolak permanen" hanya lahir dari kode 400 persis, sehingga tidak ada lagi jalur kirim yang harus menebak-nebak dari kode mentah — kode anomali (402/404/409/413/422 dan sejenisnya) selalu dianggap sementara dan diantrekan untuk dicoba lagi, persis perilaku yang selama ini dijaga manual di tiap pemanggil. Uji pengunci klasifikasi diperbarui mengikuti aturan ini.
+
 - Pembersihan antrean handler kamera saat reset kini hanya membuang tugas milik aplikasi sendiri: sebelumnya pembersihan menyeluruh bisa ikut membuang pemberitahuan "kamera terbuka" dari sistem yang belum terkirim, sehingga kamera berisiko tertinggal terbuka di sisi sistem dan pengambilan berikutnya gagal. Semua tugas terjadwal kamera (batas waktu foto/video, penghentian video, penunggu metering) kini bertanda khusus agar hanya mereka yang dibersihkan saat reset.
 
 - Rekonsiliasi daftar aplikasi dikenal kini hanya dianggap selesai bila pekerjaannya sungguh berjalan: bila daftar aplikasi terpasang gagal dibaca atau pemangkasannya gagal di tengah, penanda selesainya tidak terkunci dan rekonsiliasi dicoba lagi pada kesempatan berikutnya — sebelumnya kegagalan senyap itu bisa membuat aplikasi yang dicopot saat layanan mati tetap dianggap dikenal seumur proses, sehingga pasang-ulangnya lolos dari peringatan aplikasi baru.

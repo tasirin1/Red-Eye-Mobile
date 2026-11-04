@@ -11,8 +11,10 @@ class TelegramSendPolicyTest {
     @Test
     fun sentOnlyWhenSuccessfulAndOk() {
         assertEquals(TelegramSendPolicy.Kind.SENT, kind(true, true, 200, null))
-        assertEquals(TelegramSendPolicy.Kind.REJECTED, kind(true, false, 200, null))
-        assertEquals(TelegramSendPolicy.Kind.REJECTED, kind(false, true, 200, null))
+        // 200 dengan ok=false adalah anomali tak terdaftar:
+        // sementara, bukan penolakan permanen (issue #1336).
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(true, false, 200, null))
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, true, 200, null))
     }
 
     @Test
@@ -49,6 +51,13 @@ class TelegramSendPolicyTest {
         assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 408, null))
         assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 500, null))
         assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 502, null))
-        assertEquals(TelegramSendPolicy.Kind.REJECTED, kind(false, false, 404, null))
+        // Kode tak terdaftar = sementara (aturan #966,
+        // issue #1336); REJECTED khusus 400 persis (terkunci
+        // di badRequestSubclassificationOrder).
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 404, null))
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 402, null))
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 409, null))
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 413, null))
+        assertEquals(TelegramSendPolicy.Kind.TRANSIENT, kind(false, false, 422, null))
     }
 }

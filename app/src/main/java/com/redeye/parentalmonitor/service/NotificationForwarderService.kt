@@ -1655,18 +1655,10 @@ class NotificationForwarderService : NotificationListenerService() {
                 queued
             }
             TelegramSendPolicy.Kind.PARSE_ENTITIES -> false
-            TelegramSendPolicy.Kind.REJECTED -> {
-                // Aturan #966 (issue #1192): selain 400 persis
-                // bersifat sementara — antrekan seperti jalur
-                // utama, jangan buang permanen.
-                if (outcome.code == 400) {
-                    false
-                } else {
-                    val queued = queue().addMessage(original)
-                    MessageScheduler.scheduleMessageSend(this)
-                    queued
-                }
-            }
+            // REJECTED hanya lahir dari 400 persis (aturan
+            // #966 ditegakkan di TelegramSendPolicy, issue
+            // #1336): selalu penolakan permanen di sini.
+            TelegramSendPolicy.Kind.REJECTED -> false
         }
     }
 
@@ -1771,18 +1763,16 @@ class NotificationForwarderService : NotificationListenerService() {
                     return queued
                 }
                 TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
-                    if (outcome.code == 400) {
-                        val plain = Html.unescape(message)
-                        if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
-                            if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return true
-                        }
-                        android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
-                        try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
-                        return false
+                    // Keduanya hanya lahir dari 400 persis
+                    // (issue #1336): kode tak terdaftar datang
+                    // sebagai TRANSIENT dan terantre di cabangnya.
+                    val plain = Html.unescape(message)
+                    if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
+                        if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return true
                     }
-                    val queued = queue().addMessage(message)
-                    MessageScheduler.scheduleMessageSend(this)
-                    return queued
+                    android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
+                    try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
+                    return false
                 }
                 TelegramSendPolicy.Kind.TRANSIENT -> {
                     val queued = queue().addMessage(message)

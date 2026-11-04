@@ -7629,21 +7629,18 @@ class MonitoringService : Service() {
                 if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
             TelegramSendPolicy.Kind.PARSE_ENTITIES, TelegramSendPolicy.Kind.REJECTED -> {
-                // Aturan #966 (issue #1192): REJECTED berkode
-                // tak terdaftar selain 400 persis bersifat
-                // sementara — antrekan seperti jalur utama,
-                // jangan buang permanen.
-                if (outcome.kind == TelegramSendPolicy.Kind.REJECTED && outcome.code != 400) {
-                    if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
-                } else {
-                    android.util.Log.w("MonitoringService", "Message permanently rejected (${outcome.code}), not queued")
-                    try {
-                        noteDroppedMessage()
-                    } catch (_: Exception) {
-                    }
-                    try { onPermanent?.invoke() } catch (_: Exception) { }
-                    SendStatus.DROPPED
+                // Keduanya hanya lahir dari 400 persis (aturan
+                // #966 ditegakkan di TelegramSendPolicy, issue
+                // #1336): kode tak terdaftar datang sebagai
+                // TRANSIENT dan terantre di cabang atas, jadi
+                // di sini selalu penolakan permanen.
+                android.util.Log.w("MonitoringService", "Message permanently rejected (${outcome.code}), not queued")
+                try {
+                    noteDroppedMessage()
+                } catch (_: Exception) {
                 }
+                try { onPermanent?.invoke() } catch (_: Exception) { }
+                SendStatus.DROPPED
             }
         }
     }
