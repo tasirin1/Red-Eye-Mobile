@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemindai token pada riwayat commit kini menangkap token terenkode yang dipecah 40 karakter per baris: ambang saringan kandidat diturunkan ke 40 agar berkas semacam itu benar-benar diperiksa pemindai (vonisnya tetap dari pemindai bersama) (#1200).
 - Berkas .envrc (direnv) kini ikut dilarang masuk repo oleh kedua gerbang, sejajar dengan berkas .env lain yang sama-sama lazim memuat rahasia (#1199).
 - Pelacak komentar gerbang kini membedakan bahasa dari ekstensi berkas: komentar blok Java ditutup pada penutup pertama seperti semantik Javanya, sehingga deklarasi sah sesudah komentar berisi pola glob tidak lagi tertelan sebagai komentar bersarang ala Kotlin (#1198).
 - Pola record pada pemeriksaan deklarasi gerbang kini menuntut daftar komponen sesudah nama, sehingga panggilan infix Kotlin yang sah tidak lagi menyamar sebagai deklarasi dan rename berisiko tidak lolos (#1197).

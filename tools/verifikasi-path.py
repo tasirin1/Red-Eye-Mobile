@@ -1304,8 +1304,14 @@ def cek_secret_riwayat(gagal, rentang):
         # saring berkas kandidat (memuat deret digit panjang atau run
         # base64 panjang), lalu uji isinya per commit dengan pemindai
         # bersama.
+        # Ambang run base64 40 (issue #1200): token yang
+        # di-commit terbelah 40 char/baris tak pernah mencapai
+        # 48 sehingga tak pernah jadi kandidat dan pemindai
+        # bersama tak pernah melihat blob-nya. 40 masih selektif
+        # (kandidat bukan vonis — vonis tetap mengandung_token);
+        # pemecahan di bawah 40 char/baris tetap batas kanal ini.
         kandidat = jalan("git", "grep", "-a", "-l", "-E",
-                         r"[0-9]{6,}|[A-Za-z0-9+/=_-]{48,}", sha) or ""
+                         r"[0-9]{6,}|[A-Za-z0-9+/=_-]{40,}", sha) or ""
         for baris in kandidat.splitlines():
             teks = baris.strip()
             if not teks:
