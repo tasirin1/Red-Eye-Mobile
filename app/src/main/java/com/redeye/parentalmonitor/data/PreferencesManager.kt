@@ -1277,11 +1277,17 @@ class PreferencesManager(context: Context) {
     val credentialErrorElapsed: Long
         get() = prefLong(KEY_CRED_ERROR_ELAPSED, 0L)
 
+    // Tiga penulis penanda blokir kredensial di bawah memakai
+    // commit(), bukan apply() (issue #1370): penanda ini
+    // keadaan keamanan — mati proses sebelum apply() ter-flush
+    // menghapus blokir dari cakram dan restart mengulang kirim
+    // dengan kredensial mati. Standar yang sama seperti
+    // gerbang lockout dan saveCredentials di berkas ini.
     fun setCredentialError(code: String, at: Long) {
         try {
             synchronized(credentialLock) {
                 val elapsed = if (at > 0L) android.os.SystemClock.elapsedRealtime() else 0L
-                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).apply()
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).commit()
             }
         } catch (_: Exception) {
         }
@@ -1296,7 +1302,7 @@ class PreferencesManager(context: Context) {
         return try {
             synchronized(credentialLock) {
                 if (credentialError != code || credentialErrorAt != at || credentialErrorElapsed != elapsed) return@synchronized false
-                sharedPreferences.edit().putString(KEY_CRED_ERROR, "").putLong(KEY_CRED_ERROR_AT, 0L).putLong(KEY_CRED_ERROR_ELAPSED, 0L).apply()
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, "").putLong(KEY_CRED_ERROR_AT, 0L).putLong(KEY_CRED_ERROR_ELAPSED, 0L).commit()
                 true
             }
         } catch (_: Exception) {
@@ -1310,7 +1316,7 @@ class PreferencesManager(context: Context) {
             if (credentialError == code && credentialErrorAt == at) return@synchronized true
             try {
                 val elapsed = if (at > 0L) android.os.SystemClock.elapsedRealtime() else 0L
-                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).apply()
+                sharedPreferences.edit().putString(KEY_CRED_ERROR, code).putLong(KEY_CRED_ERROR_AT, at).putLong(KEY_CRED_ERROR_ELAPSED, elapsed).commit()
                 true
             } catch (_: Exception) {
                 false

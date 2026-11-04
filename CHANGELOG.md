@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanda blokir kredensial mati (respons 401/403 dari Telegram) kini ditulis dengan cara yang langsung tersimpan ke cakram seperti penanda keamanan lainnya: sebelumnya tulisan asinkron bisa hilang bila perangkat mati mendadak, sehingga sesudah menyala aplikasi mengulang kirim dengan kredensial yang sudah mati.
+
 - Penerusan notifikasi prioritas tak lagi mencatat notifikasi sebagai terkirim bila penyelamatannya ke antrean gagal saat proses dibatalkan di tengah pengiriman: sebelumnya hasil penyelamatan dibuang dan pembatalan selalu dihitung terkirim, sehingga notifikasi bisa hilang permanen tetapi tercatat sudah diteruskan dan tak pernah dicoba lagi.
 
 - Pengeditan pesan menu kini menghormati gerbang rate-limit global Telegram: selama jendela rate-limit aktif edit tidak ditembak (pemanggil jatuh ke jalur kirim yang sadar gerbang), dan respons 429 yang diterima ikut mengajari gerbang — sebelumnya situs ini satu-satunya konsumen 429 yang tidak melakukannya, sehingga tiap ketukan menu selama rate-limit menghasilkan tembakan sia-sia.
