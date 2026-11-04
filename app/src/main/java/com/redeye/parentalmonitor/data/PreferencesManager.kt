@@ -2293,6 +2293,27 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Rekonsiliasi himpunan dikenal (issue #1277): peristiwa
+    // copot selama layanan mati tak pernah sampai ke
+    // forgetA11yApp, jadi entri aplikasi yang sudah tercopot
+    // basi selamanya dan pasang-ulangnya lolos dari alert
+    // "aplikasi baru". Penyetelan berkala membuang entri yang
+    // tak lagi terpasang; daftar terpasang kosong (kueri gagal)
+    // tidak pernah dipakai memangkas.
+    fun pruneA11yKnownApps(installed: Collection<String>) {
+        if (installed.isEmpty()) return
+        try {
+            synchronized(a11yKnownAppsLock) {
+                val current = knownAppsLocked()
+                val terpasang = installed.toHashSet()
+                if (current.removeAll { it !in terpasang }) {
+                    sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     fun seedA11yKnownApps(packages: Collection<String>) {
         try {
             synchronized(a11yKnownAppsLock) {

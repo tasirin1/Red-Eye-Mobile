@@ -690,7 +690,30 @@ object A11yMonitor {
         }
     }
 
+    private var knownReconciled = false
+
     private fun seedKnownAppsLocked(context: Context) {
+        // Rekonsiliasi sekali per proses (issue #1277), sebelum
+        // jalan pintas seeded: entri dikenal untuk aplikasi yang
+        // tercopot selama layanan mati dibuang agar pasang-ulang
+        // kembali memicu alert aplikasi baru.
+        if (!knownReconciled) {
+            knownReconciled = true
+            val managerAwal = prefs
+            if (managerAwal != null) {
+                val terpasang = try {
+                    if (android.os.Build.VERSION.SDK_INT >= 33) {
+                        context.packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(0)).map { it.packageName }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        context.packageManager.getInstalledPackages(0).map { it.packageName }
+                    }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                managerAwal.pruneA11yKnownApps(terpasang)
+            }
+        }
         if (knownSeeded) return
         val manager = prefs ?: return
         if (manager.a11yKnownSeeded) {

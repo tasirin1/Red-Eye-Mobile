@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Himpunan aplikasi dikenal a11y kini direkonsiliasi sekali per proses terhadap daftar aplikasi terpasang: entri untuk aplikasi yang dicopot selama layanan mati dibuang, sehingga pemasangan ulangnya kembali memicu alert "aplikasi baru dibuka" (issue #1277).
 - Rantai alarm Liveness tidak lagi putus saat monitoring hanya dijeda (`/stop`): penolakan yang semata karena keadaan jeda kini menjadwalkan ulang alarm dan melewatkan tembakan itu, bukan membatalkan rantainya — penjaga ganda tetap utuh selama jeda (issue #1276).
 - Cabang `!isConfigured()` di `BootRestartWorker` kini membatalkan watchdog periodik sebelum kembali: sesudah kredensial dihapus, watchdog yang sempat dijadwalkan ulang oleh `onDestroy` tidak lagi hidup selamanya membangunkan proses tiap ±15 menit tanpa bisa memulai pemantauan (issue #1275).
 - Cabang nonaktif `BootReceiver` kini juga membatalkan alarm Liveness yang terpasang tanpa syarat di `onReceive` (sebelumnya hanya watchdog yang dibatalkan, menyisakan satu bangun-proses sia-sia per boot pada perangkat yang pemantauannya sengaja dimatikan) (issue #1274).
