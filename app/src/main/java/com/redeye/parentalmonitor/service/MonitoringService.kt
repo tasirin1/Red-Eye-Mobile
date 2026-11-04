@@ -6421,6 +6421,12 @@ class MonitoringService : Service() {
                     }
                 }
                 if (providers.isEmpty()) {
+                    // Pintas fix segar juga berlaku saat semua
+                    // penyedia mati (issue #1434): jalur
+                    // penyedia-ada memakainya, jalur ini dulu
+                    // langsung menyerah sehingga siklus patroli
+                    // terlewat walau ada fix berumur <2 menit.
+                    lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }
                     return@withContext if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
                 }
                 lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }

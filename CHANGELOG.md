@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Permintaan lokasi yang tidak mengizinkan data basi kini tetap memakai titik terakhir yang masih sangat segar (di bawah dua menit) saat semua penyedia lokasi mati: sebelumnya jalur itu langsung menyerah sehingga satu siklus patroli bisa terlewat walau titik segar tersedia.
+
 - Permintaan lokasi kini berjalan berseri lewat satu kunci bersama: sebelumnya pemanggil dari berbagai pekerjaan latar bisa menjalankan dua sesi GPS 20 detik bersamaan dan memboroskan baterai tanpa manfaat.
 
 - Pesan lokasi mode hilang kini menampilkan akurasi titiknya seperti semua pesan lokasi lain: sebelumnya jalur ini satu-satunya yang tidak menampilkannya, padahal titik cadangannya boleh berumur sampai 24 jam dan meleset jauh.
