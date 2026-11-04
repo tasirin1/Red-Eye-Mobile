@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemberitahuan antrean yang membuang pesan kini menutup badan error respons Telegram yang gagal seperti semua jalur kirim lainnya: sebelumnya respons gagal dibuang begitu saja sehingga koneksinya tertahan di kumpulan koneksi bersama tepat saat antrean sedang bermasalah.
+
 - Alat verifikasi kini juga mengenali definisi sumber daya values lewat elemen generik `<item name="..." type="...">` (kedua urutan atribut): sebelumnya hanya tag bernama-sama-dengan-jenis yang terdaftar, sehingga acuan sah ke sumber daya berbentuk item divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
 
 - Alat verifikasi kini mengenali definisi atribut kustom `<attr name="...">` di berkas values: sebelumnya penghimpun definisi sumber daya tidak pernah mendaftarkan attr, sehingga acuan `R.attr.…`/`@attr/…` pertama yang sah pasti divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.

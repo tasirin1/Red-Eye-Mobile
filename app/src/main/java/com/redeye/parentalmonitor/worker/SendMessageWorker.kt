@@ -877,6 +877,10 @@ class SendMessageWorker(
                 TelegramMessage(chatId = chatId, text = text, parseMode = null)
             )
             if (response.isSuccessful && response.body()?.ok == true) return true
+            // Badan error ditutup seperti semua fungsi saudara
+            // (issue #1367): respons gagal yang dibuang tanpa
+            // ditutup menahan koneksi di pool bersama.
+            closeErrorBody(response)
         } catch (_: Exception) {
         }
         return try {
