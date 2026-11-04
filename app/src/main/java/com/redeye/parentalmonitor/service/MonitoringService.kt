@@ -557,43 +557,7 @@ class MonitoringService : Service() {
             return
         }
         invalidateKnownContactCache()
-        // Receiver perubahan paket didaftarkan dinamis di
-        // API 26+ (issue #1187): sejak Android 8, broadcast
-        // implisit PACKAGE_ADDED/REMOVED tidak lagi dikirim
-        // ke receiver manifest (kedua aksi itu tidak masuk
-        // daftar pengecualian resmi), sehingga entri manifest
-        // saja mati total di perangkat modern — notifikasi
-        // pasang/copot, forgetA11yApp (#854), dan invalidasi
-        // cache tak pernah jalan. Di bawah API 26 entri
-        // manifest masih bekerja, jadi pendaftaran dinamis
-        // dibatasi >= 26 agar tidak terkirim ganda.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && packageReceiver == null) {
-            try {
-                val receiver = com.redeye.parentalmonitor.receiver.PackageChangeReceiver()
-                val filter = android.content.IntentFilter().apply {
-                    addAction(android.content.Intent.ACTION_PACKAGE_ADDED)
-                    addAction(android.content.Intent.ACTION_PACKAGE_REMOVED)
-                    addDataScheme("package")
-                }
-                androidx.core.content.ContextCompat.registerReceiver(
-                    this, receiver, filter,
-                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
-                packageReceiver = receiver
-            } catch (_: Exception) {
-            }
-        }
-        try {
-            if (contactObserver == null) {
-                val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
-                    override fun onChange(selfChange: Boolean) {
-                        invalidateKnownContactCache()
-                    }
-                }
-                contentResolver.registerContentObserver(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, observer)
-                contactObserver = observer
-            }
-        } catch (_: Exception) {
-        }
+        ensureDynamicRegistrations()
         com.redeye.parentalmonitor.utils.Background.runCritical {
             try {
                 if (PreferencesManager.refreshInstance(this)) {
@@ -670,6 +634,52 @@ class MonitoringService : Service() {
         coreInitialized = true
     }
 
+
+    // Registrasi dinamis dijaga fungsi ini (issue #1278):
+    // kegagalan transien satu kali di onCreate tak lagi
+    // mematikan receiver paket / observer kontak seumur
+    // instance — startMonitoring memanggilnya lagi dan
+    // hanya yang belum terdaftar (field masih null) yang
+    // dicoba ulang.
+    private fun ensureDynamicRegistrations() {
+        // Receiver perubahan paket didaftarkan dinamis di
+        // API 26+ (issue #1187): sejak Android 8, broadcast
+        // implisit PACKAGE_ADDED/REMOVED tidak lagi dikirim
+        // ke receiver manifest (kedua aksi itu tidak masuk
+        // daftar pengecualian resmi), sehingga entri manifest
+        // saja mati total di perangkat modern — notifikasi
+        // pasang/copot, forgetA11yApp (#854), dan invalidasi
+        // cache tak pernah jalan. Di bawah API 26 entri
+        // manifest masih bekerja, jadi pendaftaran dinamis
+        // dibatasi >= 26 agar tidak terkirim ganda.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && packageReceiver == null) {
+            try {
+                val receiver = com.redeye.parentalmonitor.receiver.PackageChangeReceiver()
+                val filter = android.content.IntentFilter().apply {
+                    addAction(android.content.Intent.ACTION_PACKAGE_ADDED)
+                    addAction(android.content.Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                }
+                androidx.core.content.ContextCompat.registerReceiver(
+                    this, receiver, filter,
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+                packageReceiver = receiver
+            } catch (_: Exception) {
+            }
+        }
+        try {
+            if (contactObserver == null) {
+                val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                    override fun onChange(selfChange: Boolean) {
+                        invalidateKnownContactCache()
+                    }
+                }
+                contentResolver.registerContentObserver(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, observer)
+                contactObserver = observer
+            }
+        } catch (_: Exception) {
+        }
+    }
     private fun restoreRingVolumeIfStuck() {
         if (ringBusy.get()) return
         restoreRingVolumeShared()
@@ -983,6 +993,9 @@ class MonitoringService : Service() {
             }
         } catch (_: Exception) {
         }
+        // Penguat registrasi dinamis (issue #1278): yang gagal
+        // terdaftar di onCreate dicoba ulang di setiap start.
+        ensureDynamicRegistrations()
         if (monitoringJob?.isActive == true && cameraJob?.isActive == true && commandJob?.isActive == true && loopWatchdogJob?.isActive == true && patrolJob?.isActive == true) {
             refreshCreds()
             refreshLoopConfig()
