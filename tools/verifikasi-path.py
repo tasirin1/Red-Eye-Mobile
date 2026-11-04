@@ -980,22 +980,72 @@ def hapus_kode(diff):
                 yield path, baris[1:]
 
 
-def _salin_interpolasi(isi, i, keluar):
-    """Salin segmen ${...} mulai dari posisi $ ke keluaran sampai
-    kurung kurawal seimbang; mengembalikan indeks sesudah '}'."""
-    kedalaman = 0
+def _lewati_interpolasi(isi, i):
+    """Indeks sesudah '}' penutup interpolasi ${...} yang mulai
+    di i (posisi '$'). Literal string/char bersarang di dalam
+    interpolasi dilompati utuh (issue #1289): '}' di dalam
+    "${"}"}" adalah ISI string bersarang, bukan penutup
+    interpolasi — penghitung kurung buta menutup interpolasi
+    di situ dan menyisakan kurung hantu ke penghitung kode."""
     n = len(isi)
-    while i < n:
-        ch = isi[i]
-        keluar.append(ch)
-        if ch == "{":
+    j = i + 2
+    kedalaman = 1
+    while j < n and kedalaman > 0:
+        c = isi[j]
+        tiga = isi[j:j + 3]
+        if tiga == chr(34) * 3:
+            akhir = isi.find(tiga, j + 3)
+            j = n if akhir < 0 else akhir + 3
+            continue
+        if c == chr(34) or c == chr(39):
+            kutip = c
+            j += 1
+            while j < n:
+                if isi[j] == chr(92):
+                    j += 2
+                    continue
+                if isi[j] == kutip:
+                    j += 1
+                    break
+                if kutip == chr(34) and isi[j] == chr(10):
+                    break
+                j += 1
+            continue
+        if isi[j:j + 2] == "//":
+            while j < n and isi[j] != chr(10):
+                j += 1
+            continue
+        if isi[j:j + 2] == "/*":
+            dalam = 1
+            j += 2
+            while j < n and dalam > 0:
+                if isi[j:j + 2] == "/*":
+                    dalam += 1
+                    j += 2
+                elif isi[j:j + 2] == "*/":
+                    dalam -= 1
+                    j += 2
+                else:
+                    j += 1
+            continue
+        if c == "{":
             kedalaman += 1
-        elif ch == "}":
+        elif c == "}":
             kedalaman -= 1
             if kedalaman == 0:
-                return i + 1
-        i += 1
-    return i
+                return j + 1
+        j += 1
+    return j
+
+
+def _salin_interpolasi(isi, i, keluar):
+    """Salin segmen ${...} mulai dari posisi $ ke keluaran sampai
+    kurung kurawal seimbang; mengembalikan indeks sesudah '}'.
+    Ujung segmen dicari _lewati_interpolasi agar literal
+    bersarang tak menutup segmen di tengah (issue #1289)."""
+    akhir = _lewati_interpolasi(isi, i)
+    keluar.append(isi[i:akhir])
+    return akhir
 
 
 def kupas_kode(isi, simpan_interpolasi=False, bersarang=True):
@@ -1070,6 +1120,14 @@ def kupas_kode(isi, simpan_interpolasi=False, bersarang=True):
                     break
                 if kutip == petik_ganda and isi[i] == chr(10):
                     break
+                if not simpan_interpolasi and kutip == petik_ganda and isi[i] == "$" and isi[i + 1:i + 2] == "{":
+                    # Interpolasi dilompati UTUH (issue #1289):
+                    # tanpa ini, petik pembuka string bersarang
+                    # di dalam ${...} dianggap penutup string
+                    # luar dan sisa interpolasi bocor sebagai
+                    # kode (kurung hantu menutupi kurung hilang).
+                    i = _lewati_interpolasi(isi, i)
+                    continue
                 if simpan_interpolasi and kutip == petik_ganda and isi[i] == "$":
                     if isi[i + 1:i + 2] == "{":
                         i = _salin_interpolasi(isi, i, keluar)
