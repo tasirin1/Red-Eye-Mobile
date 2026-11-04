@@ -1,6 +1,10 @@
 ## [Unreleased]
 
+## [1.6.618] - 2026-11-04
+
 ### Fixed
+
+- Koreksi kompilasi pada penanda FLAG_SECURE dialog PIN: pemanggilan pengaman jendela kini terpisah dari `show()` (yang pada instance dialog ber-return Unit) — perilaku rilis tidak berubah.
 
 - Penjaga keystore rilis kini terpasang juga pada tugas `bundle*Release`, bukan hanya `assemble*Release`: AAB yang dibangun manual pada ref tag tanpa keystore tidak lagi bisa terbit bertanda tangan debug tanpa peringatan; jalur build workflow tidak berubah.
 
