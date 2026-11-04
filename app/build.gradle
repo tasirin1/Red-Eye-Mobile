@@ -75,8 +75,16 @@ android {
     tasks.register("assertReleaseKeystore") {
         doLast {
             if (file("release.p12").exists()) return
-            def wantRelease = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
-            if (!wantRelease) return
+            // Penilaian "mau release" dari nama tugas yang
+            // diminta dihapus (issue #1310): `gradle assemble`
+            // generik ikut menjalankan assembleRelease tetapi
+            // taskNames-nya hanya ["assemble"], jadi penjaga
+            // melucuti dirinya sendiri dan ref tag/main lolos
+            // tanpa keystore -> APK release bertanda tangan
+            // debug. Tugas ini HANYA terpasang sebagai
+            // dependensi assemble*Release, jadi terpicunya
+            // tugas ini sendiri sudah berarti release akan
+            // dirakit; keputusan cukup dari ref + keystore.
             if ((System.getenv("ANDROID_KEYSTORE_BASE64") ?: "") != "") {
                 throw new GradleException("ANDROID_KEYSTORE_BASE64 set but app/release.p12 missing")
             }
