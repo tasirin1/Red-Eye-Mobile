@@ -2265,7 +2265,13 @@ def cek_import_mati(gagal):
 def disebut_di_uji(nama):
     pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "test")):
-        if pola.search(baca_teks(path)):
+        # Komentar dikupas dulu (issue #1287, keluarga
+        # #1218/#1254): sebutan di komentar berkas uji —
+        # "// ubahSaya109() akan diuji nanti" — bukan cakupan
+        # uji, tetapi pola mentah memvonisnya sudah teruji dan
+        # peringatan cakupan mati.
+        bersih = _kupas_komentar_kode(baca_teks(path), bersarang=not path.endswith(".java"))
+        if pola.search(bersih):
             return True
     return False
 
