@@ -1122,10 +1122,11 @@ object A11yMonitor {
     // #830), di luar potongan snapshot.
     private fun collectSnapshot(service: AccessibilityService, expectedPackage: String, keywords: List<String> = emptyList()): Pair<ScreenSnapshot, String?> {
         var dariJendelaLain = false
-        var root: AccessibilityNodeInfo? = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
-        val rootPackage = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+        var terpilih: AccessibilityNodeInfo? = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
+        val rootPackage = try { terpilih?.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
         if (rootPackage != expectedPackage) {
-            recycleNode(root)
+            terpilih?.let { recycleNode(it) }
+            terpilih = null
             // Jendela sensitif yang TERLIHAT tetapi tak aktif
             // (issue #1397): di split-screen halaman sensitif
             // bisa tampil penuh di panel tak-aktif sementara
@@ -1133,22 +1134,25 @@ object A11yMonitor {
             // hanya dari rootInActiveWindow membuatnya tak
             // pernah dinilai berbasis teks. Cari akar paket
             // yang sama di daftar jendela layanan.
-            root = null
             val daftar = try { service.windows } catch (_: Exception) { null }
             if (daftar != null) {
                 for (jendela in daftar) {
                     val calon = try { jendela.root } catch (_: Exception) { null } ?: continue
                     val pkgCalon = try { calon.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
                     if (pkgCalon == expectedPackage) {
-                        root = calon
+                        terpilih = calon
                         dariJendelaLain = true
                         break
                     }
                     recycleNode(calon)
                 }
             }
-            if (root == null) return ScreenSnapshot(emptyList(), false) to null
+            if (terpilih == null) return ScreenSnapshot(emptyList(), false) to null
         }
+        // Ikat ke val non-null untuk seluruh penelusuran di
+        // bawahnya (smart-cast atas var yang ditugaskan ulang
+        // dalam cabang tak berlaku).
+        val root: AccessibilityNodeInfo = terpilih!!
         // Sidik jendela di awal penelusuran (issue #929): node
         // adalah objek hidup — navigasi cepat di tengah
         // penelusuran mencampur teks dua layar (satu paket,
