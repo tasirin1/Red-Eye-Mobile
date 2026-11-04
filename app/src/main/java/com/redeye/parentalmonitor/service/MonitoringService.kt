@@ -4029,7 +4029,7 @@ class MonitoringService : Service() {
                 sendToTelegram("🔋 <b>Baterai</b>\nLevel: $levelText")
             }
             "/stop" -> {
-                preferencesManager.monitoringPaused = true
+                preferencesManager.setMonitoringPausedSync(true)
                 val ringActive = try { ringJob?.isActive == true } catch (_: Exception) { false }
                 if (ringActive) {
                     try { ringJob?.cancel() } catch (_: Exception) { }
@@ -6235,7 +6235,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun handleResumeCommand() {
-        preferencesManager.monitoringPaused = false
+        preferencesManager.setMonitoringPausedSync(false)
         // Sodok monitor aksesibilitas (issue #1372): aplikasi
         // yang masih terbuka di jendela yang sama sejak jeda
         // tak menghasilkan transisi baru, jadi sesinya tak

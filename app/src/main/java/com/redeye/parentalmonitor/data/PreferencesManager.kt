@@ -874,6 +874,20 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_MONITORING_PAUSED, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_MONITORING_PAUSED, value).apply()
 
+    // Varian commit untuk gerbang jeda utama (issue #1395):
+    // monitoringPaused dibaca semua jalur sebagai penentu
+    // pemantauan jalan/berhenti; penulisan /stop yang hanya
+    // apply() bisa hilang oleh mati proses di jendela flush
+    // sehingga pemantauan bangkit sendiri sesudah restart
+    // tanpa sepengetahuan pemilik.
+    fun setMonitoringPausedSync(paused: Boolean): Boolean {
+        return try {
+            commitGuarded(sharedPreferences.edit().putBoolean(KEY_MONITORING_PAUSED, paused))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     var photoPausedUntil: Long
         get() = prefLong(KEY_PHOTO_PAUSED_UNTIL, 0L)
         set(value) {
