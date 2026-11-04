@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pola record gerbang kini hanya berlaku untuk berkas Java (di Kotlin kata itu hanya identifier biasa, termasuk fungsi infix) dan mengenali record generik: rename berisiko tidak lagi lolos lewat panggilan infix berargumen, dan deklarasi record generik tidak lagi luput (#1214, #1215).
 - Jendela perlombaan sisa pada pertukaran objek penyimpanan preferensi kini terdokumentasi tegas di titik pertukarannya beserta alasan penerimaannya (editor satu ekspresi, pertukaran langka oleh pemilik, dampak terburuk tulisan penanda yang sembuh sendiri) (#1213).
 - Antrean pesan kini punya batas total karakter gabungan, bukan hanya batas jumlah dan batas per pesan: berkas antrean terenkripsi (yang tersimpan ganda dan ditulis ulang tiap perubahan) tidak lagi bisa membengkak sampai jutaan karakter (#1212).
 - Pola tulis atomik yang sama diterapkan ke gerbang PIN akses dan gerbang kode restore: hitungan kegagalan dan pasangan masa kunci kini ditulis dalam satu commit terkunci, bukan beberapa transaksi lepas (#1211).

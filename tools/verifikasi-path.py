@@ -678,11 +678,14 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
     # dihitung: dari berkas lain ia tak terlihat tanpa
     # kualifikasi (issue #1172).
     pola = re.compile(r"(?:class|object|interface|enum)\s+%s\b" % re.escape(kelas))
-    # Record Java selalu diikuti daftar komponen "(...)"
-    # sesudah nama (issue #1197): tanpa tuntutan itu, pola
-    # record cocok dengan panggilan infix Kotlin yang sah
-    # ("x" record Kelas::class) dan rename berisiko lolos.
-    pola_record = re.compile(r"record\s+%s\s*\(" % re.escape(kelas))
+    # Record adalah konstruksi JAVA — berkas Kotlin tak
+    # pernah mendeklarasikannya ("record" di .kt hanyalah
+    # identifier, mis. fungsi infix). Karena itu pola ini
+    # hanya dikonsultasikan untuk berkas .java (issue
+    # #1214), dan record generik "record Nama<T>(...)"
+    # ikut dikenali (issue #1215). Di berkas Java pola
+    # infix tak mungkin muncul.
+    pola_record = re.compile(r"record\s+%s\s*(?:<[^>]*>)?\s*\(" % re.escape(kelas))
     i = 0
     n = len(teks)
     dalam = 0
@@ -745,7 +748,7 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
             m = pola.match(teks, i)
             if m:
                 return True
-            if c == "r" and pola_record.match(teks, i):
+            if c == "r" and not bersarang and pola_record.match(teks, i):
                 return True
         i += 1
     return False
