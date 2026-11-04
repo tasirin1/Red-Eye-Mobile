@@ -244,6 +244,19 @@ class PreferencesManager(context: Context) {
     // upgradeLock yang dipakai upgradeToPersistent, jadi
     // reset-dari-Setup dan refresh-upgrade bisa saling
     // menimpa hasil tukar beserta tulisan di antaranya.
+    // Jendela sisa yang DITERIMA (issue #1213, DUGAAN):
+    // penulis per-kunci tidak ikut memegang upgradeLock —
+    // editor satu-ekspresi yang terambil dari objek lama
+    // lalu ter-apply tepat sesudah field berpindah menulis
+    // ke store yang ditinggalkan. Diterima karena: semua
+    // setter memakai editor satu ekspresi (jendelanya
+    // selebar beberapa instruksi), pertukaran hanya terjadi
+    // pada momen upgrade/reset yang langka dan digerakkan
+    // pemilik, lintasan konvergensi menyapu keadaan yang
+    // terlihat, dan dampak terburuknya satu tulisan
+    // kursor/sinkron yang sembuh sendiri — bukan kredensial
+    // (penulis kredensial berurutan lewat saveCredentials
+    // atomik #446).
     private fun reopenStorage(): Boolean {
         synchronized(upgradeLock) {
             return reopenStorageLocked()

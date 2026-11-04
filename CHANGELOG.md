@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jendela perlombaan sisa pada pertukaran objek penyimpanan preferensi kini terdokumentasi tegas di titik pertukarannya beserta alasan penerimaannya (editor satu ekspresi, pertukaran langka oleh pemilik, dampak terburuk tulisan penanda yang sembuh sendiri) (#1213).
 - Antrean pesan kini punya batas total karakter gabungan, bukan hanya batas jumlah dan batas per pesan: berkas antrean terenkripsi (yang tersimpan ganda dan ditulis ulang tiap perubahan) tidak lagi bisa membengkak sampai jutaan karakter (#1212).
 - Pola tulis atomik yang sama diterapkan ke gerbang PIN akses dan gerbang kode restore: hitungan kegagalan dan pasangan masa kunci kini ditulis dalam satu commit terkunci, bukan beberapa transaksi lepas (#1211).
 - Pencatatan kegagalan PIN restore kini atomik dan terkunci: baca-hitung-tulis untuk restore lokal dan jarak jauh berjalan di bawah satu kunci dengan satu commit gabungan, sehingga dua tebakan berbeda yang bersamaan tidak lagi terhitung satu dan keadaan kunci tidak bisa tertinggal setengah (#1210).
