@@ -7017,10 +7017,16 @@ class MonitoringService : Service() {
             throw e
         }
         if (permanentLoss) {
-            if (queueOnFail && !queuePriority && failed.isNotEmpty()) {
-                val queuedTail = messageQueue.addMessages(failed, queuePriority)
+            var tailQueued = false
+            if (queueOnFail && failed.isNotEmpty()) {
+                // Ekor transien diantrekan untuk SEMUA pemanggil
+                // (issue #1239): dulu pemanggil prioritas dikecualikan
+                // dari antrean ekor di cabang campuran ini, sehingga
+                // ekornya hilang senyap sementara status akhir SENT
+                // membuat kursor pemanggil tetap maju.
+                tailQueued = messageQueue.addMessages(failed, queuePriority)
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
-                if (queuedTail) MessageScheduler.scheduleMessageSend(this)
+                if (tailQueued) MessageScheduler.scheduleMessageSend(this)
             }
             // Potongan yang ditolak permanen tak akan pernah
             // terkirim (issue #952): catat sebagai pesan terbuang
@@ -7030,7 +7036,11 @@ class MonitoringService : Service() {
             // memajukan kursor dan mengirim ulang seluruh pesan
             // pada setiap putaran: duplikat tanpa akhir.
             repeat(permanentLost) { noteDroppedMessage() }
-            return if (sentAny) SendStatus.SENT else SendStatus.DROPPED
+            return when {
+                tailQueued -> SendStatus.QUEUED
+                sentAny -> SendStatus.SENT
+                else -> SendStatus.DROPPED
+            }
         }
         if (failed.isNotEmpty()) {
             if (queueOnFail) {
