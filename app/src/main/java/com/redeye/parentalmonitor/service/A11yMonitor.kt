@@ -511,7 +511,15 @@ object A11yMonitor {
 
     fun screenOff(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        // Finalisasi sesi saat layar mati tak boleh ikut nasib
+        // DiscardPolicy (issue #1324, pola #949 di flush): bila
+        // terbuang, sesi tak tertutup dan rentang layar-mati
+        // (termasuk jam malam) ikut terakru ke statistik
+        // pemakaian berikutnya. Bila tugas tak mulai dan tak
+        // ada di antrean, ia terbuang — jalankan langsung.
+        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            started.set(true)
             synchronized(gate) {
                 ensureLoadedLocked(app)
                 if (currentPackage.isNotEmpty()) {
@@ -522,6 +530,10 @@ object A11yMonitor {
                 lastEventKey = ""
                 persistLocked(app, true)
             }
+        }
+        executor.execute(task)
+        if (!started.get() && !executor.queue.contains(task)) {
+            task.run()
         }
     }
 

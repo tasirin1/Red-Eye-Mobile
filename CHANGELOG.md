@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Finalisasi sesi pemakaian saat layar mati kini juga kebal buangan antrean executor penuh (perlindungan yang sama seperti flush dan pemulihan sesi): sesi selalu tertutup pada waktunya, sehingga rentang layar-mati tidak lagi ikut terhitung membengkakkan statistik pemakaian.
+
 - Pemulihan sesi pemakaian yang sedang terbuka saat layanan aksesibilitas menempel kembali kini kebal buangan antrean executor penuh: tugas yang terbuang diam-diam oleh kebijakan buang dijalankan langsung di tempat, meniru perlindungan flush akhir yang sudah ada — rentang pemakaian terakhir tidak lagi hilang saat layanan bind ulang sesudah proses mati pada momen antrean jenuh.
 
 - Mematikan penerusan notifikasi dari Setup kini melewati gerbang PIN akses seperti jalur berhenti monitoring (menyalakan tetap satu ketuk): kanal laporan ke owner tidak lagi bisa dipadamkan senyap satu ketuk dari perangkat yang berpindah tangan. Arah sakelar kini ditulis eksplisit agar jeda dialog PIN tidak membalik tujuannya.
