@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Token bot hasil impor cadangan tidak lagi ditulis teks polos ke `onSaveInstanceState` — ia kini hanya hidup di holder memori seperti PIN impor; sesudah aktivitas dibuat ulang sistem, impor cukup diulang (issue #1305).
 - Dialog kesehatan Setup kini ditandai FLAG_SECURE seperti dialog sensitif lain — teks statusnya memuat kode penautan selama jendela belum-tertaut (issue #1304).
 - Dialog kode restore ketat di Setup (tampil + salin) kini digerbang verifikasi PIN akses bila PIN terpasang — konsisten dengan sakelar mode ketat dan tindakan sensitif lain (issue #1303).
 - Gerbang bekas-hapusan tidak lagi positif palsu pada isi string mentah multi-baris: pengupasan komentar/string kini berjalan atas gabungan baris tambah per berkas sehingga buka/tutup string mentah dan komentar blok antarbaris terlihat benar (issue #1302).
