@@ -144,9 +144,21 @@ object A11yMonitor {
         val app = context.applicationContext
         prefs = try { PreferencesManager.getInstance(app) } catch (_: Exception) { null }
         if (context is AccessibilityService) a11yService = context
-        executor.execute {
+        // Pemulihan sesi-terbuka tak boleh ikut nasib
+        // DiscardPolicy (issue #1323, pola #949 di flush):
+        // antrean penuh tepat saat layanan bind ulang sesudah
+        // proses mati membuang pemulihan diam-diam dan rentang
+        // pemakaian terakhir hilang. Bila tugas tak mulai dan
+        // tak ada di antrean, ia terbuang — jalankan langsung.
+        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            started.set(true)
             ensureLoaded(app)
             synchronized(gate) { restoreOpenSessionLocked(app) }
+        }
+        executor.execute(task)
+        if (!started.get() && !executor.queue.contains(task)) {
+            task.run()
         }
     }
 
