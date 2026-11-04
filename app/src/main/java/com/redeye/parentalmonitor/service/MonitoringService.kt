@@ -3566,7 +3566,7 @@ class MonitoringService : Service() {
             "alat" -> MenuScreen(
                 "⚙️ <b>Alat &amp; kontrol</b>\nJeda, kunci, restart, antrean.",
                 papan(
-                    listOf(button("⏸️ Jeda 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
+                    listOf(button("⏸️ Jeda foto 60 mnt", "pause60"), button("▶️ Lanjut", "resume")),
                     listOf(button("\uD83D\uDD12 Kunci layar", "x:lock"), button("\uD83D\uDD14 Bunyi HP", "num:alat:ring")),
                     listOf(button("\uD83D\uDE80 Kirim antrean", "x:flush"), button("\uD83D\uDDD1\uFE0F Buang antrean", "x:clearqueue")),
                     listOf(button("\uD83D\uDD04 Restart", "x:restart"), button("\u23F9\uFE0F Hentikan", "stop")),
