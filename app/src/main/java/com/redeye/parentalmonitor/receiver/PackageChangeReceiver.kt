@@ -80,6 +80,15 @@ class PackageChangeReceiver : BroadcastReceiver() {
                 "🗑️ <b>Aplikasi dihapus</b>\n<code>" + pkg + "</code>"
             }
         }
+        // Dedupe antar-instance (issue #1413): hanya klaim
+        // pertama yang mengantre; salinan siaran yang sama
+        // dari instance manifest/dinamis lain dilewati.
+        val diklaim = try {
+            prefs.claimPackageEvent(action, pkg, System.currentTimeMillis())
+        } catch (_: Exception) {
+            true
+        }
+        if (!diklaim) return
         try {
             MessageQueue.getInstance(context).addMessage(text, true)
             MessageScheduler.scheduleMessageSend(context)

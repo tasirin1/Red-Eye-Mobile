@@ -598,6 +598,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_OPEN_SESSION_START_ELAPSED = "a11y_open_session_start_elapsed"
         private const val KEY_A11Y_KNOWN_APPS = "a11y_known_apps"
         private const val KEY_A11Y_KNOWN_SEEDED = "a11y_known_seeded"
+        private const val KEY_LAST_PACKAGE_EVENT = "last_package_event"
         private const val KEY_A11Y_APP_ALERT = "a11y_app_alert"
         private const val KEY_A11Y_TAMPER = "a11y_tamper"
         private const val KEY_A11Y_SETTINGS_GRACE = "a11y_settings_grace"
@@ -885,6 +886,32 @@ class PreferencesManager(context: Context) {
             commitGuarded(sharedPreferences.edit().putBoolean(KEY_MONITORING_PAUSED, paused))
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private val packageEventLock = Any()
+
+    // Klaim peristiwa paket untuk dedupe antar-instance
+    // receiver (issue #1413): PackageChangeReceiver hidup
+    // sebagai receiver manifest DAN instance dinamis;
+    // satu-satunya pencegah alert ganda selama ini adalah
+    // larangan siaran implisit API 26+ yang bisa diabaikan
+    // OEM. Klaim pertama dalam jendela 15 detik menang;
+    // salinan siaran yang sama (instance mana pun) kalah.
+    fun claimPackageEvent(action: String, pkg: String, now: Long): Boolean {
+        synchronized(packageEventLock) {
+            val kunci = action + "|" + pkg
+            val last = try { sharedPreferences.getString(KEY_LAST_PACKAGE_EVENT, "") ?: "" } catch (_: Exception) { "" }
+            val potong = last.lastIndexOf('|')
+            if (potong > 0 && last.substring(0, potong) == kunci) {
+                val ts = last.substring(potong + 1).toLongOrNull() ?: 0L
+                if (now - ts in 0..15_000L) return false
+            }
+            return try {
+                commitGuarded(sharedPreferences.edit().putString(KEY_LAST_PACKAGE_EVENT, kunci + "|" + now))
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 
