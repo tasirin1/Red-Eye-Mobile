@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemasang kait kini menghapus sisa cadangan parsial dari pemasangan yang dibatalkan: sebelumnya setiap percobaan yang gagal di tengah penyalinan meninggalkan satu berkas .bak setengah tertulis yang menumpuk permanen. Terbukti di sandbox — tiga pemasangan batal, nol sisa.
+
 - Saklar keberadaan direktori uji di alat verifikasi kini menilai pohon yang diperiksa pada mode rentang, bukan berkas kerja: dari checkout yang kebetulan tanpa direktori uji, seluruh keluarga cek uji sebelumnya tertelan senyap walau pohon rentangnya punya uji. Terbukti lewat uji saklar dua arah.
 
 - Nama `<declare-styleable>` bertitik kini dirapikan ke bentuk garis bawah di alat verifikasi seperti nama style: sebelumnya definisinya disimpan mentah sehingga acuan R.styleable yang sah divonis yatim. Terbukti lewat uji penghimpun.

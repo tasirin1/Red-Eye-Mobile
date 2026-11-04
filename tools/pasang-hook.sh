@@ -85,6 +85,7 @@ siapkan_rantai() {
             # pemasangan lapor sukses. Kini bersuara dan
             # membatalkan pemasangan (penanda di stdout,
             # diperiksa pemanggil) agar kait lama utuh.
+            rm -f "$BAK" 2>/dev/null
             echo "PERINGATAN: GAGAL menyalin kait lama ke cadangan ($BAK) — pemasangan DIBATALKAN agar kait lama tidak tertimpa tanpa cadangan utuh." >&2
             printf '%s' "__CADANGAN_GAGAL__"
         fi
