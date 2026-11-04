@@ -1062,7 +1062,29 @@ def _path_sisi_b(baris):
         if ' "b/' in sisa:
             token_b = '"b/' + sisa.split(' "b/', 1)[1]
         elif " b/" in sisa:
-            token_b = "b/" + sisa.rsplit(" b/", 1)[1]
+            # Belahan yang kedua sisinya SAMA didahulukan
+            # (issue #1344): direktori yang sendirinya memuat
+            # " b/" (mis. "uji b/") membuat belah pada
+            # kemunculan TERAKHIR memotong path jadi nama
+            # berkas polos, dan berkasnya terlewat senyap oleh
+            # semua cek berkepala diff (termasuk penyemaian
+            # #1326). Untuk diff non-rename sisi-a == sisi-b,
+            # jadi belahan setara pertama itulah pemisahnya;
+            # rename (kedua sisi memang beda) jatuh ke
+            # heuristik kemunculan terakhir seperti sebelumnya.
+            token_b = None
+            mulai = 0
+            while True:
+                idx = sisa.find(" b/", mulai)
+                if idx < 0:
+                    break
+                b_tok = sisa[idx + 1:]
+                if b_tok.startswith("b/") and sisa[:idx].startswith("a/") and b_tok[2:] == sisa[:idx][2:]:
+                    token_b = b_tok
+                    break
+                mulai = idx + 1
+            if token_b is None:
+                token_b = "b/" + sisa.rsplit(" b/", 1)[1]
         else:
             token_b = sisa.split(" ", 1)[1] if " " in sisa else ""
     token_b = _buka_kutip_git(token_b)

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengurai path pada kepala diff di alat verifikasi kini utuh untuk direktori yang namanya sendiri mengandung " b/" (mis. folder "uji b/"): sebelumnya path terpotong menjadi nama berkas polos sehingga berkas itu terlewat senyap oleh semua pemeriksaan berkepala diff. Belahan yang kedua sisinya sama kini didahulukan; perilaku rename dan path ber-spasi tidak berubah. Terbukti lewat uji satuan pengurai dan baterai sandbox ujung-ke-ujung.
+
 - Alat verifikasi jalur kini menyemai keadaan pengupasan kode dari pohon commit ujung rentang saat memeriksa rentang diff, bukan dari berkas kerja: sebelumnya vonis "memakai nama yang sudah dihapus" bisa berbalik dua arah (tuduhan palsu maupun tuduhan hilang) setiap kali berkas kerja berbeda dari ujung rentang yang diperiksa. Terbukti lewat baterai sandbox dua arah terhadap gerbang lama.
 
 - Kelanjutan sesi pemakaian saat layar menyala kini dilindungi pola anti-buang yang sama seperti transisi sesi lain: sebelumnya tugas ini diserahkan tanpa perlindungan, sehingga bila antrean pemrosesan sedang jenuh tepat pada momen itu, kelanjutan sesi terbuang diam-diam dan rentang pemakaian aplikasi yang sedang dibuka hilang dari statistik sampai pengguna berpindah jendela.
