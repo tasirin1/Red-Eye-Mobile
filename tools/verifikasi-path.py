@@ -2196,20 +2196,40 @@ def _segmen_hunk(diff):
     return segmen
 
 
+# Ref pohon SISI-B dari diff yang sedang diperiksa (issue
+# #1343): None berarti diff menggambarkan pohon kerja (mode
+# jalur), selain itu benih keadaan pengupasan WAJIB dibaca
+# dari blob ref itu. Diff rentang menggambarkan pohon ujung
+# rentang — menyemai dari berkas kerja membuat vonis berbalik
+# dua arah bila checkout != ujung rentang (CI aman hanya
+# karena checkout == github.sha).
+REF_BENIH = None
+_cache_benih = {}
+
+
 def _keadaan_sebelum_baris(path, jumlah_baris):
     """Keadaan pengupasan (dalam string mentah/komentar blok)
-    tepat sebelum baris ke-(jumlah_baris+1) berkas kerja saat
-    ini, dihitung dengan menjalankan mesin kupas atas baris-
-    baris sebelumnya. Berkas tak terbaca -> keadaan nol
+    tepat sebelum baris ke-(jumlah_baris+1) berkas SUMBER diff
+    (pohon kerja, atau blob REF_BENIH pada mode rentang),
+    dihitung dengan menjalankan mesin kupas atas baris-baris
+    sebelumnya. Berkas tak terbaca -> keadaan nol
     (perilaku lama)."""
     if jumlah_baris <= 0:
         return (False, 0)
-    try:
-        with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
-            baris = f.read().splitlines()[:jumlah_baris]
-    except Exception:
+    if path not in _cache_benih:
+        if REF_BENIH:
+            isi = jalan("git", "show", "%s:%s" % (REF_BENIH, path))
+            _cache_benih[path] = isi.splitlines() if isi is not None else None
+        else:
+            try:
+                with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
+                    _cache_benih[path] = f.read().splitlines()
+            except Exception:
+                _cache_benih[path] = None
+    semua = _cache_benih[path]
+    if semua is None:
         return (False, 0)
-    _hasil, keadaan = _kupasan_baris_beruntun(baris)
+    _hasil, keadaan = _kupasan_baris_beruntun(semua[:jumlah_baris])
     return keadaan
 
 
@@ -2660,6 +2680,7 @@ def utama():
     parser.add_argument("--rentang", default="", help="rentang diff A...B (dipakai CI)")
     args = parser.parse_args()
 
+    global REF_BENIH
     gagal = []
     peringatan = []
     diff = ""
@@ -2690,12 +2711,14 @@ def utama():
                 diff = ""
             else:
                 print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
+                REF_BENIH = ujung
                 berubah = [p for p in jalan_repo("app") if not p.endswith(".md")]
                 diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
         else:
             berubah = daftar
             rentang_lokal = args.rentang
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
+            REF_BENIH = b or "HEAD"
             pemisah = "..." if "..." in args.rentang else ".."
             diff = jalan("git", "diff", a + pemisah + b) or ""
             cek_secret_riwayat(gagal, args.rentang)
@@ -2705,6 +2728,7 @@ def utama():
         if hulu:
             rentang_lokal = hulu.strip() + "...HEAD"
             rentang_isi = hulu.strip() + "..HEAD"
+            REF_BENIH = "HEAD"
             diff = jalan("git", "diff", rentang_lokal) or ""
             daftar = jalan("git", "diff", "--name-only", "-z", rentang_lokal) or ""
             berubah = pecah_nama(daftar)
