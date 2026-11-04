@@ -606,6 +606,31 @@ def cek_manifest(gagal):
                 or os.path.isfile(dasar + ".java")):
             gagal.append("Komponen manifest tanpa kelas: %s"
                          % nama)
+    # activity-alias divalidasi juga (issue #1311): elemen ini
+    # tak punya kelas sendiri — yang wajib ada adalah kelas
+    # targetActivity-nya. Tanpa cek ini, alias menunjuk target
+    # yang terhapus/keliru lolos gerbang (manifest hari ini
+    # belum memuat alias; ceknya menyusul sebelum dibutuhkan).
+    for el in pohon.getroot().iter("activity-alias"):
+        alias = el.get("{http://schemas.android.com/apk/res/android}name", "")
+        target = el.get("{http://schemas.android.com/apk/res/android}targetActivity", "")
+        if not target:
+            gagal.append("activity-alias tanpa targetActivity: %s" % (alias or "?"))
+            continue
+        rel_t = None
+        if target.startswith("."):
+            rel_t = target[1:].split(".")
+        elif ns and (target == ns or target.startswith(ns + ".")):
+            rel_t = target[len(ns) + 1:].split(".") if target != ns else []
+        else:
+            continue  # target kerangka / pustaka
+        if not rel_t:
+            continue
+        dasar_t = os.path.join(MAIN, "java", *ns.split("."), *rel_t)
+        if not (os.path.isfile(dasar_t + ".kt")
+                or os.path.isfile(dasar_t + ".java")):
+            gagal.append("activity-alias %s menunjuk targetActivity tanpa kelas: %s"
+                         % (alias or "?", target))
     # Broadcast yang TIDAK membawa URI/MIME wajib berada di filter tanpa
     # <data>; kalau dicampur, uji data gagal dan broadcast-nya tak pernah
     # sampai (nyata: MY_PACKAGE_REPLACED + <data scheme="package">).

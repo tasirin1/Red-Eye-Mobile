@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Validasi manifest gerbang kini ikut memeriksa `activity-alias`: targetActivity wajib ada dan kelas targetnya wajib ada di repo (issue #1311).
 - Penjaga keystore rilis tidak lagi menilai niat dari nama tugas yang diminta: `gradle assemble` generik di ref tag/main tanpa keystore kini ikut ter-gagal-kan, bukan lolos menghasilkan APK release bertanda tangan debug (issue #1310).
 - Pengurai kepala diff gerbang kini membuka kutipan gaya-C git, jadi berkas bernama non-ASCII tidak lagi terlewat oleh semua cek berbasis baris-diff (locale, bekas-hapusan, metode hilang, cakupan uji, pindai token) (issue #1309).
 - `disebut_kata` pada gerbang kini mengupas komentar seperti saudaranya `pemanggil` — menghapus berkas kelas tidak lagi ter-gagal-kan oleh sebutan namanya di komentar berkas lain (issue #1308).
