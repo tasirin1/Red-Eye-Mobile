@@ -80,7 +80,7 @@
 
         <activity
             android:name=".ui.SetupActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|fontScale"
             android:excludeFromRecents="true"
             android:exported="false"
             android:taskAffinity="com.redeye.parentalmonitor.setup" />
@@ -107,7 +107,7 @@
         <!-- Jendela transparan sekali jalan untuk meminta izin tangkap layar dari tombol Telegram -->
         <activity
             android:name=".ui.ShotConsentActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|fontScale"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleInstance"
