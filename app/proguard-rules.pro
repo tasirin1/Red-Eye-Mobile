@@ -31,7 +31,18 @@
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
 -keep class com.redeye.parentalmonitor.data.models.** { *; }
--keep class com.redeye.parentalmonitor.network.** { *; }
+# Dulu selimut: -keep class network.** { *; } — membatalkan
+# obfuskasi+susut untuk seluruh paket termasuk logika klien
+# TelegramClient/Media/Poll (issue #1292, keluarga #1195).
+# Kebutuhan nyatanya hanya DTO Gson + antarmuka Retrofit:
+# antarmuka sudah dijaga aturan interface @retrofit2.http di
+# atas, jadi di sini cukup anggota DTO-nya — field
+# @SerializedName dan konstruktornya — sedangkan kelas klien
+# dan logika bebas dikaburkan/disusutkan.
+-keepclassmembers class com.redeye.parentalmonitor.network.** {
+    @com.google.gson.annotations.SerializedName <fields>;
+    <init>(...);
+}
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
