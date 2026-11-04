@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pencatatan kegagalan PIN restore kini atomik dan terkunci: baca-hitung-tulis untuk restore lokal dan jarak jauh berjalan di bawah satu kunci dengan satu commit gabungan, sehingga dua tebakan berbeda yang bersamaan tidak lagi terhitung satu dan keadaan kunci tidak bisa tertinggal setengah (#1210).
 - Peringatan 'aksesibilitas mati' kini berlaku bagi pemakai fitur aksesibilitas apa pun (pantau aplikasi, kata pantau, pemakaian layar), bukan hanya pemakai proteksi tamper: sebelumnya pemantauan bisa berhenti senyap tanpa pemberitahuan bagi mereka (#1209).
 - Unggahan foto dan tangkap layar kini memegang kunci terjaga selama pengiriman berlangsung, sejajar dengan unggahan audio/video: tidur dalam perangkat tidak lagi bisa menggagalkan unggahan foto di tengah jalan (#1208).
 - Keterangan waktu pada foto, video, dan rekaman yang terkirim kini memakai waktu ambil dari cap di nama berkas, bukan waktu kirim: media yang tertahan di antrean saat luring tidak lagi tampak diambil pada jam terkirimnya (#1207).

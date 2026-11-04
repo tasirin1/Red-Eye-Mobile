@@ -135,19 +135,10 @@ class SetupActivity : AppCompatActivity() {
                             if (data == null) {
                                 // Cermin jalur Telegram (issue #873):
                                 // percobaan identik tak dihitung ulang.
-                                val prevCount = try { prefs.restorePinFailCount } catch (_: Exception) { 0 }
-                                val prevKey = try { prefs.restorePinLastAttemptKey } catch (_: Exception) { "" }
-                                val newKey = com.redeye.parentalmonitor.utils.RestorePinGate.attemptKey(text, pin)
-                                val (newCount, lockUntil, counted) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis(), prevKey, newKey)
+                                val (_, _, counted) = prefs.registerRestorePinFailure(text, pin)
                                 if (!counted) {
                                     Toast.makeText(this@SetupActivity, getString(R.string.restore_same_attempt), Toast.LENGTH_LONG).show()
                                     return@withContext
-                                }
-                                try { prefs.restorePinFailCount = newCount } catch (_: Exception) { }
-                                try { prefs.restorePinLastAttemptKey = newKey } catch (_: Exception) { }
-                                if (lockUntil > 0L) {
-                                    try { prefs.restorePinLockoutUntil = lockUntil } catch (_: Exception) { }
-                try { prefs.restorePinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
                                 }
                                 Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
                                 return@withContext

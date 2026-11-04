@@ -955,6 +955,38 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
+    // Catat kegagalan PIN restore secara ATOMIK (issue
+    // #1210): anggaran lockout DIBAGI restore lokal
+    // (SetupActivity) dan jarak jauh (MonitoringService),
+    // jadi baca-hitung-tulis wajib di bawah prefsRmwLock
+    // yang sama untuk kedua pemanggil — tanpa kunci, dua
+    // tebakan berbeda yang bersamaan terhitung satu.
+    // Seluruh keadaan ditulis dalam SATU edit commit agar
+    // mati proses di tengah tak menyisakan lockoutUntil
+    // tanpa jangkar monotonnya.
+    fun registerRestorePinFailure(blob: String, pin: String): Triple<Int, Long, Boolean> {
+        synchronized(prefsRmwLock) {
+            val prevCount = try { sharedPreferences.getInt(KEY_RESTORE_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
+            val prevKey = prefString(KEY_RESTORE_PIN_LAST_KEY, "")
+            val newKey = com.redeye.parentalmonitor.utils.RestorePinGate.attemptKey(blob, pin)
+            val hasil = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis(), prevKey, newKey)
+            if (hasil.third) {
+                try {
+                    val editor = sharedPreferences.edit()
+                        .putInt(KEY_RESTORE_PIN_FAIL_COUNT, hasil.first)
+                        .putString(KEY_RESTORE_PIN_LAST_KEY, newKey)
+                    if (hasil.second > 0L) {
+                        editor.putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, hasil.second)
+                            .putLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, android.os.SystemClock.elapsedRealtime())
+                    }
+                    editor.commit()
+                } catch (_: Exception) {
+                }
+            }
+            return hasil
+        }
+    }
+
     var accessPinFailCount: Int
         get() = try { sharedPreferences.getInt(KEY_ACCESS_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
         set(value) { try { sharedPreferences.edit().putInt(KEY_ACCESS_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
