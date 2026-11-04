@@ -1670,7 +1670,10 @@ class MonitoringService : Service() {
             }
         }
         entries[senderId] = untilWall to elapsedStart
-        val joined = entries.entries.takeLast(16).joinToString(";") { "${it.key},${it.value.first},${it.value.second}" }
+        while (entries.size > 16) {
+            entries.remove(entries.keys.first())
+        }
+        val joined = entries.entries.joinToString(";") { "${it.key},${it.value.first},${it.value.second}" }
         try { preferencesManager.loginSenderLockouts = joined } catch (_: Exception) { }
     }
 
@@ -7315,7 +7318,7 @@ class MonitoringService : Service() {
                 }
                 else -> {
                     if (outcome.code == 400) {
-                        return sendStatus400(outcome, message, botToken, chatId, queueOnFail, onPermanent)
+                        return sendStatus400(outcome, message, botToken, chatId, queueOnFail, onPermanent, replyMarkup)
                     }
                     android.util.Log.e("MonitoringService", "✗ Failed to send: ${outcome.code}")
                     return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
@@ -7335,7 +7338,8 @@ class MonitoringService : Service() {
         botToken: String,
         chatId: String,
         queueOnFail: Boolean,
-        onPermanent: (() -> Unit)? = null
+        onPermanent: (() -> Unit)? = null,
+        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
     ): SendStatus {
         if (outcome.kind == TelegramSendPolicy.Kind.MIGRATED) {
             return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
