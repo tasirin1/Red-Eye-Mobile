@@ -2278,6 +2278,34 @@ def cek_paritas_resource(gagal):
     for nama, teks in sorted(indonesia.items()):
         if nama in inggris and argumen_format(teks) != argumen_format(inggris[nama]):
             gagal.append("Argumen format beda di values-in: " + nama)
+
+    # Pasangan berkas values LAIN ikut diperiksa (issue #1307):
+    # pola lama hanya membaca strings.xml, jadi string
+    # ber-format di berkas values lain (mis. ekstra.xml) buta
+    # paritas dan beda %d vs %s di sana lolos — crash
+    # IllegalFormatConversionException menunggu di perangkat.
+    dir_en = os.path.join(AKAR, "app/src/main/res/values")
+    dir_in = os.path.join(AKAR, "app/src/main/res/values-in")
+    try:
+        berkas_in = set(os.listdir(dir_in))
+    except OSError:
+        berkas_in = set()
+    try:
+        berkas_en = set(os.listdir(dir_en))
+    except OSError:
+        berkas_en = set()
+    for nama_berkas in sorted(berkas_en & berkas_in):
+        if nama_berkas == "strings.xml" or not nama_berkas.endswith(".xml"):
+            continue
+        teks_en = baca_teks(os.path.join("app/src/main/res/values", nama_berkas))
+        teks_in = baca_teks(os.path.join("app/src/main/res/values-in", nama_berkas))
+        if not teks_en or not teks_in:
+            continue
+        peta_en = dict(pola.findall(kupas_komentar_xml(teks_en)))
+        peta_in = dict(pola.findall(kupas_komentar_xml(teks_in)))
+        for nama, teks in sorted(peta_in.items()):
+            if nama in peta_en and argumen_format(teks) != argumen_format(peta_en[nama]):
+                gagal.append("Argumen format beda di values-in/%s: %s" % (nama_berkas, nama))
     # Argumen format di dalam <item> plurals/string-array juga wajib
     # paritas (issue #1045): cek di atas hanya melihat <string>, jadi
     # plurals "%d files" vs "%s berkas" lolos — padahal kelas crash
