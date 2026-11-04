@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanda rekonsiliasi aplikasi dikenal A11y kini terkunci hanya sesudah pekerjaan rekonsiliasinya benar-benar dipanggil sampai selesai, bukan sebelumnya: kegagalan sesaat di jendela antara penanda dan pekerjaan tidak lagi melewatkan rekonsiliasi untuk seumur proses.
+
 - Penggabungan hitungan drop saat pulih dari mode volatile kini menambah seluruh isi cakram lagi: pengurang baseline pada pemulihan sebelumnya membuang untuk kedua kalinya hitungan yang sudah terpersist tetapi belum terlapor pada jalur rusak-di-tengah (konversi delta saat masuk volatile sudah memisahkannya dari memori), sehingga total gabungan kehilangan porsi lamanya; jalur volatile-sejak-start tidak berubah.
 
 - Kegagalan transien saat menegakkan ulang foreground di kepala `onStartCommand` tidak lagi membunuh instance layanan yang sudah sehat: instance yang sudah pernah berhasil foreground kini melanjutkan dispatch intent (termasuk alert satu-tembakan admin/PIN-salah yang tak punya jalur cadangan), meniru prinsip penjaga loop lama satu lapis di atasnya; instance yang belum pernah foreground tetap menghancurkan diri dengan jaring kebangkitan seperti sebelumnya.

@@ -700,12 +700,13 @@ object A11yMonitor {
         if (!knownReconciled) {
             val managerAwal = prefs
             if (managerAwal != null) {
-                // Terkunci true HANYA bila rekonsiliasi sungguh
-                // berjalan (issue #1301): pola lama mengunci
-                // sebelum cek null, jadi prefs yang null pada
-                // panggilan pertama (jendela inisialisasi)
-                // melewatkan rekonsiliasi seumur proses.
-                knownReconciled = true
+                // Terkunci true hanya SESUDAH pekerjaan
+                // rekonsiliasi selesai dipanggil (issue #1301,
+                // diluruskan #1316): mengunci sebelum pekerjaan
+                // membuat kegagalan apa pun di jendelanya —
+                // termasuk kegagalan prefs yang ditelan di
+                // dalam prune — melewatkan rekonsiliasi seumur
+                // proses walau penanda sudah terkunci.
                 val terpasang = try {
                     if (android.os.Build.VERSION.SDK_INT >= 33) {
                         context.packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(0)).map { it.packageName }
@@ -717,6 +718,7 @@ object A11yMonitor {
                     emptyList()
                 }
                 managerAwal.pruneA11yKnownApps(terpasang)
+                knownReconciled = true
             }
         }
         if (knownSeeded) return
