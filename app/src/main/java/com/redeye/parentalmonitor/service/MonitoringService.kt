@@ -4826,6 +4826,24 @@ class MonitoringService : Service() {
         }
         val layar = menuScreen("main")
         sendToTelegram(layar.text, layar.markup)
+        // Perintah ketik tanpa tombol ikut terdaftar (issue
+        // #1392): sebelumnya /help pemilik hanya menu tombol,
+        // padahal teks bot & README mengklaim daftar lengkap
+        // ada di /help — 8 perintah hidup ini tak terjangkau
+        // dari dalam bot.
+        sendToTelegram(
+            buildString {
+                appendLine("📝 <b>Perintah ketik</b> (tanpa tombol):")
+                appendLine("/syncinterval &lt;1-1440&gt; — interval data (menit)")
+                appendLine("/photointerval &lt;0-60&gt; — interval foto (0 = manual saja)")
+                appendLine("/patrolinterval &lt;5-180&gt; — interval patroli (menit)")
+                appendLine("/heartbeat &lt;0-48&gt; — detak pantauan (0 = mati)")
+                appendLine("/shotperm — kelola izin tangkapan layar")
+                appendLine("/log — log diagnostik terakhir")
+                appendLine("/digest — ringkasan berkala")
+                appendLine("/weekly — laporan 7 hari terakhir")
+            }
+        )
     }
 
 
