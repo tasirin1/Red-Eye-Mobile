@@ -12339,7 +12339,18 @@ class MonitoringService : Service() {
 
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
 
-            val response = TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
+            // Kunci terjaga selama unggahan saja (issue
+            // #1208): audio/video memegang kunci yang
+            // membentang; foto sebelumnya tanpa kunci
+            // sehingga tidur dalam bisa menggagalkan
+            // unggahan di tengah jalan. Kunci lepas sendiri
+            // pada timeout-nya bila jalur keluar terlewat.
+            val photoLock = acquireOpWakeLock("photo", 120_000L)
+            val response = try {
+                TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
+            } finally {
+                releaseOpWakeLock(photoLock)
+            }
 
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
