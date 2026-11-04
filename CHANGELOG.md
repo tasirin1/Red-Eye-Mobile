@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Transisi pindah aplikasi pada pemantau aksesibilitas kini dijamin berjalan tepat sekali: sebelumnya tugas transisinya diserahkan begitu saja ke antrean pekerja, dan bila antrean sedang jenuh tugas itu dibuang diam-diam — sesi aplikasi sebelumnya tak ditutup, hitungan buka hilang, dan penilaian proteksi terlewat, tanpa kesempatan ulang karena peristiwa yang sama sudah ditandai pernah diproses. Transisi jendela kini memakai gerbang klaim yang sama seperti transisi sesi lain: bila tak masuk antrean, pemanggil menjalankannya sendiri.
+
 - Kegagalan sesaat saat menyimpan antrean pesan kini dipulihkan otomatis: sebelumnya kegagalan tulis pada jalur simpan langsung tidak menjadwalkan percobaan ulang apa pun, sehingga antrean hasil pemangkasan pesan kedaluwarsa hanya hidup di ingatan — bila proses mati, pesan yang sama dipangkas lagi saat mulai berikutnya dan hitungan pesan kedaluwarsa terlapor dua kali. Snapshot yang gagal kini diantrekan ke mesin simpan ulang berjenjang yang sama seperti jalur simpan tertunda. Terbukti lewat simulasi porting 1:1 (mesin lama menghitung dobel, mesin baru tidak).
 
 - Daftar aplikasi yang sudah dikenal kini disimpan secara sinkron (bukan asinkron): sebelumnya perangkat yang mati mendadak tepat sesudah aplikasi dicatat/dilupakan bisa membangkitkan catatan lama saat menyala lagi — aplikasi yang dicopot lalu dipasang ulang bisa lolos dari peringatan, atau peringatan tampil dua kali.

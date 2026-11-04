@@ -291,9 +291,25 @@ object A11yMonitor {
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
                 if (sensitive) lastSensitiveCls = cls
                 val app = service.applicationContext
-                executor.execute {
+                // Transisi jendela digerbang KLAIM atomik seperti
+                // transisi sesi lain (issue #1358, keluarga
+                // #1341/#1342): badan handleWindow tidak idempoten
+                // (menutup sesi + akru, membuka sesi baru, menaikkan
+                // hitungan buka, menilai tamper) dan penanda dedupe
+                // lastEventKey sudah ditulis pemanggil, jadi
+                // serahan telanjang yang tertolak DiscardPolicy
+                // menghilangkan transisi ini selamanya. Siapa pun
+                // yang memenangkan klaim menjalankan badan tepat
+                // sekali; tak-terantre berarti pemanggil sendiri.
+                val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+                val task = Runnable {
+                    if (!claimed.compareAndSet(false, true)) return@Runnable
                     val texts = if (sensitive) collectSnapshot(service, pkg).first.texts else emptyList()
                     handleWindow(app, pkg, cls, texts)
+                }
+                executor.execute(task)
+                if (!executor.queue.contains(task)) {
+                    task.run()
                 }
                 scanWatchedContent(service, pkg)
                 requestPeriodicPersist(app)
