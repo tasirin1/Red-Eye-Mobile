@@ -9,6 +9,12 @@ TERKONFIGURASI="$(git config --get core.hooksPath || true)"
 # core.hooksPath boleh absolut, relatif terhadap root repo, atau lewat ~/.
 direktori_kait() {
     case "$1" in
+        "~")
+            # '~' polos (issue #1424): Git mengembangkannya
+            # ke $HOME; tanpa lengan ini ia jatuh ke lengan
+            # ~pengguna dengan nama KOSONG dan terpasang ke
+            # direktori semu dalam repo.
+            printf '%s' "$HOME" ;;
         "~"/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
         "~"*)
             # Bentuk ~pengguna/ (issue #1403): Git
