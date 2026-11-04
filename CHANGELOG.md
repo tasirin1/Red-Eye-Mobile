@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penutup halaman SMS/panggilan kini juga menulis bila ada tulisan kursor per potongan yang gagal di tengah jalan: sebelumnya kegagalan commit yang senyap terlewat karena penjaga hanya membandingkan variabel di memori, sehingga satu putaran log terkirim duplikat di siklus berikutnya (#1191).
 - Penutup bentuk chat ID pada redaksi log kini hanya berlaku bagi jalur yang tidak memegang rahasia: jalur ber-rahasia sudah menutup chat ID-nya sendiri, dan angka sah lain (mis. penanda waktu detik, nomor update) tidak lagi ikut tertutup sehingga log tetap bisa dipakai mendiagnosis (#1190).
 - Redaksi log cadangan kini juga menutup ID grup super Telegram berawalan -100 dengan 9 digit (sebelumnya hanya 10 digit yang tertutup, yang 9 digit tampil utuh di log) (#1189).
 - Entri manifest yang tidak pernah terkirim di Android 8 ke atas dibersihkan (USER_UNLOCKED, USER_PRESENT, PACKAGE_RESTARTED, DATE_CHANGED): aksi-aksi itu tidak termasuk pengecualian siaran implisit sehingga pendaftarannya hanya menjanjikan pemicu hidup yang sebenarnya tidak ada; fungsi utamanya tetap ditutup BOOT_COMPLETED dan TIME_SET yang memang dikirim (#1188).

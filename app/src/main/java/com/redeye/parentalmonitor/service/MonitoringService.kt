@@ -6643,6 +6643,7 @@ class MonitoringService : Service() {
                 val freqMap = try { freqForNumbers(smsPage.map { it.address }) } catch (_: Exception) { null }
                 val knownMap = try { smsPage.map { it.address }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var smsHabis = true
+                var smsTulisGagal = false
                 for (part in smsPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         smsHabis = false
@@ -6653,7 +6654,8 @@ class MonitoringService : Service() {
                         val advSms = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(smsCursor, smsDate, part.map { it.id to it.date })
                         smsCursor = advSms.first
                         smsDate = advSms.second
-                        try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { }
+                        val okSms = try { preferencesManager.setSmsCursorSync(smsCursor, smsDate) } catch (_: Exception) { false }
+                        if (!okSms) smsTulisGagal = true
                         smsSentAny = true
                         found = true
                     } else {
@@ -6663,7 +6665,11 @@ class MonitoringService : Service() {
                 }
                 if (smsHabis) {
                     val tuntas = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(lastSms, lastSmsTs, smsPage.map { it.id to it.date })
-                    if (tuntas.first != smsCursor || tuntas.second != smsDate) {
+                    // smsTulisGagal (issue #1191): tulisan per
+                    // potongan yang gagal senyap harus tetap
+                    // ditambal penutup walau variabel kursor
+                    // sudah maju — penjaga nilai saja melewatkannya.
+                    if (tuntas.first != smsCursor || tuntas.second != smsDate || smsTulisGagal) {
                         try { preferencesManager.setSmsCursorSync(tuntas.first, tuntas.second) } catch (_: Exception) { }
                     }
                 }
@@ -6699,6 +6705,7 @@ class MonitoringService : Service() {
                 var callCursorDate = lastCallTs
                 val callKnown = try { callPage.map { it.number }.distinct().associateWith { isKnownContact(it) } } catch (_: Exception) { null }
                 var callHabis = true
+                var callTulisGagal = false
                 for (part in callPage.chunked(10)) {
                     if (messageQueue.getQueueSize() >= DATA_QUEUE_SOFT_LIMIT) {
                         callHabis = false
@@ -6709,10 +6716,12 @@ class MonitoringService : Service() {
                         val advCall = com.redeye.parentalmonitor.utils.CursorAdvance.penyelesaian(callCursorId, callCursorDate, part.map { it.id to it.date })
                         callCursorId = advCall.first
                         callCursorDate = advCall.second
-                        try {
+                        val okCall = try {
                             preferencesManager.setCallCursorSync(callCursorDate, callCursorId)
                         } catch (_: Exception) {
+                            false
                         }
+                        if (!okCall) callTulisGagal = true
                         callSentAny = true
                         found = true
                     } else {
@@ -6725,7 +6734,7 @@ class MonitoringService : Service() {
                     // Lewati tulisan yang nilainya sama persis
                     // dengan yang baru ditulis per potongan di atas
                     // (issue #1177) — cermin penjaga sisi SMS.
-                    if (tuntas.first != callCursorId || tuntas.second != callCursorDate) {
+                    if (tuntas.first != callCursorId || tuntas.second != callCursorDate || callTulisGagal) {
                         try { preferencesManager.setCallCursorSync(tuntas.second, tuntas.first) } catch (_: Exception) { }
                     }
                 }
