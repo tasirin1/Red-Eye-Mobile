@@ -824,10 +824,12 @@ class SetupActivity : AppCompatActivity() {
             val myClear = saveSeq.get()
             val oldOwner = try { prefs.ownerUserId } catch (_: Exception) { 0L }
             val oldToken = try { prefs.botToken } catch (_: Exception) { "" }
-            try { prefs.botToken = "" } catch (_: Exception) { }
-            try { prefs.chatId = "" } catch (_: Exception) { }
-            try { prefs.ownerUserId = 0L } catch (_: Exception) { }
-            try { prefs.setLastUpdateIdSync(0L) } catch (_: Exception) { }
+            // Inti kredensial (token/chat/owner/PIN/update-id)
+            // dihapus atomik + tahan LEBIH DULU (issue #1360),
+            // sebelum panggilan jaringan di bawah yang bisa
+            // menggantung lama — mati proses di antaranya tak
+            // lagi menyisakan keadaan campuran.
+            try { prefs.clearCredentialCoreSync() } catch (_: Exception) { }
             if (oldOwner != 0L && oldToken.isNotEmpty()) {
                 try {
                     val delResp1 = com.redeye.parentalmonitor.network.TelegramClient.api.deleteMyCommands(

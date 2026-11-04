@@ -801,6 +801,33 @@ class PreferencesManager(context: Context) {
         return commitWithRetry { it.putLong(KEY_LAST_UPDATE_ID, id) }
     }
 
+    // Hapus INTI kredensial sekaligus — atomik dan tahan
+    // (issue #1360): jalur hapus di Setup sebelumnya menulis
+    // token/chat/owner lewat setter individual apply(), dan
+    // PIN baru dihapus pada gelombang kedua SESUDAH panggilan
+    // jaringan yang bisa menggantung semenit lebih. Mati
+    // proses di jendela itu menyisakan keadaan campuran
+    // (token kosong tetapi PIN lama masih dipakai /login),
+    // dan apply() yang belum ter-flush bisa membangkitkan
+    // kredensial "terhapus" sesudah restart paksa. Satu
+    // editor + commit() menutup kedua jendela; generasi
+    // kredensial naik sekali, seperti saveCredentials.
+    fun clearCredentialCoreSync() {
+        try {
+            synchronized(credentialLock) {
+                val editor = sharedPreferences.edit()
+                    .putString(KEY_BOT_TOKEN, "")
+                    .putString(KEY_CHAT_ID, "")
+                    .putLong(KEY_OWNER_ID, 0L)
+                    .putString(KEY_ACCESS_PIN, "")
+                    .putLong(KEY_LAST_UPDATE_ID, 0L)
+                bumpCredentialGeneration(editor)
+                editor.commit()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     fun setLastUpdateIdIfGenerationSync(id: Long, generation: Long): Boolean {
         return synchronized(credentialLock) {
             if (credentialGeneration != generation) return@synchronized false

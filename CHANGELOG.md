@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Penghapusan kredensial di layar Setup kini menghapus inti kredensial (token, Chat ID, owner, PIN, dan penanda update) sekaligus dalam satu tulisan atomik yang langsung tersimpan, sebelum panggilan jaringan apa pun: sebelumnya token dan PIN dihapus pada gelombang terpisah yang diselingi panggilan jaringan yang bisa menggantung semenit lebih, sehingga perangkat yang mati di tengah menyisakan keadaan campuran (token kosong tetapi PIN lama masih aktif) atau kredensial yang bangkit lagi sesudah menyala paksa.
+
 ## [1.6.620] - 2026-11-04
 
 ### Fixed
