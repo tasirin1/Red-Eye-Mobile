@@ -1817,8 +1817,19 @@ class MonitoringService : Service() {
     }
 
     private fun clearPersistedLoginLocks() {
-        try { preferencesManager.loginSenderLockouts = "" } catch (_: Exception) { }
-        try { preferencesManager.setLoginGlobalLockout(0L, 0L) } catch (_: Exception) { }
+        // Di bawah loginPersistLock juga (issue #1300):
+        // komentar kunci itu menyatakan SEMUA baca-ubah-tulis
+        // simpanan kunci /login serialized di sini (#1262),
+        // tetapi fungsi ini menulis loginSenderLockouts di
+        // luarnya. Pemanggilnya hari ini tunggal (jalur
+        // logout/ganti kredensial) dan loop perintah berjalan
+        // berurutan, jadi balapan belum terbukti — tetapi
+        // invarian yang dinyatakan sendiri dilanggar, dan
+        // membungkusnya memulihkan invarian itu tanpa biaya.
+        synchronized(loginPersistLock) {
+            try { preferencesManager.loginSenderLockouts = "" } catch (_: Exception) { }
+            try { preferencesManager.setLoginGlobalLockout(0L, 0L) } catch (_: Exception) { }
+        }
     }
     private var restoreCodeLockoutUntil: Long
         get() = try { preferencesManager.restoreCodeLockoutUntil } catch (_: Exception) { 0L }
