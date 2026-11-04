@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Hitungan pesan terbuang tak lagi dobel: potongan yang ditolak permanen dulu dicatat dua kali (di titik penolakan dan di pengirim multi-potongan), membuat pemberitahuan "N pesan dibuang" melebihkan dua kali lipat. (Issue #1240)
 - Ekor pesan multi-potongan yang gagal sementara sesudah ada potongan lain yang ditolak permanen kini diantrekan juga untuk pengirim prioritas (sebelumnya hilang senyap sementara status dilaporkan terkirim dan kursor data tetap maju). (Issue #1239)
 - Pola record Java pada gerbang kini memindai kurung sudut generik secara seimbang: record bergenerik bertingkat dua atau lebih kini terdeteksi juga, menutup sisa celah yang ditinggalkan perbaikan satu tingkat sebelumnya. (Issue #1238)
 - Pemindai kurung/impor gerbang kini melacak komentar blok Kotlin yang bersarang: ekor komentar sesudah sarang terdalam tak lagi ikut terhitung sebagai kode (dulu memicu vonis kurung tak seimbang palsu). (Issue #1236)

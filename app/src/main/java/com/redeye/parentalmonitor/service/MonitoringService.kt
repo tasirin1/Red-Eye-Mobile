@@ -6970,7 +6970,6 @@ class MonitoringService : Service() {
         }
         var sentAny = false
         var permanentLoss = false
-        var permanentLost = 0
         val failed = mutableListOf<String>()
         val chunks = mutableListOf<String>()
         var rest = message
@@ -6992,7 +6991,6 @@ class MonitoringService : Service() {
                         break
                     }
                     permanentLoss = true
-                    permanentLost++
                 } else {
                     lastSentIdx = idx
                     sentAny = true
@@ -7029,13 +7027,14 @@ class MonitoringService : Service() {
                 if (tailQueued) MessageScheduler.scheduleMessageSend(this)
             }
             // Potongan yang ditolak permanen tak akan pernah
-            // terkirim (issue #952): catat sebagai pesan terbuang
-            // agar owner diberi tahu. Bila potongan lain terkirim,
-            // hasil keseluruhan BUKAN dropped — menilai DROPPED
-            // membuat pemanggil berkursor (SMS/panggilan) tidak
-            // memajukan kursor dan mengirim ulang seluruh pesan
-            // pada setiap putaran: duplikat tanpa akhir.
-            repeat(permanentLost) { noteDroppedMessage() }
+            // terkirim (issue #952) dan sudah dicatat sebagai pesan
+            // terbuang OLEH sendToTelegram di titik penolakannya —
+            // mencatatnya lagi di sini menggandakan hitungan
+            // pemberitahuan (issue #1240). Bila potongan lain
+            // terkirim, hasil keseluruhan BUKAN dropped — menilai
+            // DROPPED membuat pemanggil berkursor (SMS/panggilan)
+            // tidak memajukan kursor dan mengirim ulang seluruh
+            // pesan pada setiap putaran: duplikat tanpa akhir.
             return when {
                 tailQueued -> SendStatus.QUEUED
                 sentAny -> SendStatus.SENT
