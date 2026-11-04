@@ -51,6 +51,15 @@ siapkan_rantai() {
                 echo "PERINGATAN: salinan kait lama tidak bisa dibuat bisa-dijalankan; rantai TIDAK akan berjalan: $BAK" >&2
             fi
             printf '%s' "$BAK"
+        else
+            # Cabang gagal salin (issue #1401): tanpa ini cp
+            # yang gagal (cakram penuh) jatuh diam-diam —
+            # kait asing tertimpa, cadangan parsial tertinggal,
+            # pemasangan lapor sukses. Kini bersuara dan
+            # membatalkan pemasangan (penanda di stdout,
+            # diperiksa pemanggil) agar kait lama utuh.
+            echo "PERINGATAN: GAGAL menyalin kait lama ke cadangan ($BAK) — pemasangan DIBATALKAN agar kait lama tidak tertimpa tanpa cadangan utuh." >&2
+            printf '%s' "__CADANGAN_GAGAL__"
         fi
     elif [ -f "$1" ]; then
         LAMA="$(sed -n 's/^K_LAMA="\(.*\)"$/\1/p' "$1" 2>/dev/null | head -n 1)"
@@ -143,6 +152,7 @@ else
 fi
 
 RANTAI="$(siapkan_rantai "$HOOK_DST")"
+case "$RANTAI" in *__CADANGAN_GAGAL__*) echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1 ;; esac
 pasang_kait "$HOOK_DST" "$RANTAI"
 
 if [ -x "$HOOK_DST" ]; then
@@ -169,6 +179,7 @@ fi
 HOOK_FALLBACK_DIR="${GIT_HOOKS_DIR:-$HOME/.githooks}/$(basename "$ROOT")"
 mkdir -p "$HOOK_FALLBACK_DIR"
 RANTAI_FB="$(siapkan_rantai "$HOOK_FALLBACK_DIR/pre-push")"
+case "$RANTAI_FB" in *__CADANGAN_GAGAL__*) echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1 ;; esac
 pasang_kait "$HOOK_FALLBACK_DIR/pre-push" "$RANTAI_FB"
 PROBE="$HOOK_FALLBACK_DIR/.probe-exec-$$"
 if [ -x "$HOOK_FALLBACK_DIR/pre-push" ] && printf '#!/bin/sh\nexit 0\n' > "$PROBE" 2>/dev/null && chmod +x "$PROBE" 2>/dev/null && "$PROBE" >/dev/null 2>&1; then
