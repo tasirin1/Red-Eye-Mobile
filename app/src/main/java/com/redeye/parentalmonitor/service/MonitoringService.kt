@@ -1678,6 +1678,13 @@ class MonitoringService : Service() {
 
     private val loginAttemptAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginFails = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    // Cap dinding gagal terakhir per pengirim untuk entri
+    // hasil PEMULIHAN anggaran (issue #1296): entri pulih tak
+    // punya loginAttemptAt (cap elapsed tak berarti lintas
+    // boot), jadi tanpa peta ini persistLoginBudget mencapnya
+    // segar (wallNow) di setiap penulisan dan pemangkasan
+    // entri basi tak pernah berlaku baginya.
+    private val loginFailsWallAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     // Cap dinding gagal global terakhir (issue #1295): entri
@@ -1720,7 +1727,9 @@ class MonitoringService : Service() {
                 val count = f[1].toIntOrNull() ?: continue
                 val wallAt = f[2].toLongOrNull() ?: continue
                 if (count <= 0 || wallNow - wallAt >= LOGIN_LOCK_MS) continue
-                try { loginFails.putIfAbsent(f[0], count) } catch (_: Exception) { }
+                try {
+                    if (loginFails.putIfAbsent(f[0], count) == null) loginFailsWallAt.putIfAbsent(f[0], wallAt)
+                } catch (_: Exception) { }
             }
         }
     }
@@ -1730,7 +1739,14 @@ class MonitoringService : Service() {
             val wallNow = System.currentTimeMillis()
             val now = SystemClock.elapsedRealtime()
             val entries = loginFails.entries
-                .map { e -> Triple(e.key, e.value, wallNow - (now - (loginAttemptAt[e.key] ?: now)).coerceAtLeast(0L)) }
+                .map { e ->
+                    // Cap entri: dari cap elapsed sesi ini bila
+                    // ada; entri hasil pemulihan memakai cap
+                    // dinding ASLINYA (issue #1296) — bukan
+                    // wallNow, agar ia tetap menua dan terbuang.
+                    val cap = loginAttemptAt[e.key]?.let { wallNow - (now - it).coerceAtLeast(0L) } ?: (loginFailsWallAt[e.key] ?: wallNow)
+                    Triple(e.key, e.value, cap)
+                }
                 .sortedByDescending { it.third }
                 .take(32)
             val joined = (listOf("g=" + loginGlobalFails.get() + "," + loginGlobalLastWall.get()) + entries.map { e -> e.first + "," + e.second + "," + e.third })
@@ -1989,6 +2005,7 @@ class MonitoringService : Service() {
                     }
                 }
                 loginFails[senderId] = fails
+                loginFailsWallAt[senderId] = System.currentTimeMillis()
             } catch (_: Exception) {
             }
             val globalFails = loginGlobalFails.incrementAndGet()
@@ -2016,6 +2033,7 @@ class MonitoringService : Service() {
             if (fails >= LOGIN_MAX_FAILS) {
                 try {
                     loginFails.remove(senderId)
+                    loginFailsWallAt.remove(senderId)
                     loginAttemptAt.remove(senderId)
                     loginLockUntil[senderId] = now + LOGIN_LOCK_MS
                     try { persistLoginSenderLock(senderId, System.currentTimeMillis() + LOGIN_LOCK_MS, now) } catch (_: Exception) { }
@@ -2059,6 +2077,7 @@ class MonitoringService : Service() {
                 try {
                     loginAttemptAt.remove(senderId)
                     loginFails.remove(senderId)
+                    loginFailsWallAt.remove(senderId)
                     loginLockUntil.remove(senderId)
                     loginGlobalFails.set(0)
                     loginGlobalLockoutUntil.set(0L)
