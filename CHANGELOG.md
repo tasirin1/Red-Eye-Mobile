@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Rekonsiliasi aplikasi dikenal A11y tidak lagi terlewat seumur proses bila `prefs` null pada panggilan seed pertama — penanda selesai kini hanya terkunci sesudah rekonsiliasi benar-benar berjalan (issue #1301).
 - `clearPersistedLoginLocks()` kini menulis di bawah `loginPersistLock`, memulihkan invarian serialisasi #1262 untuk semua penulisan simpanan kunci /login (issue #1300).
 - Pasangan kunci global /login kini ditulis dalam satu commit terkunci lewat `setLoginGlobalLockout(...)` (ketiga situs penulisan/penolan) — tidak ada lagi pasangan sobek oleh mati proses di antara dua penulisan terpisah (issue #1299).
 - `clearQueue` yang wipe cakramnya gagal di mode volatile kini meninggalkan penanda agar hitungan drop lama tidak bangkit sebagai laporan hantu saat penyimpanan pulih — keadaan ternolkan ditulis menimpa cakram pada penggabungan berikutnya (issue #1298).

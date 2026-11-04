@@ -698,9 +698,14 @@ object A11yMonitor {
         // tercopot selama layanan mati dibuang agar pasang-ulang
         // kembali memicu alert aplikasi baru.
         if (!knownReconciled) {
-            knownReconciled = true
             val managerAwal = prefs
             if (managerAwal != null) {
+                // Terkunci true HANYA bila rekonsiliasi sungguh
+                // berjalan (issue #1301): pola lama mengunci
+                // sebelum cek null, jadi prefs yang null pada
+                // panggilan pertama (jendela inisialisasi)
+                // melewatkan rekonsiliasi seumur proses.
+                knownReconciled = true
                 val terpasang = try {
                     if (android.os.Build.VERSION.SDK_INT >= 33) {
                         context.packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of(0)).map { it.packageName }
