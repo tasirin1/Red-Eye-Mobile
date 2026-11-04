@@ -1122,7 +1122,7 @@ object A11yMonitor {
     // #830), di luar potongan snapshot.
     private fun collectSnapshot(service: AccessibilityService, expectedPackage: String, keywords: List<String> = emptyList()): Pair<ScreenSnapshot, String?> {
         var dariJendelaLain = false
-        var root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
+        var root: AccessibilityNodeInfo? = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
         val rootPackage = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
         if (rootPackage != expectedPackage) {
             recycleNode(root)
