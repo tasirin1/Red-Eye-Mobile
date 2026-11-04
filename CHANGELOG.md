@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perintah /sms kini menolak menyiapkan SMS baru selagi pengiriman sebelumnya masih berjalan, sama seperti /smsconfirm: sebelumnya penyiapan tetap berjalan dan membalas bahwa SMS tertunda lama dibuang, padahal pengiriman lama tidak dibatalkan dan tetap terkirim — dan teksnya bisa hilang tertimpa bila pengiriman itu gagal.
+
 - Rekaman video yang penghentian rekamannya gagal kini dibuang dengan kabar gagal, bukan diteruskan sebagai terkirim: penghentian yang gagal berarti berkas video tidak terfinalisasi dan tidak bisa diputar, sama seperti perlakuan jalur rekaman audio selama ini.
 
 - Peringatan "metode baru" di alat verifikasi kini hanya mengenali deklarasi sungguhan — bentuk `fun` Kotlin atau bentuk Java bertipe jelas: sebelumnya slot pola yang longgar menelan indentasi dan kata kepala baris, sehingga panggilan fungsi biasa yang berindentasi, kelanjutan konstruktor, dan baris `else`/`yield`/`new` ikut dicap metode baru. Terbukti lewat harness dua arah (8 kasus palsu diam, 6 deklarasi asli tertangkap).

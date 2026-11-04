@@ -5592,6 +5592,15 @@ class MonitoringService : Service() {
                 sendToTelegram("⚠️ Tunggu sebentar sebelum mengirim SMS lagi.")
             } else if (stagedNumber.isNotEmpty() && stagedAt > 0L && stagedAt <= nowSms && nowSms - stagedAt <= 300_000L && stagedBy.isNotEmpty() && stagedBy != senderId) {
                 sendToTelegram("⛔ Hanya peminta yang bisa mengganti SMS tertunda ini. Balas /smsconfirm untuk mengonfirmasi dulu, atau tunggu sampai kedaluwarsa.")
+            } else if (smsBusy.get()) {
+                // Kirim sedang berjalan (issue #1380): men-stage
+                // sekarang menimpa pending milik kiriman yang
+                // terbang — balasannya akan mengklaim pending
+                // lama dibuang padahal ia tetap terkirim, dan
+                // bila kiriman itu gagal, teksnya hilang tertimpa
+                // sementara pesan gagal mengklaim pending
+                // tersimpan. Tolak seperti /smsconfirm.
+                sendToTelegram("⏱️ SMS masih dikirim, tunggu sebentar.")
             } else {
                 val stagedText = try { preferencesManager.pendingSmsText } catch (_: Exception) { "" }
                 val oldPending = if (stagedNumber.isNotEmpty() && (stagedNumber != normalized || stagedText != smsText)) stagedNumber else ""
