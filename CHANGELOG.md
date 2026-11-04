@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemasang kait tak lagi mati senyap di sistem tanpa awk: kegagalan perintah cadangan pada penyelesaian hooksPath ~pengguna kini ditampung sehingga peringatan "pengguna tak dikenal" benar-benar tercapai, bukan terbunuh diam-diam oleh set -e. Terbukti di sandbox dengan PATH tanpa awk dan getent.
+
 - Pemasang kait tak lagi membatalkan pemasangan yang cadangannya berhasil hanya karena path repo kebetulan memuat teks penanda kegagalan: pemeriksaan penanda kini persamaan persis atas nilai kembalian, bukan pencarian substring di dalam path.
 
 - Catatan log pemulihan penanda sinkron kini hanya tercetak bila tindakan benar-benar diambil: sebelumnya baris "dijangkar ulang" tetap tercetak pada kasus jam dimundurkan yang menurut desain sengaja dibiarkan, menyesatkan diagnosis keadaan penanda dari log.

@@ -23,7 +23,12 @@ direktori_kait() {
             esac
             rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
             if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
-                rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)"
+                # || cadangan wajib (issue #1407): tanpa awk,
+                # kegagalan 127 dari substitusi perintah ini
+                # membunuh naskah lewat set -e dalam senyap
+                # (stderr tertelan 2>/dev/null) sebelum cabang
+                # peringatan sempat tercapai.
+                rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)" || rumah_kait=""
             fi
             if [ -n "$rumah_kait" ]; then
                 printf '%s%s' "$rumah_kait" "$ekor_kait"
