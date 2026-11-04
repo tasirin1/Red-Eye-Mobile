@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian nama-penuh huruf kecil semua (mis. com.contoh.tipeku): token tipe bertitik kini sah sebagai alternatif, dan harness membuktikan bentuk mirip-deklarasi (variabel, kolom, for, import) tetap diam.
+
 - Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian larik primitif (int[], long[], byte[][]): cabang primitif sebelumnya menuntut spasi langsung sesudah tipe, tidak seperti String[] yang sudah tertangkap. Terbukti lewat harness.
 
 - Pengenal deklarasi Java di alat verifikasi kini mengenali metode beranotasi sebaris (@Override dan sejenisnya): bentuk metode Java paling lazim itu sebelumnya lolos dari peringatan cakupan uji. Terbukti lewat harness.
