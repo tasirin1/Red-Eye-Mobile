@@ -420,7 +420,8 @@ class MessageQueue private constructor(context: Context) {
     // antrean berisi 105 prioritas menyusutkan batas ke 100 dan
     // mengorbankan 5 prioritas tertua.
     private fun overCapLocked(queue: List<QueuedMessage>, incomingPriority: Boolean): Boolean {
-        return QueueCap.overCap(queue.size, queue.any { it.priority }, incomingPriority)
+        return QueueCap.overCap(queue.size, queue.any { it.priority }, incomingPriority) ||
+            QueueCap.overTotalChars(queue.sumOf { it.message.length })
     }
 
     private fun evictOldestLocked(queue: MutableList<QueuedMessage>, persist: Boolean = true) {

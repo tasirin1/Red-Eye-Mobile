@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Antrean pesan kini punya batas total karakter gabungan, bukan hanya batas jumlah dan batas per pesan: berkas antrean terenkripsi (yang tersimpan ganda dan ditulis ulang tiap perubahan) tidak lagi bisa membengkak sampai jutaan karakter (#1212).
 - Pola tulis atomik yang sama diterapkan ke gerbang PIN akses dan gerbang kode restore: hitungan kegagalan dan pasangan masa kunci kini ditulis dalam satu commit terkunci, bukan beberapa transaksi lepas (#1211).
 - Pencatatan kegagalan PIN restore kini atomik dan terkunci: baca-hitung-tulis untuk restore lokal dan jarak jauh berjalan di bawah satu kunci dengan satu commit gabungan, sehingga dua tebakan berbeda yang bersamaan tidak lagi terhitung satu dan keadaan kunci tidak bisa tertinggal setengah (#1210).
 - Peringatan 'aksesibilitas mati' kini berlaku bagi pemakai fitur aksesibilitas apa pun (pantau aplikasi, kata pantau, pemakaian layar), bukan hanya pemakai proteksi tamper: sebelumnya pemantauan bisa berhenti senyap tanpa pemberitahuan bagi mereka (#1209).
