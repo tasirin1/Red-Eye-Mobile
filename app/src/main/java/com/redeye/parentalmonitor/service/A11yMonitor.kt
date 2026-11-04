@@ -54,6 +54,7 @@ object A11yMonitor {
     // Jejak jendela terakhir untuk cek ulang tamper (issue #922).
     @Volatile
     private var lastWindowPkg = ""
+    private var lastWindowCls = ""
     @Volatile
     private var lastSensitiveCls = ""
     @Volatile
@@ -269,6 +270,34 @@ object A11yMonitor {
         if (service == null || a11yService === service) a11yService = null
     }
 
+    fun onMonitoringResumed(context: Context) {
+        // Monitoring jalan lagi (issue #1372): sesi hanya
+        // lahir dari transisi jendela dan dedupe lastEventKey
+        // menelan peristiwa ulang, jadi aplikasi yang tetap
+        // terbuka di jendela yang sama sejak sebelum jeda tak
+        // pernah memulai sesi — pemakaiannya hilang dari
+        // /screentime dan alert malamnya tak bisa menyala.
+        // Putar ulang jendela terakhir lewat jalur
+        // handleWindow yang sama (klaim-CAS seperti transisi
+        // sungguhan) agar semua gerbangnya berlaku persis.
+        // Paket sensitif (Setelan dsb.) dilewati: penilaian
+        // tampernya tak boleh diputar ulang di luar peristiwa
+        // aslinya (masa tenggang bisa sudah lewat).
+        val pkg = lastWindowPkg
+        if (pkg.isEmpty() || TamperGuard.mayBeSensitive(pkg)) return
+        val cls = lastWindowCls
+        val app = context.applicationContext
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            if (!claimed.compareAndSet(false, true)) return@Runnable
+            handleWindow(app, pkg, cls, emptyList())
+        }
+        executor.execute(task)
+        if (!executor.queue.contains(task)) {
+            task.run()
+        }
+    }
+
     fun noteEnabled(context: Context) {
         try {
             val manager = prefs ?: PreferencesManager.getInstance(context.applicationContext).also { prefs = it }
@@ -288,6 +317,7 @@ object A11yMonitor {
                 if (key == lastEventKey) return
                 lastEventKey = key
                 lastWindowPkg = pkg
+                lastWindowCls = cls
                 val sensitive = TamperGuard.mayBeSensitive(pkg)
                 if (sensitive) lastSensitiveCls = cls
                 val app = service.applicationContext

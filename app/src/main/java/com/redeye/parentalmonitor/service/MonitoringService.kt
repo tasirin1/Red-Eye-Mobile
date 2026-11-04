@@ -6209,6 +6209,11 @@ class MonitoringService : Service() {
 
     private suspend fun handleResumeCommand() {
         preferencesManager.monitoringPaused = false
+        // Sodok monitor aksesibilitas (issue #1372): aplikasi
+        // yang masih terbuka di jendela yang sama sejak jeda
+        // tak menghasilkan transisi baru, jadi sesinya tak
+        // akan lahir sendiri.
+        try { A11yMonitor.onMonitoringResumed(this) } catch (_: Exception) { }
         val photoPaused = isPhotoPaused()
         try {
             preferencesManager.setPhotoPause(0L, PHOTO_PAUSE_NONE)
