@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.622] - 2026-11-05
+
 ### Fixed
 
 - Pemasang kait pre-push tak lagi menimpa kait asing yang memanggil alat verifikasi dari dalam fungsi: penanda kepemilikan kini syarat ganda (baris pemanggil gerbang DAN baris penanda rantai yang hanya ditulis pemasang ini), sehingga kait asing seperti itu kini dicadangkan dan dirantai seperti kait asing lainnya, bukan lenyap senyap. Terbukti di sandbox dua arah.
