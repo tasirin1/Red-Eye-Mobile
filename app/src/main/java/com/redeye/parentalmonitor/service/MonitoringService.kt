@@ -7270,7 +7270,7 @@ class MonitoringService : Service() {
         val plain = Html.unescape(message)
         if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
             try {
-                return sendPlainFallback(botToken, chatId, plain, queueOnFail, onPermanent)
+                return sendPlainFallback(botToken, chatId, plain, queueOnFail, onPermanent, replyMarkup)
             } catch (_: Exception) {
                 return if (queueForRetry(plain, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
@@ -7290,10 +7290,16 @@ class MonitoringService : Service() {
         chatId: String,
         plain: String,
         queueOnFail: Boolean,
-        onPermanent: (() -> Unit)? = null
+        onPermanent: (() -> Unit)? = null,
+        replyMarkup: com.redeye.parentalmonitor.network.InlineKeyboardMarkup? = null
     ): SendStatus {
         val fallbackUrl = "https://api.telegram.org/bot${botToken}/sendMessage"
-        val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
+        // Markup ikut dibawa (issue #1241): fallback polos yang
+        // berhasil tanpa markup membuat layar menu tiba tanpa
+        // tombol sama sekali. Semantiknya sama persis jalur utama
+        // (markup pemanggil, atau bilah menu bawaan bila null;
+        // sentinel NO_MARKUP potongan non-akhir tetap kosong).
+        val fallbackResp = TelegramClient.api.sendMessage(fallbackUrl, TelegramMessage(chatId = chatId, text = plain, parseMode = null, replyMarkup = replyMarkup ?: quickMenuBar()))
         val outcome = classifySend(fallbackResp, chatId)
         return when (outcome.kind) {
             TelegramSendPolicy.Kind.SENT -> {
