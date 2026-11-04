@@ -1817,7 +1817,13 @@ def pemanggil(nama):
     pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
     temu = []
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        for i, baris in enumerate(baca_teks(path).splitlines(), 1):
+        # Komentar dikupas dulu (issue #1254, keluarga #1218):
+        # sebutan di komentar bukan pemanggil — tanpa kupasan ia
+        # memicu GAGAL palsu yang menamai baris komentar itu.
+        # _kupas_komentar_kode mempertahankan newline sehingga
+        # nomor baris laporan tetap tepat.
+        bersih = _kupas_komentar_kode(baca_teks(path), bersarang=not path.endswith(".java"))
+        for i, baris in enumerate(bersih.splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
                 if len(temu) >= 6:
