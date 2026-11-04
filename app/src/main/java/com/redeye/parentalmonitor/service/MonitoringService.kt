@@ -121,6 +121,7 @@ class MonitoringService : Service() {
     private val commandLock = kotlinx.coroutines.sync.Mutex()
     private val controlLock = kotlinx.coroutines.sync.Mutex()
     private val loginLock = kotlinx.coroutines.sync.Mutex()
+    private val locationFetchMutex = kotlinx.coroutines.sync.Mutex()
     private var lastLoginJob: kotlinx.coroutines.Job? = null
     private var lastLoginSender: String = ""
     private val adoptionGateLock = Any()
@@ -6393,6 +6394,14 @@ class MonitoringService : Service() {
 
     @Suppress("DEPRECATION")
     private suspend fun fetchLocation(allowStale: Boolean = false): android.location.Location? {
+        // Berserial (issue #1433): pemanggil hidup di job
+        // berbeda-beda (patroli, geofence, jam malam, perintah)
+        // dan tanpa kunci dua sesi GPS 20 detik bisa berjalan
+        // bersamaan — boros baterai tanpa manfaat.
+        return locationFetchMutex.withLock { fetchLocationSeri(allowStale) }
+    }
+
+    private suspend fun fetchLocationSeri(allowStale: Boolean): android.location.Location? {
         if (!hasLocationPermission()) return null
         ensureForegroundTypes()
         return withContext(Dispatchers.IO) {

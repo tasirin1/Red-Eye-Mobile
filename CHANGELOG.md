@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Permintaan lokasi kini berjalan berseri lewat satu kunci bersama: sebelumnya pemanggil dari berbagai pekerjaan latar bisa menjalankan dua sesi GPS 20 detik bersamaan dan memboroskan baterai tanpa manfaat.
+
 - Pesan lokasi mode hilang kini menampilkan akurasi titiknya seperti semua pesan lokasi lain: sebelumnya jalur ini satu-satunya yang tidak menampilkannya, padahal titik cadangannya boleh berumur sampai 24 jam dan meleset jauh.
 
 - Sorotan 'aplikasi teratas' pada laporan harian kini dicocokkan ke data kemarin berdasar nama paket, bukan label tampilan: sebelumnya dua aplikasi berlabel sama (mis. aplikasi kloning) membuat angka kemarin aplikasi lain yang dinilai.
