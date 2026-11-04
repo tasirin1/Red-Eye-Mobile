@@ -967,13 +967,68 @@ def cek_berkas_kode_dihapus(gagal, hapus):
                          % (path, kelas, ", ".join(siapa)))
 
 
+def _buka_kutip_git(token):
+    """Buka kutipan gaya-C git pada satu token path: git
+    menulis nama non-ASCII (quotepath bawaan) sebagai
+    "b/app/\303\211.kt" — oktet UTF-8 ter-escape oktal.
+    Token tanpa kutip dikembalikan apa adanya."""
+    if len(token) >= 2 and token.startswith('"') and token.endswith('"'):
+        mentah = token[1:-1]
+        keluar = bytearray()
+        i = 0
+        while i < len(mentah):
+            c = mentah[i]
+            if c == "\\" and i + 1 < len(mentah):
+                berikut = mentah[i + 1]
+                if berikut in "01234567":
+                    j = i + 1
+                    okt = ""
+                    while j < len(mentah) and len(okt) < 3 and mentah[j] in "01234567":
+                        okt += mentah[j]
+                        j += 1
+                    keluar.append(int(okt, 8))
+                    i = j
+                    continue
+                peta = {"n": 10, "t": 9, "r": 13, '"': 34, "\\": 92}
+                keluar.append(peta.get(berikut, ord(berikut) if len(berikut) == 1 else 63))
+                i += 2
+                continue
+            keluar.extend(c.encode("utf-8"))
+            i += 1
+        return keluar.decode("utf-8", "replace")
+    return token
+
+
+def _path_sisi_b(baris):
+    """Path sisi-b dari kepala 'diff --git a/... b/...',
+    sadar kutipan-C (issue #1309): pengurai lama (split +
+    [2:]) menghasilkan path rusak untuk nama terkuotasi
+    sehingga semua cek berbasis baris-diff (locale,
+    bekas-hapusan, metode hilang, cakupan uji) melewatkan
+    berkas itu seluruhnya."""
+    sisa = baris[len("diff --git "):]
+    if sisa.startswith('"'):
+        j = 1
+        while j < len(sisa):
+            if sisa[j] == "\\":
+                j += 2
+                continue
+            if sisa[j] == '"':
+                break
+            j += 1
+        token_b = sisa[j + 1:].strip()
+    else:
+        token_b = sisa.split(" ", 1)[1] if " " in sisa else ""
+    token_b = _buka_kutip_git(token_b)
+    return token_b[2:] if token_b.startswith("b/") else token_b
+
+
 def tambah_kode(diff):
     """Hasilkan (path, isi) tiap baris tambah dari hunk berkas kode."""
     path = ""
     for baris in diff.splitlines():
         if baris.startswith("diff --git "):
-            bagian = baris.split()
-            path = bagian[-1][2:] if len(bagian) >= 4 else ""
+            path = _path_sisi_b(baris)
         elif baris.startswith("+") and not baris.startswith("+++"):
             if path.endswith(EKSTENSI_KODE):
                 yield path, baris[1:]
@@ -984,8 +1039,7 @@ def hapus_kode(diff):
     path = ""
     for baris in diff.splitlines():
         if baris.startswith("diff --git "):
-            bagian = baris.split()
-            path = bagian[-1][2:] if len(bagian) >= 4 else ""
+            path = _path_sisi_b(baris)
         elif baris.startswith("-") and not baris.startswith("---"):
             if path.endswith(EKSTENSI_KODE):
                 yield path, baris[1:]
@@ -1459,10 +1513,11 @@ def cek_secret(gagal, diff):
     # token di dalamnya lolos pemindaian baris di atas (issue #695).
     # Pindai isi berkas berubah langsung (dekode toleran seperti baca()).
     for baris in diff.splitlines():
-        if baris.startswith("diff --git a/") and " b/" in baris:
-            path = baris.split(" b/", 1)[1].strip()
-        elif baris.startswith("+++ b/"):
-            path = baris[len("+++ b/"):].strip()
+        if baris.startswith("diff --git "):
+            path = _path_sisi_b(baris)
+        elif baris.startswith("+++ "):
+            token = _buka_kutip_git(baris[4:].strip())
+            path = token[2:] if token.startswith("b/") else token
         else:
             continue
         if True:
@@ -1886,8 +1941,7 @@ def _berkas_terhapus(diff):
     path_kini = ""
     for baris in diff.splitlines():
         if baris.startswith("diff --git "):
-            bagian = baris.split()
-            path_kini = bagian[-1][2:] if len(bagian) >= 4 else ""
+            path_kini = _path_sisi_b(baris)
         elif baris.startswith("deleted file mode") and path_kini:
             terhapus.add(path_kini)
     return terhapus
@@ -2106,8 +2160,7 @@ def hunk_fungsi(diff):
     path = ""
     for baris in diff.splitlines():
         if baris.startswith("diff --git "):
-            bagian = baris.split()
-            path = bagian[-1][2:] if len(bagian) >= 4 else ""
+            path = _path_sisi_b(baris)
         elif baris.startswith("@@ ") and path.endswith(EKSTENSI_KODE):
             ekor = baris.split("@@", 2)[-1]
             cocok = re.search(r"(\w+)\s*\(", ekor)
@@ -2159,8 +2212,7 @@ def hunk_posisi(diff):
         if baris.startswith("diff --git "):
             if path.endswith(EKSTENSI_KODE) and kini is not None and not sudah:
                 yield path, awal
-            bagian = baris.split()
-            path = bagian[-1][2:] if len(bagian) >= 4 else ""
+            path = _path_sisi_b(baris)
             kini = None
             sudah = False
         elif baris.startswith("@@ ") and path.endswith(EKSTENSI_KODE):

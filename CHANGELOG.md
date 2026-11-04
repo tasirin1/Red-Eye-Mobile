@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pengurai kepala diff gerbang kini membuka kutipan gaya-C git, jadi berkas bernama non-ASCII tidak lagi terlewat oleh semua cek berbasis baris-diff (locale, bekas-hapusan, metode hilang, cakupan uji, pindai token) (issue #1309).
 - `disebut_kata` pada gerbang kini mengupas komentar seperti saudaranya `pemanggil` — menghapus berkas kelas tidak lagi ter-gagal-kan oleh sebutan namanya di komentar berkas lain (issue #1308).
 - Paritas argumen format gerbang kini memeriksa semua pasangan berkas values/values-in, bukan hanya strings.xml — beda specifier di berkas values lain tidak lagi lolos (issue #1307).
 - Daftar ekstensi peringatan berkas sensitif terabaikan di gerbang kini mencakup `.pem`/`.key`, menyusul daftar terlarang terlacak dari #1288 yang sempat meninggalkannya (issue #1306).
