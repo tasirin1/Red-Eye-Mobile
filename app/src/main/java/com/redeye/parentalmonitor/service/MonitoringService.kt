@@ -1680,6 +1680,11 @@ class MonitoringService : Service() {
     private val loginFails = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
+    // Cap dinding gagal global terakhir (issue #1295): entri
+    // g= persisten kini membawa cap ini agar pemulihan bisa
+    // membuang hitungan yang sudah lewat jendela kunci —
+    // format lama g=<angka> tanpa cap diperlakukan kedaluwarsa.
+    private val loginGlobalLastWall = java.util.concurrent.atomic.AtomicLong(0L)
     private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
 
     // Anggaran gagal /login persisten (issue #1257): #1251 baru
@@ -1697,9 +1702,20 @@ class MonitoringService : Service() {
         if (raw.isEmpty()) return
         for (part in raw.split(";")) {
             val f = part.split(",")
-            if (f.size == 1 && f[0].startsWith("g=")) {
+            if (f[0].startsWith("g=")) {
+                // Format baru g=<angka>,<capDinding> (issue
+                // #1295); format lama tanpa cap = kedaluwarsa,
+                // dibuang — hitungan global juga menua keluar
+                // sesudah jendela kunci, sama seperti entri
+                // per-pengirim di bawah.
+                if (f.size != 2) continue
                 val g = f[0].substring(2).toIntOrNull() ?: continue
-                if (g > loginGlobalFails.get()) loginGlobalFails.set(g)
+                val gWall = f[1].toLongOrNull() ?: continue
+                if (wallNow - gWall >= LOGIN_LOCK_MS) continue
+                if (g > loginGlobalFails.get()) {
+                    loginGlobalFails.set(g)
+                    loginGlobalLastWall.set(gWall)
+                }
             } else if (f.size == 3) {
                 val count = f[1].toIntOrNull() ?: continue
                 val wallAt = f[2].toLongOrNull() ?: continue
@@ -1717,7 +1733,7 @@ class MonitoringService : Service() {
                 .map { e -> Triple(e.key, e.value, wallNow - (now - (loginAttemptAt[e.key] ?: now)).coerceAtLeast(0L)) }
                 .sortedByDescending { it.third }
                 .take(32)
-            val joined = (listOf("g=" + loginGlobalFails.get()) + entries.map { e -> e.first + "," + e.second + "," + e.third })
+            val joined = (listOf("g=" + loginGlobalFails.get() + "," + loginGlobalLastWall.get()) + entries.map { e -> e.first + "," + e.second + "," + e.third })
                 .joinToString(";")
             preferencesManager.loginFailBudget = joined
         } catch (_: Exception) { }
@@ -1976,9 +1992,18 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val globalFails = loginGlobalFails.incrementAndGet()
+            loginGlobalLastWall.set(System.currentTimeMillis())
             persistLoginBudget()
             if (globalFails >= LOGIN_GLOBAL_MAX_FAILS) {
                 loginGlobalFails.set(0)
+                // Persist ULANG sesudah penolan (issue #1295):
+                // persist di atas menulis nilai pra-lockout
+                // (>= ambang); tanpa ini nilai basi itu
+                // dipulihkan di setiap restart dan satu PIN
+                // salah langsung mengunci global lagi, padahal
+                // anggaran seharusnya mulai dari nol sesudah
+                // lockout berjalan.
+                persistLoginBudget()
                 loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
                 try {
                     preferencesManager.loginGlobalLockoutUntil = System.currentTimeMillis() + LOGIN_GLOBAL_LOCK_MS
