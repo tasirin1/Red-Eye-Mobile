@@ -1879,16 +1879,35 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
                 ""
             }.ifEmpty { return }
+            // Gerbang global (issue #1339): hormati blokir
+            // auth + sisa rate-limit SEBELUM mengklaim slot
+            // petunjuk, agar petunjuk yang pasti tertahan tak
+            // membakar jatah petunjuk pengirim.
+            if (NetworkUtils.isAuthBlocked(preferencesManager)) return
+            if (NetworkUtils.rateLimitedRemainMs() > 0L) return
             val now = android.os.SystemClock.elapsedRealtime()
             if (!claimHintSlot(senderId, now)) return
             val url = "https://api.telegram.org/bot${token}/sendMessage"
-            TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: buka link pairing dari Setup, atau kirim /start <chat ID> <kode pairing>.", parseMode = null))
+            val response = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = senderId, text = "Pairing: buka link pairing dari Setup, atau kirim /start <chat ID> <kode pairing>.", parseMode = null))
+            if (response.code() == 429) {
+                val retryAfter = try { NetworkUtils.parseRetryAfter(response.errorBody()?.string()) } catch (_: Exception) { 5L }
+                NetworkUtils.noteRateLimited(retryAfter)
+            } else if (!response.isSuccessful) {
+                try { response.errorBody()?.close() } catch (_: Exception) { }
+            }
         } catch (_: Exception) {
         }
     }
 
     private suspend fun sendDirect(targetChatId: String, text: String): Boolean {
         if (targetChatId.isEmpty()) return false
+        // Gerbang global (issue #1339): kirim langsung ikut
+        // aturan yang sama dengan jalur antre — blokir auth
+        // dan sisa rate-limit global berlaku di sini juga,
+        // dan 429 yang diterima jalur ini ikut mengajari
+        // gerbang global lewat noteRateLimited.
+        if (NetworkUtils.isAuthBlocked(preferencesManager)) return false
+        if (NetworkUtils.rateLimitedRemainMs() > 0L) return false
         return try {
             val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
             if (token.isEmpty()) return false
@@ -1896,7 +1915,16 @@ class MonitoringService : Service() {
                 "https://api.telegram.org/bot${token}/sendMessage",
                 TelegramMessage(chatId = targetChatId, text = text, parseMode = null)
             )
-            response.isSuccessful && response.body()?.ok == true
+            if (response.code() == 429) {
+                val retryAfter = try { NetworkUtils.parseRetryAfter(response.errorBody()?.string()) } catch (_: Exception) { 5L }
+                NetworkUtils.noteRateLimited(retryAfter)
+                false
+            } else {
+                if (!response.isSuccessful) {
+                    try { response.errorBody()?.close() } catch (_: Exception) { }
+                }
+                response.isSuccessful && response.body()?.ok == true
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -1937,8 +1965,18 @@ class MonitoringService : Service() {
         senderId: String,
         msgChatId: String,
         messageId: Long,
-        accessPin: String
+        accessPin: String,
+        kirimanTertunda: MutableList<suspend () -> Unit>
     ): Boolean {
+        // Semua panggilan jaringan dari alur ini dikumpulkan
+        // ke kirimanTertunda dan dijalankan pemanggil SESUDAH
+        // loginLock lepas (issue #1339): fungsi ini berjalan
+        // di dalam kunci itu, dan satu kirim lambat (batas baca
+        // klien 45 dtk) dulu menahan login berikutnya selama
+        // itu. Urutan kiriman = urutan keputusan di bawah.
+        fun tundaKirim(target: String, teks: String) {
+            kirimanTertunda.add { sendDirect(target, teks) }
+        }
         val isStartHint = command == "/start" && arg.isEmpty()
         if (command != "/login" && !isStartHint) return false
         val privateChat = senderId.isNotEmpty() && msgChatId == senderId
@@ -1946,10 +1984,10 @@ class MonitoringService : Service() {
             if (command == "/login") {
                 if (arg.isNotEmpty() && messageId > 0L) {
                     val tokenGrup = try { preferencesManager.botToken } catch (_: Exception) { "" }
-                    deleteIncomingMessage(msgChatId, messageId, tokenGrup)
-                    sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat. Pesan PIN yang terketik di grup sudah dicoba dihapus — bila masih terlihat, hapus manual sekarang: anggota grup bisa memakai PIN itu untuk login lebih dulu.")
+                    kirimanTertunda.add { deleteIncomingMessage(msgChatId, messageId, tokenGrup) }
+                    tundaKirim(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat. Pesan PIN yang terketik di grup sudah dicoba dihapus — bila masih terlihat, hapus manual sekarang: anggota grup bisa memakai PIN itu untuk login lebih dulu.")
                 } else {
-                    sendDirect(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat.")
+                    tundaKirim(senderId, "\uD83D\uDD10 Login PIN hanya dari private chat.")
                 }
             }
             return true
@@ -1957,29 +1995,29 @@ class MonitoringService : Service() {
         if (cachedOwnerId != 0L) {
             if (command == "/login") {
                 if (senderId == cachedOwnerId.toString()) {
-                    sendDirect(senderId, "\u2705 Sudah login sebagai owner.")
+                    tundaKirim(senderId, "\u2705 Sudah login sebagai owner.")
                 } else {
-                    sendDirect(senderId, "\uD83D\uDD12 Owner sudah tertaut; login PIN ditutup.")
+                    tundaKirim(senderId, "\uD83D\uDD12 Owner sudah tertaut; login PIN ditutup.")
                 }
             } else if (senderId == cachedOwnerId.toString()) {
-                sendDirect(senderId, "\u2705 Bot aktif. Ketuk /help untuk daftar perintah.")
+                tundaKirim(senderId, "\u2705 Bot aktif. Ketuk /help untuk daftar perintah.")
             }
             return true
         }
         if (accessPin.isEmpty()) {
             if (command == "/login") {
-                sendDirect(senderId, "\uD83D\uDD11 PIN akses belum diatur. Buka Setup dan isi PIN akses bot.")
+                tundaKirim(senderId, "\uD83D\uDD11 PIN akses belum diatur. Buka Setup dan isi PIN akses bot.")
             } else {
-                sendPairHint(senderId)
+                kirimanTertunda.add { sendPairHint(senderId) }
             }
             return true
         }
         if (isStartHint || arg.isEmpty()) {
-            sendDirect(senderId, "\uD83D\uDD11 Kirim /login <PIN> (6-12 digit) untuk masuk.")
+            tundaKirim(senderId, "\uD83D\uDD11 Kirim /login <PIN> (6-12 digit) untuk masuk.")
             return true
         }
         val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
-        if (messageId > 0L) deleteIncomingMessage(senderId, messageId, token)
+        if (messageId > 0L) kirimanTertunda.add { deleteIncomingMessage(senderId, messageId, token) }
         val now = SystemClock.elapsedRealtime()
         // Kunci PERSISTEN dinilai lebih dulu (issue #1251): restart
         // proses mengosongkan peta memori di bawah, tetapi kunci
@@ -1994,24 +2032,24 @@ class MonitoringService : Service() {
                 LOGIN_GLOBAL_LOCK_MS
             )
         ) {
-            sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
+            tundaKirim(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
             return true
         }
         val persistedSenderLock = loginSenderLockEntry(senderId)
         if (persistedSenderLock != null && com.redeye.parentalmonitor.utils.RestorePinGate.locked(persistedSenderLock.first, wallNow, persistedSenderLock.second, now)) {
             val minutes = ((persistedSenderLock.first - wallNow + 59_999L) / 60_000L).coerceAtLeast(1L)
-            sendDirect(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
+            tundaKirim(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
             return true
         }
         restoreLoginBudgetIfNeeded(wallNow)
         if (now < loginGlobalLockoutUntil.get()) {
-            sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
+            tundaKirim(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
             return true
         }
         val lockedUntil = try { loginLockUntil[senderId] ?: 0L } catch (_: Exception) { 0L }
         if (now < lockedUntil) {
             val minutes = ((lockedUntil - now + 59_999L) / 60_000L).coerceAtLeast(1L)
-            sendDirect(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
+            tundaKirim(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
             return true
         }
         val lastAttempt = try { loginAttemptAt[senderId] ?: 0L } catch (_: Exception) { 0L }
@@ -2069,7 +2107,7 @@ class MonitoringService : Service() {
                     preferencesManager.setLoginGlobalLockout(System.currentTimeMillis() + LOGIN_GLOBAL_LOCK_MS, now)
                 } catch (_: Exception) { }
                 audit("login pin terkunci global", "private")
-                sendDirect(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
+                tundaKirim(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
                 return true
             }
             if (fails >= LOGIN_MAX_FAILS) {
@@ -2082,11 +2120,11 @@ class MonitoringService : Service() {
                 } catch (_: Exception) {
                 }
                 audit("login pin terkunci", "private")
-                sendDirect(senderId, "\u23F3 PIN salah ${LOGIN_MAX_FAILS} kali. Coba lagi 15 menit.")
+                tundaKirim(senderId, "\u23F3 PIN salah ${LOGIN_MAX_FAILS} kali. Coba lagi 15 menit.")
                 return true
             }
             audit("login pin salah", "private")
-            sendDirect(senderId, "\u274C PIN salah. Sisa ${LOGIN_MAX_FAILS - fails} percobaan.")
+            tundaKirim(senderId, "\u274C PIN salah. Sisa ${LOGIN_MAX_FAILS - fails} percobaan.")
             return true
         }
         val ownerId = senderId.toLongOrNull() ?: return true
@@ -2133,21 +2171,25 @@ class MonitoringService : Service() {
         }
         if (adopted == null) {
             android.util.Log.w("MonitoringService", "Login ditolak: kunci perintah sibuk melewati tenggat tunggu adopsi")
-            sendDirect(senderId, "\u23F3\uFE0F Login belum bisa diproses (sistem sibuk terlalu lama). Kirim /login lagi.")
+            tundaKirim(senderId, "\u23F3\uFE0F Login belum bisa diproses (sistem sibuk terlalu lama). Kirim /login lagi.")
             return true
         }
         if (!adopted) {
             audit("login pin simpan gagal", "private")
-            sendDirect(senderId, "\u26A0\uFE0F PIN benar, tetapi akses gagal disimpan. Coba lagi.")
+            tundaKirim(senderId, "\u26A0\uFE0F PIN benar, tetapi akses gagal disimpan. Coba lagi.")
             return true
         }
         refreshCreds()
         audit("login pin ok", "private")
-        try { registerBotCommands(force = true) } catch (_: Exception) {
+        kirimanTertunda.add {
+            try { registerBotCommands(force = true) } catch (_: Exception) {
+            }
         }
         val hello = "\u2705 Login berhasil. Chat ini sekarang menjadi owner dan tujuan pemantauan.\n\nGunakan /help untuk membuka menu."
-        if (!sendToTelegram(hello, queueOnFail = false)) sendDirect(senderId, hello)
-        try { handleHelpCommand(true) } catch (_: Exception) {
+        kirimanTertunda.add {
+            if (!sendToTelegram(hello, queueOnFail = false)) sendDirect(senderId, hello)
+            try { handleHelpCommand(true) } catch (_: Exception) {
+            }
         }
         return true
     }
@@ -2694,8 +2736,15 @@ class MonitoringService : Service() {
                             // tidak lagi dipegang selama rangkaian
                             // jaringan login — adopsi mengambilnya
                             // sebentar di dalam handler.
+                            val kirimanLogin = mutableListOf<suspend () -> Unit>()
                             loginLock.withLock {
-                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin)
+                                handleOwnerLogin(command, arg, senderId, msgChatId, message?.messageId ?: 0L, accessPin, kirimanLogin)
+                            }
+                            // Kiriman jaringan login dijalankan
+                            // SESUDAH kunci lepas (issue #1339),
+                            // dalam urutan keputusan handler.
+                            for (kirim in kirimanLogin) {
+                                try { kirim() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { }
                             }
                         }
                         continue

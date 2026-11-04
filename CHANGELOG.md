@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kirim langsung (petunjuk pairing dan pemberitahuan login) kini menghormati gerbang rate-limit dan blokir kredensial global yang sama dengan jalur antre, dan balasan 429 yang diterimanya ikut mengajari gerbang itu — sebelumnya jalur ini mengirim menembus keduanya. Selain itu seluruh panggilan jaringan selama alur login kini dikirim sesudah kunci login lepas, bukan sambil memegangnya: satu kirim yang lambat tidak lagi menahan upaya login berikutnya sampai puluhan detik.
+
 - Polling perintah kini memberi jeda mundur 60 detik juga untuk kode HTTP tak dikenal (mis. 402/404/422 dari server/proxy yang bermasalah), sama seperti kode 408/5xx: sebelumnya kode anomali itu hanya terkena jeda generik 10-30 detik sehingga aplikasi memolling terlalu rapat selama gangguan berkepanjangan dan memboroskan baterai.
 
 - Jalur kirim teks kini selalu menutup badan respons error yang tidak dibacanya (kode selain 400/429), menyamai jalur polling: sebelumnya badan error yang tak tertutup menahan koneksi di luar kumpulan koneksi bersama, sehingga saat server membalas error beruntun (mis. 502 berkali-kali selama pengosongan antrean) setiap kirim membayar pembuatan koneksi baru — lebih lambat dan lebih boros baterai.
