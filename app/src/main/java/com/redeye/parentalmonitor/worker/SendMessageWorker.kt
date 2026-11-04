@@ -576,6 +576,14 @@ class SendMessageWorker(
         }
     }
 
+    // Tutup errorBody pada cabang yang tidak membacanya
+    // (issue #1337): body error yang tak dikonsumsi menahan
+    // koneksi OkHttp di luar pool — pola yang sama dengan
+    // jalur poll #950 di MonitoringService.
+    private fun closeErrorBody(response: retrofit2.Response<*>) {
+        try { response.errorBody()?.close() } catch (_: Exception) { }
+    }
+
     private sealed interface SendOutcome {
         object Sent : SendOutcome
         object Failed : SendOutcome
@@ -598,10 +606,12 @@ class SendMessageWorker(
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
+                closeErrorBody(response)
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
                 classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
+                closeErrorBody(response)
                 SendOutcome.Failed
             } else if (response.code() == 400) {
                 classify400(response, chatId) ?: SendOutcome.Rejected
@@ -612,6 +622,7 @@ class SendMessageWorker(
                 // Perlakukan sebagai gagal sementara — pesan
                 // dipertahankan dan dicoba lagi lewat anggaran
                 // retry, bukan dihapus permanen.
+                closeErrorBody(response)
                 SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -640,15 +651,18 @@ class SendMessageWorker(
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
+                closeErrorBody(response)
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
                 classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
+                closeErrorBody(response)
                 SendOutcome.Failed
             } else {
                 // Sama seperti sendPlainFallback (issue #966):
                 // kode tak terdaftar = gagal sementara, bukan
                 // penolakan permanen.
+                closeErrorBody(response)
                 SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {

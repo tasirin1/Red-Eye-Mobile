@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jalur kirim teks kini selalu menutup badan respons error yang tidak dibacanya (kode selain 400/429), menyamai jalur polling: sebelumnya badan error yang tak tertutup menahan koneksi di luar kumpulan koneksi bersama, sehingga saat server membalas error beruntun (mis. 502 berkali-kali selama pengosongan antrean) setiap kirim membayar pembuatan koneksi baru — lebih lambat dan lebih boros baterai.
+
 - Klasifikasi hasil kirim Telegram kini menegakkan aturan "kode tak dikenal berarti sementara" di sumbernya: label "ditolak permanen" hanya lahir dari kode 400 persis, sehingga tidak ada lagi jalur kirim yang harus menebak-nebak dari kode mentah — kode anomali (402/404/409/413/422 dan sejenisnya) selalu dianggap sementara dan diantrekan untuk dicoba lagi, persis perilaku yang selama ini dijaga manual di tiap pemanggil. Uji pengunci klasifikasi diperbarui mengikuti aturan ini.
 
 - Pembersihan antrean handler kamera saat reset kini hanya membuang tugas milik aplikasi sendiri: sebelumnya pembersihan menyeluruh bisa ikut membuang pemberitahuan "kamera terbuka" dari sistem yang belum terkirim, sehingga kamera berisiko tertinggal terbuka di sisi sistem dan pengambilan berikutnya gagal. Semua tugas terjadwal kamera (batas waktu foto/video, penghentian video, penunggu metering) kini bertanda khusus agar hanya mereka yang dibersihkan saat reset.

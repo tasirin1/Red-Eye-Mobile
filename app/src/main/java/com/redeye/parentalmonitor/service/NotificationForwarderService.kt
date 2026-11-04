@@ -1617,6 +1617,10 @@ class NotificationForwarderService : NotificationListenerService() {
         val body = if (code == 429 || code == 400) {
             try { response.errorBody()?.string() } catch (_: Exception) { null }
         } else {
+            // Sama seperti jalur utama (issue #1337):
+            // errorBody yang tak dibaca ditutup agar koneksi
+            // OkHttp kembali ke pool (pola poll #950).
+            try { response.errorBody()?.close() } catch (_: Exception) { }
             null
         }
         val migrated = if (code == 400) adoptMigratedChat(prefs, body, chatId) else false

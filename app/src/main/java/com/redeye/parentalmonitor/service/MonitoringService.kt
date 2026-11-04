@@ -7451,6 +7451,12 @@ class MonitoringService : Service() {
         val body = if (code == 429 || code == 400) {
             try { response.errorBody()?.string() } catch (_: Exception) { null }
         } else {
+            // Body yang tak dibaca tetap WAJIB ditutup
+            // (issue #1337, meniru jalur poll #950): errorBody
+            // yang tak dikonsumsi menahan koneksi OkHttp di
+            // luar pool, jadi badai error membayar handshake
+            // baru di setiap kirim.
+            try { response.errorBody()?.close() } catch (_: Exception) { }
             null
         }
         val migrated = if (code == 400) adoptMigratedChat(body, chatId) else false
