@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemeriksaan acuan yatim kini mengupas komentar di sisi acuan seperti di sisi definisi: acuan sumber daya yang hanya disebut di dalam komentar kode atau XML tidak lagi memicu kegagalan palsu (#1218).
 - Ekstraksi ID layout kini juga meratakan berkas lebih dulu dan membuang TAB saat normalisasi: atribut yang terbelah baris dan TAB di sekitar tanda sama dengan tidak lagi memicu gagal palsu (#1217).
 - Pola larangan .envrc pada gerbang cepat kini berjangkar awal nama seperti pola env lainnya: berkas sah yang namanya sekadar berakhiran .envrc tidak lagi gagal palsu, sementara .envrc sungguhan tetap tertangkap (#1216).
 - Pola record gerbang kini hanya berlaku untuk berkas Java (di Kotlin kata itu hanya identifier biasa, termasuk fungsi infix) dan mengenali record generik: rename berisiko tidak lagi lolos lewat panggilan infix berargumen, dan deklarasi record generik tidak lagi luput (#1214, #1215).

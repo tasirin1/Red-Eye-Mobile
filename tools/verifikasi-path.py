@@ -448,6 +448,14 @@ def himpun_definisi():
         isi = baca_teks(path)
         if not isi:
             continue
+        # Sisi acuan mengupas komentar seperti sisi definisi
+        # (issue #1218): acuan yang hanya hidup di komentar
+        # XML/Kotlin/Java bukan acuan nyata dan tak boleh
+        # menggagalkan gerbang sebagai yatim.
+        if path.endswith(".xml"):
+            isi = kupas_komentar_xml(isi)
+        elif path.endswith(EKSTENSI_KODE):
+            isi = _kupas_komentar_kode(isi, bersarang=not path.endswith(".java"))
         isi = pola_android.sub("", isi)
         isi = pola_pustaka.sub("", isi)
         for jenis, pola_xml, pola_r in pola_pakai:
@@ -492,6 +500,66 @@ def cek_acuan_yatim(gagal):
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))
+
+
+def _kupas_komentar_kode(teks, bersarang=True):
+    # Buang isi komentar // dan /* */ dari berkas kode
+    # (issue #1218): komentar blok bersarang untuk Kotlin,
+    # tidak untuk Java — petunjuk bahasa yang sama dengan
+    # pelacak deklarasi (#1198). Sadar string/char sederhana
+    # (komentar di dalam string tidak dibuang); isi komentar
+    # diganti spasi dengan newline dipertahankan. String
+    # mentah Kotlin (tiga petik) diperlakukan sebagai string
+    # biasa — batas yang sama dengan perkakas lain di berkas
+    # ini.
+    out = []
+    i, n = 0, len(teks)
+    while i < n:
+        c = teks[i]
+        if c == '"' or c == "'":
+            j = i + 1
+            while j < n:
+                if teks[j] == "\\":
+                    j += 2
+                    continue
+                if teks[j] == c:
+                    j += 1
+                    break
+                if teks[j] == "\n" and c == "'":
+                    break
+                j += 1
+            out.append(teks[i:j])
+            i = j
+            continue
+        if teks.startswith("//", i):
+            j = teks.find("\n", i)
+            if j < 0:
+                j = n
+            out.append(" " * (j - i))
+            i = j
+            continue
+        if teks.startswith("/*", i):
+            if not bersarang:
+                k = teks.find("*/", i + 2)
+                j = n if k < 0 else k + 2
+            else:
+                depth = 1
+                j = i + 2
+                while j < n and depth > 0:
+                    if teks.startswith("/*", j):
+                        depth += 1
+                        j += 2
+                    elif teks.startswith("*/", j):
+                        depth -= 1
+                        j += 2
+                    else:
+                        j += 1
+            out.append("".join("\n" if ch == "\n" else " " for ch in teks[i:j]))
+            i = j
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def namespace_aplikasi():
