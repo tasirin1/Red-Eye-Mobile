@@ -2345,9 +2345,14 @@ class PreferencesManager(context: Context) {
     // "aplikasi baru". Penyetelan berkala membuang entri yang
     // tak lagi terpasang; daftar terpasang kosong (kueri gagal)
     // tidak pernah dipakai memangkas.
-    fun pruneA11yKnownApps(installed: Collection<String>) {
-        if (installed.isEmpty()) return
-        try {
+    // Nilai kembali (issue #1334): true HANYA bila badan
+    // pangkas sungguh berjalan sampai selesai — daftar kosong
+    // (dilewati) dan kegagalan internal (ditelan di sini)
+    // sama-sama false, agar pemanggil tidak menganggap
+    // rekonsiliasi sudah terjadi padahal belum.
+    fun pruneA11yKnownApps(installed: Collection<String>): Boolean {
+        if (installed.isEmpty()) return false
+        return try {
             synchronized(a11yKnownAppsLock) {
                 val current = knownAppsLocked()
                 val terpasang = installed.toHashSet()
@@ -2355,7 +2360,9 @@ class PreferencesManager(context: Context) {
                     sharedPreferences.edit().putStringSet(KEY_A11Y_KNOWN_APPS, HashSet(current)).apply()
                 }
             }
+            true
         } catch (_: Exception) {
+            false
         }
     }
 
