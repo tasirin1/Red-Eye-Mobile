@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Seluruh situs Telegram sekali-jalan kini menutup badan respons error yang tidak dibacanya — jawaban callback tiap ketukan menu, hapus pesan/webhook/perintah, pendaftaran perintah bot, validasi restore, verifikasi kredensial dan kirim status di layar Setup, serta pengirim laporan crash: sebelumnya badan error yang tertinggal menahan koneksi di luar kumpulan koneksi bersama, sehingga saat server/proxy membalas error beruntun, panggilan berikutnya membayar pembuatan koneksi baru.
+
 - Jalur kirim utama pekerja pengiriman kini menutup badan respons error pada cabang 401, 408/5xx, dan kode tak dikenal, menyamai kedua fungsi pengirim saudaranya: sebelumnya badan yang tak tertutup menahan koneksi di luar kumpulan koneksi bersama pada jalur terpanas antrean, sehingga badai error membuat tiap pengiriman membayar pembuatan koneksi baru.
 
 - Penentu fungsi pemilik baris di alat verifikasi kini menghitung kurung atas teks yang string dan komentarnya dikupas beruntun: sebelumnya kurung di dalam literal string (mis. "}" dalam string, atau kurung dalam string mentah multi-baris) menggeser kedalaman sehingga pemilik sebuah baris salah dikenali atau hilang, dan atribusi cakupan uji ikut salah senyap. Terbukti lewat uji satuan tiga kasus.

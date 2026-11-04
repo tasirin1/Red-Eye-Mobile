@@ -2433,7 +2433,9 @@ class MonitoringService : Service() {
             // backoff hanya dibatalkan bila webhook sungguh terhapus
             // (issue #732).
             webhookWasPresent = desc.contains("was deleted") && !desc.contains("already")
-            resp.isSuccessful && resp.body()?.ok == true
+            val okResp = resp.isSuccessful && resp.body()?.ok == true
+            if (!okResp) tutupBadanError(resp)
+            okResp
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -2637,6 +2639,7 @@ class MonitoringService : Service() {
                         if (meResp.isSuccessful && meResp.body()?.ok == true && uname.isNotEmpty()) {
                             preferencesManager.botUsername = uname
                         }
+                        if (!meResp.isSuccessful) tutupBadanError(meResp)
                     } catch (_: Exception) {
                     }
                 }
@@ -3313,6 +3316,13 @@ class MonitoringService : Service() {
         }
     }
 
+    // Badan error respons sekali-jalan yang tak dibaca wajib
+    // ditutup agar koneksinya kembali ke pool bersama (issue
+    // #1352, keluarga #950/#1337).
+    private fun tutupBadanError(resp: retrofit2.Response<*>?) {
+        try { resp?.errorBody()?.close() } catch (_: Exception) { }
+    }
+
     private suspend fun answerCallback(callbackId: String) {
         try {
             val token = try {
@@ -3322,7 +3332,8 @@ class MonitoringService : Service() {
             }
             if (token.isEmpty()) return
             val url = "https://api.telegram.org/bot${token}/answerCallbackQuery"
-            TelegramClient.api.answerCallbackQuery(url, mapOf("callback_query_id" to callbackId))
+            val acResp = TelegramClient.api.answerCallbackQuery(url, mapOf("callback_query_id" to callbackId))
+            if (!acResp.isSuccessful) tutupBadanError(acResp)
         } catch (_: Exception) {
         }
     }
@@ -3351,12 +3362,13 @@ class MonitoringService : Service() {
         try {
             val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
             if (botToken.isEmpty()) return
-            TelegramClient.api.deleteMyCommands(
+            val delResp = TelegramClient.api.deleteMyCommands(
                 "https://api.telegram.org/bot$botToken/deleteMyCommands",
                 com.redeye.parentalmonitor.network.DeleteCommandsRequest(
                     com.redeye.parentalmonitor.network.BotCommandScope("chat", chatId)
                 )
             )
+            if (!delResp.isSuccessful) tutupBadanError(delResp)
         } catch (_: Exception) {
         }
     }
@@ -3384,12 +3396,14 @@ class MonitoringService : Service() {
                 )
                 val ownerResp = TelegramClient.api.setMyCommands(url, ownerBody)
                 ownerOk = ownerResp.isSuccessful && ownerResp.body()?.ok == true
+                if (!ownerOk) tutupBadanError(ownerResp)
             }
             if (publicResp.isSuccessful && publicResp.body()?.ok == true && ownerOk) {
                 preferencesManager.commandsTokenHash = tokenHash
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "Bot command menu registered")
             } else {
                 commandsRegFailAt = System.currentTimeMillis()
+                tutupBadanError(publicResp)
                 android.util.Log.w("MonitoringService", "Command menu registration failed: ${publicResp.code()}")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -4489,6 +4503,7 @@ class MonitoringService : Service() {
             val fileResp = TelegramClient.api.getFile("https://api.telegram.org/bot$token/getFile?file_id=$fileId")
             val filePath = fileResp.body()?.result?.filePath
             if (!fileResp.isSuccessful || filePath.isNullOrBlank()) {
+                tutupBadanError(fileResp)
                 sendToTelegram("Gagal mengambil file dari Telegram. Coba kirim ulang.")
                 return
             }
@@ -4659,6 +4674,7 @@ class MonitoringService : Service() {
             val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$newToken/getMe")
             if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                 val code = meResp.code()
+                tutupBadanError(meResp)
                 sendToTelegram("⚠️ Token bot baru ditolak Telegram (kode $code). Setelan lama tidak diubah.")
                 return false
             }
@@ -4666,6 +4682,7 @@ class MonitoringService : Service() {
             val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$newToken/getChat?chat_id=$encodedChat")
             if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
                 val code = chatResp.code()
+                tutupBadanError(chatResp)
                 sendToTelegram("⚠️ Chat ID baru tidak bisa diakses bot baru (kode $code). Setelan lama tidak diubah.")
                 return false
             }
@@ -4675,6 +4692,7 @@ class MonitoringService : Service() {
             )
             if (!testResp.isSuccessful || testResp.body()?.ok != true) {
                 val code = testResp.code()
+                tutupBadanError(testResp)
                 sendToTelegram("⚠️ Tes kirim ke chat baru gagal (kode $code). Setelan lama tidak diubah.")
                 return false
             }
@@ -4696,6 +4714,7 @@ class MonitoringService : Service() {
         try {
             val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot$newToken/getMe")
             if (!meResp.isSuccessful || meResp.body()?.ok != true) {
+                tutupBadanError(meResp)
                 audit("restore batal validasi ulang", "private")
                 sendToTelegram("⚠️ Token baru tidak valid lagi saat jatuh tempo. Setelan lama tetap dipakai.")
                 return
@@ -4703,6 +4722,7 @@ class MonitoringService : Service() {
             val encodedChat = try { URLEncoder.encode(newChat, "UTF-8") } catch (_: Exception) { newChat }
             val chatResp = TelegramClient.api.getChat("https://api.telegram.org/bot$newToken/getChat?chat_id=$encodedChat")
             if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
+                tutupBadanError(chatResp)
                 audit("restore batal validasi ulang", "private")
                 sendToTelegram("⚠️ Chat baru tidak bisa diakses saat jatuh tempo. Setelan lama tetap dipakai.")
                 return
@@ -4754,7 +4774,7 @@ class MonitoringService : Service() {
         )
         if (oldToken.isNotEmpty() && oldChat.isNotEmpty() && (oldToken != newToken || oldChat != newChat)) {
             try {
-                TelegramClient.api.sendMessage(
+                val byeResp = TelegramClient.api.sendMessage(
                     "https://api.telegram.org/bot$oldToken/sendMessage",
                     TelegramMessage(
                         chatId = oldChat,
@@ -4762,6 +4782,7 @@ class MonitoringService : Service() {
                         parseMode = null
                     )
                 )
+                if (!byeResp.isSuccessful) tutupBadanError(byeResp)
             } catch (_: Exception) {
             }
         }
@@ -4770,10 +4791,11 @@ class MonitoringService : Service() {
     private suspend fun deleteIncomingMessage(chatId: String, messageId: Long, token: String) {
         if (chatId.isEmpty() || messageId <= 0L || token.isEmpty()) return
         try {
-            TelegramClient.api.deleteMessage(
+            val delMsgResp = TelegramClient.api.deleteMessage(
                 "https://api.telegram.org/bot$token/deleteMessage",
                 mapOf("chat_id" to chatId, "message_id" to messageId.toString())
             )
+            if (!delMsgResp.isSuccessful) tutupBadanError(delMsgResp)
         } catch (_: Exception) {
         }
     }
@@ -9859,7 +9881,8 @@ class MonitoringService : Service() {
             val botToken = try { preferencesManager.botToken } catch (_: Exception) { "" }
             if (botToken.isEmpty()) return
             val url = "https://api.telegram.org/bot$botToken/deleteWebhook"
-            TelegramClient.api.deleteWebhook(url, emptyMap())
+            val whResp = TelegramClient.api.deleteWebhook(url, emptyMap())
+            if (!whResp.isSuccessful) tutupBadanError(whResp)
         } catch (_: Exception) {
         }
     }
