@@ -1123,7 +1123,28 @@ def _path_sisi_b(baris):
                     break
                 mulai = idx + 1
             if token_b is None:
-                token_b = "b/" + sisa.rsplit(" b/", 1)[1]
+                # Rename (issue #1347): kedua sisi memang beda,
+                # jadi belahan setara tak pernah ada — dan
+                # kemunculan terakhir memotong rename yang path
+                # BARU-nya memuat " b/". Calon belahan diuji
+                # terhadap keberadaan berkas di pohon kerja:
+                # hasil rename ada di pohon baru, sedangkan
+                # belahan dalam-direktori menghasilkan path
+                # yang tak ada. Bila tak ada calon yang ada
+                # (forensik rentang lama), heuristik lama.
+                token_b = None
+                mulai = 0
+                while True:
+                    idx = sisa.find(" b/", mulai)
+                    if idx < 0:
+                        break
+                    b_tok = sisa[idx + 1:]
+                    if os.path.isfile(os.path.join(AKAR, b_tok[2:])):
+                        token_b = b_tok
+                        break
+                    mulai = idx + 1
+                if token_b is None:
+                    token_b = "b/" + sisa.rsplit(" b/", 1)[1]
         else:
             token_b = sisa.split(" ", 1)[1] if " " in sisa else ""
     token_b = _buka_kutip_git(token_b)

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengurai path diff di alat verifikasi kini juga utuh untuk rename yang path barunya berada di direktori ber-" b/": calon belahan diuji terhadap keberadaan berkas di pohon baru (hasil rename memang ada di sana), sehingga metode yang dihapus di berkas hasil rename tidak lagi terlewat dari pemeriksaan. Terbukti lewat uji satuan pengurai dan baterai sandbox rename ujung-ke-ujung.
+
 - Alat verifikasi jalur kini memeriksa nama bekas-hapusan per segmen diff dengan benih pohonnya masing-masing pada mode bawaan: diff commit disemai dari pohon ujungnya, diff staged dari indeks git, dan diff pohon kerja dari berkas kerja — sebelumnya satu benih global dipakai untuk ketiganya sehingga vonis bisa berbalik (tuduhan palsu atau regresi lolos) setiap kali ada perubahan staged/belum-commit. Terbukti lewat baterai sandbox dua arah terhadap gerbang lama.
 
 ## [1.6.619] - 2026-11-04
