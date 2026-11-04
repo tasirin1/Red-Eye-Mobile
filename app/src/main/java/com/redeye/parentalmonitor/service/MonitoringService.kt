@@ -12642,7 +12642,12 @@ class MonitoringService : Service() {
             // sehingga tidur dalam bisa menggagalkan
             // unggahan di tengah jalan. Kunci lepas sendiri
             // pada timeout-nya bila jalur keluar terlewat.
-            val photoLock = acquireOpWakeLock("photo", 120_000L)
+            // Batas kunci diselaraskan dengan callTimeout
+            // klien media (600 dtk, issue #1267): batas lama
+            // 120 dtk melepas perlindungan tidur dalam di
+            // tengah unggahan lambat yang masih sah — keluarga
+            // ketidakcocokan anggaran yang sama dengan #1232.
+            val photoLock = acquireOpWakeLock("photo", 600_000L)
             val response = try {
                 TelegramMediaClient.api.sendPhoto(url, chatIdBody, caption, photoPart, menuBarBody())
             } finally {

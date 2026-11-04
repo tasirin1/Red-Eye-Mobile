@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Wakelock unggah foto dinaikkan dari 120 detik menjadi 600 detik, selaras dengan `callTimeout` klien media: unggahan lambat yang sah tidak lagi kehilangan perlindungan tidur dalam di tengah jalan (issue #1267).
 - Video yang terekam dengan lensa cadangan kini diberi pemberitahuan seperti jalur foto ("🎥 Lensa yang diminta tak ada, dipakai kamera …"), tidak lagi terkirim senyap seolah memakai lensa yang diminta (issue #1266).
 - Unggahan audio/video kini memegang wakelock selama panggilan jaringan di dalam fungsi kirimnya (pola foto #1208), sehingga jalur flush — jalur kirim ulang utama yang sebelumnya tanpa wakelock sama sekali — tidak lagi bisa terhenti tidur dalam di tengah unggahan (issue #1265).
 - Gerbang `verifikasi-path`: generik bertingkat dua (mis. `Map<String, List<Int>>`) tidak lagi lolos dari panen metode hilang maupun pencocokan definisi — rentang generik yang seimbang diruntuhkan menjadi `<T>` sebelum pola satu tingkat diterapkan (issue #1263).
