@@ -57,6 +57,13 @@ class RedactTest {
     }
 
     @Test
+    fun chatIdCadanganHanyaTanpaRahasia() {
+        // #1190: dengan rahasia eksplisit, deret digit sah
+        // (epoch detik) tidak ikut tertutup.
+        assertEquals("epoch 1730000000 ok", Redact.token("epoch 1730000000 ok", "tokenrahasia123"))
+    }
+
+    @Test
     fun chatIdCadanganDitopeng() {
         // #1176: tanpa rahasia eksplisit, bentuk chat ID tetap
         // tertutup; deret 11+ digit (epoch milidetik) dibiarkan.

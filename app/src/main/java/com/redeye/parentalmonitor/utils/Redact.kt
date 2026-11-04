@@ -16,12 +16,18 @@ object Redact {
     fun token(value: String?, vararg secrets: String): String {
         val src: String = value ?: ""
         if (src.isEmpty()) return ""
+        // Fallback bentuk chat hanya untuk pemanggil TANPA
+        // rahasia (issue #1190): pemanggil ber-rahasia sudah
+        // menutup chat ID-nya sendiri secara eksplisit, dan
+        // penerapan buta menelan deret 9-10 digit sah lain
+        // (epoch detik, update_id) yang dibutuhkan diagnosis.
+        val samarkanBentukChat = secrets.isEmpty()
         var out = src
         for (secret in secrets) {
             if (secret.isEmpty()) continue
             out = if (secret.length < 10 && secret.all { it.isDigit() }) replaceDigitBounded(out, secret) else out.replace(secret, "***")
         }
-        if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return out.replace(CHAT_ID_FALLBACK, "***")
+        if (!out.contains(':') && !out.contains("%3a", ignoreCase = true)) return if (samarkanBentukChat) out.replace(CHAT_ID_FALLBACK, "***") else out
         val direct = out.replace(TOKEN_FALLBACK, "***")
         // Token terbelah baris: satukan baris di antara karakter token lalu
         // coba lagi — dijalankan juga sesudah penggantian langsung berhasil,
@@ -35,7 +41,7 @@ object Redact {
         // kepala digit token tertutup lebih dulu sehingga pola
         // token tak lagi cocok dan token terbelah lolos utuh —
         // terbukti oleh CI merah v1.6.609 (2 uji RedactTest).
-        return hasil.replace(CHAT_ID_FALLBACK, "***")
+        return if (samarkanBentukChat) hasil.replace(CHAT_ID_FALLBACK, "***") else hasil
     }
 
     private fun replaceDigitBounded(src: String, secret: String): String {
