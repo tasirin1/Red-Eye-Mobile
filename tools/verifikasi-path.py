@@ -554,11 +554,21 @@ def cek_xml(gagal):
         gagal.append("XML rusak: " + ", ".join(buruk))
 
 
+# Awalan nama sumber daya publik pustaka Android yang lazim
+# (issue #1384): definisinya memang hidup di pustaka
+# (Material 3, AppCompat, Design), bukan di repo — acuan ke
+# sana bukan yatim. pola_pustaka hanya menyisihkan sebagian
+# @style/, jadi saringan ini bekerja di tingkat nama untuk
+# semua jenis.
+AWALAN_PUSTAKA = ("m3_", "mtrl_", "abc_", "design_", "androidx_")
+
+
 def cek_acuan_yatim(gagal):
     definisi, acuan = himpun_definisi()
     for jenis, dipakai in sorted(acuan.items()):
         ada = definisi.get(jenis, set())
-        yatim = sorted(n for n in dipakai if n not in ada)
+        yatim = sorted(n for n in dipakai
+                       if n not in ada and not n.startswith(AWALAN_PUSTAKA))
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))

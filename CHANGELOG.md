@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi tak lagi memvonis yatim acuan ke sumber daya publik pustaka Android (awalan nama Material 3, Material Components, AppCompat, dan Design): definisi sumber daya itu memang tinggal di pustaka, bukan di repo, jadi rujukan sah seperti warna Material 3 dari tema sebelumnya selalu menggagalkan gerbang. Terbukti lewat uji fungsi dua arah.
+
 - Alat verifikasi kini mendaftarkan nama `<declare-styleable>` beserta turunan per-atributnya: sebelumnya nama styleable tidak pernah terhimpun, sehingga acuan `R.styleable` yang sah pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
 
 - Alat verifikasi kini mengenali definisi `<integer>` dan `<fraction>` di berkas values: sebelumnya kedua jenis sumber daya itu tidak pernah terdaftar oleh penghimpun definisi, sehingga acuan sah pertamanya pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
