@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penggabungan hitungan drop saat penyimpanan pulih diperbaiki akarnya: yang ditambahkan kini hanya kelebihan isi cakram di atas baseline yang sudah terwakili di memori (bukan lagi potongan pengambilan volatile yang salah kolam dan memotong hitungan lama dua kali); penanda `takenVolatile*` yang tak lagi diperlukan dihapus (issue #1297).
 - Entri anggaran gagal /login per pengirim hasil pemulihan kini mempertahankan cap waktu aslinya saat ditulis ulang — tidak lagi dicap segar di setiap penulisan, sehingga pemangkasan entri basi berlaku juga baginya (issue #1296).
 - Anggaran gagal /login persisten kini berperilaku benar sesudah lockout global: hitungan global ditulis ulang sesudah penolan lockout dan entri `g=` membawa cap waktu sehingga pemulihan membuang hitungan yang sudah lewat jendela kunci — satu PIN salah sesudah restart tidak lagi langsung mengunci global (issue #1295).
 - Antrean pesan tidak lagi bisa tertahan tanpa pemicu sesudah pembatalan REPLACE: run `SendMessageWorker` yang ditolak penjaga run-tunggal dan run yang berakhir lewat jalur batal kini sama-sama meninggalkan satu jadwal pengiriman tertunda (APPEND_OR_REPLACE), menutup celah menunggu watchdog ±15 menit (issue #1294).
