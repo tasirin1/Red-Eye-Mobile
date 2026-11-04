@@ -11007,7 +11007,21 @@ class MonitoringService : Service() {
     private suspend fun checkAccessibilityHealth() {
         try {
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) return
-            if (!preferencesManager.a11yTamperEnabled) return
+            // Gerbangnya fitur a11y APA PUN yang terpakai
+            // (issue #1209): sebelumnya hanya sakelar tamper
+            // yang dihitung, sehingga pemakai pantau aplikasi,
+            // kata pantau, atau pemakaian layar tanpa
+            // /lindungi tak pernah diberi tahu saat layanan
+            // aksesibilitas mati — pemantauan berhenti senyap.
+            val a11yDipakai = try {
+                preferencesManager.a11yTamperEnabled ||
+                    preferencesManager.a11yAppAlert ||
+                    preferencesManager.watchKeywords.isNotBlank() ||
+                    preferencesManager.a11yUsageJson.isNotBlank()
+            } catch (_: Exception) {
+                false
+            }
+            if (!a11yDipakai) return
             if (!preferencesManager.accessibilityEverEnabled) return
             if (ShotAccessibilityService.isEnabled(this)) {
                 if (preferencesManager.a11yDisabledAlertAt != 0L) preferencesManager.a11yDisabledAlertAt = 0L
