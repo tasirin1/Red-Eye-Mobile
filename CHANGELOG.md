@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Catatan penerimaan batas ditambahkan di pemotong pesan: pasangan tag HTML yang membentang melewati batas potong tidak diseimbangkan (isi tetap selamat lewat kiriman cadangan polos); dicatat sebagai batas yang diterima sadar karena semua pembangun pesan menutup tag sebaris. (Issue #1243)
 - Penyelamatan pesan multi-potongan saat layanan dibatalkan di tengah kirim kini melewati potongan yang sudah ditolak permanen: potongan mati itu tak lagi diantrekan dan dicoba ulang percuma. (Issue #1242)
 - Kiriman cadangan teks polos kini membawa tombol menu yang sama seperti kiriman utama: layar menu tak lagi tiba tanpa tombol saat jalur cadangan yang berhasil dipakai. (Issue #1241)
 - Hitungan pesan terbuang tak lagi dobel: potongan yang ditolak permanen dulu dicatat dua kali (di titik penolakan dan di pengirim multi-potongan), membuat pemberitahuan "N pesan dibuang" melebihkan dua kali lipat. (Issue #1240)

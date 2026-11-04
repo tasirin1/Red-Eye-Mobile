@@ -1,6 +1,18 @@
 package com.redeye.parentalmonitor.utils
 
 object TextChunk {
+    // Batas yang DITERIMA sadar (issue #1243): safeCut menjaga
+    // titik potong tidak membelah tag/entitas, tetapi tidak
+    // menyeimbangkan PASANGAN tag yang membentang melewati batas
+    // potong (<b> di potongan 1, </b>-nya di potongan 2) — potongan
+    // pertama ditolak Telegram sebagai entitas rusak dan isinya
+    // selamat lewat fallback teks polos, formatnya luruh. Semua
+    // pembangun pesan saat ini menutup tag sebaris/segmentek, jadi
+    // pemicunya belum ada; menyeimbangkan di sini mustahil tanpa
+    // menyuntik tag (di luar kontrak fungsi indeks ini), dan
+    // memundurkan potong ke sebelum tag pembuka bisa membuang
+    // ribuan karakter. Buka lagi bila ada pembangun yang memancarkan
+    // rentang tag panjang tak tertutup.
     fun safeCut(text: String, max: Int): Int {
         if (max <= 0) return 0
         if (text.length <= max) return text.length
