@@ -113,7 +113,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (forwardedIdsSeeded.compareAndSet(false, true)) {
                     synchronized(forwardedIds) {
                         for (id in stored) forwardedIds[id] = true
-                        forwardedIdsView = HashSet(forwardedIds.keys)
+                        forwardedIdsView = LinkedHashSet(forwardedIds.keys)
                     }
                 }
             } catch (_: Exception) { }
@@ -130,7 +130,7 @@ class NotificationForwarderService : NotificationListenerService() {
                                 if (ts > 0L) groupForwarded[entry.substring(0, sep)] = ts
                             }
                         }
-                        groupForwardedView = HashMap(groupForwarded)
+                        groupForwardedView = LinkedHashMap(groupForwarded)
                     }
                 }
             } catch (_: Exception) { }
@@ -628,8 +628,8 @@ class NotificationForwarderService : NotificationListenerService() {
                 for (idHash in idHashes) {
                     if (idHash.isNotEmpty()) forwardedIds[idHash] = true
                 }
-                groupForwardedView = HashMap(groupForwarded)
-                forwardedIdsView = HashSet(forwardedIds.keys)
+                groupForwardedView = LinkedHashMap(groupForwarded)
+                forwardedIdsView = LinkedHashSet(forwardedIds.keys)
             }
         }
         // Commit disk di LUAR kunci peta (issue #1018): dulu

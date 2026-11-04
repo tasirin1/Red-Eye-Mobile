@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Urutan LRU penanda penerusan notifikasi kini bertahan lintas restart: salinan view yang menjadi sumber snapshot persisten memakai `LinkedHashSet`/`LinkedHashMap` (menjaga urutan akses peta asal), bukan `HashSet`/`HashMap` yang urutan iterasinya arbitrer (issue #1272).
 - Luapan batch penerus notifikasi tidak lagi hilang senyap: pesan yang ditolak antrean kini dihitung sebagai gugur, dan cap dedup 10 detik hanya ditulis bila pesan benar-benar terbuffer/terantre (sebelumnya cap tetap tertulis sehingga posting ulang ikut terbuang) (issue #1271).
 - Pemangkasan peta throttle `lastContentScan` kini berjalan sebelum gerbang pantau app, bukan sesudahnya: pada keadaan bawaan (pantau app mati) peta tidak lagi tumbuh monoton tanpa pernah dipangkas selama proses hidup (issue #1270).
 - Gerbang kesehatan aksesibilitas tidak lagi menghitung kata pantau sebagai pemakaian a11y bila `/appwatch` mati: pemilik yang memakai `/watch` hanya untuk notifikasi tidak lagi menerima alert "aksesibilitas mati" berulang untuk fitur yang sudah dimatikannya (issue #1269).
