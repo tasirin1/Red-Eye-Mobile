@@ -998,6 +998,16 @@ class MessageQueue private constructor(context: Context) {
                 } else if (editor != null && old != null && old != json) {
                     editor.putString(KEY_QUEUE_BAK, old)
                 }
+                // Snapshot sah yang berhasil tertulis
+                // menggantikan wipe yang tertunda (issue
+                // #1375): penanda KEY_WIPE_PENDING gugur di
+                // editor yang sama, atomik dengan isi barunya —
+                // tanpa ini penanda basi dari wipe gagal bisa
+                // menghapus antrean sah pasca-wipe pada start
+                // berikutnya. Persist hitungan drop saja TIDAK
+                // menggugurkannya (isi antrean lama di cakram
+                // belum tentu sudah terganti).
+                editor?.remove(KEY_WIPE_PENDING)
                 editor?.putString(KEY_QUEUE, json)?.commit() == true
             } catch (_: Exception) {
                 false
