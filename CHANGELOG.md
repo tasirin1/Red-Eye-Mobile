@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Adopsi migrasi grup di layar Setup kini menulis lewat jalur bandingkan-dan-tukar berkomit yang sama dengan layanan: sebelumnya ia memakai penulisan apply biasa, sehingga pesan "Chat ID diperbarui otomatis" bisa mendahului fakta yang tersimpan dan pembaruan hilang bila proses mati seketika.
+
 - Keadaan jeda pemantauan kini ditulis dengan commit, bukan apply: jeda adalah gerbang utama yang dibaca semua jalur pemantauan, dan penulisan /stop yang hanya apply bisa hilang bila proses mati sebelum sempat tersimpan, membuat pemantauan bangkit sendiri sesudah restart tanpa sepengetahuan pemilik. Ketiga penulisnya (/stop, /resume, penghapusan kredensial) kini memakai varian commit.
 
 - Label tombol jeda di menu Alat kini menyebut "Jeda foto 60 mnt": sebelumnya labelnya hanya "Jeda 60 mnt" sehingga mudah disangka menjeda seluruh monitoring, padahal yang dijeda hanya foto otomatis — sebutan "Jeda foto" juga yang dipakai permukaan lain di aplikasi.

@@ -2019,7 +2019,7 @@ class SetupActivity : AppCompatActivity() {
                     val migratedDirect = NetworkUtils.extractMigratedChatId(goneBody)
                     val storedChatNow = try { prefs.chatId } catch (_: Exception) { chatId }
                     if (migratedDirect != null && migratedDirect != chatId && storedChatNow == chatId) {
-                        applyMigratedChatId(migratedDirect)
+                        applyMigratedChatId(chatId, migratedDirect)
                         try {
                             val retryResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedDirect, text = text))
                             if (retryResp.isSuccessful && retryResp.body()?.ok == true) {
@@ -2070,7 +2070,7 @@ class SetupActivity : AppCompatActivity() {
                                     val migratedPlain = NetworkUtils.extractMigratedChatId(plainBody)
                                     val storedChatPlain = try { prefs.chatId } catch (_: Exception) { chatId }
                                     if (migratedPlain != null && migratedPlain != chatId && storedChatPlain == chatId) {
-                                        applyMigratedChatId(migratedPlain)
+                                        applyMigratedChatId(chatId, migratedPlain)
                                         try {
                                             val retryPlain = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = migratedPlain, text = plain, parseMode = null))
                                             if (retryPlain.isSuccessful && retryPlain.body()?.ok == true) {
@@ -2157,9 +2157,19 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun applyMigratedChatId(newChatId: String) {
+    private suspend fun applyMigratedChatId(expectedChatId: String, newChatId: String) {
+        // Tulis lewat CAS+commit (issue #1396): setter chatId
+        // polos memakai apply() sehingga klaim "diperbarui
+        // otomatis" bisa mendahului fakta cakram dan kalah
+        // oleh mati proses; jalur layanan sudah memakai
+        // setChatIdIfCurrentSync sejak #1377 — samakan.
+        val tertulis = try {
+            prefs.setChatIdIfCurrentSync(expectedChatId, newChatId)
+        } catch (_: Exception) {
+            false
+        }
+        if (!tertulis) return
         try {
-            prefs.chatId = newChatId
             prefs.setCredentialError("", 0L)
         } catch (_: Exception) {
         }
