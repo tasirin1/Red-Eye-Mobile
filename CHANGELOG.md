@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.616] - 2026-11-04
+
 ### Fixed
 - Aturan ProGuard selimut `network.** { *; }` dipersempit: yang dipertahankan hanya field `@SerializedName` + konstruktor DTO-nya (antarmuka Retrofit sudah dijaga aturan khususnya), sehingga logika klien Telegram kini ikut dikaburkan dan disusutkan R8 seperti kode lain (issue #1292).
 - Workflow auto-merge Dependabot kini benar-benar bisa bekerja: pengaturan repo "Allow auto-merge" diaktifkan (sebelumnya `gh pr merge --auto` selalu gagal karena pengaturan itu mati), dan syaratnya didokumentasikan di kepala workflow; proteksi `main` tetap membuat penggabungan menunggu CI hijau (issue #1291).
