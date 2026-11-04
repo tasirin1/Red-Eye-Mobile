@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Kotlin di alat verifikasi kini juga menangkap fungsi beranotasi bersarang (mis. anotasi yang argumennya anotasi lain): slot argumen anotasi kini menerima satu tingkat kurung bersarang di samping string. Terbukti lewat harness.
+
 - Cek token pada pesan commit di skrip cek cepat kini memakai varian permukaan pesan yang sama dengan alat verifikasi utama: sebelumnya jalur kedua itu masih memakai varian penuh ber-pemadatan sehingga pesan yang sah tetap bisa terblokir oleh kait walau sudah lolos gerbang pertama.
 
 - Sorotan persen pada laporan harian kini membandingkan jendela yang sama kemarin (dari tengah malam sampai jam laporan terbit), bukan satu hari kemarin penuh: sebelumnya laporan susulan pagi selalu mengklaim penurunan besar yang keliru hanya karena harinya baru mulai.
