@@ -536,6 +536,24 @@ class MonitoringService : Service() {
             return
         }
         if (!startForegroundImmediate()) {
+            // Instance tanpa inisialisasi inti tak bisa pulih
+            // lewat intent baru (onStartCommand menolaknya);
+            // jadwalkan jaring yang sama seperti jalur gagal
+            // PreferencesManager di atas lalu hancurkan diri
+            // agar start berikutnya membangun instance segar
+            // (issue #1273).
+            try {
+                Liveness.schedule(this)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleBootRestart(this)
+            } catch (_: Exception) {
+            }
+            try {
+                stopSelf()
+            } catch (_: Exception) {
+            }
             return
         }
         invalidateKnownContactCache()
@@ -778,7 +796,17 @@ class MonitoringService : Service() {
             false
         }
         if (!foregroundOk) return START_NOT_STICKY
-        if (!coreInitialized) return START_NOT_STICKY
+        if (!coreInitialized) {
+            // Instance zombie (onCreate gagal di tengah):
+            // hancurkan diri agar start berikutnya dari
+            // Liveness/BootRestart membangun instance segar
+            // dengan onCreate penuh (issue #1273).
+            try {
+                stopSelf()
+            } catch (_: Exception) {
+            }
+            return START_NOT_STICKY
+        }
         return try {
             when (intent?.action) {
             ACTION_START_MONITORING -> {

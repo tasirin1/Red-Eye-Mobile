@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Instance layanan yang gagal inisialisasi di tengah `onCreate` tidak lagi menjadi zombie permanen: jalur gagal foreground kini memasang jaring Liveness + BootRestart dan menghancurkan diri, dan `onStartCommand` yang menabrak instance belum terinisialisasi ikut menghancurkannya agar start berikutnya membangun instance segar (issue #1273).
 - Watchdog unggah tangkap layar (660 detik) tidak lagi menembak di tengah flush foto tertahan yang sah (tenggat flush sendiri 600 detik): watchdog dibatalkan tepat sesudah unggahan berkas yang dijaganya selesai, bukan sesudah flush (issue #1264).
 ## [1.6.615] - 2026-11-04
 
