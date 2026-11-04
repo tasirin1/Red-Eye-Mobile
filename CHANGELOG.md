@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mengenali definisi `<id>` di berkas values (ids.xml): sebelumnya deklarasi id baku itu tidak pernah terdaftar sehingga acuannya divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
+
 - Pengenal deklarasi di peringatan metode baru alat verifikasi kini juga menangkap fungsi ekstensi, fungsi bergenerik bersarang, dan fungsi beranotasi berargumen — tiga bentuk deklarasi Kotlin sah yang sebelumnya lolos senyap dari peringatan cakupan uji. Terbukti lewat harness (7 kasus palsu tetap diam, 6 deklarasi tertangkap).
 
 - Penilaian anti-tamper berbasis teks kini juga menjangkau jendela sensitif yang terlihat tetapi tidak aktif, misalnya halaman Setelan di panel tak-aktif saat layar terbagi: sebelumnya snapshot hanya diambil dari jendela aktif sehingga halaman seperti itu tidak pernah dinilai dari teksnya.

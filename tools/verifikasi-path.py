@@ -434,7 +434,7 @@ def himpun_definisi():
     def rapikan(jenis, nama):
         return nama.replace(".", "_") if jenis == "style" else nama
 
-    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool|attr|integer|fraction)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
+    pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool|attr|integer|fraction|id)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     pola_item_nt = re.compile(r'<item\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*?\btype\s*=\s*["\x27]([^"\x27]+)["\x27]')
     pola_item_tn = re.compile(r'<item\s[^>]*?\btype\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
