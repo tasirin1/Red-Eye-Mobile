@@ -1951,6 +1951,20 @@ class SetupActivity : AppCompatActivity() {
                 }
                 val url = "https://api.telegram.org/bot$token/sendMessage"
                 pending = text
+                // Hormati gerbang rate-limit global sebelum
+                // menembak (issue #1354): jendela batas yang
+                // diketahui komponen lain berarti kiriman ini
+                // hampir pasti memanen 429 — antrekan saja.
+                val sisaRate = try { NetworkUtils.rateLimitedRemainMs() } catch (_: Exception) { 0L }
+                if (sisaRate > 0L) {
+                    queueStatusMessage(text)
+                    val toastWait = getString(R.string.setup_status_failed, 429)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isFinishing || isDestroyed) return@withContext
+                        Toast.makeText(this@SetupActivity, toastWait, Toast.LENGTH_LONG).show()
+                    }
+                    return@launch
+                }
                 val resp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = text))
                 val ok = resp.isSuccessful && resp.body()?.ok == true
                 var failCode = resp.code()
@@ -1962,6 +1976,12 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                         5L
                     }
+                    // Ajarkan jendelanya ke gerbang global
+                    // (issue #1354): konsumen 429 lain semua
+                    // memanggil noteRateLimited; tanpa ini
+                    // layanan/worker menembak menembus jendela
+                    // yang masih aktif.
+                    try { NetworkUtils.noteRateLimited(retryAfter) } catch (_: Exception) { }
                     try {
                         MessageQueue.getInstance(applicationContext).addMessage(text, true)
                         MessageScheduler.scheduleMessageSendNext(applicationContext, retryAfter * 1000L)

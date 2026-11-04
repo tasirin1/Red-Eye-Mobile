@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Tombol kirim status di layar Setup kini ikut aturan rate-limit global: 429 yang diterimanya mengajari gerbang pembatas bersama (sebelumnya satu-satunya konsumen 429 yang tidak), dan sebelum mengirim ia memeriksa sisa jendela rate-limit — bila masih aktif, pesan diantrekan alih-alih menembak dan memanen 429 tambahan.
+
 - Kabar buang media ke owner kini jujur soal sebabnya: sebelumnya semua media yang dibuang dilaporkan sebagai "ditolak (400)", padahal pembuangan juga terjadi untuk berkas terlalu besar (413) dan sebab lokal; teksnya kini netral ("kosong, tak didukung, atau terlalu besar"). Pengecualian drop-413 untuk media — permanen untuk berkas yang sama karena ukurannya tak menyusut saat dicoba ulang — kini terdokumentasi di kode sebagai pengecualian yang disengaja dari aturan drop-hanya-400.
 
 - Seluruh situs Telegram sekali-jalan kini menutup badan respons error yang tidak dibacanya — jawaban callback tiap ketukan menu, hapus pesan/webhook/perintah, pendaftaran perintah bot, validasi restore, verifikasi kredensial dan kirim status di layar Setup, serta pengirim laporan crash: sebelumnya badan error yang tertinggal menahan koneksi di luar kumpulan koneksi bersama, sehingga saat server/proxy membalas error beruntun, panggilan berikutnya membayar pembuatan koneksi baru.
