@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kode restore ketat kini sekali pakai: begitu satu kode berhasil dipakai membuka sesi restore, rahasia pembangkitnya langsung diganti sehingga kode yang sama tak bisa membuka sesi kedua. (Issue #1250)
 - Kode sampah di pemformat waktu dibersihkan: penanda waktu ambil zona yang tak pernah dibaca lagi (sisa desain cache lama) dibuang. (Issue #1249)
 - Duplikasi format durasi pada perintah /uptime dibuang: kini memakai fungsi format bersama yang sama dengan laporan lain, jadi tampilannya tak bisa tertinggal diam-diam. (Issue #1248)
 - Durasi panggilan panjang kini tampil berjam yang benar: panggilan 2 jam tak lagi tertulis "120m 0s", melainkan format jam yang sama dengan laporan lain. (Issue #1247)

@@ -1122,6 +1122,22 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun rotateRestoreCodeSecret(): Boolean {
+        // Putar rahasia kode restore (issue #1250): kode ketat
+        // bersifat sekali pakai — begitu satu kode lolos verifikasi,
+        // rahasia diganti sehingga kode yang sama (dan semua kode
+        // dari rahasia lama) mati seketika, tak bisa membuka sesi
+        // restore kedua selama jendela TOTP-nya masih hidup.
+        synchronized(restoreSecretLock) {
+            return try {
+                val fresh = com.redeye.parentalmonitor.utils.RestoreCode.generateSecret()
+                sharedPreferences.edit().putString(KEY_RESTORE_SECRET, fresh).commit()
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     val auditLog: String
         get() = prefString(KEY_AUDIT_LOG, "")
 

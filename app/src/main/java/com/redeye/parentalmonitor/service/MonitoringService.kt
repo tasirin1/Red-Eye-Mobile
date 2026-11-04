@@ -4045,6 +4045,9 @@ class MonitoringService : Service() {
                 return
             }
             restoreCodeFailCount = 0
+            // Kode lolos = kode hangus (issue #1250): putar
+            // rahasianya sekarang juga, sebelum sesi dibuka.
+            try { preferencesManager.rotateRestoreCodeSecret() } catch (_: Exception) { }
         } else if (mode.isNotEmpty()) {
             sendToTelegram("Cara pakai: /restore lalu kirim file <code>.redeyebak</code>, atau /restore batal.")
             return
