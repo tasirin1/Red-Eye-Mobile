@@ -345,9 +345,10 @@ object A11yMonitor {
         // sensitif jatah 3 dtk tak pernah berlaku dan pra-cek
         // penuh jalan di setiap peristiwa konten.
         lastContentScan[pkg] = now
-        if (AppWatch.isSensitivePackage(pkg)) return
-        val manager = prefs ?: return
-        if (!manager.a11yAppWatchEnabled) return
+        // Pemangkasan ditaruh SEBELUM gerbang (issue #1270):
+        // di posisi lama blok ini hanya terjangkau bila pantau
+        // app menyala, sehingga pada keadaan bawaan peta tumbuh
+        // monoton tanpa pernah dipangkas.
         if (lastContentScan.size > 120) {
             // Pangkas yang TERTUA saja (issue #930): clear()
             // total mencabut throttle semua paket sekaligus
@@ -360,6 +361,9 @@ object A11yMonitor {
                 buang--
             }
         }
+        if (AppWatch.isSensitivePackage(pkg)) return
+        val manager = prefs ?: return
+        if (!manager.a11yAppWatchEnabled) return
         if (pkg !in watchedPackages(manager)) return
         val keywords = watchedKeywords(manager)
         if (keywords.isEmpty()) return
