@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mengenali definisi `<integer>` dan `<fraction>` di berkas values: sebelumnya kedua jenis sumber daya itu tidak pernah terdaftar oleh penghimpun definisi, sehingga acuan sah pertamanya pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
+
 - Penyalinan link pairing di Setup kini meminta pengaturan disimpan dulu bila kolom token/chat berbeda dari kredensial tersimpan: sebelumnya tautan dibangun dari kolom yang belum disimpan tetapi kode pasangannya milik kredensial tersimpan, menghasilkan tautan campuran yang pasti mati.
 
 - Perintah /sms kini menolak menyiapkan SMS baru selagi pengiriman sebelumnya masih berjalan, sama seperti /smsconfirm: sebelumnya penyiapan tetap berjalan dan membalas bahwa SMS tertunda lama dibuang, padahal pengiriman lama tidak dibatalkan dan tetap terkirim — dan teksnya bisa hilang tertimpa bila pengiriman itu gagal.
