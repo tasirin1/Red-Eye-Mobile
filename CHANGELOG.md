@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi pengingat auth kini memakai nama dan teks dari resource terlokalisasi: sebelumnya judulnya ber-hardcode "Kalkulator" dengan teks Indonesia untuk semua locale, tampil tak konsisten dengan samaran terlokalisasi di perangkat berbahasa Inggris.
+
 - Ekspor cadangan kini menolak bila token atau Chat ID yang diketik di kolom tidak sah, sama seperti jalur Simpan dan Tes: sebelumnya nilai ketikan yang tak sah jatuh senyap ke kredensial tersimpan lama, sehingga berkas cadangan bisa berisi kredensial yang sudah dirotasi tanpa peringatan apa pun.
 
 - Berkas yang sedang diunggah oleh jalur flush kini ditandai aktif seperti unggahan langsung, sehingga /cleanup dan penghapus lain melewatinya: sebelumnya unggahan flush tidak pernah ditandai, dan /cleanup bisa menghapus berkas di tengah unggahan sampai medianya hilang permanen.

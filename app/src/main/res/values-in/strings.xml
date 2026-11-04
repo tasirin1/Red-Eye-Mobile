@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="auth_reminder_text">Perlu perhatian: buka aplikasi dan periksa pengaturan.</string>
     <string name="app_name">Kalkulator</string>
     <string name="monitoring_active">Monitoring aktif</string>
     <string name="monitoring_inactive">Monitoring mati</string>

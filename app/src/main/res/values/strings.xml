@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="auth_reminder_text">Needs attention: open the app and check the settings.</string>
     <string name="app_name">Calculator</string>
     <string name="monitoring_active">Monitoring active</string>
     <string name="monitoring_inactive">Monitoring off</string>

@@ -3310,8 +3310,12 @@ class MonitoringService : Service() {
             // menyebut token, bot, dan Setup — membocorkan jati diri
             // aplikasi ke siapa pun yang melihat notifikasi. Rincian
             // galat kredensial tetap terlihat di halaman Setup sendiri.
-            val title = "Kalkulator"
-            val text = "Perlu perhatian: buka aplikasi dan periksa pengaturan."
+            // Judul/teks dari resource terlokalisasi (issue
+            // #1412): hardcode "Kalkulator" + Indonesia tampil
+            // salah-locale di perangkat Inggris, tak konsisten
+            // dengan permukaan samaran lain.
+            val title = getString(R.string.app_name)
+            val text = getString(R.string.auth_reminder_text)
             // Kode galat dipertahankan untuk diagnosis lewat log saja.
             android.util.Log.w("MonitoringService", "Pengingat kegagalan auth dipasang (kode $code)")
             val notification = NotificationCompat.Builder(this, ParentalMonitorApp.RESUME_CHANNEL_ID)
