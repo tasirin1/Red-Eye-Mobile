@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Adopsi migrasi grup Telegram kini digerbang perbandingan-dan-tukar: Chat ID hanya diganti bila isinya masih persis chat tujuan kiriman yang memicu migrasi. Sebelumnya respons migrasi yang basi — tiba sesudah pemilik mengganti kredensial — menimpa chat kredensial baru dengan grup era lama secara senyap dan menetap.
+
 - Balapan simpan-versus-tes di layar Setup ditutup: memulai tes koneksi kini juga menua-nomori proses simpan yang sedang berjalan, sama seperti simpan menua-nomori tes. Sebelumnya verifikasi simpan lama yang menggantung bisa selesai belakangan dan menimpa kredensial hasil tes yang lebih baru secara senyap, sehingga kredensial aktif bisa bukan yang terakhir dikonfirmasi pemilik.
 
 - Penanda penghapusan antrean tertunda kini gugur otomatis begitu isi antrean baru yang sah berhasil tersimpan: sebelumnya penanda dari penghapusan yang gagal bisa tetap terpasang dan pada start berikutnya menghapus antrean baru yang sah itu secara senyap.

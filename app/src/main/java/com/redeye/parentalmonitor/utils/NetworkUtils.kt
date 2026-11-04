@@ -241,7 +241,11 @@ object NetworkUtils {
         }
         if (migrated == currentChatId) return false
         return try {
-            if (!prefs.setChatIdSync(migrated)) return false
+            // CAS terhadap chat kiriman (issue #1377): adopsi
+            // hanya bila chat tersimpan masih chat yang dipakai
+            // kiriman gagal ini — bukan kredensial yang lebih
+            // baru dari pemilik.
+            if (!prefs.setChatIdIfCurrentSync(currentChatId, migrated)) return false
             prefs.setCredentialError("", 0L)
             refresh()
             try { announce() } catch (_: Exception) { }

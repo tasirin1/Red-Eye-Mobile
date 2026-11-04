@@ -2712,6 +2712,25 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Varian CAS untuk adopsi migrasi (issue #1377): Chat ID
+    // hanya diganti bila isinya masih persis chat yang dipakai
+    // kiriman yang memicu migrasi. Respons migrate_to_chat_id
+    // yang basi — tiba sesudah pemilik mengganti kredensial —
+    // ditolak di sini, bukan menimpa kredensial baru secara
+    // senyap dan persisten.
+    fun setChatIdIfCurrentSync(expectedChatId: String, newChatId: String): Boolean {
+        return try {
+            synchronized(credentialLock) {
+                if (chatId != expectedChatId) return@synchronized false
+                val editor = sharedPreferences.edit().putString(KEY_CHAT_ID, newChatId)
+                if (newChatId != chatId) bumpCredentialGeneration(editor)
+                editor.commit()
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun saveCredentials(newToken: String, newChatId: String, newSyncInterval: Int, newCameraInterval: Int, ownerIdOverride: Long? = null, newAccessPin: String? = null): Boolean {
         if (!storageEncrypted) {
             val upgraded = try { upgradeToPersistent() } catch (_: Exception) { false }
