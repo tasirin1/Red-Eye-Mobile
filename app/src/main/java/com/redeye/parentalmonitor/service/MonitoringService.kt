@@ -2174,10 +2174,18 @@ class MonitoringService : Service() {
         try {
             loginAttemptAt.clear()
             loginFails.clear()
+            loginFailsWallAt.clear()
             loginLockUntil.clear()
             loginGlobalFails.set(0)
+            loginGlobalLastWall.set(0L)
             loginGlobalLockoutUntil.set(0L)
             clearPersistedLoginLocks()
+            // Anggaran gagal persisten ikut dibersihkan
+            // (issue #1317): tanpa ini sesi berikutnya
+            // mewarisi hitungan pra-logout dari restore —
+            // jalur adopsi sukses sudah mengosongkannya,
+            // jalur logout tertinggal.
+            try { preferencesManager.loginFailBudget = "" } catch (_: Exception) { }
         } catch (_: Exception) {
         }
         refreshCreds()

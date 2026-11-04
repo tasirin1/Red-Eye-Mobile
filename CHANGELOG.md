@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- `/logout` kini ikut membersihkan anggaran gagal /login yang terpersist beserta cermin memorinya (peta cap per-pengirim dan penanda global): sesi login berikutnya tidak lagi mewarisi hitungan pra-logout yang membuat kunci datang lebih awal dari seharusnya.
+
 - Penanda rekonsiliasi aplikasi dikenal A11y kini terkunci hanya sesudah pekerjaan rekonsiliasinya benar-benar dipanggil sampai selesai, bukan sebelumnya: kegagalan sesaat di jendela antara penanda dan pekerjaan tidak lagi melewatkan rekonsiliasi untuk seumur proses.
 
 - Penggabungan hitungan drop saat pulih dari mode volatile kini menambah seluruh isi cakram lagi: pengurang baseline pada pemulihan sebelumnya membuang untuk kedua kalinya hitungan yang sudah terpersist tetapi belum terlapor pada jalur rusak-di-tengah (konversi delta saat masuk volatile sudah memisahkannya dari memori), sehingga total gabungan kehilangan porsi lamanya; jalur volatile-sejak-start tidak berubah.
