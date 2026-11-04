@@ -53,7 +53,10 @@ object CrashReporter {
         }
     }
 
-    private fun stripElapsed(raw: String): String {
+    // internal (bukan private) agar terkunci uji JVM
+    // (issue #1312): logika string murni penentu laporan
+    // mana yang bertahan/tergabung — pola SettingsBackup.
+    internal fun stripElapsed(raw: String): String {
         val nl = raw.indexOf('\n')
         if (nl <= 0) return raw
         return if (raw.substring(0, nl).toLongOrNull() != null) raw.substring(nl + 1) else raw
@@ -163,7 +166,9 @@ object CrashReporter {
         }
     }
 
-    private fun keepRemainder(file: File, raw: String, rest: String, elapsed0: Long) {
+    // internal untuk uji JVM (issue #1312); elapsed0 > 0
+    // di uji agar tak menyentuh SystemClock.
+    internal fun keepRemainder(file: File, raw: String, rest: String, elapsed0: Long) {
         try {
             synchronized(saveLock) {
                 val cur = try { if (file.exists()) file.readText() else null } catch (_: Exception) { null }
