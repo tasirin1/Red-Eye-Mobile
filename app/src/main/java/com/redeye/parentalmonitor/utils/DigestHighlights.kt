@@ -4,7 +4,7 @@ object DigestHighlights {
 
     data class Facts(
         val screenTodayMs: Long,
-        val screenYesterdayMs: Long,
+        val screenYesterdayWindowMs: Long,
         val topAppToday: String,
         val topAppTodayMs: Long,
         val topAppYesterdayMs: Long,
@@ -17,7 +17,7 @@ object DigestHighlights {
     fun build(f: Facts): List<String> {
         val out = ArrayList<Candidate>()
         val today = f.screenTodayMs
-        val yesterday = f.screenYesterdayMs
+        val yesterday = f.screenYesterdayWindowMs
         var pctDone = false
         if (yesterday >= 30 * 60_000L) {
             val delta = today - yesterday
@@ -26,7 +26,7 @@ object DigestHighlights {
                 val naik = delta > 0
                 val ikon = if (naik) "📈" else "📉"
                 val arah = if (naik) "naik" else "turun"
-                out.add(Candidate(55, 0, "$ikon Layar " + ReportFormat.durationText(today) + " — $arah $pct% dari kemarin"))
+                out.add(Candidate(55, 0, "$ikon Layar " + ReportFormat.durationText(today) + " — $arah $pct% dari kemarin jam segini"))
                 pctDone = true
             }
         }

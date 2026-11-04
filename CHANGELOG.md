@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Sorotan persen pada laporan harian kini membandingkan jendela yang sama kemarin (dari tengah malam sampai jam laporan terbit), bukan satu hari kemarin penuh: sebelumnya laporan susulan pagi selalu mengklaim penurunan besar yang keliru hanya karena harinya baru mulai.
+
 - Penjaga token pada PESAN commit kini diselaraskan per permukaan: pesan diperiksa untuk token tertempel utuh dan bentuk ter-encode saja, tanpa pemadatan — pemadatan menyambung prosa biasa (id run CI + titik dua + kutipan galat) menjadi pola token palsu dan pernah memblokir pesan perbaikan yang sah. Pemeriksaan isi berkas tetap memakai pemadatan penuh. Terbukti lewat harness dua arah.
 
 - Pemasang kait kini menyelesaikan core.hooksPath "~" polos ke direktori home seperti Git: sebelumnya nilai itu jatuh ke penyelesaian ~pengguna bernama kosong dan kait terpasang di direktori semu di dalam repo tanpa pernah dijalankan. Terbukti di sandbox.

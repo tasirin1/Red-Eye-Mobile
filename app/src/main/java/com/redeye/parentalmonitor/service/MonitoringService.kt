@@ -8936,7 +8936,7 @@ class MonitoringService : Service() {
 
     private fun digestHighlights(now: Long, data: UsageDayData): List<String> {
         var todayMs = 0L
-        var yesterdayMs = 0L
+        var yesterdayWindowMs = 0L
         var topLabel = ""
         var topMs = 0L
         var topYesterdayMs = 0L
@@ -8954,7 +8954,15 @@ class MonitoringService : Service() {
                 }
                 val rowsY = try { usageRowsBetween(com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now), dayStart) } catch (_: Exception) { null }
                 if (rowsY != null) {
-                    yesterdayMs = rowsY.sumOf { it.second }
+                    // Jendela yang sama kemarin (issue #1426):
+                    // persen sorotan dulu membandingkan hari ini
+                    // yang PARSIAl (00:00-sekarang) melawan
+                    // kemarin PENUH — digest pagi/susulan selalu
+                    // mengklaim turun besar palsu. Kini kemarin
+                    // dipotong pada jam yang sama.
+                    val awalKemarin = com.redeye.parentalmonitor.utils.A11yUsageMath.previousDayStartWallMillis(now)
+                    val rowsYW = try { usageRowsBetween(awalKemarin, awalKemarin + (now - dayStart)) } catch (_: Exception) { null }
+                    yesterdayWindowMs = rowsYW?.sumOf { it.second } ?: 0L
                     if (topLabel.isNotEmpty()) {
                         topYesterdayMs = rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
                     }
@@ -8973,7 +8981,7 @@ class MonitoringService : Service() {
         } else {
             -1
         }
-        return DigestHighlights.build(DigestHighlights.Facts(todayMs, yesterdayMs, topLabel, topMs, topYesterdayMs, nightMs, fuMinute))
+        return DigestHighlights.build(DigestHighlights.Facts(todayMs, yesterdayWindowMs, topLabel, topMs, topYesterdayMs, nightMs, fuMinute))
     }
 
     private fun todayFacts(now: Long, data: UsageDayData): DailyFacts.Day? {

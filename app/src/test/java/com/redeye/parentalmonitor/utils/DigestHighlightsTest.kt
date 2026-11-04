@@ -27,11 +27,11 @@ class DigestHighlightsTest {
     @Test
     fun screenChangeHighlights() {
         assertEquals(
-            listOf("📈 Layar 6 h 0 m — naik 50% dari kemarin"),
+            listOf("📈 Layar 6 h 0 m — naik 50% dari kemarin jam segini"),
             DigestHighlights.build(facts(today = 360 * min, yesterday = 240 * min))
         )
         assertEquals(
-            listOf("📉 Layar 3 h 0 m — turun 40% dari kemarin"),
+            listOf("📉 Layar 3 h 0 m — turun 40% dari kemarin jam segini"),
             DigestHighlights.build(facts(today = 180 * min, yesterday = 300 * min))
         )
         assertEquals(
@@ -45,6 +45,18 @@ class DigestHighlightsTest {
         assertEquals(
             listOf("📱 Layar 6 h 40 m hari ini"),
             DigestHighlights.build(facts(today = 400 * min, yesterday = 20 * min))
+        )
+    }
+
+    @Test
+    fun morningWindowDoesNotClaimFalseDrop() {
+        // Issue #1426: pembanding kini jendela yang sama
+        // kemarin (00:00 s.d. jam terbit), bukan kemarin
+        // penuh — pagi dengan layar 45 mnt melawan jendela
+        // kemarin 50 mnt tak boleh mengklaim turun besar.
+        assertEquals(
+            emptyList<String>(),
+            DigestHighlights.build(facts(today = 45 * min, yesterday = 50 * min))
         )
     }
 
@@ -98,7 +110,7 @@ class DigestHighlightsTest {
         assertEquals(
             listOf(
                 "🌙 Pemakaian malam 2 h 0 m",
-                "📈 Layar 6 h 0 m — naik 50% dari kemarin",
+                "📈 Layar 6 h 0 m — naik 50% dari kemarin jam segini",
                 "🔥 Game X 3 h 0 m — kemarin hanya 1 h 0 m"
             ),
             got
