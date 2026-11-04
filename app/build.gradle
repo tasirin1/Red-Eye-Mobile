@@ -85,6 +85,12 @@ android {
             // dependensi assemble*Release, jadi terpicunya
             // tugas ini sendiri sudah berarti release akan
             // dirakit; keputusan cukup dari ref + keystore.
+            // bundle*Release ikut dipasangi (issue #1330):
+            // fallback tanda tangannya sama (debug bila
+            // release.p12 tak ada) tetapi dulu tak terpicu
+            // di ref mana pun; tak ada workflow yang memanggil
+            // bundle, jadi pemasangan ini tak mengulang
+            // jebakan CodeQL #1310.
             if ((System.getenv("ANDROID_KEYSTORE_BASE64") ?: "") != "") {
                 throw new GradleException("ANDROID_KEYSTORE_BASE64 set but app/release.p12 missing")
             }
@@ -105,7 +111,7 @@ android {
             // ter-gagal-kan.
         }
     }
-    tasks.matching { it.name.contains("assemble") && it.name.contains("Release") }.configureEach {
+    tasks.matching { (it.name.contains("assemble") || it.name.contains("bundle")) && it.name.contains("Release") }.configureEach {
         dependsOn("assertReleaseKeystore")
     }
 
