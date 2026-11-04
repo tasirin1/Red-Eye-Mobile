@@ -35,6 +35,16 @@
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
--keep class com.redeye.parentalmonitor.service.** { *; }
--keep class com.redeye.parentalmonitor.worker.** { *; }
--keep class com.redeye.parentalmonitor.receiver.** { *; }
+# Nama kelas komponen dipertahankan (dirujuk manifest,
+# WorkManager menyimpan nama kelas pekerja di basis datanya,
+# dan kewaspadaan nama lain), tetapi anggota kelas boleh
+# dikaburkan dan disusutkan (issue #1195): keep selimut
+# sebelumnya membatalkan obfuskasi +-18.700 baris logika inti.
+-keepnames class com.redeye.parentalmonitor.service.**
+-keepnames class com.redeye.parentalmonitor.worker.**
+-keepnames class com.redeye.parentalmonitor.receiver.**
+# AppUsage dipersistensikan sebagai JSON Gson dengan nama
+# field sebagai kunci (A11yMonitor): nama field-nya wajib utuh.
+-keepclassmembers class com.redeye.parentalmonitor.service.A11yMonitor$AppUsage {
+    <fields>;
+}

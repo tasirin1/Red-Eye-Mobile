@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Aturan pengaburan rilis dipersempit: nama kelas layanan/pekerja/receiver tetap dipertahankan (dirujuk manifest dan WorkManager), tetapi isi logikanya kini benar-benar dikaburkan dan disusutkan — sebelumnya aturan selimut membatalkan pengaburan belasan ribu baris logika inti. Nama field catatan pemakaian aplikasi yang tersimpan sebagai JSON tetap dijaga utuh (#1195).
 - Dua pemberitahuan Toast pada tes kirim status di layar penyiapan kini memakai penjaga layar-mati seperti hop lain: menutup layar di tengah tes tidak lagi membuat status yang sudah terkirim dianggap gagal lalu diantrekan ulang sebagai duplikat (#1194).
 - Sisa jeda rate-limit tidak lagi bisa jadi hantu lintas reboot: perhitungan sisa kini menuntut bukti boot yang sama sebelum memakai jangkar waktu monoton, sama seperti perbaikan sekeluarga sebelumnya — sesudah perangkat menyala ulang, antrean tidak tertunda oleh sisa jeda dari boot lama (#1193).
 - Jalur kirim cadangan teks polos kini mengikuti aturan yang sama dengan jalur utama: kode penolakan selain 400 persis (mis. 413/404/422) dianggap sementara dan pesannya diantrekan, bukan dibuang permanen (#1192).
