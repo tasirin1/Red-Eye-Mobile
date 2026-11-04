@@ -45,6 +45,21 @@ class SendMessageWorker(
         // run yang sedang berjalan tetap menguras antrean.
         if (activeRuns.getAndIncrement() > 0) {
             activeRuns.decrementAndGet()
+            // Jaring pengaman antrean (issue #1294): asumsi
+            // "run yang berjalan tetap menguras" runtuh bila
+            // run itu ekor yang SEDANG dibatalkan (jalur heal
+            // /clearqueue cancel->enqueue: ekor lama bisa masih
+            // flushSync sampai 5 dtk saat pengganti tiba di
+            // sini, lalu ekor itu pergi lewat jalur batal yang
+            // tak menjadwalkan apa pun). Sisakan satu run
+            // tertunda APPEND_OR_REPLACE: pada run sehat ia
+            // hanya menemukan antrean kosong, pada ekor sekarat
+            // ia yang menyelamatkan antrean dari menunggu
+            // watchdog +-15 menit.
+            try {
+                MessageScheduler.scheduleMessageSendNext(applicationContext, 15_000L)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
         try { preferencesManager.registerChangeListener(credListener) } catch (_: Exception) { }
@@ -52,6 +67,16 @@ class SendMessageWorker(
             return try {
                 doWorkInternal()
             } catch (e: kotlinx.coroutines.CancellationException) {
+                // Jalur batal ikut meninggalkan jadwal (issue
+                // #1294): pembatalan REPLACE menjanjikan run
+                // pengganti, tetapi pengganti itu bisa ditolak
+                // penjaga run-tunggal oleh ekor run INI — jadwal
+                // tertunda di sini (APPEND_OR_REPLACE, tak
+                // membatalkan siapa pun) menutup celahnya.
+                try {
+                    MessageScheduler.scheduleMessageSendNext(applicationContext, 15_000L)
+                } catch (_: Exception) {
+                }
                 throw e
             } catch (e: Exception) {
                 // Catat kegagalan total (issue #965): pola lama
