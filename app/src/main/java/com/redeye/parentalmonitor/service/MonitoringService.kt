@@ -1818,8 +1818,7 @@ class MonitoringService : Service() {
 
     private fun clearPersistedLoginLocks() {
         try { preferencesManager.loginSenderLockouts = "" } catch (_: Exception) { }
-        try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
-        try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
+        try { preferencesManager.setLoginGlobalLockout(0L, 0L) } catch (_: Exception) { }
     }
     private var restoreCodeLockoutUntil: Long
         get() = try { preferencesManager.restoreCodeLockoutUntil } catch (_: Exception) { 0L }
@@ -2023,8 +2022,7 @@ class MonitoringService : Service() {
                 persistLoginBudget()
                 loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
                 try {
-                    preferencesManager.loginGlobalLockoutUntil = System.currentTimeMillis() + LOGIN_GLOBAL_LOCK_MS
-                    preferencesManager.loginGlobalLockoutElapsedStart = now
+                    preferencesManager.setLoginGlobalLockout(System.currentTimeMillis() + LOGIN_GLOBAL_LOCK_MS, now)
                 } catch (_: Exception) { }
                 audit("login pin terkunci global", "private")
                 sendDirect(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
@@ -2083,8 +2081,7 @@ class MonitoringService : Service() {
                     loginGlobalLockoutUntil.set(0L)
                     clearPersistedLoginSenderLock(senderId)
                     try { preferencesManager.loginFailBudget = "" } catch (_: Exception) { }
-                    try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
-                    try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
+                    try { preferencesManager.setLoginGlobalLockout(0L, 0L) } catch (_: Exception) { }
                 } catch (_: Exception) {
                 }
             }
