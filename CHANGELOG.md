@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Rantai alarm Liveness tidak lagi putus saat monitoring hanya dijeda (`/stop`): penolakan yang semata karena keadaan jeda kini menjadwalkan ulang alarm dan melewatkan tembakan itu, bukan membatalkan rantainya — penjaga ganda tetap utuh selama jeda (issue #1276).
 - Cabang `!isConfigured()` di `BootRestartWorker` kini membatalkan watchdog periodik sebelum kembali: sesudah kredensial dihapus, watchdog yang sempat dijadwalkan ulang oleh `onDestroy` tidak lagi hidup selamanya membangunkan proses tiap ±15 menit tanpa bisa memulai pemantauan (issue #1275).
 - Cabang nonaktif `BootReceiver` kini juga membatalkan alarm Liveness yang terpasang tanpa syarat di `onReceive` (sebelumnya hanya watchdog yang dibatalkan, menyisakan satu bangun-proses sia-sia per boot pada perangkat yang pemantauannya sengaja dimatikan) (issue #1274).
 - Urutan LRU penanda penerusan notifikasi kini bertahan lintas restart: salinan view yang menjadi sumber snapshot persisten memakai `LinkedHashSet`/`LinkedHashMap` (menjaga urutan akses peta asal), bukan `HashSet`/`HashMap` yang urutan iterasinya arbitrer (issue #1272).

@@ -101,6 +101,18 @@ object Liveness {
         }
     }
 
+    // True bila satu-satunya alasan allowedCheck menolak adalah
+    // keadaan jeda (issue #1276): semua syarat lain terpenuhi.
+    private fun pausedOnly(manager: PreferencesManager): Boolean {
+        return try {
+            manager.isMonitoringEnabled && manager.isConfigured() &&
+                !manager.userDisabledMonitoring && manager.userConsentedMonitoring &&
+                manager.monitoringPaused
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun schedule(context: Context) {
         scheduleSoon(context, intervalMs(context))
     }
@@ -225,6 +237,17 @@ object Liveness {
         }
         when (allowedCheck(manager)) {
             AllowedCheck.DENIED -> {
+                // Jeda bukan mati (issue #1276): penolakan yang
+                // SEMATA karena monitoringPaused tak boleh
+                // membatalkan rantai alarm — jeda bersifat
+                // sementara dan /resume hanya bisa diterima
+                // layanan yang tetap terjaga rantainya. Jadwalkan
+                // ulang dan lewati tembakan ini; keadaan mati
+                // sungguhan tetap membatalkan seperti biasa.
+                if (pausedOnly(manager)) {
+                    schedule(context)
+                    return
+                }
                 cancel(context)
                 return
             }
