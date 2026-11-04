@@ -1,5 +1,14 @@
 package com.redeye.parentalmonitor.utils
 
+// Kontrak pencocokan nomor SISI RIWAYAT (/history) —
+// SENGAJA lebih ketat dari sisi kontak-dikenal
+// (canonicalPhoneDigits/contactNumberMatches di
+// MonitoringService, ekor-9 longgar): pencarian riwayat
+// yang mengklaim "ada riwayat" atas kecocokan longgar
+// menyesatkan pemilik, sedangkan tag kontak-dikenal yang
+// longgar hanya soal label. Perbedaan ini keputusan, bukan
+// kebetulan (issue #1225, DUGAAN audit-107 — ditutup
+// terdokumentasi).
 object PhoneNumbers {
     fun fuzzyLikePattern(digits: String): String = buildString(digits.length * 2 + 2) {
         append('%')

@@ -12210,6 +12210,9 @@ class MonitoringService : Service() {
         return d
     }
 
+    // Sisi longgar dari dua kontrak pencocokan nomor —
+    // sisi riwayat (utils/PhoneNumbers) sengaja lebih
+    // ketat; lihat catatan di berkas itu (issue #1225).
     private fun contactNumberMatches(haveRaw: String, wantDigits: String): Boolean {
         return try {
             val have = canonicalPhoneDigits(haveRaw)

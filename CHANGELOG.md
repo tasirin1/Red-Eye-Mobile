@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perbedaan dua aturan pencocokan nomor telepon (sisi kontak yang longgar vs sisi riwayat yang ketat) kini terdokumentasi sebagai keputusan yang disengaja di kedua tempatnya, agar tidak lagi tampak sebagai ketidakkonsistenan tak disengaja (#1225).
 - Pemeriksaan kontak dikenal kini memeriksa hingga 2000 baris calon (sebelumnya 200) dan menyimpan juga hasil tidak-ketemu di cache: kontak sah di buku kontak besar tidak lagi salah ditandai sebagai nomor baru, dan query kontak yang sama tidak diulang tiap siklus (#1224).
 - Lengan pemakaian pada peringatan aksesibilitas mati kini hanya berlaku selama data pemakaiannya segar (hari ini atau kemarin): peringatan tidak lagi berulang selamanya sesudah semua fitur aksesibilitas dipensiunkan (#1223).
 - Pola record gerbang kini sadar generik berbatas bersarang (satu tingkat sarang kurung sudut): deklarasi seperti record berbatas Comparable tidak lagi luput dari pemeriksaan rename (#1222).
