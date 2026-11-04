@@ -229,7 +229,10 @@ class MonitoringService : Service() {
     // Penanda instance ini SUDAH pernah berhasil foreground
     // (issue #1314): kegagalan menegakkan ULANG pada instance
     // yang hidup tak boleh membunuhnya — prinsip #945 satu
-    // lapis di atas startMonitoring.
+    // lapis di atas startMonitoring. Penanda WAJIB direset
+    // tiap foreground dilepas (issue #1331): instance yang
+    // bangkit lagi sesudah stopForeground tidak sedang
+    // foreground, jadi klaim lamanya tidak berlaku.
     @Volatile
     private var foregroundEstablished = false
     private val shotSessionLock = Any()
@@ -9620,6 +9623,7 @@ class MonitoringService : Service() {
         teardownJobs()
         cachedSetupTap = null
         isRunning = false
+        foregroundEstablished = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -10063,6 +10067,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         isRunning = false
+        foregroundEstablished = false
         try {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } catch (_: Exception) {

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Penanda foreground kini direset tiap foreground dilepas: instance layanan yang bangkit lagi sesudah berhenti tidak lagi membawa klaim "sudah foreground" basi, sehingga kegagalan menegakkan foreground berikutnya dinilai dengan aturan instance baru (bukan dilewatkan). Memperbaiki perilaku yang ditemukan pada audit-112.
+
 ## [1.6.618] - 2026-11-04
 
 ### Fixed
