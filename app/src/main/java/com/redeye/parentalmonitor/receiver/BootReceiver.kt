@@ -15,12 +15,14 @@ class BootReceiver : BroadcastReceiver() {
         private const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
         private const val ACTION_HTC_QUICKBOOT = "com.htc.intent.action.QUICKBOOT_POWERON"
 
+        // USER_UNLOCKED/USER_PRESENT/PACKAGE_RESTARTED
+        // dihapus (issue #1204): entri manifest-nya sudah
+        // dibersihkan di #1188 karena tak pernah terkirim di
+        // API 26+, dan cabang handler-nya tertinggal sebagai
+        // kode mati yang tampak hidup.
         private val BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
-            Intent.ACTION_USER_UNLOCKED,
-            Intent.ACTION_USER_PRESENT,
-            Intent.ACTION_PACKAGE_RESTARTED,
             ACTION_QUICKBOOT_POWERON,
             ACTION_HTC_QUICKBOOT
         )
@@ -219,39 +221,6 @@ class BootReceiver : BroadcastReceiver() {
             val updatedPart = intent.data?.schemeSpecificPart
             if (updatedPart != null && updatedPart != context.packageName) return
         }
-        if (intent.action == Intent.ACTION_PACKAGE_RESTARTED) {
-            val restartedPart = intent.data?.schemeSpecificPart
-            if (restartedPart != null && restartedPart != context.packageName) return
-        }
-        if (intent.action == Intent.ACTION_USER_PRESENT || intent.action == Intent.ACTION_USER_UNLOCKED) {
-            val nowEvent = android.os.SystemClock.elapsedRealtime()
-            synchronized(handleLock) { if (lastHandleAt != 0L && nowEvent - lastHandleAt < 60_000L) return }
-            if (MonitoringService.isRunning) {
-                try {
-                    com.redeye.parentalmonitor.utils.Liveness.schedule(context.applicationContext)
-                } catch (_: Exception) {
-                }
-                markHandled(context, nowEvent)
-                // Enqueue watchdog periodik cukup sesekali
-                // (issue #1065): enqueueUniquePeriodicWork
-                // adalah transaksi DB WorkManager, dulu dibayar
-                // pada SETIAP buka kunci — dedup 60 detik hanya
-                // dari memori dan hilang saat proses mati.
-                // Periode periodiknya sendiri 15 menit, jadi
-                // cap persisten di boot_meta menahannya ke irama
-                // itu lintas mati proses.
-                try {
-                    val meta = context.getSharedPreferences("boot_meta", android.content.Context.MODE_PRIVATE)
-                    val lastWatchdog = meta.getLong("watchdog_enqueue_elapsed", 0L)
-                    if (lastWatchdog <= 0L || nowEvent < lastWatchdog || nowEvent - lastWatchdog >= 15 * 60_000L) {
-                        MessageScheduler.scheduleWatchdog(context.applicationContext)
-                        meta.edit().putLong("watchdog_enqueue_elapsed", nowEvent).apply()
-                    }
-                } catch (_: Exception) {
-                }
-                return
-            }
-        }
         val appContext = context.applicationContext
         try {
             com.redeye.parentalmonitor.utils.Liveness.schedule(appContext)
@@ -273,7 +242,7 @@ class BootReceiver : BroadcastReceiver() {
     // dedup di bawah (gerbang lastHandleAt + cap boot_meta
     // shot_notice_elapsed/reboot_notice_elapsed) adalah
     // cek-lalu-tulis — dua handleBoot sejajar (BOOT_COMPLETED
-    // + USER_UNLOCKED berbarengan) bisa sama-sama lolos
+    // + QUICKBOOT berbarengan) bisa sama-sama lolos
     // gerbang 1 jam dan mengirim pesan restart ganda.
     // markHandled di dalamnya men-synchronized handleLock
     // yang sama; monitor Java reentrant untuk benang yang

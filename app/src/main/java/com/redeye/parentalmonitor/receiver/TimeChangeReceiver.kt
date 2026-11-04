@@ -10,9 +10,11 @@ class TimeChangeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
+        // ACTION_DATE_CHANGED dihapus (issue #1204): entri
+        // manifest-nya dibersihkan di #1188 (tak terkirim di
+        // API 26+); cabang pemeriksaannya tertinggal mati.
         if (action != Intent.ACTION_TIME_CHANGED &&
-            action != Intent.ACTION_TIMEZONE_CHANGED &&
-            action != Intent.ACTION_DATE_CHANGED
+            action != Intent.ACTION_TIMEZONE_CHANGED
         ) {
             return
         }

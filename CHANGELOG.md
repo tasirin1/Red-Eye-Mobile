@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Sisa kode mati dari pembersihan manifest sebelumnya dibuang: set aksi boot dan cabang handler untuk aksi yang sudah tidak didaftarkan (buka kunci, hadir, paket dimulai ulang, tanggal berubah) kini terhapus, agar tidak tampak seperti jalur hidup-lagi yang masih aktif (#1204).
 
 ## [1.6.612] - 2026-11-04
 
