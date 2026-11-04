@@ -319,7 +319,11 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
             return
         }
-        if (intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT) {
+        // MY_PACKAGE_REPLACED ikut (issue #1414): update
+        // aplikasi juga membunuh proses dan menghanguskan
+        // izin MediaProjection, tetapi pengingatnya dulu
+        // hanya terpasang untuk aksi boot.
+        if (intentAction == Intent.ACTION_BOOT_COMPLETED || intentAction == ACTION_QUICKBOOT_POWERON || intentAction == ACTION_HTC_QUICKBOOT || intentAction == Intent.ACTION_MY_PACKAGE_REPLACED) {
             try {
                 val a11yOn = com.redeye.parentalmonitor.utils.AccessibilityProbe.isEnabled(
                     context,
@@ -330,9 +334,12 @@ class BootReceiver : BroadcastReceiver() {
                     val lastShotNotice = meta.getLong("shot_notice_elapsed", 0L)
                     if (lastShotNotice == 0L || nowBoot < lastShotNotice || nowBoot - lastShotNotice >= 3_600_000L) {
                         meta.edit().putLong("shot_notice_elapsed", nowBoot).apply()
-                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage(
+                        val teksShot = if (intentAction == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                            "\uD83D\uDD01 Aplikasi baru diperbarui. Izin tangkap layar dari sistem hangus (aturan Android). Kirim /screenshot lalu tekan tombol \"\uD83D\uDDA5\uFE0F Beri izin sekali\" \u2014 atau aktifkan jalur Aksesibilitas di Setup agar tak perlu izin lagi walau restart."
+                        } else {
                             "\uD83D\uDD01 HP baru restart. Izin tangkap layar dari sistem hangus (aturan Android). Kirim /screenshot lalu tekan tombol \"\uD83D\uDDA5\uFE0F Beri izin sekali\" \u2014 atau aktifkan jalur Aksesibilitas di Setup agar tak perlu izin lagi walau restart."
-                        )
+                        }
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage(teksShot)
                         MessageScheduler.scheduleMessageSend(context)
                     }
                 }
