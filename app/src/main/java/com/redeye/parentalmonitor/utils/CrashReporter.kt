@@ -130,6 +130,21 @@ object CrashReporter {
             synchronized(saveLock) {
                 tmp.writeText(text)
                 if (tmp.renameTo(file)) return
+                // rename gagal (lintas volume dsb): jangan
+                // copyTo langsung ke berkas tujuan (issue
+                // #1283) — penimpaan sepotong-sepotong itu
+                // meninggalkan laporan setengah jadi bila
+                // proses mati di tengah salinan. Salin ke temp
+                // kedua lalu rename dari sana; salinan langsung
+                // hanya jalan terakhir.
+                val part = File(file.parent, file.name + ".part")
+                try {
+                    tmp.copyTo(part, overwrite = true)
+                    if (part.renameTo(file)) return
+                } catch (_: Exception) {
+                } finally {
+                    try { if (part.exists()) part.delete() } catch (_: Exception) { }
+                }
                 tmp.copyTo(file, overwrite = true)
             }
         } catch (_: Exception) {

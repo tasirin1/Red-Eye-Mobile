@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penulisan laporan crash cadangan kini atomik juga: bila `renameTo` gagal, berkas disalin ke temp kedua lalu di-rename dari sana, bukan `copyTo` langsung yang bisa meninggalkan laporan setengah jadi bila proses mati di tengah salinan (issue #1283).
 - Laporan drop antrean tidak lagi ganda sesudah mode volatile: jumlah yang sudah diambil pelapor selama penyimpanan tak tersedia kini ditandai dan dikurangkan dari muatan aditif saat penyimpanan pulih, sementara proses yang mati pada mode volatile tetap membangkitkan angka cakram utuh (at-least-once) (issue #1282).
 - Rotasi slot pemakaian a11y kini diserialkan di lapisan data lewat `a11yUsageLock` khusus: baca-ubah-tulis 6 kunci `setA11yUsage` tidak lagi bergantung pada disiplin `gate` pemanggilnya (issue #1281).
 - Snapshot pemakaian a11y kini ditulis di dalam `gate` yang sama tempat ia dibangun: snapshot basi tidak lagi bisa menimpa persist `flush()` yang lebih baru dari benang executor (akru sesi terakhir bisa hilang permanen bila proses mati di jendela itu) (issue #1280).
