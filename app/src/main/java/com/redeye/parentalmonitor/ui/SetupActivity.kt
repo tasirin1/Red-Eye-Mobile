@@ -1149,6 +1149,12 @@ class SetupActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            // FLAG_SECURE juga di sini (issue #1304): body
+            // memuat statusText yang selama jendela belum-
+            // tertaut berisi kode penautan pemilik — pola
+            // #1228 yang sudah ditutup di dialog lain terlewat
+            // di dialog kesehatan ini.
+            .also { amankanJendelaDialog(it) }
     }
 
     private fun copyToClipboard(label: String, value: String) {
