@@ -7945,13 +7945,13 @@ class MonitoringService : Service() {
         return usageRowsBetween(start, end)
     }
 
-    private fun usageRowsBetween(start: Long, end: Long): List<Pair<String, Long>>? {
+    private fun usagePkgRowsBetween(start: Long, end: Long): List<Triple<String, String, Long>>? {
         if (!com.redeye.parentalmonitor.utils.UsageAccess.granted(this)) return null
         return try {
             val manager = usageStatsManager ?: return null
             val stats = manager.queryAndAggregateUsageStats(start, end) ?: return null
             val pm = packageManager
-            val rows = mutableListOf<Pair<String, Long>>()
+            val rows = mutableListOf<Triple<String, String, Long>>()
             for ((pkg, stat) in stats) {
                 if (pkg == packageName) continue
                 val ms = stat.totalTimeInForeground
@@ -7972,13 +7972,17 @@ class MonitoringService : Service() {
                     }
                 }
                 if (!launchable) continue
-                rows.add(label to ms)
+                rows.add(Triple(pkg, label, ms))
             }
-            rows.sortByDescending { it.second }
+            rows.sortByDescending { it.third }
             rows
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun usageRowsBetween(start: Long, end: Long): List<Pair<String, Long>>? {
+        return usagePkgRowsBetween(start, end)?.map { it.second to it.third }
     }
 
     private fun screenTimeFull(hours: Int): String {
@@ -8964,7 +8968,18 @@ class MonitoringService : Service() {
                     val rowsYW = try { usageRowsBetween(awalKemarin, awalKemarin + (now - dayStart)) } catch (_: Exception) { null }
                     yesterdayWindowMs = rowsYW?.sumOf { it.second } ?: 0L
                     if (topLabel.isNotEmpty()) {
-                        topYesterdayMs = rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
+                        // Cocokkan berdasar PAKET, bukan label
+                        // (issue #1431): dua paket bisa berlabel
+                        // sama (kloning/profil kerja) dan nilai
+                        // kemarinnya tertukar.
+                        val rowsPkgY = try { usagePkgRowsBetween(awalKemarin, dayStart) } catch (_: Exception) { null }
+                        val rowsPkgT = try { usagePkgRowsBetween(dayStart, now) } catch (_: Exception) { null }
+                        val paketTop = rowsPkgT?.firstOrNull()?.takeIf { it.second == topLabel }?.first
+                        topYesterdayMs = if (paketTop != null) {
+                            rowsPkgY?.firstOrNull { it.first == paketTop }?.third ?: 0L
+                        } else {
+                            rowsY.firstOrNull { it.first == topLabel }?.second ?: 0L
+                        }
                     }
                 }
             }

@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Sorotan 'aplikasi teratas' pada laporan harian kini dicocokkan ke data kemarin berdasar nama paket, bukan label tampilan: sebelumnya dua aplikasi berlabel sama (mis. aplikasi kloning) membuat angka kemarin aplikasi lain yang dinilai.
+
 - Laporan kegagalan izin tangkap layar kini membedakan dialog yang gagal DIBUKA oleh sistem dari penolakan pengguna: sebelumnya kegagalan membuka dialog dilaporkan memakai redaksi 'ditolak', yang menyiratkan pengguna menolak padahal dialognya tidak pernah tampil.
 
 - Antisipasi ganda peringatan pasang/copot aplikasi kini menyimpan beberapa klaim peristiwa terakhir sekaligus, bukan satu slot tunggal: sebelumnya peristiwa paket lain yang menyelinap di antara dua salinan siaran yang sama bisa menggusur klaim dan membuat peringatan tetap terkirim dua kali; dan bila penyimpanan klaimnya gagal, peringatannya kini tidak lagi ikut dibatalkan.
