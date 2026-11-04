@@ -1,5 +1,12 @@
 name: Auto-merge dependabot
 
+# SYARAT repo: Settings > General > "Allow auto-merge" HARUS aktif
+# (issue #1291: tanpa itu langkah `gh pr merge --auto` selalu
+# gagal "Auto-merge is not allowed for this repository").
+# Diaktifkan via API 2026-11-04 dan terverifikasi allow_auto_merge
+# = true; proteksi branch main (wajib cek "build" hijau +
+# resolusi percakapan) membuat --auto tetap menunggu CI.
+
 # Hanya untuk PR Dependabot. Dependabot di repo ini memantau github-actions
 # dan gradle (sejak pemerataan sesi #336); PR yang menyentuh dependensi Gradle
 # tetap manual (hanya diberi komentar panduan), PR non-Gradle di-auto-merge

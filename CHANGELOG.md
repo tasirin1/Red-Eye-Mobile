@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Workflow auto-merge Dependabot kini benar-benar bisa bekerja: pengaturan repo "Allow auto-merge" diaktifkan (sebelumnya `gh pr merge --auto` selalu gagal karena pengaturan itu mati), dan syaratnya didokumentasikan di kepala workflow; proteksi `main` tetap membuat penggabungan menunggu CI hijau (issue #1291).
 - Menghapus berkas terlarang kini lolos kedua gerbang sebagai remediasi, bukan pelanggaran: `cek_aturan_repo` hanya memvonis path yang masih ada di pohon kerja, dan cek staged `cek-cepat.sh` memakai `--diff-filter=d` (issue #1290).
 - Pengupas kode gerbang kini melompati interpolasi string secara utuh dan sadar literal bersarang: `"${"}"}"` tidak lagi menyisakan kurung hantu yang menutupi kurung hilang sungguhan dari `cek_kurung_kode` (issue #1289).
 - Daftar berkas terlarang kedua gerbang kini mencakup `.envrc.*` (mis. `.envrc.local`) dan kunci privat `*.pem`/`*.key`; `.gitignore` ikut menahan nama-nama itu agar tak ter-`add` tak sengaja (issue #1288).
