@@ -160,6 +160,18 @@ class BootRestartWorker(
         } catch (_: Exception) {
         }
         if (!prefs.isConfigured()) {
+            // Tak terkonfigurasi = tak ada yang bisa dihidupkan:
+            // watchdog periodik ikut dibatalkan (issue #1275).
+            // Tanpa ini, watchdog yang terlanjur terpasang (mis.
+            // dijadwalkan ulang onDestroy saat hapus kredensial
+            // sedang berjalan) hidup selamanya membangunkan
+            // proses tiap ±15 menit tanpa pernah bisa memulai
+            // pemantauan — cabang nonaktif di atas sudah
+            // membatalkannya, cabang ini tertinggal.
+            try {
+                MessageScheduler.cancelWatchdog(appContext)
+            } catch (_: Exception) {
+            }
             return Result.success()
         }
         try {

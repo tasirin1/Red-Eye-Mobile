@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cabang `!isConfigured()` di `BootRestartWorker` kini membatalkan watchdog periodik sebelum kembali: sesudah kredensial dihapus, watchdog yang sempat dijadwalkan ulang oleh `onDestroy` tidak lagi hidup selamanya membangunkan proses tiap ±15 menit tanpa bisa memulai pemantauan (issue #1275).
 - Cabang nonaktif `BootReceiver` kini juga membatalkan alarm Liveness yang terpasang tanpa syarat di `onReceive` (sebelumnya hanya watchdog yang dibatalkan, menyisakan satu bangun-proses sia-sia per boot pada perangkat yang pemantauannya sengaja dimatikan) (issue #1274).
 - Urutan LRU penanda penerusan notifikasi kini bertahan lintas restart: salinan view yang menjadi sumber snapshot persisten memakai `LinkedHashSet`/`LinkedHashMap` (menjaga urutan akses peta asal), bukan `HashSet`/`HashMap` yang urutan iterasinya arbitrer (issue #1272).
 - Luapan batch penerus notifikasi tidak lagi hilang senyap: pesan yang ditolak antrean kini dihitung sebagai gugur, dan cap dedup 10 detik hanya ditulis bila pesan benar-benar terbuffer/terantre (sebelumnya cap tetap tertulis sehingga posting ulang ikut terbuang) (issue #1271).
