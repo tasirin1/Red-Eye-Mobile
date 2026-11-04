@@ -729,13 +729,7 @@ class SetupActivity : AppCompatActivity() {
         askPin(getString(R.string.setup_verify_pin_title), false) { pin ->
             if (pin == null) return@askPin
             if (!com.redeye.parentalmonitor.utils.AccessPin.verify(storedPin, pin)) {
-                val prevCount = try { prefs.accessPinFailCount } catch (_: Exception) { 0 }
-                val (newCount, newLock) = com.redeye.parentalmonitor.utils.RestorePinGate.registerFailure(prevCount, System.currentTimeMillis())
-                try { prefs.accessPinFailCount = newCount } catch (_: Exception) { }
-                if (newLock > 0L) {
-                    try { prefs.accessPinLockoutUntil = newLock } catch (_: Exception) { }
-                    try { prefs.accessPinLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
-                }
+                val newLock = prefs.registerAccessPinFailure().second
                 Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
                 return@askPin
             }

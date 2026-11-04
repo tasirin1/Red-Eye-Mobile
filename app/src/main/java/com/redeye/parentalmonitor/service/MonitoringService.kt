@@ -4038,13 +4038,7 @@ class MonitoringService : Service() {
                 return
             }
             if (secret.isEmpty() || !RestoreCode.isValid(secret, mode, nowMs)) {
-                val fails = restoreCodeFailCount + 1
-                restoreCodeFailCount = fails
-                if (fails >= RESTORE_CODE_MAX_FAILS) {
-                    restoreCodeFailCount = 0
-                    restoreCodeLockoutUntil = nowMs + RESTORE_CODE_LOCK_MS
-                    try { preferencesManager.restoreCodeLockoutElapsedStart = android.os.SystemClock.elapsedRealtime() } catch (_: Exception) { }
-                }
+                preferencesManager.registerRestoreCodeFailure(RESTORE_CODE_MAX_FAILS, RESTORE_CODE_LOCK_MS, nowMs)
                 audit("restore kode salah", "private")
                 sendToTelegram("❌ Kode restore salah/kedaluwarsa. Buka Setup untuk kode terbaru, lalu kirim /restore &lt;kode&gt;.")
                 return

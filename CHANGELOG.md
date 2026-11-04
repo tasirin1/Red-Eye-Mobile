@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pola tulis atomik yang sama diterapkan ke gerbang PIN akses dan gerbang kode restore: hitungan kegagalan dan pasangan masa kunci kini ditulis dalam satu commit terkunci, bukan beberapa transaksi lepas (#1211).
 - Pencatatan kegagalan PIN restore kini atomik dan terkunci: baca-hitung-tulis untuk restore lokal dan jarak jauh berjalan di bawah satu kunci dengan satu commit gabungan, sehingga dua tebakan berbeda yang bersamaan tidak lagi terhitung satu dan keadaan kunci tidak bisa tertinggal setengah (#1210).
 - Peringatan 'aksesibilitas mati' kini berlaku bagi pemakai fitur aksesibilitas apa pun (pantau aplikasi, kata pantau, pemakaian layar), bukan hanya pemakai proteksi tamper: sebelumnya pemantauan bisa berhenti senyap tanpa pemberitahuan bagi mereka (#1209).
 - Unggahan foto dan tangkap layar kini memegang kunci terjaga selama pengiriman berlangsung, sejajar dengan unggahan audio/video: tidur dalam perangkat tidak lagi bisa menggagalkan unggahan foto di tengah jalan (#1208).
