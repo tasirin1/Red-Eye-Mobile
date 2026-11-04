@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Dialog kode restore dan dialog tautan penautan di Setup kini ikut terlindung dari tangkapan layar/rekaman (jendela dialog terpisah dari jendela layar yang sudah terlindung), jadi rahasia teks polos di dalamnya tak bisa difoto aplikasi lain. (Issue #1228)
 - Simpan hasil Tes koneksi di Setup tak lagi gugur diam-diam saat layar ditutup sebelum tulis disk berjalan: pekerjaannya kini berjalan di cakupan simpan statis yang hidup melewati layar, sama seperti jalur simpan utama. (Issue #1227)
 - Cek paritas jumlah item string-array pada gerbang yang mati sejak lahir diperbaiki: agregasi hitungan kini membedakan "belum tercatat" dari "tak terhitung", sehingga selisih jumlah item antar bahasa benar-benar menggagalkan gerbang alih-alih lolos total. (Issue #1237)
 - Satu lompatan antarmuka pada jalur simpan Setup yang tertinggal kini memakai penjaga selesai dan cek generasi simpan yang sama seperti cabang-cabang tetangganya (#1226).

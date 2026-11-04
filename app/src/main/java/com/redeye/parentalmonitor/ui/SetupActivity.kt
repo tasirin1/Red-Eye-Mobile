@@ -1221,8 +1221,20 @@ class SetupActivity : AppCompatActivity() {
                         }
                         .setNegativeButton(android.R.string.ok, null)
                         .show()
+                        .also { amankanJendelaDialog(it) }
                 }
             }
+        }
+    }
+
+    // Dialog adalah jendela terpisah: FLAG_SECURE jendela aktivitas
+    // tak menutupinya, jadi dialog yang menampilkan rahasia teks polos
+    // (kode restore, tautan penautan) ditandai sendiri agar tak
+    // tertangkap tangkapan layar / rekaman layar (issue #1228).
+    private fun amankanJendelaDialog(dialog: androidx.appcompat.app.AlertDialog) {
+        try {
+            dialog.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        } catch (_: Exception) {
         }
     }
 
@@ -1299,6 +1311,7 @@ class SetupActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.ok, null)
             .show()
+            .also { amankanJendelaDialog(it) }
     }
 
     private fun askPin(title: String, confirm: Boolean, done: (String?) -> Unit) {
