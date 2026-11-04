@@ -436,6 +436,8 @@ def himpun_definisi():
 
     pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool|attr)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
+    pola_item_nt = re.compile(r'<item\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*?\btype\s*=\s*["\x27]([^"\x27]+)["\x27]')
+    pola_item_tn = re.compile(r'<item\s[^>]*?\btype\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
 
     def tambah(kunci, nama):
         definisi.setdefault(kunci, set()).add(rapikan(kunci, nama))
@@ -447,6 +449,15 @@ def himpun_definisi():
             tambah(jenis, nama)
         for jenis, nama in pola_array.findall(isi):
             tambah("array", nama)
+        # Definisi lewat elemen generik <item name type>
+        # (issue #1366): AAPT mengizinkannya untuk sumber
+        # daya values; kedua urutan atribut dikenali. Item
+        # isi <style>/<plurals> tak punya pasangan name+type
+        # sehingga tak ikut tertangkap.
+        for nama, jenis in pola_item_nt.findall(isi):
+            tambah(jenis, nama)
+        for jenis, nama in pola_item_tn.findall(isi):
+            tambah(jenis, nama)
         for nama in re.findall(r'@\+id/([A-Za-z0-9_]+)', isi):
             tambah("id", nama)
     # Definisi berbasis berkas: semua subdir res kecuali values* (layout,

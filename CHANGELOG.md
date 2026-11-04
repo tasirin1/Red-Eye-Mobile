@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini juga mengenali definisi sumber daya values lewat elemen generik `<item name="..." type="...">` (kedua urutan atribut): sebelumnya hanya tag bernama-sama-dengan-jenis yang terdaftar, sehingga acuan sah ke sumber daya berbentuk item divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
+
 - Alat verifikasi kini mengenali definisi atribut kustom `<attr name="...">` di berkas values: sebelumnya penghimpun definisi sumber daya tidak pernah mendaftarkan attr, sehingga acuan `R.attr.…`/`@attr/…` pertama yang sah pasti divonis yatim dan menggagalkan gerbang. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
 
 - Peringatan "metode baru" di alat verifikasi tak lagi salah alamat: baris pernyataan yang diawali `return`/`throw` sebelumnya tertelan sebagai deklarasi sehingga nama fungsi yang hanya *dipanggil* dicap metode baru tanpa uji. Terbukti lewat baterai sandbox terhadap gerbang lama.
