@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Saklar keberadaan direktori uji di alat verifikasi kini menilai pohon yang diperiksa pada mode rentang, bukan berkas kerja: dari checkout yang kebetulan tanpa direktori uji, seluruh keluarga cek uji sebelumnya tertelan senyap walau pohon rentangnya punya uji. Terbukti lewat uji saklar dua arah.
+
 - Nama `<declare-styleable>` bertitik kini dirapikan ke bentuk garis bawah di alat verifikasi seperti nama style: sebelumnya definisinya disimpan mentah sehingga acuan R.styleable yang sah divonis yatim. Terbukti lewat uji penghimpun.
 
 - Acuan style pustaka dari kode (R.style...) kini juga dikecualikan dari vonis yatim, sejajar dengan acuan yang sama dari XML: sebelumnya pengecualian keluarga style pustaka hanya berlaku di sisi XML sehingga acuan kode yang sah divonis yatim. Terbukti lewat uji fungsi.

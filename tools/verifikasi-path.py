@@ -3104,7 +3104,12 @@ def utama():
         # hidup di isi commit tengah lalu terhapus di ujung.
         cek_secret_riwayat(gagal, "HEAD")
 
-    ada_uji = os.path.isdir(UJI)
+    # Keberadaan direktori uji dinilai dari POHON yang
+    # diperiksa (issue #1422): pada mode rentang, berkas
+    # kerja checkout yang kebetulan tanpa dir-uji menelan
+    # seluruh cek uji (keluarga #1400, satu tingkat di atas
+    # disebut_di_uji yang sudah diperbaiki).
+    ada_uji = bool(_jalan_pohon("app/src/test")) if REF_POHON else os.path.isdir(UJI)
     cek_xml(gagal)
     cek_acuan_yatim(gagal)
     cek_manifest(gagal)
