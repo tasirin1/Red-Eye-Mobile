@@ -538,6 +538,31 @@ class MonitoringService : Service() {
             return
         }
         invalidateKnownContactCache()
+        // Receiver perubahan paket didaftarkan dinamis di
+        // API 26+ (issue #1187): sejak Android 8, broadcast
+        // implisit PACKAGE_ADDED/REMOVED tidak lagi dikirim
+        // ke receiver manifest (kedua aksi itu tidak masuk
+        // daftar pengecualian resmi), sehingga entri manifest
+        // saja mati total di perangkat modern — notifikasi
+        // pasang/copot, forgetA11yApp (#854), dan invalidasi
+        // cache tak pernah jalan. Di bawah API 26 entri
+        // manifest masih bekerja, jadi pendaftaran dinamis
+        // dibatasi >= 26 agar tidak terkirim ganda.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && packageReceiver == null) {
+            try {
+                val receiver = com.redeye.parentalmonitor.receiver.PackageChangeReceiver()
+                val filter = android.content.IntentFilter().apply {
+                    addAction(android.content.Intent.ACTION_PACKAGE_ADDED)
+                    addAction(android.content.Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                }
+                androidx.core.content.ContextCompat.registerReceiver(
+                    this, receiver, filter,
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+                packageReceiver = receiver
+            } catch (_: Exception) {
+            }
+        }
         try {
             if (contactObserver == null) {
                 val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
@@ -8625,6 +8650,7 @@ class MonitoringService : Service() {
     private val knownContactCache = HashMap<String, Boolean>()
     private var knownContactCacheAt = 0L
     private var contactObserver: android.database.ContentObserver? = null
+    private var packageReceiver: com.redeye.parentalmonitor.receiver.PackageChangeReceiver? = null
 
     private fun invalidateKnownContactCache() {
         synchronized(knownContactCache) {
@@ -9716,6 +9742,13 @@ class MonitoringService : Service() {
     }
 
     override fun onDestroy() {
+        packageReceiver?.let { receiver ->
+            try {
+                unregisterReceiver(receiver)
+            } catch (_: Exception) {
+            }
+            packageReceiver = null
+        }
         try {
             if (shouldAutoResume() || needsCredsRetry()) {
                 if (selfTestPending()) {
