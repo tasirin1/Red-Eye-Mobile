@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Perbaikan lanjutan pelacak metode-hilang: baris hapus berisi panggilan anggota (mis. lifecycleScope.launch) tak lagi terpanen sebagai metode yang dihapus — syarat kata kunci fun kini memisahkan deklarasi extension sungguhan dari panggilan biasa (build tag v1.6.614 sempat gagal karenanya; rilis itu tak terbit). (Issue #1252)
 
 ## [1.6.614] - 2026-11-04
 

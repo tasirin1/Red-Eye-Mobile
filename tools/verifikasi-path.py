@@ -1784,16 +1784,28 @@ def nama_metode_hilang(diff, lewati_berkas=()):
             continue
         if path in lewati_berkas or not os.path.isfile(os.path.join(AKAR, path)):
             continue
-        # Grup 1 rakus-malus + titik opsional sebelum nama (issue
-        # #1252): deklarasi extension "fun String.nama()" dan
-        # generik pra-nama "fun <T> nama()" ikut terpanen — dulu
-        # keduanya lolos dari pelacakan hapusan.
         cocok = re.match(
             r"\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?"
-            r"(?:fun\s+)?([\w<>\[\].,? ]*?)\s*\.?\s*(\w+)\s*\(", baris)
+            r"(?:fun\s+)?([\w<>\[\].,? ]*\w)\s+(\w+)\s*\(", baris)
+        nama = None
         if cocok and cocok.group(2) not in KATA_KUNCI \
                 and cocok.group(1).strip() not in KATA_ALUR:
-            hilang.append(cocok.group(2))
+            nama = cocok.group(2)
+        if nama is None:
+            # Deklarasi extension/generik Kotlin (issue #1252):
+            # "fun String.nama()" / "fun <T> nama()" — titik
+            # penerima hanya sah sesudah kata kunci fun. Tanpa
+            # syarat itu, baris hapus berisi panggilan anggota
+            # ("lifecycleScope.launch(...) {") ikut terpanen
+            # sebagai metode hilang dan gerbang gagal palsu
+            # (terbukti pada build tag v1.6.614).
+            cocok2 = re.match(
+                r"\s*(?:(?:public|protected|private|internal|override|suspend|inline|operator|infix|tailrec)\s+)*"
+                r"fun\s+(?:<[^>\n]+>\s*)?(?:[\w<>\[\],.? ]*?\.)?(\w+)\s*\(", baris)
+            if cocok2 and cocok2.group(1) not in KATA_KUNCI:
+                nama = cocok2.group(1)
+        if nama is not None:
+            hilang.append(nama)
     return hilang
 
 
