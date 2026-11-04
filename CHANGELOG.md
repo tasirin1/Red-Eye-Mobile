@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Watchdog unggah tangkap layar (660 detik) tidak lagi menembak di tengah flush foto tertahan yang sah (tenggat flush sendiri 600 detik): watchdog dibatalkan tepat sesudah unggahan berkas yang dijaganya selesai, bukan sesudah flush (issue #1264).
 ## [1.6.615] - 2026-11-04
 
 ### Fixed

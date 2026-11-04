@@ -10402,7 +10402,13 @@ class MonitoringService : Service() {
                 shotNoFrameFailAt = 0L
                 markMediaActive(shotFile)
                 try {
-                    when (sendPhotoFile(shotFile)) {
+                    val hasilKirimShot = sendPhotoFile(shotFile)
+                    // Watchdog hanya menjaga unggahan berkas ini;
+                    // cabang SENT menjalankan flush dengan tenggat
+                    // sendiri (600 dtk) yang sah melebihi sisa
+                    // jendela 660 dtk (issue #1264).
+                    try { wdUp.cancel() } catch (_: Exception) { }
+                    when (hasilKirimShot) {
                         MediaSendOutcome.SENT -> {
                             if (lastShotStaleFrame) {
                                 lastShotStaleFrame = false
