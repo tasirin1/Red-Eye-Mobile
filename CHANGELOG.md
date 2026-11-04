@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penentu fungsi pemilik baris di alat verifikasi kini menghitung kurung atas teks yang string dan komentarnya dikupas beruntun: sebelumnya kurung di dalam literal string (mis. "}" dalam string, atau kurung dalam string mentah multi-baris) menggeser kedalaman sehingga pemilik sebuah baris salah dikenali atau hilang, dan atribusi cakupan uji ikut salah senyap. Terbukti lewat uji satuan tiga kasus.
+
 - Mode jalur alat verifikasi kini ikut memeriksa perubahan yang sudah di-stage (diff indeks), bukan hanya perubahan berkas kerja: sebelumnya berkas yang sudah di-`git add` menghasilkan diff kosong dan lolos dari semua pemeriksaan berbasis diff padahal keluaran mengaku berkasnya diperiksa. Terbukti lewat baterai sandbox staged terhadap gerbang lama.
 
 - Pemeriksaan "masih ada/tidak" di alat verifikasi (definisi metode, pemanggil, sebutan kelas terhapus, pemilik fungsi) kini membaca pohon ujung rentang saat memeriksa rentang diff, bukan berkas kerja: sebelumnya satu edit belum-commit bisa membalik vonis atas rentang historis/tag. Sisi baru rename kini juga dibaca dari ref ujungnya (dan dari indeks untuk perubahan staged). Terbukti lewat baterai sandbox pohon-kotor terhadap gerbang lama.

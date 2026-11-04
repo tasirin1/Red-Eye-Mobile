@@ -2448,7 +2448,14 @@ def _fungsi_pemilik(path, baris_mulai):
     isi = _baca_pohon(path)
     if isi is None:
         return None
-    bersih = _kupas_komentar_kode(isi, bersarang=not path.endswith(".java"))
+    # Kurung dihitung atas teks yang string DAN komentarnya
+    # dikupas beruntun (issue #1350): pengupasan komentar saja
+    # menyisakan isi literal string, dan kurung di dalamnya
+    # ("}" dalam string) menggeser kedalaman sehingga pemilik
+    # baris salah atau hilang. Mesin beruntun membawa keadaan
+    # string mentah/komentar blok antarbaris.
+    bersih_list, _akhir = _kupasan_baris_beruntun(isi.splitlines())
+    bersih = "\n".join(bersih_list)
     pola = re.compile(r"^\s*(?:(?:public|private|protected|internal|override|suspend|inline|operator|infix|tailrec|open|final|abstract)\s+)*fun\s+(?:<[^>\n]+>\s*)?(?:[\w<>\[\],.? ]*\.)?(\w+)\s*\(")
     tumpukan = []  # (nama, kedalaman badan)
     kedalaman = 0
