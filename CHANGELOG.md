@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kabar buang media ke owner kini jujur soal sebabnya: sebelumnya semua media yang dibuang dilaporkan sebagai "ditolak (400)", padahal pembuangan juga terjadi untuk berkas terlalu besar (413) dan sebab lokal; teksnya kini netral ("kosong, tak didukung, atau terlalu besar"). Pengecualian drop-413 untuk media — permanen untuk berkas yang sama karena ukurannya tak menyusut saat dicoba ulang — kini terdokumentasi di kode sebagai pengecualian yang disengaja dari aturan drop-hanya-400.
+
 - Seluruh situs Telegram sekali-jalan kini menutup badan respons error yang tidak dibacanya — jawaban callback tiap ketukan menu, hapus pesan/webhook/perintah, pendaftaran perintah bot, validasi restore, verifikasi kredensial dan kirim status di layar Setup, serta pengirim laporan crash: sebelumnya badan error yang tertinggal menahan koneksi di luar kumpulan koneksi bersama, sehingga saat server/proxy membalas error beruntun, panggilan berikutnya membayar pembuatan koneksi baru.
 
 - Jalur kirim utama pekerja pengiriman kini menutup badan respons error pada cabang 401, 408/5xx, dan kode tak dikenal, menyamai kedua fungsi pengirim saudaranya: sebelumnya badan yang tak tertutup menahan koneksi di luar kumpulan koneksi bersama pada jalur terpanas antrean, sehingga badai error membuat tiap pengiriman membayar pembuatan koneksi baru.

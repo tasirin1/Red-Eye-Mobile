@@ -10515,7 +10515,7 @@ class MonitoringService : Service() {
                     MediaSendOutcome.DROPPED -> {
                         prunePhotoCache()
                         if (reportResult) {
-                            sendToTelegram("⚠️ Foto ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
+                            sendToTelegram("⚠️ Foto dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                         }
                     }
                     MediaSendOutcome.KEPT -> {
@@ -10718,7 +10718,7 @@ class MonitoringService : Service() {
                         }
                         MediaSendOutcome.DROPPED -> {
                             prunePhotoCache()
-                            sendToTelegram("⚠️ Tangkap layar ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
+                            sendToTelegram("⚠️ Tangkap layar dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                         }
                         MediaSendOutcome.KEPT -> {
                             prunePhotoCache()
@@ -11229,6 +11229,14 @@ class MonitoringService : Service() {
             return MediaSendOutcome.DROPPED
         }
         if (code == 413) {
+            // Pengecualian media yang DISENGAJA dari aturan
+            // "drop hanya 400 persis" (#966/#1336, issue #1353):
+            // untuk berkas yang sama, 413 permanen — ukurannya
+            // tak menyusut pada percobaan ulang (berbeda dengan
+            // teks yang bisa dipecah lebih kecil), jadi
+            // mempertahankan berkas hanya menyumbat antrean
+            // media selamanya. Kabar drop ke owner dirumuskan
+            // netral-sebab supaya tak mengklaim 400 di sini.
             android.util.Log.w("MonitoringService", "$label too large (413), dropping file")
             deleteQuietly(file)
             return MediaSendOutcome.DROPPED
@@ -12097,7 +12105,7 @@ class MonitoringService : Service() {
                         flushPendingAudio()
                     } catch (_: Exception) {
                     }
-                    sendToTelegram("\u26A0\uFE0F Rekaman ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
+                    sendToTelegram("\u26A0\uFE0F Rekaman dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                 }
                 MediaSendOutcome.KEPT -> {
                     keepForRetry = true
@@ -12364,7 +12372,7 @@ class MonitoringService : Service() {
                                     }
                                     MediaSendOutcome.DROPPED -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
-                                        sendToTelegram("⚠️ Video ditolak Telegram (400) — berkas kosong/tak didukung, dibuang.")
+                                        sendToTelegram("⚠️ Video dibuang — berkas kosong, tak didukung, atau terlalu besar untuk Telegram.")
                                     }
                                     MediaSendOutcome.KEPT -> {
                                         try { flushPendingVideos() } catch (_: Exception) { }
