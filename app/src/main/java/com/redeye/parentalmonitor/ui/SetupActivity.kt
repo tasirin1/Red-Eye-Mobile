@@ -143,10 +143,7 @@ class SetupActivity : AppCompatActivity() {
                                 Toast.makeText(this@SetupActivity, getString(R.string.restore_bad), Toast.LENGTH_LONG).show()
                                 return@withContext
                             }
-                            try { prefs.restorePinFailCount = 0 } catch (_: Exception) { }
-                            try { prefs.restorePinLastAttemptKey = "" } catch (_: Exception) { }
-                            try { prefs.restorePinLockoutUntil = 0L } catch (_: Exception) { }
-                            try { prefs.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
+                            prefs.resetRestorePinGate()
                             try {
                                 botTokenInput.setText(data.token)
                                 chatIdInput.setText(data.chatId)
@@ -733,9 +730,7 @@ class SetupActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(if (newLock > 0L) R.string.restore_pin_locked else R.string.setup_bad_access_pin), Toast.LENGTH_LONG).show()
                 return@askPin
             }
-            try { prefs.accessPinFailCount = 0 } catch (_: Exception) { }
-            try { prefs.accessPinLockoutUntil = 0L } catch (_: Exception) { }
-            try { prefs.accessPinLockoutElapsedStart = 0L } catch (_: Exception) { }
+            prefs.resetAccessPinGate()
             action()
         }
     }

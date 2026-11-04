@@ -1020,6 +1020,38 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    // Reset sukses atomik untuk kedua gerbang PIN (issue
+    // #1221): pasangan jalur gagalnya sudah satu commit
+    // terkunci sejak #1210/#1211 — reset yang masih
+    // berkeping bisa menelan atau menghapus lockout yang
+    // baru tercatat oleh commit jalur gagal yang berbalapan.
+    fun resetRestorePinGate() {
+        synchronized(prefsRmwLock) {
+            try {
+                sharedPreferences.edit()
+                    .putInt(KEY_RESTORE_PIN_FAIL_COUNT, 0)
+                    .putString(KEY_RESTORE_PIN_LAST_KEY, "")
+                    .putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L)
+                    .putLong(KEY_RESTORE_PIN_LOCKOUT_ELAPSED_START, 0L)
+                    .commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun resetAccessPinGate() {
+        synchronized(prefsRmwLock) {
+            try {
+                sharedPreferences.edit()
+                    .putInt(KEY_ACCESS_PIN_FAIL_COUNT, 0)
+                    .putLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, 0L)
+                    .putLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, 0L)
+                    .commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     // Dan untuk gerbang kode restore (issue #1211): kenaikan
     // hitungan, reset saat memicu kunci, dan pasangan lockout
     // ditulis satu commit. Mengembalikan true bila kegagalan

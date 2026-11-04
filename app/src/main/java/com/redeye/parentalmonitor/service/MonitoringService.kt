@@ -4244,10 +4244,7 @@ class MonitoringService : Service() {
             }
             return
         }
-        try { preferencesManager.restorePinFailCount = 0 } catch (_: Exception) { }
-        try { preferencesManager.restorePinLastAttemptKey = "" } catch (_: Exception) { }
-        try { preferencesManager.restorePinLockoutUntil = 0L } catch (_: Exception) { }
-        try { preferencesManager.restorePinLockoutElapsedStart = 0L } catch (_: Exception) { }
+        preferencesManager.resetRestorePinGate()
         pendingRestore = null
         if (data.legacy) {
             // Format warisan lemah (issue #1169): anjurkan

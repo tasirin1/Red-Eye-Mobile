@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Reset sukses gerbang PIN restore dan PIN akses kini juga atomik dalam satu commit terkunci, menutup pasangan jalur gagalnya: lockout yang baru tercatat tidak lagi bisa terhapus oleh reset yang berbalapan (#1221).
 - Deteksi berkendara kini hanya menghitung sampel dari fix lokasi yang benar-benar baru: fix terakhir-yang-diketahui yang sama tidak lagi terhitung dua kali sebagai dua sampel cepat, sehingga peringatan berkendara palsu sesudah tiba di tujuan dan penilaian pagar dari posisi basi dapat dicegah (#1220).
 - Siklus data rutin kini mengisolasi bacaan tiap sumber: kegagalan membaca SMS (mis. izin tercabut) tidak lagi membatalkan pembacaan log panggilan pada siklus yang sama, dan sisi yang gagal tidak ditandai tuntas (#1219).
 
