@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cermin daftar aplikasi dikenal kini ikut dibuang saat penyimpanan berhasil naik kelas ke penyimpanan persisten, sama seperti saat penyimpanan dibuka ulang: sebelumnya cermin lama dari penyimpanan sementara tetap dipakai, sehingga jawaban "aplikasi sudah dikenal" bisa berasal dari data sebelum penggabungan dan penulisan berikutnya menimpa hasil gabungan yang baru dengan himpunan lama.
+
 - Kirim langsung (petunjuk pairing dan pemberitahuan login) kini menghormati gerbang rate-limit dan blokir kredensial global yang sama dengan jalur antre, dan balasan 429 yang diterimanya ikut mengajari gerbang itu — sebelumnya jalur ini mengirim menembus keduanya. Selain itu seluruh panggilan jaringan selama alur login kini dikirim sesudah kunci login lepas, bukan sambil memegangnya: satu kirim yang lambat tidak lagi menahan upaya login berikutnya sampai puluhan detik.
 
 - Polling perintah kini memberi jeda mundur 60 detik juga untuk kode HTTP tak dikenal (mis. 402/404/422 dari server/proxy yang bermasalah), sama seperti kode 408/5xx: sebelumnya kode anomali itu hanya terkena jeda generik 10-30 detik sehingga aplikasi memolling terlalu rapat selama gangguan berkepanjangan dan memboroskan baterai.

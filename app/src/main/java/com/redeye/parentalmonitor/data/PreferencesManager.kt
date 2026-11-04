@@ -207,6 +207,15 @@ class PreferencesManager(context: Context) {
             val baseMem: Map<String, Any?> = try { HashMap(mem?.all ?: emptyMap<String, Any?>()) } catch (_: Exception) { emptyMap<String, Any?>() }
             val baseFresh: Map<String, Any?> = try { HashMap(fresh.all) } catch (_: Exception) { emptyMap<String, Any?>() }
             sharedPreferences = fresh
+            // Penyimpanan resmi berganti ke store persisten:
+            // cermin himpunan dikenal memuat isi store LAMA
+            // dan wajib dibuang di sini juga (issue #1340,
+            // simetri reopenStorageLocked #1047) — tanpa ini
+            // jawaban "sudah dikenal" berasal dari data
+            // pra-upgrade, dan penulisan berikutnya
+            // membangkitkan himpunan lama menimpa gabungan
+            // yang baru saja ditulis ke store persisten.
+            synchronized(a11yKnownAppsLock) { knownAppsMirror = null }
             if (!adopt) {
                 var guard = 0
                 var stablePasses = 0
