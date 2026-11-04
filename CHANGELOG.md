@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Pesan lokasi mode hilang kini menampilkan akurasi titiknya seperti semua pesan lokasi lain: sebelumnya jalur ini satu-satunya yang tidak menampilkannya, padahal titik cadangannya boleh berumur sampai 24 jam dan meleset jauh.
+
 - Sorotan 'aplikasi teratas' pada laporan harian kini dicocokkan ke data kemarin berdasar nama paket, bukan label tampilan: sebelumnya dua aplikasi berlabel sama (mis. aplikasi kloning) membuat angka kemarin aplikasi lain yang dinilai.
 
 - Laporan kegagalan izin tangkap layar kini membedakan dialog yang gagal DIBUKA oleh sistem dari penolakan pengguna: sebelumnya kegagalan membuka dialog dilaporkan memakai redaksi 'ditolak', yang menyiratkan pengguna menolak padahal dialognya tidak pernah tampil.

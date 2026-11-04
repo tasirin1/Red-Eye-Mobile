@@ -4186,7 +4186,12 @@ class MonitoringService : Service() {
                 try { rememberSentLatLon(loc.latitude, loc.longitude, loc.accuracy) } catch (_: Exception) { }
                 try { checkGeofence(loc.latitude, loc.longitude, loc.accuracy, fixAtMs = loc.time) } catch (_: Exception) { }
             }
-            sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
+            // Akurasi ikut ditampilkan (issue #1432):
+            // jalur /lost dulu satu-satunya pengirim lokasi
+            // tanpa akurasi, padahal cadangannya boleh fix
+            // 24 jam yang meleset jauh — pemilik anti-maling
+            // perlu tahu seberapa bisa titiknya dipercaya.
+            sendToTelegram("📍 https://maps.google.com/?q=${loc.latitude},${loc.longitude}\n${ReportFormat.accuracyText(loc.accuracy)}\nBaterai: ${if (level in 0..100) "$level%" else "?"}" + fixAgeNote(loc))
         } else {
             bumpLocFailCount()
             sendToTelegram("📍 Lokasi tak didapat: " + locationFailureHint() + "\nBaterai: ${if (level in 0..100) "$level%" else "?"}")
