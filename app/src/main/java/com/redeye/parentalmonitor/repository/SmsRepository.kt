@@ -48,13 +48,45 @@ class SmsRepository(private val context: Context) {
             selection = "${Telephony.Sms._ID} > ?"
             args = arrayOf(afterId.toString())
         }
+        // Batas masa depan (issue #1374): baris melewati batas
+        // ditunda sampai waktunya tiba, tak memajukan kursor.
+        val batas = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
         return querySms(
-            selection = selection,
-            args = args,
+            selection = "($selection) AND ${Telephony.Sms.DATE} <= ?",
+            args = args + batas.toString(),
             sortOrder = "${Telephony.Sms.DATE} ASC, ${Telephony.Sms._ID} ASC",
             limit = 100,
             strict = true
         )
+    }
+
+    // Baris terbesar (tanggal, id) yang KETAT di bawah
+    // (beforeDate, beforeId) dan tak melewati untilDate —
+    // jangkar pulih kursor teracuni tanggal masa depan
+    // (issue #1374): korban yang datang selama kursor
+    // teracuni semuanya berada sesudah jangkar ini dan di
+    // bawah batas, jadi terpilih lagi tanpa kirim ulang
+    // baris yang sudah terkirim.
+    fun smsPendahulu(beforeDate: Long, beforeId: Long, untilDate: Long): Pair<Long, Long>? {
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID, Telephony.Sms.DATE),
+            "${Telephony.Sms.DATE} <= ? AND (${Telephony.Sms.DATE} < ? OR (${Telephony.Sms.DATE} = ? AND ${Telephony.Sms._ID} < ?))",
+            arrayOf(untilDate.toString(), beforeDate.toString(), beforeDate.toString(), beforeId.toString()),
+            "${Telephony.Sms.DATE} DESC, ${Telephony.Sms._ID} DESC",
+            1
+        ) ?: return null
+        return try {
+            if (cursor.moveToFirst()) {
+                cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)) to
+                    cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+            } else null
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
     }
 
     fun smsDateForId(id: Long): Long {

@@ -6860,6 +6860,27 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            // Pulih kursor teracuni tanggal masa depan (issue
+            // #1374): tanggal kursor melewati batas atas berarti
+            // satu baris masa depan sudah memajukannya dan semua
+            // baris normal terhalang. Jangkar ulang ke baris
+            // terbesar yang KETAT di bawah posisi teracuni dan
+            // di bawah batas — korban terpilih lagi, baris racun
+            // sendiri tertunda oleh batas ambil, dan tak ada
+            // kirim ulang. Tanpa pendahulu: reset penuh.
+            val batasSms = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
+            val racunId = preferencesManager.lastSmsId
+            val racunTs = preferencesManager.lastSmsTimestamp
+            if (racunId > 0L && racunTs > batasSms) {
+                val pred = smsRepository.smsPendahulu(racunTs, racunId, batasSms)
+                if (pred != null) {
+                    try { preferencesManager.setSmsCursorSync(pred.first, pred.second) } catch (_: Exception) { }
+                } else {
+                    try { preferencesManager.resetSmsCursorSync() } catch (_: Exception) { }
+                    resetHappened = true
+                }
+                android.util.Log.w("MonitoringService", "Kursor SMS teracuni tanggal masa depan dijangkar ulang (ts $racunTs > batas $batasSms)")
+            }
         } catch (_: Exception) {
         }
         try {
@@ -6889,6 +6910,21 @@ class MonitoringService : Service() {
                         if (nts > 0L) preferencesManager.setCallCursorSync(nts, newestId)
                     }
                 }
+            }
+            // Padanan SMS: pulih kursor panggilan teracuni
+            // tanggal masa depan (issue #1374).
+            val batasCall = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
+            val racunCallId = preferencesManager.lastCallId
+            val racunCallTs = preferencesManager.lastCallTimestamp
+            if (racunCallId > 0L && racunCallTs > batasCall) {
+                val pred = callLogRepository.callPendahulu(racunCallTs, racunCallId, batasCall)
+                if (pred != null) {
+                    try { preferencesManager.setCallCursorSync(pred.second, pred.first) } catch (_: Exception) { }
+                } else {
+                    try { preferencesManager.resetCallCursorSync() } catch (_: Exception) { }
+                    resetHappened = true
+                }
+                android.util.Log.w("MonitoringService", "Kursor panggilan teracuni tanggal masa depan dijangkar ulang (ts $racunCallTs > batas $batasCall)")
             }
         } catch (_: Exception) {
         }

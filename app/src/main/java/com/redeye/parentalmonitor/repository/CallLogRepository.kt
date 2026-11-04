@@ -27,12 +27,15 @@ class CallLogRepository(private val context: Context) {
     )
 
     fun getNewCalls(afterTimestamp: Long, afterId: Long = 0L): List<CallData> {
+        // Batas masa depan (issue #1374): baris melewati batas
+        // ditunda sampai waktunya tiba, tak memajukan kursor.
+        val batas = com.redeye.parentalmonitor.utils.CursorAdvance.batasAtas(System.currentTimeMillis())
         if (afterId > 0L && afterTimestamp > 0L) {
             return queryCalls(
                 // Keyset atas urutan (DATE, _ID) — predikat OR lama melompati
                 // baris sudut di bawah kedua maksimum kursor (issue #655).
-                selection = "(${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?))",
-                args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString()),
+                selection = "(${CallLog.Calls.DATE} > ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} > ?)) AND ${CallLog.Calls.DATE} <= ?",
+                args = arrayOf(afterTimestamp.toString(), afterTimestamp.toString(), afterId.toString(), batas.toString()),
                 sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
                 limit = 100,
                 strict = true
@@ -40,20 +43,43 @@ class CallLogRepository(private val context: Context) {
         }
         if (afterId > 0L) {
             return queryCalls(
-                selection = "${CallLog.Calls._ID} > ?",
-                args = arrayOf(afterId.toString()),
+                selection = "${CallLog.Calls._ID} > ? AND ${CallLog.Calls.DATE} <= ?",
+                args = arrayOf(afterId.toString(), batas.toString()),
                 sortOrder = "${CallLog.Calls._ID} ASC",
                 limit = 100,
                 strict = true
             )
         }
         return queryCalls(
-            selection = "${CallLog.Calls.DATE} > ?",
-            args = arrayOf(afterTimestamp.toString()),
+            selection = "${CallLog.Calls.DATE} > ? AND ${CallLog.Calls.DATE} <= ?",
+            args = arrayOf(afterTimestamp.toString(), batas.toString()),
             sortOrder = "${CallLog.Calls.DATE} ASC, ${CallLog.Calls._ID} ASC",
             limit = 100,
             strict = true
         )
+    }
+
+    // Padanan smsPendahulu untuk panggilan (issue #1374).
+    fun callPendahulu(beforeDate: Long, beforeId: Long, untilDate: Long): Pair<Long, Long>? {
+        val cursor = com.redeye.parentalmonitor.utils.ContentQuery.query(
+            context.contentResolver,
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls._ID, CallLog.Calls.DATE),
+            "${CallLog.Calls.DATE} <= ? AND (${CallLog.Calls.DATE} < ? OR (${CallLog.Calls.DATE} = ? AND ${CallLog.Calls._ID} < ?))",
+            arrayOf(untilDate.toString(), beforeDate.toString(), beforeDate.toString(), beforeId.toString()),
+            "${CallLog.Calls.DATE} DESC, ${CallLog.Calls._ID} DESC",
+            1
+        ) ?: return null
+        return try {
+            if (cursor.moveToFirst()) {
+                cursor.getLong(cursor.getColumnIndexOrThrow(CallLog.Calls._ID)) to
+                    cursor.getLong(cursor.getColumnIndexOrThrow(CallLog.Calls.DATE))
+            } else null
+        } catch (_: Exception) {
+            null
+        } finally {
+            try { cursor.close() } catch (_: Exception) { }
+        }
     }
 
     fun callDateForId(id: Long): Long {

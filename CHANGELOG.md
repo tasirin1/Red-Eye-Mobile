@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Sinkron SMS dan panggilan tak lagi bisa dibunuh satu pesan/panggilan bertanggal masa depan: baris yang tanggalnya jauh melewati waktu sekarang kini ditunda sampai waktunya tiba alih-alih memajukan penanda sinkron melewati semua baris normal, dan penanda yang sudah terlanjur teracuni di perangkat dijangkar ulang otomatis agar pesan-pesan yang terhalang terkirim lagi tanpa pengiriman ulang.
+
 ## [1.6.621] - 2026-11-04
 
 ### Fixed
