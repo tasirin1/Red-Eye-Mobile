@@ -40,7 +40,14 @@ object NetworkUtils {
     // sama; selain itu sisa jam dinding polos. Selalu terkurung 0..maxMs.
     fun remainMsDual(untilWall: Long, writtenWall: Long, writtenElapsed: Long, nowWall: Long, nowElapsed: Long, maxMs: Long): Long {
         if (untilWall <= 0L) return 0L
-        val remain = if (writtenWall > 0L && writtenElapsed > 0L && nowElapsed >= writtenElapsed) {
+        // Jangkar elapsed wajib terbukti boot yang sama
+        // (issue #1193, keluarga #941/#957/#1008): tanpa bukti
+        // itu, penanda dari boot lama yang elapsed-nya terlewati
+        // lagi oleh boot baru menghasilkan sisa hantu — pola
+        // yang sama yang sudah ditutup blockAgeMs di #1008
+        // tetapi terlewat di sini karena penandanya jam ganda.
+        val remain = if (writtenWall > 0L && writtenElapsed > 0L && nowElapsed >= writtenElapsed &&
+            BootClock.sameBootOrClockShift(writtenWall, writtenElapsed, nowWall, nowElapsed)) {
             (untilWall - writtenWall) - (nowElapsed - writtenElapsed)
         } else {
             untilWall - nowWall

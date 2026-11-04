@@ -30,6 +30,12 @@ class NetworkUtilsTest {
         assertEquals(540_000L, NetworkUtils.remainMsDual(1_600_000L, 1_000_000L, 500_000L, 4_660_000L, 560_000L, 3_600_000L))
         // Warisan tanpa jangkar: sisa jam dinding polos, terkurung batas.
         assertEquals(300_000L, NetworkUtils.remainMsDual(1_600_000L, 0L, 0L, 1_300_000L, 0L, 3_600_000L))
+        // Lintas reboot (issue #1193): penanda ditulis di boot
+        // lama (dinding W, elapsed 2 jam, retry 600 dtk); boot
+        // baru 3 hari kemudian pada elapsed 2 jam + 5 mnt tidak
+        // boleh menghasilkan sisa hantu 300 dtk — sisa dinding 0.
+        val w = 1_700_000_000_000L
+        assertEquals(0L, NetworkUtils.remainMsDual(w + 600_000L, w, 7_200_000L, w + 259_200_000L, 7_500_000L, 3_600_000L))
         assertEquals(0L, NetworkUtils.remainMsDual(0L, 0L, 0L, 1_300_000L, 0L, 3_600_000L))
     }
 
