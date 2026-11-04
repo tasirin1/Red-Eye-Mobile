@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemeriksa keseimbangan kurung pada mode rentang kini membaca isi berkas dari pohon ujung rentang, bukan dari berkas kerja: sebelumnya rentang berisi kode tak seimbang bisa lolos hanya karena checkout saat ini sudah memuat perbaikannya (dan sebaliknya). Terbukti di sandbox dua checkout — gerbang baru menamai berkas yang tak seimbang, gerbang lama melewatkannya.
+
 - Alat verifikasi tak lagi memvonis yatim acuan ke sumber daya publik pustaka Android (awalan nama Material 3, Material Components, AppCompat, dan Design): definisi sumber daya itu memang tinggal di pustaka, bukan di repo, jadi rujukan sah seperti warna Material 3 dari tema sebelumnya selalu menggagalkan gerbang. Terbukti lewat uji fungsi dua arah.
 
 - Alat verifikasi kini mendaftarkan nama `<declare-styleable>` beserta turunan per-atributnya: sebelumnya nama styleable tidak pernah terhimpun, sehingga acuan `R.styleable` yang sah pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.

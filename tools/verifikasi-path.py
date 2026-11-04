@@ -1388,10 +1388,15 @@ def cek_kurung_kode(gagal, berubah):
     for path in berubah:
         if not path.endswith(EKSTENSI_KODE):
             continue
-        penuh = os.path.join(AKAR, path)
-        if not os.path.isfile(penuh):
-            continue  # berkas dihapus: ditangani cek lain
-        isi = kupas_kode(baca_teks(path), bersarang=not path.endswith(".java"))
+        # Isi dari pohon yang dinilai (issue #1385): pada mode
+        # rentang _baca_pohon mengambil isi dari REF_POHON —
+        # membaca berkas kerja menilai checkout saat ini,
+        # bukan isi rentang (LOLOS/GAGAL palsu begitu keduanya
+        # menyimpang). Sisa pembaca keluarga #1348/#1362.
+        isi_mentah = _baca_pohon(path)
+        if isi_mentah is None:
+            continue  # berkas dihapus / tak ada di pohon: cek lain
+        isi = kupas_kode(isi_mentah, bersarang=not path.endswith(".java"))
         for buka, tutup, nama in (("{", "}", "kurawal"), ("(", ")", "lengkung"), ("[", "]", "siku")):
             selisih = isi.count(buka) - isi.count(tutup)
             if selisih:
