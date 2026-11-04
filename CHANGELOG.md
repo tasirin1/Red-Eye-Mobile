@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Keterangan waktu pada foto, video, dan rekaman yang terkirim kini memakai waktu ambil dari cap di nama berkas, bukan waktu kirim: media yang tertahan di antrean saat luring tidak lagi tampak diambil pada jam terkirimnya (#1207).
 - Pembersihan cache video dan rekaman kini memilih berkas buangan berdasar umur sebenarnya dari cap waktu di nama berkas, sama seperti pembersihan foto: sebelumnya waktu ubah berkas yang dipakai, dan rotasi pengiriman menulis ulang waktu itu sehingga berkas tertua yang gagal kirim tampak selalu baru dan tidak pernah terbuang (#1206).
 - Aturan pengaburan catatan pemakaian aplikasi kini juga menjaga konstruktor kosongnya yang dipakai pemuat JSON, melengkapi penjagaan nama field dari penyempitan sebelumnya (#1205).
 - Sisa kode mati dari pembersihan manifest sebelumnya dibuang: set aksi boot dan cabang handler untuk aksi yang sudah tidak didaftarkan (buka kunci, hadir, paket dimulai ulang, tanggal berubah) kini terhapus, agar tidak tampak seperti jalur hidup-lagi yang masih aktif (#1204).

@@ -11740,7 +11740,8 @@ class MonitoringService : Service() {
             val requestFile = audioFile.asRequestBody("audio/mp4".toMediaTypeOrNull())
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
-            val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val ambilAudioMs = try { TimeFmt.mediaNameTimeMs(audioFile.name) } catch (_: Exception) { -1L }
+            val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(if (ambilAudioMs > 0L) ambilAudioMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
             val response = TelegramMediaClient.api.sendAudio(url, chatIdBody, caption, audioPart, menuBarBody())
             if (response.isSuccessful && response.body()?.ok == true) {
@@ -11946,7 +11947,8 @@ class MonitoringService : Service() {
             val requestFile = videoFile.asRequestBody("video/mp4".toMediaTypeOrNull())
             val videoPart = MultipartBody.Part.createFormData("video", videoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
-            val caption = ("🎥 " + TimeFmt.full(System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val ambilVideoMs = try { TimeFmt.mediaNameTimeMs(videoFile.name) } catch (_: Exception) { -1L }
+            val caption = ("🎥 " + TimeFmt.full(if (ambilVideoMs > 0L) ambilVideoMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendVideo"
             val response = TelegramMediaClient.api.sendVideo(url, chatIdBody, caption, videoPart, menuBarBody())
             if (response.isSuccessful && response.body()?.ok == true) {
@@ -12327,7 +12329,12 @@ class MonitoringService : Service() {
             val photoPart = MultipartBody.Part.createFormData("photo", photoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
 
-            val timestamp = TimeFmt.full(System.currentTimeMillis())
+            // Caption memakai waktu AMBIL dari nama berkas
+            // (issue #1207): media tertahan antrean yang
+            // terkirim jam/hari kemudian tak lagi bertuliskan
+            // waktu flush-nya.
+            val ambilFotoMs = try { TimeFmt.mediaNameTimeMs(photoFile.name) } catch (_: Exception) { -1L }
+            val timestamp = TimeFmt.full(if (ambilFotoMs > 0L) ambilFotoMs else System.currentTimeMillis())
             val caption = "📸 $timestamp".toRequestBody("text/plain".toMediaTypeOrNull())
 
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
