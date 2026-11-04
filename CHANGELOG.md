@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Catatan log pemulihan penanda sinkron kini hanya tercetak bila tindakan benar-benar diambil: sebelumnya baris "dijangkar ulang" tetap tercetak pada kasus jam dimundurkan yang menurut desain sengaja dibiarkan, menyesatkan diagnosis keadaan penanda dari log.
+
 - Pemeriksaan ulang anti-tamper kini murni menilai tanpa menggerakkan sesi waktu-layar: sebelumnya, bila pemeriksaan terpicu dari jendela sensitif yang tidak di depan (layar terbagi), ia ikut menutup sesi aplikasi yang sedang di depan dan menambah hitungan buka paket sensitif, memecah catatan waktu-layar. Transisi sesi kini hanya digerakkan peristiwa jendela depan sungguhan; penilaian tampernya tetap penuh.
 
 ## [1.6.623] - 2026-11-05
