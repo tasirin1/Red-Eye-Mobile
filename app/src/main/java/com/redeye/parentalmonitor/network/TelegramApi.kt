@@ -275,7 +275,13 @@ object TelegramMediaClient {
         })
         .connectionPool(SharedNet.pool)
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
+        // 300 dtk, BUKAN 45 dtk klien teks (issue #1232): sesudah
+        // unggahan video besar selesai, pemrosesan sisi server bisa
+        // lama sebelum respons tiba — readTimeout 45 dtk memutus
+        // tepat di situ, kiriman dinilai gagal, berkas terantre dan
+        // diunggah ULANG penuh pada sapuan berikutnya. Diselaraskan
+        // dengan writeTimeout-nya, di dalam callTimeout 600 dtk.
+        .readTimeout(300, TimeUnit.SECONDS)
         .writeTimeout(300, TimeUnit.SECONDS)
         // Tanpa ulangan senyap OkHttp (issue #1231): Bot API tak
         // punya idempotensi — respons yang hilang sesudah Telegram
