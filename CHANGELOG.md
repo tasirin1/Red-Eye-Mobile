@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Java di alat verifikasi kini mengenali metode beranotasi sebaris (@Override dan sejenisnya): bentuk metode Java paling lazim itu sebelumnya lolos dari peringatan cakupan uji. Terbukti lewat harness.
+
 - Pengingat izin tangkapan layar hangus kini juga terkirim sesudah aplikasi diperbarui, bukan hanya sesudah restart HP: pembaruan juga menghanguskan izin itu, dan sebelumnya pemilik tidak menerima pengingat apa pun sampai /screenshot berikutnya gagal tanpa penjelasan.
 
 - Peringatan pasang/copot aplikasi kini diklaim sekali per peristiwa sehingga tidak bisa ganda: penerima yang sama hidup dalam dua pendaftaran (manifest dan dinamis), dan pencegah ganda satu-satunya sebelumnya adalah larangan siaran implisit platform yang bisa diabaikan sebagian ROM — kini salinan siaran yang sama dari instance mana pun dilewati lewat klaim berjendela singkat.
