@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Rencana migrasi pengganti pustaka enkripsi preferensi yang sudah tidak dikembangkan lagi kini tercatat di satu-satunya titik konstruksinya, lengkap dengan rancangan pengganti dan pemicu eksekusinya, agar jalur kredensial tidak bergantung mendadak pada artefak mati (#1196).
 - Aturan pengaburan rilis dipersempit: nama kelas layanan/pekerja/receiver tetap dipertahankan (dirujuk manifest dan WorkManager), tetapi isi logikanya kini benar-benar dikaburkan dan disusutkan — sebelumnya aturan selimut membatalkan pengaburan belasan ribu baris logika inti. Nama field catatan pemakaian aplikasi yang tersimpan sebagai JSON tetap dijaga utuh (#1195).
 - Dua pemberitahuan Toast pada tes kirim status di layar penyiapan kini memakai penjaga layar-mati seperti hop lain: menutup layar di tengah tes tidak lagi membuat status yang sudah terkirim dianggap gagal lalu diantrekan ulang sebagai duplikat (#1194).
 - Sisa jeda rate-limit tidak lagi bisa jadi hantu lintas reboot: perhitungan sisa kini menuntut bukti boot yang sama sebelum memakai jangkar waktu monoton, sama seperti perbaikan sekeluarga sebelumnya — sesudah perangkat menyala ulang, antrean tidak tertunda oleh sisa jeda dari boot lama (#1193).

@@ -397,6 +397,22 @@ class PreferencesManager(context: Context) {
             }
         }
 
+        // RENCANA MIGRASI security-crypto (issue #1196):
+        // seluruh API EncryptedSharedPreferences/MasterKey
+        // terdepresiasi sejak 1.1.0-alpha07 dan artefaknya tak
+        // berencana rilis lagi. Fungsi ini SATU-SATUNYA corong
+        // konstruksinya di repo (terverifikasi grep) — semua
+        // konsumen lewat openEncryptedPrefs — jadi migrasi
+        // cukup menyentuh satu titik ini. Rancangan pengganti:
+        // SharedPreferences berkas biasa yang nilainya
+        // dienkripsi AES-256-GCM dengan kunci AndroidKeyStore
+        // dan kuncinya ditransformasi deterministik (pengganti
+        // peran AES256_SIV agar pencarian kunci tetap bisa);
+        // langkahnya: baca warisan -> tulis format baru ->
+        // verifikasi baca -> hapus warisan, di belakang
+        // openEncryptedPrefs yang sama. Pemicu eksekusi:
+        // sebelum menaikkan toolchain yang membuang artefak
+        // ini, atau bila artefak ditarik dari repositori.
         private fun createEncryptedPrefs(context: Context, prefsName: String): SharedPreferences {
             return EncryptedSharedPreferences.create(
                 context.applicationContext,
