@@ -2278,7 +2278,12 @@ def _keadaan_sebelum_baris(path, jumlah_baris):
     if jumlah_baris <= 0:
         return (False, 0)
     if path not in _cache_benih:
-        if REF_BENIH:
+        if REF_BENIH == ":index":
+            # Segmen staged mode bawaan (issue #1346): sisi baru
+            # diff --cached adalah blob indeks, bukan pohon mana pun.
+            isi = jalan("git", "show", ":%s" % path)
+            _cache_benih[path] = isi.splitlines() if isi is not None else None
+        elif REF_BENIH:
             isi = jalan("git", "show", "%s:%s" % (REF_BENIH, path))
             _cache_benih[path] = isi.splitlines() if isi is not None else None
         else:
@@ -2337,6 +2342,25 @@ def cek_panggil_bekas_hapusan(gagal, diff):
                         "Baris baru memakai %s yang sudah dihapus: %s"
                         % (nama, baris.strip()[:80]))
                     sisa.discard(nama)
+
+
+def _cek_bekas_sebenih(gagal, diff, ref):
+    """cek_panggil_bekas_hapusan untuk SATU segmen diff dengan
+    benih pohonnya sendiri (issue #1346): mode bawaan mencampur
+    diff commit (pohon HEAD/akar), diff staged (indeks), dan diff
+    pohon kerja dalam satu string — satu REF_BENIH global tak bisa
+    mewakili ketiganya, jadi tiap segmen diperiksa dengan benih
+    yang menggambarkan sisi-baru segmen itu, cache benih dikosongkan
+    antar segmen."""
+    global REF_BENIH
+    simpan = REF_BENIH
+    REF_BENIH = ref
+    _cache_benih.clear()
+    try:
+        cek_panggil_bekas_hapusan(gagal, diff)
+    finally:
+        REF_BENIH = simpan
+        _cache_benih.clear()
 
 
 def hunk_fungsi(diff):
@@ -2745,6 +2769,7 @@ def utama():
     gagal = []
     peringatan = []
     diff = ""
+    segmen_bekas = None
     rentang_lokal = ""
     rentang_isi = ""
     if args.jalur:
@@ -2791,6 +2816,7 @@ def utama():
             rentang_isi = hulu.strip() + "..HEAD"
             REF_BENIH = "HEAD"
             diff = jalan("git", "diff", rentang_lokal) or ""
+            segmen_bekas = [(diff, "HEAD")]
             daftar = jalan("git", "diff", "--name-only", "-z", rentang_lokal) or ""
             berubah = pecah_nama(daftar)
         else:
@@ -2805,8 +2831,10 @@ def utama():
             rentang_lokal = "HEAD"
             rentang_isi = "HEAD"
             if akar_sha:
-                diff = (jalan("git", "show", "--format=", "--patch", akar_sha) or "") + \
-                    (jalan("git", "diff", akar_sha + "...HEAD") or "")
+                diff_akar = jalan("git", "show", "--format=", "--patch", akar_sha) or ""
+                diff_sisa = jalan("git", "diff", akar_sha + "...HEAD") or ""
+                diff = diff_akar + diff_sisa
+                segmen_bekas = [(diff_akar, akar_sha), (diff_sisa, "HEAD")]
                 berubah = pecah_nama(jalan("git", "show", "--format=", "--name-only", "-z", akar_sha))
                 berubah += pecah_nama(jalan("git", "diff", "--name-only", "-z", akar_sha + "...HEAD"))
             else:
@@ -2842,8 +2870,14 @@ def utama():
                     berubah.append(asal)
         # Diff kerja yang belum commit ikut diperiksa agar hapusan salah
         # tertangkap sebelum commit, bukan sesudah push.
-        diff += (jalan("git", "diff") or "")
-        diff += jalan("git", "diff", "--cached") or ""
+        diff_kerja = jalan("git", "diff") or ""
+        diff_indeks = jalan("git", "diff", "--cached") or ""
+        diff += diff_kerja
+        diff += diff_indeks
+        if segmen_bekas is not None:
+            # Segmen benih cek bekas-hapusan (issue #1346): pohon
+            # kerja untuk diff tak-staged, indeks untuk diff staged.
+            segmen_bekas += [(diff_kerja, None), (diff_indeks, ":index")]
     berubah += [b for b in nama_tak_lacak() if b not in berubah]
     if args.semua:
         berubah = [p for p in jalan_repo("app")]
@@ -2927,7 +2961,12 @@ def utama():
     if not args.semua:
         cek_pengingat_changelog(peringatan, berubah)
     if diff:
-        cek_panggil_bekas_hapusan(gagal, diff)
+        if segmen_bekas is not None:
+            for d_seg, ref_seg in segmen_bekas:
+                if d_seg:
+                    _cek_bekas_sebenih(gagal, d_seg, ref_seg)
+        else:
+            cek_panggil_bekas_hapusan(gagal, diff)
         cek_locale_baru(gagal, diff)
         cek_metode_hilang(gagal, peringatan, diff, hapus)
         cek_hapusan_belum_tercatat(peringatan, diff)
