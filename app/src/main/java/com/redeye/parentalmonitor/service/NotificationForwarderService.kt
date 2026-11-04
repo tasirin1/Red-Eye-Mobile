@@ -749,6 +749,15 @@ class NotificationForwarderService : NotificationListenerService() {
                 if (queued) {
                     capTerkirim()
                     markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
+                } else {
+                    // Gugur di cabang ini tetap tercatat
+                    // (issue #1325): penolakan antrean durable
+                    // dulu senyap — satu-satunya situs penolakan
+                    // tanpa akuntansi; situs luapan lain sudah
+                    // mencatat ke penghitung gugur yang sama
+                    // (pola #1271). Cap terkirim memang TIDAK
+                    // dipasang di sini (pesan tak terantre).
+                    try { noteDroppedNotification() } catch (_: Exception) { }
                 }
                 return
             }

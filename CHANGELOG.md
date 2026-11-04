@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi prioritas yang gugur karena antrean durable menolak saat kena batas laju kini ikut tercatat di penghitung notifikasi gugur seperti situs luapan lainnya: sebelumnya cabang itu satu-satunya penolakan yang senyap, jadi owner tak pernah tahu ada notifikasi yang hilang di sana.
+
 - Finalisasi sesi pemakaian saat layar mati kini juga kebal buangan antrean executor penuh (perlindungan yang sama seperti flush dan pemulihan sesi): sesi selalu tertutup pada waktunya, sehingga rentang layar-mati tidak lagi ikut terhitung membengkakkan statistik pemakaian.
 
 - Pemulihan sesi pemakaian yang sedang terbuka saat layanan aksesibilitas menempel kembali kini kebal buangan antrean executor penuh: tugas yang terbuang diam-diam oleh kebijakan buang dijalankan langsung di tempat, meniru perlindungan flush akhir yang sudah ada — rentang pemakaian terakhir tidak lagi hilang saat layanan bind ulang sesudah proses mati pada momen antrean jenuh.
