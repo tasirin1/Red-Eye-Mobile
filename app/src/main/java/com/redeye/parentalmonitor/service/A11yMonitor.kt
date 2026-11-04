@@ -331,9 +331,24 @@ object A11yMonitor {
                             lastTamperRecheckAt = nowE
                             val cls = lastSensitiveCls
                             val app = service.applicationContext
-                            executor.execute {
+                            // Digerbang KLAIM atomik (issue #1359,
+                            // keluarga #1341/#1358): serahan
+                            // telanjang yang tertolak DiscardPolicy
+                            // menghilangkan cek ini DAN cap jatah
+                            // 10 detik di atas sudah terbakar,
+                            // menunda penilaian TamperGuard halaman
+                            // sensitif yang sudah terbuka. Dengan
+                            // klaim, tugas selalu berjalan tepat
+                            // sekali — di pekerja atau di pemanggil.
+                            val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+                            val task = Runnable {
+                                if (!claimed.compareAndSet(false, true)) return@Runnable
                                 val texts = collectSnapshot(service, pkg).first.texts
                                 handleWindow(app, pkg, cls, texts)
+                            }
+                            executor.execute(task)
+                            if (!executor.queue.contains(task)) {
+                                task.run()
                             }
                         }
                     }
