@@ -753,7 +753,10 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
     # #1214), dan record generik "record Nama<T>(...)"
     # ikut dikenali (issue #1215). Di berkas Java pola
     # infix tak mungkin muncul.
-    pola_record = re.compile(r"record\s+%s\s*(?:<[^>]*>)?\s*\(" % re.escape(kelas))
+    # Potongan generik sadar satu tingkat sarang (issue
+    # #1222): "record R<T extends Comparable<T>>(...)"
+    # berhenti di > pertama bila memakai [^>]* biasa.
+    pola_record = re.compile(r"record\s+%s\s*(?:<(?:[^<>]|<[^<>]*>)*>)?\s*\(" % re.escape(kelas))
     i = 0
     n = len(teks)
     dalam = 0
