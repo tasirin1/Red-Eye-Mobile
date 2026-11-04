@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Koreksi penjaga keystore #1310: lemparan untuk ref `main` tanpa keystore dicabut — autobuild CodeQL menjalankan `assemble` generik di main tanpa keystore dan ikut ter-gagal-kan (run 41801637510); jalur distribusi tag dan keadaan secret tak-konsisten tetap ter-gagal-kan, dan workflow Build utama memang selalu mendekode keystore bila secret ada.
+
 ## [1.6.617] - 2026-11-04
 
 ### Fixed

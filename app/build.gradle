@@ -92,9 +92,17 @@ android {
             if (ref.startsWith("refs/tags/v")) {
                 throw new GradleException("Release tag build requires release keystore (ANDROID_KEYSTORE_BASE64 + KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)")
             }
-            if (ref == "refs/heads/main") {
-                throw new GradleException("Main branch build requires release keystore (ANDROID_KEYSTORE_BASE64 + KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD) - refusing to produce a debug-signed release APK")
-            }
+            // Ref main TANPA keystore dan TANPA env base64
+            // SENGAJA dibiarkan (koreksi atas #1310, terbukti
+            // oleh kegagalan CodeQL run 41801637510): autobuild
+            // CodeQL menjalankan `assemble` generik di main
+            // tanpa pernah mendekode keystore, dan workflow
+            // Build utama selalu mendekode keystore bila
+            // secret-nya ada — jadi assemble main tanpa
+            // keystore menurut konstruksinya adalah build
+            // analisis/non-distribusi. Jalur distribusi (tag)
+            // dan keadaan secret-tak-konsisten di atas tetap
+            // ter-gagal-kan.
         }
     }
     tasks.matching { it.name.contains("assemble") && it.name.contains("Release") }.configureEach {
