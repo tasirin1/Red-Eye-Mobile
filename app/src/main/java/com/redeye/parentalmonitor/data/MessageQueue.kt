@@ -355,34 +355,27 @@ class MessageQueue private constructor(context: Context) {
             val priority = bacaKunci(KEY_PRIORITY_DROPS)
             val exhausted = bacaKunci(KEY_EXHAUSTED_DROPS)
             val rejected = bacaKunci(KEY_REJECTED_DROPS)
-            // Baseline cakram yang SUDAH terwakili di memori,
-            // ditangkap sebelum ditimpa (issue #1297): muat
-            // aditif hanya boleh menambah KELEBIHAN cakram di
-            // atas baseline ini.
-            val dasarOverflow = persistedOverflowDrops
-            val dasarExpired = persistedExpiredDrops
-            val dasarPriority = persistedPriorityDrops
-            val dasarExhausted = persistedExhaustedDrops
-            val dasarRejected = persistedRejectedDrops
             persistedOverflowDrops = overflow
             persistedExpiredDrops = expired
             persistedPriorityDrops = priority
             persistedExhaustedDrops = exhausted
             persistedRejectedDrops = rejected
             if (add) {
-                // Tambah hanya kelebihan cakram di atas
-                // baseline yang sudah terwakili di memori
-                // (issue #1297, menggantikan potongan
-                // takenVolatile #1282 yang salah kolam):
-                // volatile-sejak-start baseline-nya 0 sehingga
-                // seluruh isi cakram tertambah (kolam cakram
-                // tak pernah ikut terambil — pengambil hanya
-                // menyentuh kolam memori era volatile);
-                // volatile-di-tengah-jalan baseline-nya sama
-                // dengan isi cakram (tak ada penulisan selama
-                // volatile) sehingga tambahannya 0 dan baseline
-                // yang sudah dibawakan keepUnpersistedDrops tak
-                // terhitung dua kali.
+                // Tambah SELURUH isi cakram (issue #1315,
+                // mengoreksi selisih baseline #1297): pada
+                // satu-satunya pemanggil aditif (pemulihan dari
+                // mode volatile), penghitung memori TIDAK PERNAH
+                // memuat isi cakram — volatile-sejak-start
+                // memori hanya berisi era volatile (cakram tak
+                // tersentuh selama volatile, pengambil hanya
+                // menyentuh kolam memori), dan volatile-di-
+                // tengah-jalan sudah dikonversi
+                // keepUnpersistedDropsLocked menjadi DELTA di
+                // atas baseline terpersist tepat sebelum masuk
+                // volatile. Mengurangi baseline di sini (cara
+                // #1297) membuang baseline itu untuk kedua
+                // kalinya: hitungan terpersist-belum-terlapor
+                // hilang dari total gabungan.
                 if (dropWipePendingVolatile) {
                     // Wipe yang gagal di mode volatile menang
                     // atas isi cakram (issue #1298): jangan
@@ -391,11 +384,11 @@ class MessageQueue private constructor(context: Context) {
                     // menimpa hitungan basi di cakram.
                     dropWipePendingVolatile = false
                 } else {
-                    overflowDrops.addAndGet((overflow - dasarOverflow).coerceAtLeast(0L))
-                    expiredDrops.addAndGet((expired - dasarExpired).coerceAtLeast(0L))
-                    priorityDrops.addAndGet((priority - dasarPriority).coerceAtLeast(0L))
-                    exhaustedDrops.addAndGet((exhausted - dasarExhausted).coerceAtLeast(0L))
-                    rejectedDrops.addAndGet((rejected - dasarRejected).coerceAtLeast(0L))
+                    overflowDrops.addAndGet(overflow)
+                    expiredDrops.addAndGet(expired)
+                    priorityDrops.addAndGet(priority)
+                    exhaustedDrops.addAndGet(exhausted)
+                    rejectedDrops.addAndGet(rejected)
                 }
                 dropsDirty = true
             } else {
