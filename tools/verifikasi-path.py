@@ -1132,7 +1132,10 @@ def adalah_env(rendah):
     # Konvensi berakhiran juga dilarang (issue #1027):
     # "production.env"/"staging.env" sama-sama berkas env.
     nama = rendah.rsplit("/", 1)[-1]
-    return nama == ".env" or nama.startswith(".env.") or nama.endswith(".env")
+    # .envrc (direnv) ikut dilarang (issue #1199): berkas itu
+    # lazim memuat rahasia lingkungan walau namanya tak cocok
+    # pola .env di atas.
+    return nama == ".env" or nama == ".envrc" or nama.startswith(".env.") or nama.endswith(".env")
 
 
 def cek_aturan_repo(gagal, berubah):

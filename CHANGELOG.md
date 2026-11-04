@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Berkas .envrc (direnv) kini ikut dilarang masuk repo oleh kedua gerbang, sejajar dengan berkas .env lain yang sama-sama lazim memuat rahasia (#1199).
 - Pelacak komentar gerbang kini membedakan bahasa dari ekstensi berkas: komentar blok Java ditutup pada penutup pertama seperti semantik Javanya, sehingga deklarasi sah sesudah komentar berisi pola glob tidak lagi tertelan sebagai komentar bersarang ala Kotlin (#1198).
 - Pola record pada pemeriksaan deklarasi gerbang kini menuntut daftar komponen sesudah nama, sehingga panggilan infix Kotlin yang sah tidak lagi menyamar sebagai deklarasi dan rename berisiko tidak lolos (#1197).
 - Rencana migrasi pengganti pustaka enkripsi preferensi yang sudah tidak dikembangkan lagi kini tercatat di satu-satunya titik konstruksinya, lengkap dengan rancangan pengganti dan pemicu eksekusinya, agar jalur kredensial tidak bergantung mendadak pada artefak mati (#1196).
