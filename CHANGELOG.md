@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.620] - 2026-11-04
+
 ### Fixed
 
 - Cek ulang proteksi untuk halaman sensitif yang sudah terbuka kini juga dijamin berjalan tepat sekali: sebelumnya tugas ceknya diserahkan telanjang ke antrean pekerja sesudah cap jatah 10 detiknya ditulis — bila antrean jenuh, cek hilang dan jatahnya tetap terbakar, menunda penilaian proteksi tanpa batas selama antrean sibuk. Kini memakai gerbang klaim yang sama (bila tak masuk antrean, pemanggil menjalankannya sendiri).
