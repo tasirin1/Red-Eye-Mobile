@@ -16,8 +16,13 @@ object PatternBaseline {
     }
 
     private fun hhmm(minute: Int): String {
-        val hh = (minute / 60).toString().padStart(2, '0')
-        val mm = (minute % 60).toString().padStart(2, '0')
+        // Fakta pagar dicatat pada skala lanjutan (issue #1080):
+        // tiba/berangkat sebelum 05:00 bernilai >= 1440, jadi
+        // bungkus modulo 1440 lebih dulu — tanpa itu teks alert
+        // bisa berbunyi jam mustahil "26.00" (issue #1246).
+        val wrapped = ((minute % 1440) + 1440) % 1440
+        val hh = (wrapped / 60).toString().padStart(2, '0')
+        val mm = (wrapped % 60).toString().padStart(2, '0')
         return "$hh.$mm"
     }
 

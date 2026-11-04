@@ -49,6 +49,18 @@ class PatternBaselineTest {
     }
 
     @Test
+    fun fenceScaleBeyondMidnightWrapsClock() {
+        // #1246: fakta pagar skala lanjutan (>= 1440 untuk sebelum
+        // 05:00) wajib tampil sebagai jam dinding nyata, bukan
+        // "26.00"/"24.30" (nilai dibuktikan replikasi Python).
+        val history = (1..5).map { day("d$it", a = if (it % 2 == 0) 1500 else 1470) }
+        val findings = PatternBaseline.assess(history, day("today", a = 1560))
+        val arrive = byType(findings)["ARRIVE"]
+        assertEquals("Tiba di rumah 02.00 \u2014 biasanya 00.30", arrive?.text)
+        assertEquals(true, arrive?.strong)
+    }
+
+    @Test
     fun strongAnomalies() {
         val screen = byType(PatternBaseline.assess(hist, day("20261025", s = 400)))
         assertEquals(PatternBaseline.Finding("SCREEN", "Layar 6 h 40 m — biasanya ±3 h 10 m", true), screen["SCREEN"])

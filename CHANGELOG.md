@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Alert pola tiba/berangkat tak lagi bisa berbunyi jam mustahil seperti "26.00": waktu yang dicatat pada skala lewat-tengah-malam kini dibungkus ke jam dinding nyata sebelum ditampilkan. (Issue #1246)
 - Pekerjaan latar boot-restart tak lagi memasang alarm Liveness sebelum memeriksa apakah pemantauan masih aktif: sisa pekerjaan yang berjalan sesudah pemantauan dimatikan kini berhenti bersih tanpa memasang alarm apa pun. (Issue #1245)
 - Pemotong pesan kini juga melindungi pemodifikasi emoji dan tanda aksen: potongan tak lagi membelah emoji dari warna kulitnya, tanda hubung aksen dari hurufnya, atau simbol keycap dari angkanya. (Issue #1244)
 - Catatan penerimaan batas ditambahkan di pemotong pesan: pasangan tag HTML yang membentang melewati batas potong tidak diseimbangkan (isi tetap selamat lewat kiriman cadangan polos); dicatat sebagai batas yang diterima sadar karena semua pembangun pesan menutup tag sebaris. (Issue #1243)
