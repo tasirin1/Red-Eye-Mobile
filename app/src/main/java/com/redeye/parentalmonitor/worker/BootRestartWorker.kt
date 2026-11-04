@@ -34,6 +34,18 @@ class BootRestartWorker(
             com.redeye.parentalmonitor.utils.MessageScheduler.scheduleWatchdog(applicationContext)
         } catch (_: Exception) {
         }
+        // Jaring menyerah juga memasang Liveness (issue #1259):
+        // jalan keluar awal (prefs gagal/blokir auth/penyimpanan)
+        // berhenti sebelum titik pasang Liveness normal, padahal
+        // ketiganya keadaan sementara yang tak dinilai
+        // allowedCheck sebagai penolakan — tanpa ini rantai
+        // alarm bisa absen total sesudah menyerah. Keadaan mati
+        // sengaja tak sampai sini (dicek lebih dulu) dan
+        // Liveness tetap menilai ulang saat menembak.
+        try {
+            Liveness.schedule(applicationContext)
+        } catch (_: Exception) {
+        }
         return Result.success()
     }
 

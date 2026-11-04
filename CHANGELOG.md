@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Jaring menyerah `BootRestartWorker` kini juga memasang alarm Liveness (sebelumnya hanya watchdog periodik): jalan keluar awal karena prefs gagal, auth terblokir, atau penyimpanan belum terenkripsi tidak lagi bisa meninggalkan perangkat tanpa rantai alarm sesudah percobaan ulang habis (issue #1259).
 - Hasil rotasi rahasia kode restore kini dihormati: bila `commit()` rotasi gagal, sesi restore tidak dibuka dan pemilik diberi tahu, bukan melanjutkan senyap dengan kode yang masih bisa dipakai ulang (issue #1258).
 - Anggaran brute-force /login kini persisten penuh: jumlah gagal per pengirim dan global disimpan ke prefs dan dipulihkan sesudah restart (sebelumnya hanya kuncinya yang persisten, jadi restart mereset anggaran tebakan yang belum mencapai ambang kunci); throttle 3 detik sengaja tetap di memori (issue #1257).
 - Instance layanan yang gagal inisialisasi di tengah `onCreate` tidak lagi menjadi zombie permanen: jalur gagal foreground kini memasang jaring Liveness + BootRestart dan menghancurkan diri, dan `onStartCommand` yang menabrak instance belum terinisialisasi ikut menghancurkannya agar start berikutnya membangun instance segar (issue #1273).
