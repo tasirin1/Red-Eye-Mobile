@@ -1402,7 +1402,8 @@ class SetupActivity : AppCompatActivity() {
         // berkredensial — pola yang sama dengan dialog
         // sensitif lain (#1228/#1304) yang sempat tertinggal
         // hanya di sini.
-        dialog.show().also { amankanJendelaDialog(it) }
+        dialog.show()
+        amankanJendelaDialog(dialog)
     }
 
     private fun readBackupText(uri: android.net.Uri): String? {
