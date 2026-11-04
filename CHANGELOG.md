@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemindai kurung/impor gerbang kini melacak komentar blok Kotlin yang bersarang: ekor komentar sesudah sarang terdalam tak lagi ikut terhitung sebagai kode (dulu memicu vonis kurung tak seimbang palsu). (Issue #1236)
 - Pemeriksa plurals gerbang kini juga membaca quantity berpetik tunggal: quantity terlarang untuk bahasa Indonesia tak lagi bisa menyelinap lewat gaya petik dan baru ketahuan sebagai galat lint di CI. (Issue #1235)
 - Pemindai komentar gerbang kini mengenali string mentah Kotlin (tiga petik): isi string semacam itu tak lagi bisa membalik pemindai dan menelan acuan kode asli sesudahnya. (Issue #1234)
 - Pemeriksa kesamaan ID layout potret/landscape kini menyapu komentar XML dulu: ID palsu yang tertulis di dalam komentar tak lagi menggagalkan pasangan layout yang sebenarnya sama. (Issue #1233)

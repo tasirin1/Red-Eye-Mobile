@@ -966,14 +966,16 @@ def _salin_interpolasi(isi, i, keluar):
     return i
 
 
-def kupas_kode(isi, simpan_interpolasi=False):
+def kupas_kode(isi, simpan_interpolasi=False, bersarang=True):
     """Buang komentar + literal sekali-jalan (termasuk string mentah Kotlin).
 
     Dengan simpan_interpolasi=True, isi ${...}/$nama di dalam string
     DIPERTAHANKAN sebagai kode: impor yang hanya dipakai di template
     string itu HIDUP (issue #905) — tanpa ini cek_import_mati
     memvonisnya mati. Pemakai lain (cek kurung dsb.) tetap memakai
-    perilaku lama."""
+    perilaku lama. bersarang mengikuti petunjuk bahasa pemanggil
+    (issue #1236): komentar blok Kotlin bersarang dilacak
+    kedalamannya; Java berhenti di penutup pertama."""
     petik_ganda = chr(34)
     petik_satu = chr(39)
     garis_miring_balik = chr(92)
@@ -1005,9 +1007,25 @@ def kupas_kode(isi, simpan_interpolasi=False):
                 i += 1
         elif dua == '/*':
             i += 2
-            while i < n and isi[i:i + 2] != '*/':
-                i += 1
-            i += 2
+            if bersarang:
+                # Komentar blok Kotlin BERSARANG (issue #1236):
+                # penutup pertama hanya menutup sarang terdalam —
+                # berhenti di situ menyisakan ekor komentar yang
+                # ikut terhitung sebagai kode (kurung palsu dsb.).
+                kedalaman = 1
+                while i < n and kedalaman > 0:
+                    if isi[i:i + 2] == '/*':
+                        kedalaman += 1
+                        i += 2
+                    elif isi[i:i + 2] == '*/':
+                        kedalaman -= 1
+                        i += 2
+                    else:
+                        i += 1
+            else:
+                while i < n and isi[i:i + 2] != '*/':
+                    i += 1
+                i += 2
         elif c == petik_ganda or c == petik_satu:
             kutip = c
             i += 1
@@ -1045,7 +1063,7 @@ def cek_kurung_kode(gagal, berubah):
         penuh = os.path.join(AKAR, path)
         if not os.path.isfile(penuh):
             continue  # berkas dihapus: ditangani cek lain
-        isi = kupas_kode(baca_teks(path))
+        isi = kupas_kode(baca_teks(path), bersarang=not path.endswith(".java"))
         for buka, tutup, nama in (("{", "}", "kurawal"), ("(", ")", "lengkung"), ("[", "]", "siku")):
             selisih = isi.count(buka) - isi.count(tutup)
             if selisih:
@@ -2025,7 +2043,7 @@ def cek_ikon_launcher(gagal):
 def cek_import_mati(gagal):
     """Import Kotlin/Java yang namanya tak dipakai di kode (GAGAL)."""
     for path in jalan_repo("app", ext=EKSTENSI_KODE):
-        bersih = kupas_kode(baca_teks(path), simpan_interpolasi=True)
+        bersih = kupas_kode(baca_teks(path), simpan_interpolasi=True, bersarang=not path.endswith(".java"))
         tanpa = re.sub(r"^\s*import\s+.*$", "", bersih, flags=re.M)
         for m in re.finditer(r"^\s*import\s+([\w.*]+)(\s+as\s+(\w+))?\s*;?\s*$",
                              bersih, flags=re.M):
