@@ -1986,6 +1986,71 @@ def cek_metode_hilang(gagal, peringatan, diff, hapus=()):
             gagal.append(pesan)
 
 
+def _kupasan_baris_beruntun(baris_list):
+    """Kupas komentar/string dari baris tambah satu berkas
+    secara beruntun: keadaan string mentah dan komentar blok
+    (bersarang, gaya Kotlin) dibawakan antarbaris, sehingga
+    baris yang merupakan ISI string mentah/komentar blok
+    menghasilkan teks kosong, bukan kode. Di dalam satu baris:
+    // mengakhiri baris, string/char biasa tak membentang
+    baris, interpolasi ${...} di dalam string dilompati utuh
+    memakai _lewati_interpolasi (selaras kupas_kode bawaan)."""
+    hasil = []
+    dalam_mentah = False
+    kedalaman_blok = 0
+    for baris in baris_list:
+        keluar = []
+        i, n = 0, len(baris)
+        while i < n:
+            if dalam_mentah:
+                j = baris.find('"""', i)
+                if j < 0:
+                    i = n
+                else:
+                    dalam_mentah = False
+                    i = j + 3
+                continue
+            if kedalaman_blok > 0:
+                if baris[i:i + 2] == '/*':
+                    kedalaman_blok += 1
+                    i += 2
+                elif baris[i:i + 2] == '*/':
+                    kedalaman_blok -= 1
+                    i += 2
+                else:
+                    i += 1
+                continue
+            tiga = baris[i:i + 3]
+            dua = baris[i:i + 2]
+            if tiga == '"""':
+                dalam_mentah = True
+                i += 3
+            elif dua == '//':
+                i = n
+            elif dua == '/*':
+                kedalaman_blok = 1
+                i += 2
+            elif baris[i] == '"' or baris[i] == "'":
+                q = baris[i]
+                i += 1
+                while i < n:
+                    if baris[i] == '\\':
+                        i += 2
+                        continue
+                    if baris[i] == q:
+                        i += 1
+                        break
+                    if q == '"' and baris[i] == '$' and baris[i + 1:i + 2] == '{':
+                        i = _lewati_interpolasi(baris, i)
+                        continue
+                    i += 1
+            else:
+                keluar.append(baris[i])
+                i += 1
+        hasil.append("".join(keluar))
+    return hasil
+
+
 def cek_panggil_bekas_hapusan(gagal, diff):
     # Pola diperluas (issue #1284): entri bekas-hapusan tak
     # selalu fungsi — konstanta/properti terhapus dipakai wajar
@@ -1999,16 +2064,30 @@ def cek_panggil_bekas_hapusan(gagal, diff):
     pola = {nama: re.compile(r"\b%s\b" % re.escape(nama)) for nama in BEKAS_HAPUSAN}
     pola_dekl = {nama: re.compile(r"\b(?:val|var|fun|class|object)\s+%s\b" % re.escape(nama)) for nama in BEKAS_HAPUSAN}
     sisa = set(BEKAS_HAPUSAN)
-    for _, baris in tambah_kode(diff):
+    # Pengupasan membawa KEADAAN antarbaris per berkas (issue
+    # #1302): kupas_kode per baris buta terhadap string mentah
+    # multi-baris dan komentar blok yang membentang antarbaris
+    # tambah — baris isinya divonis sebagai kode (positif
+    # palsu). (Menggabungkan baris lalu kupas_kode tak bisa:
+    # kupas_kode tak mempertahankan baris-baru di dalam rentang
+    # yang dilompati, jadi pemetaan per barisnya rusak.)
+    per_berkas = {}
+    for path, baris in tambah_kode(diff):
+        per_berkas.setdefault(path, []).append(baris)
+    for path in per_berkas:
         if not sisa:
             break
-        bersih = kupas_kode(baris)
-        for nama in sorted(sisa):
-            if pola[nama].search(bersih) and not pola_dekl[nama].search(bersih):
-                gagal.append(
-                    "Baris baru memakai %s yang sudah dihapus: %s"
-                    % (nama, baris.strip()[:80]))
-                sisa.discard(nama)
+        baris_list = per_berkas[path]
+        bersih_list = _kupasan_baris_beruntun(baris_list)
+        for baris, bersih in zip(baris_list, bersih_list):
+            if not sisa:
+                break
+            for nama in sorted(sisa):
+                if pola[nama].search(bersih) and not pola_dekl[nama].search(bersih):
+                    gagal.append(
+                        "Baris baru memakai %s yang sudah dihapus: %s"
+                        % (nama, baris.strip()[:80]))
+                    sisa.discard(nama)
 
 
 def hunk_fungsi(diff):
