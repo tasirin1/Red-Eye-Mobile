@@ -34,6 +34,16 @@ import com.redeye.parentalmonitor.utils.ServiceStart
 
 class SetupActivity : AppCompatActivity() {
 
+    // Sentuhan pertama getter ini bisa membangun instance (buka
+    // penyimpanan terenkripsi = disk + KeyStore), dan penangan ketuk
+    // memanggilnya sinkron di benang utama — ketegangan yang dicatat
+    // issue #1230 terhadap aturan berkas ini sendiri (#1143). Sisa
+    // risikonya DITERIMA secara sadar: pemuat onCreate menghangatkan
+    // instance di benang IO sejak layar dibuat (ketuk nyata selalu
+    // datang sesudah tata letak tampil), dampak terburuknya jank
+    // satu kali di perangkat kelas bawah tanpa risiko data, dan
+    // mengubah semua penangan ketuk jadi asinkron berarti merombak
+    // model interaksi seluruh layar demi dugaan itu.
     private val prefs: PreferencesManager
         get() = PreferencesManager.peekInstance() ?: PreferencesManager.getInstance(this)
     private lateinit var botTokenInput: TextInputEditText
