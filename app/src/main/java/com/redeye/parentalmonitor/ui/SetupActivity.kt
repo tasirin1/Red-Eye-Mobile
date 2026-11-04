@@ -1886,6 +1886,7 @@ class SetupActivity : AppCompatActivity() {
                         queueStatusMessage(text)
                         val toastRetry = getString(R.string.setup_status_failed, failCode)
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            if (isFinishing || isDestroyed) return@withContext
                             Toast.makeText(this@SetupActivity, toastRetry, Toast.LENGTH_LONG).show()
                         }
                         return@launch
@@ -1986,6 +1987,12 @@ class SetupActivity : AppCompatActivity() {
     private suspend fun toastStatusSent() {
         val toastOk = getString(R.string.setup_status_sent)
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            // Penjaga Activity mati (issue #1194, standar
+            // #1019): Toast yang melempar di sini tertangkap
+            // catch-all pemanggil sebagai kegagalan kirim,
+            // padahal statusnya sudah terkirim — pesan yang
+            // sama lalu diantrekan ulang menjadi duplikat.
+            if (isFinishing || isDestroyed) return@withContext
             Toast.makeText(this@SetupActivity, toastOk, Toast.LENGTH_SHORT).show()
             reviveMonitoringIfNeeded()
         }
