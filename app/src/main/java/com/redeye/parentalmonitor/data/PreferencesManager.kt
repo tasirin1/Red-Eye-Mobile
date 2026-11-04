@@ -1132,6 +1132,24 @@ class PreferencesManager(context: Context) {
         get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
 
+    // Tulis pasangan kunci global /login dalam SATU commit
+    // terkunci (issue #1299): dua setter terpisah bisa sobek
+    // oleh mati proses di antaranya — cap dinding baru
+    // berpasangan cap elapsed lama membuat penilai kunci
+    // dua jam menilai kunci 15 menit sudah kedaluwarsa.
+    // Pola yang sama dengan resetRestoreCodeGate.
+    fun setLoginGlobalLockout(untilWall: Long, elapsedStart: Long) {
+        synchronized(prefsRmwLock) {
+            try {
+                sharedPreferences.edit()
+                    .putLong(KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL, untilWall)
+                    .putLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, elapsedStart)
+                    .commit()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     // Anggaran gagal /login persisten (issue #1257):
     // "g=<global>" + entri "senderId,jumlah,capDinding" dipisah ';'.
     var loginFailBudget: String
