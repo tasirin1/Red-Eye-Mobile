@@ -2569,6 +2569,12 @@ class MonitoringService : Service() {
             // ditutup (issue #950) — tutup sebelum kembali.
             if (!response.isSuccessful) {
                 try { response.errorBody()?.close() } catch (_: Exception) { }
+                // Kode tak terdaftar adalah anomali sementara
+                // (issue #1338): pakai backoff 60 detik yang
+                // sama dengan 408/5xx, bukan jeda generik
+                // 10-30 detik loop yang memolling terlalu rapat
+                // selama server/proxy bermasalah.
+                commandBackoffUntil = android.os.SystemClock.elapsedRealtime() + 60_000L
             }
             return false
         }
