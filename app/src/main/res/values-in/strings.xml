@@ -92,6 +92,7 @@
     <string name="setup_pair_link_copied">Link pairing disalin.</string>
     <string name="setup_pair_link_share">Bagikan</string>
     <string name="setup_pair_link_pin_active">Link pairing dimatikan selama PIN akses aktif. Pakai /login &lt;PIN&gt; dari Telegram.</string>
+    <string name="setup_pair_link_save_first">Simpan pengaturan dulu — link pairing dibuat dari kredensial yang tersimpan.</string>
     <string name="setup_restore_code">Kode restore ketat</string>
     <string name="setup_restore_code_title">Restore ketat</string>
     <string name="setup_restore_code_fmt">Kode: %1$s\nBerlaku sampai %2$s (berputar tiap 10 menit).\n\nSaat mode ketat nyala, kirim /restore &lt;kode&gt; sebelum mengunggah file backup.</string>

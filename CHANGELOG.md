@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penyalinan link pairing di Setup kini meminta pengaturan disimpan dulu bila kolom token/chat berbeda dari kredensial tersimpan: sebelumnya tautan dibangun dari kolom yang belum disimpan tetapi kode pasangannya milik kredensial tersimpan, menghasilkan tautan campuran yang pasti mati.
+
 - Perintah /sms kini menolak menyiapkan SMS baru selagi pengiriman sebelumnya masih berjalan, sama seperti /smsconfirm: sebelumnya penyiapan tetap berjalan dan membalas bahwa SMS tertunda lama dibuang, padahal pengiriman lama tidak dibatalkan dan tetap terkirim — dan teksnya bisa hilang tertimpa bila pengiriman itu gagal.
 
 - Rekaman video yang penghentian rekamannya gagal kini dibuang dengan kabar gagal, bukan diteruskan sebagai terkirim: penghentian yang gagal berarti berkas video tidak terfinalisasi dan tidak bisa diputar, sama seperti perlakuan jalur rekaman audio selama ini.

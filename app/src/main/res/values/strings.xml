@@ -92,6 +92,7 @@
     <string name="setup_pair_link_copied">Pairing link copied.</string>
     <string name="setup_pair_link_share">Share</string>
     <string name="setup_pair_link_pin_active">Pairing link is disabled while the access PIN is active. Use /login &lt;PIN&gt; from Telegram.</string>
+    <string name="setup_pair_link_save_first">Save the settings first — the pairing link is created from the saved credentials.</string>
     <string name="setup_restore_code">Strict restore code</string>
     <string name="setup_restore_code_title">Strict restore</string>
     <string name="setup_restore_code_fmt">Code: %1$s\nValid until %2$s (rotates every 10 minutes).\n\nIn strict mode, send /restore &lt;code&gt; before uploading the backup file.</string>

@@ -1236,6 +1236,19 @@ class SetupActivity : AppCompatActivity() {
                 }
                 return@launch
             }
+            // Tautan hanya dari kredensial TERSIMPAN (issue
+            // #1381): kode pasangan terikat kredensial tersimpan
+            // (ter-reset tiap kredensial berubah), jadi kolom
+            // yang belum disimpan akan menghasilkan tautan
+            // campuran yang pasti mati. Minta simpan dulu.
+            val savedToken = try { prefs.botToken } catch (_: Exception) { "" }
+            val savedChat = try { prefs.chatId } catch (_: Exception) { "" }
+            if (token != savedToken || chat != savedChat) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Toast.makeText(this@SetupActivity, getString(R.string.setup_pair_link_save_first), Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
             val chatNumber = chat.toLongOrNull()
             if (!token.matches(TOKEN_REGEX) || chatNumber == null || chatNumber <= 0L) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
