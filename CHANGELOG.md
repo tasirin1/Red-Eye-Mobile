@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kegagalan sesaat saat menyimpan antrean pesan kini dipulihkan otomatis: sebelumnya kegagalan tulis pada jalur simpan langsung tidak menjadwalkan percobaan ulang apa pun, sehingga antrean hasil pemangkasan pesan kedaluwarsa hanya hidup di ingatan — bila proses mati, pesan yang sama dipangkas lagi saat mulai berikutnya dan hitungan pesan kedaluwarsa terlapor dua kali. Snapshot yang gagal kini diantrekan ke mesin simpan ulang berjenjang yang sama seperti jalur simpan tertunda. Terbukti lewat simulasi porting 1:1 (mesin lama menghitung dobel, mesin baru tidak).
+
 - Daftar aplikasi yang sudah dikenal kini disimpan secara sinkron (bukan asinkron): sebelumnya perangkat yang mati mendadak tepat sesudah aplikasi dicatat/dilupakan bisa membangkitkan catatan lama saat menyala lagi — aplikasi yang dicopot lalu dipasang ulang bisa lolos dari peringatan, atau peringatan tampil dua kali.
 
 - Peringatan "aplikasi baru dibuka" tak lagi bisa tertelan diam-diam: bila pengambilan daftar aplikasi awal (seed) gagal sesaat, aplikasi pertama yang dibuka pada jendela itu sebelumnya langsung dicatat sebagai sudah dikenal tanpa peringatan dan tak pernah memicu peringatan selamanya. Kini aplikasi hanya dicatat sebagai dikenal sesudah seed berhasil, dan seed yang gagal dicoba ulang berkala (paling sering semenit sekali), bukan menunggu ganti hari.

@@ -880,7 +880,22 @@ class MessageQueue private constructor(context: Context) {
             return true
         }
         val saved = writeSnapshot(prefs, ArrayList(queue), version, replaceBackup)
-        if (saved) drainFailCount = 0
+        if (saved) {
+            drainFailCount = 0
+        } else {
+            // Tulis langsung gagal (issue #1357): snapshot tak
+            // boleh hanya hidup di memori dengan persistDirty
+            // menggantung — drain yang datang belakangan akan
+            // membersihkan dirty tanpa menulis (pendingSnapshot
+            // kosong), dan cakram mempertahankan keadaan lama
+            // (prune kedaluwarsa terproses dua kali sesudah
+            // proses mati, mutasi hilang senyap). Antrikan
+            // sebagai pending dan jadwalkan drain agar mesin
+            // retry yang sama menyelesaikannya.
+            pendingSnapshot = version to ArrayList(queue)
+            persistDirty = true
+            schedulePersistLocked()
+        }
         return saved
     }
 
