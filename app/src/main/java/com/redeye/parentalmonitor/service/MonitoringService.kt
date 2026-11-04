@@ -337,6 +337,7 @@ class MonitoringService : Service() {
     private var dataSaverDeferResult = false
     private var vehiclePrevFix: Triple<Double, Double, Long>? = null
     private var vehicleFastSamples = 0
+    private var vehicleLastSampleFixTime = 0L
     @Volatile
     private var cachedSetupTap: android.app.PendingIntent? = null
     private val handledUpdateIds = java.util.Collections.synchronizedSet(LinkedHashSet<Long>())
@@ -7588,6 +7589,15 @@ class MonitoringService : Service() {
             vehicleFastSamples = 0
             return
         }
+        // Sampel wajib berasal dari fix yang lebih baru
+        // dari sampel terakhir yang terhitung (issue
+        // #1220): last-known mengembalikan fix yang sama
+        // berulang kali sampai ada fix segar, jadi tanpa
+        // syarat ini satu fix bergerak terhitung dua kali
+        // sebagai "dua sampel independen" #921 hanya karena
+        // checkVehicle dipanggil dua kali berjarak menit.
+        if (fix.time <= vehicleLastSampleFixTime) return
+        vehicleLastSampleFixTime = fix.time
         vehicleFastSamples += 1
         // Dua sampel cepat berurutan untuk SEMUA jalur (issue
         // #921): dulu speed perangkat keras dari SATU fix glitch
