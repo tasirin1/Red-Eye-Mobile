@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Daftar berkas terlarang kedua gerbang kini mencakup `.envrc.*` (mis. `.envrc.local`) dan kunci privat `*.pem`/`*.key`; `.gitignore` ikut menahan nama-nama itu agar tak ter-`add` tak sengaja (issue #1288).
 - `disebut_di_uji` kini mengupas komentar berkas uji sebelum mencari nama metode: sebutan di komentar (`// nama() akan diuji nanti`) tidak lagi memalsukan cakupan uji dan membungkam peringatan (issue #1287).
 - Peringatan cakupan uji tidak lagi mati untuk metode anggota: kepala hunk Git hampir selalu menamai kelas pemiliknya, jadi `cek_uji_ubah` kini juga menyelesaikan fungsi pemilik badan hunk dari isi berkas kerja (pindai deklarasi `fun` + lacak kedalaman kurung pada teks terkupas) (issue #1286).
 - Menghapus satu berkas utuh tidak lagi menyembunyikan metodenya dari gerbang: panen metode hilang kini tetap memproses berkas yang terhapus seutuhnya di diff yang sama, sehingga pemanggil yang tertinggal tertangkap dan peringatan pencatatan `bekas-hapusan.txt` ikut muncul (issue #1285).

@@ -34,6 +34,12 @@ release-key.keystore
 
 # Configuration files with sensitive data
 .builder_config
+.env
+.env.*
+.envrc
+.envrc.*
+*.pem
+*.key
 
 # Output directory
 output/

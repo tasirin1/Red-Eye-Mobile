@@ -1271,7 +1271,10 @@ def adalah_env(rendah):
     # .envrc (direnv) ikut dilarang (issue #1199): berkas itu
     # lazim memuat rahasia lingkungan walau namanya tak cocok
     # pola .env di atas.
-    return nama == ".env" or nama == ".envrc" or nama.startswith(".env.") or nama.endswith(".env")
+    # Varian .envrc.* ikut dilarang (issue #1288): ".envrc.local"
+    # adalah konvensi direnv yang sama lazimnya untuk rahasia
+    # lokal dan dulu lolos karena pencocokan nama persis.
+    return nama == ".env" or nama == ".envrc" or nama.startswith(".env.") or nama.startswith(".envrc.") or nama.endswith(".env")
 
 
 def cek_aturan_repo(gagal, berubah):
@@ -1286,7 +1289,7 @@ def cek_aturan_repo(gagal, berubah):
         rendah = path.lower()
         sudah_dilarang = False
         if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
-                             ".keystore", ".p12", ".pfx")) or adalah_env(rendah):
+                             ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah):
             gagal.append("Berkas terlarang masuk repo: " + path)
             sudah_dilarang = True
         elif rendah == "local.properties" or rendah.endswith("/local.properties"):
