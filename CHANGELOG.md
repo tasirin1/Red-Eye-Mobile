@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Membersihkan antrean kini tuntas juga bila penghapusan di penyimpanannya gagal: keadaan kosong di memori menang atas hitungan lama yang tertinggal di disk — pada persist berikutnya hitungan nol tertulis menimpa, dan bila aplikasi sempat jatuh ke mode volatile, hitungan yang sudah dibersihkan itu tidak bangkit lagi saat penyimpanan pulih. Sebelumnya kegagalan yang sama di mode persisten bisa memunculkan kembali angka drop yang sudah dihapus.
+
 - Hitungan drop yang sudah diambil pelapor kini tidak bisa bangkit lagi sebagai laporan ganda bila penyimpanan hasil ambilnya gagal: ambilan yang belum terpersist dicatat penandanya, dan gabungan hitungan saat penyimpanan pulih mengurangi bagian yang sudah terlaporkan itu. Terbukti lewat simulasi angka untuk semua sel gabungan (termasuk sel yang dulu ditangani rumus baseline dan sel yang ditangani rumus tambah-penuh).
 
 - Penanda foreground kini direset tiap foreground dilepas: instance layanan yang bangkit lagi sesudah berhenti tidak lagi membawa klaim "sudah foreground" basi, sehingga kegagalan menegakkan foreground berikutnya dinilai dengan aturan instance baru (bukan dilewatkan). Memperbaiki perilaku yang ditemukan pada audit-112.

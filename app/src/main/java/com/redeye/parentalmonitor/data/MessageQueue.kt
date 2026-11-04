@@ -25,13 +25,14 @@ class MessageQueue private constructor(context: Context) {
 
     @Volatile
     private var dropsDirty = false
-    // clearQueue di mode volatile yang wipe cakramnya GAGAL
-    // (issue #1298): memori + baseline sudah ternolkan, tetapi
-    // cakram masih memuat hitungan lama; tanpa penanda ini
-    // muat aditif saat penyimpanan pulih membangkitkannya
-    // sebagai laporan drop hantu. Penanda mati bersama proses
-    // (kebangkitan lintas mati-proses = at-least-once yang
-    // memang diterima desain volatile).
+    // clearQueue yang wipe cakramnya GAGAL (issue #1298;
+    // diperluas ke mode persisten oleh issue #1333): memori +
+    // baseline sudah ternolkan, tetapi cakram masih memuat
+    // hitungan lama; tanpa penanda ini muat aditif saat
+    // penyimpanan pulih membangkitkannya sebagai laporan
+    // drop hantu. Penanda mati bersama proses (kebangkitan
+    // lintas mati-proses = at-least-once yang memang
+    // diterima desain volatile).
     private var dropWipePendingVolatile = false
 
     private var persistedOverflowDrops = 0L
@@ -679,6 +680,7 @@ class MessageQueue private constructor(context: Context) {
             persistedExhaustedDrops = 0L
             persistedRejectedDrops = 0L
             dropsDirty = false
+            clearTakenUnpersistedLocked()
             val wipe = if (volatileOnly) {
                 try {
                     PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
@@ -709,7 +711,19 @@ class MessageQueue private constructor(context: Context) {
             }
             if (!cleared) {
                 persistDirty = true
-                if (volatileOnly) dropWipePendingVolatile = true
+                // Wipe GAGAL (issue #1333): baseline sudah
+                // ternolkan sebelum hasilnya diketahui, jadi
+                // keadaan nol ini harus MENANG atas cakram
+                // lama di semua mode — penanda wipe tertunda
+                // kini dipasang juga di mode persisten (dulu
+                // hanya volatile), dan dropsDirty memastikan
+                // hitungan nol tertulis menimpa cakram pada
+                // persist berikutnya, tanpa menunggu
+                // perjalanan pulang-pergi volatile.
+                dropWipePendingVolatile = true
+                dropsDirty = true
+            } else {
+                dropWipePendingVolatile = false
             }
             return cleared
         }
