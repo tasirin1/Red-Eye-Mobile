@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kelanjutan sesi pemakaian saat layar menyala kini dilindungi pola anti-buang yang sama seperti transisi sesi lain: sebelumnya tugas ini diserahkan tanpa perlindungan, sehingga bila antrean pemrosesan sedang jenuh tepat pada momen itu, kelanjutan sesi terbuang diam-diam dan rentang pemakaian aplikasi yang sedang dibuka hilang dari statistik sampai pengguna berpindah jendela.
+
 - Pola anti-buang tugas sesi aksesibilitas (pemulihan sesi, flush akhir, finalisasi saat layar mati) kini digerbang klaim atomik sehingga badan tugas dijamin jalan tepat satu kali: pemeriksaan dua langkah sebelumnya punya dua jendela balapan — tugas yang baru lepas dari antrean atau tugas pertama executor bisa tampak "terbuang" padahal sehat, lalu dijalankan pemanggil bersamaan dengan thread pekerja. Kini siapa pun yang memenangkan klaim yang menjalankan badan, pihak lain langsung kembali.
 
 - Cermin daftar aplikasi dikenal kini ikut dibuang saat penyimpanan berhasil naik kelas ke penyimpanan persisten, sama seperti saat penyimpanan dibuka ulang: sebelumnya cermin lama dari penyimpanan sementara tetap dipakai, sehingga jawaban "aplikasi sudah dikenal" bisa berasal dari data sebelum penggabungan dan penulisan berikutnya menimpa hasil gabungan yang baru dengan himpunan lama.

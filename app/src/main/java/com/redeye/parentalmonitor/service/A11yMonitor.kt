@@ -551,7 +551,17 @@ object A11yMonitor {
 
     fun screenOn(context: Context) {
         val app = context.applicationContext
-        executor.execute {
+        // Lanjut-sesi saat layar menyala tak boleh ikut nasib
+        // DiscardPolicy (issue #1342, pola #949/#1324):
+        // tugas ini satu-satunya transisi sesi satu-tembakan
+        // yang dulu diserahkan telanjang — bila antrean jenuh
+        // tepat saat layar menyala, kelanjutan sesi tersuspensi
+        // terbuang diam-diam dan rentang pemakaian itu hilang
+        // dari statistik. Kini pola anti-buang yang sama
+        // dengan screenOff, digerbang klaim atomik (#1341).
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             synchronized(gate) {
                 ensureLoadedLocked(app)
                 val pkg = suspendedPackage
@@ -598,6 +608,10 @@ object A11yMonitor {
                     usage.getOrPut(pkg) { AppUsage(label = currentLabel) }.label = currentLabel
                 }
             }
+        }
+        executor.execute(task)
+        if (!executor.queue.contains(task)) {
+            task.run()
         }
     }
 
