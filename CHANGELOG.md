@@ -2,7 +2,7 @@
 
 ### Fixed
 
-## [1.6.610] - 2026-11-04
+## [1.6.611] - 2026-11-04
 
 ### Fixed
 - Urutan redaksi log diperbaiki: penutup bentuk chat ID diterapkan sesudah pola token bot, bukan sebelumnya, agar token yang terbelah baris tetap tertangkap pola tokennya (kegagalan uji pada percobaan rilis 1.6.609, yang tidak terbit).
