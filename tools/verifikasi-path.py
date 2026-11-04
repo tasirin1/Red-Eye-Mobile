@@ -2847,12 +2847,19 @@ def utama():
             if not os.path.exists(os.path.join(AKAR, j)):
                 gagal.append("Jalur tidak ditemukan: " + j)
         berubah = [j for j in args.jalur if os.path.exists(os.path.join(AKAR, j))]
-        diff = jalan("git", "diff", "--", *berubah) or ""
+        diff_kerja = jalan("git", "diff", "--", *berubah) or ""
         # Perubahan staged ikut diperiksa (issue #1349): tanpa
         # --cached, berkas yang sudah di-git-add menghasilkan
         # diff kosong dan seluruh cek berbasis diff terlewati
         # senyap padahal keluaran mengaku berkas diperiksa.
-        diff += jalan("git", "diff", "--cached", "--", *berubah) or ""
+        diff_indeks = jalan("git", "diff", "--cached", "--", *berubah) or ""
+        diff = diff_kerja + diff_indeks
+        # Segmen benih cek bekas-hapusan (issue #1361, sisa
+        # #1346/#1349): hunk staged menggambarkan pohon indeks,
+        # jadi disemai dari indeks — satu lari berbenih berkas
+        # kerja membalik vonis bila indeks dan berkas kerja
+        # menyimpang, persis kelas bug mode bawaan dulu.
+        segmen_bekas = [(diff_kerja, None), (diff_indeks, ":index")]
     elif args.rentang:
         daftar = daftar_berkas_berubah(args.rentang)
         if daftar is None:
