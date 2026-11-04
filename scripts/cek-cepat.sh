@@ -26,15 +26,35 @@ if rg --version >/dev/null 2>&1; then ADA_RG=1; else ADA_RG=0; fi
 # dulu (newline -> spasi) agar nilai multi-baris tertangkap,
 # dan pola menerima petik tunggal serta spasi di sekitar =
 # — tiga bentuk XML sah yang sebelumnya lolos senyap.
+# Komentar XML dibuang SEBELUM perataan (issue #1203):
+# teks komentar multi-baris yang berbentuk atribut pathData
+# palsu tak boleh membentuk pola utuh sesudah diratakan.
+sapu_komentar_xml() {
+  awk '
+    { baris = $0; hasil = ""
+      while (length(baris) > 0) {
+        if (dalam) {
+          e = index(baris, "-->")
+          if (e == 0) { baris = "" }
+          else { baris = substr(baris, e + 3); dalam = 0 }
+        } else {
+          b = index(baris, "<!--")
+          if (b == 0) { hasil = hasil baris; baris = "" }
+          else { hasil = hasil substr(baris, 1, b - 1); baris = substr(baris, b + 4); dalam = 1 }
+        }
+      }
+      print hasil
+    }'
+}
 if [ "$ADA_RG" = 1 ] && rg --pcre2 -n '' app/src/main/res/drawable* >/dev/null 2>&1; then
-  if cat app/src/main/res/drawable*/*.xml 2>/dev/null | tr '\n' ' ' | rg --pcre2 -o --no-filename 'android:pathData\s*=\s*("[^"]*"|\x27[^\x27]*\x27)' | rg -q --pcre2 '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
+  if cat app/src/main/res/drawable*/*.xml 2>/dev/null | sapu_komentar_xml | tr '\n' ' ' | rg --pcre2 -o --no-filename 'android:pathData\s*=\s*("[^"]*"|\x27[^\x27]*\x27)' | rg -q --pcre2 '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
 elif grep -R -P '' . >/dev/null 2>&1; then
-  if cat app/src/main/res/drawable*/*.xml 2>/dev/null | tr '\n' ' ' | grep -o -P 'android:pathData\s*=\s*("[^"]*"|\x27[^\x27]*\x27)' | grep -q -P '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
+  if cat app/src/main/res/drawable*/*.xml 2>/dev/null | sapu_komentar_xml | tr '\n' ' ' | grep -o -P 'android:pathData\s*=\s*("[^"]*"|\x27[^\x27]*\x27)' | grep -q -P '(?<![0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
     echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
   fi
-elif cat app/src/main/res/drawable*/*.xml 2>/dev/null | tr '\n' ' ' | grep -o -E 'android:pathData[[:space:]]*=[[:space:]]*("[^"]*"|'"'"'[^'"'"']*'"'"')' | grep -q -E '(^|[^0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
+elif cat app/src/main/res/drawable*/*.xml 2>/dev/null | sapu_komentar_xml | tr '\n' ' ' | grep -o -E 'android:pathData[[:space:]]*=[[:space:]]*("[^"]*"|'"'"'[^'"'"']*'"'"')' | grep -q -E '(^|[^0-9])\.-?[0-9]|[.eE][-+]?[0-9]*\.[0-9]'; then
   echo "GAGAL: path vektor tanpa nol depan (pakai 0.9 bukan .9)"; gagal=1;
 fi
 # 2. ID layout portrait vs landscape wajib sama persis (bila dir land ada).
