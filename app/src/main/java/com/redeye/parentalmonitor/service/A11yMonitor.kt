@@ -823,6 +823,13 @@ object A11yMonitor {
                 }
                 persistSnapshot = persistSnapshotLocked(terakru)
             }
+            // Snapshot ditulis DI DALAM gate (issue #1280):
+            // penulisan di luar gate bisa kalah urut dari
+            // persist flush() yang berjalan di dalam gate pada
+            // benang executor — snapshot basi menimpa keadaan
+            // yang lebih baru dan akru sesi terakhir hilang
+            // permanen bila proses mati di jendela itu.
+            writePersistSnapshot(persistSnapshot)
         }
         tamperReason?.let { blockTamper(context, it) }
         alertText?.let {
@@ -831,7 +838,6 @@ object A11yMonitor {
                 try { nightUndo?.invoke() } catch (_: Exception) { }
             }
         }
-        writePersistSnapshot(persistSnapshot)
     }
 
     private fun persistSnapshotLocked(force: Boolean): Triple<String, String, Long>? {

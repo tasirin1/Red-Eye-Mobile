@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Snapshot pemakaian a11y kini ditulis di dalam `gate` yang sama tempat ia dibangun: snapshot basi tidak lagi bisa menimpa persist `flush()` yang lebih baru dari benang executor (akru sesi terakhir bisa hilang permanen bila proses mati di jendela itu) (issue #1280).
 - Reset sukses gerbang kode restore kini atomik di bawah `prefsRmwLock` lewat `resetRestoreCodeGate()` baru (menghapus hitungan gagal + pasangan lockout dalam satu commit), menutup gerbang terakhir yang tertinggal dari pola reset atomik #1221 (issue #1279).
 - Registrasi dinamis receiver paket dan observer kontak tidak lagi sekali-coba: keduanya dipindah ke `ensureDynamicRegistrations()` yang dipanggil ulang oleh setiap `startMonitoring`, sehingga satu kegagalan transien saat `onCreate` tidak lagi mematikan alert pasang/copot dan invalidasi cache kontak seumur instance layanan (issue #1278).
 - Himpunan aplikasi dikenal a11y kini direkonsiliasi sekali per proses terhadap daftar aplikasi terpasang: entri untuk aplikasi yang dicopot selama layanan mati dibuang, sehingga pemasangan ulangnya kembali memicu alert "aplikasi baru dibuka" (issue #1277).
