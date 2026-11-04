@@ -1800,6 +1800,21 @@ class SetupActivity : AppCompatActivity() {
         val nowToggle = android.os.SystemClock.elapsedRealtime()
         if (nowToggle - lastNotifToggleAt < 2_000L) return
         lastNotifToggleAt = nowToggle
+        val currentlyOn = try { prefs.notifForwardEnabled } catch (_: Exception) { false }
+        val target = !currentlyOn
+        // Mematikan kanal laporan digerbang PIN akses (issue
+        // #1322): konsisten dengan model ancaman jalur berhenti
+        // monitoring (#1293). Menyalakan tetap satu ketuk.
+        // Target ditulis eksplisit (bukan negasi saat eksekusi)
+        // agar jeda dialog PIN tak membalik arah sakelar.
+        if (!target) {
+            verifyStoredAccessPin { applyNotifForwarding(target) }
+        } else {
+            applyNotifForwarding(target)
+        }
+    }
+
+    private fun applyNotifForwarding(next: Boolean) {
         if (!isNotificationAccessGranted()) {
             try {
                 startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -1809,7 +1824,6 @@ class SetupActivity : AppCompatActivity() {
             return
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
-            val next = try { !prefs.notifForwardEnabled } catch (_: Exception) { true }
             try { prefs.notifForwardEnabled = next } catch (_: Exception) { }
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext

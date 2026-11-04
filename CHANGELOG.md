@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mematikan penerusan notifikasi dari Setup kini melewati gerbang PIN akses seperti jalur berhenti monitoring (menyalakan tetap satu ketuk): kanal laporan ke owner tidak lagi bisa dipadamkan senyap satu ketuk dari perangkat yang berpindah tangan. Arah sakelar kini ditulis eksplisit agar jeda dialog PIN tidak membalik tujuannya.
+
 - Dialog masukan PIN di Setup kini ditandai FLAG_SECURE seperti dialog berkredensial lainnya: karakter PIN yang tampak sesaat saat mengetik tidak lagi bisa tertangkap tangkapan atau rekaman layar.
 
 - Run pengiriman yang terbatalkan karena pembatalan sengaja owner (berhenti monitoring, /logout, hapus kredensial) tidak lagi meninggalkan jadwal bangkit +15 detik: penanda waktu pembatalan sengaja kini membedakan jalur itu dari pembatalan REPLACE internal, yang jadwal penyelamatnya tetap dipasang seperti sebelumnya.
