@@ -11028,7 +11028,14 @@ class MonitoringService : Service() {
                 preferencesManager.a11yTamperEnabled ||
                     preferencesManager.a11yAppAlert ||
                     preferencesManager.watchKeywords.isNotBlank() ||
-                    preferencesManager.a11yUsageJson.isNotBlank()
+                    // Lengan pemakaian hanya selama datanya
+                    // SEGAR (issue #1223): JSON hari terakhir
+                    // bertahan selamanya, jadi tanpa syarat
+                    // tanggal alert berulang walau semua fitur
+                    // a11y sudah dipensiunkan pemilik.
+                    (preferencesManager.a11yUsageJson.isNotBlank() &&
+                        (preferencesManager.a11yUsageDate == todayKey() ||
+                            preferencesManager.a11yUsageDate == todayKey(System.currentTimeMillis() - 86_400_000L)))
             } catch (_: Exception) {
                 false
             }

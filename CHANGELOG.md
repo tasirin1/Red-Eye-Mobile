@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Lengan pemakaian pada peringatan aksesibilitas mati kini hanya berlaku selama data pemakaiannya segar (hari ini atau kemarin): peringatan tidak lagi berulang selamanya sesudah semua fitur aksesibilitas dipensiunkan (#1223).
 - Pola record gerbang kini sadar generik berbatas bersarang (satu tingkat sarang kurung sudut): deklarasi seperti record berbatas Comparable tidak lagi luput dari pemeriksaan rename (#1222).
 - Reset sukses gerbang PIN restore dan PIN akses kini juga atomik dalam satu commit terkunci, menutup pasangan jalur gagalnya: lockout yang baru tercatat tidak lagi bisa terhapus oleh reset yang berbalapan (#1221).
 - Deteksi berkendara kini hanya menghitung sampel dari fix lokasi yang benar-benar baru: fix terakhir-yang-diketahui yang sama tidak lagi terhitung dua kali sebagai dua sampel cepat, sehingga peringatan berkendara palsu sesudah tiba di tujuan dan penilaian pagar dari posisi basi dapat dicegah (#1220).
