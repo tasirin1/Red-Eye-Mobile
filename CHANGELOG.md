@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Redaksi log cadangan kini juga menutup ID grup super Telegram berawalan -100 dengan 9 digit (sebelumnya hanya 10 digit yang tertutup, yang 9 digit tampil utuh di log) (#1189).
 - Entri manifest yang tidak pernah terkirim di Android 8 ke atas dibersihkan (USER_UNLOCKED, USER_PRESENT, PACKAGE_RESTARTED, DATE_CHANGED): aksi-aksi itu tidak termasuk pengecualian siaran implisit sehingga pendaftarannya hanya menjanjikan pemicu hidup yang sebenarnya tidak ada; fungsi utamanya tetap ditutup BOOT_COMPLETED dan TIME_SET yang memang dikirim (#1188).
 - Notifikasi aplikasi dipasang/dicopot hidup lagi di Android 8 ke atas: receiver perubahan paket kini didaftarkan secara dinamis oleh layanan selama berjalan, karena siaran jenis itu tidak lagi dikirim ke receiver manifest di Android modern — sebelumnya fitur ini mati total tanpa gejala, termasuk penghapusan ingatan aplikasi saat uninstall dan invalidasi cache label (#1187).
 

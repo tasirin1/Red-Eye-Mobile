@@ -62,6 +62,7 @@ class RedactTest {
         // tertutup; deret 11+ digit (epoch milidetik) dibiarkan.
         assertEquals("ke *** gagal", Redact.token("ke 123456789 gagal"))
         assertEquals("grup *** ok", Redact.token("grup -1001234567890 ok"))
+        assertEquals("grup *** ok", Redact.token("grup -100123456789 ok"))
         assertEquals("ts 1730000000000 ok", Redact.token("ts 1730000000000 ok"))
         assertEquals("kode 12345678 ok", Redact.token("kode 12345678 ok"))
     }
