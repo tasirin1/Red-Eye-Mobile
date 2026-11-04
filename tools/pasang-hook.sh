@@ -174,7 +174,7 @@ else
 fi
 
 RANTAI="$(siapkan_rantai "$HOOK_DST")"
-case "$RANTAI" in *__CADANGAN_GAGAL__*) echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1 ;; esac
+if [ "$RANTAI" = "__CADANGAN_GAGAL__" ]; then echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1; fi
 pasang_kait "$HOOK_DST" "$RANTAI"
 
 if [ -x "$HOOK_DST" ]; then
@@ -201,7 +201,7 @@ fi
 HOOK_FALLBACK_DIR="${GIT_HOOKS_DIR:-$HOME/.githooks}/$(basename "$ROOT")"
 mkdir -p "$HOOK_FALLBACK_DIR"
 RANTAI_FB="$(siapkan_rantai "$HOOK_FALLBACK_DIR/pre-push")"
-case "$RANTAI_FB" in *__CADANGAN_GAGAL__*) echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1 ;; esac
+if [ "$RANTAI_FB" = "__CADANGAN_GAGAL__" ]; then echo "Pemasangan kait dibatalkan: cadangan kait lama gagal dibuat." >&2; exit 1; fi
 pasang_kait "$HOOK_FALLBACK_DIR/pre-push" "$RANTAI_FB"
 PROBE="$HOOK_FALLBACK_DIR/.probe-exec-$$"
 if [ -x "$HOOK_FALLBACK_DIR/pre-push" ] && printf '#!/bin/sh\nexit 0\n' > "$PROBE" 2>/dev/null && chmod +x "$PROBE" 2>/dev/null && "$PROBE" >/dev/null 2>&1; then
