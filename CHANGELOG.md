@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Siklus data rutin kini mengisolasi bacaan tiap sumber: kegagalan membaca SMS (mis. izin tercabut) tidak lagi membatalkan pembacaan log panggilan pada siklus yang sama, dan sisi yang gagal tidak ditandai tuntas (#1219).
 
 ## [1.6.613] - 2026-11-04
 

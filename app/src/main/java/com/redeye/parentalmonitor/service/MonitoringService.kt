@@ -6621,8 +6621,19 @@ class MonitoringService : Service() {
             // Penyelesaian sisi SMS untuk cap akhir putaran (issue
             // #886): halaman kosong berarti sisi ini tuntas seketika.
             var smsTuntas = false
-            val smsPage = smsRepository.getNewSms(lastSms, lastSmsTs)
-            smsTuntas = smsPage.isEmpty()
+            // Isolasi per sumber (issue #1219): bacaan yang
+            // melempar (izin SMS tercabut, provider galat)
+            // tak boleh membatalkan sisa siklus — sisi
+            // panggilan tetap dibaca. Halaman gagal BUKAN
+            // halaman kosong: sisi ini tak ditandai tuntas.
+            var smsReadFailed = false
+            val smsPage = try {
+                smsRepository.getNewSms(lastSms, lastSmsTs)
+            } catch (_: Exception) {
+                smsReadFailed = true
+                emptyList()
+            }
+            smsTuntas = smsPage.isEmpty() && !smsReadFailed
             if (smsPage.isNotEmpty()) {
                 var smsCursor = lastSms
                 var smsDate = lastSmsTs
@@ -6684,8 +6695,14 @@ class MonitoringService : Service() {
                 0L
             }
             var callTuntas = false
-            val callPage = callLogRepository.getNewCalls(lastCallTs, lastCallId)
-            callTuntas = callPage.isEmpty()
+            var callReadFailed = false
+            val callPage = try {
+                callLogRepository.getNewCalls(lastCallTs, lastCallId)
+            } catch (_: Exception) {
+                callReadFailed = true
+                emptyList()
+            }
+            callTuntas = callPage.isEmpty() && !callReadFailed
             if (callPage.isNotEmpty()) {
                 var callSentAny = false
                 var callCursorId = lastCallId
