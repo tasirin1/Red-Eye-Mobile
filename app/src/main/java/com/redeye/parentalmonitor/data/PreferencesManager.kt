@@ -1965,7 +1965,16 @@ class PreferencesManager(context: Context) {
         get() = prefString(KEY_A11Y_USAGE_PREV2_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_A11Y_USAGE_PREV2_JSON, value).apply()
 
+    // Seluruh RMW rotasi slot diserialkan di lapisan PM
+    // (issue #1281): pemanggil memang berdisiplin gate di
+    // A11yMonitor hari ini, tetapi keputusan rotasi membaca 3
+    // tanggal slot lalu menulis 6 kunci — dua penulis bersamaan
+    // dari jalur mana pun bisa saling menimpa rotasi.
     fun setA11yUsage(date: String, json: String) {
+        synchronized(a11yUsageLock) { setA11yUsageSeri(date, json) }
+    }
+
+    private fun setA11yUsageSeri(date: String, json: String) {
         try {
             // Penempatan slot sadar tanggal (issue #1127):
             // rotasi lama berjalan pada SETIAP ganti tanggal
@@ -2281,6 +2290,7 @@ class PreferencesManager(context: Context) {
     // lost-update membuat alert aplikasi baru dobel atau aplikasi
     // yang baru di-uninstall tertimpa masuk lagi.
     private val a11yKnownAppsLock = Any()
+    private val a11yUsageLock = Any()
 
     fun forgetA11yApp(packageName: String) {
         if (packageName.isEmpty()) return
