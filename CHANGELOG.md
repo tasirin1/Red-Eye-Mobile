@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kode sampah di pemformat waktu dibersihkan: penanda waktu ambil zona yang tak pernah dibaca lagi (sisa desain cache lama) dibuang. (Issue #1249)
 - Duplikasi format durasi pada perintah /uptime dibuang: kini memakai fungsi format bersama yang sama dengan laporan lain, jadi tampilannya tak bisa tertinggal diam-diam. (Issue #1248)
 - Durasi panggilan panjang kini tampil berjam yang benar: panggilan 2 jam tak lagi tertulis "120m 0s", melainkan format jam yang sama dengan laporan lain. (Issue #1247)
 - Alert pola tiba/berangkat tak lagi bisa berbunyi jam mustahil seperti "26.00": waktu yang dicatat pada skala lewat-tengah-malam kini dibungkus ke jam dinding nyata sebelum ditampilkan. (Issue #1246)

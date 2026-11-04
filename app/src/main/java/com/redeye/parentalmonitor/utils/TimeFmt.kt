@@ -29,9 +29,6 @@ object TimeFmt {
 
     @Volatile
     private var cachedTz: TimeZone? = null
-    @Volatile
-    private var tzFetchedAt: Long = 0L
-
     private fun currentTz(): TimeZone {
         val tz = cachedTz
         return try {
@@ -42,11 +39,9 @@ object TimeFmt {
             // diganti bila zona benar-benar berubah.
             val fresh = TimeZone.getDefault()
             if (tz != null && tz.id == fresh.id && tz.rawOffset == fresh.rawOffset) {
-                tzFetchedAt = android.os.SystemClock.elapsedRealtime()
                 return tz
             }
             cachedTz = fresh
-            tzFetchedAt = android.os.SystemClock.elapsedRealtime()
             fresh
         } catch (_: Exception) {
             tz ?: TimeZone.getTimeZone("UTC")
