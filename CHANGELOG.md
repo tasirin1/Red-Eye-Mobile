@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Dialog masukan PIN di Setup kini ditandai FLAG_SECURE seperti dialog berkredensial lainnya: karakter PIN yang tampak sesaat saat mengetik tidak lagi bisa tertangkap tangkapan atau rekaman layar.
+
 - Run pengiriman yang terbatalkan karena pembatalan sengaja owner (berhenti monitoring, /logout, hapus kredensial) tidak lagi meninggalkan jadwal bangkit +15 detik: penanda waktu pembatalan sengaja kini membedakan jalur itu dari pembatalan REPLACE internal, yang jadwal penyelamatnya tetap dipasang seperti sebelumnya.
 
 - Eviksi selektif hitungan gagal /login kini menilai kebasian entri dari cap dinding kegagalan terakhir, bukan dari peta throttle percobaan yang terpangkas tiap 1,5 detik: cara lama membuat hampir semua entri terbaca basi sehingga eviksi membuang entri yang masih relevan bersama yang sudah kedaluwarsa; cap dinding entri yang tereviksi kini ikut dibuang agar kedua peta tetap seirama.

@@ -1397,7 +1397,12 @@ class SetupActivity : AppCompatActivity() {
             }
         }
         dialog.setOnCancelListener { selesai(null) }
-        dialog.show()
+        // FLAG_SECURE (issue #1321): dialog tempat PIN
+        // akses/restore/backup DITETIK adalah dialog
+        // berkredensial — pola yang sama dengan dialog
+        // sensitif lain (#1228/#1304) yang sempat tertinggal
+        // hanya di sini.
+        dialog.show().also { amankanJendelaDialog(it) }
     }
 
     private fun readBackupText(uri: android.net.Uri): String? {
