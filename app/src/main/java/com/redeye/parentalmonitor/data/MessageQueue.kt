@@ -25,6 +25,15 @@ class MessageQueue private constructor(context: Context) {
 
     @Volatile
     private var dropsDirty = false
+    // clearQueue di mode volatile yang wipe cakramnya GAGAL
+    // (issue #1298): memori + baseline sudah ternolkan, tetapi
+    // cakram masih memuat hitungan lama; tanpa penanda ini
+    // muat aditif saat penyimpanan pulih membangkitkannya
+    // sebagai laporan drop hantu. Penanda mati bersama proses
+    // (kebangkitan lintas mati-proses = at-least-once yang
+    // memang diterima desain volatile).
+    private var dropWipePendingVolatile = false
+
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
@@ -374,11 +383,20 @@ class MessageQueue private constructor(context: Context) {
                 // volatile) sehingga tambahannya 0 dan baseline
                 // yang sudah dibawakan keepUnpersistedDrops tak
                 // terhitung dua kali.
-                overflowDrops.addAndGet((overflow - dasarOverflow).coerceAtLeast(0L))
-                expiredDrops.addAndGet((expired - dasarExpired).coerceAtLeast(0L))
-                priorityDrops.addAndGet((priority - dasarPriority).coerceAtLeast(0L))
-                exhaustedDrops.addAndGet((exhausted - dasarExhausted).coerceAtLeast(0L))
-                rejectedDrops.addAndGet((rejected - dasarRejected).coerceAtLeast(0L))
+                if (dropWipePendingVolatile) {
+                    // Wipe yang gagal di mode volatile menang
+                    // atas isi cakram (issue #1298): jangan
+                    // tambah apa pun; dropsDirty di bawah
+                    // memastikan keadaan ternolkan tertulis
+                    // menimpa hitungan basi di cakram.
+                    dropWipePendingVolatile = false
+                } else {
+                    overflowDrops.addAndGet((overflow - dasarOverflow).coerceAtLeast(0L))
+                    expiredDrops.addAndGet((expired - dasarExpired).coerceAtLeast(0L))
+                    priorityDrops.addAndGet((priority - dasarPriority).coerceAtLeast(0L))
+                    exhaustedDrops.addAndGet((exhausted - dasarExhausted).coerceAtLeast(0L))
+                    rejectedDrops.addAndGet((rejected - dasarRejected).coerceAtLeast(0L))
+                }
                 dropsDirty = true
             } else {
                 overflowDrops.set(overflow)
@@ -657,7 +675,10 @@ class MessageQueue private constructor(context: Context) {
                     false
                 }
             }
-            if (!cleared) persistDirty = true
+            if (!cleared) {
+                persistDirty = true
+                if (volatileOnly) dropWipePendingVolatile = true
+            }
             return cleared
         }
     }

@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- `clearQueue` yang wipe cakramnya gagal di mode volatile kini meninggalkan penanda agar hitungan drop lama tidak bangkit sebagai laporan hantu saat penyimpanan pulih — keadaan ternolkan ditulis menimpa cakram pada penggabungan berikutnya (issue #1298).
 - Penggabungan hitungan drop saat penyimpanan pulih diperbaiki akarnya: yang ditambahkan kini hanya kelebihan isi cakram di atas baseline yang sudah terwakili di memori (bukan lagi potongan pengambilan volatile yang salah kolam dan memotong hitungan lama dua kali); penanda `takenVolatile*` yang tak lagi diperlukan dihapus (issue #1297).
 - Entri anggaran gagal /login per pengirim hasil pemulihan kini mempertahankan cap waktu aslinya saat ditulis ulang — tidak lagi dicap segar di setiap penulisan, sehingga pemangkasan entri basi berlaku juga baginya (issue #1296).
 - Anggaran gagal /login persisten kini berperilaku benar sesudah lockout global: hitungan global ditulis ulang sesudah penolan lockout dan entri `g=` membawa cap waktu sehingga pemulihan membuang hitungan yang sudah lewat jendela kunci — satu PIN salah sesudah restart tidak lagi langsung mengunci global (issue #1295).
