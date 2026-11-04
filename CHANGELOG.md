@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mode rentang alat verifikasi kini juga memvalidasi revisi ujung rentang: sebelumnya hanya revisi awal yang diperiksa keberadaannya, sehingga salah ketik ref ujung membuat diff kosong dan seluruh pemeriksaan berbasis diff terlewati senyap dengan vonis bersih palsu. Terbukti lewat baterai sandbox (ujung ngawur kini menggagalkan; rentang sah dan simulasi push pertama tak berubah).
+
 - Pemeriksaan rentang di alat verifikasi kini menilai keberadaan berkas di pohon ujung rentang, bukan di berkas kerja: pengurai rename ke direktori ber-" b/", panen metode terhapus, dan aturan berkas terlarang sebelumnya semuanya menguji berkas kerja, sehingga memeriksa rentang lama dari checkout yang lebih baru (berkas hasil rename sudah terhapus lagi) meloloskan metode terhapus yang masih dipanggil. Terbukti lewat baterai sandbox dua checkout terhadap gerbang lama.
 
 - Mode jalur alat verifikasi kini juga memeriksa nama bekas-hapusan per segmen dengan benih pohonnya masing-masing (berkas kerja untuk perubahan belum-stage, indeks git untuk yang sudah di-stage): sebelumnya kedua diff digabung dan disemai dari berkas kerja saja, sehingga vonis atas hunk staged berbalik bila berkas kerja sudah menyimpang dari indeks. Terbukti lewat baterai sandbox tiga arah terhadap gerbang lama.

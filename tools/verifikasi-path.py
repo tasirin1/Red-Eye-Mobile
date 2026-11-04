@@ -2891,6 +2891,16 @@ def utama():
                 gagal.append("Rentang diff tak valid: %s (revisi %s tidak ditemukan)." % (args.rentang, awal))
                 berubah = []
                 diff = ""
+            elif jalan("git", "rev-parse", "--verify", "--quiet", ujung + "^{commit}") is None:
+                # Ujung tak valid divalidasi seperti awal
+                # (issue #1363): dulu ujung langsung dipasang
+                # sebagai benih/pohon, git show gagal, diff
+                # kosong, dan semua cek berbasis diff terlewati
+                # senyap dengan vonis LOLOS — salah ketik ref
+                # ujung lolos sebagai "bersih".
+                gagal.append("Rentang diff tak valid: %s (revisi %s tidak ditemukan)." % (args.rentang, ujung))
+                berubah = []
+                diff = ""
             else:
                 print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
                 REF_BENIH = ujung
