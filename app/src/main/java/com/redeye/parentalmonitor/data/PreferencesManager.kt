@@ -901,16 +901,36 @@ class PreferencesManager(context: Context) {
     fun claimPackageEvent(action: String, pkg: String, now: Long): Boolean {
         synchronized(packageEventLock) {
             val kunci = action + "|" + pkg
-            val last = try { sharedPreferences.getString(KEY_LAST_PACKAGE_EVENT, "") ?: "" } catch (_: Exception) { "" }
-            val potong = last.lastIndexOf('|')
-            if (potong > 0 && last.substring(0, potong) == kunci) {
-                val ts = last.substring(potong + 1).toLongOrNull() ?: 0L
-                if (now - ts in 0..15_000L) return false
+            val tersimpan = try { sharedPreferences.getString(KEY_LAST_PACKAGE_EVENT, "") ?: "" } catch (_: Exception) { "" }
+            // Himpunan kecil klaim terakhir (issue #1429):
+            // satu slot tunggal tergusur oleh peristiwa paket
+            // LAIN yang menyelinap di antara dua salinan
+            // siaran yang sama, sehingga alert ganda masih
+            // mungkin. Simpan sampai 8 entri (aksi|paket|cap)
+            // dan buang yang kedaluwarsa saat menulis.
+            val entri = ArrayList<String>()
+            var sudahAda = false
+            for (bagian in tersimpan.split(";")) {
+                val p1 = bagian.lastIndexOf('|')
+                if (p1 <= 0) continue
+                val ts = bagian.substring(p1 + 1).toLongOrNull() ?: continue
+                if (now - ts !in 0..15_000L) continue
+                if (bagian.substring(0, p1) == kunci) sudahAda = true
+                entri.add(bagian)
             }
+            if (sudahAda) return false
+            entri.add(kunci + "|" + now)
+            val gabung = entri.takeLast(8).joinToString(";")
             return try {
-                commitGuarded(sharedPreferences.edit().putString(KEY_LAST_PACKAGE_EVENT, kunci + "|" + now))
+                // Arah gagal diselaraskan (issue #1429): klaim
+                // yang gagal disimpan JANGAN membatalkan alert
+                // — pemanggil pun memilih lanjut pada jalur
+                // pengecualiannya. Risikonya hanya alert ganda,
+                // bukan alert hilang.
+                commitGuarded(sharedPreferences.edit().putString(KEY_LAST_PACKAGE_EVENT, gabung))
+                true
             } catch (_: Exception) {
-                false
+                true
             }
         }
     }
