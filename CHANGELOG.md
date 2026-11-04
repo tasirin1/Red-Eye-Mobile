@@ -1,6 +1,10 @@
 ## [Unreleased]
 
 ### Fixed
+
+## [1.6.614] - 2026-11-04
+
+### Fixed
 - Pemeriksa paritas format plurals kini juga membaca quantity berpetik tunggal: selisih format per quantity tak lagi lolos hanya karena gaya petiknya beda. (Issue #1256)
 - Semua pola nama resource pada gerbang kini menoleransi spasi di sekitar '=': resource yang ditulis 'name = "x"' tak lagi tak terlihat pemeriksa (dulu selisih format antar bahasa lolos, atau memicu vonis berlebih palsu). (Issue #1255)
 - Pemindai pemanggil pada gerbang metode-hilang kini mengupas komentar lebih dulu: sebutan nama metode di dalam komentar tak lagi dinilai pemanggil (vonis gagal palsu yang menamai baris komentar). (Issue #1254)
