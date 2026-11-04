@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Jalur kirim utama pekerja pengiriman kini menutup badan respons error pada cabang 401, 408/5xx, dan kode tak dikenal, menyamai kedua fungsi pengirim saudaranya: sebelumnya badan yang tak tertutup menahan koneksi di luar kumpulan koneksi bersama pada jalur terpanas antrean, sehingga badai error membuat tiap pengiriman membayar pembuatan koneksi baru.
+
 - Penentu fungsi pemilik baris di alat verifikasi kini menghitung kurung atas teks yang string dan komentarnya dikupas beruntun: sebelumnya kurung di dalam literal string (mis. "}" dalam string, atau kurung dalam string mentah multi-baris) menggeser kedalaman sehingga pemilik sebuah baris salah dikenali atau hilang, dan atribusi cakupan uji ikut salah senyap. Terbukti lewat uji satuan tiga kasus.
 
 - Mode jalur alat verifikasi kini ikut memeriksa perubahan yang sudah di-stage (diff indeks), bukan hanya perubahan berkas kerja: sebelumnya berkas yang sudah di-`git add` menghasilkan diff kosong dan lolos dari semua pemeriksaan berbasis diff padahal keluaran mengaku berkasnya diperiksa. Terbukti lewat baterai sandbox staged terhadap gerbang lama.

@@ -972,14 +972,21 @@ class SendMessageWorker(
             } else if (response.code() == 429) {
                 rateLimited(response)
             } else if (response.code() == 401) {
+                closeErrorBody(response)
                 SendOutcome.AuthFailed(401)
             } else if (response.code() == 403) {
                 classify403(response, chatId)
             } else if (response.code() == 408 || response.code() >= 500) {
+                closeErrorBody(response)
                 SendOutcome.Failed
             } else {
                 // Situs ketiga pola yang sama (issue #966):
                 // kode tak terdaftar = gagal sementara.
+                // Badan error ditutup seperti kedua fungsi
+                // saudara (issue #1351, sisa #1337): cabang ini
+                // tak membacanya, dan badan tak tertutup menahan
+                // koneksi di luar pool bersama.
+                closeErrorBody(response)
                 SendOutcome.Failed
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
