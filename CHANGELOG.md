@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Kiriman Telegram tak lagi berisiko ganda gara-gara ulangan koneksi senyap OkHttp: klien teks dan media kini menyerahkan kegagalan koneksi ke antrean aplikasi sendiri (Bot API tak punya idempotensi, jadi POST yang responsnya hilang bisa terkirim dua kali). (Issue #1231)
 - Catatan penerimaan risiko ditambahkan di getter prefs Setup: balapan sentuhan-pertama di benang utama dari penangan ketuk dinilai dan diterima secara sadar (pemuatan IO onCreate menghangatkan lebih dulu; dampak terburuk jank satu kali, tanpa risiko data). (Issue #1230)
 - Layar Setup dan layar persetujuan tangkapan tak lagi hancur-dibuat-ulang saat mode gelap atau ukuran huruf sistem berubah di tengah jalan: dialog PIN yang sedang terbuka tak hilang tanpa kabar dan permintaan persetujuan tak menumpuk. (Issue #1229)
 - Dialog kode restore dan dialog tautan penautan di Setup kini ikut terlindung dari tangkapan layar/rekaman (jendela dialog terpisah dari jendela layar yang sudah terlindung), jadi rahasia teks polos di dalamnya tak bisa difoto aplikasi lain. (Issue #1228)

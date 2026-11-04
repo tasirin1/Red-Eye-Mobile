@@ -248,6 +248,11 @@ object TelegramClient {
         // urutan & kesopanan laju — satu panggilan menggantung
         // menahan semua kiriman di belakangnya, jadi batas
         // totalnya dipangkas dari 90 ke 60 dtk.
+        // Tanpa ulangan senyap OkHttp (issue #1231): Bot API tak
+        // punya idempotensi — respons yang hilang sesudah Telegram
+        // memproses POST membuat ulangan otomatis mengirim duplikat.
+        // Kegagalan koneksi diserahkan ke antrean/backoff aplikasi.
+        .retryOnConnectionFailure(false)
         .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
@@ -272,6 +277,11 @@ object TelegramMediaClient {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(300, TimeUnit.SECONDS)
+        // Tanpa ulangan senyap OkHttp (issue #1231): Bot API tak
+        // punya idempotensi — respons yang hilang sesudah Telegram
+        // memproses POST membuat ulangan otomatis mengirim duplikat.
+        // Kegagalan koneksi diserahkan ke antrean/backoff aplikasi.
+        .retryOnConnectionFailure(false)
         .callTimeout(600, TimeUnit.SECONDS)
         .build()
 
@@ -294,6 +304,10 @@ object TelegramPollClient {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        // Ulangan koneksi bawaan SENGAJA dibiarkan di klien ini
+        // (issue #1231): getUpdates adalah GET idempoten dan
+        // dedup offset membuang hasil ganda — beda dari dua klien
+        // pengirim POST di atas yang ulangannya bisa menduplikat.
         .callTimeout(90, TimeUnit.SECONDS)
         .build()
 
