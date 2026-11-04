@@ -7185,15 +7185,28 @@ class MonitoringService : Service() {
         }
         if (permanentLoss) {
             var tailQueued = false
+            var tailAnyQueued = false
             if (queueOnFail && failed.isNotEmpty()) {
                 // Ekor transien diantrekan untuk SEMUA pemanggil
                 // (issue #1239): dulu pemanggil prioritas dikecualikan
                 // dari antrean ekor di cabang campuran ini, sehingga
                 // ekornya hilang senyap sementara status akhir SENT
                 // membuat kursor pemanggil tetap maju.
-                tailQueued = messageQueue.addMessages(failed, queuePriority)
+                // Hasil antre dinilai PER ITEM (issue #1260):
+                // addMessages all-or-nothing membuat antre sebagian
+                // terbaca gagal total — ekor yang terantre tetap
+                // dikirim worker (dobel terhadap status SENT) dan
+                // ekor yang gagal total hilang tanpa catatan.
+                val perItem = try {
+                    messageQueue.addMessagesPerItem(failed, queuePriority)
+                } catch (_: Exception) {
+                    List(failed.size) { false }
+                }
+                tailQueued = perItem.all { it }
+                tailAnyQueued = perItem.any { it }
+                repeat(perItem.count { !it }) { noteDroppedMessage() }
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
-                if (tailQueued) MessageScheduler.scheduleMessageSend(this)
+                if (tailAnyQueued) MessageScheduler.scheduleMessageSend(this)
             }
             // Potongan yang ditolak permanen tak akan pernah
             // terkirim (issue #952) dan sudah dicatat sebagai pesan
@@ -7205,7 +7218,7 @@ class MonitoringService : Service() {
             // tidak memajukan kursor dan mengirim ulang seluruh
             // pesan pada setiap putaran: duplikat tanpa akhir.
             return when {
-                tailQueued -> SendStatus.QUEUED
+                tailQueued || tailAnyQueued -> SendStatus.QUEUED
                 sentAny -> SendStatus.SENT
                 else -> SendStatus.DROPPED
             }

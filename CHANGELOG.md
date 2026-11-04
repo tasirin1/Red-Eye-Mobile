@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cabang campuran `sendFitted` (ada potongan ditolak permanen) kini menilai hasil antre ekor per item: ekor yang terantre sebagian berstatus QUEUED (bukan SENT yang menyembunyikan kehilangan/dobel), dan potongan ekor yang gagal terantre dihitung sebagai pesan terbuang, tidak hilang senyap (issue #1260).
 - Jaring menyerah `BootRestartWorker` kini juga memasang alarm Liveness (sebelumnya hanya watchdog periodik): jalan keluar awal karena prefs gagal, auth terblokir, atau penyimpanan belum terenkripsi tidak lagi bisa meninggalkan perangkat tanpa rantai alarm sesudah percobaan ulang habis (issue #1259).
 - Hasil rotasi rahasia kode restore kini dihormati: bila `commit()` rotasi gagal, sesi restore tidak dibuka dan pemilik diberi tahu, bukan melanjutkan senyap dengan kode yang masih bisa dipakai ulang (issue #1258).
 - Anggaran brute-force /login kini persisten penuh: jumlah gagal per pengirim dan global disimpan ke prefs dan dipulihkan sesudah restart (sebelumnya hanya kuncinya yang persisten, jadi restart mereset anggaran tebakan yang belum mencapai ambang kunci); throttle 3 detik sengaja tetap di memori (issue #1257).
