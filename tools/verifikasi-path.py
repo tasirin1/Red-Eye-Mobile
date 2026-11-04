@@ -454,6 +454,17 @@ def himpun_definisi():
         # daya values; kedua urutan atribut dikenali. Item
         # isi <style>/<plurals> tak punya pasangan name+type
         # sehingga tak ikut tertangkap.
+        # Nama <declare-styleable> + turunannya (issue
+        # #1383): AAPT menerbitkan R.styleable.<Nama> dan
+        # R.styleable.<Nama>_<attr> untuk tiap attr bersarang;
+        # keduanya didaftarkan agar acuan sah tak yatim.
+        for nama_sb, blok in re.findall(
+                r'<declare-styleable\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</declare-styleable>',
+                isi, re.S):
+            tambah("styleable", nama_sb)
+            for nama_attr in re.findall(
+                    r'<attr\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]', blok):
+                tambah("styleable", nama_sb + "_" + nama_attr)
         for nama, jenis in pola_item_nt.findall(isi):
             tambah(jenis, nama)
         for jenis, nama in pola_item_tn.findall(isi):

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mendaftarkan nama `<declare-styleable>` beserta turunan per-atributnya: sebelumnya nama styleable tidak pernah terhimpun, sehingga acuan `R.styleable` yang sah pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
+
 - Alat verifikasi kini mengenali definisi `<integer>` dan `<fraction>` di berkas values: sebelumnya kedua jenis sumber daya itu tidak pernah terdaftar oleh penghimpun definisi, sehingga acuan sah pertamanya pasti divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
 
 - Penyalinan link pairing di Setup kini meminta pengaturan disimpan dulu bila kolom token/chat berbeda dari kredensial tersimpan: sebelumnya tautan dibangun dari kolom yang belum disimpan tetapi kode pasangannya milik kredensial tersimpan, menghasilkan tautan campuran yang pasti mati.
