@@ -1800,8 +1800,23 @@ def _rapikan_generik(teks):
     return "".join(hasil)
 
 
+def _berkas_terhapus(diff):
+    """Path yang dihapus SEUTUHNYA di diff ini (kepala 'deleted
+    file mode' / tujuan /dev/null)."""
+    terhapus = set()
+    path_kini = ""
+    for baris in diff.splitlines():
+        if baris.startswith("diff --git "):
+            bagian = baris.split()
+            path_kini = bagian[-1][2:] if len(bagian) >= 4 else ""
+        elif baris.startswith("deleted file mode") and path_kini:
+            terhapus.add(path_kini)
+    return terhapus
+
+
 def nama_metode_hilang(diff, lewati_berkas=()):
     """Nama metode pada baris dihapus yang definisinya hilang dari pohon kerja."""
+    terhapus_utuh = _berkas_terhapus(diff)
     hilang = []
     for path, baris in hapus_kode(diff):
         baris = _rapikan_generik(baris)
@@ -1813,7 +1828,15 @@ def nama_metode_hilang(diff, lewati_berkas=()):
                 and (rapi.endswith(";")
                      or not re.match(r"\s*\w[\w<>\[\].,? ]*\s+\w+\s*\(", baris)):
             continue
-        if path in lewati_berkas or not os.path.isfile(os.path.join(AKAR, path)):
+        # Berkas yang terhapus UTUH di diff ini tetap dipanen
+        # (issue #1285): saringan isfile lama meloloskan seluruh
+        # metodenya, jadi pemanggil tertinggal dari penghapusan
+        # satu berkas penuh tak pernah tertangkap. Berkas yang
+        # hilang karena alasan lain (di luar pohon kerja) tetap
+        # dilewati.
+        if path in lewati_berkas:
+            continue
+        if path not in terhapus_utuh and not os.path.isfile(os.path.join(AKAR, path)):
             continue
         cocok = re.match(
             r"\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?"
@@ -1875,8 +1898,14 @@ def pemanggil(nama):
 
 
 def cek_metode_hilang(gagal, peringatan, diff, hapus=()):
-    lewati_berkas = set(hapus)
-    for nama in sorted(nama_metode_hilang(diff, lewati_berkas)):
+    # Berkas terhapus TIDAK dilewati di sini (issue #1285):
+    # lewati_berkas lama membuat seluruh metode berkas yang
+    # dihapus utuh tak terpanen, dan cek_berkas_kode_dihapus
+    # hanya memeriksa nama KELASnya — pemanggil metode/fungsi
+    # lepas-atas yang tertinggal lolos total. Metode yang
+    # pindah rumah tetap aman: masih_didefinisikan menemukannya
+    # di berkas barunya.
+    for nama in sorted(nama_metode_hilang(diff)):
         if masih_didefinisikan(nama):
             continue  # overload/kembaran masih ada: aman
         siapa = pemanggil(nama)
