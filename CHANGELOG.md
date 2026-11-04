@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Balapan simpan-versus-tes di layar Setup ditutup: memulai tes koneksi kini juga menua-nomori proses simpan yang sedang berjalan, sama seperti simpan menua-nomori tes. Sebelumnya verifikasi simpan lama yang menggantung bisa selesai belakangan dan menimpa kredensial hasil tes yang lebih baru secara senyap, sehingga kredensial aktif bisa bukan yang terakhir dikonfirmasi pemilik.
+
 - Penanda penghapusan antrean tertunda kini gugur otomatis begitu isi antrean baru yang sah berhasil tersimpan: sebelumnya penanda dari penghapusan yang gagal bisa tetap terpasang dan pada start berikutnya menghapus antrean baru yang sah itu secara senyap.
 
 - Sinkron SMS dan panggilan tak lagi bisa dibunuh satu pesan/panggilan bertanggal masa depan: baris yang tanggalnya jauh melewati waktu sekarang kini ditunda sampai waktunya tiba alih-alih memajukan penanda sinkron melewati semua baris normal, dan penanda yang sudah terlanjur teracuni di perangkat dijangkar ulang otomatis agar pesan-pesan yang terhalang terkirim lagi tanpa pengiriman ulang.

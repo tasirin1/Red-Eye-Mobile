@@ -1524,6 +1524,14 @@ class SetupActivity : AppCompatActivity() {
         val cameraInterval = cameraParsed ?: loadedCameraInterval
         Toast.makeText(this, getString(R.string.setup_testing), Toast.LENGTH_SHORT).show()
         val myTest = testSeq.incrementAndGet()
+        // Simetri penuaan (issue #1376): jalur simpan menaikkan
+        // KEDUA nomor urut, tetapi jalur tes dulu hanya
+        // testSeq — simpan lama yang verifikasinya menggantung
+        // tak pernah dianggap basi oleh penjaganya sendiri dan
+        // bisa menimpa kredensial hasil tes yang lebih baru
+        // secara senyap. Kini tes yang dimulai juga menua-nomori
+        // simpan yang sedang terbang.
+        try { saveSeq.incrementAndGet() } catch (_: Exception) { }
         try { testJob?.cancel() } catch (_: Exception) { }
         testJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val input = resolveCredentialInput(rawToken, rawChat) ?: return@launch
