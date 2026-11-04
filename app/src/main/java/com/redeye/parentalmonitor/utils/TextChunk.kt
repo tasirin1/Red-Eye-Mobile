@@ -49,13 +49,17 @@ object TextChunk {
             // (issue #1244): nada kulit emoji, U+FE0F, tanda gabung,
             // dan penutup keycap (U+20E3) yang jatuh tepat sesudah
             // titik potong menarik potong mundur satu code point —
-            // meneruskan perlindungan #647/#663.
-            if (c > 0 && c < text.length) {
+            // meneruskan perlindungan #647/#663. Mundurnya berupa
+            // LOOP (issue #1261): urutan bertumpuk (keycap sejati
+            // basis+FE0F+U+20E3, dua tanda gabung berurutan) butuh
+            // lebih dari satu langkah agar gugusnya utuh.
+            while (c > 0 && c < text.length) {
                 val nadaKulit = text[c] == '\uD83C' && c + 1 < text.length && text[c + 1] in '\uDFFB'..'\uDFFF'
                 val tanda = !Character.isHighSurrogate(text[c]) &&
                     (Character.getType(text[c]) == Character.NON_SPACING_MARK.toInt() ||
                         Character.getType(text[c]) == Character.ENCLOSING_MARK.toInt())
-                if (nadaKulit || tanda) c -= codePointBefore(c)
+                if (!nadaKulit && !tanda) break
+                c -= codePointBefore(c)
             }
             val amp = text.lastIndexOf('&', c - 1)
             if (amp >= 0 && amp > c - 12) {

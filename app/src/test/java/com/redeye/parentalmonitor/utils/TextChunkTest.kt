@@ -68,6 +68,10 @@ class TextChunkTest {
         assertEquals(1, TextChunk.safeCut("a1\u20E3b", 2))
         assertEquals(1, TextChunk.safeCut("ae\u0301x", 2))
         assertEquals(1, TextChunk.safeCut("a\u2764\uFE0Fx", 2))
+        // #1261: urutan pemodifikasi BERTUMPUK mundur lebih dari
+        // satu langkah (nilai dibuktikan porting 1:1 ke Python).
+        assertEquals(1, TextChunk.safeCut("a1\uFE0F\u20E3b", 3))
+        assertEquals(1, TextChunk.safeCut("ae\u0301\u0302x", 3))
     }
 
     @Test
