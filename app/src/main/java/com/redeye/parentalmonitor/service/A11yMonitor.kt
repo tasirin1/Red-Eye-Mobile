@@ -256,7 +256,29 @@ object A11yMonitor {
             }
         }
         if (!recoverable) {
-            try { manager.clearA11yOpenSession() } catch (_: Exception) { }
+            // Penanda hanya dihapus bila kematian sesinya
+            // PASTI (issue #1373): jendela depan yang tak
+            // terbaca sesaat (root kosong tepat sesudah bind),
+            // masih di launcher/aplikasi sendiri, atau permukaan
+            // sistem bukan bukti sesi berakhir — menghapus
+            // penanda membuang ekor sesi permanen. Kasus tak
+            // pasti dibiarkan; percobaan ulang di handleWindow
+            // yang memutuskan (kembali ke aplikasi yang sama =
+            // sesi lanjut dengan cap asli; pindah ke aplikasi
+            // lain yang bisa dibuka = penanda dibersihkan di
+            // sana).
+            val bolehHapus = when {
+                startWall <= 0L -> true
+                foreground == pkg -> true
+                foreground.isEmpty() -> false
+                foreground == context.packageName -> false
+                foreground == defaultLauncherPackage(context) -> false
+                isLaunchable(context, foreground) -> true
+                else -> false
+            }
+            if (bolehHapus) {
+                try { manager.clearA11yOpenSession() } catch (_: Exception) { }
+            }
             return
         }
         currentPackage = pkg
@@ -883,6 +905,15 @@ object A11yMonitor {
         var done = false
         synchronized(gate) {
             ensureLoadedLocked(context)
+            // Percobaan ulang pemulihan sesi (issue #1373):
+            // restore di attach bisa gagal menilai karena
+            // jendela depan sesaat tak cocok/tak terbaca;
+            // peristiwa jendela berikutnya menilai lagi
+            // SEBELUM transisinya diproses, selagi tak ada
+            // sesi yang sedang terbuka.
+            if (currentPackage.isEmpty()) {
+                try { restoreOpenSessionLocked(context) } catch (_: Exception) { }
+            }
             if (manager.a11yTamperEnabled && protectionActive(manager)) {
                 val reason = TamperGuard.reason(pkg, cls, texts, context.packageName, selfLabel)
                 // Tenggang hanya dinilai bila ada alasan tamper

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Sesi pemakaian aplikasi yang terputus karena proses layanan mati kini punya kesempatan kedua untuk dipulihkan: sebelumnya pemulihan hanya dicoba sekali saat layanan tersambung dan ketidakcocokan jendela depan sesaat langsung menghapus penanda sesi, membuang sisa durasi sesi itu permanen. Kini penanda hanya dihapus bila berakhirnya sesi pasti, dan peristiwa jendela berikutnya mencoba memulihkan lagi sebelum diproses.
+
 - Sesi pemakaian aplikasi kini dimulai lagi saat monitoring diaktifkan kembali lewat /resume walau aplikasi yang sedang terbuka tidak berpindah jendela: sebelumnya sesi hanya lahir dari perpindahan jendela, sehingga aplikasi yang tetap terbuka sejak masa jeda tidak tercatat pemakaiannya sampai pengguna berpindah aplikasi.
 
 - Penghapusan antrean pesan kini meninggalkan penanda tahan di cakram bila penghapusan cakramnya gagal total: sebelumnya penanda kegagalan hanya hidup di memori, sehingga perangkat yang mati sebelum penulisan berikutnya berhasil membuat antrean yang sudah dihapus bangkit lagi dari cakram — pesan era kredensial lama bisa terkirim ke konfigurasi baru. Kini pemuat berikutnya mengeksekusi penghapusan tertunda itu sebelum membaca isi lama.
