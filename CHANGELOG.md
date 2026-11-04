@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Peringatan "aplikasi baru dibuka" tak lagi bisa tertelan diam-diam: bila pengambilan daftar aplikasi awal (seed) gagal sesaat, aplikasi pertama yang dibuka pada jendela itu sebelumnya langsung dicatat sebagai sudah dikenal tanpa peringatan dan tak pernah memicu peringatan selamanya. Kini aplikasi hanya dicatat sebagai dikenal sesudah seed berhasil, dan seed yang gagal dicoba ulang berkala (paling sering semenit sekali), bukan menunggu ganti hari.
+
 - Tombol kirim status di layar Setup kini ikut aturan rate-limit global: 429 yang diterimanya mengajari gerbang pembatas bersama (sebelumnya satu-satunya konsumen 429 yang tidak), dan sebelum mengirim ia memeriksa sisa jendela rate-limit — bila masih aktif, pesan diantrekan alih-alih menembak dan memanen 429 tambahan.
 
 - Kabar buang media ke owner kini jujur soal sebabnya: sebelumnya semua media yang dibuang dilaporkan sebagai "ditolak (400)", padahal pembuangan juga terjadi untuk berkas terlalu besar (413) dan sebab lokal; teksnya kini netral ("kosong, tak didukung, atau terlalu besar"). Pengecualian drop-413 untuk media — permanen untuk berkas yang sama karena ukurannya tak menyusut saat dicoba ulang — kini terdokumentasi di kode sebagai pengecualian yang disengaja dari aturan drop-hanya-400.

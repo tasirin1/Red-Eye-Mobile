@@ -139,6 +139,7 @@ object A11yMonitor {
     private var launcherPackage = ""
     private var launcherPackageAt = 0L
     private var knownSeeded = false
+    private var seedRetryAfter = 0L
 
     fun attach(context: Context) {
         val app = context.applicationContext
@@ -652,6 +653,14 @@ object A11yMonitor {
 
     private fun ensureLoadedLocked(context: Context) {
         val today = TimeFmt.dayKey(System.currentTimeMillis())
+        // Seed yang gagal dicoba lagi berkala (issue #1355):
+        // tanpa ini kegagalan sesaat (kueri launcher melempar/
+        // kosong saat proses mulai) membekukan status belum-
+        // seeded sampai ganti hari atau proses dimulai ulang.
+        if (!knownSeeded && SystemClock.elapsedRealtime() >= seedRetryAfter) {
+            seedRetryAfter = SystemClock.elapsedRealtime() + 60_000L
+            seedKnownAppsLocked(context)
+        }
         if (loaded && today == loadedDay) return
         val previousDay = loadedDay
         val activePackage = currentPackage
@@ -869,7 +878,13 @@ object A11yMonitor {
                 row.label = currentLabel
                 row.launches += 1
                 val seeded = manager.a11yKnownSeeded
-                val firstOpen = manager.rememberA11yApp(pkg)
+                // Belum seeded -> JANGAN mengingat (issue #1355):
+                // mengingat pada jendela seed-gagal menelan
+                // aplikasi itu selamanya (seed hanya menambah,
+                // tak pernah memicu alert untuk yang sudah
+                // dikenal) — ia masuk himpunan tanpa kabar dan
+                // tak akan pernah memicu alert aplikasi baru.
+                val firstOpen = if (seeded) manager.rememberA11yApp(pkg) else false
                 if (seeded && firstOpen && manager.a11yAppAlert) {
                     if (isNightHour(nowWall)) {
                         if (nightUndo == null) nightUndo = captureNightStamp(manager, pkg, nowElapsed)
