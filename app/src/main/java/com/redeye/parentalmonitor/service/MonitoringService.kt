@@ -226,6 +226,12 @@ class MonitoringService : Service() {
     private var cameraWakeFails = 0
     @Volatile
     private var coreInitialized = false
+    // Penanda instance ini SUDAH pernah berhasil foreground
+    // (issue #1314): kegagalan menegakkan ULANG pada instance
+    // yang hidup tak boleh membunuhnya — prinsip #945 satu
+    // lapis di atas startMonitoring.
+    @Volatile
+    private var foregroundEstablished = false
     private val shotSessionLock = Any()
     private var shotDisplay: VirtualDisplay? = null
     private var shotReader: ImageReader? = null
@@ -776,10 +782,18 @@ class MonitoringService : Service() {
     private fun startForegroundImmediate(): Boolean {
         try {
             val notification = buildForegroundNotification()
-            if (applyForegroundTypes(notification)) return true
+            if (applyForegroundTypes(notification)) {
+                foregroundEstablished = true
+                return true
+            }
         } catch (e: Exception) {
             android.util.Log.w("MonitoringService", "Immediate foreground start failed: ${redactToken(e.message)}")
         }
+        // Instance yang sudah pernah foreground tetap foreground
+        // di mata sistem; kegagalan transien menegakkan ulang
+        // bukan alasan membunuhnya atau menjatuhkan aksi intent
+        // yang sedang diantar (issue #1314) — lanjutkan dispatch.
+        if (foregroundEstablished) return true
         try {
             MessageScheduler.scheduleBootRestart(this)
         } catch (_: Exception) {
@@ -1024,6 +1038,7 @@ class MonitoringService : Service() {
             if (!hadLoops) stopSelf()
             return
         }
+        foregroundEstablished = true
 
         // Snapshot job lama SEBELUM dibatalkan (issue #1077):
         // startMonitoring dulu membatalkan lalu langsung
@@ -11159,6 +11174,7 @@ class MonitoringService : Service() {
             rejectedFgsAt = android.os.SystemClock.elapsedRealtime()
             return
         }
+        foregroundEstablished = true
         rejectedFgsTypes = 0
         if (appliedFgsTypes != types && appliedFgsTypes != before) {
             android.util.Log.w("MonitoringService", "Tipe FGS dikurangi jadi " + FgsTypes.describe(appliedFgsTypes) + " (diminta " + FgsTypes.describe(types) + ")")

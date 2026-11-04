@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kegagalan transien saat menegakkan ulang foreground di kepala `onStartCommand` tidak lagi membunuh instance layanan yang sudah sehat: instance yang sudah pernah berhasil foreground kini melanjutkan dispatch intent (termasuk alert satu-tembakan admin/PIN-salah yang tak punya jalur cadangan), meniru prinsip penjaga loop lama satu lapis di atasnya; instance yang belum pernah foreground tetap menghancurkan diri dengan jaring kebangkitan seperti sebelumnya.
+
 - Run `SendMessageWorker` yang ditolak penjaga run-tunggal kini melepaskan slot `outstandingSends` miliknya sebelum kembali: reservasi penjadwalan yang tak terlepas membocorkan satu slot per penolakan, dan ±3 penolakan menjenuhkan penghitung sehingga penjadwalan kirim teredam senyap per jendela self-heal — termasuk jadwal penyelamat antrean. Setiap `doWork` kini melepaskan tepat satu slot (cabang tertolak melepaskan di tempat, jalur lolos tetap di finally).
 
 ### Fixed
