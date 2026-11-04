@@ -1957,9 +1957,88 @@ def hunk_fungsi(diff):
                 yield path, cocok.group(1)
 
 
+def _fungsi_pemilik(path, baris_mulai):
+    """Nama fun yang badannya memuat baris (1-based) pada berkas
+    kerja saat ini, atau None. Kepala hunk Git untuk metode
+    anggota Kotlin hampir selalu menamai KELAS pemiliknya
+    (issue #1286), jadi pemilik dicari dari isi berkas: pindai
+    deklarasi fun sebelum baris itu pada teks terkupas, lacak
+    kedalaman kurung, dan ambil deklarasi terdalam yang
+    badannya belum tertutup di baris_mulai."""
+    penuh = os.path.join(AKAR, path)
+    if not os.path.isfile(penuh):
+        return None
+    bersih = _kupas_komentar_kode(baca_teks(penuh), bersarang=not path.endswith(".java"))
+    pola = re.compile(r"^\s*(?:(?:public|private|protected|internal|override|suspend|inline|operator|infix|tailrec|open|final|abstract)\s+)*fun\s+(?:<[^>\n]+>\s*)?(?:[\w<>\[\],.? ]*\.)?(\w+)\s*\(")
+    tumpukan = []  # (nama, kedalaman badan)
+    kedalaman = 0
+    for i, baris in enumerate(bersih.splitlines(), 1):
+        if i > baris_mulai:
+            break
+        cocok = pola.match(baris)
+        buka = baris.count("{")
+        tutup = baris.count("}")
+        if cocok and cocok.group(1) not in KATA_KUNCI:
+            tumpukan.append((cocok.group(1), kedalaman + (1 if buka > 0 else 0)))
+        kedalaman += buka - tutup
+        while tumpukan and kedalaman < tumpukan[-1][1]:
+            tumpukan.pop()
+    return tumpukan[-1][0] if tumpukan else None
+
+
+def hunk_posisi(diff):
+    """Hasilkan (path, baris_baru) tiap hunk berkas kode: nomor
+    baris sisi-baru dari baris TAMBAH pertama hunk itu (baris
+    yang benar-benar berubah), atau baris awal hunk bila tak
+    ada baris tambah. Baris konteks awal/akhir hunk tak dipakai
+    — ia bisa berupa deklarasi kelas atau kurung tutup fungsi
+    (issue #1286)."""
+    path = ""
+    kini = None  # nomor baris sisi-baru berjalan
+    awal = 0
+    sudah = False
+    for baris in diff.splitlines():
+        if baris.startswith("diff --git "):
+            if path.endswith(EKSTENSI_KODE) and kini is not None and not sudah:
+                yield path, awal
+            bagian = baris.split()
+            path = bagian[-1][2:] if len(bagian) >= 4 else ""
+            kini = None
+            sudah = False
+        elif baris.startswith("@@ ") and path.endswith(EKSTENSI_KODE):
+            if kini is not None and not sudah:
+                yield path, awal
+            cocok = re.search(r"\+(\d+)", baris)
+            awal = int(cocok.group(1)) if cocok else 0
+            kini = awal
+            sudah = False
+        elif kini is not None:
+            if baris.startswith("+") and not baris.startswith("+++"):
+                if not sudah:
+                    yield path, kini
+                    sudah = True
+                kini += 1
+            elif baris.startswith("-") and not baris.startswith("---"):
+                pass
+            elif baris.startswith("\\"):
+                pass
+            else:
+                kini += 1
+    if path.endswith(EKSTENSI_KODE) and kini is not None and not sudah:
+        yield path, awal
+
+
 def cek_uji_ubah(peringatan, diff):
     sudah = set()
-    for _, nama in hunk_fungsi(diff):
+    kandidat = [nama for _, nama in hunk_fungsi(diff)]
+    # Pemilik badan hunk dari isi berkas (issue #1286): tanpa
+    # ini peringatan uji praktis mati untuk semua metode
+    # anggota — kepala hunk hanya menamai kelasnya.
+    for path, mulai in hunk_posisi(diff):
+        pemilik = _fungsi_pemilik(path, mulai)
+        if pemilik:
+            kandidat.append(pemilik)
+    for nama in kandidat:
         if not nama or nama in sudah or nama in KATA_KUNCI:
             continue
         if nama[:1].isupper():

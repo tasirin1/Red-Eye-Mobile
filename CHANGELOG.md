@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Peringatan cakupan uji tidak lagi mati untuk metode anggota: kepala hunk Git hampir selalu menamai kelas pemiliknya, jadi `cek_uji_ubah` kini juga menyelesaikan fungsi pemilik badan hunk dari isi berkas kerja (pindai deklarasi `fun` + lacak kedalaman kurung pada teks terkupas) (issue #1286).
 - Menghapus satu berkas utuh tidak lagi menyembunyikan metodenya dari gerbang: panen metode hilang kini tetap memproses berkas yang terhapus seutuhnya di diff yang sama, sehingga pemanggil yang tertinggal tertangkap dan peringatan pencatatan `bekas-hapusan.txt` ikut muncul (issue #1285).
 - Gerbang bekas-hapusan kini menangkap pemakaian konstanta/properti terhapus juga (`OTP_CODE_REGEX.containsMatchIn(...)`, diteruskan sebagai argumen, dsb.), bukan hanya panggilan `nama(`: baris baru dikupas komentar/string lalu setiap penyebutan nama di posisi kode divonis, dengan pengecualian baris deklarasi nama yang sama (issue #1284).
 - Penulisan laporan crash cadangan kini atomik juga: bila `renameTo` gagal, berkas disalin ke temp kedua lalu di-rename dari sana, bukan `copyTo` langsung yang bisa meninggalkan laporan setengah jadi bila proses mati di tengah salinan (issue #1283).
