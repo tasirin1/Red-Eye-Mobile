@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi di peringatan metode baru alat verifikasi kini juga menangkap fungsi ekstensi, fungsi bergenerik bersarang, dan fungsi beranotasi berargumen — tiga bentuk deklarasi Kotlin sah yang sebelumnya lolos senyap dari peringatan cakupan uji. Terbukti lewat harness (7 kasus palsu tetap diam, 6 deklarasi tertangkap).
+
 - Penilaian anti-tamper berbasis teks kini juga menjangkau jendela sensitif yang terlihat tetapi tidak aktif, misalnya halaman Setelan di panel tak-aktif saat layar terbagi: sebelumnya snapshot hanya diambil dari jendela aktif sehingga halaman seperti itu tidak pernah dinilai dari teksnya.
 
 - Adopsi migrasi grup di layar Setup kini menulis lewat jalur bandingkan-dan-tukar berkomit yang sama dengan layanan: sebelumnya ia memakai penulisan apply biasa, sehingga pesan "Chat ID diperbarui otomatis" bisa mendahului fakta yang tersimpan dan pembaruan hilang bila proses mati seketika.

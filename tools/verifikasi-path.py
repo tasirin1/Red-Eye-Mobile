@@ -2850,7 +2850,9 @@ def cek_uji_baru(peringatan, diff):
     # kepala baris, sehingga panggilan polos berindentasi,
     # kelanjutan konstruktor, dan kepala else/yield/new ikut
     # tercap metode baru. Kini deklarasi hanya diakui dalam
-    # dua bentuk: (1) Kotlin — ada kata "fun" sebelum nama;
+    # dua bentuk: (1) Kotlin — ada kata "fun" sebelum nama
+    # (termasuk fungsi ekstensi ber-penerima, generik
+    # bersarang, dan anotasi berargumen — issue #1398);
     # (2) Java — <pengubah*> <Tipe> <nama>( dengan Tipe
     # berawalan huruf besar atau primitif/void (nama-penuh
     # bertitik seperti java.util.List<String> juga sah —
@@ -2859,7 +2861,7 @@ def cek_uji_baru(peringatan, diff):
     # berawalan huruf besar (kelas/konstruktor) dilewati,
     # seperti di cek_uji_ubah.
     pola_fun = re.compile(
-        r"^\s*(?:@\w+\s+)*(?:\w+\s+)*?fun\s+(?:<[^>]+>\s*)?(\w+)\s*\(")
+        r"^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:<[^>]*>)?\.)?(\w+)\s*\(")
     pola_java = re.compile(
         r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*"
         r"(?:void|int|long|boolean|double|float|byte|short|char|[\w.]*[A-Z][\w<>\[\],.?]*)\s+(\w+)\s*\(")
