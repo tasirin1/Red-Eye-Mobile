@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penghimpun definisi alat verifikasi kini mendaftarkan turunan styleable untuk atribut kerangka dengan nama R yang benar (titik dua menjadi garis bawah) dan mengenali `<declare-styleable>` bentuk self-closing: keduanya sebelumnya membuat acuan styleable yang sah tetap divonis yatim. Terbukti lewat uji unit penghimpun.
+
 - Peringatan metode baru di alat verifikasi kembali menangkap metode Java bertipe kembalian nama-penuh (mis. `java.util.List<...>`), yang sempat lolos sejak pengetatan pengenal deklarasi ronde lalu; himpunan kasus palsu tetap diam. Terbukti lewat harness dua arah.
 
 - Pemulihan penanda sinkron dari baris bertanggal masa depan kini membedakan racun dari jam yang dimundurkan: pengjangkaran ulang hanya terjadi bila baris penanda melompat jauh dari pendahulunya, sedangkan pergeseran era bersama karena jam mundur dibiarkan sembuh sendiri begitu jam melewati tanggal penanda — sebelumnya kasus jam mundur bisa memicu pengjangkaran turun dan pengiriman ulang riwayat.

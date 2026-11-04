@@ -458,13 +458,20 @@ def himpun_definisi():
         # #1383): AAPT menerbitkan R.styleable.<Nama> dan
         # R.styleable.<Nama>_<attr> untuk tiap attr bersarang;
         # keduanya didaftarkan agar acuan sah tak yatim.
+        # Attr kerangka (android:textColor) diterbitkan dengan
+        # titik dua menjadi garis bawah (issue #1390), dan
+        # bentuk self-closing tanpa blok isi ikut terhimpun.
+        for nama_sb in re.findall(
+                r'<declare-styleable\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*/>',
+                isi):
+            tambah("styleable", nama_sb)
         for nama_sb, blok in re.findall(
                 r'<declare-styleable\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</declare-styleable>',
                 isi, re.S):
             tambah("styleable", nama_sb)
             for nama_attr in re.findall(
                     r'<attr\s[^>]*?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]', blok):
-                tambah("styleable", nama_sb + "_" + nama_attr)
+                tambah("styleable", nama_sb + "_" + nama_attr.replace(":", "_"))
         for nama, jenis in pola_item_nt.findall(isi):
             tambah(jenis, nama)
         for jenis, nama in pola_item_tn.findall(isi):
