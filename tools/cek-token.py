@@ -13,6 +13,7 @@ Mengenali bentuk-bentuk token:
 
 Dipakai tools/verifikasi-path.py (diimpor) dan scripts/cek-cepat.sh:
     cek-token.py --teks     : baca teks dari stdin; cetak DITEMUKAN bila ada
+    cek-token.py --teks-pesan: sama, varian permukaan pesan (tanpa pemadatan)
     cek-token.py --berkas   : baca daftar path NUL-separated dari stdin;
                               cetak path pertama yang mengandung token
 Kode keluar selalu 0; keputusan dibaca dari keluaran stdout.
@@ -260,6 +261,10 @@ def main():
         if mengandung_token(sys.stdin.read()):
             print("DITEMUKAN")
         return 0
+    if mode == "--teks-pesan":
+        if mengandung_token_pesan(sys.stdin.read()):
+            print("DITEMUKAN")
+        return 0
     if mode == "--berkas":
         for path in sys.stdin.buffer.read().split(b"\0"):
             if not path:
@@ -274,7 +279,7 @@ def main():
                 print(nama)
                 return 0
         return 0
-    print("pemakaian: cek-token.py --teks | --berkas", file=sys.stderr)
+    print("pemakaian: cek-token.py --teks | --teks-pesan | --berkas", file=sys.stderr)
     return 2
 
 

@@ -176,7 +176,7 @@ fi
 # pohon tak memuat pesan commit, padahal token di sana hidup permanen di
 # riwayat. Tanpa upstream, periksa commit terakhir saja.
 if [ -f tools/cek-token.py ]; then
-  pesan_token=$( (git log @{u}..HEAD --format=%B 2>/dev/null || git log -1 --format=%B 2>/dev/null) | python3 tools/cek-token.py --teks 2>/dev/null || true)
+  pesan_token=$( (git log @{u}..HEAD --format=%B 2>/dev/null || git log -1 --format=%B 2>/dev/null) | python3 tools/cek-token.py --teks-pesan 2>/dev/null || true)
   if [ -n "$pesan_token" ]; then
     echo "GAGAL: kemungkinan token bot asli di pesan commit yang belum ter-push (hanya via input SetupActivity)"; gagal=1;
   fi
