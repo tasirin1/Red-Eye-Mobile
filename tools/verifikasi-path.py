@@ -513,7 +513,7 @@ def himpun_definisi():
     pola_generik_r = re.compile(r"(?<!android\.)R\.([a-z]+)\.([A-Za-z0-9_]+)")
     pola_android = re.compile(r"@android:[a-z]+/[A-Za-z0-9_.]+")
     pola_pustaka = re.compile(
-        r"@style/(Widget[._]|ThemeOverlay[._]|TextAppearance[._]|Animation[._]"
+        r"@style/(Widget[._]|ThemeOverlay[._]|TextAppearance[._]|Animation[._]|ShapeAppearance[._]|ShapeAppearanceOverlay[._]"
         r"|Theme\.Material|Theme_Material|Theme\.AppCompat|Theme_AppCompat"
         r"|Theme\.Design|Theme_Design)[A-Za-z0-9_.]*")
     pemindai = [p for p in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",))]

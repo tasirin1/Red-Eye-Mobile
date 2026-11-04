@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi kini mengenali style Material keluarga ShapeAppearance dan ShapeAppearanceOverlay sebagai milik pustaka: sebelumnya style resmi itu divonis yatim saat dipakai sebagai parent tema. Terbukti lewat uji fungsi dua arah.
+
 - Pengenal deklarasi Kotlin di alat verifikasi kini juga menangkap fungsi penerima nama-penuh, fungsi penerima generik bersarang, dan fungsi yang anotasinya memuat kurung di dalam string argumen: tiga sisa tepi dari pengetatan ronde sebelumnya. Terbukti lewat harness.
 
 - Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian nama-penuh huruf kecil semua (mis. com.contoh.tipeku): token tipe bertitik kini sah sebagai alternatif, dan harness membuktikan bentuk mirip-deklarasi (variabel, kolom, for, import) tetap diam.
