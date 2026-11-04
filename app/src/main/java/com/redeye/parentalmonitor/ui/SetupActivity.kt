@@ -1463,6 +1463,24 @@ class SetupActivity : AppCompatActivity() {
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
             val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+            // Nilai KETIKAN yang tak sah menolak ekspor
+            // (issue #1411): dulu token/chat kolom yang tak
+            // lolos validasi jatuh SENYAP ke kredensial
+            // tersimpan lama, sehingga berkas cadangan bisa
+            // berisi kredensial yang sudah dirotasi tanpa
+            // peringatan — jalur Simpan/Tes menolak dengan
+            // toast, jalur Cadangkan samakan. Kolom yang
+            // masih masker tersimpan tetap sah.
+            val tokenKetikTakSah = uiToken != STORED_MASK && uiToken.isNotEmpty() && !uiToken.matches(TOKEN_REGEX)
+            val chatKetikTakSah = uiChat != STORED_MASK && uiChat.isNotEmpty() && !isChatIdValid(uiChat)
+            if (tokenKetikTakSah || chatKetikTakSah) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.backup_invalid_form), Toast.LENGTH_LONG).show()
+                    }
+                }
+                return@launch
+            }
             val token = resolveStored(uiToken, storedToken).takeIf { it.matches(TOKEN_REGEX) } ?: storedToken
             val resolvedChat = resolveStored(uiChat, storedChat)
             val chatId = if (isChatIdValid(resolvedChat)) resolvedChat else storedChat
