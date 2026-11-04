@@ -1047,6 +1047,8 @@ class SetupActivity : AppCompatActivity() {
                     return@launch
                 }
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) return@withContext
+                    if (mySave != saveSeq.get()) return@withContext
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_save_failed, verifyDetail.ifEmpty { getString(R.string.setup_no_network) }), Toast.LENGTH_LONG).show()
                 }
                 return@launch
