@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Simpan hasil Tes koneksi di Setup tak lagi gugur diam-diam saat layar ditutup sebelum tulis disk berjalan: pekerjaannya kini berjalan di cakupan simpan statis yang hidup melewati layar, sama seperti jalur simpan utama. (Issue #1227)
 - Cek paritas jumlah item string-array pada gerbang yang mati sejak lahir diperbaiki: agregasi hitungan kini membedakan "belum tercatat" dari "tak terhitung", sehingga selisih jumlah item antar bahasa benar-benar menggagalkan gerbang alih-alih lolos total. (Issue #1237)
 - Satu lompatan antarmuka pada jalur simpan Setup yang tertinggal kini memakai penjaga selesai dan cek generasi simpan yang sama seperti cabang-cabang tetangganya (#1226).
 - Perbedaan dua aturan pencocokan nomor telepon (sisi kontak yang longgar vs sisi riwayat yang ketat) kini terdokumentasi sebagai keputusan yang disengaja di kedua tempatnya, agar tidak lagi tampak sebagai ketidakkonsistenan tak disengaja (#1225).

@@ -1527,7 +1527,11 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun persistTestedSettings(token: String, chatId: String, myTest: Int, syncInterval: Int, cameraInterval: Int, accessPin: String) {
-        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+        // Di persistScope statis, BUKAN lifecycleScope (issue #1227):
+        // simpan yang sudah dikonfirmasi pemilik tak boleh gugur diam-
+        // diam hanya karena Setup ditutup/dibuat ulang sebelum IO
+        // berjalan. Hop Main sesudahnya tetap berpenjaga selesai.
+        persistScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val persisted = persistTestSettings(token, chatId, myTest, syncInterval, cameraInterval, accessPin)
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
