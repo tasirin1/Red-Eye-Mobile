@@ -148,16 +148,24 @@ object A11yMonitor {
         // DiscardPolicy (issue #1323, pola #949 di flush):
         // antrean penuh tepat saat layanan bind ulang sesudah
         // proses mati membuang pemulihan diam-diam dan rentang
-        // pemakaian terakhir hilang. Bila tugas tak mulai dan
-        // tak ada di antrean, ia terbuang — jalankan langsung.
-        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        // pemakaian terakhir hilang. Badan tugas digerbang
+        // KLAIM atomik (issue #1341): pemeriksaan lama
+        // (started + isi antrean) punya dua jendela balapan —
+        // lepas-antrean sebelum run, dan serahan firstTask
+        // yang tak pernah masuk antrean — sehingga tugas yang
+        // sehat bisa jalan dua kali. Kini siapa pun (pekerja
+        // atau pemanggil) yang memenangkan klaim yang
+        // menjalankan badan; pihak lain langsung kembali,
+        // jadi jalan-langsung pemanggil aman untuk semua
+        // keadaan tak-terantre, bukan hanya yang terbuang.
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
         val task = Runnable {
-            started.set(true)
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             ensureLoaded(app)
             synchronized(gate) { restoreOpenSessionLocked(app) }
         }
         executor.execute(task)
-        if (!started.get() && !executor.queue.contains(task)) {
+        if (!executor.queue.contains(task)) {
             task.run()
         }
     }
@@ -484,9 +492,9 @@ object A11yMonitor {
 
     fun flush(context: Context) {
         val app = context.applicationContext
-        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
         val task = Runnable {
-            started.set(true)
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             synchronized(gate) {
                 lastEventKey = ""
                 suspendedPackage = ""
@@ -499,12 +507,13 @@ object A11yMonitor {
         // Flush akhir tak boleh ikut nasib DiscardPolicy (issue
         // #949): antrean penuh tepat saat layanan dibongkar
         // membuang flush diam-diam dan sesi pemakaian terakhir
-        // hilang tanpa pernah terpersisten. DiscardPolicy
-        // membuang secara sinkron di dalam execute(), jadi bila
-        // tugas tak mulai dan tak ada di antrean, ia terbuang —
-        // jalankan langsung di thread pemanggil (badan kecil,
-        // terkurung gate yang sama, aman dijalankan dua kali).
-        if (!started.get() && !executor.queue.contains(task)) {
+        // hilang tanpa pernah terpersisten. Bila tugas tak ada
+        // di antrean, pemanggil mencobanya langsung — klaim
+        // atomik di badan (issue #1341) memastikan badan tetap
+        // jalan tepat satu kali walau pekerja ternyata sudah
+        // melepasnya dari antrean atau menerimanya sebagai
+        // firstTask: yang kalah klaim langsung kembali.
+        if (!executor.queue.contains(task)) {
             task.run()
         }
     }
@@ -517,9 +526,9 @@ object A11yMonitor {
         // (termasuk jam malam) ikut terakru ke statistik
         // pemakaian berikutnya. Bila tugas tak mulai dan tak
         // ada di antrean, ia terbuang — jalankan langsung.
-        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
         val task = Runnable {
-            started.set(true)
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             synchronized(gate) {
                 ensureLoadedLocked(app)
                 if (currentPackage.isNotEmpty()) {
@@ -532,7 +541,10 @@ object A11yMonitor {
             }
         }
         executor.execute(task)
-        if (!started.get() && !executor.queue.contains(task)) {
+        // Pola anti-buang yang sama dengan flush (issue
+        // #1324), kini digerbang klaim atomik (issue #1341):
+        // tepat satu pihak menjalankan badan.
+        if (!executor.queue.contains(task)) {
             task.run()
         }
     }

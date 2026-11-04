@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pola anti-buang tugas sesi aksesibilitas (pemulihan sesi, flush akhir, finalisasi saat layar mati) kini digerbang klaim atomik sehingga badan tugas dijamin jalan tepat satu kali: pemeriksaan dua langkah sebelumnya punya dua jendela balapan — tugas yang baru lepas dari antrean atau tugas pertama executor bisa tampak "terbuang" padahal sehat, lalu dijalankan pemanggil bersamaan dengan thread pekerja. Kini siapa pun yang memenangkan klaim yang menjalankan badan, pihak lain langsung kembali.
+
 - Cermin daftar aplikasi dikenal kini ikut dibuang saat penyimpanan berhasil naik kelas ke penyimpanan persisten, sama seperti saat penyimpanan dibuka ulang: sebelumnya cermin lama dari penyimpanan sementara tetap dipakai, sehingga jawaban "aplikasi sudah dikenal" bisa berasal dari data sebelum penggabungan dan penulisan berikutnya menimpa hasil gabungan yang baru dengan himpunan lama.
 
 - Kirim langsung (petunjuk pairing dan pemberitahuan login) kini menghormati gerbang rate-limit dan blokir kredensial global yang sama dengan jalur antre, dan balasan 429 yang diterimanya ikut mengajari gerbang itu — sebelumnya jalur ini mengirim menembus keduanya. Selain itu seluruh panggilan jaringan selama alur login kini dikirim sesudah kunci login lepas, bukan sambil memegangnya: satu kirim yang lambat tidak lagi menahan upaya login berikutnya sampai puluhan detik.
