@@ -2430,45 +2430,39 @@ def cek_paritas_resource(gagal):
     if any(teks is None for teks in isi.values()):
         return
     pola = re.compile(r'<string(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string>', re.S)
-    inggris = dict(pola.findall(kupas_komentar_xml(isi[jalur[0]])))
-    indonesia = dict(pola.findall(kupas_komentar_xml(isi[jalur[1]])))
-    for nama, teks in sorted(indonesia.items()):
-        if nama in inggris and argumen_format(teks) != argumen_format(inggris[nama]):
-            gagal.append("Argumen format beda di values-in: " + nama)
+    # Perbandingan per DIREKTORI, bukan per berkas (issue
+    # #1307 diperluas #1328): terjemahan sebuah string boleh
+    # tinggal di berkas values-in yang BERBEDA dari berkas
+    # values Inggrisnya — perbandingan per pasangan berkas
+    # se-nama tak pernah mempertemukan pasangan semacam itu,
+    # jadi beda %d vs %s-nya lolos. Kini semua berkas .xml di
+    # tiap direktori digabung jadi satu peta per locale
+    # (meniru peta_item plurals/array di bawah).
+    def peta_string_dir(dirpath):
+        peta = {}
+        if not os.path.isdir(dirpath):
+            return peta
+        for nama_berkas in sorted(os.listdir(dirpath)):
+            if not nama_berkas.endswith(".xml"):
+                continue
+            isi_b = baca(os.path.relpath(os.path.join(dirpath, nama_berkas), AKAR))
+            if isi_b is None:
+                continue
+            for nama, teks in pola.findall(kupas_komentar_xml(isi_b)):
+                peta.setdefault(nama, (teks, nama_berkas))
+        return peta
 
-    # Pasangan berkas values LAIN ikut diperiksa (issue #1307):
-    # pola lama hanya membaca strings.xml, jadi string
-    # ber-format di berkas values lain (mis. ekstra.xml) buta
-    # paritas dan beda %d vs %s di sana lolos — crash
-    # IllegalFormatConversionException menunggu di perangkat.
-    dir_en = os.path.join(AKAR, "app/src/main/res/values")
-    dir_in = os.path.join(AKAR, "app/src/main/res/values-in")
-    try:
-        berkas_in = set(os.listdir(dir_in))
-    except OSError:
-        berkas_in = set()
-    try:
-        berkas_en = set(os.listdir(dir_en))
-    except OSError:
-        berkas_en = set()
-    for nama_berkas in sorted(berkas_en & berkas_in):
-        if nama_berkas == "strings.xml" or not nama_berkas.endswith(".xml"):
-            continue
-        teks_en = baca_teks(os.path.join("app/src/main/res/values", nama_berkas))
-        teks_in = baca_teks(os.path.join("app/src/main/res/values-in", nama_berkas))
-        if not teks_en or not teks_in:
-            continue
-        peta_en = dict(pola.findall(kupas_komentar_xml(teks_en)))
-        peta_in = dict(pola.findall(kupas_komentar_xml(teks_in)))
-        for nama, teks in sorted(peta_in.items()):
-            if nama in peta_en and argumen_format(teks) != argumen_format(peta_en[nama]):
-                gagal.append("Argumen format beda di values-in/%s: %s" % (nama_berkas, nama))
+    dasar_res = os.path.join(AKAR, "app/src/main/res")
+    peta_en = peta_string_dir(os.path.join(dasar_res, "values"))
+    peta_in = peta_string_dir(os.path.join(dasar_res, "values-in"))
+    for nama, (teks, berkas_in) in sorted(peta_in.items()):
+        if nama in peta_en and argumen_format(teks) != argumen_format(peta_en[nama][0]):
+            gagal.append("Argumen format beda di values-in/%s: %s" % (berkas_in, nama))
     # Argumen format di dalam <item> plurals/string-array juga wajib
     # paritas (issue #1045): cek di atas hanya melihat <string>, jadi
     # plurals "%d files" vs "%s berkas" lolos — padahal kelas crash
     # formatnya sama persis. Plurals dibandingkan per quantity,
     # string-array per indeks item.
-    dasar_res = os.path.join(AKAR, "app/src/main/res")
     pola_plurals = re.compile(r'<plurals(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
     pola_item_q = re.compile(r'<item\s+quantity=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</item>', re.S)
     pola_array = re.compile(r'<string-array(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>', re.S)

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Paritas argumen format resource kini dibandingkan per direktori, bukan per pasangan berkas se-nama: terjemahan yang tinggal di berkas values-in berbeda dari berkas Inggrisnya kini tetap dipertemukan, sehingga beda %d vs %s lintas berkas tidak lagi lolos; terbukti di sandbox — pasangan beda berkas yang timpang tertangkap, yang cocok tetap lolos.
+
 - Pengurai path sisi-b pada kepala diff tidak lagi merusak path yang mengandung spasi: sisi-b kini dicari dari kemunculan terakhir pemisahnya (git memang tidak mengkuotasi path hanya karena spasi), sehingga berkas ber-spasi tidak lagi terlewat senyap oleh cek-cek berbasis kepala diff; terbukti dengan baterai unit berpasangan — path ber-spasi dan direktori ber-spasi terurai benar, path polos dan path terkuotasi non-ASCII tidak berubah.
 
 - Gerbang bekas-hapusan tidak lagi positif palsu pada suntingan di dalam string mentah/komentar blok panjang: keadaan pengupasan tiap hunk kini disemai dari isi berkas sebelum hunk (pembuka bisa jauh di atas hunk) dan baris konteks ikut memajukan keadaan; terbukti di sandbox — suntingan isi string dan isi komentar lolos, pemakaian kode asli tetap tertangkap.
