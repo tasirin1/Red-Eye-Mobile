@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian larik primitif (int[], long[], byte[][]): cabang primitif sebelumnya menuntut spasi langsung sesudah tipe, tidak seperti String[] yang sudah tertangkap. Terbukti lewat harness.
+
 - Pengenal deklarasi Java di alat verifikasi kini mengenali metode beranotasi sebaris (@Override dan sejenisnya): bentuk metode Java paling lazim itu sebelumnya lolos dari peringatan cakupan uji. Terbukti lewat harness.
 
 - Pengingat izin tangkapan layar hangus kini juga terkirim sesudah aplikasi diperbarui, bukan hanya sesudah restart HP: pembaruan juga menghanguskan izin itu, dan sebelumnya pemilik tidak menerima pengingat apa pun sampai /screenshot berikutnya gagal tanpa penjelasan.
