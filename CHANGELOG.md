@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi prioritas kini mempertahankan jalur prioritasnya saat terantre sebagai cadangan: status prioritas diteruskan ke seluruh cabang pengantrean di jalur penerusan (termasuk fallback teks polos dan penyelamatan saat batal) serta dua situs antre langsung, sehingga notifikasi penting seperti OTP tidak lagi dikuras paling akhir atau tereviksi lebih dulu saat antrean penuh.
+
 - Penghimpun definisi alat verifikasi kini mendaftarkan turunan styleable untuk atribut kerangka dengan nama R yang benar (titik dua menjadi garis bawah) dan mengenali `<declare-styleable>` bentuk self-closing: keduanya sebelumnya membuat acuan styleable yang sah tetap divonis yatim. Terbukti lewat uji unit penghimpun.
 
 - Peringatan metode baru di alat verifikasi kembali menangkap metode Java bertipe kembalian nama-penuh (mis. `java.util.List<...>`), yang sempat lolos sejak pengetatan pengenal deklarasi ronde lalu; himpunan kasus palsu tetap diam. Terbukti lewat harness dua arah.

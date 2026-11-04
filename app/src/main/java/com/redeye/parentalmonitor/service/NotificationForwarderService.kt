@@ -742,7 +742,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 record(label, title, text)
                 var queued = false
                 try {
-                    queued = queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower))
+                    queued = queue().addMessage("❗ " + buildNotifMessage(label, title, text, maskedLower), true)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -781,7 +781,7 @@ class NotificationForwarderService : NotificationListenerService() {
         record(label, title, text)
         if (priority) {
             val delivered = try {
-                forwardLocked("❗ " + message, 1)
+                forwardLocked("❗ " + message, 1, priority = true)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 true
             } catch (_: Exception) {
@@ -859,7 +859,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 rebindNoticeSent = true
                 scope.launch {
                     try {
-                        queue().addMessage("⚠️ Akses notifikasi terputus dan belum pulih walau sudah dicoba berulang. Buka aplikasi → Setup → izinkan akses notifikasi, atau kirim /recover. Aplikasi tetap mencoba menyambung tiap 30 menit.")
+                        queue().addMessage("⚠️ Akses notifikasi terputus dan belum pulih walau sudah dicoba berulang. Buka aplikasi → Setup → izinkan akses notifikasi, atau kirim /recover. Aplikasi tetap mencoba menyambung tiap 30 menit.", true)
                         MessageScheduler.scheduleMessageSend(this@NotificationForwarderService)
                     } catch (_: Exception) {
                     }
@@ -1627,7 +1627,7 @@ class NotificationForwarderService : NotificationListenerService() {
         return TelegramSendPolicy.classify(response.isSuccessful, response.body()?.ok == true, code, body, migrated)
     }
 
-    private suspend fun forwardPlainFallback(url: String, botToken: String, chatId: String, original: String, plain: String, prefs: PreferencesManager): Boolean {
+    private suspend fun forwardPlainFallback(url: String, botToken: String, chatId: String, original: String, plain: String, prefs: PreferencesManager, priority: Boolean = false): Boolean {
         val fallbackResp = TelegramClient.api.sendMessage(url, TelegramMessage(chatId = chatId, text = plain, parseMode = null))
         val outcome = classifyForward(fallbackResp, prefs, chatId)
         return when (outcome.kind) {
@@ -1637,24 +1637,24 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             TelegramSendPolicy.Kind.AUTH_FAILED -> {
                 try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                val queued = queue().addMessage(original)
+                val queued = queue().addMessage(original, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 queued
             }
             TelegramSendPolicy.Kind.RATE_LIMITED -> {
                 NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
-                val queued = queue().addMessage(original)
+                val queued = queue().addMessage(original, priority)
                 MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
                 queued
             }
             TelegramSendPolicy.Kind.TRANSIENT, TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
-                val queued = queue().addMessage(original)
+                val queued = queue().addMessage(original, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 queued
             }
             TelegramSendPolicy.Kind.CHAT_MISSING -> {
                 try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                val queued = queue().addMessage(original)
+                val queued = queue().addMessage(original, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 queued
             }
@@ -1673,14 +1673,18 @@ class NotificationForwarderService : NotificationListenerService() {
     // tepat penuh berisi prioritas) membuat pesan hilang tetapi
     // pemanggil menandainya sudah diteruskan. Berlaku juga untuk
     // forwardPlainFallback di atas.
-    private suspend fun forwardLocked(message: String, msgCount: Int = 1, queueOnCancel: Boolean = true): Boolean {
+    // priority diteruskan ke SEMUA antre-cadangan di dalam
+    // (issue #1391): notifikasi prioritas yang terantre tanpa
+    // bendera kehilangan jalurnya — dikuras paling akhir dan
+    // tereviksi lebih dulu saat antrean penuh.
+    private suspend fun forwardLocked(message: String, msgCount: Int = 1, queueOnCancel: Boolean = true, priority: Boolean = false): Boolean {
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { adoptPrefs(it) }
             } catch (_: Exception) {
                 var queued = false
                 try {
-                    queued = queue().addMessage(message)
+                    queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -1692,27 +1696,27 @@ class NotificationForwarderService : NotificationListenerService() {
                 // SendMessageWorker sendiri menahan pengiriman selama
                 // owner belum login, jadi tak ada yang keluar pra-login
                 // (issue #675).
-                val queued = queue().addMessage(message)
+                val queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
             if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) return false
             if (prefs.monitoringPaused) {
-                val queued = queue().addMessage(message)
+                val queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
             if (cachedFwdCreds.first.isEmpty() || cachedFwdCreds.second.isEmpty()) refreshFwdCreds()
             val (botToken, chatId) = cachedFwdCreds
             if (botToken.isEmpty() || chatId.isEmpty()) {
-                val queued = queue().addMessage(message)
+                val queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
             try {
                 NetworkUtils.sweepAuthBlock(prefs)
                 if (prefs.credentialError.isNotEmpty()) {
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                     return queued
                 }
@@ -1720,7 +1724,7 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             val rateRemain = NetworkUtils.rateLimitedRemainMs()
             if (rateRemain > 0L) {
-                val queued = queue().addMessage(message)
+                val queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSendNext(this, rateRemain)
                 return queued
             }
@@ -1730,7 +1734,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 netCached = NetworkUtils.isNetworkAvailable(this)
             }
             if (!netCached) {
-                val queued = queue().addMessage(message)
+                val queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSend(this)
                 return queued
             }
@@ -1745,24 +1749,24 @@ class NotificationForwarderService : NotificationListenerService() {
                 TelegramSendPolicy.Kind.AUTH_FAILED -> {
                     android.util.Log.e("NotifForwarder", "Send rejected (${outcome.code}), queuing notification")
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                     return queued
                 }
                 TelegramSendPolicy.Kind.RATE_LIMITED -> {
                     NetworkUtils.noteRateLimited(outcome.retryAfterSecs)
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSendNext(this, outcome.retryAfterSecs * 1000L)
                     return queued
                 }
                 TelegramSendPolicy.Kind.MIGRATED, TelegramSendPolicy.Kind.RIGHTS_LIMITED -> {
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                     return queued
                 }
                 TelegramSendPolicy.Kind.CHAT_MISSING -> {
                     try { prefs.setCredentialErrorIfCredentialsMatch(botToken, chatId, outcome.code.toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                     return queued
                 }
@@ -1772,14 +1776,14 @@ class NotificationForwarderService : NotificationListenerService() {
                     // sebagai TRANSIENT dan terantre di cabangnya.
                     val plain = Html.unescape(message)
                     if (plain != message || outcome.kind == TelegramSendPolicy.Kind.PARSE_ENTITIES) {
-                        if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs)) return true
+                        if (forwardPlainFallback(url, botToken, chatId, message, plain, prefs, priority)) return true
                     }
                     android.util.Log.w("NotifForwarder", "Notification permanently rejected (400), dropping")
                     try { noteDroppedNotification(msgCount) } catch (_: Exception) { }
                     return false
                 }
                 TelegramSendPolicy.Kind.TRANSIENT -> {
-                    val queued = queue().addMessage(message)
+                    val queued = queue().addMessage(message, priority)
                     MessageScheduler.scheduleMessageSend(this)
                     return queued
                 }
@@ -1798,7 +1802,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 // pemanggil tak memasang cap.
                 var rescued = false
                 try {
-                    rescued = queue().addMessage(message)
+                    rescued = queue().addMessage(message, priority)
                     if (rescued) MessageScheduler.scheduleMessageSend(this)
                 } catch (_: Exception) {
                 }
@@ -1809,7 +1813,7 @@ class NotificationForwarderService : NotificationListenerService() {
             android.util.Log.e("NotifForwarder", "Forward failed: ${redactToken(e.message)}")
             var queued = false
             try {
-                queued = queue().addMessage(message)
+                queued = queue().addMessage(message, priority)
                 MessageScheduler.scheduleMessageSend(this)
             } catch (_: Exception) {
             }
