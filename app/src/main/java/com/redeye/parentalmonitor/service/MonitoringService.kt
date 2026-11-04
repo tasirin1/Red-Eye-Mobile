@@ -2025,12 +2025,23 @@ class MonitoringService : Service() {
                     // Eviki selektif (issue #995): hitungan
                     // gagal yang percobaan terakhirnya sudah
                     // lewat satu masa kunci tak relevan lagi;
-                    // sisanya dipertahankan.
+                    // sisanya dipertahankan. Kebasian dinilai
+                    // dari cap DINDING loginFailsWallAt (issue
+                    // #1319): loginAttemptAt dipangkas tiap
+                    // percobaan dengan horizon throttle 1,5 dtk,
+                    // jadi hampir semua entri terbaca "tak pernah
+                    // mencoba" dan eviksi selektif merosot jadi
+                    // eviksi sembarang; peta cap dinding dirawat
+                    // pada setiap gagal dan saat restore.
+                    val wallEvict = System.currentTimeMillis()
                     val failIter = loginFails.entries.iterator()
                     while (failIter.hasNext()) {
                         val key = failIter.next().key
-                        val at = loginAttemptAt[key] ?: 0L
-                        if (at == 0L || now - at >= LOGIN_LOCK_MS) failIter.remove()
+                        val capDinding = loginFailsWallAt[key] ?: 0L
+                        if (capDinding == 0L || wallEvict - capDinding >= LOGIN_LOCK_MS) {
+                            failIter.remove()
+                            loginFailsWallAt.remove(key)
+                        }
                     }
                 }
                 loginFails[senderId] = fails

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Eviksi selektif hitungan gagal /login kini menilai kebasian entri dari cap dinding kegagalan terakhir, bukan dari peta throttle percobaan yang terpangkas tiap 1,5 detik: cara lama membuat hampir semua entri terbaca basi sehingga eviksi membuang entri yang masih relevan bersama yang sudah kedaluwarsa; cap dinding entri yang tereviksi kini ikut dibuang agar kedua peta tetap seirama.
+
 - Delegasi `restoreCodeLockoutUntil` di layanan kini baca-saja: setter yatimnya — yang bila kelak dipakai akan menulis var until sendirian dan memotong pasangan atomik gerbang kode restore — dihapus; pembaca tunggalnya tetap berjalan lewat getter.
 
 - `/logout` kini ikut membersihkan anggaran gagal /login yang terpersist beserta cermin memorinya (peta cap per-pengirim dan penanda global): sesi login berikutnya tidak lagi mewarisi hitungan pra-logout yang membuat kunci datang lebih awal dari seharusnya.
