@@ -785,8 +785,9 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
         try {
-            forwardToTelegram(message, idHash, if (trackGroup) groupKey else "")
-            capTerkirim()
+            if (forwardToTelegram(message, idHash, if (trackGroup) groupKey else "")) {
+                capTerkirim()
+            }
         } catch (_: Exception) {
         }
     }
@@ -1176,7 +1177,12 @@ class NotificationForwarderService : NotificationListenerService() {
         }
     }
 
-    private suspend fun forwardToTelegram(message: String, idHash: String = "", groupKey: String = "") {
+    // Hasil: true bila pesan terbuffer atau terantre; false bila
+    // luapan batch DAN antrean menolak — pesan hilang dan WAJIB
+    // tercatat (issue #1271). Pemanggil memakai hasil ini untuk
+    // memutuskan menulis cap dedup: cap tanpa pesan yang sampai
+    // membuang posting ulang yang sah sebagai "duplikat".
+    private suspend fun forwardToTelegram(message: String, idHash: String = "", groupKey: String = ""): Boolean {
         var overflowed = false
         synchronized(batchLock) {
             if (batchBuf.size >= MAX_BATCH) {
@@ -1186,17 +1192,25 @@ class NotificationForwarderService : NotificationListenerService() {
                 scheduleBatchLocked()
             }
         }
-        if (overflowed) {
-            try {
-                if (queue().addMessage(message)) {
-                    markGroupAndIdForwarded(groupKey, idHash)
-                }
-                MessageScheduler.scheduleMessageSend(this)
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (_: Exception) {
+        if (!overflowed) return true
+        var terantre = false
+        try {
+            if (queue().addMessage(message)) {
+                markGroupAndIdForwarded(groupKey, idHash)
+                terantre = true
+            }
+            MessageScheduler.scheduleMessageSend(this)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+        if (!terantre) {
+            try { noteDroppedNotification() } catch (_: Exception) {
+            }
+            try { recordDrop() } catch (_: Exception) {
             }
         }
+        return terantre
     }
 
     private suspend fun flushBatch() {

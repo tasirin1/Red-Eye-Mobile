@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Luapan batch penerus notifikasi tidak lagi hilang senyap: pesan yang ditolak antrean kini dihitung sebagai gugur, dan cap dedup 10 detik hanya ditulis bila pesan benar-benar terbuffer/terantre (sebelumnya cap tetap tertulis sehingga posting ulang ikut terbuang) (issue #1271).
 - Pemangkasan peta throttle `lastContentScan` kini berjalan sebelum gerbang pantau app, bukan sesudahnya: pada keadaan bawaan (pantau app mati) peta tidak lagi tumbuh monoton tanpa pernah dipangkas selama proses hidup (issue #1270).
 - Gerbang kesehatan aksesibilitas tidak lagi menghitung kata pantau sebagai pemakaian a11y bila `/appwatch` mati: pemilik yang memakai `/watch` hanya untuk notifikasi tidak lagi menerima alert "aksesibilitas mati" berulang untuk fitur yang sudah dimatikannya (issue #1269).
 - Kebocoran `SurfaceTexture`/`Surface` di penyiapan foto tertutup: kegagalan alokasi `Surface`/`ImageReader` di tengah penyiapan kini melepas sumber daya yang sudah terbuat sebelum melempar ke penanganan error (issue #1268).
