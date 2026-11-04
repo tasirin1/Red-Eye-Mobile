@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penghapusan antrean pesan kini meninggalkan penanda tahan di cakram bila penghapusan cakramnya gagal total: sebelumnya penanda kegagalan hanya hidup di memori, sehingga perangkat yang mati sebelum penulisan berikutnya berhasil membuat antrean yang sudah dihapus bangkit lagi dari cakram — pesan era kredensial lama bisa terkirim ke konfigurasi baru. Kini pemuat berikutnya mengeksekusi penghapusan tertunda itu sebelum membaca isi lama.
+
 - Penanda blokir kredensial mati (respons 401/403 dari Telegram) kini ditulis dengan cara yang langsung tersimpan ke cakram seperti penanda keamanan lainnya: sebelumnya tulisan asinkron bisa hilang bila perangkat mati mendadak, sehingga sesudah menyala aplikasi mengulang kirim dengan kredensial yang sudah mati.
 
 - Penerusan notifikasi prioritas tak lagi mencatat notifikasi sebagai terkirim bila penyelamatannya ke antrean gagal saat proses dibatalkan di tengah pengiriman: sebelumnya hasil penyelamatan dibuang dan pembatalan selalu dihitung terkirim, sehingga notifikasi bisa hilang permanen tetapi tercatat sudah diteruskan dan tak pernah dicoba lagi.

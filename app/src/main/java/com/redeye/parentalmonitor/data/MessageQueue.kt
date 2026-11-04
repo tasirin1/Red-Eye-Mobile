@@ -117,6 +117,7 @@ class MessageQueue private constructor(context: Context) {
     companion object {
         private const val QUEUE_PREFS_NAME = "encrypted_queue"
         private const val KEY_QUEUE = "queued_messages"
+        private const val KEY_WIPE_PENDING = "queue_wipe_pending"
         private const val KEY_QUEUE_BAK = "queued_messages_bak"
         private const val KEY_OVERFLOW_DROPS = "overflow_drops"
         private const val KEY_EXPIRED_DROPS = "expired_drops"
@@ -353,6 +354,9 @@ class MessageQueue private constructor(context: Context) {
 
     private fun loadDropCountsLocked(add: Boolean = false) {
         try {
+            // Wipe tertunda lintas proses lebih dulu (issue
+            // #1371): sesudahnya kelima kunci terbaca nol.
+            terapkanWipeTertundaLocked()
             // Tiap kunci dibaca dengan penjaganya sendiri
             // (issue #1109): satu getLong yang melempar
             // (mis. nilai korup beda tipe) dulu menggagalkan
@@ -696,12 +700,12 @@ class MessageQueue private constructor(context: Context) {
                 persistVersion++
                 pendingSnapshot = null
                 val removed = try {
-                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.commit() == true
+                    wipe?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_WIPE_PENDING)?.commit() == true
                 } catch (_: Exception) {
                     false
                 }
                 removed || try {
-                    wipe?.edit()?.putString(KEY_QUEUE, "[]")?.putString(KEY_QUEUE_BAK, "[]")
+                    wipe?.edit()?.putString(KEY_QUEUE, "[]")?.putString(KEY_QUEUE_BAK, "[]")?.remove(KEY_WIPE_PENDING)
                         ?.putLong(KEY_OVERFLOW_DROPS, 0L)?.putLong(KEY_EXPIRED_DROPS, 0L)
                         ?.putLong(KEY_PRIORITY_DROPS, 0L)?.putLong(KEY_EXHAUSTED_DROPS, 0L)
                         ?.putLong(KEY_REJECTED_DROPS, 0L)?.commit() == true
@@ -710,6 +714,16 @@ class MessageQueue private constructor(context: Context) {
                 }
             }
             if (!cleared) {
+                // Penanda wipe TAHAN di cakram (issue #1371):
+                // penanda memori di bawah mati bersama proses,
+                // jadi untuk mode persisten wipe yang gagal
+                // total dituliskan niatnya ke cakram lewat satu
+                // commit kecil terpisah — pemuat berikutnya
+                // mengeksekusi wipe SEBELUM membaca isi lama
+                // (terapkanWipeTertundaLocked), sehingga
+                // antrean terhapus tak bangkit lintas mati-
+                // proses dan terkirim ke konfigurasi baru.
+                try { wipe?.edit()?.putBoolean(KEY_WIPE_PENDING, true)?.commit() } catch (_: Exception) { }
                 persistDirty = true
                 // Wipe GAGAL (issue #1333): baseline sudah
                 // ternolkan sebelum hasilnya diketahui, jadi
@@ -753,6 +767,23 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
+    // Eksekusi wipe cakram yang tertunda lintas proses
+    // (issue #1371): mengembalikan true bila penanda tahan
+    // ditemukan (isi cakram baru saja diwipe / memang harus
+    // dianggap kosong). Dipanggil pemuat antrean dan pemuat
+    // hitungan drop sebelum mereka membaca isi lama.
+    private fun terapkanWipeTertundaLocked(): Boolean {
+        val tertunda = try { sharedPreferences?.getBoolean(KEY_WIPE_PENDING, false) } catch (_: Exception) { false } == true
+        if (!tertunda) return false
+        try {
+            synchronized(persistMutex) {
+                sharedPreferences?.edit()?.remove(KEY_QUEUE)?.remove(KEY_QUEUE_BAK)?.remove(KEY_OVERFLOW_DROPS)?.remove(KEY_EXPIRED_DROPS)?.remove(KEY_PRIORITY_DROPS)?.remove(KEY_EXHAUSTED_DROPS)?.remove(KEY_REJECTED_DROPS)?.remove(KEY_WIPE_PENDING)?.commit()
+            }
+        } catch (_: Exception) {
+        }
+        return true
+    }
+
     private fun readLocked(): MutableList<QueuedMessage> {
         cached?.let {
             val cutoffCached = System.currentTimeMillis() - 7 * 24 * 60 * 60_000L
@@ -765,6 +796,11 @@ class MessageQueue private constructor(context: Context) {
                 return kept
             }
             return it
+        }
+        if (terapkanWipeTertundaLocked()) {
+            val kosong = mutableListOf<QueuedMessage>()
+            cached = kosong
+            return kosong
         }
         val json = try {
             sharedPreferences?.getString(KEY_QUEUE, null)
