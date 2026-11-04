@@ -2841,6 +2841,11 @@ def utama():
                 gagal.append("Jalur tidak ditemukan: " + j)
         berubah = [j for j in args.jalur if os.path.exists(os.path.join(AKAR, j))]
         diff = jalan("git", "diff", "--", *berubah) or ""
+        # Perubahan staged ikut diperiksa (issue #1349): tanpa
+        # --cached, berkas yang sudah di-git-add menghasilkan
+        # diff kosong dan seluruh cek berbasis diff terlewati
+        # senyap padahal keluaran mengaku berkas diperiksa.
+        diff += jalan("git", "diff", "--cached", "--", *berubah) or ""
     elif args.rentang:
         daftar = daftar_berkas_berubah(args.rentang)
         if daftar is None:
