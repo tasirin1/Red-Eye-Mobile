@@ -575,7 +575,14 @@ def cek_acuan_yatim(gagal):
     for jenis, dipakai in sorted(acuan.items()):
         ada = definisi.get(jenis, set())
         yatim = sorted(n for n in dipakai
-                       if n not in ada and not n.startswith(AWALAN_PUSTAKA))
+                       if n not in ada and not n.startswith(AWALAN_PUSTAKA)
+                       # Keluarga Base.* pustaka (issue #1402):
+                       # Base.Theme.AppCompat dsb. adalah bentuk
+                       # baku pewarisan tema AppCompat/Material;
+                       # nama terrapikannya Base_Theme_... tak
+                       # dijangkau pola_pustaka maupun awalan di
+                       # atas (khusus jenis style).
+                       and not (jenis == "style" and n.startswith("Base_")))
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))

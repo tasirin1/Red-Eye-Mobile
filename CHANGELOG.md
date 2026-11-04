@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Alat verifikasi tak lagi memvonis yatim style pustaka keluarga Base (Base.Theme.AppCompat dan sejenisnya) yang dirujuk sebagai parent tema: nama terrapikannya lolos dari kedua saringan pustaka yang ada. Terbukti lewat uji fungsi dua arah.
+
 - Pemasang kait pre-push kini membatalkan pemasangan dengan peringatan keras bila penyalinan cadangan kait lama gagal (mis. cakram penuh): sebelumnya kegagalan itu jatuh diam-diam — kait asing tetap tertimpa, cadangannya parsial, dan pemasangan melaporkan sukses. Terbukti di sandbox dengan penyalinan yang digagalkan: naskah lama kehilangan kait asing dengan exit 0, naskah baru berhenti dengan exit 1 dan kait utuh.
 
 - Pemeriksa jejak uji di alat verifikasi kini menilai daftar dan isi berkas uji dari pohon ujung rentang pada mode rentang, bukan dari berkas kerja: sebelumnya peringatan cakupan bisa palsu dua arah begitu checkout menyimpang dari rentang yang diperiksa. Terbukti di sandbox dua checkout.
