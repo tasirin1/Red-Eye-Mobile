@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.621] - 2026-11-04
+
 ### Fixed
 
 - Sesi pemakaian aplikasi yang terputus karena proses layanan mati kini punya kesempatan kedua untuk dipulihkan: sebelumnya pemulihan hanya dicoba sekali saat layanan tersambung dan ketidakcocokan jendela depan sesaat langsung menghapus penanda sesi, membuang sisa durasi sesi itu permanen. Kini penanda hanya dihapus bila berakhirnya sesi pasti, dan peristiwa jendela berikutnya mencoba memulihkan lagi sebelum diproses.
