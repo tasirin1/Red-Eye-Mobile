@@ -1346,11 +1346,18 @@ def cek_aturan_repo(gagal, berubah):
             continue
         rendah = path.lower()
         sudah_dilarang = False
-        if rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
-                             ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah):
+        # Penghapusan berkas terlarang adalah REMEDIASI, bukan
+        # pelanggaran (issue #1290): path yang tak ada lagi di
+        # pohon kerja sedang KELUAR dari repo — memvonisnya
+        # GAGAL menutup satu-satunya jalan membersihkan repo
+        # tanpa --no-verify. Mode --semua tak terpengaruh:
+        # daftarnya berkas terlacak yang memang ada.
+        masih_ada = os.path.isfile(os.path.join(AKAR, path))
+        if masih_ada and (rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
+                             ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah)):
             gagal.append("Berkas terlarang masuk repo: " + path)
             sudah_dilarang = True
-        elif rendah == "local.properties" or rendah.endswith("/local.properties"):
+        elif masih_ada and (rendah == "local.properties" or rendah.endswith("/local.properties")):
             gagal.append("local.properties tak boleh masuk repo: " + path)
             sudah_dilarang = True
         # Batas ukuran berlaku di SEMUA folder (issue #1040):

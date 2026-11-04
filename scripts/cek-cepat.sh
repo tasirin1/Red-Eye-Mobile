@@ -93,7 +93,9 @@ for lf in app/src/main/res/layout-*/*.xml; do
 done
 # 3. Jangan commit binary/APK/secret ke repo (kredensial hanya via SetupActivity).
 # Termasuk keystore agar password tak bocor ke repo.
-if git diff --cached --name-only | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx|pem|key)$|local\.properties$|((^|/)\.env(\.[^/]*)?|\.env|(^|/)\.envrc(\.[^/]*)?)$' >/dev/null; then
+# --diff-filter=d (issue #1290): penghapusan staged berkas
+# terlarang adalah remediasi — jangan digagalkan.
+if git diff --cached --name-only --diff-filter=d | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx|pem|key)$|local\.properties$|((^|/)\.env(\.[^/]*)?|\.env|(^|/)\.envrc(\.[^/]*)?)$' >/dev/null; then
   echo "GAGAL: binary/APK/secret ikut staged (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
 # 4. Token bot asli jangan ikut staged (tanpa pengecualian baris regex).
