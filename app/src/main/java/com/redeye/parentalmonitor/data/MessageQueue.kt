@@ -25,6 +25,19 @@ class MessageQueue private constructor(context: Context) {
 
     @Volatile
     private var dropsDirty = false
+    // Jumlah yang sudah DIAMBIL pelapor selama mode volatile
+    // (issue #1282): pada mode itu persist tak berjalan, jadi
+    // angka di cakram masih utuh; tanpa penanda ini, muat
+    // aditif saat penyimpanan pulih membangkitkan angka yang
+    // sudah terlapor -> laporan drop ganda. Proses mati pada
+    // mode volatile menelan penanda ini bersama memori, dan
+    // angka cakram bangkit utuh (at-least-once tetap terjaga).
+    private var takenVolatileOverflow = 0L
+    private var takenVolatileExpired = 0L
+    private var takenVolatilePriority = 0L
+    private var takenVolatileExhausted = 0L
+    private var takenVolatileRejected = 0L
+
     private var persistedOverflowDrops = 0L
     private var persistedExpiredDrops = 0L
     private var persistedPriorityDrops = 0L
@@ -212,6 +225,14 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 volatileOnly = false
                 restoreFailLogged = false
+                // Penanda volatile merujuk hitungan penyimpanan
+                // LAMA yang sudah direset — bersihkan agar tak
+                // mengurangi muatan aditif di masa depan (#1282).
+                takenVolatileOverflow = 0L
+                takenVolatileExpired = 0L
+                takenVolatilePriority = 0L
+                takenVolatileExhausted = 0L
+                takenVolatileRejected = 0L
                 loadDropCountsLocked(add = false)
             } catch (e: Exception) {
                 sharedPreferences = null
@@ -352,11 +373,19 @@ class MessageQueue private constructor(context: Context) {
             persistedExhaustedDrops = exhausted
             persistedRejectedDrops = rejected
             if (add) {
-                overflowDrops.addAndGet(overflow)
-                expiredDrops.addAndGet(expired)
-                priorityDrops.addAndGet(priority)
-                exhaustedDrops.addAndGet(exhausted)
-                rejectedDrops.addAndGet(rejected)
+                // Kurangi yang sudah diambil selama volatile
+                // (issue #1282) agar tak bangkit sebagai laporan
+                // ganda; penanda lalu dibersihkan.
+                overflowDrops.addAndGet((overflow - takenVolatileOverflow).coerceAtLeast(0L))
+                expiredDrops.addAndGet((expired - takenVolatileExpired).coerceAtLeast(0L))
+                priorityDrops.addAndGet((priority - takenVolatilePriority).coerceAtLeast(0L))
+                exhaustedDrops.addAndGet((exhausted - takenVolatileExhausted).coerceAtLeast(0L))
+                rejectedDrops.addAndGet((rejected - takenVolatileRejected).coerceAtLeast(0L))
+                takenVolatileOverflow = 0L
+                takenVolatileExpired = 0L
+                takenVolatilePriority = 0L
+                takenVolatileExhausted = 0L
+                takenVolatileRejected = 0L
                 dropsDirty = true
             } else {
                 overflowDrops.set(overflow)
@@ -943,6 +972,15 @@ class MessageQueue private constructor(context: Context) {
     private fun takeDropsLocked(counter: java.util.concurrent.atomic.AtomicLong): Long {
         val n = counter.getAndSet(0L)
         if (n <= 0L) return 0L
+        if (volatileOnly) {
+            when (counter) {
+                overflowDrops -> takenVolatileOverflow += n
+                expiredDrops -> takenVolatileExpired += n
+                priorityDrops -> takenVolatilePriority += n
+                exhaustedDrops -> takenVolatileExhausted += n
+                rejectedDrops -> takenVolatileRejected += n
+            }
+        }
         dropsDirty = true
         persistDropCountsLocked()
         return n
@@ -969,6 +1007,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreOverflowDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            if (volatileOnly) takenVolatileOverflow = (takenVolatileOverflow - by).coerceAtLeast(0L)
             noteOverflowLocked(by)
         }
     }
@@ -976,6 +1015,7 @@ class MessageQueue private constructor(context: Context) {
     fun restorePriorityDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            if (volatileOnly) takenVolatilePriority = (takenVolatilePriority - by).coerceAtLeast(0L)
             noteDropLocked(priorityDrops, by, true)
         }
     }
@@ -983,6 +1023,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExpiredDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            if (volatileOnly) takenVolatileExpired = (takenVolatileExpired - by).coerceAtLeast(0L)
             noteExpiredLocked(by)
         }
     }
@@ -1016,6 +1057,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExhaustedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            if (volatileOnly) takenVolatileExhausted = (takenVolatileExhausted - by).coerceAtLeast(0L)
             noteDropLocked(exhaustedDrops, by, true)
         }
     }
@@ -1023,6 +1065,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreRejectedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            if (volatileOnly) takenVolatileRejected = (takenVolatileRejected - by).coerceAtLeast(0L)
             noteDropLocked(rejectedDrops, by, true)
         }
     }
