@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang kesehatan aksesibilitas tidak lagi menghitung kata pantau sebagai pemakaian a11y bila `/appwatch` mati: pemilik yang memakai `/watch` hanya untuk notifikasi tidak lagi menerima alert "aksesibilitas mati" berulang untuk fitur yang sudah dimatikannya (issue #1269).
 - Kebocoran `SurfaceTexture`/`Surface` di penyiapan foto tertutup: kegagalan alokasi `Surface`/`ImageReader` di tengah penyiapan kini melepas sumber daya yang sudah terbuat sebelum melempar ke penanganan error (issue #1268).
 - Wakelock unggah foto dinaikkan dari 120 detik menjadi 600 detik, selaras dengan `callTimeout` klien media: unggahan lambat yang sah tidak lagi kehilangan perlindungan tidur dalam di tengah jalan (issue #1267).
 - Video yang terekam dengan lensa cadangan kini diberi pemberitahuan seperti jalur foto ("🎥 Lensa yang diminta tak ada, dipakai kamera …"), tidak lagi terkirim senyap seolah memakai lensa yang diminta (issue #1266).

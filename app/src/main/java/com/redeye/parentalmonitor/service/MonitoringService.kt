@@ -11253,7 +11253,15 @@ class MonitoringService : Service() {
             val a11yDipakai = try {
                 preferencesManager.a11yTamperEnabled ||
                     preferencesManager.a11yAppAlert ||
-                    preferencesManager.watchKeywords.isNotBlank() ||
+                    // Lengan kata pantau mensyaratkan /appwatch
+                    // menyala (issue #1269): satu-satunya konsumen
+                    // a11y kata itu (scanWatchedContent) juga
+                    // mensyaratkannya — kata pantau untuk
+                    // notifikasi saja bukan fungsi a11y, jadi
+                    // tanpanya gerbang tak boleh menganggap
+                    // aksesibilitas sedang dipakai.
+                    (preferencesManager.watchKeywords.isNotBlank() &&
+                        preferencesManager.a11yAppWatchEnabled) ||
                     // Lengan pemakaian hanya selama datanya
                     // SEGAR (issue #1223): JSON hari terakhir
                     // bertahan selamanya, jadi tanpa syarat
