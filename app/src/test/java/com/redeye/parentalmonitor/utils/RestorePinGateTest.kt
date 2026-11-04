@@ -10,6 +10,22 @@ class RestorePinGateTest {
     private val now = 1_700_000_000_000L
 
     @Test
+    fun lockedWithCustomDurationUsesGivenLockMs() {
+        // #1251: varian berdurasian bebas (kunci global /login 10
+        // menit). Nilai dibuktikan replikasi Python lebih dulu;
+        // kasus kedua MEMBEDAKAN durasi 10 vs 15 menit pada jalur
+        // jam monoton (jam dinding melompat +1 jam).
+        val w = 1_700_000_000_000L
+        val e = 1_000_000L
+        val lockMs = 600_000L
+        val until = w + lockMs
+        assertTrue(RestorePinGate.locked(until, w + 3_600_000L, e, e + 300_000L, lockMs))
+        assertFalse(RestorePinGate.locked(until, w + 3_600_000L, e, e + 600_000L, lockMs))
+        assertTrue(RestorePinGate.locked(until, w + 1, 0L, 0L, lockMs))
+        assertFalse(RestorePinGate.locked(until, w + lockMs, 0L, 0L, lockMs))
+    }
+
+    @Test
     fun thirdConsecutiveFailureLocksFor15Minutes() {
         var count = 0
         var lock = 0L

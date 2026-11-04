@@ -1640,6 +1640,52 @@ class MonitoringService : Service() {
     private val loginLockUntil = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
+
+    // Penyimpanan kunci /login persisten (issue #1251): entri
+    // "senderId,untilWall,elapsedStart" di prefs, dipangkas saat
+    // menulis (kedaluwarsa dibuang, maks 16 entri terakhir).
+    private fun loginSenderLockEntry(senderId: String): Pair<Long, Long>? {
+        val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
+        for (part in raw.split(";")) {
+            val f = part.split(",")
+            if (f.size == 3 && f[0] == senderId) {
+                val until = f[1].toLongOrNull() ?: return null
+                val start = f[2].toLongOrNull() ?: return null
+                return until to start
+            }
+        }
+        return null
+    }
+
+    private fun persistLoginSenderLock(senderId: String, untilWall: Long, elapsedStart: Long) {
+        val wallNow = System.currentTimeMillis()
+        val entries = LinkedHashMap<String, Pair<Long, Long>>()
+        val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
+        for (part in raw.split(";")) {
+            val f = part.split(",")
+            if (f.size == 3) {
+                val u = f[1].toLongOrNull()
+                val st = f[2].toLongOrNull()
+                if (u != null && st != null && u > wallNow && f[0] != senderId) entries[f[0]] = u to st
+            }
+        }
+        entries[senderId] = untilWall to elapsedStart
+        val joined = entries.entries.takeLast(16).joinToString(";") { "${it.key},${it.value.first},${it.value.second}" }
+        try { preferencesManager.loginSenderLockouts = joined } catch (_: Exception) { }
+    }
+
+    private fun clearPersistedLoginSenderLock(senderId: String) {
+        val raw = try { preferencesManager.loginSenderLockouts } catch (_: Exception) { "" }
+        if (raw.isEmpty()) return
+        val kept = raw.split(";").filter { it.isNotEmpty() && it.split(",").firstOrNull() != senderId }
+        try { preferencesManager.loginSenderLockouts = kept.joinToString(";") } catch (_: Exception) { }
+    }
+
+    private fun clearPersistedLoginLocks() {
+        try { preferencesManager.loginSenderLockouts = "" } catch (_: Exception) { }
+        try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
+        try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
+    }
     private var restoreCodeFailCount: Int
         get() = try { preferencesManager.restoreCodeFailCount } catch (_: Exception) { 0 }
         set(value) { try { preferencesManager.restoreCodeFailCount = value } catch (_: Exception) { } }
@@ -1771,6 +1817,28 @@ class MonitoringService : Service() {
         val token = try { preferencesManager.botToken } catch (_: Exception) { "" }
         if (messageId > 0L) deleteIncomingMessage(senderId, messageId, token)
         val now = SystemClock.elapsedRealtime()
+        // Kunci PERSISTEN dinilai lebih dulu (issue #1251): restart
+        // proses mengosongkan peta memori di bawah, tetapi kunci
+        // yang disimpan jam ganda di prefs tetap berlaku — sama
+        // seperti gerbang PIN/kode restore.
+        val wallNow = System.currentTimeMillis()
+        if (com.redeye.parentalmonitor.utils.RestorePinGate.locked(
+                try { preferencesManager.loginGlobalLockoutUntil } catch (_: Exception) { 0L },
+                wallNow,
+                try { preferencesManager.loginGlobalLockoutElapsedStart } catch (_: Exception) { 0L },
+                now,
+                LOGIN_GLOBAL_LOCK_MS
+            )
+        ) {
+            sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
+            return true
+        }
+        val persistedSenderLock = loginSenderLockEntry(senderId)
+        if (persistedSenderLock != null && com.redeye.parentalmonitor.utils.RestorePinGate.locked(persistedSenderLock.first, wallNow, persistedSenderLock.second, now)) {
+            val minutes = ((persistedSenderLock.first - wallNow + 59_999L) / 60_000L).coerceAtLeast(1L)
+            sendDirect(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
+            return true
+        }
         if (now < loginGlobalLockoutUntil.get()) {
             sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
             return true
@@ -1810,6 +1878,10 @@ class MonitoringService : Service() {
             if (globalFails >= LOGIN_GLOBAL_MAX_FAILS) {
                 loginGlobalFails.set(0)
                 loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
+                try {
+                    preferencesManager.loginGlobalLockoutUntil = System.currentTimeMillis() + LOGIN_GLOBAL_LOCK_MS
+                    preferencesManager.loginGlobalLockoutElapsedStart = now
+                } catch (_: Exception) { }
                 audit("login pin terkunci global", "private")
                 sendDirect(senderId, "\u23F3 Terlalu banyak PIN salah. Login dikunci sementara.")
                 return true
@@ -1819,6 +1891,7 @@ class MonitoringService : Service() {
                     loginFails.remove(senderId)
                     loginAttemptAt.remove(senderId)
                     loginLockUntil[senderId] = now + LOGIN_LOCK_MS
+                    try { persistLoginSenderLock(senderId, System.currentTimeMillis() + LOGIN_LOCK_MS, now) } catch (_: Exception) { }
                 } catch (_: Exception) {
                 }
                 audit("login pin terkunci", "private")
@@ -1862,6 +1935,9 @@ class MonitoringService : Service() {
                     loginLockUntil.remove(senderId)
                     loginGlobalFails.set(0)
                     loginGlobalLockoutUntil.set(0L)
+                    clearPersistedLoginSenderLock(senderId)
+                    try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
+                    try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
                 } catch (_: Exception) {
                 }
             }
@@ -1931,6 +2007,7 @@ class MonitoringService : Service() {
             loginLockUntil.clear()
             loginGlobalFails.set(0)
             loginGlobalLockoutUntil.set(0L)
+            clearPersistedLoginLocks()
         } catch (_: Exception) {
         }
         refreshCreds()

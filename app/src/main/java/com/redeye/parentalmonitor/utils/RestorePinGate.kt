@@ -19,10 +19,17 @@ object RestorePinGate {
     // BootClock.sameBootOrClockShift membuktikan boot yang sama
     // sambil tetap menoleransi koreksi jam di tengah kunci.
     fun locked(lockoutUntilWall: Long, wallNow: Long, elapsedAtLock: Long, elapsedNow: Long): Boolean {
+        return locked(lockoutUntilWall, wallNow, elapsedAtLock, elapsedNow, LOCK_MS)
+    }
+
+    // Varian berdurasian bebas (issue #1251): gerbang lain yang
+    // masa kuncinya bukan 15 menit (kunci global /login = 10
+    // menit) memakai semantik jam ganda yang sama.
+    fun locked(lockoutUntilWall: Long, wallNow: Long, elapsedAtLock: Long, elapsedNow: Long, lockMs: Long): Boolean {
         if (elapsedAtLock > 0L && elapsedNow >= elapsedAtLock) {
-            val wallAtLock = lockoutUntilWall - LOCK_MS
+            val wallAtLock = lockoutUntilWall - lockMs
             if (BootClock.sameBootOrClockShift(wallAtLock, elapsedAtLock, wallNow, elapsedNow)) {
-                return elapsedNow - elapsedAtLock < LOCK_MS
+                return elapsedNow - elapsedAtLock < lockMs
             }
         }
         return wallNow < lockoutUntilWall

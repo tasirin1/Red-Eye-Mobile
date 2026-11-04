@@ -479,6 +479,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_RESTORE_CODE_FAIL_COUNT = "restore_code_fail_count"
         private const val KEY_RESTORE_CODE_LOCKOUT_UNTIL = "restore_code_lockout_until"
         private const val KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START = "restore_code_lockout_elapsed_start"
+        private const val KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL = "login_global_lockout_until"
+        private const val KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START = "login_global_lockout_elapsed_start"
+        private const val KEY_LOGIN_SENDER_LOCKOUTS = "login_sender_lockouts"
         private const val KEY_RESTORE_SECRET = "restore_code_secret"
         private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
@@ -1099,6 +1102,22 @@ class PreferencesManager(context: Context) {
     var restoreCodeLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_CODE_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
+
+    // Kunci anti-brute-force /login yang persisten (issue #1251):
+    // pasangan jam ganda seperti gerbang kode restore (#698), agar
+    // restart proses tak mereset kunci yang sedang berjalan.
+    var loginGlobalLockoutUntil: Long
+        get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
+
+    var loginGlobalLockoutElapsedStart: Long
+        get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
+        set(value) { try { sharedPreferences.edit().putLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
+
+    // Entri "senderId,untilWall,elapsedStart" dipisah ';'.
+    var loginSenderLockouts: String
+        get() = prefString(KEY_LOGIN_SENDER_LOCKOUTS, "")
+        set(value) { try { sharedPreferences.edit().putString(KEY_LOGIN_SENDER_LOCKOUTS, value).commit() } catch (_: Exception) { } }
 
     fun ensureRestoreCodeSecret(): String {
         // Kunci khusus (issue #1179): sebelumnya meminjam
