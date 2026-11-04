@@ -2805,6 +2805,16 @@ def cek_uji_baru(peringatan, diff):
         r"\s*(?:public\s+|private\s+|protected\s+)?(?:static\s+|fun\s+)?[\w<>\[\].,? ]+\s+(\w+)\s*\(")
     sudah = set()
     for _, baris in tambah_kode(diff):
+        # Baris pernyataan berkepala kata kerja bahasa bukan
+        # deklarasi (issue #1364): pola di bawah menelan
+        # "return"/"throw" sebagai slot tipe dan mencap nama
+        # yang DIPANGGIL sebagai metode baru — peringatan
+        # palsu yang mengikis kepercayaan pada yang sah.
+        lepas = baris.strip()
+        if lepas.startswith("return ") or lepas.startswith("return\t") \
+                or lepas == "return" or lepas.startswith("throw ") \
+                or lepas.startswith("throw\t") or lepas == "throw":
+            continue
         cocok = pola.match(baris)
         if cocok and cocok.group(1) not in KATA_KUNCI:
             nama = cocok.group(1)
