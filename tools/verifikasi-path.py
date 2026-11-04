@@ -574,6 +574,16 @@ def cek_xml(gagal):
 # semua jenis.
 AWALAN_PUSTAKA = ("m3_", "mtrl_", "abc_", "design_", "androidx_")
 
+# Varian garis-bawah dari keluarga pola_pustaka untuk acuan
+# R.style.* DARI KODE (issue #1420): sisi XML disaring pola
+# bertitik, sisi kode dulu hanya AWALAN_PUSTAKA — asimetri
+# yang memvonis yatim style pustaka yang dirujuk kode.
+AWALAN_STYLE_PUSTAKA = (
+    "Widget_", "ThemeOverlay_", "TextAppearance_", "Animation_",
+    "ShapeAppearance_", "ShapeAppearanceOverlay_", "Platform_",
+    "Theme_Material", "Theme_AppCompat", "Theme_Design",
+)
+
 
 def cek_acuan_yatim(gagal):
     definisi, acuan = himpun_definisi()
@@ -587,7 +597,8 @@ def cek_acuan_yatim(gagal):
                        # nama terrapikannya Base_Theme_... tak
                        # dijangkau pola_pustaka maupun awalan di
                        # atas (khusus jenis style).
-                       and not (jenis == "style" and n.startswith("Base_")))
+                       and not (jenis == "style" and n.startswith("Base_"))
+                       and not (jenis == "style" and n.startswith(AWALAN_STYLE_PUSTAKA)))
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))

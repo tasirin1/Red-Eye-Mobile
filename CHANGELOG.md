@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Acuan style pustaka dari kode (R.style...) kini juga dikecualikan dari vonis yatim, sejajar dengan acuan yang sama dari XML: sebelumnya pengecualian keluarga style pustaka hanya berlaku di sisi XML sehingga acuan kode yang sah divonis yatim. Terbukti lewat uji fungsi.
+
 - Alat verifikasi kini mengenali style Material keluarga ShapeAppearance dan ShapeAppearanceOverlay sebagai milik pustaka: sebelumnya style resmi itu divonis yatim saat dipakai sebagai parent tema. Terbukti lewat uji fungsi dua arah.
 
 - Pengenal deklarasi Kotlin di alat verifikasi kini juga menangkap fungsi penerima nama-penuh, fungsi penerima generik bersarang, dan fungsi yang anotasinya memuat kurung di dalam string argumen: tiga sisa tepi dari pengetatan ronde sebelumnya. Terbukti lewat harness.
