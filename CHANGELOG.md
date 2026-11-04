@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.619] - 2026-11-04
+
 ### Fixed
 
 - Pengupas komentar XML di alat verifikasi kini sadar CDATA: tanda pembuka komentar di dalam bagian CDATA adalah isi, bukan komentar — sebelumnya ia membuka "komentar hantu" yang menelan isi XML sungguhan sampai penutup komentar berikutnya, sehingga pemeriksaan bisa kehilangan rujukan dan string. Terbukti lewat uji satuan pengupas dan baterai sandbox hapus-kelas (gerbang lama kehilangan rujukan yang tertelan; gerbang baru menangkapnya).
