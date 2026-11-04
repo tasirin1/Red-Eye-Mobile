@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Delegasi `restoreCodeLockoutUntil` di layanan kini baca-saja: setter yatimnya — yang bila kelak dipakai akan menulis var until sendirian dan memotong pasangan atomik gerbang kode restore — dihapus; pembaca tunggalnya tetap berjalan lewat getter.
+
 - `/logout` kini ikut membersihkan anggaran gagal /login yang terpersist beserta cermin memorinya (peta cap per-pengirim dan penanda global): sesi login berikutnya tidak lagi mewarisi hitungan pra-logout yang membuat kunci datang lebih awal dari seharusnya.
 
 - Penanda rekonsiliasi aplikasi dikenal A11y kini terkunci hanya sesudah pekerjaan rekonsiliasinya benar-benar dipanggil sampai selesai, bukan sebelumnya: kegagalan sesaat di jendela antara penanda dan pekerjaan tidak lagi melewatkan rekonsiliasi untuk seumur proses.

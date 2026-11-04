@@ -1846,9 +1846,13 @@ class MonitoringService : Service() {
             try { preferencesManager.setLoginGlobalLockout(0L, 0L) } catch (_: Exception) { }
         }
     }
-    private var restoreCodeLockoutUntil: Long
+    // Baca-saja (issue #1318): setter delegasi ini tak punya
+    // pemanggil dan berbahaya — menulis var until sendirian
+    // akan memotong pasangan atomik (until + elapsedStart)
+    // gerbang kode restore. Penulisan resmi hanya lewat
+    // fungsi pasangan PreferencesManager.
+    private val restoreCodeLockoutUntil: Long
         get() = try { preferencesManager.restoreCodeLockoutUntil } catch (_: Exception) { 0L }
-        set(value) { try { preferencesManager.restoreCodeLockoutUntil = value } catch (_: Exception) { } }
     private val pingRate = object : LinkedHashMap<String, Long>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
             return size > 64
