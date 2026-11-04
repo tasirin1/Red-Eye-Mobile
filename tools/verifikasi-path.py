@@ -1973,7 +1973,7 @@ def cek_paritas_resource(gagal):
     # string-array per indeks item.
     dasar_res = os.path.join(AKAR, "app/src/main/res")
     pola_plurals = re.compile(r'<plurals(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
-    pola_item_q = re.compile(r'<item\s+quantity="([^"]+)"[^>]*>(.*?)</item>', re.S)
+    pola_item_q = re.compile(r'<item\s+quantity=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</item>', re.S)
     pola_array = re.compile(r'<string-array(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</string-array>', re.S)
     pola_item = re.compile(r'<item(?:\s[^>]*)?>(.*?)</item>', re.S)
 
