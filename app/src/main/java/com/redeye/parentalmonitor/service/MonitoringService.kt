@@ -5308,14 +5308,10 @@ class MonitoringService : Service() {
             val elapsed = android.os.SystemClock.elapsedRealtime() - serviceStartElapsed
             val wall = System.currentTimeMillis() - started
             val millis = if (serviceStartElapsed > 0L && elapsed >= 0L) elapsed else wall
-            val minutes = (millis / 60_000L).coerceAtLeast(0L)
-            val hours = minutes / 60
-            val days = hours / 24
-            val span = when {
-                days > 0 -> "$days d ${hours % 24} h"
-                hours > 0 -> "$hours h ${minutes % 60} m"
-                else -> "$minutes m"
-            }
+            // Formatnya ReportFormat.durationText (issue #1248):
+            // dulu algoritma yang sama diduplikasi kata demi kata
+            // di sini, berisiko tertinggal bila fungsi aslinya berubah.
+            val span = com.redeye.parentalmonitor.utils.ReportFormat.durationText(millis)
             sendToTelegram("\u23F1\uFE0F <b>Uptime</b>\nJalan: $span\nSejak: " + formatDate(started))
         }
     }
