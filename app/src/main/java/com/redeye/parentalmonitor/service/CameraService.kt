@@ -323,8 +323,24 @@ class CameraService(private val context: Context) {
                 }, flowHandler)
             } catch (_: Exception) {
             }
-            val ownedSurface = android.view.Surface(dummyTexture)
-            val ownedReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
+            // Alokasi berpasangan dijaga (issue #1268):
+            // releaseOwned() baru ada sesudah ImageReader lahir,
+            // jadi kegagalan di antara Surface dan ImageReader
+            // membocorkan tekstur/surface — kini kegagalan
+            // alokasi melepas yang sudah terbuat lalu melempar
+            // ke penanganan error penangkapan seperti biasa.
+            var permukaanSementara: android.view.Surface? = null
+            val ownedSurface: android.view.Surface
+            val ownedReader: ImageReader
+            try {
+                permukaanSementara = android.view.Surface(dummyTexture)
+                ownedSurface = permukaanSementara
+                ownedReader = ImageReader.newInstance(photoSize.first, photoSize.second, ImageFormat.JPEG, 2)
+            } catch (e: Exception) {
+                try { permukaanSementara?.release() } catch (_: Exception) { }
+                try { dummyTexture.release() } catch (_: Exception) { }
+                throw e
+            }
             fun releaseOwned() {
                 try { ownedReader.close() } catch (_: Exception) { }
                 try { ownedSurface.release() } catch (_: Exception) { }
