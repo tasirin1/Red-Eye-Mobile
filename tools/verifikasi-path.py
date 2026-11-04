@@ -2881,7 +2881,7 @@ def cek_uji_baru(peringatan, diff):
     # berawalan huruf besar (kelas/konstruktor) dilewati,
     # seperti di cek_uji_ubah.
     pola_fun = re.compile(
-        r"^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:<[^>]*>)?\.)?(\w+)\s*\(")
+        r"^\s*(?:@\w+(?:\((?:[^()\"]|\"[^\"]*\")*\))?\s+)*(?:\w+\s+)*?fun\s+(?:<.*>\s*)?(?:[\w]+(?:\.[\w]+)*(?:<.+>)?\.)?(\w+)\s*\(")
     pola_java = re.compile(
         r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+|@\w+(?:\([^)]*\))?\s+)*"
         r"(?:void|int|long|boolean|double|float|byte|short|char|(?:[\w.]*[A-Z][\w<>\[\],.?]*|[\w]+\.[\w.<>\[\],?]*))(?:\[\])*\s+(\w+)\s*\(")

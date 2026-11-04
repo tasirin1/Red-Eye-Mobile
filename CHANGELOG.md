@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengenal deklarasi Kotlin di alat verifikasi kini juga menangkap fungsi penerima nama-penuh, fungsi penerima generik bersarang, dan fungsi yang anotasinya memuat kurung di dalam string argumen: tiga sisa tepi dari pengetatan ronde sebelumnya. Terbukti lewat harness.
+
 - Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian nama-penuh huruf kecil semua (mis. com.contoh.tipeku): token tipe bertitik kini sah sebagai alternatif, dan harness membuktikan bentuk mirip-deklarasi (variabel, kolom, for, import) tetap diam.
 
 - Pengenal deklarasi Java di alat verifikasi kini juga menangkap metode bertipe kembalian larik primitif (int[], long[], byte[][]): cabang primitif sebelumnya menuntut spasi langsung sesudah tipe, tidak seperti String[] yang sudah tertangkap. Terbukti lewat harness.
