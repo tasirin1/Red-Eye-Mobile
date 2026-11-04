@@ -57,6 +57,20 @@ class TextChunkTest {
     }
 
     @Test
+    fun pemodifikasiGraphemeTakDibelah() {
+        // #1244: nada kulit, keycap, tanda gabung, dan VS16 menempel
+        // pada basis sebelumnya \u2014 potong tak boleh memisahkannya
+        // (nilai dibuktikan porting 1:1 ke Python lebih dulu).
+        val kulit = "ab\uD83D\uDC4D\uD83C\uDFFDcd"
+        assertEquals(2, TextChunk.safeCut(kulit, 5))
+        assertEquals(2, TextChunk.safeCut(kulit, 4))
+        assertEquals(6, TextChunk.safeCut(kulit, 6))
+        assertEquals(1, TextChunk.safeCut("a1\u20E3b", 2))
+        assertEquals(1, TextChunk.safeCut("ae\u0301x", 2))
+        assertEquals(1, TextChunk.safeCut("a\u2764\uFE0Fx", 2))
+    }
+
+    @Test
     fun entitasHtmlTakDibelah() {
         assertEquals(4, TextChunk.safeCut("halo&nbsp;dunia", 6))
     }

@@ -45,6 +45,18 @@ object TextChunk {
                     if (c > 0) c -= codePointBefore(c)
                 }
             }
+            // Pemodifikasi grapheme menempel pada basis SEBELUMNYA
+            // (issue #1244): nada kulit emoji, U+FE0F, tanda gabung,
+            // dan penutup keycap (U+20E3) yang jatuh tepat sesudah
+            // titik potong menarik potong mundur satu code point —
+            // meneruskan perlindungan #647/#663.
+            if (c > 0 && c < text.length) {
+                val nadaKulit = text[c] == '\uD83C' && c + 1 < text.length && text[c + 1] in '\uDFFB'..'\uDFFF'
+                val tanda = !Character.isHighSurrogate(text[c]) &&
+                    (Character.getType(text[c]) == Character.NON_SPACING_MARK.toInt() ||
+                        Character.getType(text[c]) == Character.ENCLOSING_MARK.toInt())
+                if (nadaKulit || tanda) c -= codePointBefore(c)
+            }
             val amp = text.lastIndexOf('&', c - 1)
             if (amp >= 0 && amp > c - 12) {
                 val semi = text.indexOf(';', amp)
