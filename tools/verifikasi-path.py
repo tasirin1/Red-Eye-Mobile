@@ -1958,7 +1958,7 @@ def cek_plurals(gagal):
     if not os.path.isdir(dasar_res):
         return
     pola = re.compile(r'<plurals(?:\s[^>]*?)?\bname=["\x27]([^"\x27]+)["\x27][^>]*>(.*?)</plurals>', re.S)
-    pola_item = re.compile(r'<item\s+quantity="([^"]+)"')
+    pola_item = re.compile(r'<item\s+quantity=["\x27]([^"\x27]+)["\x27]')
 
     def peta_plurals(dirpath):
         peta = {}
