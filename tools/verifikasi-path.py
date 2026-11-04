@@ -677,7 +677,12 @@ def _deklarasi_tingkat_atas(teks, kelas):
     # komentar/string tak dihitung). Kelas BERSARANG tak
     # dihitung: dari berkas lain ia tak terlihat tanpa
     # kualifikasi (issue #1172).
-    pola = re.compile(r"(?:class|object|interface|enum|record)\s+%s\b" % re.escape(kelas))
+    pola = re.compile(r"(?:class|object|interface|enum)\s+%s\b" % re.escape(kelas))
+    # Record Java selalu diikuti daftar komponen "(...)"
+    # sesudah nama (issue #1197): tanpa tuntutan itu, pola
+    # record cocok dengan panggilan infix Kotlin yang sah
+    # ("x" record Kelas::class) dan rename berisiko lolos.
+    pola_record = re.compile(r"record\s+%s\s*\(" % re.escape(kelas))
     i = 0
     n = len(teks)
     dalam = 0
@@ -732,6 +737,8 @@ def _deklarasi_tingkat_atas(teks, kelas):
         if dalam == 0 and (c == "c" or c == "o" or c == "i" or c == "e" or c == "r"):
             m = pola.match(teks, i)
             if m:
+                return True
+            if c == "r" and pola_record.match(teks, i):
                 return True
         i += 1
     return False
