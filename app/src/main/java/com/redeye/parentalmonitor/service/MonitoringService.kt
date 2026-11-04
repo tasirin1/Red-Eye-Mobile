@@ -1669,6 +1669,47 @@ class MonitoringService : Service() {
     private val loginGlobalFails = java.util.concurrent.atomic.AtomicInteger(0)
     private val loginGlobalLockoutUntil = java.util.concurrent.atomic.AtomicLong(0L)
 
+    // Anggaran gagal /login persisten (issue #1257): #1251 baru
+    // mempersistensikan KUNCINYA; penghitung gagal di atas tetap
+    // memori, jadi restart mereset anggaran tebakan yang belum
+    // mencapai ambang. Kini jumlah gagal per pengirim + global
+    // disimpan (cap dinding hanya untuk membuang entri basi saat
+    // memulihkan; throttle 3 dtk sengaja tetap memori — nilainya
+    // sesaat dan cap elapsed-nya tak berarti lintas boot).
+    private val loginBudgetRestored = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    private fun restoreLoginBudgetIfNeeded(wallNow: Long) {
+        if (!loginBudgetRestored.compareAndSet(false, true)) return
+        val raw = try { preferencesManager.loginFailBudget } catch (_: Exception) { "" }
+        if (raw.isEmpty()) return
+        for (part in raw.split(";")) {
+            val f = part.split(",")
+            if (f.size == 1 && f[0].startsWith("g=")) {
+                val g = f[0].substring(2).toIntOrNull() ?: continue
+                if (g > loginGlobalFails.get()) loginGlobalFails.set(g)
+            } else if (f.size == 3) {
+                val count = f[1].toIntOrNull() ?: continue
+                val wallAt = f[2].toLongOrNull() ?: continue
+                if (count <= 0 || wallNow - wallAt >= LOGIN_LOCK_MS) continue
+                try { loginFails.putIfAbsent(f[0], count) } catch (_: Exception) { }
+            }
+        }
+    }
+
+    private fun persistLoginBudget() {
+        try {
+            val wallNow = System.currentTimeMillis()
+            val now = SystemClock.elapsedRealtime()
+            val entries = loginFails.entries
+                .map { e -> Triple(e.key, e.value, wallNow - (now - (loginAttemptAt[e.key] ?: now)).coerceAtLeast(0L)) }
+                .sortedByDescending { it.third }
+                .take(32)
+            val joined = (listOf("g=" + loginGlobalFails.get()) + entries.map { e -> e.first + "," + e.second + "," + e.third })
+                .joinToString(";")
+            preferencesManager.loginFailBudget = joined
+        } catch (_: Exception) { }
+    }
+
     // Penyimpanan kunci /login persisten (issue #1251): entri
     // "senderId,untilWall,elapsedStart" di prefs, dipangkas saat
     // menulis (kedaluwarsa dibuang, maks 16 entri terakhir).
@@ -1870,6 +1911,7 @@ class MonitoringService : Service() {
             sendDirect(senderId, "\u23F3 PIN salah terlalu sering. Coba lagi dalam ${minutes} menit.")
             return true
         }
+        restoreLoginBudgetIfNeeded(wallNow)
         if (now < loginGlobalLockoutUntil.get()) {
             sendDirect(senderId, "\u23F3 Login dikunci sementara. Coba lagi nanti.")
             return true
@@ -1906,6 +1948,7 @@ class MonitoringService : Service() {
             } catch (_: Exception) {
             }
             val globalFails = loginGlobalFails.incrementAndGet()
+            persistLoginBudget()
             if (globalFails >= LOGIN_GLOBAL_MAX_FAILS) {
                 loginGlobalFails.set(0)
                 loginGlobalLockoutUntil.set(now + LOGIN_GLOBAL_LOCK_MS)
@@ -1967,6 +2010,7 @@ class MonitoringService : Service() {
                     loginGlobalFails.set(0)
                     loginGlobalLockoutUntil.set(0L)
                     clearPersistedLoginSenderLock(senderId)
+                    try { preferencesManager.loginFailBudget = "" } catch (_: Exception) { }
                     try { preferencesManager.loginGlobalLockoutUntil = 0L } catch (_: Exception) { }
                     try { preferencesManager.loginGlobalLockoutElapsedStart = 0L } catch (_: Exception) { }
                 } catch (_: Exception) {

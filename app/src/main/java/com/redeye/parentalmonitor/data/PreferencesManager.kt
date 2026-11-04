@@ -482,6 +482,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LOGIN_GLOBAL_LOCKOUT_UNTIL = "login_global_lockout_until"
         private const val KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START = "login_global_lockout_elapsed_start"
         private const val KEY_LOGIN_SENDER_LOCKOUTS = "login_sender_lockouts"
+        private const val KEY_LOGIN_FAIL_BUDGET = "login_fail_budget"
         private const val KEY_RESTORE_SECRET = "restore_code_secret"
         private const val KEY_AUDIT_LOG = "audit_log"
         const val KEY_CRED_ERROR = "credential_error"
@@ -1113,6 +1114,12 @@ class PreferencesManager(context: Context) {
     var loginGlobalLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_LOGIN_GLOBAL_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
+
+    // Anggaran gagal /login persisten (issue #1257):
+    // "g=<global>" + entri "senderId,jumlah,capDinding" dipisah ';'.
+    var loginFailBudget: String
+        get() = prefString(KEY_LOGIN_FAIL_BUDGET, "")
+        set(value) { try { sharedPreferences.edit().putString(KEY_LOGIN_FAIL_BUDGET, value).commit() } catch (_: Exception) { } }
 
     // Entri "senderId,untilWall,elapsedStart" dipisah ';'.
     var loginSenderLockouts: String
