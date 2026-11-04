@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemasang kait kini menyelesaikan core.hooksPath berbentuk ~pengguna/ ke rumah pengguna itu, seperti Git: sebelumnya bentuk itu diperlakukan sebagai path relatif repo sehingga kait terpasang di direktori semu yang tak pernah dijalankan Git tetapi dilaporkan sukses. Terbukti di sandbox.
+
 - Alat verifikasi tak lagi memvonis yatim style pustaka keluarga Base (Base.Theme.AppCompat dan sejenisnya) yang dirujuk sebagai parent tema: nama terrapikannya lolos dari kedua saringan pustaka yang ada. Terbukti lewat uji fungsi dua arah.
 
 - Pemasang kait pre-push kini membatalkan pemasangan dengan peringatan keras bila penyalinan cadangan kait lama gagal (mis. cakram penuh): sebelumnya kegagalan itu jatuh diam-diam — kait asing tetap tertimpa, cadangannya parsial, dan pemasangan melaporkan sukses. Terbukti di sandbox dengan penyalinan yang digagalkan: naskah lama kehilangan kait asing dengan exit 0, naskah baru berhenti dengan exit 1 dan kait utuh.

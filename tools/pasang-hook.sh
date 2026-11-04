@@ -10,6 +10,28 @@ TERKONFIGURASI="$(git config --get core.hooksPath || true)"
 direktori_kait() {
     case "$1" in
         "~"/*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+        "~"*)
+            # Bentuk ~pengguna/ (issue #1403): Git
+            # mengembangkannya ke rumah pengguna itu, bukan
+            # ke $ROOT/~pengguna — penyelesaian lama memasang
+            # kait di direktori semu dalam repo yang tak pernah
+            # dijalankan Git tetapi dilaporkan sukses.
+            sisa_kait="${1#\~}"
+            case "$sisa_kait" in
+                */*) pengguna_kait="${sisa_kait%%/*}"; ekor_kait="/${sisa_kait#*/}" ;;
+                *) pengguna_kait="$sisa_kait"; ekor_kait="" ;;
+            esac
+            rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
+            if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
+                rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)"
+            fi
+            if [ -n "$rumah_kait" ]; then
+                printf '%s%s' "$rumah_kait" "$ekor_kait"
+            else
+                echo "PERINGATAN: pengguna pada core.hooksPath ($pengguna_kait) tak dikenal; jalurnya tak bisa diselesaikan." >&2
+                printf '%s/%s' "$ROOT" "$1"
+            fi
+            ;;
         /*) printf '%s' "$1" ;;
         *) printf '%s/%s' "$ROOT" "$1" ;;
     esac
