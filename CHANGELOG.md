@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.623] - 2026-11-05
+
 ### Fixed
 
 - Pemasang kait kini menyelesaikan core.hooksPath berbentuk ~pengguna/ ke rumah pengguna itu, seperti Git: sebelumnya bentuk itu diperlakukan sebagai path relatif repo sehingga kait terpasang di direktori semu yang tak pernah dijalankan Git tetapi dilaporkan sukses. Terbukti di sandbox.
