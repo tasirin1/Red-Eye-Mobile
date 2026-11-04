@@ -48,6 +48,25 @@ class CameraService(private val context: Context) {
     private var watchdogHandler: Handler? = null
     private val threadLock = Any()
 
+    // Token milik posting-an SENDIRI (issue #1335): semua
+    // Runnable yang dipasang kelas ini ke handler latar/
+    // watchdog wajib lewat postDelayedOwn agar pembersihan
+    // antrean saat reset membuang milik sendiri saja.
+    // removeCallbacksAndMessages(null) ikut membuang callback
+    // framework Camera2 yang tertunda (onOpened dkk) — kamera
+    // yang callback-nya tak pernah terkirim bisa tertinggal
+    // terbuka di sisi framework dan membuka berikutnya gagal.
+    private val ownPostsToken = Any()
+
+    private fun postDelayedOwn(handler: Handler?, r: Runnable, delayMs: Long): Boolean {
+        if (handler == null) return false
+        return try {
+            handler.postAtTime(r, ownPostsToken, android.os.SystemClock.uptimeMillis() + delayMs)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun currentBackgroundHandler(): Handler? {
         synchronized(threadLock) { return backgroundHandler }
     }
@@ -116,11 +135,11 @@ class CameraService(private val context: Context) {
             } catch (_: Exception) {
             }
             try {
-                currentBackgroundHandler()?.removeCallbacksAndMessages(null)
+                currentBackgroundHandler()?.removeCallbacksAndMessages(ownPostsToken)
             } catch (_: Exception) {
             }
             try {
-                watchdogHandler?.removeCallbacksAndMessages(null)
+                watchdogHandler?.removeCallbacksAndMessages(ownPostsToken)
             } catch (_: Exception) {
             }
             try {
@@ -195,7 +214,7 @@ class CameraService(private val context: Context) {
     private fun stopBackgroundThreadLocked() {
         val thread = backgroundThread
         val handler = backgroundHandler
-        try { handler?.removeCallbacksAndMessages(null) } catch (_: Exception) { }
+        try { handler?.removeCallbacksAndMessages(ownPostsToken) } catch (_: Exception) { }
         try { thread?.quitSafely() } catch (_: Exception) { }
         backgroundThread = null
         backgroundHandler = null
@@ -404,9 +423,9 @@ class CameraService(private val context: Context) {
             val watchdogScheduled = try {
                 val bg = flowHandler
                 if (bg != null) {
-                    bg.postDelayed(timeout, timeoutMs)
+                    postDelayedOwn(bg, timeout, timeoutMs)
                 } else {
-                    mainHandler()?.postDelayed(timeout, timeoutMs) ?: false
+                    postDelayedOwn(mainHandler(), timeout, timeoutMs)
                 }
             } catch (_: Exception) {
                 false
@@ -618,7 +637,7 @@ class CameraService(private val context: Context) {
             }
             timeoutRunnable = timeout
             val watchdogScheduled = try {
-                flowHandler?.postDelayed(timeout, timeoutMs) ?: false
+                postDelayedOwn(flowHandler, timeout, timeoutMs)
             } catch (_: Exception) {
                 false
             }
@@ -766,8 +785,8 @@ class CameraService(private val context: Context) {
                                     }
                                     stopRunnable = stop
                                     val stopScheduled = try {
-                                        if (flowHandler?.postDelayed(stop, durationMs) == true) true
-                                        else mainHandler()?.postDelayed(stop, durationMs) == true
+                                        if (postDelayedOwn(flowHandler, stop, durationMs)) true
+                                        else postDelayedOwn(mainHandler(), stop, durationMs)
                                     } catch (_: Exception) {
                                         false
                                     }
@@ -901,7 +920,7 @@ class CameraService(private val context: Context) {
             }
             val pending = fallback ?: return
             val meterScheduled = try {
-                flowHandler?.postDelayed(pending, 3_000L) == true || mainHandler()?.postDelayed(pending, 3_000L) == true
+                postDelayedOwn(flowHandler, pending, 3_000L) || postDelayedOwn(mainHandler(), pending, 3_000L)
             } catch (_: Exception) { false }
             if (!meterScheduled) { fireStill(); return }
             val meteringBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pembersihan antrean handler kamera saat reset kini hanya membuang tugas milik aplikasi sendiri: sebelumnya pembersihan menyeluruh bisa ikut membuang pemberitahuan "kamera terbuka" dari sistem yang belum terkirim, sehingga kamera berisiko tertinggal terbuka di sisi sistem dan pengambilan berikutnya gagal. Semua tugas terjadwal kamera (batas waktu foto/video, penghentian video, penunggu metering) kini bertanda khusus agar hanya mereka yang dibersihkan saat reset.
+
 - Rekonsiliasi daftar aplikasi dikenal kini hanya dianggap selesai bila pekerjaannya sungguh berjalan: bila daftar aplikasi terpasang gagal dibaca atau pemangkasannya gagal di tengah, penanda selesainya tidak terkunci dan rekonsiliasi dicoba lagi pada kesempatan berikutnya — sebelumnya kegagalan senyap itu bisa membuat aplikasi yang dicopot saat layanan mati tetap dianggap dikenal seumur proses, sehingga pasang-ulangnya lolos dari peringatan aplikasi baru.
 
 - Membersihkan antrean kini tuntas juga bila penghapusan di penyimpanannya gagal: keadaan kosong di memori menang atas hitungan lama yang tertinggal di disk — pada persist berikutnya hitungan nol tertulis menimpa, dan bila aplikasi sempat jatuh ke mode volatile, hitungan yang sudah dibersihkan itu tidak bangkit lagi saat penyimpanan pulih. Sebelumnya kegagalan yang sama di mode persisten bisa memunculkan kembali angka drop yang sudah dihapus.
