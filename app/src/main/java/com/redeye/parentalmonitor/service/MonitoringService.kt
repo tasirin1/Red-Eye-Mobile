@@ -6980,6 +6980,7 @@ class MonitoringService : Service() {
         }
         chunks.add(rest)
         var lastSentIdx = -1
+        val permanentIdx = mutableSetOf<Int>()
         try {
             for ((idx, chunk) in chunks.withIndex()) {
                 val markup = if (idx == chunks.lastIndex) replyMarkup else NO_MARKUP
@@ -6991,6 +6992,7 @@ class MonitoringService : Service() {
                         break
                     }
                     permanentLoss = true
+                    permanentIdx.add(idx)
                 } else {
                     lastSentIdx = idx
                     sentAny = true
@@ -7000,7 +7002,14 @@ class MonitoringService : Service() {
         } catch (e: kotlinx.coroutines.CancellationException) {
             if (queueOnFail) {
                 val pending = ArrayList<String>()
-                if (lastSentIdx + 1 < chunks.size) pending.addAll(chunks.subList(lastSentIdx + 1, chunks.size))
+                // Potongan yang sudah DITOLAK PERMANEN tak ikut
+                // diselamatkan (issue #1242): penanda lastSentIdx
+                // hanya maju pada sukses, jadi potongan mati
+                // sesudah sukses terakhir ikut terantre dan dicoba
+                // ulang percuma oleh worker.
+                for (restIdx in lastSentIdx + 1 until chunks.size) {
+                    if (restIdx !in permanentIdx) pending.add(chunks[restIdx])
+                }
                 for (f in failed) {
                     if (!pending.contains(f)) pending.add(f)
                 }

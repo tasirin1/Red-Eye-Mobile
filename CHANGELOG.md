@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penyelamatan pesan multi-potongan saat layanan dibatalkan di tengah kirim kini melewati potongan yang sudah ditolak permanen: potongan mati itu tak lagi diantrekan dan dicoba ulang percuma. (Issue #1242)
 - Kiriman cadangan teks polos kini membawa tombol menu yang sama seperti kiriman utama: layar menu tak lagi tiba tanpa tombol saat jalur cadangan yang berhasil dipakai. (Issue #1241)
 - Hitungan pesan terbuang tak lagi dobel: potongan yang ditolak permanen dulu dicatat dua kali (di titik penolakan dan di pengirim multi-potongan), membuat pemberitahuan "N pesan dibuang" melebihkan dua kali lipat. (Issue #1240)
 - Ekor pesan multi-potongan yang gagal sementara sesudah ada potongan lain yang ditolak permanen kini diantrekan juga untuk pengirim prioritas (sebelumnya hilang senyap sementara status dilaporkan terkirim dan kursor data tetap maju). (Issue #1239)
