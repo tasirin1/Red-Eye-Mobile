@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Notifikasi aplikasi dipasang/dicopot hidup lagi di Android 8 ke atas: receiver perubahan paket kini didaftarkan secara dinamis oleh layanan selama berjalan, karena siaran jenis itu tidak lagi dikirim ke receiver manifest di Android modern — sebelumnya fitur ini mati total tanpa gejala, termasuk penghapusan ingatan aplikasi saat uninstall dan invalidasi cache label (#1187).
 
 ## [1.6.611] - 2026-11-04
 
