@@ -1121,11 +1121,33 @@ object A11yMonitor {
     // Pasangan kedua: kena kata pantau dari teks UTUH node (issue
     // #830), di luar potongan snapshot.
     private fun collectSnapshot(service: AccessibilityService, expectedPackage: String, keywords: List<String> = emptyList()): Pair<ScreenSnapshot, String?> {
-        val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
+        var dariJendelaLain = false
+        var root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return ScreenSnapshot(emptyList(), false) to null
         val rootPackage = try { root.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
         if (rootPackage != expectedPackage) {
             recycleNode(root)
-            return ScreenSnapshot(emptyList(), false) to null
+            // Jendela sensitif yang TERLIHAT tetapi tak aktif
+            // (issue #1397): di split-screen halaman sensitif
+            // bisa tampil penuh di panel tak-aktif sementara
+            // jendela aktif milik aplikasi lain — snapshot
+            // hanya dari rootInActiveWindow membuatnya tak
+            // pernah dinilai berbasis teks. Cari akar paket
+            // yang sama di daftar jendela layanan.
+            root = null
+            val daftar = try { service.windows } catch (_: Exception) { null }
+            if (daftar != null) {
+                for (jendela in daftar) {
+                    val calon = try { jendela.root } catch (_: Exception) { null } ?: continue
+                    val pkgCalon = try { calon.packageName?.toString().orEmpty() } catch (_: Exception) { "" }
+                    if (pkgCalon == expectedPackage) {
+                        root = calon
+                        dariJendelaLain = true
+                        break
+                    }
+                    recycleNode(calon)
+                }
+            }
+            if (root == null) return ScreenSnapshot(emptyList(), false) to null
         }
         // Sidik jendela di awal penelusuran (issue #929): node
         // adalah objek hidup — navigasi cepat di tengah
@@ -1133,7 +1155,10 @@ object A11yMonitor {
         // beda halaman) sehingga alasan tamper berbasis teks
         // bisa hilang/salah. Di akhir, jendela aktif diverifikasi
         // masih yang sama; bila sudah berganti, snapshot dibuang.
-        val windowIdAwal = try { root.windowId } catch (_: Exception) { -1 }
+        // Sidik jendela hanya untuk akar AKTIF; akar dari
+        // jendela lain (split-screen) tak punya pembanding
+        // aktif yang sahih — lewati pemeriksaan #929 untuknya.
+        val windowIdAwal = if (dariJendelaLain) -1 else try { root.windowId } catch (_: Exception) { -1 }
         val out = ArrayList<String>()
         var hasPassword = false
         var fullHit: String? = null

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penilaian anti-tamper berbasis teks kini juga menjangkau jendela sensitif yang terlihat tetapi tidak aktif, misalnya halaman Setelan di panel tak-aktif saat layar terbagi: sebelumnya snapshot hanya diambil dari jendela aktif sehingga halaman seperti itu tidak pernah dinilai dari teksnya.
+
 - Adopsi migrasi grup di layar Setup kini menulis lewat jalur bandingkan-dan-tukar berkomit yang sama dengan layanan: sebelumnya ia memakai penulisan apply biasa, sehingga pesan "Chat ID diperbarui otomatis" bisa mendahului fakta yang tersimpan dan pembaruan hilang bila proses mati seketika.
 
 - Keadaan jeda pemantauan kini ditulis dengan commit, bukan apply: jeda adalah gerbang utama yang dibaca semua jalur pemantauan, dan penulisan /stop yang hanya apply bisa hilang bila proses mati sebelum sempat tersimpan, membuat pemantauan bangkit sendiri sesudah restart tanpa sepengetahuan pemilik. Ketiga penulisnya (/stop, /resume, penghapusan kredensial) kini memakai varian commit.
