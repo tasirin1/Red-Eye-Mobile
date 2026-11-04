@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penjaga token pada PESAN commit kini diselaraskan per permukaan: pesan diperiksa untuk token tertempel utuh dan bentuk ter-encode saja, tanpa pemadatan — pemadatan menyambung prosa biasa (id run CI + titik dua + kutipan galat) menjadi pola token palsu dan pernah memblokir pesan perbaikan yang sah. Pemeriksaan isi berkas tetap memakai pemadatan penuh. Terbukti lewat harness dua arah.
+
 - Pemasang kait kini menyelesaikan core.hooksPath "~" polos ke direktori home seperti Git: sebelumnya nilai itu jatuh ke penyelesaian ~pengguna bernama kosong dan kait terpasang di direktori semu di dalam repo tanpa pernah dijalankan. Terbukti di sandbox.
 
 - Pemasang kait kini menghapus sisa cadangan parsial dari pemasangan yang dibatalkan: sebelumnya setiap percobaan yang gagal di tengah penyalinan meninggalkan satu berkas .bak setengah tertulis yang menumpuk permanen. Terbukti di sandbox — tiga pemasangan batal, nol sisa.

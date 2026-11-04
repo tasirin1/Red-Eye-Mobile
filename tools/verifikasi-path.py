@@ -1715,6 +1715,20 @@ def _muat_mengandung_token():
 
 mengandung_token = _muat_mengandung_token()
 
+def _muat_mengandung_token_pesan():
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cek_token", os.path.join(AKAR, "tools", "cek-token.py"))
+        modul = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modul)
+        return modul.mengandung_token_pesan
+    except Exception:
+        return lambda teks: bool(teks) and bool(POLA_TOKEN_ASLI.search(teks))
+
+
+mengandung_token_pesan = _muat_mengandung_token_pesan()
+
 
 def cek_secret(gagal, diff):
     tambah = "\n".join(
@@ -1875,7 +1889,7 @@ def cek_secret_pesan(gagal, rentang):
         if not sha:
             continue
         pesan = jalan("git", "log", "-1", "--format=%B", sha)
-        if mengandung_token(pesan):
+        if mengandung_token_pesan(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
                          "tulis ulang pesan itu sebelum push. Kredensial "
@@ -1910,7 +1924,7 @@ def cek_secret_pesan_semua(gagal):
             rekaman_list.append(inti)
     for rekaman in rekaman_list:
         sha, _, pesan = rekaman.partition("\x00")
-        if mengandung_token(pesan):
+        if mengandung_token_pesan(pesan):
             gagal.append("Kemungkinan token bot asli di PESAN commit %s — "
                          "token di pesan commit hidup permanen di riwayat; "
                          "rotasi token itu. Kredensial hanya via input "

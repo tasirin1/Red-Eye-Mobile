@@ -175,6 +175,40 @@ def dekode_berkas(data):
     return data.decode("utf-8", errors="replace")
 
 
+def mengandung_token_pesan(teks):
+    """Varian permukaan PESAN commit (issue #1425): TANPA
+    pemadatan. Pemadatan menyambung prosa biasa yang memuat
+    deret angka + titik dua (id run CI, kutipan galat) menjadi
+    ekor pola token palsu — kejadian nyata: pesan perbaikan
+    yang mengutip galat kompiler terblokir sebagai 'token
+    asli'. Pesan tetap tertangkap untuk token tertempel
+    utuh dan bentuk ter-encode (base64/hex); penyelundupan
+    terbelah di pesan tak punya preseden dan pesan mudah
+    ditulis ulang, jadi permukaan ini diselaraskan lebih
+    sempit daripada isi berkas."""
+    if not teks:
+        return False
+    if POLA.search(teks):
+        return True
+    tanpa_spasi = re.sub(r"\s+", "", teks)
+    for sumber in (teks, tanpa_spasi):
+        for m in POLA_KANDIDAT_B64.finditer(sumber):
+            if _cocok_b64(m.group(0)):
+                return True
+    for sumber in (teks, tanpa_spasi):
+        for m in POLA_KANDIDAT_HEX.finditer(sumber):
+            s = m.group(0)
+            if len(s) % 2 == 1:
+                s = s[:-1]
+            try:
+                hasil = bytes.fromhex(s)
+            except Exception:
+                continue
+            if POLA_BYTE.search(hasil):
+                return True
+    return False
+
+
 def mengandung_token(teks):
     if not teks:
         return False
