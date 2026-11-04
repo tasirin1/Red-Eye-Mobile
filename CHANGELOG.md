@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemeriksa jejak uji di alat verifikasi kini menilai daftar dan isi berkas uji dari pohon ujung rentang pada mode rentang, bukan dari berkas kerja: sebelumnya peringatan cakupan bisa palsu dua arah begitu checkout menyimpang dari rentang yang diperiksa. Terbukti di sandbox dua checkout.
+
 - Alat verifikasi kini mengenali definisi `<id>` di berkas values (ids.xml): sebelumnya deklarasi id baku itu tidak pernah terdaftar sehingga acuannya divonis yatim. Terbukti lewat uji unit penghimpun terhadap gerbang lama.
 
 - Pengenal deklarasi di peringatan metode baru alat verifikasi kini juga menangkap fungsi ekstensi, fungsi bergenerik bersarang, dan fungsi beranotasi berargumen — tiga bentuk deklarasi Kotlin sah yang sebelumnya lolos senyap dari peringatan cakupan uji. Terbukti lewat harness (7 kasus palsu tetap diam, 6 deklarasi tertangkap).

@@ -2832,13 +2832,21 @@ def cek_import_mati(gagal):
 
 def disebut_di_uji(nama):
     pola = re.compile(r"\b%s\s*\(" % re.escape(nama))
-    for path in jalan_repo(os.path.join("app", "src", "test")):
+    # Daftar & isi dari pohon yang dinilai (issue #1400):
+    # pembaca sebutan terakhir yang masih menilai berkas
+    # kerja pada mode rentang — peringatan cakupan bisa
+    # palsu dua arah begitu checkout menyimpang dari pohon
+    # rentang (doktrin _baca_pohon/_jalan_pohon).
+    for path in _jalan_pohon(os.path.join("app", "src", "test")):
         # Komentar dikupas dulu (issue #1287, keluarga
         # #1218/#1254): sebutan di komentar berkas uji —
         # "// ubahSaya109() akan diuji nanti" — bukan cakupan
         # uji, tetapi pola mentah memvonisnya sudah teruji dan
         # peringatan cakupan mati.
-        bersih = _kupas_komentar_kode(baca_teks(path), bersarang=not path.endswith(".java"))
+        mentah = _baca_pohon(path)
+        if mentah is None:
+            continue
+        bersih = _kupas_komentar_kode(mentah, bersarang=not path.endswith(".java"))
         if pola.search(bersih):
             return True
     return False
