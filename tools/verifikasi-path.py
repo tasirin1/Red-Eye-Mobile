@@ -759,10 +759,42 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
     # #1214), dan record generik "record Nama<T>(...)"
     # ikut dikenali (issue #1215). Di berkas Java pola
     # infix tak mungkin muncul.
-    # Potongan generik sadar satu tingkat sarang (issue
-    # #1222): "record R<T extends Comparable<T>>(...)"
+    # Potongan generik kurung sudut SEIMBANG (issue #1238,
+    # menyempurnakan regex satu tingkat #1222): generik
+    # bertingkat dua "Map<String, List<X>>" ikut dikenali.
     # berhenti di > pertama bila memakai [^>]* biasa.
-    pola_record = re.compile(r"record\s+%s\s*(?:<(?:[^<>]|<[^<>]*>)*>)?\s*\(" % re.escape(kelas))
+    def cocok_record(pos):
+        # "record <kelas>" + generik seimbang opsional + "(".
+        if not teks.startswith("record", pos):
+            return False
+        j = pos + 6
+        if j >= n or not teks[j].isspace():
+            return False
+        while j < n and teks[j].isspace():
+            j += 1
+        if not teks.startswith(kelas, j):
+            return False
+        j += len(kelas)
+        if j < n and (teks[j].isalnum() or teks[j] == "_"):
+            return False
+        while j < n and teks[j].isspace():
+            j += 1
+        if j < n and teks[j] == "<":
+            depth = 0
+            while j < n:
+                if teks[j] == "<":
+                    depth += 1
+                elif teks[j] == ">":
+                    depth -= 1
+                    if depth == 0:
+                        j += 1
+                        break
+                j += 1
+            else:
+                return False
+            while j < n and teks[j].isspace():
+                j += 1
+        return j < n and teks[j] == "("
     i = 0
     n = len(teks)
     dalam = 0
@@ -825,7 +857,7 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
             m = pola.match(teks, i)
             if m:
                 return True
-            if c == "r" and not bersarang and pola_record.match(teks, i):
+            if c == "r" and not bersarang and cocok_record(i):
                 return True
         i += 1
     return False
