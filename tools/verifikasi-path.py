@@ -1043,7 +1043,19 @@ def _path_sisi_b(baris):
             j += 1
         token_b = sisa[j + 1:].strip()
     else:
-        token_b = sisa.split(" ", 1)[1] if " " in sisa else ""
+        # Sisi-b dicari dari kemunculan TERAKHIR pemisahnya
+        # (issue #1327): git tidak mengkuotasi path hanya
+        # karena mengandung spasi, jadi membelah pada spasi
+        # pertama merusak path ber-spasi (di sisi-a maupun
+        # sisi-b) dan berkasnya terlewat senyap oleh semua
+        # cek berbasis kepala diff. Sisi-b terkuotasi
+        # didahulukan lewat pola spasi+kutip.
+        if ' "b/' in sisa:
+            token_b = '"b/' + sisa.split(' "b/', 1)[1]
+        elif " b/" in sisa:
+            token_b = "b/" + sisa.rsplit(" b/", 1)[1]
+        else:
+            token_b = sisa.split(" ", 1)[1] if " " in sisa else ""
     token_b = _buka_kutip_git(token_b)
     return token_b[2:] if token_b.startswith("b/") else token_b
 
