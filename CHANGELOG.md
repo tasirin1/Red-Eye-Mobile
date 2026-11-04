@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemeriksaan rentang di alat verifikasi kini menilai keberadaan berkas di pohon ujung rentang, bukan di berkas kerja: pengurai rename ke direktori ber-" b/", panen metode terhapus, dan aturan berkas terlarang sebelumnya semuanya menguji berkas kerja, sehingga memeriksa rentang lama dari checkout yang lebih baru (berkas hasil rename sudah terhapus lagi) meloloskan metode terhapus yang masih dipanggil. Terbukti lewat baterai sandbox dua checkout terhadap gerbang lama.
+
 - Mode jalur alat verifikasi kini juga memeriksa nama bekas-hapusan per segmen dengan benih pohonnya masing-masing (berkas kerja untuk perubahan belum-stage, indeks git untuk yang sudah di-stage): sebelumnya kedua diff digabung dan disemai dari berkas kerja saja, sehingga vonis atas hunk staged berbalik bila berkas kerja sudah menyimpang dari indeks. Terbukti lewat baterai sandbox tiga arah terhadap gerbang lama.
 
 - Penghapusan kredensial di layar Setup kini menghapus inti kredensial (token, Chat ID, owner, PIN, dan penanda update) sekaligus dalam satu tulisan atomik yang langsung tersimpan, sebelum panggilan jaringan apa pun: sebelumnya token dan PIN dihapus pada gelombang terpisah yang diselingi panggilan jaringan yang bisa menggantung semenit lebih, sehingga perangkat yang mati di tengah menyisakan keadaan campuran (token kosong tetapi PIN lama masih aktif) atau kredensial yang bangkit lagi sesudah menyala paksa.

@@ -1072,6 +1072,19 @@ def _buka_kutip_git(token):
     return token
 
 
+def _ada_di_pohon(path):
+    """Uji keberadaan berkas untuk belahan rename (#1347):
+    pada mode rentang keberadaan dinilai di pohon REF_POHON
+    (issue #1362) — menguji ke berkas kerja membuat belahan
+    salah begitu checkout tak lagi sama dengan pohon yang
+    digambarkan diff (mis. memeriksa rentang lama dari
+    checkout yang lebih baru). Mode lain: berkas kerja."""
+    if REF_POHON:
+        return jalan("git", "cat-file", "-e",
+                     "%s:%s" % (REF_POHON, path)) is not None
+    return os.path.isfile(os.path.join(AKAR, path))
+
+
 def _path_sisi_b(baris):
     """Path sisi-b dari kepala 'diff --git a/... b/...',
     sadar kutipan-C (issue #1309): pengurai lama (split +
@@ -1139,7 +1152,7 @@ def _path_sisi_b(baris):
                     if idx < 0:
                         break
                     b_tok = sisa[idx + 1:]
-                    if os.path.isfile(os.path.join(AKAR, b_tok[2:])):
+                    if _ada_di_pohon(b_tok[2:]):
                         token_b = b_tok
                         break
                     mulai = idx + 1
@@ -1545,7 +1558,10 @@ def cek_aturan_repo(gagal, berubah):
         # GAGAL menutup satu-satunya jalan membersihkan repo
         # tanpa --no-verify. Mode --semua tak terpengaruh:
         # daftarnya berkas terlacak yang memang ada.
-        masih_ada = os.path.isfile(os.path.join(AKAR, path))
+        # Keberadaan dinilai di pohon yang digambarkan diff
+        # (_ada_di_pohon, issue #1362): mode lain tetap pohon
+        # kerja sehingga remediasi lokal #1290 tak berubah.
+        masih_ada = _ada_di_pohon(path)
         if masih_ada and (rendah.endswith((".apk", ".aab", ".ap_", ".dex", ".jks",
                              ".keystore", ".p12", ".pfx", ".pem", ".key")) or adalah_env(rendah)):
             gagal.append("Berkas terlarang masuk repo: " + path)
@@ -2097,7 +2113,7 @@ def nama_metode_hilang(diff, lewati_berkas=()):
         # dilewati.
         if path in lewati_berkas:
             continue
-        if path not in terhapus_utuh and not os.path.isfile(os.path.join(AKAR, path)):
+        if path not in terhapus_utuh and not _ada_di_pohon(path):
             continue
         cocok = re.match(
             r"\s*(?:(?:public|protected|private)\s+)?(?:static\s+)?"
