@@ -432,7 +432,11 @@ def himpun_definisi():
     acuan = {}
     # Titik pada nama style (Theme.A.B) menjadi garis bawah di R (aturan aapt).
     def rapikan(jenis, nama):
-        return nama.replace(".", "_") if jenis == "style" else nama
+        # Styleable ikut dirapikan (issue #1421): nama
+        # declare-styleable bertitik (Uji.Titik) dirujuk kode
+        # sebagai R.styleable.Uji_Titik; tanpa perapian di
+        # kedua sisi, definisinya yatim palsu.
+        return nama.replace(".", "_") if jenis in ("style", "styleable") else nama
 
     pola_def = re.compile(r'<(style|string|color|dimen|plurals|bool|attr|integer|fraction|id)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')
     pola_array = re.compile(r'<(string-array|integer-array|array)(?:\s[^>]*?)?\bname\s*=\s*["\x27]([^"\x27]+)["\x27]')

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Nama `<declare-styleable>` bertitik kini dirapikan ke bentuk garis bawah di alat verifikasi seperti nama style: sebelumnya definisinya disimpan mentah sehingga acuan R.styleable yang sah divonis yatim. Terbukti lewat uji penghimpun.
+
 - Acuan style pustaka dari kode (R.style...) kini juga dikecualikan dari vonis yatim, sejajar dengan acuan yang sama dari XML: sebelumnya pengecualian keluarga style pustaka hanya berlaku di sisi XML sehingga acuan kode yang sah divonis yatim. Terbukti lewat uji fungsi.
 
 - Alat verifikasi kini mengenali style Material keluarga ShapeAppearance dan ShapeAppearanceOverlay sebagai milik pustaka: sebelumnya style resmi itu divonis yatim saat dipakai sebagai parent tema. Terbukti lewat uji fungsi dua arah.
