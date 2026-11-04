@@ -2845,14 +2845,17 @@ def cek_uji_baru(peringatan, diff):
     # tercap metode baru. Kini deklarasi hanya diakui dalam
     # dua bentuk: (1) Kotlin — ada kata "fun" sebelum nama;
     # (2) Java — <pengubah*> <Tipe> <nama>( dengan Tipe
-    # berawalan huruf besar atau primitif/void. Nama
+    # berawalan huruf besar atau primitif/void (nama-penuh
+    # bertitik seperti java.util.List<String> juga sah —
+    # cukup satu huruf besar di token tipenya, issue #1389).
+    # Nama
     # berawalan huruf besar (kelas/konstruktor) dilewati,
     # seperti di cek_uji_ubah.
     pola_fun = re.compile(
         r"^\s*(?:@\w+\s+)*(?:\w+\s+)*?fun\s+(?:<[^>]+>\s*)?(\w+)\s*\(")
     pola_java = re.compile(
         r"^\s*(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*"
-        r"(?:void|int|long|boolean|double|float|byte|short|char|[A-Z][\w<>\[\],.?]*)\s+(\w+)\s*\(")
+        r"(?:void|int|long|boolean|double|float|byte|short|char|[\w.]*[A-Z][\w<>\[\],.?]*)\s+(\w+)\s*\(")
     sudah = set()
     for _, baris in tambah_kode(diff):
         cocok = pola_fun.match(baris) or pola_java.match(baris)
