@@ -60,6 +60,15 @@ class ShotConsentActivity : Activity() {
             startActivityForResult(mpm.createScreenCaptureIntent(), REQ_CONSENT)
         } catch (_: Exception) {
             consentInFlight = false
+            // Gagal MEMBUKA dialog izin juga dilaporkan
+            // (issue #1409): dua jalur gagal lain (penolakan,
+            // timeout) melapor lewat reportConsentFailure;
+            // jalur pengecualian ini dulu diam total dan
+            // sekaligus mematikan jaring safetyFinish.
+            if (!outcomeHandled) {
+                outcomeHandled = true
+                reportConsentFailure(timeout = false)
+            }
             finishQuietly()
         }
     }

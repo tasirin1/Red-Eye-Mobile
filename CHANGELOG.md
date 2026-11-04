@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kegagalan membuka dialog izin tangkapan layar kini juga dilaporkan ke pemilik lewat Telegram, sama seperti penolakan dan timeout: sebelumnya jalur pengecualian saat membuka dialog itu diam total sehingga pemilik yang mengetuk tombol izin tidak menerima kabar apa pun.
+
 - Penghimpun definisi alat verifikasi tak lagi menelan blok `<declare-styleable>` yang didahului bentuk self-closing: sebelumnya pola blok menambatkan diri pada tag self-closing dan menelan blok berikutnya, sehingga nama blok hilang dan turunannya menempel ke nama yang salah. Terbukti lewat uji unit penghimpun.
 
 - Pemasang kait tak lagi mati senyap di sistem tanpa awk: kegagalan perintah cadangan pada penyelesaian hooksPath ~pengguna kini ditampung sehingga peringatan "pengguna tak dikenal" benar-benar tercapai, bukan terbunuh diam-diam oleh set -e. Terbukti di sandbox dengan PATH tanpa awk dan getent.
