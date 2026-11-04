@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.624] - 2026-11-05
+
 ### Fixed
 
 - Penjaga token pada PESAN commit kini diselaraskan per permukaan: pesan diperiksa untuk token tertempel utuh dan bentuk ter-encode saja, tanpa pemadatan — pemadatan menyambung prosa biasa (id run CI + titik dua + kutipan galat) menjadi pola token palsu dan pernah memblokir pesan perbaikan yang sah. Pemeriksaan isi berkas tetap memakai pemadatan penuh. Terbukti lewat harness dua arah.
