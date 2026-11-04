@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Pemeriksa definisi metode pada gerbang kini mengenali generik sesudah nama metode: metode hidup berbentuk 'fun nama<T>(...)' tak lagi dinilai sudah terhapus (vonis gagal palsu). (Issue #1253)
 - Pelacak penghapusan metode pada gerbang kini mengenali fungsi extension dan fungsi bergenerik di depan nama: menghapus keduanya sambil menyisakan pemanggil tak lagi lolos dari pemeriksaan. (Issue #1252)
 - Kunci anti-tebak PIN pada /login kini tersimpan awet: restart proses tak lagi mereset masa kunci per pengirim maupun kunci global yang sedang berjalan (keduanya kini dinilai dari penyimpanan jam ganda seperti gerbang PIN lain). (Issue #1251)
 - Kode restore ketat kini sekali pakai: begitu satu kode berhasil dipakai membuka sesi restore, rahasia pembangkitnya langsung diganti sehingga kode yang sama tak bisa membuka sesi kedua. (Issue #1250)

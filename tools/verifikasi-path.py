@@ -1806,7 +1806,7 @@ def masih_didefinisikan(nama):
     pola = re.compile(
         r"(?m)^[ \t]*(?:(?:public|private|protected|internal|override|suspend|inline|"
         r"operator|open|final|abstract|sealed|tailrec|infix|data)\s+)*"
-        r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*\(" % re.escape(nama))
+        r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*(?:<[^>\n]+>\s*)?\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "main", "java")):
         if pola.search(baca_teks(path)):
             return True
