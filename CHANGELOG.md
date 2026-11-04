@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Gerbang bekas-hapusan tidak lagi positif palsu pada suntingan di dalam string mentah/komentar blok panjang: keadaan pengupasan tiap hunk kini disemai dari isi berkas sebelum hunk (pembuka bisa jauh di atas hunk) dan baris konteks ikut memajukan keadaan; terbukti di sandbox — suntingan isi string dan isi komentar lolos, pemakaian kode asli tetap tertangkap.
+
 - Notifikasi prioritas yang gugur karena antrean durable menolak saat kena batas laju kini ikut tercatat di penghitung notifikasi gugur seperti situs luapan lainnya: sebelumnya cabang itu satu-satunya penolakan yang senyap, jadi owner tak pernah tahu ada notifikasi yang hilang di sana.
 
 - Finalisasi sesi pemakaian saat layar mati kini juga kebal buangan antrean executor penuh (perlindungan yang sama seperti flush dan pemulihan sesi): sesi selalu tertutup pada waktunya, sehingga rentang layar-mati tidak lagi ikut terhitung membengkakkan statistik pemakaian.

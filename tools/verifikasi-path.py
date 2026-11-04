@@ -2076,7 +2076,7 @@ def cek_metode_hilang(gagal, peringatan, diff, hapus=()):
             gagal.append(pesan)
 
 
-def _kupasan_baris_beruntun(baris_list):
+def _kupasan_baris_beruntun(baris_list, dalam_mentah=False, kedalaman_blok=0):
     """Kupas komentar/string dari baris tambah satu berkas
     secara beruntun: keadaan string mentah dan komentar blok
     (bersarang, gaya Kotlin) dibawakan antarbaris, sehingga
@@ -2084,10 +2084,12 @@ def _kupasan_baris_beruntun(baris_list):
     menghasilkan teks kosong, bukan kode. Di dalam satu baris:
     // mengakhiri baris, string/char biasa tak membentang
     baris, interpolasi ${...} di dalam string dilompati utuh
-    memakai _lewati_interpolasi (selaras kupas_kode bawaan)."""
+    memakai _lewati_interpolasi (selaras kupas_kode bawaan).
+    Keadaan awal bisa disemai pemanggil dan keadaan akhir
+    dikembalikan bersama hasil (issue #1326): hunk yang mulai
+    di tengah string mentah/komentar blok menyemai keadaannya
+    dari isi berkas sebelum hunk, bukan mulai dari nol."""
     hasil = []
-    dalam_mentah = False
-    kedalaman_blok = 0
     for baris in baris_list:
         keluar = []
         i, n = 0, len(baris)
@@ -2138,7 +2140,56 @@ def _kupasan_baris_beruntun(baris_list):
                 keluar.append(baris[i])
                 i += 1
         hasil.append("".join(keluar))
-    return hasil
+    return hasil, (dalam_mentah, kedalaman_blok)
+
+
+def _segmen_hunk(diff):
+    """Urai diff menjadi segmen hunk berkas kode:
+    (path, nomor_baris_baru_mulai, [(tambah, isi), ...]) —
+    baris konteks ikut tercatat (tambah=False) karena mereka
+    baris asli gambar-sesudah yang memajukan keadaan
+    pengupasan; baris hapus bukan bagian gambar-sesudah."""
+    segmen = []
+    path = ""
+    nomor = 0
+    isi = None
+    for baris in diff.splitlines():
+        if baris.startswith("diff --git "):
+            if isi is not None:
+                segmen.append((path, nomor, isi))
+            path = _path_sisi_b(baris)
+            isi = None
+        elif baris.startswith("@@ "):
+            if isi is not None:
+                segmen.append((path, nomor, isi))
+            cocok = re.search(r"\+(\d+)", baris)
+            nomor = int(cocok.group(1)) if cocok else 0
+            isi = [] if path.endswith(EKSTENSI_KODE) else None
+        elif isi is not None:
+            if baris.startswith("+") and not baris.startswith("+++"):
+                isi.append((True, baris[1:]))
+            elif baris.startswith(" "):
+                isi.append((False, baris[1:]))
+    if isi is not None:
+        segmen.append((path, nomor, isi))
+    return segmen
+
+
+def _keadaan_sebelum_baris(path, jumlah_baris):
+    """Keadaan pengupasan (dalam string mentah/komentar blok)
+    tepat sebelum baris ke-(jumlah_baris+1) berkas kerja saat
+    ini, dihitung dengan menjalankan mesin kupas atas baris-
+    baris sebelumnya. Berkas tak terbaca -> keadaan nol
+    (perilaku lama)."""
+    if jumlah_baris <= 0:
+        return (False, 0)
+    try:
+        with open(os.path.join(AKAR, path), encoding="utf-8", errors="replace") as f:
+            baris = f.read().splitlines()[:jumlah_baris]
+    except Exception:
+        return (False, 0)
+    _hasil, keadaan = _kupasan_baris_beruntun(baris)
+    return keadaan
 
 
 def cek_panggil_bekas_hapusan(gagal, diff):
@@ -2161,17 +2212,23 @@ def cek_panggil_bekas_hapusan(gagal, diff):
     # palsu). (Menggabungkan baris lalu kupas_kode tak bisa:
     # kupas_kode tak mempertahankan baris-baru di dalam rentang
     # yang dilompati, jadi pemetaan per barisnya rusak.)
-    per_berkas = {}
-    for path, baris in tambah_kode(diff):
-        per_berkas.setdefault(path, []).append(baris)
-    for path in per_berkas:
+    # Per segmen hunk (issue #1326): keadaan pengupasan
+    # disemai dari isi berkas SEBELUM hunk (pembuka string
+    # mentah/komentar blok bisa jauh di atas hunk dan tak
+    # ikut sebagai baris tambah/konteks), lalu baris konteks
+    # ikut memajukan keadaan di dalam hunk; hanya baris
+    # tambah yang divonis.
+    for path, nomor_mulai, segmen in _segmen_hunk(diff):
         if not sisa:
             break
-        baris_list = per_berkas[path]
-        bersih_list = _kupasan_baris_beruntun(baris_list)
-        for baris, bersih in zip(baris_list, bersih_list):
+        mentah0, blok0 = _keadaan_sebelum_baris(path, nomor_mulai - 1)
+        bersih_list, _akhir = _kupasan_baris_beruntun(
+            [isi for _t, isi in segmen], mentah0, blok0)
+        for (tambah, baris), bersih in zip(segmen, bersih_list):
             if not sisa:
                 break
+            if not tambah:
+                continue
             for nama in sorted(sisa):
                 if pola[nama].search(bersih) and not pola_dekl[nama].search(bersih):
                     gagal.append(
