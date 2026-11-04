@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemulihan penanda sinkron dari baris bertanggal masa depan kini membedakan racun dari jam yang dimundurkan: pengjangkaran ulang hanya terjadi bila baris penanda melompat jauh dari pendahulunya, sedangkan pergeseran era bersama karena jam mundur dibiarkan sembuh sendiri begitu jam melewati tanggal penanda — sebelumnya kasus jam mundur bisa memicu pengjangkaran turun dan pengiriman ulang riwayat.
+
 - Pemeriksaan ulang anti-tamper untuk halaman sensitif yang sudah terbuka tak lagi lumpuh oleh jendela selintas: syaratnya kini paket sensitif terakhir yang tercatat, bukan jendela terakhir secara umum — sebelumnya satu panel notifikasi atau gelembung chat yang melintas mengganti catatan jendela terakhir dan pemeriksaan ulang untuk halaman Setelan yang masih terbuka mati senyap.
 
 ## [1.6.622] - 2026-11-05

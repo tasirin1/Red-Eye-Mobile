@@ -6882,9 +6882,18 @@ class MonitoringService : Service() {
             val racunTs = preferencesManager.lastSmsTimestamp
             if (racunId > 0L && racunTs > batasSms) {
                 val pred = smsRepository.smsPendahulu(racunTs, racunId, batasSms)
-                if (pred != null) {
+                // Pembeda racun vs jam dimundurkan (issue
+                // #1388): baris racun MELOMPAT jauh dari lalu
+                // lintas normal (pendahulunya jauh di belakang),
+                // sedangkan jam yang dimundurkan menggeser
+                // seluruh era bersama-sama (pendahulu rapat di
+                // belakang kursor). Jangkar ulang hanya untuk
+                // lompatan besar; kasus rapat sembuh sendiri
+                // begitu jam melewati tanggal kursor, tanpa
+                // risiko kirim ulang riwayat.
+                if (pred != null && racunTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
                     try { preferencesManager.setSmsCursorSync(pred.first, pred.second) } catch (_: Exception) { }
-                } else {
+                } else if (pred == null) {
                     try { preferencesManager.resetSmsCursorSync() } catch (_: Exception) { }
                     resetHappened = true
                 }
@@ -6927,9 +6936,11 @@ class MonitoringService : Service() {
             val racunCallTs = preferencesManager.lastCallTimestamp
             if (racunCallId > 0L && racunCallTs > batasCall) {
                 val pred = callLogRepository.callPendahulu(racunCallTs, racunCallId, batasCall)
-                if (pred != null) {
+                // Pembeda racun vs jam dimundurkan seperti sisi
+                // SMS (issue #1388).
+                if (pred != null && racunCallTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
                     try { preferencesManager.setCallCursorSync(pred.second, pred.first) } catch (_: Exception) { }
-                } else {
+                } else if (pred == null) {
                     try { preferencesManager.resetCallCursorSync() } catch (_: Exception) { }
                     resetHappened = true
                 }
