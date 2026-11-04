@@ -1890,14 +1890,28 @@ def cek_metode_hilang(gagal, peringatan, diff, hapus=()):
 
 
 def cek_panggil_bekas_hapusan(gagal, diff):
-    for nama in sorted(BEKAS_HAPUSAN):
-        pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
-        for _, baris in tambah_kode(diff):
-            if pola.search(baris):
+    # Pola diperluas (issue #1284): entri bekas-hapusan tak
+    # selalu fungsi — konstanta/properti terhapus dipakai wajar
+    # tanpa "(": OTP_CODE_REGEX.containsMatchIn(...),
+    # OTP_KEYWORDS.any{...}, diteruskan sebagai argumen, dsb.
+    # Baris dikupas komentar/string dulu; sesudah itu setiap
+    # penyebutan nama di posisi kode adalah pemakaian. Baris
+    # DEKLARASI nama yang sama dikecualikan — sisi definisi
+    # dijaga cek lain, dan val/var lokal baru bernama sama
+    # bukan regresi hapusan.
+    pola = {nama: re.compile(r"\b%s\b" % re.escape(nama)) for nama in BEKAS_HAPUSAN}
+    pola_dekl = {nama: re.compile(r"\b(?:val|var|fun|class|object)\s+%s\b" % re.escape(nama)) for nama in BEKAS_HAPUSAN}
+    sisa = set(BEKAS_HAPUSAN)
+    for _, baris in tambah_kode(diff):
+        if not sisa:
+            break
+        bersih = kupas_kode(baris)
+        for nama in sorted(sisa):
+            if pola[nama].search(bersih) and not pola_dekl[nama].search(bersih):
                 gagal.append(
-                    "Baris baru memanggil %s() yang sudah dihapus: %s"
+                    "Baris baru memakai %s yang sudah dihapus: %s"
                     % (nama, baris.strip()[:80]))
-                break
+                sisa.discard(nama)
 
 
 def hunk_fungsi(diff):

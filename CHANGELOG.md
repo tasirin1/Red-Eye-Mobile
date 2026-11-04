@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang bekas-hapusan kini menangkap pemakaian konstanta/properti terhapus juga (`OTP_CODE_REGEX.containsMatchIn(...)`, diteruskan sebagai argumen, dsb.), bukan hanya panggilan `nama(`: baris baru dikupas komentar/string lalu setiap penyebutan nama di posisi kode divonis, dengan pengecualian baris deklarasi nama yang sama (issue #1284).
 - Penulisan laporan crash cadangan kini atomik juga: bila `renameTo` gagal, berkas disalin ke temp kedua lalu di-rename dari sana, bukan `copyTo` langsung yang bisa meninggalkan laporan setengah jadi bila proses mati di tengah salinan (issue #1283).
 - Laporan drop antrean tidak lagi ganda sesudah mode volatile: jumlah yang sudah diambil pelapor selama penyimpanan tak tersedia kini ditandai dan dikurangkan dari muatan aditif saat penyimpanan pulih, sementara proses yang mati pada mode volatile tetap membangkitkan angka cakram utuh (at-least-once) (issue #1282).
 - Rotasi slot pemakaian a11y kini diserialkan di lapisan data lewat `a11yUsageLock` khusus: baca-ubah-tulis 6 kunci `setA11yUsage` tidak lagi bergantung pada disiplin `gate` pemanggilnya (issue #1281).
