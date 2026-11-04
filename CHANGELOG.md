@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Gerbang `verifikasi-path`: generik bertingkat dua (mis. `Map<String, List<Int>>`) tidak lagi lolos dari panen metode hilang maupun pencocokan definisi — rentang generik yang seimbang diruntuhkan menjadi `<T>` sebelum pola satu tingkat diterapkan (issue #1263).
 - Simpanan kunci /login persisten kini diserialkan satu kunci khusus, dan pemangkasan entrinya memakai semantik penilai kunci itu sendiri (jam ganda `RestorePinGate`): jam dinding yang melompat maju tidak lagi membuang kunci yang menurut jam monoton masih berlaku (issue #1262).
 - `TextChunk.safeCut` kini memundurkan potong melewati SELURUH urutan pemodifikasi grapheme bertumpuk (keycap basis+FE0F+U+20E3 dan tanda gabung ganda), bukan hanya satu langkah, sehingga gugusnya tidak terbelah (issue #1261).
 - Cabang campuran `sendFitted` (ada potongan ditolak permanen) kini menilai hasil antre ekor per item: ekor yang terantre sebagian berstatus QUEUED (bukan SENT yang menyembunyikan kehilangan/dobel), dan potongan ekor yang gagal terantre dihitung sebagai pesan terbuang, tidak hilang senyap (issue #1260).

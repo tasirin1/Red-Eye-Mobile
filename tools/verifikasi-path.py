@@ -1770,10 +1770,41 @@ def cek_secret_terabaikan(gagal, peringatan):
                          "via input manual SetupActivity" % path)
 
 
+def _rapikan_generik(teks):
+    """Runtuhkan rentang generik <...> yang seimbang menjadi "<T>"
+    (issue #1263): pola deklarasi gerbang hanya mengenal generik
+    satu tingkat, jadi generik bertingkat dua (Map<String,
+    List<Int>>) lolos dari panen metode hilang maupun pencocokan
+    definisi. Rentang tak seimbang atau melewati baris dibiarkan
+    apa adanya."""
+    hasil = []
+    i = 0
+    while i < len(teks):
+        if teks[i] == "<":
+            dalam = 0
+            j = i
+            while j < len(teks) and teks[j] != "\n":
+                if teks[j] == "<":
+                    dalam += 1
+                elif teks[j] == ">":
+                    dalam -= 1
+                    if dalam == 0:
+                        break
+                j += 1
+            if j < len(teks) and teks[j] == ">" and dalam == 0:
+                hasil.append("<T>")
+                i = j + 1
+                continue
+        hasil.append(teks[i])
+        i += 1
+    return "".join(hasil)
+
+
 def nama_metode_hilang(diff, lewati_berkas=()):
     """Nama metode pada baris dihapus yang definisinya hilang dari pohon kerja."""
     hilang = []
     for path, baris in hapus_kode(diff):
+        baris = _rapikan_generik(baris)
         rapi = baris.rstrip()
         if re.match(r"\s*return\b", baris):
             continue
@@ -1820,7 +1851,7 @@ def masih_didefinisikan(nama):
         r"operator|open|final|abstract|sealed|tailrec|infix|data)\s+)*"
         r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*(?:<[^>\n]+>\s*)?\(" % re.escape(nama))
     for path in jalan_repo(os.path.join("app", "src", "main", "java")):
-        if pola.search(baca_teks(path)):
+        if pola.search(_rapikan_generik(baca_teks(path))):
             return True
     return False
 
