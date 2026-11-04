@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengupas komentar XML di alat verifikasi kini sadar CDATA: tanda pembuka komentar di dalam bagian CDATA adalah isi, bukan komentar — sebelumnya ia membuka "komentar hantu" yang menelan isi XML sungguhan sampai penutup komentar berikutnya, sehingga pemeriksaan bisa kehilangan rujukan dan string. Terbukti lewat uji satuan pengupas dan baterai sandbox hapus-kelas (gerbang lama kehilangan rujukan yang tertelan; gerbang baru menangkapnya).
+
 - Pengurai path pada kepala diff di alat verifikasi kini utuh untuk direktori yang namanya sendiri mengandung " b/" (mis. folder "uji b/"): sebelumnya path terpotong menjadi nama berkas polos sehingga berkas itu terlewat senyap oleh semua pemeriksaan berkepala diff. Belahan yang kedua sisinya sama kini didahulukan; perilaku rename dan path ber-spasi tidak berubah. Terbukti lewat uji satuan pengurai dan baterai sandbox ujung-ke-ujung.
 
 - Alat verifikasi jalur kini menyemai keadaan pengupasan kode dari pohon commit ujung rentang saat memeriksa rentang diff, bukan dari berkas kerja: sebelumnya vonis "memakai nama yang sudah dihapus" bisa berbalik dua arah (tuduhan palsu maupun tuduhan hilang) setiap kali berkas kerja berbeda dari ujung rentang yang diperiksa. Terbukti lewat baterai sandbox dua arah terhadap gerbang lama.

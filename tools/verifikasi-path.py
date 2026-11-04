@@ -258,8 +258,48 @@ def isi_strings_wajib(gagal):
     return _isi_strings_wajib
 
 
+def _tanpa_komentar_xml(isi, pengganti):
+    """Teks dengan komentar XML diganti `pengganti(teks_komentar)`,
+    SADAR CDATA (issue #1345): '<!--' di dalam <![CDATA[ ... ]]>
+    adalah ISI, bukan pembuka komentar — regex telanjang
+    membuka 'komentar hantu' di sana lalu menelan isi sungguhan
+    sampai '-->' berikutnya, yang bisa berada jauh sesudah
+    CDATA berakhir. Pemindai satu lintasan ini memberi tiap
+    kawasan ke pembuka yang lebih dulu muncul (komentar atau
+    CDATA) sampai penutup kawasan itu sendiri; isi CDATA
+    disalin utuh, komentar tak tertutup dibiarkan apa adanya
+    (sama seperti regex yang gagal mencocokkan)."""
+    out = []
+    i = 0
+    n = len(isi)
+    while i < n:
+        j_komen = isi.find("<!--", i)
+        j_cdata = isi.find("<![CDATA[", i)
+        if j_cdata >= 0 and (j_komen < 0 or j_cdata < j_komen):
+            akhir = isi.find("]]>", j_cdata + 9)
+            if akhir < 0:
+                out.append(isi[i:])
+                i = n
+            else:
+                out.append(isi[i:akhir + 3])
+                i = akhir + 3
+        elif j_komen >= 0:
+            akhir = isi.find("-->", j_komen + 4)
+            if akhir < 0:
+                out.append(isi[i:])
+                i = n
+            else:
+                out.append(isi[i:j_komen])
+                out.append(pengganti(isi[j_komen:akhir + 3]))
+                i = akhir + 3
+        else:
+            out.append(isi[i:])
+            i = n
+    return "".join(out)
+
+
 def kupas_komentar_xml(isi):
-    return re.sub(r"<!--.*?-->", "", isi, flags=re.S)
+    return _tanpa_komentar_xml(isi, lambda _teks: "")
 
 
 class _AnggaranHabis(Exception):
@@ -977,10 +1017,9 @@ def disebut_kata(nama, lewat=()):
             # dipertahankan agar nomor baris laporan tetap
             # tepat (kupas_komentar_xml bawaan membuang
             # rentang utuh termasuk newline-nya).
-            teks = re.sub(
-                r"<!--.*?-->",
-                lambda m: "".join("\n" if c == "\n" else " " for c in m.group(0)),
-                teks, flags=re.S)
+            teks = _tanpa_komentar_xml(
+                teks,
+                lambda t: "".join("\n" if c == "\n" else " " for c in t))
         for i, baris in enumerate(teks.splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
