@@ -169,7 +169,24 @@ object MessageScheduler {
         }
     }
 
+    // Cap pembatalan SENGAJA terakhir (issue #1320):
+    // cancelMessageSend dipanggil owner (berhenti Setup,
+    // /logout, hapus kredensial) — berbeda dari pembatalan
+    // REPLACE internal. Worker yang terbatalkan memeriksa cap
+    // ini agar tak membangkitkan rantai yang baru saja
+    // sengaja dibatalkan.
+    private val lastDeliberateCancelElapsed = java.util.concurrent.atomic.AtomicLong(0L)
+
+    fun deliberateCancelAtOrAfter(elapsedStart: Long): Boolean {
+        if (elapsedStart <= 0L) return false
+        return try { lastDeliberateCancelElapsed.get() >= elapsedStart } catch (_: Exception) { false }
+    }
+
     fun cancelMessageSend(context: Context) {
+        try {
+            lastDeliberateCancelElapsed.set(android.os.SystemClock.elapsedRealtime())
+        } catch (_: Exception) {
+        }
         try {
             outstandingSends.set(0)
         } catch (_: Exception) {

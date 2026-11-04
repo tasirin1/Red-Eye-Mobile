@@ -36,6 +36,7 @@ class SendMessageWorker(
     }
 
     override suspend fun doWork(): Result {
+        val runStartedElapsed = android.os.SystemClock.elapsedRealtime()
         // Penjaga run-tunggal (issue #1103): pola yang sama
         // dengan BootRestartWorker. Tanpa ini, ekor run lama
         // yang dibatalkan REPLACE bisa berjalan bersama run
@@ -86,9 +87,18 @@ class SendMessageWorker(
                 // penjaga run-tunggal oleh ekor run INI — jadwal
                 // tertunda di sini (APPEND_OR_REPLACE, tak
                 // membatalkan siapa pun) menutup celahnya.
-                try {
-                    MessageScheduler.scheduleMessageSendNext(applicationContext, 15_000L)
-                } catch (_: Exception) {
+                // Pengecualian (issue #1320): pembatalan SENGAJA
+                // owner (cancelMessageSend sejak run ini mulai)
+                // TIDAK dibangkitkan lagi — rantai yang baru
+                // dibatalkan untuk berhenti monitoring/logout
+                // tak boleh hidup kembali sebagai pekerjaan
+                // hantu walau run-nya berhenti di gerbang
+                // prasyarat.
+                if (!MessageScheduler.deliberateCancelAtOrAfter(runStartedElapsed)) {
+                    try {
+                        MessageScheduler.scheduleMessageSendNext(applicationContext, 15_000L)
+                    } catch (_: Exception) {
+                    }
                 }
                 throw e
             } catch (e: Exception) {
