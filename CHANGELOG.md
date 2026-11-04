@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemeriksaan "masih ada/tidak" di alat verifikasi (definisi metode, pemanggil, sebutan kelas terhapus, pemilik fungsi) kini membaca pohon ujung rentang saat memeriksa rentang diff, bukan berkas kerja: sebelumnya satu edit belum-commit bisa membalik vonis atas rentang historis/tag. Sisi baru rename kini juga dibaca dari ref ujungnya (dan dari indeks untuk perubahan staged). Terbukti lewat baterai sandbox pohon-kotor terhadap gerbang lama.
+
 - Pengurai path diff di alat verifikasi kini juga utuh untuk rename yang path barunya berada di direktori ber-" b/": calon belahan diuji terhadap keberadaan berkas di pohon baru (hasil rename memang ada di sana), sehingga metode yang dihapus di berkas hasil rename tidak lagi terlewat dari pemeriksaan. Terbukti lewat uji satuan pengurai dan baterai sandbox rename ujung-ke-ujung.
 
 - Alat verifikasi jalur kini memeriksa nama bekas-hapusan per segmen diff dengan benih pohonnya masing-masing pada mode bawaan: diff commit disemai dari pohon ujungnya, diff staged dari indeks git, dan diff pohon kerja dari berkas kerja — sebelumnya satu benih global dipakai untuk ketiganya sehingga vonis bisa berbalik (tuduhan palsu atau regresi lolos) setiap kali ada perubahan staged/belum-commit. Terbukti lewat baterai sandbox dua arah terhadap gerbang lama.

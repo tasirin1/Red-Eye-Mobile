@@ -928,7 +928,7 @@ def _deklarasi_tingkat_atas(teks, kelas, bersarang=True):
     return False
 
 
-def _ambil_rename_berisiko(out, ref_lama=None):
+def _ambil_rename_berisiko(out, ref_lama=None, ref_baru=None):
     # Rename (R) yang mengganti nama berkas kode (issue #1164):
     # kelas bernama sama dengan nama lama hilang bersama
     # berkasnya — acuan yang tertinggal sama berbahayanya
@@ -974,7 +974,7 @@ def _ambil_rename_berisiko(out, ref_lama=None):
             isi_lama = jalan("git", "show", "%s:%s" % (ref_lama, lama))
             if isi_lama is not None and not _deklarasi_tingkat_atas(isi_lama, kelas, bersarang=not lama.endswith(".java")):
                 continue
-        if not _deklarasi_tingkat_atas(baca_teks(baru), kelas, bersarang=not baru.endswith(".java")):
+        if not _deklarasi_tingkat_atas(_baca_ref(ref_baru, baru), kelas, bersarang=not baru.endswith(".java")):
             hasil.append(lama)
     return hasil
 
@@ -990,7 +990,7 @@ def berkas_dihapus(rentang):
                 out = jalan("git", "diff", "--name-status", "-z", a + pemisah + b)
                 if out is None:
                     return []
-                return _ambil_terhapus(out) + _ambil_rename_berisiko(out, a)
+                return _ambil_terhapus(out) + _ambil_rename_berisiko(out, a, b)
     out = jalan("git", "diff", "--name-status", "-z")
     return _ambil_terhapus(out) + _ambil_rename_berisiko(out, "HEAD")
 
@@ -998,10 +998,10 @@ def berkas_dihapus(rentang):
 def disebut_kata(nama, lewat=()):
     pola = re.compile(r"\b%s\b" % re.escape(nama))
     temu = []
-    for path in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",)):
+    for path in _jalan_pohon("app", ext=EKSTENSI_KODE + (".xml",)):
         if path in lewat:
             continue
-        teks = baca_teks(path)
+        teks = _baca_pohon(path) or ""
         if path.endswith(EKSTENSI_KODE):
             # Komentar dikupas dulu (issue #1308, keluarga
             # #1254/#1218): sebutan nama kelas di komentar
@@ -2134,8 +2134,8 @@ def masih_didefinisikan(nama):
         r"(?m)^[ \t]*(?:(?:public|private|protected|internal|override|suspend|inline|"
         r"operator|open|final|abstract|sealed|tailrec|infix|data)\s+)*"
         r"(?:fun\s+(?:<[^>\n]+>\s*)?(?:[\w.]+\.)?|class\s+)%s\s*(?:<[^>\n]+>\s*)?\(" % re.escape(nama))
-    for path in jalan_repo(os.path.join("app", "src", "main", "java")):
-        if pola.search(_rapikan_generik(baca_teks(path))):
+    for path in _jalan_pohon(os.path.join("app", "src", "main", "java")):
+        if pola.search(_rapikan_generik(_baca_pohon(path) or "")):
             return True
     return False
 
@@ -2143,13 +2143,13 @@ def masih_didefinisikan(nama):
 def pemanggil(nama):
     pola = re.compile(r"(?:\b%s\s*\(|::%s\b)" % (re.escape(nama), re.escape(nama)))
     temu = []
-    for path in jalan_repo("app", ext=EKSTENSI_KODE):
+    for path in _jalan_pohon("app", ext=EKSTENSI_KODE):
         # Komentar dikupas dulu (issue #1254, keluarga #1218):
         # sebutan di komentar bukan pemanggil — tanpa kupasan ia
         # memicu GAGAL palsu yang menamai baris komentar itu.
         # _kupas_komentar_kode mempertahankan newline sehingga
         # nomor baris laporan tetap tepat.
-        bersih = _kupas_komentar_kode(baca_teks(path), bersarang=not path.endswith(".java"))
+        bersih = _kupas_komentar_kode(_baca_pohon(path) or "", bersarang=not path.endswith(".java"))
         for i, baris in enumerate(bersih.splitlines(), 1):
             if pola.search(baris):
                 temu.append("%s:%d" % (path, i))
@@ -2288,6 +2288,46 @@ def _segmen_hunk(diff):
 REF_BENIH = None
 _cache_benih = {}
 
+# Pohon rujukan mode rentang (issue #1348): cek-cek yang menilai
+# "masih ada/tidak" (definisi, pemanggil, sebutan, pemilik
+# fungsi) harus membaca pohon UJUNG rentang yang digambarkan
+# diff — bukan berkas kerja yang bisa sudah bergerak. Hanya
+# dipasang pada mode rentang; mode lain None = berkas kerja.
+REF_POHON = None
+
+
+def _baca_pohon(path):
+    """Isi berkas dari pohon REF_POHON, atau berkas kerja bila
+    REF_POHON tak dipasang. None bila tak terbaca."""
+    if REF_POHON:
+        return jalan("git", "show", "%s:%s" % (REF_POHON, path))
+    return baca(path)
+
+
+def _baca_ref(ref, path):
+    """Isi berkas dari ref tertentu (":index" = blob indeks);
+    ref None = berkas kerja. Tak terbaca -> "" (sikap aman
+    baca_teks)."""
+    if ref is None:
+        return baca_teks(path)
+    if ref == ":index":
+        isi = jalan("git", "show", ":%s" % path)
+    else:
+        isi = jalan("git", "show", "%s:%s" % (ref, path))
+    return isi if isi is not None else ""
+
+
+def _jalan_pohon(rel, ext=EKSTENSI_KODE):
+    """Daftar path berkas di bawah rel pada pohon REF_POHON,
+    atau jalan_repo berkas kerja bila tak dipasang."""
+    if REF_POHON:
+        out = jalan("git", "ls-tree", "-r", "--name-only", "-z",
+                    REF_POHON, "--", rel)
+        if out is None:
+            return []
+        return [p for p in pecah_nama(out) if p.endswith(ext)]
+    return list(jalan_repo(rel, ext=ext))
+
 
 def _keadaan_sebelum_baris(path, jumlah_baris):
     """Keadaan pengupasan (dalam string mentah/komentar blok)
@@ -2405,10 +2445,10 @@ def _fungsi_pemilik(path, baris_mulai):
     deklarasi fun sebelum baris itu pada teks terkupas, lacak
     kedalaman kurung, dan ambil deklarasi terdalam yang
     badannya belum tertutup di baris_mulai."""
-    penuh = os.path.join(AKAR, path)
-    if not os.path.isfile(penuh):
+    isi = _baca_pohon(path)
+    if isi is None:
         return None
-    bersih = _kupas_komentar_kode(baca_teks(penuh), bersarang=not path.endswith(".java"))
+    bersih = _kupas_komentar_kode(isi, bersarang=not path.endswith(".java"))
     pola = re.compile(r"^\s*(?:(?:public|private|protected|internal|override|suspend|inline|operator|infix|tailrec|open|final|abstract)\s+)*fun\s+(?:<[^>\n]+>\s*)?(?:[\w<>\[\],.? ]*\.)?(\w+)\s*\(")
     tumpukan = []  # (nama, kedalaman badan)
     kedalaman = 0
@@ -2786,7 +2826,7 @@ def utama():
     parser.add_argument("--rentang", default="", help="rentang diff A...B (dipakai CI)")
     args = parser.parse_args()
 
-    global REF_BENIH
+    global REF_BENIH, REF_POHON
     gagal = []
     peringatan = []
     diff = ""
@@ -2819,6 +2859,7 @@ def utama():
             else:
                 print("info: rentang tak valid (push pertama?) — cek diff %s." % ujung)
                 REF_BENIH = ujung
+                REF_POHON = ujung
                 berubah = [p for p in jalan_repo("app") if not p.endswith(".md")]
                 diff = jalan("git", "show", "--format=", "--patch", ujung) or ""
         else:
@@ -2826,6 +2867,7 @@ def utama():
             rentang_lokal = args.rentang
             a, b = re.split(r"\.\.+", args.rentang, maxsplit=1)
             REF_BENIH = b or "HEAD"
+            REF_POHON = REF_BENIH
             pemisah = "..." if "..." in args.rentang else ".."
             diff = jalan("git", "diff", a + pemisah + b) or ""
             cek_secret_riwayat(gagal, args.rentang)
@@ -2977,7 +3019,7 @@ def utama():
         # berkas beraksen yang masih dirujuk lolos vonis.
         keluar_staged = jalan("git", "diff", "--cached", "--name-status", "-z") or ""
         hapus += _ambil_terhapus(keluar_staged)
-        hapus += _ambil_rename_berisiko(keluar_staged, "HEAD")
+        hapus += _ambil_rename_berisiko(keluar_staged, "HEAD", ":index")
     cek_berkas_kode_dihapus(gagal, hapus)
     if not args.semua:
         cek_pengingat_changelog(peringatan, berubah)
