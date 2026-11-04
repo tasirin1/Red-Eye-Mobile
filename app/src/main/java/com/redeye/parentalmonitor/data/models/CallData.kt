@@ -23,6 +23,13 @@ data class CallData(
 
     fun getDurationString(): String {
         if (duration == 0) return "0s"
+        // Sesudah satu jam, naik ke format jam ReportFormat yang
+        // dipakai semua laporan lain (issue #1247): dulu panggilan
+        // 2 jam tampil "120m 0s". Presisi detik di bawah satu jam
+        // dipertahankan (durationText bekerja per menit utuh).
+        if (duration >= 3600) {
+            return com.redeye.parentalmonitor.utils.ReportFormat.durationText(duration * 1000L)
+        }
         val minutes = duration / 60
         val seconds = duration % 60
         return if (minutes > 0) {
