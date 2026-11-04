@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- Menghentikan monitoring dari layar Setup kini digerbang PIN akses (bila terpasang) + dialog konfirmasi, dan owner menerima pemberitahuan Telegram yang dikirim sebelum monitoring mati (jatuh ke antrean prioritas bila pengiriman langsung gagal) — tidak lagi satu ketuk senyap (issue #1293).
+
 ## [1.6.616] - 2026-11-04
 
 ### Fixed

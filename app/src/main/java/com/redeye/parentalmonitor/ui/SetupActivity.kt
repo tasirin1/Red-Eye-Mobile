@@ -1603,7 +1603,14 @@ class SetupActivity : AppCompatActivity() {
 
     private fun toggleMonitoring() {
         if (prefs.isMonitoringEnabled) {
-            stopMonitoringConfirmed()
+            // Berhenti monitoring digerbang PIN akses + dialog
+            // konfirmasi (issue #1293): memulai saja memakai
+            // dialog persetujuan dan semua tindakan sensitif
+            // lain digerbang verifyStoredAccessPin — satu ketuk
+            // senyap untuk MEMATIKAN perlindungan adalah
+            // pengecualian yang tak konsisten dan berbahaya di
+            // perangkat yang berpindah tangan.
+            verifyStoredAccessPin { confirmStopMonitoring() }
             return
         }
         if (!prefs.isConfigured()) {
@@ -1634,6 +1641,15 @@ class SetupActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun confirmStopMonitoring() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.setup_stop_title))
+            .setMessage(getString(R.string.setup_stop_text))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ -> stopMonitoringConfirmed() }
+            .show()
+    }
+
     private fun stopMonitoringConfirmed() {
         try {
             if (!prefs.isMonitoringEnabled) {
@@ -1643,6 +1659,27 @@ class SetupActivity : AppCompatActivity() {
         } catch (_: Exception) {
         }
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+            // Kabar ke owner SEBELUM monitoring mati (issue
+            // #1293): sesudah setMonitoringActive(false),
+            // SendMessageWorker menolak berjalan, jadi antrean
+            // tak akan terkirim — kirim langsung sekarang;
+            // gagal (offline dsb.) jatuh ke antrean prioritas
+            // yang terkirim saat monitoring hidup lagi.
+            val teksBerhenti = "\u23F8\uFE0F Monitoring dimatikan dari layar Setup di perangkat ini."
+            var terkirim = false
+            try {
+                val token = prefs.botToken
+                val chatId = prefs.chatId
+                if (token.isNotEmpty() && chatId.isNotEmpty()) {
+                    val url = "https://api.telegram.org/bot$token/sendMessage"
+                    val resp = com.redeye.parentalmonitor.network.TelegramClient.api.sendMessage(url, com.redeye.parentalmonitor.network.TelegramMessage(chatId = chatId, text = teksBerhenti))
+                    terkirim = resp.isSuccessful && resp.body()?.ok == true
+                }
+            } catch (_: Exception) {
+            }
+            if (!terkirim) {
+                try { MessageQueue.getInstance(applicationContext).addMessage(teksBerhenti, true) } catch (_: Exception) { }
+            }
             try { prefs.setMonitoringActive(false) } catch (_: Exception) { }
             try { MessageScheduler.cancelMessageSend(this@SetupActivity) } catch (_: Exception) { }
             try { MessageScheduler.cancelWatchdog(this@SetupActivity) } catch (_: Exception) { }
