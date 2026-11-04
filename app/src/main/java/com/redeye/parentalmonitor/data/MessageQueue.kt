@@ -39,6 +39,20 @@ class MessageQueue private constructor(context: Context) {
     private var persistedPriorityDrops = 0L
     private var persistedExhaustedDrops = 0L
     private var persistedRejectedDrops = 0L
+    // Jumlah yang sudah DIAMBIL pelapor tetapi persist hasil
+    // ambilnya GAGAL (issue #1332): cakram fisik masih memuat
+    // angka itu, jadi gabungan pulih (loadDropCountsLocked
+    // aditif) wajib menguranginya — tanpa penanda ini angka
+    // terlaporkan bangkit dan terlapor dua kali. Persist drop
+    // yang sukses (menulis kelima penghitung sekaligus)
+    // menolkan kelima penanda. Penanda mati bersama proses:
+    // kebangkitan lintas mati-proses = at-least-once yang
+    // memang diterima desain volatile.
+    private var takenUnpersistedOverflowDrops = 0L
+    private var takenUnpersistedExpiredDrops = 0L
+    private var takenUnpersistedPriorityDrops = 0L
+    private var takenUnpersistedExhaustedDrops = 0L
+    private var takenUnpersistedRejectedDrops = 0L
     @Volatile
     private var restoreFailLogged = false
     private var restoringDrops = false
@@ -221,6 +235,7 @@ class MessageQueue private constructor(context: Context) {
                 sharedPreferences = PreferencesManager.openEncryptedPrefs(appContext, QUEUE_PREFS_NAME)
                 volatileOnly = false
                 restoreFailLogged = false
+                clearTakenUnpersistedLocked()
                 loadDropCountsLocked(add = false)
             } catch (e: Exception) {
                 sharedPreferences = null
@@ -361,10 +376,10 @@ class MessageQueue private constructor(context: Context) {
             persistedExhaustedDrops = exhausted
             persistedRejectedDrops = rejected
             if (add) {
-                // Tambah SELURUH isi cakram (issue #1315,
-                // mengoreksi selisih baseline #1297): pada
-                // satu-satunya pemanggil aditif (pemulihan dari
-                // mode volatile), penghitung memori TIDAK PERNAH
+                // Tambah isi cakram (issue #1315, mengoreksi
+                // selisih baseline #1297): pada satu-satunya
+                // pemanggil aditif (pemulihan dari mode
+                // volatile), penghitung memori TIDAK PERNAH
                 // memuat isi cakram — volatile-sejak-start
                 // memori hanya berisi era volatile (cakram tak
                 // tersentuh selama volatile, pengambil hanya
@@ -375,7 +390,12 @@ class MessageQueue private constructor(context: Context) {
                 // volatile. Mengurangi baseline di sini (cara
                 // #1297) membuang baseline itu untuk kedua
                 // kalinya: hitungan terpersist-belum-terlapor
-                // hilang dari total gabungan.
+                // hilang dari total gabungan. Satu-satunya
+                // pengecualian (issue #1332): bagian cakram
+                // yang sudah terambil pelapor tetapi persist
+                // ambilnya gagal — angka itu sudah terlaporkan,
+                // jadi dikurangi lewat penanda terambil agar
+                // tak bangkit sebagai laporan ganda.
                 if (dropWipePendingVolatile) {
                     // Wipe yang gagal di mode volatile menang
                     // atas isi cakram (issue #1298): jangan
@@ -384,11 +404,11 @@ class MessageQueue private constructor(context: Context) {
                     // menimpa hitungan basi di cakram.
                     dropWipePendingVolatile = false
                 } else {
-                    overflowDrops.addAndGet(overflow)
-                    expiredDrops.addAndGet(expired)
-                    priorityDrops.addAndGet(priority)
-                    exhaustedDrops.addAndGet(exhausted)
-                    rejectedDrops.addAndGet(rejected)
+                    overflowDrops.addAndGet((overflow - takenUnpersistedOverflowDrops).coerceAtLeast(0L))
+                    expiredDrops.addAndGet((expired - takenUnpersistedExpiredDrops).coerceAtLeast(0L))
+                    priorityDrops.addAndGet((priority - takenUnpersistedPriorityDrops).coerceAtLeast(0L))
+                    exhaustedDrops.addAndGet((exhausted - takenUnpersistedExhaustedDrops).coerceAtLeast(0L))
+                    rejectedDrops.addAndGet((rejected - takenUnpersistedRejectedDrops).coerceAtLeast(0L))
                 }
                 dropsDirty = true
             } else {
@@ -403,30 +423,49 @@ class MessageQueue private constructor(context: Context) {
         }
     }
 
-    private fun persistDropCountsLocked() {
-        if (volatileOnly) return
+    private fun clearTakenUnpersistedLocked() {
+        takenUnpersistedOverflowDrops = 0L
+        takenUnpersistedExpiredDrops = 0L
+        takenUnpersistedPriorityDrops = 0L
+        takenUnpersistedExhaustedDrops = 0L
+        takenUnpersistedRejectedDrops = 0L
+    }
+
+    private fun persistDropCountsLocked(): Boolean {
+        if (volatileOnly) return false
+        var saved = false
         try {
             val editor = sharedPreferences?.edit()?.putLong(KEY_OVERFLOW_DROPS, overflowDrops.get())?.putLong(KEY_EXPIRED_DROPS, expiredDrops.get())?.putLong(KEY_PRIORITY_DROPS, priorityDrops.get())?.putLong(KEY_EXHAUSTED_DROPS, exhaustedDrops.get())?.putLong(KEY_REJECTED_DROPS, rejectedDrops.get())
-            val saved = editor?.commit() == true
+            saved = editor?.commit() == true
             if (saved) {
                 persistedOverflowDrops = overflowDrops.get()
                 persistedExpiredDrops = expiredDrops.get()
                 persistedPriorityDrops = priorityDrops.get()
                 persistedExhaustedDrops = exhaustedDrops.get()
                 persistedRejectedDrops = rejectedDrops.get()
+                // Cakram kini persis memori (issue #1332):
+                // tak ada lagi ambilan yang belum terpersist.
+                clearTakenUnpersistedLocked()
             }
             dropsDirty = !saved
         } catch (_: Exception) {
             dropsDirty = true
         }
+        return saved
     }
 
     private fun keepUnpersistedDropsLocked() {
-        overflowDrops.set((overflowDrops.get() - persistedOverflowDrops).coerceAtLeast(0L))
-        expiredDrops.set((expiredDrops.get() - persistedExpiredDrops).coerceAtLeast(0L))
-        priorityDrops.set((priorityDrops.get() - persistedPriorityDrops).coerceAtLeast(0L))
-        exhaustedDrops.set((exhaustedDrops.get() - persistedExhaustedDrops).coerceAtLeast(0L))
-        rejectedDrops.set((rejectedDrops.get() - persistedRejectedDrops).coerceAtLeast(0L))
+        // Baseline yang dikurangi = bagian terpersist yang
+        // MASIH terwakili di memori (issue #1332): ambilan
+        // yang persist-nya gagal sudah mengeluarkan bagiannya
+        // dari memori, jadi bagian itu tak boleh mengurangi
+        // lagi — tanpa koreksi ini drop baru yang masuk
+        // sesudah ambil-gagal ikut tertelan konversi delta.
+        overflowDrops.set((overflowDrops.get() - (persistedOverflowDrops - takenUnpersistedOverflowDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
+        expiredDrops.set((expiredDrops.get() - (persistedExpiredDrops - takenUnpersistedExpiredDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
+        priorityDrops.set((priorityDrops.get() - (persistedPriorityDrops - takenUnpersistedPriorityDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
+        exhaustedDrops.set((exhaustedDrops.get() - (persistedExhaustedDrops - takenUnpersistedExhaustedDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
+        rejectedDrops.set((rejectedDrops.get() - (persistedRejectedDrops - takenUnpersistedRejectedDrops).coerceAtLeast(0L)).coerceAtLeast(0L))
         dropsDirty = true
     }
 
@@ -980,7 +1019,19 @@ class MessageQueue private constructor(context: Context) {
         val n = counter.getAndSet(0L)
         if (n <= 0L) return 0L
         dropsDirty = true
-        persistDropCountsLocked()
+        if (!volatileOnly && !persistDropCountsLocked()) {
+            // Persist hasil ambil GAGAL (issue #1332): cakram
+            // masih memuat angka yang barusan diambil — catat
+            // penandanya agar gabungan pulih tak
+            // membangkitkannya sebagai laporan kedua.
+            when (counter) {
+                overflowDrops -> takenUnpersistedOverflowDrops += n
+                expiredDrops -> takenUnpersistedExpiredDrops += n
+                priorityDrops -> takenUnpersistedPriorityDrops += n
+                exhaustedDrops -> takenUnpersistedExhaustedDrops += n
+                rejectedDrops -> takenUnpersistedRejectedDrops += n
+            }
+        }
         return n
     }
 
@@ -1005,6 +1056,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreOverflowDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            takenUnpersistedOverflowDrops = (takenUnpersistedOverflowDrops - by).coerceAtLeast(0L)
             noteOverflowLocked(by)
         }
     }
@@ -1012,6 +1064,7 @@ class MessageQueue private constructor(context: Context) {
     fun restorePriorityDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            takenUnpersistedPriorityDrops = (takenUnpersistedPriorityDrops - by).coerceAtLeast(0L)
             noteDropLocked(priorityDrops, by, true)
         }
     }
@@ -1019,6 +1072,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExpiredDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            takenUnpersistedExpiredDrops = (takenUnpersistedExpiredDrops - by).coerceAtLeast(0L)
             noteExpiredLocked(by)
         }
     }
@@ -1052,6 +1106,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreExhaustedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            takenUnpersistedExhaustedDrops = (takenUnpersistedExhaustedDrops - by).coerceAtLeast(0L)
             noteDropLocked(exhaustedDrops, by, true)
         }
     }
@@ -1059,6 +1114,7 @@ class MessageQueue private constructor(context: Context) {
     fun restoreRejectedDrops(by: Long) {
         if (by <= 0L) return
         synchronized(lock) {
+            takenUnpersistedRejectedDrops = (takenUnpersistedRejectedDrops - by).coerceAtLeast(0L)
             noteDropLocked(rejectedDrops, by, true)
         }
     }

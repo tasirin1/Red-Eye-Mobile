@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Hitungan drop yang sudah diambil pelapor kini tidak bisa bangkit lagi sebagai laporan ganda bila penyimpanan hasil ambilnya gagal: ambilan yang belum terpersist dicatat penandanya, dan gabungan hitungan saat penyimpanan pulih mengurangi bagian yang sudah terlaporkan itu. Terbukti lewat simulasi angka untuk semua sel gabungan (termasuk sel yang dulu ditangani rumus baseline dan sel yang ditangani rumus tambah-penuh).
+
 - Penanda foreground kini direset tiap foreground dilepas: instance layanan yang bangkit lagi sesudah berhenti tidak lagi membawa klaim "sudah foreground" basi, sehingga kegagalan menegakkan foreground berikutnya dinilai dengan aturan instance baru (bukan dilewatkan). Memperbaiki perilaku yang ditemukan pada audit-112.
 
 ## [1.6.618] - 2026-11-04
