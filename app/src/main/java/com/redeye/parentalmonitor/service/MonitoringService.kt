@@ -6911,11 +6911,16 @@ class MonitoringService : Service() {
                 // risiko kirim ulang riwayat.
                 if (pred != null && racunTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
                     try { preferencesManager.setSmsCursorSync(pred.first, pred.second) } catch (_: Exception) { }
+                    android.util.Log.w("MonitoringService", "Kursor SMS teracuni tanggal masa depan dijangkar ulang (ts $racunTs > batas $batasSms)")
                 } else if (pred == null) {
                     try { preferencesManager.resetSmsCursorSync() } catch (_: Exception) { }
                     resetHappened = true
+                    android.util.Log.w("MonitoringService", "Kursor SMS teracuni tanggal masa depan direset - tak ada pendahulu normal (ts $racunTs > batas $batasSms)")
                 }
-                android.util.Log.w("MonitoringService", "Kursor SMS teracuni tanggal masa depan dijangkar ulang (ts $racunTs > batas $batasSms)")
+                // Kasus celah rapat (dugaan jam dimundurkan)
+                // sengaja TANPA log tindakan (issue #1405): log
+                // lama tercetak di luar cabang sehingga berbunyi
+                // seolah jangkar/reset terjadi.
             }
         } catch (_: Exception) {
         }
@@ -6958,11 +6963,13 @@ class MonitoringService : Service() {
                 // SMS (issue #1388).
                 if (pred != null && racunCallTs - pred.second > com.redeye.parentalmonitor.utils.CursorAdvance.TOLERANSI_MASA_DEPAN_MS) {
                     try { preferencesManager.setCallCursorSync(pred.second, pred.first) } catch (_: Exception) { }
+                    android.util.Log.w("MonitoringService", "Kursor panggilan teracuni tanggal masa depan dijangkar ulang (ts $racunCallTs > batas $batasCall)")
                 } else if (pred == null) {
                     try { preferencesManager.resetCallCursorSync() } catch (_: Exception) { }
                     resetHappened = true
+                    android.util.Log.w("MonitoringService", "Kursor panggilan teracuni tanggal masa depan direset - tak ada pendahulu normal (ts $racunCallTs > batas $batasCall)")
                 }
-                android.util.Log.w("MonitoringService", "Kursor panggilan teracuni tanggal masa depan dijangkar ulang (ts $racunCallTs > batas $batasCall)")
+                // Kasus celah rapat tanpa log tindakan (#1405).
             }
         } catch (_: Exception) {
         }
