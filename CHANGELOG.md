@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pekerja pemulih boot kini juga membatalkan alarm penjaga-hidup pada perangkat yang pemantauannya dimatikan atau belum dikonfigurasi, bukan hanya pengawas berkala — tidak ada lagi satu kebangunan tak diundang sesudahnya.
+
 - Membuat cadangan kini ditolak dengan penjelasan bila penyimpanan kredensial terdeteksi rusak, agar tidak menghasilkan berkas cadangan timpang yang tampak sah.
 
 - Bila pesan berkas atau PIN cadangan gagal terhapus otomatis dari chat, pemilik kini diberi tahu untuk menghapusnya manual — sebelumnya kegagalan itu ditelan diam-diam dan rahasia bisa tertinggal permanen.

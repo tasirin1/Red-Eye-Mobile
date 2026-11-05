@@ -148,6 +148,13 @@ class BootRestartWorker(
         }
         if (prefs.userDisabledMonitoring || !prefs.userConsentedMonitoring || !prefs.isMonitoringEnabled) {
             MessageScheduler.cancelWatchdog(appContext)
+            // Alarm Liveness ikut dibatalkan (issue #1563):
+            // cabang ini dulu hanya membatalkan watchdog —
+            // alarm sisa menembak sekali dalam <=15 menit
+            // membangunkan proses di perangkat yang sengaja
+            // dimatikan. BootReceiver (#1274) dan jalur
+            // berhenti Setup membatalkan keduanya.
+            try { Liveness.cancel(appContext) } catch (_: Exception) { }
             return Result.success()
         }
         // Liveness dipasang SESUDAH cek nonaktif di atas (issue
@@ -172,6 +179,11 @@ class BootRestartWorker(
                 MessageScheduler.cancelWatchdog(appContext)
             } catch (_: Exception) {
             }
+            // Liveness yang baru dipasang di atas ikut
+            // dibatalkan (issue #1563): perangkat belum
+            // terkonfigurasi tak punya apa pun untuk
+            // dijaga tetap hidup.
+            try { Liveness.cancel(appContext) } catch (_: Exception) { }
             return Result.success()
         }
         try {
