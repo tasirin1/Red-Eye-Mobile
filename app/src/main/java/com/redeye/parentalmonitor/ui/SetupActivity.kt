@@ -1644,7 +1644,7 @@ class SetupActivity : AppCompatActivity() {
                         // belum tentu tersimpan — issue #875).
                         val namaBot = usernameBotTeruji
                         if (namaBot.isNotEmpty()) {
-                            Toast.makeText(this@SetupActivity, "Terhubung sebagai @" + namaBot, Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@SetupActivity, getString(R.string.setup_test_connected_as, namaBot), Toast.LENGTH_LONG).show()
                         }
                         confirmSaveAfterTest(token, outcome.effectiveChatId, myTest, syncInterval, cameraInterval, if (rawAccessPin == STORED_MASK) restoreAccessPin(token, outcome.effectiveChatId, storedAccessPin) else rawAccessPin)
                     }
