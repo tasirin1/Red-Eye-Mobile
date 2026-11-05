@@ -788,6 +788,15 @@ class CameraService(private val context: Context) {
                                     recording.set(true)
                                     onTrace("trace: recording started")
                                     val stop = Runnable {
+                                        // Sesi sudah ditutup jalur
+                                        // lain (timeout) atau sudah
+                                        // digantikan (issue #1685):
+                                        // jangan sentuh perekam/
+                                        // berkas sama sekali — stop
+                                        // yang terlambat bisa
+                                        // membuang video yang
+                                        // sebenarnya berhasil.
+                                        if (done.get() || sessionSeq.get() != mySeq) return@Runnable
                                         try {
                                             var stopOk = true
                                             try { rec.stop() } catch (_: Exception) { stopOk = false }
