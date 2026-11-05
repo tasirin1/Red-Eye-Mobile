@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Empat properti gerbang PIN yatim dihapus dari PreferencesManager (issue #1656): `restorePinFailCount`, `restorePinLastAttemptKey`, `accessPinFailCount`, dan `restoreCodeFailCount` tak dirujuk siapa pun — kunci-kuncinya hidup tetapi diakses fungsi gerbang internal langsung lewat konstanta `KEY_*`, jadi properti ini jalan resmi kedua yang tak pernah dilewati dan suntingan padanya akan diam-diam tak berpengaruh. Konstanta kuncinya tetap.
 - Fungsi pembungkus mati `protectionActive` dihapus dari A11yMonitor (issue #1655): ia hanya meneruskan `monitoringActive` (yang dipanggil langsung di 8+ situs) dan tak punya pemanggil satu pun — lapisan nama kedua yang membuat pembaca mengira ada semantik proteksi terpisah.
 - Field `mainHandler` yang tak terpakai dihapus dari A11yMonitor beserta impor Handler/Looper-nya (issue #1654): objek Handler dibuat tiap konstruksi layanan aksesibilitas lalu tak pernah disentuh sejak refactor lama — hanya membingungkan pembaca seolah ada antrean utas utama di kelas itu.
 - String resource `never` yang yatim dihapus dari kedua locale (issue #1653): tak ada rujukan `R.string.never`/`@string/never` di seluruh repo dan tak ada pemuatan string dinamis — sisa opsi antarmuka yang sudah lama dihapus, ikut terbit ke APK tanpa guna. Paritas EN/IN tetap 196=196.

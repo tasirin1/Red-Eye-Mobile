@@ -1071,15 +1071,6 @@ class PreferencesManager(context: Context) {
         get() = prefBoolean(KEY_RESTORE_STRICT, false)
         set(value) = sharedPreferences.edit().putBoolean(KEY_RESTORE_STRICT, value).apply()
 
-    var restorePinFailCount: Int
-        get() = try { sharedPreferences.getInt(KEY_RESTORE_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
-        set(value) { try { sharedPreferences.edit().putInt(KEY_RESTORE_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
-
-    // Kunci percobaan (berkas, PIN) terakhir yang gagal (issue #873).
-    var restorePinLastAttemptKey: String
-        get() = prefString(KEY_RESTORE_PIN_LAST_KEY, "")
-        set(value) = sharedPreferences.edit().putString(KEY_RESTORE_PIN_LAST_KEY, value).apply()
-
     var restorePinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_RESTORE_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
@@ -1213,10 +1204,6 @@ class PreferencesManager(context: Context) {
         }
     }
 
-    var accessPinFailCount: Int
-        get() = try { sharedPreferences.getInt(KEY_ACCESS_PIN_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
-        set(value) { try { sharedPreferences.edit().putInt(KEY_ACCESS_PIN_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
-
     var accessPinLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_UNTIL, value).commit() } catch (_: Exception) { } }
@@ -1224,10 +1211,6 @@ class PreferencesManager(context: Context) {
     var accessPinLockoutElapsedStart: Long
         get() = try { sharedPreferences.getLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, 0L) } catch (_: Exception) { 0L }
         set(value) { try { sharedPreferences.edit().putLong(KEY_ACCESS_PIN_LOCKOUT_ELAPSED_START, value).commit() } catch (_: Exception) { } }
-
-    var restoreCodeFailCount: Int
-        get() = try { sharedPreferences.getInt(KEY_RESTORE_CODE_FAIL_COUNT, 0) } catch (_: Exception) { 0 }
-        set(value) { try { sharedPreferences.edit().putInt(KEY_RESTORE_CODE_FAIL_COUNT, value).commit() } catch (_: Exception) { } }
 
     var restoreCodeLockoutUntil: Long
         get() = try { sharedPreferences.getLong(KEY_RESTORE_CODE_LOCKOUT_UNTIL, 0L) } catch (_: Exception) { 0L }
