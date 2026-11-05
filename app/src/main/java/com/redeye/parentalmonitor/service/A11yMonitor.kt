@@ -151,6 +151,7 @@ object A11yMonitor {
     private var launcherPackageAt = 0L
     private var knownSeeded = false
     private var seedRetryAfter = 0L
+    private var seedFailStreak = 0
 
     fun attach(context: Context) {
         val app = context.applicationContext
@@ -815,8 +816,25 @@ object A11yMonitor {
         // kosong saat proses mulai) membekukan status belum-
         // seeded sampai ganti hari atau proses dimulai ulang.
         if (!knownSeeded && SystemClock.elapsedRealtime() >= seedRetryAfter) {
-            seedRetryAfter = SystemClock.elapsedRealtime() + 60_000L
+            // Backoff kegagalan seed (issue #1592): gerbang
+            // 60 detik #1355 menjaga seed yang gagal sesaat
+            // tetap dicoba lagi, tetapi bila kueri paket
+            // TERUS gagal (prune/seed tak pernah mengunci
+            // penandanya), enumerasi ratusan paket berulang
+            // pada irama penuh selamanya. Kegagalan tanpa
+            // kemajuan apa pun kini menggandakan jeda coba
+            // lagi (60 dtk -> s.d. 16 mnt); kemajuan apa pun
+            // (satu penanda terkunci) mengembalikan ke 60 dtk.
+            val seededBefore = knownSeeded
+            val reconciledBefore = knownReconciled
             seedKnownAppsLocked(context)
+            if (knownSeeded != seededBefore || knownReconciled != reconciledBefore) {
+                seedFailStreak = 0
+                seedRetryAfter = SystemClock.elapsedRealtime() + 60_000L
+            } else {
+                seedFailStreak = (seedFailStreak + 1).coerceAtMost(4)
+                seedRetryAfter = SystemClock.elapsedRealtime() + 60_000L * (1L shl seedFailStreak)
+            }
         }
         if (loaded && today == loadedDay) return
         val previousDay = loadedDay
