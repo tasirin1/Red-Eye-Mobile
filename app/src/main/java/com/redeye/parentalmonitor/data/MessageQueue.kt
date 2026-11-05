@@ -533,9 +533,18 @@ class MessageQueue private constructor(context: Context) {
         } catch (_: Exception) {
             0L
         }
-        if (items.size <= 5) return items.filter { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }
-        if (items.all { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }) return items
-        val fresh = items.filter { QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, wallCutoff, now, bootAt) }
+        // TTL per jenis (issue #1512): pesan prioritas/
+        // darurat (admin dimatikan, percobaan buka kunci)
+        // berumur 30 hari, bukan 7 seperti laporan biasa —
+        // HP offline lama tak lagi menguapkan peringatan
+        // terpenting lebih dulu. wallCutoff adalah titik
+        // 7 hari; titik prioritas 23 hari lebih awal.
+        val cutoffPrioritas = wallCutoff - 23 * 24 * 60 * 60_000L
+        fun segar(it: QueuedMessage): Boolean =
+            QueueFresh.isFresh(it.timestamp, it.elapsedAt, it.bootAt, if (it.priority) cutoffPrioritas else wallCutoff, now, bootAt)
+        if (items.size <= 5) return items.filter { segar(it) }
+        if (items.all { segar(it) }) return items
+        val fresh = items.filter { segar(it) }
         // Penyelamatan "jam melompat" hanya dengan bukti
         // (issue #967): antrean warisan yang sungguh tua
         // memenuhi syarat yang sama persis (mayoritas basi +

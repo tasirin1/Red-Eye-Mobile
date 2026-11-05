@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pesan prioritas dan darurat dalam antrean kini berumur 30 hari sebelum kedaluwarsa, bukan 7 hari seperti laporan biasa: HP yang lama offline tidak lagi menguapkan peringatan terpenting lebih dulu.
+
 - Sesi pemakaian aplikasi tidak lagi terpotong oleh jendela singgah seperti lembar berbagi atau pembayaran Play: kembali ke aplikasi yang sama dalam 10 menit menyambung sesi yang sama dan waktu selama jendela itu tampil terhitung untuk aplikasi asal.
 
 - Pembersihan media otomatis kini ditunda bila jam perangkat terdeteksi pernah dimundurkan, agar berkas terbaru tidak terbuang lebih dulu hanya karena cap waktunya mengecil.
