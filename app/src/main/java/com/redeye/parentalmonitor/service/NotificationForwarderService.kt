@@ -782,8 +782,15 @@ class NotificationForwarderService : NotificationListenerService() {
         // kirim yang gugur menelan kiriman ulang <10 detik.
         val capTerkirim = {
             synchronized(lastSent) { lastSent[key] = now to sbnPostTime }
-            // Kirim terkonfirmasi: gabungan tumpukan calon
-            // menjadi patokan potong berikutnya (issue #1494).
+        }
+        // Commit tumpukan DIPISAH dari cap dedupe (issue
+        // #1506): capTerkirim juga dipanggil di cabang
+        // BUANG penyaring (memang disengaja untuk dedupe)
+        // — commit tumpukan di sana ikut memajukan patokan
+        // padahal tak ada yang terkirim, menghidupkan lagi
+        // kehilangan #1494. commitTumpukan hanya dipanggil
+        // di situs kirim/antre terkonfirmasi.
+        val commitTumpukan = {
             if (sbnKey.isNotEmpty()) {
                 try {
                     val calon = synchronized(tumpukanCalon) { tumpukanCalon.remove(sbnKey) }
@@ -832,6 +839,7 @@ class NotificationForwarderService : NotificationListenerService() {
                 }
                 if (queued) {
                     capTerkirim()
+                    commitTumpukan()
                     markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
                 } else {
                     // Gugur di cabang ini tetap tercatat
@@ -873,6 +881,7 @@ class NotificationForwarderService : NotificationListenerService() {
             }
             if (delivered) {
                 capTerkirim()
+                commitTumpukan()
                 markGroupAndIdForwarded(if (trackGroup) groupKey else "", idHash)
             }
             return
@@ -880,6 +889,7 @@ class NotificationForwarderService : NotificationListenerService() {
         try {
             if (forwardToTelegram(message, idHash, if (trackGroup) groupKey else "")) {
                 capTerkirim()
+                commitTumpukan()
             }
         } catch (_: Exception) {
         }

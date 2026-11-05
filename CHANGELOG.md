@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perbaikan lanjutan untuk pesan percakapan: patokan tumpukan kini hanya maju pada pengiriman atau pengantrean yang terkonfirmasi, tidak lagi ikut maju saat pembaruan dibuang oleh penyaring spam.
+
 - Pemeriksaan kesehatan aksesibilitas kini menuntut layanan benar-benar terhubung, bukan sekadar tercantum aktif di setelan: layanan yang tercantum tetapi tidak terhubung lebih dari 15 menit kini memicu peringatan yang sama seperti layanan mati.
 
 
