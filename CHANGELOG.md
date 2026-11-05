@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Kanal screenshot aksesibilitas kini punya backoff: sesudah 3 kegagalan beruntun kanal dilewati selama 5 menit dan /screenshot langsung memakai fallback proyeksi, bukan menunggu sampai 20 detik pada callback yang menggantung setiap kali (#1609).
+
 - Pindaian kata pantau pada peristiwa konten kini memakai pola klaim yang sama dengan transisi aksesibilitas lain: tugas yang tertolak antrean executor tetap berjalan tepat satu kali, bukan hilang senyap sementara paketnya sudah terjatah jeda pindai (#1608).
 
 - Baris "Pemakaian malam (22.00–06.00)" di laporan layar kini menjumlah jendela malam terakhir secara utuh — paruh 22.00–24.00 kemarin ditambah paruh 00.00–06.00 hari ini — bukan hanya peta hari berjalan yang membuat angka malam tampak separuh dari kenyataan (#1607).

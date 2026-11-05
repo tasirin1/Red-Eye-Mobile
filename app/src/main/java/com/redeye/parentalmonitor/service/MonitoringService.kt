@@ -250,6 +250,11 @@ class MonitoringService : Service() {
     private var shotHeight = 0
     @Volatile
     private var shotNoFrameFailAt = 0L
+    // Backoff kanal screenshot aksesibilitas (issue
+    // #1609): kegagalan beruntun + sampai kapan kanal
+    // dilewati menuju fallback proyeksi.
+    private var shotA11yFailStreak = 0
+    private var shotA11yBackoffUntilElapsed = 0L
     @Volatile
     private var lastShotStaleFrame = false
 
@@ -11817,8 +11822,27 @@ class MonitoringService : Service() {
         }
     }
 
+    // Catat hasil kanal screenshot aksesibilitas
+    // (issue #1609): 3 kegagalan beruntun membuat kanal
+    // dilewati 5 menit — callback yang selalu menggantung
+    // tak lagi membebani setiap /screenshot sampai 20
+    // detik sebelum fallback proyeksi mulai. Satu sukses
+    // memulihkan kanal sepenuhnya.
+    private fun noteShotA11yResult(ok: Boolean) {
+        if (ok) {
+            shotA11yFailStreak = 0
+            shotA11yBackoffUntilElapsed = 0L
+        } else {
+            shotA11yFailStreak++
+            if (shotA11yFailStreak >= 3) {
+                shotA11yBackoffUntilElapsed = android.os.SystemClock.elapsedRealtime() + 5 * 60_000L
+            }
+        }
+    }
+
     private suspend fun takeScreenshotFrameViaAccessibility(): File? {
         if (!shotViaAccessibility()) return null
+        if (android.os.SystemClock.elapsedRealtime() < shotA11yBackoffUntilElapsed) return null
         val result = kotlinx.coroutines.CompletableDeferred<Bitmap?>()
         try {
             com.redeye.parentalmonitor.service.ShotAccessibilityService.capture { shot ->
@@ -11833,14 +11857,20 @@ class MonitoringService : Service() {
             kotlinx.coroutines.withTimeout(20_000L) { result.await() }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             result.cancel()
+            noteShotA11yResult(false)
             return null
         } catch (e: kotlinx.coroutines.CancellationException) {
             result.cancel()
             throw e
         } catch (_: Exception) {
             null
-        } ?: return null
-        return writeScreenshotJpeg(bmp)
+        } ?: run {
+            noteShotA11yResult(false)
+            return null
+        }
+        val out = writeScreenshotJpeg(bmp)
+        noteShotA11yResult(out != null)
+        return out
     }
 
     private suspend fun takeScreenshotFrame(): File? {
