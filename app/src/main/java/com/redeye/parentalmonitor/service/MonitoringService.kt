@@ -4745,7 +4745,12 @@ class MonitoringService : Service() {
             if (message.document != null || (teksMasuk.isNotEmpty() && !teksMasuk.startsWith("/"))) {
                 val tokenHapus = try { preferencesManager.botToken } catch (_: Exception) { "" }
                 if (tokenHapus.isNotEmpty()) {
-                    try { deleteIncomingMessage(chatId, message.messageId, tokenHapus) } catch (_: Exception) { }
+                    // Hasil hapus diperiksa seperti dua situs
+                    // restore lain (issue #1605, pola #1561):
+                    // gagal hapus tak lagi senyap — PIN/berkas
+                    // yang tertinggal di chat adalah rahasia.
+                    val terhapus = try { deleteIncomingMessage(chatId, message.messageId, tokenHapus) } catch (_: Exception) { false }
+                    if (!terhapus) sendToTelegram("⚠️ Pesan PIN/berkas yang tiba terlambat tidak bisa dihapus otomatis dari chat — hapus manual pesan tadi demi keamanan.")
                 }
             }
             audit("restore kedaluwarsa", "private")

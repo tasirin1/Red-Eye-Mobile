@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cabang kedaluwarsa pada penerimaan restore kini memeriksa hasil hapus pesan PIN/berkas yang tiba terlambat dan memperingatkan pemilik bila penghapusan otomatis gagal, sama seperti dua situs restore lainnya (#1605).
+
 - Impor cadangan lokal di Setup kini juga melaporkan dua tanda dari #1559 — cadangan yang dibuat versi aplikasi lebih baru dan PIN cadangan yang dibuang karena tak memenuhi syarat — sama seperti jalur Telegram, bukan lagi selesai dengan toast biasa tanpa penjelasan (#1604).
 
 - Pindai riwayat pada gerbang kini mengonfirmasi setiap tuduhan grep mentah dengan pemindai token bersama sebelum menyatakan gagal, sehingga commit sah berisi contoh bertanda atau kutipan hash tidak lagi membuat gerbang merah permanen (#1603).
