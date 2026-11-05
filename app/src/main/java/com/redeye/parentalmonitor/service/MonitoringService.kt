@@ -797,6 +797,11 @@ class MonitoringService : Service() {
                 msgDropCount.addAndGet(pending)
                 scheduleMsgDropFlush()
             }
+            val pendingAntre = preferencesManager.pendingQueueDrops
+            if (pendingAntre > 0) {
+                queueDropCount.addAndGet(pendingAntre)
+                scheduleMsgDropFlush()
+            }
         } catch (_: Exception) {
         }
         restoreRingVolumeIfStuck()
@@ -2601,6 +2606,7 @@ class MonitoringService : Service() {
     @Volatile
     private var mediaBackoffUntil = 0L
     private val msgDropCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private val queueDropCount = java.util.concurrent.atomic.AtomicInteger(0)
     private var msgDropJob: Job? = null
     private val msgDropLock = Any()
 
@@ -8092,13 +8098,20 @@ class MonitoringService : Service() {
                 // dikirim worker (dobel terhadap status SENT) dan
                 // ekor yang gagal total hilang tanpa catatan.
                 val perItem = try {
-                    messageQueue.addMessagesPerItem(failed, queuePriority)
+                    messageQueue.addMessagesPerItemDetailed(failed, queuePriority)
                 } catch (_: Exception) {
-                    List(failed.size) { false }
+                    List(failed.size) { com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.FAILED }
                 }
-                tailQueued = perItem.all { it }
-                tailAnyQueued = perItem.any { it }
-                repeat(perItem.count { !it }) { noteDroppedMessage() }
+                tailQueued = perItem.all { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.QUEUED }
+                tailAnyQueued = perItem.any { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.QUEUED }
+                // Hanya FAILED yang dicatat di sini (issue
+                // #1633): item EVICTED sudah dihitung
+                // akuntansi eviksi antrean (overflow/
+                // prioritas) — mencatatnya lagi sebagai
+                // "ditolak Telegram" menggandakan hitungan
+                // DAN salah sebab; FAILED (persist gagal)
+                // masuk penghitung antrean-lokal sendiri.
+                repeat(perItem.count { it == com.redeye.parentalmonitor.data.MessageQueue.AddItemResult.FAILED }) { noteUnqueueableMessage() }
                 if (replyMarkup != null && failed.last() == chunks.last()) messageQueue.addMessage("Tap /help untuk menampilkan tombol menu.")
                 if (tailAnyQueued) MessageScheduler.scheduleMessageSend(this)
             }
@@ -8144,10 +8157,14 @@ class MonitoringService : Service() {
                     flushMsgDropNotice()
                 } catch (_: Exception) {
                 }
+                try {
+                    flushQueueDropNotice()
+                } catch (_: Exception) {
+                }
                 synchronized(msgDropLock) {
                     if (msgDropJob === job) msgDropJob = null
                 }
-                if (msgDropCount.get() > 0) scheduleMsgDropFlush()
+                if (msgDropCount.get() > 0 || queueDropCount.get() > 0) scheduleMsgDropFlush()
             }
             msgDropJob = job
         }
@@ -8158,6 +8175,21 @@ class MonitoringService : Service() {
             val v = msgDropCount.incrementAndGet()
             try {
                 preferencesManager.setPendingMsgDropsSync(v)
+            } catch (_: Exception) {
+            }
+        }
+        scheduleMsgDropFlush()
+    }
+
+    // Kehilangan karena antrean LOKAL menolak (issue
+    // #1633): penghitung + pemberitahuan sendiri, sebab
+    // label "ditolak Telegram (permanen)" untuk sebab
+    // ini salah dan menyesatkan diagnosis pemilik.
+    private fun noteUnqueueableMessage() {
+        synchronized(msgDropLock) {
+            val v = queueDropCount.incrementAndGet()
+            try {
+                preferencesManager.setPendingQueueDropsSync(v)
             } catch (_: Exception) {
             }
         }
@@ -8202,6 +8234,45 @@ class MonitoringService : Service() {
                 val v = msgDropCount.addAndGet(count)
                 try {
                     preferencesManager.setPendingMsgDropsSync(v)
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
+    // Pasangan flushMsgDropNotice untuk kategori antrean
+    // lokal (issue #1633), disiplin commit yang sama
+    // seperti #1126.
+    private fun flushQueueDropNotice() {
+        val count = synchronized(msgDropLock) {
+            val c = queueDropCount.getAndSet(0)
+            if (c > 0) {
+                val nolTersimpan = try {
+                    preferencesManager.setPendingQueueDropsSync(0)
+                } catch (_: Exception) {
+                    false
+                }
+                if (!nolTersimpan) {
+                    queueDropCount.addAndGet(c)
+                    0
+                } else {
+                    c
+                }
+            } else {
+                c
+            }
+        }
+        if (count <= 0) return
+        try {
+            val text = if (count == 1) "1 potongan pesan dibuang karena gagal diantrekan lokal sesudah gagal kirim (antrean/penyimpanan menolak) — bukan ditolak Telegram."
+                else "$count potongan pesan dibuang karena gagal diantrekan lokal sesudah gagal kirim (antrean/penyimpanan menolak) — bukan ditolak Telegram."
+            if (!messageQueue.addMessage(text, true)) throw IllegalStateException("addMessage gagal")
+            MessageScheduler.scheduleMessageSend(this@MonitoringService)
+        } catch (_: Exception) {
+            synchronized(msgDropLock) {
+                val v = queueDropCount.addAndGet(count)
+                try {
+                    preferencesManager.setPendingQueueDropsSync(v)
                 } catch (_: Exception) {
                 }
             }

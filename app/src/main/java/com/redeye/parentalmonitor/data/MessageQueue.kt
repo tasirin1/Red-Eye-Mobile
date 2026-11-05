@@ -328,6 +328,19 @@ class MessageQueue private constructor(context: Context) {
     // kegagalan sebagian membuat yang selamat terkirim tanpa tanda
     // (dobel) dan yang tereviksi hilang tanpa tercatat.
     fun addMessagesPerItem(messages: Collection<String>, priority: Boolean = false): List<Boolean> {
+        return addMessagesPerItemDetailed(messages, priority).map { it == AddItemResult.QUEUED }
+    }
+
+    // Hasil per item yang membedakan sebab kegagalan
+    // (issue #1633): EVICTED = item tereviksi batas antrean
+    // dan SUDAH dihitung akuntansi eviksi antrean sendiri;
+    // FAILED = persist gagal, item hilang dan belum
+    // terhitung di mana pun. Pemanggil yang melaporkan
+    // kehilangan wajib membedakannya agar tak salah label
+    // dan tak menghitung ganda.
+    enum class AddItemResult { QUEUED, EVICTED, FAILED }
+
+    fun addMessagesPerItemDetailed(messages: Collection<String>, priority: Boolean = false): List<AddItemResult> {
         if (messages.isEmpty()) return emptyList()
         synchronized(lock) {
             ensureRestored()
@@ -341,14 +354,14 @@ class MessageQueue private constructor(context: Context) {
                     evictedVolatile++
                 }
                 if (evictedVolatile > 0) persistDropCountsLocked()
-                return added.map { item -> volatileQueue.any { it === item } }
+                return added.map { item -> if (volatileQueue.any { it === item }) AddItemResult.QUEUED else AddItemResult.EVICTED }
             }
             val queue = readLocked().toMutableList()
             if (volatileOnly) {
                 // Sama seperti addMessage (issue #915): baca gagal
                 // total di tengah operasi — ulangi sebagai batch
                 // volatile, jangan timpa antrean tersimpan.
-                return addMessagesPerItem(messages, priority)
+                return addMessagesPerItemDetailed(messages, priority)
             }
             val addedBatch = messages.map { QueuedMessage(message = potongPesan(it), elapsedAt = android.os.SystemClock.elapsedRealtime(), priority = priority, bootAt = bootWallAt()) }
             queue.addAll(addedBatch)
@@ -359,7 +372,13 @@ class MessageQueue private constructor(context: Context) {
             }
             if (evictedBatch > 0) persistDropCountsLocked()
             val persistedBatch = persistLocked(queue)
-            return addedBatch.map { item -> persistedBatch && queue.any { it === item } }
+            return addedBatch.map { item ->
+                when {
+                    !persistedBatch -> AddItemResult.FAILED
+                    queue.any { it === item } -> AddItemResult.QUEUED
+                    else -> AddItemResult.EVICTED
+                }
+            }
         }
     }
 

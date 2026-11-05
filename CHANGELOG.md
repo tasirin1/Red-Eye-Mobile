@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Potongan pesan yang gagal diantrekan lokal kini dilaporkan dengan sebab yang benar lewat penghitung dan pemberitahuan tersendiri, bukan sebagai "ditolak Telegram (permanen)"; potongan yang tereviksi antrean tidak lagi terhitung ganda (#1633).
+
 - Worker kini membuang hanya potongan pesan panjang yang ditolak permanen dan melanjutkan potongan sisanya (meniru jalur layanan), alih-alih menggagalkan seluruh pesan dan membuangnya berlabel percobaan habis (#1632).
 
 - Jalur screenshot berstride padding kini membaca baris sebagai IntBuffer massal dan menukar kanal R/B per piksel (hasil piksel setara, dibuktikan), tanpa alokasi slice per baris — biaya CPU jepretan di perangkat berpadding turun tanpa mengembalikan buffer bingkai penuh (#1631).

@@ -522,6 +522,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_OWNER_PAIR_CODE = "owner_pair_code"
         private const val KEY_OWNER_PAIR_AT = "owner_pair_at"
         private const val KEY_PENDING_MSG_DROPS = "pending_msg_drops"
+        private const val KEY_PENDING_QUEUE_DROPS = "pending_queue_drops"
         private const val KEY_PENDING_NOTIF_DROPS = "pending_notif_drops"
         private const val KEY_DROP_NOTICE_BATCH = "drop_notice_batch"
         private const val KEY_FORWARDED_NOTIF_IDS = "forwarded_notif_ids"
@@ -1846,6 +1847,22 @@ class PreferencesManager(context: Context) {
     fun setPendingMsgDropsSync(value: Int): Boolean {
         return try {
             sharedPreferences.edit().putInt(KEY_PENDING_MSG_DROPS, value).commit()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // Pasangan pendingMsgDrops untuk kehilangan karena
+    // antrean lokal menolak (issue #1633) — sebabnya
+    // berbeda dari penolakan Telegram dan laporannya
+    // tak boleh tercampur.
+    var pendingQueueDrops: Int
+        get() = prefInt(KEY_PENDING_QUEUE_DROPS, 0)
+        set(value) = sharedPreferences.edit().putInt(KEY_PENDING_QUEUE_DROPS, value).apply()
+
+    fun setPendingQueueDropsSync(value: Int): Boolean {
+        return try {
+            sharedPreferences.edit().putInt(KEY_PENDING_QUEUE_DROPS, value).commit()
         } catch (_: Exception) {
             false
         }
