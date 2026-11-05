@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Rekaman suara kini memeriksa sinyalnya sendiri: tipe layanan latar mikrofon dibangkitkan otomatis seperti kamera, dan rekaman yang selesai tanpa sinyal suara sama sekali (tanda mikrofon dibisukan sistem, lazim sesudah perangkat menyala ulang) kini dilaporkan apa adanya dengan saran membuka aplikasi sekali — bukan lagi dilaporkan terkirim begitu saja.
+
+
 ## [1.6.626] - 2026-11-05
 
 ### Fixed

