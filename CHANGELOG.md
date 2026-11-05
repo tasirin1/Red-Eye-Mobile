@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Baris aksesibilitas di /status, /brief, status alert/pantau app, dan snapshot izin kini menuntut layanan benar-benar terhubung (ter-bind), bukan sekadar tercantum di setelan: layanan yang bind-nya dibekukan tampil "tercantum (belum terhubung)" alih-alih "aktif" (#1606).
+
 - Cabang kedaluwarsa pada penerimaan restore kini memeriksa hasil hapus pesan PIN/berkas yang tiba terlambat dan memperingatkan pemilik bila penghapusan otomatis gagal, sama seperti dua situs restore lainnya (#1605).
 
 - Impor cadangan lokal di Setup kini juga melaporkan dua tanda dari #1559 — cadangan yang dibuat versi aplikasi lebih baru dan PIN cadangan yang dibuang karena tak memenuhi syarat — sama seperti jalur Telegram, bukan lagi selesai dengan toast biasa tanpa penjelasan (#1604).

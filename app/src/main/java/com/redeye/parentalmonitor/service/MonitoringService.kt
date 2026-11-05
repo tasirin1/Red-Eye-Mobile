@@ -5515,7 +5515,7 @@ class MonitoringService : Service() {
             sendToTelegram(buildString {
                 appendLine("\uD83D\uDEE1\uFE0F <b>Proteksi tamper</b>")
                 appendLine("Status: " + if (on) "nyala" else "mati")
-                appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
+                appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound()) "aktif" else "mati")
                 appendLine("Admin perangkat: " + if (isDeviceAdminActive()) "aktif" else "mati")
                 appendLine("Diblokir: Aksesibilitas, admin perangkat, hapus aplikasi, sumber tak dikenal, opsi pengembang.")
                 appendLine("Atur: /protect on|off")
@@ -5597,7 +5597,7 @@ class MonitoringService : Service() {
             if (shown.isNotEmpty()) appendLine(shown.joinToString("\n") { "\u2022 " + Html.escape(appLabelFor(it)) })
             if (packages.size > shown.size) appendLine("\u2026 dan ${packages.size - shown.size} lagi (/appwatch daftar)")
             appendLine("Kata pantau: " + if (keywords.isEmpty()) "belum ada" else keywords.joinToString(", ") { Html.escape(it) })
-            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati")
+            appendLine("Aksesibilitas: " + if (ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound()) "aktif" else "mati")
             appendLine("Privasi: password, banking, pembayaran, browser, dan aplikasi ini dilewati. Isi pesan tidak disimpan.")
             appendLine("Atur: /appwatch on|off|daftar|tambah <app>|hapus <app>")
         }.trimEnd())
@@ -6526,7 +6526,13 @@ class MonitoringService : Service() {
                 }
                 appendLine("Notifikasi: ${if (isNotifForwarding()) "teruskan" else "mati"}")
                 appendLine("Aksesibilitas: " + when {
-                    ShotAccessibilityService.isEnabled(this@MonitoringService) -> "aktif"
+                    // 'Aktif' wajib ter-bind sungguhan
+                    // (issue #1606, pola pemeriksa kesehatan
+                    // #1505): tercantum di setelan saja bisa
+                    // berarti bind dibekukan OEM — status
+                    // on-demand tak boleh menenangkan palsu.
+                    ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound() -> "aktif"
+                    ShotAccessibilityService.isEnabled(this@MonitoringService) -> "tercantum (belum terhubung)"
                     preferencesManager.accessibilityEverEnabled -> "MATI"
                     else -> "belum diaktifkan"
                 } + " · alert app: " + (if (preferencesManager.a11yAppAlert) "nyala" else "mati") +
@@ -6551,7 +6557,7 @@ class MonitoringService : Service() {
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Izin: " + if (missing.isEmpty()) "semua OK ✅" else "hilang: " + missing.joinToString(", "))
-            appendLine("Aksesibilitas: " + (if (ShotAccessibilityService.isEnabled(this@MonitoringService)) "aktif" else "mati") + " · proteksi " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
+            appendLine("Aksesibilitas: " + (if (ShotAccessibilityService.isEnabled(this@MonitoringService) && ShotAccessibilityService.isBound()) "aktif" else "mati") + " · proteksi " + (if (preferencesManager.a11yTamperEnabled) "nyala" else "mati"))
             appendLine("Sync: tiap ${preferencesManager.syncInterval} mnt" + if (isNightPaused()) " · malam 🌙" else "")
             try { usageEventSummary(6).forEach { appendLine(it) } } catch (_: Exception) { }
         },
@@ -12421,7 +12427,7 @@ class MonitoringService : Service() {
             hasFineLocation(),
             hasBackgroundLocation(),
             !notifEnabled || isNotifForwarding(),
-            ShotAccessibilityService.isEnabled(this),
+            ShotAccessibilityService.isEnabled(this) && ShotAccessibilityService.isBound(),
             isBatteryExempt()
         )
     }
