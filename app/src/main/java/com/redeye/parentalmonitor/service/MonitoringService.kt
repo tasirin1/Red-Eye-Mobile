@@ -2309,6 +2309,12 @@ class MonitoringService : Service() {
                     loginFailsWallAt.remove(senderId)
                     loginAttemptAt.remove(senderId)
                     loginLockUntil[senderId] = now + LOGIN_LOCK_MS
+                    // Pangkas peta kunci login (issue #1595):
+                    // satu-satunya peta cap login yang tak
+                    // pernah dipangkas — entri kedaluwarsa kini
+                    // disapu dan ukurannya dibatasi 200 seperti
+                    // peta-peta cap saudaranya.
+                    try { pruneStampMap(loginLockUntil, now, 0L) } catch (_: Exception) { }
                     try { persistLoginSenderLock(senderId, System.currentTimeMillis() + LOGIN_LOCK_MS, now) } catch (_: Exception) { }
                 } catch (_: Exception) {
                 }
