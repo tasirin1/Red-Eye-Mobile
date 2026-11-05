@@ -558,10 +558,23 @@ object A11yMonitor {
         val keywords = watchedKeywords(manager)
         if (keywords.isEmpty()) return
         val app = service.applicationContext
-        executor.execute {
+        // Pola klaim seperti transisi satu-tembakan lain
+        // (issue #1608): serahan telanjang yang tertolak
+        // DiscardPolicy dulu hilang senyap padahal cap
+        // throttle-nya sudah terbakar (#1014) — kini tugas
+        // yang tak masuk antrean berjalan tepat satu kali
+        // di pemanggil; CAS menjaga tak ada jalan ganda.
+        val claimed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val task = Runnable {
+            if (!claimed.compareAndSet(false, true)) return@Runnable
             val (snapshot, fullHit) = collectSnapshot(service, pkg, keywords)
-            if (snapshot.hasPassword || snapshot.texts.isEmpty()) return@execute
-            handleContent(app, pkg, snapshot.texts, keywords, fullHit)
+            if (!snapshot.hasPassword && snapshot.texts.isNotEmpty()) {
+                handleContent(app, pkg, snapshot.texts, keywords, fullHit)
+            }
+        }
+        executor.execute(task)
+        if (!executor.queue.contains(task)) {
+            task.run()
         }
     }
 
