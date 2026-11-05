@@ -9890,7 +9890,13 @@ class MonitoringService : Service() {
             topLabel = a11yRows.first().label
             topMs = a11yRows.first().millis
         }
-        val nightMs = if (a11yRows.isEmpty()) -1L else a11yRows.sumOf { it.nightMillis }
+        // Malam terakhir utuh (issue #1645): jumlah
+        // nightMillis baris HARI INI saja kehilangan paruh
+        // 22.00-24.00 kemarin (digest terkirim 21.00, paruh
+        // itu belum berjalan di baris hari ini) — pola
+        // begadang paling umum tercatat 0. Pakai definisi
+        // yang sama dengan /screentime (issue #1607).
+        val nightMs = if (a11yRows.isEmpty()) -1L else lastNightMillis(a11yRows)
         val fuAt = data.firstUnlockMs
         val fuMinute = if (fuAt > 0L) {
             val off = java.util.TimeZone.getDefault().getOffset(fuAt)
