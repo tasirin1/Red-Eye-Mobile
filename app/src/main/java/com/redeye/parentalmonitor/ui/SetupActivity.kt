@@ -1172,7 +1172,21 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun restoreOwnerOverride(token: String, chatId: String): Long? {
-        return if (pendingRestoreOwnerId > 0L && restoreBindingIntact(token, chatId)) pendingRestoreOwnerId else null
+        if (pendingRestoreOwnerId <= 0L) return null
+        if (restoreBindingIntact(token, chatId)) return pendingRestoreOwnerId
+        // Ikatan sesudah mati proses (issue #1465): token
+        // impor hanya dipegang proses (#1305), jadi sesudah
+        // buat-ulang pemeriksaan ketat di atas selalu gagal
+        // dan owner impor gugur SENYAP (token/chat impor
+        // tersimpan dengan owner lama/0). Chat tertunda
+        // selamat lewat Bundle — bila chat yang disimpan
+        // cocok dengannya dan cadangan TANPA PIN akses
+        // (yang ber-PIN sudah tertahan penjaga
+        // setup_restore_pin_lost), ikatan owner dipulihkan
+        // dari separuh bukti yang tersisa itu.
+        val pulih = pendingRestoreToken.isEmpty() && !pendingRestorePinExpected &&
+            pendingRestoreChatId.isNotEmpty() && chatId == pendingRestoreChatId && token.isNotEmpty()
+        return if (pulih) pendingRestoreOwnerId else null
     }
 
     private fun restoreAccessPin(token: String, chatId: String, storedAccessPin: String): String {

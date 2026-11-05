@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Ikatan pemilik pada hasil impor cadangan tidak lagi hilang diam-diam bila aplikasi mati dan dibuat ulang di tengah pemulihan: untuk cadangan tanpa PIN akses, kecocokan chat yang tersimpan kini cukup untuk memulihkan pemilik impor (cadangan ber-PIN tetap tertahan aman seperti sebelumnya).
+
 - Memulai impor cadangan kini membatalkan proses simpan/tes yang sedang berjalan: sebelumnya penyelesaian simpan lama bisa menimpa hasil impor dan membatalkannya diam-diam sesudah impor selesai.
 
 - Pemilik kini diperingatkan (sekali per proses) bila izin Status Telepon belum diberikan saat mulai merekam: deteksi panggilan yang menghentikan rekaman di tengah sebelumnya mati diam-diam tanpa izin itu.
