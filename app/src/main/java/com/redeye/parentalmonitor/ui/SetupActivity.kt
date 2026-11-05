@@ -2380,6 +2380,15 @@ class SetupActivity : AppCompatActivity() {
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
             val a11yOn = com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
+            // Keadaan KANAL peringatan (issue #1557): izin
+            // POST_NOTIFICATIONS saja tak cukup — kanal yang
+            // dimatikan pengguna/OEM menelan semua peringatan
+            // lokal secara senyap walau izin diberikan.
+            val kanalMati = try {
+                val nmStatus = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+                nmStatus.getNotificationChannel(com.redeye.parentalmonitor.ParentalMonitorApp.RESUME_CHANNEL_ID)?.importance == android.app.NotificationManager.IMPORTANCE_NONE
+            } catch (_: Exception) { false }
+            val kanalLine = if (kanalMati) "\n" + getString(R.string.setup_status_channel_off) else ""
             val listener = isNotificationAccessGranted()
             val adminOn = try { (getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(this@SetupActivity, AdminReceiver::class.java)) } catch (_: Exception) { false }
             val lastAlive = try { prefs.lastAliveAt } catch (_: Exception) { 0L }
@@ -2426,7 +2435,7 @@ class SetupActivity : AppCompatActivity() {
                 "\n" + getString(R.string.setup_status_shot_fmt, getString(if (shotOn) R.string.setup_status_allowed else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_a11y_fmt, getString(if (a11yOn) R.string.setup_status_on else R.string.setup_status_off)) +
                 "\n" + getString(R.string.setup_status_admin_fmt, getString(if (adminOn) R.string.setup_status_on else R.string.setup_status_off)) +
-                "\n" + getString(R.string.setup_status_post_fmt, getString(if (postOn) R.string.setup_status_allowed else R.string.setup_status_blocked)) +
+                "\n" + getString(R.string.setup_status_post_fmt, getString(if (postOn) R.string.setup_status_allowed else R.string.setup_status_blocked)) + kanalLine +
                 "\n" + getString(R.string.setup_status_patrol_fmt, try { if (prefs.patrolEnabled) getString(R.string.setup_status_patrol_on, prefs.patrolInterval) else getString(R.string.setup_status_off) } catch (_: Exception) { "-" }) +
                 "\n" + getString(
                     R.string.setup_location_fmt,

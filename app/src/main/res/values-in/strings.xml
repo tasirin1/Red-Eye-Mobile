@@ -187,6 +187,7 @@
     <string name="setup_status_admin_fmt">Admin perangkat: %1$s</string>
     <string name="setup_status_on">nyala</string>
     <string name="setup_status_post_fmt">Notifikasi sistem: %1$s</string>
+    <string name="setup_status_channel_off">⚠️ Kanal peringatan MATI di setelan sistem — peringatan di perangkat tidak akan muncul</string>
     <string name="setup_status_blocked">diblokir</string>
     <string name="setup_status_patrol_fmt">Patroli: %1$s</string>
     <string name="setup_status_patrol_on">nyala tiap %1$d mnt</string>
