@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Titik acuan uji lompatan lokasi pagar tidak lagi bisa dimundurkan oleh titik lokasi lama dari cache, yang sebelumnya bisa meloloskan titik glitch berikutnya.
+
 - Balasan perintah sensitif yang dialihkan ke chat pribadi kini tetap menghormati blokir autentikasi dan jeda batas laju global, tidak melewatinya seperti sebelumnya.
 
 - Pemulihan setelan tertahan tidak lagi gugur untuk kedua kalinya bila aplikasi mati lagi selama sisa jendela batalnya: catatannya kini baru terpakai tepat saat pemulihan benar-benar diterapkan.

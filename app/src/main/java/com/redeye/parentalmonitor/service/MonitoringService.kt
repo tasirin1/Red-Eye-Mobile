@@ -9113,9 +9113,18 @@ class MonitoringService : Service() {
                     return
                 }
             }
-            lastFenceFixLat = lat
-            lastFenceFixLon = lon
-            lastFenceFixAtMs = fixWall
+            // Jangkar hanya MAJU (issue #1554): fix basi
+            // (cache <=30 mnt / kendaraan <=10 mnt) yang
+            // lebih tua dari jangkar tak boleh memundur-
+            // kannya — dt yang membengkak membuat glitch
+            // berikutnya lolos uji kecepatan. Fix basi
+            // sendiri tetap dinilai pagar seperti biasa;
+            // yang ditolak hanya pembaruan jangkarnya.
+            if (fixWall >= lastFenceFixAtMs) {
+                lastFenceFixLat = lat
+                lastFenceFixLon = lon
+                lastFenceFixAtMs = fixWall
+            }
             // Pagar bersarang (issue #853): sekolah di dalam radius
             // rumah membuat transisi keluar rumah tak pernah terjadi,
             // jadi fakta berangkat harian hilang; dan dua pagar
