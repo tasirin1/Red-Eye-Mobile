@@ -2509,7 +2509,11 @@ class SetupActivity : AppCompatActivity() {
             else "\n" + getString(R.string.setup_status_owner_unknown)
             val notifOn = try { prefs.notifForwardEnabled } catch (_: Exception) { true }
             val shotOn = try { com.redeye.parentalmonitor.utils.ScreenCapture.granted() } catch (_: Exception) { false }
-            val a11yOn = com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity)
+            // Status wajib terhubung, bukan hanya tercantum
+            // (issue #1629, keluarga #1606): layanan yang
+            // tercantum di pengaturan belum tentu ter-bind,
+            // dan status "nyala" dari isEnabled saja bohong.
+            val a11yOn = com.redeye.parentalmonitor.service.ShotAccessibilityService.isEnabled(this@SetupActivity) && com.redeye.parentalmonitor.service.ShotAccessibilityService.isBound()
             val postOn = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true else try { ContextCompat.checkSelfPermission(this@SetupActivity, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED } catch (_: Exception) { false }
             // Keadaan KANAL peringatan (issue #1557): izin
             // POST_NOTIFICATIONS saja tak cukup — kanal yang

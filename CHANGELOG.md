@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Layar status Setup kini menilai aksesibilitas dari tercantum DAN terhubung (seperti permukaan status lain sejak #1606), bukan tercantum saja (#1629).
+
 - Baris "Malam ini" pada ringkasan layar kini memakai jendela malam yang sedang berjalan pada pukul 22.00–24.00 (paruh malam hari ini), bukan jendela tuntas kemarin yang membuang pemakaian sejak 22.00 (#1628).
 
 - Kanal riwayat verifikasi-path kini membaca daftar nama git dalam format -z di ketiga salurannya, sehingga token di berkas bernama non-ASCII/petik tidak lagi terlewat diam-diam dari pemindaian riwayat (#1627).
