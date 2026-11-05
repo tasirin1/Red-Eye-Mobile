@@ -4174,12 +4174,39 @@ class MonitoringService : Service() {
         return true
     }
 
+    // Jendela pemberitahuan kedaluwarsa (issue #1617):
+    // tumpukan update lama hasil putus lama/sinkronisasi
+    // Telegram dulu menghasilkan SATU pemberitahuan per
+    // perintah (±50 pesan berturut untuk 50 replay).
+    // Kini maks 1 pemberitahuan per 60 detik; sisanya
+    // dihitung dan jumlahnya disisipkan pada
+    // pemberitahuan berikutnya.
+    private val staleNoticeLock = Any()
+    private var staleNoticeWindowStart = 0L
+    private var staleNoticeSuppressed = 0
+
+    private suspend fun notifyStaleCommand(teks: String) {
+        val kirim: String? = synchronized(staleNoticeLock) {
+            val now = System.currentTimeMillis()
+            if (now - staleNoticeWindowStart >= 60_000L) {
+                val suppressed = staleNoticeSuppressed
+                staleNoticeWindowStart = now
+                staleNoticeSuppressed = 0
+                if (suppressed > 0) teks + " (+" + suppressed + " perintah kedaluwarsa lain dibuang tanpa pemberitahuan terpisah.)" else teks
+            } else {
+                staleNoticeSuppressed++
+                null
+            }
+        }
+        if (kirim != null) sendToTelegram(kirim)
+    }
+
     private suspend fun handleTelegramCommand(raw: String, sentAtSec: Long = 0L, senderOk: Boolean = false, chatOk: Boolean = false, senderId: String = "", privateChat: Boolean = false, adoptionDoneSec: Long = 0L, messageId: Long = 0L) {
         val nowSec = serverNowSec()
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_SILENT_AGE_SEC) return
         if (sentAtSec > 0 && nowSec - sentAtSec > COMMAND_MAX_AGE_SEC) {
             serviceScope.launch {
-                sendToTelegram("\u23F3\uFE0F Perintah kedaluwarsa, kirim lagi.")
+                notifyStaleCommand("\u23F3\uFE0F Perintah kedaluwarsa, kirim lagi.")
             }
             return
         } else if (sentAtSec > 0 && sentAtSec - nowSec > COMMAND_MAX_AGE_SEC) {
@@ -4227,7 +4254,7 @@ class MonitoringService : Service() {
                 else -> serverNowSec() - sentAtSec
             }
             if (ageSec > MUTATING_MAX_AGE_SEC) {
-                sendToTelegram("\u23F3\uFE0F Perintah ${Html.escape(command)} kedaluwarsa, kirim lagi.")
+                notifyStaleCommand("\u23F3\uFE0F Perintah ${Html.escape(command)} kedaluwarsa, kirim lagi.")
                 return
             }
             if (!senderOk) {

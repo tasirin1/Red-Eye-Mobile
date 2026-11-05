@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemberitahuan "perintah kedaluwarsa" kini dijatah maks satu per 60 detik dengan hitungan sisanya disisipkan pada pemberitahuan berikutnya, sehingga tumpukan perintah lama sesudah putus lama tidak lagi membanjiri chat dengan puluhan pesan yang sama (#1617).
+
 - Teks toast "tersimpan offline" kini jujur soal isi simpanannya — kredensial & interval dari kolom saat ini ikut tersimpan tanpa verifikasi — bukan lagi mengklaim "interval saja, kredensial tak berubah" (#1616).
 
 - Kegagalan verifikasi karena jaringan kini tampil sebagai teks ramah "tak ada jaringan", bukan lagi pesan galat host mentah berbahasa Inggris di toast pengguna (#1615).
