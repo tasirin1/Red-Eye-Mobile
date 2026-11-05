@@ -9200,13 +9200,20 @@ class MonitoringService : Service() {
             }
         }
         val since = now - 6 * 60 * 60_000L
-        val smsCount = try { smsRepository.countSmsSince(since, 200) } catch (_: Exception) { -1 }
-        val callCount = try { callLogRepository.countCallsSince(since, 200) } catch (_: Exception) { -1 }
+        // Ambil 201 untuk membuktikan keterpotongan
+        // (issue #1661): tepat 200 baris tak lagi dicap
+        // "200+" — label hanya menyala bila baris ke-201
+        // benar-benar ada. Pola yang sama di semua
+        // ringkasan di bawah (digest harian, frekuensi
+        // kontak, waspada, begadang, mingguan); loop
+        // statistiknya tetap atas 200 pertama.
+        val smsCount = try { smsRepository.countSmsSince(since, 201) } catch (_: Exception) { -1 }
+        val callCount = try { callLogRepository.countCallsSince(since, 201) } catch (_: Exception) { -1 }
         val level = batteryLevel()
         val sent = sendToTelegramStatus(buildString {
             appendLine("📰 <b>Ringkasan 6 jam</b>")
-            appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount >= 200) "200+" else "$smsCount"}${if (smsCount >= 200) " (dari 200 terakhir)" else ""}")
-            appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount >= 200) "200+" else "$callCount"}${if (callCount >= 200) " (dari 200 terakhir)" else ""}")
+            appendLine("SMS: ${if (smsCount < 0) "?" else if (smsCount > 200) "200+" else "$smsCount"}${if (smsCount > 200) " (dari 200 terakhir)" else ""}")
+            appendLine("Panggilan: ${if (callCount < 0) "?" else if (callCount > 200) "200+" else "$callCount"}${if (callCount > 200) " (dari 200 terakhir)" else ""}")
             appendLine("Antrean: ${try { messageQueue.getQueueSize() } catch (_: Exception) { "?" }}")
             appendLine("Baterai: ${if (level in 0..100) "$level%" else "?"}")
         })
@@ -10064,14 +10071,14 @@ class MonitoringService : Service() {
             val eventSummary = eventScan.first
             val dayData = usageDayData(now, eventSummary?.let { eventScan.second })
             val since = now - 24 * 60 * 60_000L
-            val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
-            val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
+            val sms = try { smsRepository.getRecentSmsSince(since, 201) } catch (_: Exception) { emptyList() }
+            val calls = try { callLogRepository.getCallsSince(since, 201) } catch (_: Exception) { emptyList() }
             val freq = HashMap<String, Int>()
-            for (s in sms) {
+            for (s in sms.take(200)) {
                 val d = s.address.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
             }
-            for (c in calls) {
+            for (c in calls.take(200)) {
                 val d = c.number.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
             }
@@ -10079,12 +10086,12 @@ class MonitoringService : Service() {
             val watch = watchList()
             val watchNums = watchNumbers()
             var hits = 0
-            for (s in sms) {
+            for (s in sms.take(200)) {
                 if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) hits++
                 else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
             }
             try {
-                for (c in calls) if (watchNumberHit(c.number, watchNums) != null) hits++
+                for (c in calls.take(200)) if (watchNumberHit(c.number, watchNums) != null) hits++
             } catch (_: Exception) {
             }
             val level = batteryLevel()
@@ -10097,7 +10104,7 @@ class MonitoringService : Service() {
                         for (line in sorotan) appendLine("• $line")
                     }
                 } catch (_: Exception) { }
-                appendLine("SMS 24 jam: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}${if (sms.size >= 200 || calls.size >= 200) " (dari 200 terakhir)" else ""}")
+                appendLine("SMS 24 jam: ${if (sms.size > 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size > 200) "200+" else "${calls.size}"}${if (sms.size > 200 || calls.size > 200) " (dari 200 terakhir)" else ""}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (watch.isNotEmpty() || hits > 0) appendLine("Kena pantau: $hits")
                 try { screenTimeSummaryFrom(dayData)?.let { appendLine(it) } } catch (_: Exception) { }
@@ -10260,18 +10267,18 @@ class MonitoringService : Service() {
             if (keys != null && keys.isEmpty()) return FreqResult(m, false)
             val since = com.redeye.parentalmonitor.utils.A11yUsageMath.dayStartWallMillis(System.currentTimeMillis(), java.util.TimeZone.getDefault())
             try {
-                val rows = smsRepository.getRecentSmsSinceLight(since, 200)
-                if (rows.size >= 200) capped = true
-                for (s in rows) {
+                val rows = smsRepository.getRecentSmsSinceLight(since, 201)
+                if (rows.size > 200) capped = true
+                for (s in rows.take(200)) {
                     val d = s.address.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
                 }
             } catch (_: Exception) {
             }
             try {
-                val rows = callLogRepository.getCallsSince(since, 200)
-                if (rows.size >= 200) capped = true
-                for (c in rows) {
+                val rows = callLogRepository.getCallsSince(since, 201)
+                if (rows.size > 200) capped = true
+                for (c in rows.take(200)) {
                     if (!callCountsAsActivity(c.type)) continue
                     val d = c.number.filter { it.isDigit() }.takeLast(10)
                     if (d.length >= 7 && (keys == null || d in keys)) m[d] = (m[d] ?: 0) + 1
@@ -10357,8 +10364,8 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val since = now - 24 * 60 * 60_000L
-            val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
-            val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
+            val sms = try { smsRepository.getRecentSmsSince(since, 201) } catch (_: Exception) { emptyList() }
+            val calls = try { callLogRepository.getCallsSince(since, 201) } catch (_: Exception) { emptyList() }
             val watch = watchList()
             val watchNums = watchNumbers()
             var hits = 0
@@ -10370,14 +10377,14 @@ class MonitoringService : Service() {
                     try { isKnownContact(number) } catch (_: Exception) { true }
                 }
             }
-            for (s in sms) {
+            for (s in sms.take(200)) {
                 val numHit = watchNumberHit(s.address, watchNums) != null
                 if (numHit) hits++ else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) hits++
                 val h = hourOf(s.date)
                 if (h >= 23 || h in 0..4) nights++
                 if (!knownCached(s.address)) unknown.add(s.address.filter { it.isDigit() }.takeLast(10))
             }
-            for (c in calls) {
+            for (c in calls.take(200)) {
                 if (!callCountsAsActivity(c.type)) continue
                 if (watchNumberHit(c.number, watchNums) != null) hits++
                 val h = hourOf(c.date)
@@ -10429,7 +10436,7 @@ class MonitoringService : Service() {
                 appendLine("Watch hit 24 jam: $hits")
                 appendLine("Nomor baru: ${unknown.size}")
                 appendLine("Begadang (23–05): $nights$locNote")
-                if (sms.size >= 200 || calls.size >= 200) appendLine("(dari 200 data terakhir per sumber)")
+                if (sms.size > 200 || calls.size > 200) appendLine("(dari 200 data terakhir per sumber)")
                 try {
                     val allDays = DailyFacts.parse(preferencesManager.dailyFacts)
                     val todayF = todayFacts(now, usageDayData(now)) ?: allDays.firstOrNull { it.day == todayKey(now) }
@@ -10471,18 +10478,18 @@ class MonitoringService : Service() {
             var nights = 0
             var capped = false
             try {
-                val recentSms = smsRepository.getRecentSmsSince(since, 200)
-                if (recentSms.size >= 200) capped = true
-                for (s in recentSms) {
+                val recentSms = smsRepository.getRecentSmsSince(since, 201)
+                if (recentSms.size > 200) capped = true
+                for (s in recentSms.take(200)) {
                     val hh = hourOf(s.date)
                     if (hh >= 23 || hh in 0..4) nights++
                 }
             } catch (_: Exception) {
             }
             try {
-                val recentCalls = callLogRepository.getCallsSince(since, 200)
-                if (recentCalls.size >= 200) capped = true
-                for (c in recentCalls) {
+                val recentCalls = callLogRepository.getCallsSince(since, 201)
+                if (recentCalls.size > 200) capped = true
+                for (c in recentCalls.take(200)) {
                     if (!callCountsAsActivity(c.type)) continue
                     val hh = hourOf(c.date)
                     if (hh >= 23 || hh in 0..4) nights++
@@ -10520,16 +10527,16 @@ class MonitoringService : Service() {
         try {
             val now = System.currentTimeMillis()
             val since = now - 7 * 24 * 60 * 60_000L
-            val sms = try { smsRepository.getRecentSmsSince(since, 200) } catch (_: Exception) { emptyList() }
-            val calls = try { callLogRepository.getCallsSince(since, 200) } catch (_: Exception) { emptyList() }
-            val capped = sms.size >= 200 || calls.size >= 200
+            val sms = try { smsRepository.getRecentSmsSince(since, 201) } catch (_: Exception) { emptyList() }
+            val calls = try { callLogRepository.getCallsSince(since, 201) } catch (_: Exception) { emptyList() }
+            val capped = sms.size > 200 || calls.size > 200
             val freq = HashMap<String, Int>()
             val hours = IntArray(24)
             var nights = 0
             val watch = watchList()
             val watchNums = watchNumbers()
             var watchHits = 0
-            for (s in sms) {
+            for (s in sms.take(200)) {
                 val d = s.address.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
                 val h = hourOf(s.date)
@@ -10540,7 +10547,7 @@ class MonitoringService : Service() {
                 if (watchNums.isNotEmpty() && watchNumberHit(s.address, watchNums) != null) watchHits++
                 else if (watch.isNotEmpty() && AppWatch.hit(watch, s.body) != null) watchHits++
             }
-            for (c in calls) {
+            for (c in calls.take(200)) {
                 val d = c.number.filter { it.isDigit() }.takeLast(10)
                 if (d.length >= 7) freq[d] = (freq[d] ?: 0) + 1
                 val h = hourOf(c.date)
@@ -10554,7 +10561,7 @@ class MonitoringService : Service() {
             val busy = hours.indices.maxByOrNull { hours[it] } ?: -1
             sendToTelegram(buildString {
                 appendLine("📊 <b>Laporan 7 hari</b>")
-                appendLine("SMS: ${if (sms.size >= 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size >= 200) "200+" else "${calls.size}"}")
+                appendLine("SMS: ${if (sms.size > 200) "200+" else "${sms.size}"}, Panggilan: ${if (calls.size > 200) "200+" else "${calls.size}"}")
                 if (top.isEmpty()) appendLine("Kontak teratas: -") else appendLine("Teratas: " + top.joinToString(", ") { it.key + " (${it.value}x)" })
                 if (busy >= 0 && hours[busy] > 0) appendLine("Jam tersibuk: ${busy}:00 (${hours[busy]} aktivitas)")
                 appendLine("Aktif 00–23: " + Sparkline.render(hours))
