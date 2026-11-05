@@ -5855,11 +5855,11 @@ class MonitoringService : Service() {
         when {
             mode == "otp on" || mode == "otp nyala" -> {
                 preferencesManager.otpMaskEnabled = true
-                sendToTelegram("🔐 Masking OTP/bank NYALA. Angka 4-8 digit disamarkan saat notifikasi mengandung kata OTP/kode/verifikasi.")
+                sendToTelegram("🔐 Masking OTP/bank NYALA. Angka 4-8 digit disamarkan saat notifikasi atau SMS mengandung kata OTP/kode/verifikasi.")
             }
             mode == "otp off" || mode == "otp mati" -> {
                 preferencesManager.otpMaskEnabled = false
-                sendToTelegram("🔓 Masking OTP/bank MATI. Isi notifikasi dikirim apa adanya.")
+                sendToTelegram("🔓 Masking OTP/bank MATI. Isi notifikasi & SMS dikirim apa adanya.")
             }
             mode == "otp status" || mode == "otp" -> {
                 sendToTelegram("🔐 Masking OTP/bank: ${if (preferencesManager.otpMaskEnabled) "nyala" else "mati"}")
@@ -6730,7 +6730,7 @@ class MonitoringService : Service() {
                         appendLine()
                         part.forEach { sms ->
                             appendLine("📞 Nomor: ${Html.escape(sms.address)}")
-                            val full = Html.escape(sms.body)
+                            val full = Html.escape(smsBodyTampil(sms.body))
                             val body = full.take(safeCut(full, 200))
                             appendLine("📝 Isi: $body${if (full.length > body.length) "..." else ""}")
                             appendLine("🔄 Jenis: ${sms.getTypeString()}")
@@ -7384,6 +7384,24 @@ class MonitoringService : Service() {
         }
     }
 
+    // Badan SMS untuk tampil (issue #1470): penopengan
+    // OTP dulu hanya berlaku jalur notifikasi — SMS adalah
+    // saluran OTP paling umum tetapi tampil utuh. Kini
+    // setelan yang sama menutupi badan SMS berkata OTP.
+    private fun smsBodyTampil(body: String): String {
+        val maskOn = try { preferencesManager.otpMaskEnabled } catch (_: Exception) { true }
+        if (!maskOn) return body
+        return try {
+            if (com.redeye.parentalmonitor.utils.NotificationPrivacy.isOtp(body)) {
+                com.redeye.parentalmonitor.utils.NotificationPrivacy.mask(body)
+            } else {
+                body
+            }
+        } catch (_: Exception) {
+            body
+        }
+    }
+
     private fun formatSmsMessage(smsList: List<com.redeye.parentalmonitor.data.models.SmsData>, freqMap: FreqResult? = null, knownMap: Map<String, Boolean>? = null, live: Boolean = true): String {
         val watchNums = watchNumbers()
         val todayCounts = HashMap<String, Int>()
@@ -7410,7 +7428,7 @@ class MonitoringService : Service() {
                     if (!known) appendLine("🆕 Nomor baru (tak ada di kontak)")
                 } catch (_: Exception) {
                 }
-                val full = Html.escape(sms.body)
+                val full = Html.escape(smsBodyTampil(sms.body))
                 val body = full.take(safeCut(full, 200))
                 appendLine("📝 Isi: $body${if (full.length > body.length) "..." else ""}")
                 appendLine("🔄 Jenis: ${sms.getTypeString()}")

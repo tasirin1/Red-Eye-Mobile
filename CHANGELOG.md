@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Penopengan OTP/bank kini juga berlaku untuk SMS: kode OTP yang tiba lewat SMS (saluran OTP paling umum) tidak lagi tampil utuh di Telegram saat setelan masking menyala — sebelumnya setelan itu hanya menutupi notifikasi.
+
+
 ## [1.6.627] - 2026-11-05
 
 ### Fixed
