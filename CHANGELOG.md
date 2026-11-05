@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemanggil lokasi bervonis kasar (patroli, pagar, jam malam) kini menerima pintas posisi terakhir sampai 5 menit — sama dengan jendela penerimaan hasil fetch — sehingga tidak lagi membayar sesi GPS baru untuk mengganti posisi yang masih dianggap layak; pemanggil presisi tetap pada jendela segar 2 menit (#1590).
+
 - Pemilihan ukuran foto kini berplafon keras pada target 1280×720: ukuran terbesar yang masih di bawah target selalu dipilih, sehingga kamera yang hanya menawarkan ukuran besar tidak lagi memotret di 1080p atau lebih (#1589).
 
 - Analisis foto (sidik jari duplikat + catatan foto nyaris tanpa detail) kini berbagi satu lintasan dekode yang sama — sebelumnya foto yang sama didekode sampai empat kali per aliran pengiriman (#1588).

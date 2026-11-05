@@ -6807,16 +6807,25 @@ class MonitoringService : Service() {
                         false
                     }
                 }
+                // Jendela pintas fix terakhir (issue #1590):
+                // pemanggil kasar menerima pintas s.d. 5 menit
+                // — sama dengan jendela terima fix hasil
+                // fetch-nya sendiri (LOCATION_STALE_MS) — agar
+                // kedatangan 2-5 menit sesudah fetch sukses
+                // tak membayar sesi GPS baru untuk posisi yang
+                // masih dianggap layak. Pemanggil presisi
+                // tetap di jendela segar 2 menit.
+                val pintasMs = if (coarseOk) LOCATION_STALE_MS else LOCATION_LASTKNOWN_FRESH_MS
                 if (providers.isEmpty()) {
                     // Pintas fix segar juga berlaku saat semua
                     // penyedia mati (issue #1434): jalur
                     // penyedia-ada memakainya, jalur ini dulu
                     // langsung menyerah sehingga siklus patroli
                     // terlewat walau ada fix berumur <2 menit.
-                    lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }
+                    lastKnownFix(pintasMs)?.let { return@withContext it }
                     return@withContext if (allowStale) lastKnownFix(LOCATION_LASTKNOWN_MAX_MS) else null
                 }
-                lastKnownFix(LOCATION_LASTKNOWN_FRESH_MS)?.let { return@withContext it }
+                lastKnownFix(pintasMs)?.let { return@withContext it }
                 val fix = try {
                     coroutineScope {
                         val collected = java.util.concurrent.ConcurrentLinkedQueue<android.location.Location>()
