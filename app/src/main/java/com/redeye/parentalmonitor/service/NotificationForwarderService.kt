@@ -876,6 +876,23 @@ class NotificationForwarderService : NotificationListenerService() {
                 throw e
             } catch (_: Exception) {
             }
+            // Pindai notifikasi aktif saat tersambung
+            // (issue #1460): dulu bergantung penuh pada
+            // kirim-ulang platform — notifikasi yang
+            // terposting lalu terhapus selama listener
+            // lepas hilang tanpa jejak. Kini yang masih
+            // aktif dilewatkan jalur masuk yang sama;
+            // dedupe id + konten sadar-postTime menahan
+            // yang sudah pernah diteruskan.
+            try {
+                val aktif = activeNotifications
+                if (aktif != null) {
+                    for (sbn in aktif) {
+                        try { onNotificationPosted(sbn) } catch (_: Exception) { }
+                    }
+                }
+            } catch (_: Exception) {
+            }
         }
     }
 
