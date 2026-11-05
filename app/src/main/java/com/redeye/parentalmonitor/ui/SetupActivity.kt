@@ -393,17 +393,13 @@ class SetupActivity : AppCompatActivity() {
     // Badan error respons yang tak dibaca ditutup agar
     // koneksinya kembali ke pool bersama (issue #1352,
     // keluarga #950/#1337).
-    private fun tutupBadanError(resp: retrofit2.Response<*>?) {
-        try { resp?.errorBody()?.close() } catch (_: Exception) { }
-    }
-
     private suspend fun verifyCredentials(token: String, chatId: String, isStale: () -> Boolean): VerifyOutcome {
         return try {
             val meResp = TelegramClient.api.getMe("https://api.telegram.org/bot" + token + "/getMe")
             if (isStale()) return VerifyOutcome.Stale
             if (!meResp.isSuccessful || meResp.body()?.ok != true) {
                 val code = meResp.code()
-                tutupBadanError(meResp)
+                NetworkUtils.tutupBadanError(meResp)
                 return VerifyOutcome.HttpError(code, true)
             }
             // Username bot yang terverifikasi (issue #843) dipakai
@@ -431,7 +427,7 @@ class SetupActivity : AppCompatActivity() {
             if (isStale()) return VerifyOutcome.Stale
             if (!chatResp.isSuccessful || chatResp.body()?.ok != true) {
                 val code = chatResp.code()
-                tutupBadanError(chatResp)
+                NetworkUtils.tutupBadanError(chatResp)
                 return VerifyOutcome.HttpError(code, false)
             }
             var effectiveChat = chatId
@@ -470,7 +466,7 @@ class SetupActivity : AppCompatActivity() {
                             return VerifyOutcome.Error(getString(R.string.setup_test_not_member, namaBot))
                         }
                     }
-                    if (!memResp.isSuccessful) tutupBadanError(memResp)
+                    if (!memResp.isSuccessful) NetworkUtils.tutupBadanError(memResp)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -516,7 +512,7 @@ class SetupActivity : AppCompatActivity() {
             val enc = try { java.net.URLEncoder.encode(chatId, "UTF-8") } catch (_: Exception) { chatId }
             val resp = TelegramClient.api.getChat("https://api.telegram.org/bot$token/getChat?chat_id=$enc")
             val id = try { resp.body()?.result?.asJsonObject?.get("id")?.asLong } catch (_: Exception) { null }
-            if (!resp.isSuccessful) tutupBadanError(resp)
+            if (!resp.isSuccessful) NetworkUtils.tutupBadanError(resp)
             if (resp.isSuccessful && resp.body()?.ok == true && id != null && id != 0L) id.toString() else ""
         } catch (_: Exception) {
             ""
@@ -923,7 +919,7 @@ class SetupActivity : AppCompatActivity() {
                             com.redeye.parentalmonitor.network.BotCommandScope("chat", oldOwner)
                         )
                     )
-                    if (!delResp1.isSuccessful) tutupBadanError(delResp1)
+                    if (!delResp1.isSuccessful) NetworkUtils.tutupBadanError(delResp1)
                 } catch (_: Exception) {
                 }
             }
@@ -933,7 +929,7 @@ class SetupActivity : AppCompatActivity() {
                         "https://api.telegram.org/bot$oldToken/deleteMyCommands",
                         com.redeye.parentalmonitor.network.DeleteCommandsRequest(null)
                     )
-                    if (!delResp2.isSuccessful) tutupBadanError(delResp2)
+                    if (!delResp2.isSuccessful) NetworkUtils.tutupBadanError(delResp2)
                 } catch (_: Exception) {
                 }
             }
@@ -1256,7 +1252,7 @@ class SetupActivity : AppCompatActivity() {
                 "https://api.telegram.org/bot$oldToken/sendMessage",
                 com.redeye.parentalmonitor.network.TelegramMessage(chatId = oldChat, text = teks, parseMode = null)
             )
-            if (!resp.isSuccessful) tutupBadanError(resp)
+            if (!resp.isSuccessful) NetworkUtils.tutupBadanError(resp)
         } catch (_: Exception) {
         }
     }
@@ -1390,7 +1386,7 @@ class SetupActivity : AppCompatActivity() {
             }
             val username = try {
                 val resp = TelegramClient.api.getMe("https://api.telegram.org/bot$token/getMe")
-                if (!resp.isSuccessful) tutupBadanError(resp)
+                if (!resp.isSuccessful) NetworkUtils.tutupBadanError(resp)
                 if (!resp.isSuccessful || resp.body()?.ok != true) ""
                 else resp.body()?.result?.asJsonObject?.get("username")?.asString.orEmpty()
             } catch (_: Exception) {
@@ -1940,7 +1936,7 @@ class SetupActivity : AppCompatActivity() {
                     val url = "https://api.telegram.org/bot$token/sendMessage"
                     val resp = com.redeye.parentalmonitor.network.TelegramClient.api.sendMessage(url, com.redeye.parentalmonitor.network.TelegramMessage(chatId = chatId, text = teksBerhenti))
                     terkirim = resp.isSuccessful && resp.body()?.ok == true
-                    if (!terkirim) tutupBadanError(resp)
+                    if (!terkirim) NetworkUtils.tutupBadanError(resp)
                 }
             } catch (_: Exception) {
             }
@@ -2241,7 +2237,7 @@ class SetupActivity : AppCompatActivity() {
                     } catch (_: Exception) {
                     }
                 } else if (resp.code() == 401 || resp.code() == 403) {
-                    tutupBadanError(resp)
+                    NetworkUtils.tutupBadanError(resp)
                     markCredentialError(resp.code(), token, chatId)
                     queueStatusMessage(text)
                 } else if (resp.code() == 400) {
@@ -2266,7 +2262,7 @@ class SetupActivity : AppCompatActivity() {
                                     markCredentialError(retryResp.code(), token, migratedDirect)
                                 }
                             }
-                            tutupBadanError(retryResp)
+                            NetworkUtils.tutupBadanError(retryResp)
                         } catch (_: Exception) {
                         }
                         queueStatusMessage(text)
@@ -2314,21 +2310,21 @@ class SetupActivity : AppCompatActivity() {
                                                     markCredentialError(retryPlain.code(), token, migratedPlain)
                                                 }
                                             }
-                                            tutupBadanError(retryPlain)
+                                            NetworkUtils.tutupBadanError(retryPlain)
                                         } catch (_: Exception) {
                                         }
                                     } else if (NetworkUtils.isChatMissing(plainBody)) {
                                         markCredentialError(plainResp.code(), token, chatId)
                                     }
                                 }
-                                tutupBadanError(plainResp)
+                                NetworkUtils.tutupBadanError(plainResp)
                             } catch (_: Exception) {
                             }
                         }
                     }
                     queueStatusMessage(text)
                 } else {
-                    tutupBadanError(resp)
+                    NetworkUtils.tutupBadanError(resp)
                     queueStatusMessage(text)
                 }
                 val toastRes = if (ok) getString(R.string.setup_status_sent) else getString(R.string.setup_status_failed, failCode)

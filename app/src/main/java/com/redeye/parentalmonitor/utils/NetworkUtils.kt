@@ -220,6 +220,13 @@ object NetworkUtils {
         return null
     }
 
+    // Penutup badan error bersama (issue #1657): tiga
+    // salinan identik sebelumnya hidup di
+    // MonitoringService, SetupActivity, dan CrashReporter.
+    fun tutupBadanError(resp: retrofit2.Response<*>?) {
+        try { resp?.errorBody()?.close() } catch (_: Exception) { }
+    }
+
     val MIGRATED_CHAT_NOTICE = "\u267B\uFE0F Grup ditingkatkan jadi supergrup \u2014 Chat ID diperbarui otomatis."
 
     fun adoptMigratedChat(

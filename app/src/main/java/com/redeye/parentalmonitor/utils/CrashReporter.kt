@@ -288,7 +288,7 @@ object CrashReporter {
                     } catch (_: Exception) {
                     }
                 } else if (response.code() == 401 || response.code() == 403) {
-                    tutupBadanError(response)
+                    NetworkUtils.tutupBadanError(response)
                     try {
                         prefs.setCredentialErrorIfCredentialsMatch(token, chatId, response.code().toString(), System.currentTimeMillis())
                     } catch (_: Exception) {
@@ -326,7 +326,7 @@ object CrashReporter {
                                 false
                             } else if (plainResp.code() == 401 || plainResp.code() == 403) {
                                 try { prefs.setCredentialErrorIfCredentialsMatch(token, chatId, plainResp.code().toString(), System.currentTimeMillis()) } catch (_: Exception) { }
-                                tutupBadanError(plainResp)
+                                NetworkUtils.tutupBadanError(plainResp)
                                 false
                             } else if (plainResp.code() == 400) {
                                 val fbBody = try { plainResp.errorBody()?.string() } catch (_: Exception) { null }
@@ -344,7 +344,7 @@ object CrashReporter {
                                 }
                                 false
                             } else {
-                                tutupBadanError(plainResp)
+                                NetworkUtils.tutupBadanError(plainResp)
                                 false
                             }
                         } catch (_: Exception) {
@@ -366,7 +366,7 @@ object CrashReporter {
                         }
                     }
                 } else {
-                    tutupBadanError(response)
+                    NetworkUtils.tutupBadanError(response)
                 }
             } catch (_: Exception) {
             }
@@ -378,10 +378,6 @@ object CrashReporter {
     // Badan error respons yang tak dibaca ditutup agar
     // koneksinya kembali ke pool bersama (issue #1352,
     // keluarga #950/#1337).
-    private fun tutupBadanError(resp: retrofit2.Response<*>?) {
-        try { resp?.errorBody()?.close() } catch (_: Exception) { }
-    }
-
     private fun safeTake(text: String, max: Int): String {
         return text.take(TextChunk.safeCut(text, max))
     }

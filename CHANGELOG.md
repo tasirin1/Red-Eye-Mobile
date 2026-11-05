@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Penutup badan error `tutupBadanError` kini satu di NetworkUtils (issue #1657): tiga salinan identik di MonitoringService, SetupActivity, dan CrashReporter digabung — 33 situs panggilan kini menunjuk fungsi bersama yang badannya verbatim sama, jadi semantik tutup-badan (dan perilaku diam saat gagal) tak berubah; perbaikan künftigen cukup di satu tempat.
 - Empat properti gerbang PIN yatim dihapus dari PreferencesManager (issue #1656): `restorePinFailCount`, `restorePinLastAttemptKey`, `accessPinFailCount`, dan `restoreCodeFailCount` tak dirujuk siapa pun — kunci-kuncinya hidup tetapi diakses fungsi gerbang internal langsung lewat konstanta `KEY_*`, jadi properti ini jalan resmi kedua yang tak pernah dilewati dan suntingan padanya akan diam-diam tak berpengaruh. Konstanta kuncinya tetap.
 - Fungsi pembungkus mati `protectionActive` dihapus dari A11yMonitor (issue #1655): ia hanya meneruskan `monitoringActive` (yang dipanggil langsung di 8+ situs) dan tak punya pemanggil satu pun — lapisan nama kedua yang membuat pembaca mengira ada semantik proteksi terpisah.
 - Field `mainHandler` yang tak terpakai dihapus dari A11yMonitor beserta impor Handler/Looper-nya (issue #1654): objek Handler dibuat tiap konstruksi layanan aksesibilitas lalu tak pernah disentuh sejak refactor lama — hanya membingungkan pembaca seolah ada antrean utas utama di kelas itu.
