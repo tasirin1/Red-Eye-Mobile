@@ -3485,7 +3485,6 @@ class MonitoringService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
             ) return
-            slot.set(now)
             val tap = setupTapIntent()
             // Teks notifikasi menyamar penuh (issue #741): judul/teks lama
             // menyebut token, bot, dan Setup — membocorkan jati diri
@@ -3508,6 +3507,12 @@ class MonitoringService : Service() {
                 .build()
             val manager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
             manager.notify(if (slotTerpisah) STORAGE_LOSS_NOTIF_ID else AUTH_NOTIF_ID, notification)
+            // Cap throttle SESUDAH notify() berhasil
+            // (issue #1558): dulu dicap sebelum pasang —
+            // kegagalan pasang menelan jendela 6 jam
+            // seolah peringatan terkirim. Jalur worker
+            // sudah lama mencatat penanda sesudah notify.
+            slot.set(now)
         } catch (_: Exception) {
         }
     }

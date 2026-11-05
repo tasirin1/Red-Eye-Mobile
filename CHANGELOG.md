@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanda jeda 6 jam peringatan autentikasi/kredensial kini dicap hanya sesudah notifikasi benar-benar terpasang, bukan sebelumnya — kegagalan memasang tidak lagi membungkam peringatan berikutnya.
+
 - Halaman status di aplikasi kini memperingatkan bila kanal notifikasi peringatan dimatikan di setelan sistem — sebelumnya peringatan di perangkat bisa tertelan diam-diam walau izin notifikasi diberikan.
 
 - Notifikasi peringatan "perlu perhatian" di perangkat kini otomatis hilang begitu pengiriman berhasil lagi, tidak lagi terpajang basi sampai diketuk manual.
