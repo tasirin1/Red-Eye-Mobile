@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mode rentang CI pada verifikasi-path kini mengonfirmasi tuduhan token atas fragmen diff terhadap isi penuh berkas berubah (meniru konfirmasi cek-cepat), sehingga rotasi nilai kontrol di wilayah bertanda contoh tidak lagi dihukum di CI padahal lolos di lokal (#1626).
+
 - Konfirmasi tuduhan token pada gerbang kini juga menilai gabungan isi staged semua berkas, sehingga token yang dibelah di dua berkas dalam satu commit kembali tertangkap (perlindungan konteks bertanda #1620 tetap utuh) (#1625).
 
 - Penggantian atau penghapusan kredensial dari layar Setup kini mengirim pesan perpisahan ke kanal lama (meniru jalur /restore), sehingga pemilik di kanal lama tahu kanalnya diganti/dihapus alih-alih senyap (#1624).

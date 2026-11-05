@@ -1899,11 +1899,48 @@ def _muat_mengandung_token_pesan():
 mengandung_token_pesan = _muat_mengandung_token_pesan()
 
 
+def _konfirmasi_diff_berdiri(diff):
+    """Konfirmasi konteks untuk tuduhan fragmen diff (issue #1626).
+
+    Fragmen baris tambah tak memuat konteks penanda contoh
+    (#1530) pada baris tak berubah di sekitarnya, jadi nilai
+    kontrol yang dirotasi di dalam wilayah bertanda tertuduh
+    di sini walau berkas penuhnya bersih — cek-cepat lokal
+    sudah membebaskannya lewat konfirmasi isi staged penuh
+    (#1620), dan mode rentang CI menghukumnya: dua gerbang,
+    dua vonis untuk perubahan yang sama. Nilai ulang isi
+    berkas-berkas berubah (pohon kerja = ujung rentang di
+    CI) satu per satu dan gabungannya (pola #1625): tuduhan
+    hanya berdiri bila ada isi yang tertuduh. Tak ada isi
+    yang bisa dinilai sama sekali = tuduhan berdiri
+    (gagal-tertutup)."""
+    paths = []
+    for baris in diff.splitlines():
+        if baris.startswith("+++ "):
+            token = _buka_kutip_git(baris[4:].strip())
+            path = token[2:] if token.startswith("b/") else token
+            if path and path != "/dev/null" and path not in paths:
+                paths.append(path)
+    dinilai = 0
+    gabungan = []
+    for path in paths:
+        isi = baca(path)
+        if isi is None:
+            continue
+        dinilai += 1
+        if mengandung_token(isi):
+            return True
+        gabungan.append(isi)
+    if dinilai == 0:
+        return True
+    return mengandung_token("\n".join(gabungan))
+
+
 def cek_secret(gagal, diff):
     tambah = "\n".join(
         baris[1:] for baris in diff.splitlines()
         if baris.startswith("+") and not baris.startswith("+++"))
-    if mengandung_token(tambah):
+    if mengandung_token(tambah) and _konfirmasi_diff_berdiri(diff):
         gagal.append("Kemungkinan token bot asli ikut diff (termasuk "
                      "bentuk base64/terbelah) — kredensial hanya via "
                      "input manual SetupActivity")
