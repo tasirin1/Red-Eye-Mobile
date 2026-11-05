@@ -314,6 +314,15 @@ class MonitoringService : Service() {
     // bila berbeda dari chat terkonfigurasi, dibersihkan
     // sesudahnya. Kosong = perilaku biasa.
     @Volatile
+    // Semantik jendela yang diterima (issue #1553):
+    // bidang ini global selama dispatch satu perintah —
+    // kiriman latar yang kebetulan berjalan di jendela
+    // itu ikut teralih ke chat PRIBADI pemilik (bukan
+    // pihak lain) dan kegagalannya DROPPED alih-alih
+    // terantre; mengantrekan kiriman apa pun ke chat
+    // terkonfigurasi selama jendela sensitif justru
+    // risiko silang yang lebih besar. Jendela dibatasi
+    // lamanya dispatch perintah itu sendiri.
     private var replyOverrideChatId = ""
     @Volatile
     private var ownerEpoch = 0
@@ -7999,6 +8008,14 @@ class MonitoringService : Service() {
             if (awaitingOwnerLogin()) return SendStatus.DROPPED
             val overrideChat = replyOverrideChatId
             if (overrideChat.isNotEmpty()) {
+                // Gerbang global tetap dihormati di jalur
+                // override (issue #1553): blokir-auth dan
+                // jeda rate-limit tak boleh dilewati — kirim
+                // saat terblokir pasti gagal dan membakar
+                // upaya; isi sensitif tak diantrekan, jadi
+                // vonisnya DROPPED secara sengaja.
+                if (NetworkUtils.isAuthBlocked(preferencesManager)) return SendStatus.DROPPED
+                if (NetworkUtils.rateLimitedRemainMs() > 0L) return SendStatus.DROPPED
                 // Jalur pengganti (issue #1541): kirim
                 // langsung HTML ke chat asal; kegagalan =
                 // DROPPED, jangan antre ke chat
