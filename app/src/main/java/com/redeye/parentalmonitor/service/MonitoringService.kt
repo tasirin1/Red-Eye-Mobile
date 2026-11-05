@@ -11232,7 +11232,7 @@ class MonitoringService : Service() {
         }
         finishCaptureAttempt(wd)
         markMediaActive(photoFile)
-        sendCapturedPhoto(photoFile, reportResult, photoHashNow, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 })
+        sendCapturedPhoto(photoFile, reportResult, photoHashNow, analisisFoto.third, try { cameraService.lastLensFacing } catch (_: Exception) { -1 }, try { selectedLensFacing() } catch (_: Exception) { -1 })
     }
 
     private fun handleCaptureError(exception: Exception, attempt: Int, wd: Job, reportResult: Boolean) {
@@ -11293,13 +11293,14 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, lensUsed: Int = -1, lensAsked: Int = -1) {
+    private fun sendCapturedPhoto(photoFile: File, reportResult: Boolean, photoHashNow: Long, photoSpreadNow: Int = -1, lensUsed: Int = -1, lensAsked: Int = -1) {
         // Spread grid untuk catatan 'nyaris tanpa detail'
-        // (issue #1540) — dihitung sebelum kirim karena
-        // berkas terhapus sesudah terkirim; hanya jalur
-        // laporan manual agar foto otomatis tak berbiaya
-        // dekode tambahan.
-        val spreadAwal = if (reportResult) analisisFoto.third else -1
+        // (issue #1540) — tiba dari dekode tunggal di
+        // handleCapturedPhoto (issue #1588); dihitung
+        // sebelum kirim karena berkas terhapus sesudah
+        // terkirim; hanya jalur laporan manual agar foto
+        // otomatis tak berbiaya dekode tambahan.
+        val spreadAwal = if (reportResult) photoSpreadNow else -1
         serviceScope.launch {
             try {
                 if (!reportResult && dataSaverHoldNow(1)) {
