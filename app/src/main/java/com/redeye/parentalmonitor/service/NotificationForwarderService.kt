@@ -37,7 +37,7 @@ class NotificationForwarderService : NotificationListenerService() {
     // postTime membedakan kirim-ulang notifikasi yang SAMA
     // dari pesan BARU berisi identik (issue #1457).
     private val lastSent = object : LinkedHashMap<String, Pair<Long, Long>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, Long>>): Boolean {
             return size > 100
         }
     }
