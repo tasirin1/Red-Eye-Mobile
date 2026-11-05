@@ -129,6 +129,27 @@ cek_token_sehat() {
 }
 konfirmasi_berkas() {
   if ! grep -qI -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$1" 2>/dev/null; then
+    # grep -I juga gagal pada TEKS yang memuat byte
+    # NUL (dianggap biner) padahal pola mentahnya ada
+    # secara tekstual (issue #1566): teks seperti itu
+    # (>=95% byte teks) dikonfirmasi lewat salinan
+    # bebas-NUL di permukaan --teks. Biner sungguhan
+    # mempertahankan vonis mentah seperti sebelumnya.
+    if grep -qa -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$1" 2>/dev/null && cek_token_sehat && python3 - "$1" <<'PYNUL'
+import sys
+try:
+    data = open(sys.argv[1], "rb").read()
+except Exception:
+    sys.exit(1)
+if not data:
+    sys.exit(1)
+teks = sum(1 for b in data if b in (0, 9, 10, 13) or 32 <= b < 127 or b >= 128)
+sys.exit(0 if teks >= int(len(data) * 0.95) else 1)
+PYNUL
+    then
+      tr -d '\0' < "$1" 2>/dev/null | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'
+      return $?
+    fi
     return 0
   fi
   cek_token_sehat || return 0

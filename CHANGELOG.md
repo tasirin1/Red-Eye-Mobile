@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Skrip cek cepat kini mengenali berkas teks yang memuat satu byte kosong (NUL) sebagai teks — contoh token bertanda di dalamnya tidak lagi tertuduh sebagai "berkas biner", sementara biner sungguhan tetap berlaku vonis mentahnya.
+
 - Hemat kuota tidak lagi menahan media tanpa batas di Wi-Fi rumah bila VPN selalu aktif: jalur fisik Wi-Fi/ethernet di balik VPN kini diakui tak-terukur, dan teks kabar tahan menyebut "jaringan tak-terukur" dengan benar.
 
 - Balasan perintah /flush kini menyebut terang-terangan bila foto/video/rekaman masih ditahan hemat kuota dan tidak ikut terkirim, bukan hanya melaporkan antrean teks.
