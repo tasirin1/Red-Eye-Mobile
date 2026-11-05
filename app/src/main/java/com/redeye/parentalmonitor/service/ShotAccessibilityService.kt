@@ -85,6 +85,11 @@ class ShotAccessibilityService : AccessibilityService() {
         // berbeda dari sekadar tercantum di setelan.
         fun isBound(): Boolean = instance != null
 
+        // Identitas instans hidup (issue #1678): jepretan
+        // yang sudah terposkan wajib memastikan layanan
+        // yang sama masih terikat saat gilirannya jalan.
+        fun isCurrent(service: ShotAccessibilityService): Boolean = instance === service
+
         fun isEnabled(context: Context): Boolean =
             AccessibilityProbe.isEnabled(context, ShotAccessibilityService::class.java)
 
@@ -111,12 +116,22 @@ object ShotA11yCapture {
         try {
             main.post {
                 try {
+                    if (!ShotAccessibilityService.isCurrent(service)) {
+                        onResult(null)
+                        return@post
+                    }
                     service.takeScreenshot(
                         Display.DEFAULT_DISPLAY,
                         callbackExecutor,
                         object : AccessibilityService.TakeScreenshotCallback {
                             override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
-                                onResult(toBitmap(result))
+                                val bmp = toBitmap(result)
+                                if (!ShotAccessibilityService.isCurrent(service)) {
+                                    try { bmp?.recycle() } catch (_: Exception) { }
+                                    onResult(null)
+                                    return
+                                }
+                                onResult(bmp)
                             }
 
                             override fun onFailure(errorCode: Int) {
