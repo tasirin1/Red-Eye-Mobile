@@ -179,25 +179,34 @@ tuduhan_staged_berdiri() {
   while IFS= read -r -d '' _f; do
     _tmp=$(mktemp)
     if git show ":$_f" > "$_tmp" 2>/dev/null; then
-      # Gabungan lintas berkas (issue #1625): token yang
-      # dibelah di dua berkas tak tertuduh di berkas mana
-      # pun sendirian, jadi konfirmasi per-berkas #1620
-      # menepis tuduhan fragmen gabungannya. Nilai juga
-      # gabungan isi staged semua berkas (berkas dibatasi
-      # ±8 MB agar berkas raksasa tak menggembungkan uji).
-      cat "$_tmp" >> "$_gabung" 2>/dev/null
+      # Per-berkas: SETIAP berkas staged dinilai sendiri,
+      # tanpa henti ukuran — putus di tengah berarti berkas
+      # sesudahnya tak pernah dinilai sama sekali.
       if printf '%s\0' "$_tmp" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
         _berdiri=0
       fi
+      # Gabungan lintas berkas (issue #1625) atas isi
+      # TERPADATKAN (issue #1644): token yang dibelah di
+      # dua berkas tak tertuduh sendirian; gabungan MENTAH
+      # berplafon 8 MB bisa ditembus bahan pengisi besar
+      # yang berurut di antara dua paruh (paruh kedua
+      # terpotong dari gabungan). Isi terpadatkan membuat
+      # pengisi (baris kosong dsb.) menyusut nyaris nol,
+      # jadi yang dihitung plafon adalah bukti padatnya.
+      python3 tools/cek-token.py --padatkan < "$_tmp" >> "$_gabung" 2>/dev/null
     fi
     rm -f "$_tmp"
     [ "$_berdiri" = 0 ] && break
-    _ukuran=$(wc -c < "$_gabung" 2>/dev/null || echo 0)
-    [ "$_ukuran" -gt 8388608 ] && break
   done < "$_daftar"
   rm -f "$_daftar"
   if [ "$_berdiri" != 0 ]; then
-    if printf '%s\0' "$_gabung" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
+    _ukuran=$(wc -c < "$_gabung" 2>/dev/null || echo 0)
+    if [ "$_ukuran" -gt 33554432 ]; then
+      # Bukti terpadatkan melampaui plafon penilaian:
+      # tuduhan BERDIRI (gagal-tertutup). Memotongnya
+      # diam-diam adalah lubang #1644 itu sendiri.
+      _berdiri=0
+    elif printf '%s\0' "$_gabung" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .; then
       _berdiri=0
     fi
   fi

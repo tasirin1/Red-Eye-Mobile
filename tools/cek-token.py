@@ -376,6 +376,19 @@ def main():
         if mengandung_token_pesan(sys.stdin.read()):
             print("DITEMUKAN")
         return 0
+    if mode == "--padatkan":
+        # Mode bukti gabungan (issue #1644): cetak stdin
+        # SESUDAH pemadatan, tanpa penilaian. Dipakai
+        # konfirmasi lintas berkas cek-cepat agar bahan
+        # pengisi besar (mis. jutaan baris kosong) menyusut
+        # sampai nyaris nol dan tak bisa mengusir paruh
+        # token dari jendela gabungan; penilaian akhir
+        # tetap mengandung_token atas hasil gabungannya.
+        mentah = sys.stdin.buffer.read()
+        teks = mentah.decode("utf-8", "surrogateescape")
+        sys.stdout.buffer.write(
+            _padatkan(teks).encode("utf-8", "surrogateescape"))
+        return 0
     if mode == "--berkas":
         for path in sys.stdin.buffer.read().split(b"\0"):
             if not path:
@@ -390,7 +403,7 @@ def main():
                 print(nama)
                 return 0
         return 0
-    print("pemakaian: cek-token.py --teks | --teks-pesan | --berkas", file=sys.stderr)
+    print("pemakaian: cek-token.py --teks | --teks-pesan | --berkas | --padatkan", file=sys.stderr)
     return 2
 
 
