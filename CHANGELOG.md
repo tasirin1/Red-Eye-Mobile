@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.628] - 2026-11-05
+
 ### Fixed
 
 - Pemeriksaan rentang pada alat verifikasi kini menilai acuan sumber daya dari pohon ujung rentang, bukan dari berkas kerja: pemeriksaan dari pohon yang sedang kotor tidak lagi menghasilkan vonis yatim palsu.
@@ -41,7 +43,6 @@
 - Laporan 'rekaman terputus' tidak lagi keliru bunyi untuk rekaman yang sebenarnya sudah selesai dan utuh: penanda rekaman berjalan kini dicabut tepat sesudah rekaman selesai difinalkan, bukan menunggu seluruh proses unggah beres.
 
 - Penopengan OTP/bank kini juga berlaku untuk SMS: kode OTP yang tiba lewat SMS (saluran OTP paling umum) tidak lagi tampil utuh di Telegram saat setelan masking menyala — sebelumnya setelan itu hanya menutupi notifikasi.
-
 
 ## [1.6.627] - 2026-11-05
 
