@@ -23,6 +23,26 @@ import re
 import sys
 
 POLA = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
+_POLA_HEX = re.compile(r"[0-9a-fA-F]+\Z")
+
+
+def _pola_mentah_cocok(teks):
+    """Kecocokan POLA mentah pada teks, dengan satu
+    pengecualian terbukti (issue #1529): ekor yang MURNI
+    heksadesimal sepanjang tepat 40/64 adalah bentuk hash
+    SHA-1/SHA-256 — pesan sah yang mengutip 'run
+    41960463603:<sha40 rapat>' tertuduh token bot.
+    Peluang token bot asli berekor heksadesimal murni
+    40 aksara ≈ (16/64)^40 — dapat diabaikan; token yang
+    sama tetap tertangkap lewat jalur dekode hex/base64
+    bila disamarkan, dan ekor hex panjang lain (35, 48,
+    ...) tetap tertuduh."""
+    for m in POLA.finditer(teks):
+        ekor = m.group(0).split(":", 1)[1]
+        if len(ekor) in (40, 64) and _POLA_HEX.match(ekor):
+            continue
+        return True
+    return False
 POLA_BYTE = re.compile(rb"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 POLA_KANDIDAT_B64 = re.compile(r"[A-Za-z0-9+/=_-]{48,}")
 POLA_KANDIDAT_HEX = re.compile(r"[0-9a-fA-F]{80,}")
@@ -189,7 +209,7 @@ def mengandung_token_pesan(teks):
     sempit daripada isi berkas."""
     if not teks:
         return False
-    if POLA.search(teks):
+    if _pola_mentah_cocok(teks):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
     for sumber in (teks, tanpa_spasi):
@@ -213,10 +233,10 @@ def mengandung_token_pesan(teks):
 def mengandung_token(teks):
     if not teks:
         return False
-    if POLA.search(teks):
+    if _pola_mentah_cocok(teks):
         return True
     rapat = _padatkan(teks)
-    if rapat != teks and POLA.search(rapat):
+    if rapat != teks and _pola_mentah_cocok(rapat):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
     for sumber in (teks, tanpa_spasi, rapat):
