@@ -3160,6 +3160,14 @@ def utama():
     # yang berubah di antara dua lari tak terbaca ulang
     # tanpa penolan ini.
     _MODUL_CACHE = None
+    # Ikatan pemindai token dimuat ulang (issue #1569):
+    # binding dibekukan saat impor — impor yang terjadi
+    # saat cek-token.py hilang mengikat fallback literal
+    # permanen walau berkasnya kembali di proses yang
+    # sama (jangkauan harness-impor).
+    global mengandung_token, mengandung_token_pesan
+    mengandung_token = _muat_mengandung_token()
+    mengandung_token_pesan = _muat_mengandung_token_pesan()
     gagal = []
     peringatan = []
     diff = ""
