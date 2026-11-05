@@ -1,5 +1,13 @@
 name: CodeQL
 
+# Kelompokkan per ref seperti workflow build (issue
+# #1641): run lama pada ref yang sama dibatalkan agar
+# push/PR/jadwal tak menumpuk membuang menit CI. Tag
+# dikecualikan dari pembatalan, meniru pola build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 on:
   push:
     branches: ["main"]
