@@ -500,16 +500,19 @@ def himpun_definisi():
             tambah("id", nama)
     # Definisi berbasis berkas: semua subdir res kecuali values* (layout,
     # drawable, xml, ...). Kualifikasi (-night/-land) digabung ke tipe dasar.
-    for nama_dir in sorted(os.listdir(akar_res)):
+    # Sadar pohon juga (issue #1503, sisa #1490): enumerasi
+    # lewat _jalan seperti sisi values & acuan — dulu
+    # os.listdir/os.walk pohon KERJA, jadi rentang dari
+    # pohon kotor salah vonis dua arah di keluarga ini.
+    for path in _jalan(os.path.join("app", "src", "main", "res"), ext=("",)):
+        bagian = path.replace(os.sep, "/").split("/")
+        if len(bagian) < 6:
+            continue
+        nama_dir = bagian[4]
         if nama_dir.startswith("values"):
             continue
         tipe = nama_dir.split("-")[0]
-        wadah = os.path.join(akar_res, nama_dir)
-        if not os.path.isdir(wadah):
-            continue
-        for akar, _, berkas in os.walk(wadah):
-            for nama in berkas:
-                tambah(tipe, os.path.splitext(nama)[0])
+        tambah(tipe, os.path.splitext(bagian[-1])[0])
 
     # (?<!android\.) mengecualikan kerangka (android.R.*, @android:*) yang
     # bukan milik repo; style membolehkan titik (Theme.A.B).
