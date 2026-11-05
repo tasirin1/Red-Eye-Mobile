@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.630] - 2026-11-05
+
 ### Fixed
 
 - Perbaikan alat verifikasi: berkas yang gagal dibaca pada pemeriksaan pohon kerja kini cukup diperingatkan (sudah dilaporkan bernama oleh pemeriksaan berkasnya sendiri), sementara pada pemeriksaan rentang tetap menggagalkan.
@@ -29,7 +31,6 @@
 - Perbaikan lanjutan untuk pesan percakapan: patokan tumpukan kini hanya maju pada pengiriman atau pengantrean yang terkonfirmasi, tidak lagi ikut maju saat pembaruan dibuang oleh penyaring spam.
 
 - Pemeriksaan kesehatan aksesibilitas kini menuntut layanan benar-benar terhubung, bukan sekadar tercantum aktif di setelan: layanan yang tercantum tetapi tidak terhubung lebih dari 15 menit kini memicu peringatan yang sama seperti layanan mati.
-
 
 ## [1.6.629] - 2026-11-05
 
