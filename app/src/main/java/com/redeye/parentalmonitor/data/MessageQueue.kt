@@ -1075,10 +1075,16 @@ class MessageQueue private constructor(context: Context) {
             }
         }
         sb.append(']')
-        if (jsonCache.size > snapshot.size * 2 + 64) {
-            val ids = snapshot.mapTo(HashSet()) { it.id }
-            jsonCache.keys.retainAll(ids)
-        }
+        // Cache selalu mencerminkan isi snapshot (issue
+        // #1594): dulu entri pesan yang sudah terkirim/
+        // terhapus baru dibuang bila jumlahnya melewati
+        // 2x ukuran antrean + 64, sehingga salinan JSON
+        // pesan mati menumpuk di luar batas agregat
+        // antrean. Kini dibuang pada persist yang sama —
+        // ongkosnya satu HashSet <=105 id per persist yang
+        // memang sudah ter-debounce.
+        val ids = snapshot.mapTo(HashSet()) { it.id }
+        jsonCache.keys.retainAll(ids)
         return sb.toString()
     }
 

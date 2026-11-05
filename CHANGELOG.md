@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cache JSON per pesan di antrean pesan kini selalu dibersihkan mengikuti isi antrean pada persist yang sama — salinan JSON pesan yang sudah terkirim tidak lagi menumpuk di memori melewati batas antrean (#1594).
+
 - Percobaan ulang penyemaian daftar aplikasi aksesibilitas kini mundur secara eksponensial bila kueri paket terus gagal (60 detik s.d. 16 menit), bukan mengulang enumerasi ratusan paket pada irama tetap selamanya; kemajuan apa pun mengembalikan irama ke 60 detik (#1592).
 
 - Pengambilan lokasi kini bertingkat mengikuti kebutuhan pemanggil: patroli, pagar, dan jam malam memakai jalur jaringan saja bila tersedia (GPS tidak dinyalakan sama sekali untuk vonis kasar), sementara perintah presisi tetap memakai GPS + jaringan seperti sebelumnya (#1591).
