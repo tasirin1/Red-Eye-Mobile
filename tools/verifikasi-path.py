@@ -597,10 +597,11 @@ AWALAN_STYLE_PUSTAKA = (
     "Widget_", "ThemeOverlay_", "TextAppearance_", "Animation_",
     "ShapeAppearance_", "ShapeAppearanceOverlay_", "Platform_",
     "Theme_Material", "Theme_AppCompat", "Theme_Design",
-    # Awalan Theme_ umum (issue #1488): tema aplikasi ini
-    # berkeluarga Tema_ (Indonesia), jadi Theme_* selalu
-    # milik pustaka — tanpanya Theme_<PustakaBaru> tetap
-    # GAGAL 'yatim' alih-alih peringatan #1468.
+    # Awalan Theme_ umum (issue #1488): Theme_* dianggap
+    # milik pustaka KECUALI tema aplikasi sendiri yang
+    # dikecualikan GAYA_APLIKASI_SENDIRI (issue #1493 —
+    # premis awal "tema aplikasi selalu Tema_" keliru:
+    # tema utama aplikasi adalah Theme.ParentalMonitor).
     "Theme_",
 )
 
@@ -629,10 +630,23 @@ SEGMEN_PUSTAKA_STYLE = frozenset({
 })
 
 
+# Tema milik aplikasi sendiri (issue #1493): awalan
+# selimut Theme_ dari #1488 ikut melemahkan vonis tema
+# aplikasi (Theme.ParentalMonitor — tema utama, dirujuk
+# manifest). Nama ini dikecualikan dari kelas pustaka
+# di SEMUA uji awalan, jadi yatimnya kembali GAGAL.
+GAYA_APLIKASI_SENDIRI = ("Theme_ParentalMonitor",)
+
+
+def _berawalan_pustaka(nama):
+    return (nama.startswith(AWALAN_STYLE_PUSTAKA)
+            and not nama.startswith(GAYA_APLIKASI_SENDIRI))
+
+
 def _bebas_yatim_style_kode(nama):
     if nama.startswith("Platform_"):
         return True
-    if not nama.startswith(AWALAN_STYLE_PUSTAKA):
+    if not _berawalan_pustaka(nama):
         return False
     return any(seg in SEGMEN_PUSTAKA_STYLE for seg in nama.split("_"))
 
@@ -659,7 +673,7 @@ def cek_acuan_yatim(gagal, peringatan=None):
                        # dikenal turun jadi peringatan di bawah —
                        # acuan kode R.style.* toh dijamin
                        # kompiler menunjuk style yang ada.
-                       and not (jenis == "style" and n.startswith(AWALAN_STYLE_PUSTAKA))
+                       and not (jenis == "style" and _berawalan_pustaka(n))
                        # Keluarga Base.* pustaka (issue #1402):
                        # Base.Theme.AppCompat dsb. adalah bentuk
                        # baku pewarisan tema AppCompat/Material;
@@ -681,7 +695,7 @@ def cek_acuan_yatim(gagal, peringatan=None):
             tak_dikenal = sorted(
                 n for n in dipakai
                 if n not in definisi.get(jenis, set())
-                and n.startswith(AWALAN_STYLE_PUSTAKA)
+                and _berawalan_pustaka(n)
                 and not n.startswith("Base_")
                 and not _bebas_yatim_style_kode(n))
             for n in tak_dikenal[:10]:
