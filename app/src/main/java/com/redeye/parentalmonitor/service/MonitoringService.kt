@@ -309,6 +309,12 @@ class MonitoringService : Service() {
     )
     @Volatile
     private var pendingRestore: PendingRestore? = null
+    // Chat balasan pengganti selama satu perintah sensitif
+    // diproses (issue #1541): diisi chat privat peminta
+    // bila berbeda dari chat terkonfigurasi, dibersihkan
+    // sesudahnya. Kosong = perilaku biasa.
+    @Volatile
+    private var replyOverrideChatId = ""
     @Volatile
     private var ownerEpoch = 0
     // Klaim terapkan restore harus atomik terhadap batal/
@@ -4087,6 +4093,17 @@ class MonitoringService : Service() {
         val parts = raw.split(CMD_SPLIT_REGEX, limit = 2)
         val command = parts[0]
         val arg = parts.getOrNull(1)?.replace(CMD_SPLIT_REGEX, " ")?.trim().orEmpty()
+        // Balasan perintah SENSITIF ke chat asal (issue
+        // #1541): chat terkonfigurasi bisa berupa grup —
+        // pemilik yang bertanya dari chat privat tak boleh
+        // menerima isi sensitif (/contacts, /lastsms,
+        // /track, ...) di depan anggota grup. Selama
+        // perintah ini diproses, kiriman dialihkan ke
+        // chat privat peminta dan TIDAK diantrekan ke
+        // chat terkonfigurasi bila gagal.
+        val overrideSebelumnya = replyOverrideChatId
+        val chatKonfig = try { preferencesManager.chatId } catch (_: Exception) { "" }
+        replyOverrideChatId = if (command in SENSITIVE_COMMANDS && privateChat && senderId.isNotEmpty() && chatKonfig.isNotEmpty() && senderId != chatKonfig) senderId else overrideSebelumnya
         try {
             handleTelegramCommandInner(command, arg, sentAtSec, senderOk, chatOk, senderId = senderId, privateChat = privateChat, adoptionDoneSec = adoptionDoneSec, messageId = messageId)
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -4099,6 +4116,8 @@ class MonitoringService : Service() {
                 sendToTelegram("⚠️ Perintah ${Html.escape(command)} gagal (${Html.escape(detail)}). Coba lagi atau kirim /help.")
             } catch (_: Exception) {
             }
+        } finally {
+            replyOverrideChatId = overrideSebelumnya
         }
     }
 
@@ -7920,6 +7939,37 @@ class MonitoringService : Service() {
     ): SendStatus {
         try {
             if (awaitingOwnerLogin()) return SendStatus.DROPPED
+            val overrideChat = replyOverrideChatId
+            if (overrideChat.isNotEmpty()) {
+                // Jalur pengganti (issue #1541): kirim
+                // langsung HTML ke chat asal; kegagalan =
+                // DROPPED, jangan antre ke chat
+                // terkonfigurasi (isi sensitif bisa bocor
+                // ke grup saat antrean terkuras).
+                if (message.length > 4000) return sendFitted(message, replyMarkup, false)
+                val (tokenOverride, _) = sendCreds()
+                if (tokenOverride.isEmpty()) return SendStatus.DROPPED
+                val respOverride = try {
+                    TelegramClient.api.sendMessage(
+                        "https://api.telegram.org/bot$tokenOverride/sendMessage",
+                        TelegramMessage(chatId = overrideChat, text = message, parseMode = "HTML", replyMarkup = replyMarkup)
+                    )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    return SendStatus.DROPPED
+                }
+                val outcomeOverride = classifySend(respOverride, overrideChat)
+                if (outcomeOverride.kind == TelegramSendPolicy.Kind.RATE_LIMITED) {
+                    try { NetworkUtils.noteRateLimited(outcomeOverride.retryAfterSecs) } catch (_: Exception) { }
+                }
+                return if (outcomeOverride.kind == TelegramSendPolicy.Kind.SENT) {
+                    try { noteSendOk() } catch (_: Exception) { }
+                    SendStatus.SENT
+                } else {
+                    SendStatus.DROPPED
+                }
+            }
             if (NetworkUtils.isAuthBlocked(preferencesManager)) {
                 return if (queueForRetry(message, queueOnFail)) SendStatus.QUEUED else SendStatus.DROPPED
             }
