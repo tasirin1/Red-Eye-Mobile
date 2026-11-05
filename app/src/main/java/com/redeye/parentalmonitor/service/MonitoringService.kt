@@ -932,7 +932,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            MessageScheduler.scheduleWatchdog(this)
+            MessageScheduler.restoreWatchdog(this)
         } catch (_: Exception) {
         }
         try {
@@ -1278,7 +1278,7 @@ class MonitoringService : Service() {
             }
             startCommandPolling()
             startLoopWatchdog()
-            MessageScheduler.scheduleWatchdog(this)
+            MessageScheduler.restoreWatchdog(this)
             MessageScheduler.scheduleMessageSend(this)
             serviceScope.launch {
                 registerBotCommands()
@@ -10839,7 +10839,7 @@ class MonitoringService : Service() {
         } catch (_: Exception) {
         }
         try {
-            MessageScheduler.scheduleWatchdog(this)
+            MessageScheduler.restoreWatchdog(this)
         } catch (_: Exception) {
         }
         try {

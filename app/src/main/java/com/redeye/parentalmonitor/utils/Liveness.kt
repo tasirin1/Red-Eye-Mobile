@@ -25,6 +25,7 @@ object Liveness {
     private const val REPORT_COOLDOWN_MS = 6 * 60 * 60_000L
     private const val ALIVE_WRITE_MIN_GAP_MS = 60_000L
     private val lastWriteAt = java.util.concurrent.atomic.AtomicLong(0L)
+    private val healthyStreak = java.util.concurrent.atomic.AtomicInteger(0)
     private val urgentUntilElapsed = java.util.concurrent.atomic.AtomicLong(0L)
     private val scheduledAtElapsed = java.util.concurrent.atomic.AtomicLong(0L)
     private val alarmLock = Any()
@@ -41,6 +42,21 @@ object Liveness {
         } else {
             SCREEN_OFF_INTERVAL_MS
         }
+    }
+
+    // Peregangan interval alarm mengikuti rentetan sehat
+    // (issue #1572): alarm yang berulang kali
+    // menemukan layanan hidup menaikkan intervalnya sendiri
+    // bertahap (x2 sesudah 6 tembakan sehat, x4 sesudah 12,
+    // plafon 60 menit) agar rantai bangun tak membangunkan
+    // CPU selamanya pada irama dasar. Murni & teruji JVM.
+    fun stretchedIntervalMs(baseMs: Long, streak: Int): Long {
+        val factor = when {
+            streak >= 12 -> 4L
+            streak >= 6 -> 2L
+            else -> 1L
+        }
+        return (baseMs * factor).coerceAtMost(60 * 60_000L)
     }
 
     fun intervalMs(context: Context): Long {
@@ -79,6 +95,7 @@ object Liveness {
     }
 
     fun noteKillDetected() {
+        healthyStreak.set(0)
         try {
             urgentUntilElapsed.set(SystemClock.elapsedRealtime() + URGENT_WINDOW_MS)
         } catch (_: Exception) {
@@ -123,6 +140,16 @@ object Liveness {
 
     fun schedule(context: Context) {
         scheduleSoon(context, intervalMs(context))
+    }
+
+    // Pasang alarm hanya bila tak ada yang tertunda (issue
+    // #1572): pemanggil penyelamat (watchdog WorkManager)
+    // tak boleh meruntuhkan target alarm yang sudah
+    // diregangkan rantai sehat menjadi irama dasar lagi.
+    fun scheduleIfNone(context: Context) {
+        val existing = scheduledAtElapsed.get()
+        if (existing > SystemClock.elapsedRealtime()) return
+        schedule(context)
     }
 
     fun scheduleSoon(context: Context, delayMs: Long) {
@@ -268,7 +295,18 @@ object Liveness {
         }
         if (MonitoringService.isRunning) {
             markAlive(manager)
-            schedule(context)
+            // Rantai sehat meregang (issue #1572): mode
+            // waspada tak pernah diregangkan; selain itu
+            // interval dasar dikali rentetan tembakan sehat
+            // berturut. Satu kematian yang terdeteksi
+            // mengosongkan rentetan lewat noteKillDetected.
+            val streak = healthyStreak.incrementAndGet()
+            val urgent = SystemClock.elapsedRealtime() < urgentUntilElapsed.get()
+            if (urgent) {
+                schedule(context)
+            } else {
+                scheduleSoon(context, stretchedIntervalMs(intervalMs(context), streak))
+            }
             return
         }
         noteKillDetected()

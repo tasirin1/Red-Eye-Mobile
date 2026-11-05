@@ -118,12 +118,21 @@ class BootRestartWorker(
         } catch (_: Exception) {
         }
         if (MonitoringService.isRunning) {
+            // Rantai sehat (issue #1572): alarm Liveness hanya
+            // diperbaiki bila hilang (jadwalnya yang
+            // diregangkan jangan diruntuhkan), dan watchdog
+            // ini sendiri diregangkan ke 45 menit. Awal
+            // layanan berikutnya memulihkannya ke 15 menit.
             try {
-                Liveness.schedule(appContext)
+                Liveness.scheduleIfNone(appContext)
             } catch (_: Exception) {
             }
             try {
                 MessageScheduler.scheduleMessageSend(appContext)
+            } catch (_: Exception) {
+            }
+            try {
+                MessageScheduler.scheduleWatchdogStretched(appContext)
             } catch (_: Exception) {
             }
             return Result.success()

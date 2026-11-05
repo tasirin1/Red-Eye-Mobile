@@ -215,17 +215,30 @@ object MessageScheduler {
         }
     }
 
-    fun scheduleWatchdog(context: Context): Boolean {
+    fun scheduleWatchdog(context: Context, intervalMinutes: Long = 15, policy: ExistingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.KEEP): Boolean {
         return try {
-            val request = PeriodicWorkRequestBuilder<BootRestartWorker>(15, TimeUnit.MINUTES)
+            val request = PeriodicWorkRequestBuilder<BootRestartWorker>(intervalMinutes, TimeUnit.MINUTES)
                 .build()
             WorkManager.getInstance(context.applicationContext)
-                .enqueueUniquePeriodicWork(BOOT_WATCHDOG_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork(BOOT_WATCHDOG_WORK, policy, request)
             true
         } catch (e: Exception) {
             if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.w("MessageScheduler", "Schedule watchdog failed", e)
             false
         }
+    }
+
+    // Watchdog diregangkan ke 45 menit oleh worker yang
+    // menemukan layanan sehat (issue #1572) dan dipulihkan
+    // ke 15 menit pada tiap awal layanan sungguhan — dua
+    // arahnya memakai UPDATE agar periode yang terpasang
+    // benar-benar terganti, bukan ditahan KEEP.
+    fun scheduleWatchdogStretched(context: Context): Boolean {
+        return scheduleWatchdog(context, 45, ExistingPeriodicWorkPolicy.UPDATE)
+    }
+
+    fun restoreWatchdog(context: Context): Boolean {
+        return scheduleWatchdog(context, 15, ExistingPeriodicWorkPolicy.UPDATE)
     }
 
     fun scheduleBootRestart(context: Context): Boolean {

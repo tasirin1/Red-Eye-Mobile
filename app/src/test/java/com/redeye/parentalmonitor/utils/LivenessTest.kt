@@ -21,6 +21,17 @@ class LivenessTest {
         assertEquals(600_000L, Liveness.intervalFor(urgent = false, screenOn = false))
     }
 
+    @Test fun intervalMeregangMengikutiRentetanSehat() {
+        assertEquals(600_000L, Liveness.stretchedIntervalMs(600_000L, 0))
+        assertEquals(600_000L, Liveness.stretchedIntervalMs(600_000L, 5))
+        assertEquals(1_200_000L, Liveness.stretchedIntervalMs(600_000L, 6))
+        assertEquals(1_200_000L, Liveness.stretchedIntervalMs(600_000L, 11))
+        assertEquals(2_400_000L, Liveness.stretchedIntervalMs(600_000L, 12))
+        assertEquals(3_600_000L, Liveness.stretchedIntervalMs(900_000L, 12))
+        assertEquals(3_600_000L, Liveness.stretchedIntervalMs(900_000L, 99))
+        assertEquals(3_600_000L, Liveness.stretchedIntervalMs(1_200_000L, 12))
+    }
+
     @Test fun laporanJatuhTempo() {
         val cd = 6 * 60 * 60_000L
         assertTrue(Liveness.reportDue(0L, 1000L))

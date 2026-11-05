@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Dua rantai bangun berkala kini mundur saat layanan sehat: alarm Liveness menaikkan intervalnya bertahap mengikuti rentetan tembakan sehat (plafon 60 menit, mode waspada tak pernah diregangkan) dan watchdog WorkManager meregang ke 45 menit, dipulihkan ke irama dasar pada tiap awal layanan — kebangkitan CPU saat diam berkurang tanpa melepas jaring pengaman anti-bunuh (#1572).
+
 - Layanan aksesibilitas tidak lagi melanggan peristiwa perubahan konten jendela (aliran peristiwa terderas di Android) secara permanen: langganan kini dinamis mengikuti kebutuhan — menyala hanya selagi pemindaian kata pantau aktif atau halaman sensitif sedang di depan, mati pada konfigurasi bawaan — menghemat CPU dan baterai (#1571).
 
 - Antrean pesan tidak lagi menulis ulang seluruh antrean terenkripsi secara sinkron pada setiap pesan masuk: penambahan pesan kini lewat jalur persist debounce standar (ledakan pesan dalam jendela 2 detik digabung menjadi satu penulisan), menghemat CPU, flash, dan baterai (#1570).
