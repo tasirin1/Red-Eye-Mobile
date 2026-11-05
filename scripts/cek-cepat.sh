@@ -106,15 +106,36 @@ fi
 # dikecualikan: cek-token tak menilai biner, jadi vonis
 # grep mentahnya berlaku (grep -I tak mencocokkan biner).
 # Tanpa cek-token.py, vonis grep berlaku apa adanya.
+# Uji kesehatan pemindai (issue #1549): vonis 'bersih'
+# dari cek-token yang crash/rusak tak bisa dibedakan
+# dari bersih sungguhan (stdout kosong, stderr dibuang)
+# — konfirmasi bisa fail-open. Kontrol positif (token
+# ter-base64; literalnya sendiri tak berpola token)
+# wajib DITEMUKAN sebelum vonis bersih dipercaya;
+# hasilnya di-cache sekali per lari.
+_ct_sehat=""
+# CONTOH-TOKEN-MULAI
+_ct_kontrol='MTIzNDU2Nzg5OkFBRWhCT3dlaWs2YWRFWGUzZER4dlFwanFXOHNUN3dSMGFiYw=='
+# CONTOH-TOKEN-SELESAI
+cek_token_sehat() {
+  if [ -z "$_ct_sehat" ]; then
+    if [ -f tools/cek-token.py ] && printf '%s' "$_ct_kontrol" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'; then
+      _ct_sehat=1
+    else
+      _ct_sehat=0
+    fi
+  fi
+  [ "$_ct_sehat" = "1" ]
+}
 konfirmasi_berkas() {
   if ! grep -qI -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$1" 2>/dev/null; then
     return 0
   fi
-  [ -f tools/cek-token.py ] || return 0
+  cek_token_sehat || return 0
   printf '%s\0' "$1" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .
 }
 konfirmasi_teks() {
-  [ -f tools/cek-token.py ] || return 0
+  cek_token_sehat || return 0
   printf '%s' "$1" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'
 }
 # 4. Token bot asli jangan ikut staged.

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Skrip cek cepat tidak lagi memercayai vonis "bersih" dari pemindai token yang rusak: kesehatan pemindai diuji dengan kontrol positif dulu, dan bila pemindai mati semua tuduhan mentah berlaku apa adanya (gagal-aman).
+
 - Foto, video, dan rekaman hasil perintah sensitif kini ikut terkirim ke chat pribadi peminta (bukan hanya teks balasannya) bila perintah diketik dari chat pribadi yang berbeda dari chat utama.
 
 - Pemulihan setelan yang sudah dibatalkan lewat logout tidak lagi bisa hidup lagi sesudah aplikasi dimulai ulang: penanda pembatalannya kini tersimpan permanen, dan catatan pemulihan yang gugur ikut dibersihkan.
