@@ -6735,7 +6735,7 @@ class MonitoringService : Service() {
                 appendLine("Izin kamera: ${if (hasCameraPermission()) "ada" else "HILANG"}")
                 appendLine("Izin lokasi: ${if (hasLocationPermission()) "ada" else "HILANG"}")
                 appendLine("Lokasi presisi: ${if (hasFineLocation()) "ada" else "HILANG (hanya perkiraan)"}")
-                appendLine("Lokasi latar: ${if (com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)) "ada" else "HILANG"}")
+                appendLine("Lokasi latar: ${if (com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this@MonitoringService)) "ada" else "HILANG"}")
                 appendLine("Izin SMS masuk: ${if (hasReceiveSmsPermission()) "ada" else "tidak"}")
                 appendLine("Izin status telepon: ${if (hasPhoneStatePermission()) "ada" else "tidak"}")
                 appendLine("Jaringan: " + networkSummary())

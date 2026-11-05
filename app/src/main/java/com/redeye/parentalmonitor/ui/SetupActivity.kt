@@ -775,7 +775,7 @@ class SetupActivity : AppCompatActivity() {
                 if (setupReviveAt.compareAndSet(lastRevive, nowRevive)) break
             }
             val shouldRevive = try {
-                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)
+                prefs.isMonitoringEnabled && prefs.isConfigured() && !prefs.userDisabledMonitoring && prefs.userConsentedMonitoring && hasAllPermissions() && com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this@SetupActivity)
             } catch (_: Exception) {
                 false
             }
@@ -2480,7 +2480,7 @@ class SetupActivity : AppCompatActivity() {
             val enabled = try { prefs.isMonitoringEnabled } catch (_: Exception) { false }
             val running = enabled && MonitoringService.isRunning
             val paused = try { prefs.monitoringPaused } catch (_: Exception) { false }
-            val bg = com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this)
+            val bg = com.redeye.parentalmonitor.utils.AppPermissions.hasBackgroundLocation(this@SetupActivity)
             val fg = hasForegroundLocation()
             val exempt = isBatteryExempt()
             val encrypted = try { prefs.isStorageEncrypted } catch (_: Exception) { false }
