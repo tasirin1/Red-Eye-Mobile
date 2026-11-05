@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Gerbang token kini menolak pengecualian "hash + kata prosa" bila sisa sesudah hash cukup panjang untuk memuat ekor token utuh (≥35 aksara): ekor token asli yang menempel rapat sesudah kutipan hash — bentuk lazim dari tempelan log/JSON — tidak lagi lolos di semua permukaan pindai (#1602).
+
 - Konfirmasi dua tahap /clearqueue dan /cleanup kini terikat pada ID pesan penahap: pengiriman ulang update yang sama oleh Telegram sesudah proses dimulai ulang tidak lagi terbaca sebagai konfirmasi, sehingga antrean/media tidak terbuang tanpa ketukan kedua yang sungguhan (#1601).
 
 - Menyimpan atau menghapus kredensial lewat Setup kini ikut membatalkan catatan restore yang tertahan, sehingga cadangan lama yang terkonfirmasi via Telegram tidak bisa bangkit lagi dan menimpa kredensial yang baru dipilih pemilik di perangkat (#1600).

@@ -82,7 +82,17 @@ def _pola_mentah_cocok(teks):
                         kata += 1
                     else:
                         break
-                if 1 <= kata <= 30:
+                # Plafon panjang sisa (issue #1602): sisa
+                # yang panjangnya mencapai ekor token
+                # minimum (35) bisa memuat ekor token ASLI
+                # utuh yang menempel rapat sesudah hash —
+                # kata pembukanya saja lolos sebagai
+                # 'prosa' padahal digit + entropi
+                # sesudahnya tak pernah dinilai. Sisa
+                # di bawah 35 tak mungkin memuat ekor
+                # token utuh, jadi pengecualian prosa
+                # hanya berlaku di bawah plafon itu.
+                if 1 <= kata <= 30 and len(sisa) < 35:
                     lolos_hash_kata = True
                     break
         if lolos_hash_kata:
