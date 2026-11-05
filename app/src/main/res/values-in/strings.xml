@@ -110,6 +110,7 @@
     <string name="backup_pin_short">Terlalu pendek, minimal 10 karakter</string>
     <string name="backup_pin_mismatch">PIN beda, backup dibatalkan</string>
     <string name="backup_invalid_form">Token atau Chat ID di kolom tidak sah — betulkan dulu, atau kosongkan untuk memakai kredensial tersimpan.</string>
+    <string name="backup_storage_lost">Penyimpanan tampaknya rusak — owner dan PIN akses tidak terbaca, jadi cadangannya akan timpang. Isi ulang setelan dulu.</string>
     <string name="backup_empty">Tak ada yang di-backup, simpan setingan dulu</string>
     <string name="backup_done">Backup tersimpan</string>
     <string name="backup_fail">Backup gagal</string>

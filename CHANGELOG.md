@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Membuat cadangan kini ditolak dengan penjelasan bila penyimpanan kredensial terdeteksi rusak, agar tidak menghasilkan berkas cadangan timpang yang tampak sah.
+
 - Bila pesan berkas atau PIN cadangan gagal terhapus otomatis dari chat, pemilik kini diberi tahu untuk menghapusnya manual — sebelumnya kegagalan itu ditelan diam-diam dan rahasia bisa tertinggal permanen.
 
 - PIN atau berkas cadangan yang dikirim sesudah sesi pemulihan kedaluwarsa kini ikut dihapus dari riwayat chat, tidak lagi tertinggal permanen.

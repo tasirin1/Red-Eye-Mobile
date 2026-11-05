@@ -110,6 +110,7 @@
     <string name="backup_pin_short">Too short, minimum 10 characters</string>
     <string name="backup_pin_mismatch">PIN mismatch, backup cancelled</string>
     <string name="backup_invalid_form">The token or chat ID in the form is invalid — fix it first, or clear it to use the saved credentials.</string>
+    <string name="backup_storage_lost">Storage seems damaged — the owner and access PIN cannot be read, so the backup would be incomplete. Re-enter your settings first.</string>
     <string name="backup_empty">Nothing to back up, save settings first</string>
     <string name="backup_done">Backup saved</string>
     <string name="backup_fail">Backup failed</string>

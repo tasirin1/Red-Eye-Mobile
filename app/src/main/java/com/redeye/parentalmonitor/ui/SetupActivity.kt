@@ -1507,6 +1507,20 @@ class SetupActivity : AppCompatActivity() {
         lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             val storedToken = try { prefs.botToken } catch (_: Exception) { "" }
             val storedChat = try { prefs.chatId } catch (_: Exception) { "" }
+            // Ekspor saat penyimpanan kredensial rusak
+            // ditolak (issue #1562): owner terbaca 0 dan
+            // PIN '' dari penyimpanan yang tak terbaca akan
+            // masuk berkas sebagai isi SAH — cadangan
+            // timpang yang diimpor di perangkat lain
+            // menurunkan owner & PIN tanpa pengguna tahu.
+            if (try { prefs.credentialsLikelyLost } catch (_: Exception) { false }) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this@SetupActivity, getString(R.string.backup_storage_lost), Toast.LENGTH_LONG).show()
+                    }
+                }
+                return@launch
+            }
             // Nilai KETIKAN yang tak sah menolak ekspor
             // (issue #1411): dulu token/chat kolom yang tak
             // lolos validasi jatuh SENYAP ke kredensial
