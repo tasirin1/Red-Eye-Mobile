@@ -611,6 +611,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_A11Y_APP_WATCH_PACKAGES = "a11y_app_watch_packages"
         private const val KEY_A11Y_EVER_ENABLED = "a11y_ever_enabled"
         private const val KEY_A11Y_DISABLED_ALERT_AT = "a11y_disabled_alert_at"
+        const val KEY_A11Y_UNBOUND_SINCE_AT = "a11y_unbound_since_at"
         private const val KEY_A11Y_KEYWORD_DAY = "a11y_keyword_day"
         private const val KEY_A11Y_KEYWORD_DAY_AT = "a11y_keyword_day_at"
         private const val KEY_A11Y_KEYWORD_COUNT = "a11y_keyword_count"
@@ -2381,6 +2382,14 @@ class PreferencesManager(context: Context) {
     var a11yDisabledAlertAt: Long
         get() = prefLong(KEY_A11Y_DISABLED_ALERT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_A11Y_DISABLED_ALERT_AT, value).apply()
+
+    // Cap pertama kali layanan A11y terlihat TERCANTUM
+    // aktif tetapi tak ter-bind (issue #1505): kesehatan
+    // kini menuntut keadaan bind nyata sesudah tenggang,
+    // bukan daftar setelan semata.
+    var a11yUnboundSinceAt: Long
+        get() = prefLong(KEY_A11Y_UNBOUND_SINCE_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_A11Y_UNBOUND_SINCE_AT, value).apply()
 
     // Cermin memori himpunan aplikasi dikenal (issue #1038):
     // prefs ini EncryptedSharedPreferences, jadi getStringSet

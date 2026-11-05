@@ -79,6 +79,11 @@ class ShotAccessibilityService : AccessibilityService() {
 
         fun ready(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && instance != null
 
+        // Ter-bind sungguhan (issue #1505): instans hidup
+        // berarti sistem benar-benar mengikat layanan —
+        // berbeda dari sekadar tercantum di setelan.
+        fun isBound(): Boolean = instance != null
+
         fun isEnabled(context: Context): Boolean =
             AccessibilityProbe.isEnabled(context, ShotAccessibilityService::class.java)
 

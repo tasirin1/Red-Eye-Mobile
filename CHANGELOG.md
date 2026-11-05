@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pemeriksaan kesehatan aksesibilitas kini menuntut layanan benar-benar terhubung, bukan sekadar tercantum aktif di setelan: layanan yang tercantum tetapi tidak terhubung lebih dari 15 menit kini memicu peringatan yang sama seperti layanan mati.
+
+
 ## [1.6.629] - 2026-11-05
 
 ### Fixed

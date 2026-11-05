@@ -11796,9 +11796,30 @@ class MonitoringService : Service() {
             }
             if (!a11yDipakai) return
             if (!preferencesManager.accessibilityEverEnabled) return
-            if (ShotAccessibilityService.isEnabled(this)) {
+            // Sehat = tercantum DAN ter-bind sungguhan
+            // (issue #1505): dulu daftar setelan semata yang
+            // dipercaya — layanan tercantum tetapi tak
+            // ter-bind (bind dibekukan OEM/crash) dianggap
+            // sehat selamanya dan akru screentime berhenti
+            // senyap. Tak ter-bind diberi tenggang 15 menit
+            // (bind sesudah boot/nyala memang tak seketika),
+            // sesudah itu jatuh ke alert yang sama.
+            val tercantum = ShotAccessibilityService.isEnabled(this)
+            if (tercantum && ShotAccessibilityService.isBound()) {
                 if (preferencesManager.a11yDisabledAlertAt != 0L) preferencesManager.a11yDisabledAlertAt = 0L
+                if (preferencesManager.a11yUnboundSinceAt != 0L) preferencesManager.a11yUnboundSinceAt = 0L
                 return
+            }
+            if (tercantum) {
+                val nowU = System.currentTimeMillis()
+                val sejak = try { preferencesManager.a11yUnboundSinceAt } catch (_: Exception) { 0L }
+                if (sejak == 0L || sejak > nowU) {
+                    try { preferencesManager.a11yUnboundSinceAt = nowU } catch (_: Exception) { }
+                    return
+                }
+                if (nowU - sejak < 15 * 60_000L) return
+            } else if (preferencesManager.a11yUnboundSinceAt != 0L) {
+                try { preferencesManager.a11yUnboundSinceAt = 0L } catch (_: Exception) { }
             }
             val now = System.currentTimeMillis()
             val last = try { preferencesManager.a11yDisabledAlertAt } catch (_: Exception) { 0L }
