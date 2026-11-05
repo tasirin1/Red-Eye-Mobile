@@ -4,7 +4,12 @@ object PowerSave {
 
     fun cameraIntervalEff(rawMinutes: Int, lowPower: Boolean): Int {
         val minutes = rawMinutes.coerceIn(0, 60)
-        return if (lowPower) (minutes * 2).coerceAtMost(60) else minutes
+        // Penganda hemat kamera diperkuat x2 -> x4 (issue
+        // #1574): putaran kamera adalah putaran termahal
+        // (kamera + JPEG + radio), jadi saat baterai rendah /
+        // Battery Saver aktif penghematannya harus terasa —
+        // interval bawaan 1 mnt menjadi 4 mnt, bukan 2 mnt.
+        return if (lowPower) (minutes * 4).coerceAtMost(60) else minutes
     }
 
     fun patrolIntervalEff(rawMinutes: Int, lowPower: Boolean): Int {

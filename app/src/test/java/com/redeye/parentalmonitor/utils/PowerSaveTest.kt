@@ -14,6 +14,10 @@ class PowerSaveTest {
         assertEquals(60, PowerSave.cameraIntervalEff(45, true))
         assertEquals(0, PowerSave.cameraIntervalEff(0, true))
         assertEquals(0, PowerSave.cameraIntervalEff(-1, true))
+        assertEquals(4, PowerSave.cameraIntervalEff(1, true))
+        assertEquals(20, PowerSave.cameraIntervalEff(5, true))
+        assertEquals(40, PowerSave.cameraIntervalEff(10, true))
+        assertEquals(60, PowerSave.cameraIntervalEff(20, true))
         assertEquals(20, PowerSave.cameraIntervalEff(20, false))
         assertEquals(60, PowerSave.cameraIntervalEff(90, false))
     }

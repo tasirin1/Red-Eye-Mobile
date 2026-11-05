@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Mode hemat kini memperlambat kamera otomatis empat kali (sebelumnya dua kali): pada interval bawaan 1 menit, jepretan otomatis saat baterai rendah/Battery Saver aktif turun dari 30 menjadi 15 kali per jam, menghemat putaran termahal aplikasi (kamera + JPEG + unggah) tepat saat baterai paling berharga (#1574).
+
 - Jeda polling perintah Telegram kini meregang mengikuti lama diam: tetap rapat (maks 30 detik) di menit-menit awal, naik ke 60 detik sesudah 5 menit diam total dan 120 detik sesudah 30 menit, lalu kembali rapat begitu ada aktivitas — siklus radio saat siaga turun dari 60–90 per jam menjadi sekitar 20–30 per jam (#1573).
 
 - Dua rantai bangun berkala kini mundur saat layanan sehat: alarm Liveness menaikkan intervalnya bertahap mengikuti rentetan tembakan sehat (plafon 60 menit, mode waspada tak pernah diregangkan) dan watchdog WorkManager meregang ke 45 menit, dipulihkan ke irama dasar pada tiap awal layanan — kebangkitan CPU saat diam berkurang tanpa melepas jaring pengaman anti-bunuh (#1572).
