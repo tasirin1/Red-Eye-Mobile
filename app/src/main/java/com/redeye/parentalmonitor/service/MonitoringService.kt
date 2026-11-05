@@ -569,6 +569,51 @@ class MonitoringService : Service() {
                 }
             }
             try { preferencesManager.bersihkanWarisanIzinLayar() } catch (_: Exception) { }
+            // Pemeriksa restore tertahan (issue #1534):
+            // restore terkonfirmasi yang tenggatnya lewat
+            // selama proses mati diterapkan sekarang;
+            // pemilik sudah dijanjikan 'dipakai dalam 60
+            // detik' dan validasi + tes kirim sudah lolos
+            // sebelum jendela. Epoch berubah = gugur +
+            // berkabar lewat audit & status.
+            serviceScope.launch {
+                try {
+                    val jsonTersimpan = preferencesManager.restoreConfirmedJson
+                    val tenggat = preferencesManager.restoreConfirmedDeadline
+                    if (jsonTersimpan.isNotEmpty() && pendingRestore == null) {
+                        val obj = org.json.JSONObject(jsonTersimpan)
+                        val epochTersimpan = obj.optInt("epoch", -1)
+                        preferencesManager.restoreConfirmedJson = ""
+                        preferencesManager.restoreConfirmedDeadline = 0L
+                        if (epochTersimpan == ownerEpoch) {
+                            // Wakili sesi di memori selama sisa
+                            // jendela agar /restore batal tetap
+                            // melihatnya dan bisa menghentikan.
+                            val penanda = PendingRestore(RESTORE_STAGE_CONFIRM)
+                            pendingRestore = penanda
+                            val sisa = tenggat - System.currentTimeMillis()
+                            if (sisa > 0L) delay(sisa)
+                            if (pendingRestore !== penanda) return@launch
+                            pendingRestore = null
+                            val dataPulih = com.redeye.parentalmonitor.utils.SettingsBackup.BackupData(
+                                obj.getString("token"), obj.getString("chat"),
+                                obj.optInt("interval", 15), obj.optInt("camera", 15),
+                                obj.optLong("owner", 0L), obj.optString("accessPin", ""),
+                                obj.optBoolean("legacy", false)
+                            )
+                            synchronized(restoreLock) { restoreApplying = true }
+                            try {
+                                applyRestoredSettings(dataPulih, epochTersimpan)
+                            } finally {
+                                synchronized(restoreLock) { restoreApplying = false }
+                            }
+                        } else {
+                            audit("restore tertahan gugur (epoch berubah)", "private")
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
             // Penanda video (issue #1509): padanan penanda
             // audio di atas untuk rekam video CameraService.
             val penandaVideo = java.io.File(
@@ -4445,6 +4490,11 @@ class MonitoringService : Service() {
                 pendingRestore = null
                 applying = restoreApplying
             }
+            try {
+                preferencesManager.restoreConfirmedJson = ""
+                preferencesManager.restoreConfirmedDeadline = 0L
+            } catch (_: Exception) {
+            }
             audit("restore batal", "private")
             sendToTelegram(
                 when {
@@ -4732,6 +4782,21 @@ class MonitoringService : Service() {
         }
         val confirm = PendingRestore(RESTORE_STAGE_CONFIRM)
         pendingRestore = confirm
+        // Persistensi jendela batal (issue #1534): data
+        // tervalidasi + tenggat disimpan agar proses yang
+        // mati di tengah jendela tidak menggugurkan
+        // restore senyap — pemeriksa saat layanan mulai
+        // menerapkannya sesudah tenggat (atau mengabarkan
+        // gugurnya bila epoch berubah).
+        try {
+            preferencesManager.restoreConfirmedJson = org.json.JSONObject()
+                .put("token", data.token).put("chat", data.chatId)
+                .put("interval", data.syncInterval).put("camera", data.cameraInterval)
+                .put("owner", data.ownerId).put("accessPin", data.accessPin)
+                .put("legacy", data.legacy).put("epoch", restoreEpoch).toString()
+            preferencesManager.restoreConfirmedDeadline = System.currentTimeMillis() + RESTORE_CANCEL_WINDOW_MS
+        } catch (_: Exception) {
+        }
         audit("restore validasi lolos", "private")
         sendToTelegram(
             "✅ Token/chat baru lolos validasi dan tes kirim.\n" +
@@ -4765,6 +4830,11 @@ class MonitoringService : Service() {
                 }
             }
             if (claimed) {
+                try {
+                    preferencesManager.restoreConfirmedJson = ""
+                    preferencesManager.restoreConfirmedDeadline = 0L
+                } catch (_: Exception) {
+                }
                 try {
                     applyRestoredSettings(data, restoreEpoch)
                 } finally {

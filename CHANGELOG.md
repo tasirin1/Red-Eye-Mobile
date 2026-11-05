@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemulihan setelan dari cadangan tidak lagi gugur diam-diam bila aplikasi mati di tengah jendela batal 60 detik: pemulihan yang sudah terkonfirmasi kini disimpan dan diterapkan saat layanan menyala lagi.
+
 - Notifikasi peringatan kredensial hilang kini memakai slot dan jeda pengingatnya sendiri: sebelumnya berbagi dengan pengingat gagal masuk, sehingga peringatannya bisa tertelan jeda pengingat lain.
 
 - Peringatan keluar/masuk area pagar kini tahan terhadap satu titik lokasi yang melompat jauh secara tidak wajar (glitch GPS/jaringan): titik seperti itu diabaikan dan tidak lagi membalik status area atau mengunci catatan harian.

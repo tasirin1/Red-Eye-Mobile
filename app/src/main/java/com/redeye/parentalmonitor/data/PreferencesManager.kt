@@ -508,6 +508,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
         private const val KEY_PENDING_CLEAR_AT = "pending_clear_at"
         private const val KEY_PENDING_CLEAR_OWNER = "pending_clear_owner"
+        private const val KEY_RESTORE_CONFIRMED_JSON = "restore_confirmed_json"
+        private const val KEY_RESTORE_CONFIRMED_DEADLINE = "restore_confirmed_deadline"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         const val KEY_OWNER_ID = "owner_user_id"
         const val KEY_ACCESS_PIN = "access_pin"
@@ -1628,6 +1630,18 @@ class PreferencesManager(context: Context) {
 
     // Tahap konfirmasi buang antrean (issue #1531):
     // /clearqueue dua tahap terikat pemilik seperti /sms.
+    // Restore terkonfirmasi yang bertahan lintas proses
+    // (issue #1534): JSON data cadangan tervalidasi +
+    // tenggat dindingnya, agar jendela batal 60 detik
+    // tidak gugur senyap saat proses mati di tengahnya.
+    var restoreConfirmedJson: String
+        get() = prefString(KEY_RESTORE_CONFIRMED_JSON, "")
+        set(value) = sharedPreferences.edit().putString(KEY_RESTORE_CONFIRMED_JSON, value).apply()
+
+    var restoreConfirmedDeadline: Long
+        get() = prefLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_RESTORE_CONFIRMED_DEADLINE, value).apply()
+
     var pendingClearQueueAt: Long
         get() = prefLong(KEY_PENDING_CLEAR_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEAR_AT, value).apply()
