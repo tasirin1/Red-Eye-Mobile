@@ -1121,16 +1121,20 @@ object A11yMonitor {
                 done = true
             }
             // Penyambungan transien (issue #1511): kembali
-            // ke paket asal dalam 10 menit — celah selama
-            // jendela transien tampil diakru ke aplikasi
-            // asal dan sesi baru TANPA launch tambahan.
+            // ke paket asal dalam 10 menit — sesi tersambung
+            // TANPA launch tambahan; celah yang DIAKRU ke
+            // aplikasi asal dibatasi 60 detik (issue #1610):
+            // jendela transien nyata berskala detik, jadi
+            // menit di luar itu (termasuk menit malamnya)
+            // tak lagi terhitung sebagai pemakaian asal.
             var sambungTransien = false
             if (!done && !nilaiSaja && pkg != currentPackage &&
                 transienPackage.isNotEmpty() && pkg == transienPackage &&
                 transienSejakElapsed > 0L && nowElapsed - transienSejakElapsed in 0..600_000L) {
                 currentPackage = pkg
-                currentStartElapsed = transienSejakElapsed
-                currentStartWall = nowWall - (nowElapsed - transienSejakElapsed)
+                val celahTerakru = minOf(nowElapsed - transienSejakElapsed, 60_000L)
+                currentStartElapsed = nowElapsed - celahTerakru
+                currentStartWall = nowWall - celahTerakru
                 accrueSessionLocked(nowWall, nowElapsed)
                 currentPackage = ""
                 currentStartElapsed = 0L
