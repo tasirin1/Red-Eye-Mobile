@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Galat di tengah rekaman suara kini menghentikan rekaman saat itu juga dan melaporkan sebabnya saat itu juga: sebelumnya rekaman berjalan terus sampai durasi penuh walau perekam sudah gagal.
+
 - Komentar batas kemampuan slot anotasi pada alat verifikasi dibetulkan sesuai bukti uji: cakupannya tiga tingkat sarang (bukan dua), dan pengecualian char literal serta string ber-escape kini tertulis apa adanya.
 
 - Dialog peringatan akses yang masih mati sesudah monitoring dimulai tidak lagi langsung tertimpa wizard anti-baterai pada saat yang sama: kini hanya satu dialog yang tampil tiap kali mulai.

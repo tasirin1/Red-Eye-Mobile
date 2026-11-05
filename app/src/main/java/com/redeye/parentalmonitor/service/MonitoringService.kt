@@ -12198,7 +12198,10 @@ class MonitoringService : Service() {
         val audioFile = File(antreMedia(), "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
         val audioTmp = File(antreMedia(), audioFile.name + ".tmp")
         var recorder: android.media.MediaRecorder? = null
-        var galatRekam = 0
+        // Atomik: ditulis utas callback perekam, dibaca
+        // utas koroutine perekam (issue #1475).
+        val galatRekam = java.util.concurrent.atomic.AtomicInteger(0)
+        val hentikanRekam = java.util.concurrent.atomic.AtomicBoolean(false)
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null
         markMediaActive(audioFile)
@@ -12216,8 +12219,14 @@ class MonitoringService : Service() {
             // galat tengah rekam (mic direbut aplikasi lain,
             // penyimpanan penuh) tak terdengar sama sekali —
             // baru ketahuan kabur saat stop() gagal.
-            recorder.setOnErrorListener { _, what, _ -> galatRekam = what }
-            recorder.setOnInfoListener { _, what, _ -> if (galatRekam == 0) galatRekam = what }
+            recorder.setOnErrorListener { _, what, _ ->
+                galatRekam.set(what)
+                // Galat tengah rekam mengakhiri rekaman
+                // SEGERA (issue #1475): dulu hanya dicatat
+                // dan rekaman berjalan sampai durasi penuh.
+                hentikanRekam.set(true)
+            }
+            recorder.setOnInfoListener { _, what, _ -> if (galatRekam.get() == 0) galatRekam.set(what) }
             recorder.prepare()
             recorderActive.set(true)
             recorder.start()
@@ -12238,6 +12247,12 @@ class MonitoringService : Service() {
             var elapsedRecMs = 0L
             val targetRecMs = seconds * 1000L
             while (elapsedRecMs < targetRecMs) {
+                if (hentikanRekam.get()) {
+                    try { recorder.stop() } catch (_: Exception) { }
+                    try { deleteQuietly(audioTmp) } catch (_: Exception) { }
+                    sendToTelegram("⚠️ Rekaman dihentikan di tengah jalan — perekam mengalami galat (" + galatRekam.get() + "); mikrofon mungkin direbut aplikasi lain atau penyimpanan penuh. Berkas belum final dan dibuang.")
+                    return
+                }
                 if (elapsedRecMs > 0L && callInProgressNow()) {
                     interruptedByCall = true
                     break
@@ -12268,8 +12283,8 @@ class MonitoringService : Service() {
                 // Pesan dibedakan (issue #1462): galat yang
                 // terdengar di tengah rekam disebut apa
                 // adanya agar pemilik bisa bertindak.
-                if (galatRekam != 0) {
-                    sendToTelegram("⚠️ Rekaman terganggu di tengah jalan (galat perekam " + galatRekam + ") — mikrofon mungkin direbut aplikasi lain atau penyimpanan penuh. Berkas belum final dan dibuang.")
+                if (galatRekam.get() != 0) {
+                    sendToTelegram("⚠️ Rekaman terganggu di tengah jalan (galat perekam " + galatRekam.get() + ") — mikrofon mungkin direbut aplikasi lain atau penyimpanan penuh. Berkas belum final dan dibuang.")
                 } else {
                     sendToTelegram("Gagal merekam (rekaman tidak final). Coba lagi.")
                 }
