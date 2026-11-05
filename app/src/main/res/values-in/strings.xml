@@ -18,7 +18,6 @@
     <string name="channel_name">Kalkulator</string>
     <string name="channel_name_alerts">Pemberitahuan kalkulator</string>
     <string name="channel_desc">Status layanan kalkulator</string>
-    <string name="never">Tidak pernah</string>
     <string name="settings_saved">Setingan tersimpan</string>
     <string name="setup_save_no_storage">Tidak tersimpan permanen — penyimpanan aman (keystore) tak tersedia di HP ini. Tahan tombol Simpan untuk mereset penyimpanan terenkripsi, lalu simpan lagi.</string>
     <string name="setup_credentials_cleared">Kredensial dihapus</string>

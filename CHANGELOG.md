@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- String resource `never` yang yatim dihapus dari kedua locale (issue #1653): tak ada rujukan `R.string.never`/`@string/never` di seluruh repo dan tak ada pemuatan string dinamis — sisa opsi antarmuka yang sudah lama dihapus, ikut terbit ke APK tanpa guna. Paritas EN/IN tetap 196=196.
 - State kata pantau A11yMonitor kini diubah di dalam kunci `gate` (issue #1652): pola serah-tugas bisa menjalankan dua `handleContent` sejajar (utas utama sebaris saat antrean executor jenuh + utas executor), dan HashMap jeda + penghitung cap hariannya berlomba tanpa kunci — iterasi `toJson` saat menyimpan bisa menabrak ubahan sejajar dan peta jeda persisten tersimpan kosong, membuat alert menembak lebih rapat dari seharusnya. Urutan baca-ubah-simpan dan rollback-nya kini terserialisasi, meniru disiplin `handleWindow`.
 - Dua field jendela terakhir A11yMonitor kini `@Volatile` (issue #1651): `lastWindowCls` dan `lastSensitivePkg` sebelumnya polos (anotasi hanya menempel pada properti tepat di bawahnya) padahal ditulis di utas utama dan dibaca di utas IO jalur /resume tanpa kunci — putar-ulang sesi bisa memakai nama kelas basi/kosong. Keempat field jendela/sensitif kini konsisten terlihat lintas utas.
 - Paging /contacts kini melompat langsung ke offset halaman (issue #1650): sebelumnya tiap halaman membuka kueri penuh lalu melewati baris satu per satu dari nol, sehingga halaman dalam di buku kontak ribuan nomor makin lambat per ketukan tombol. Kini memakai `moveToPosition` pada jendela kursor penyedia — urutan dan isi halaman identik.
