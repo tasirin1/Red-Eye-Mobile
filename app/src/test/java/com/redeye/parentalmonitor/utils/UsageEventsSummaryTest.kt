@@ -71,6 +71,32 @@ class UsageEventsSummaryTest {
     }
 
     @Test
+    fun capNonPositifTidakMeracuniPertama() {
+        // Regresi #1662 (kasus yang dulu tak teruji, issue
+        // #1690): event pertama bercap <= 0 meracuni
+        // firstUnlockAt selamanya pada klausa lama — tak
+        // ada cap valid yang lebih kecil dari negatif.
+        // Kini cap non-positif tetap terhitung sebagai
+        // buka kunci tetapi tak pernah menjadi "pertama".
+        val negatifDulu = listOf(
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, -500L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 5_000L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 9_000L)
+        )
+        val s1 = UsageEventsSummary.build(negatifDulu)
+        assertEquals(3, s1.unlocks)
+        assertEquals(5_000L, s1.firstUnlockAt)
+
+        val semuaNonPositif = listOf(
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, -100L),
+            UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 0L)
+        )
+        val s2 = UsageEventsSummary.build(semuaNonPositif)
+        assertEquals(2, s2.unlocks)
+        assertEquals(0L, s2.firstUnlockAt)
+    }
+
+    @Test
     fun pertamaDiambilTimestampTerkecil() {
         val events = listOf(
             UsageEventsSummary.Event(UsageEventsSummary.TYPE_KEYGUARD_HIDDEN, 8_000L),
