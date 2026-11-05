@@ -4274,7 +4274,7 @@ class MonitoringService : Service() {
             "/pickup" -> handleJemputCommand(arg)
             "/audit" -> handleAuditCommand(privateChat)
             "/logout" -> handleLogoutCommand(privateChat)
-            "/cleanup" -> handleCleanMediaCommand(arg)
+            "/cleanup" -> handleCleanMediaCommand(arg, senderId)
             "/restore" -> handleRestoreCommand(arg, privateChat, messageId, senderId)
             "/help", "/start" -> handleHelpCommand(senderOk)
             else -> {
@@ -4421,7 +4421,7 @@ class MonitoringService : Service() {
         sendToTelegram(body.trim())
     }
 
-    private suspend fun handleCleanMediaCommand(arg: String) {
+    private suspend fun handleCleanMediaCommand(arg: String, senderId: String = "") {
         val parts = arg.trim().lowercase(java.util.Locale.ROOT).split(CMD_SPLIT_REGEX)
         val target = parts[0]
         val wantsPhoto = target in setOf("media", "semua", "all", "foto", "photo")
@@ -4436,6 +4436,34 @@ class MonitoringService : Service() {
         if (days !in 1..365) {
             sendToTelegram("Cara pakai: /cleanup media|foto|video|rekaman &lt;1-365&gt; (hari)")
             return
+        }
+        // Konfirmasi dua tahap (issue #1542, pola #1531):
+        // menghapus media belum-terkirim tak boleh satu
+        // salah ketuk — tombolnya bersebelahan dengan aksi
+        // aman. Tahap terikat peminta + spesifikasi persis
+        // (jenis & hari), berlaku 5 menit.
+        val spec = "$target:$days"
+        val stagedSpec = try { preferencesManager.pendingCleanupSpec } catch (_: Exception) { "" }
+        val stagedAtC = try { preferencesManager.pendingCleanupAt } catch (_: Exception) { 0L }
+        val stagedByC = try { preferencesManager.pendingCleanupOwner } catch (_: Exception) { "" }
+        val nowC = System.currentTimeMillis()
+        val tahapDuaC = stagedSpec == spec && stagedAtC > 0L && nowC - stagedAtC in 0..(5 * 60_000L) &&
+            (stagedByC.isEmpty() || stagedByC == senderId)
+        if (!tahapDuaC) {
+            try {
+                preferencesManager.pendingCleanupSpec = spec
+                preferencesManager.pendingCleanupAt = nowC
+                preferencesManager.pendingCleanupOwner = senderId
+            } catch (_: Exception) {
+            }
+            sendToTelegram("⚠️ Bersihkan media $target lebih tua dari $days hari? Media yang belum terkirim ikut terhapus. Ulangi perintah yang sama dalam 5 menit untuk konfirmasi.")
+            return
+        }
+        try {
+            preferencesManager.pendingCleanupSpec = ""
+            preferencesManager.pendingCleanupAt = 0L
+            preferencesManager.pendingCleanupOwner = ""
+        } catch (_: Exception) {
         }
         val cutoff = System.currentTimeMillis() - days.toLong() * 86_400_000L
         var count = 0

@@ -510,6 +510,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_CLEAR_OWNER = "pending_clear_owner"
         private const val KEY_RESTORE_CONFIRMED_JSON = "restore_confirmed_json"
         private const val KEY_RESTORE_CONFIRMED_DEADLINE = "restore_confirmed_deadline"
+        private const val KEY_PENDING_CLEANUP_SPEC = "pending_cleanup_spec"
+        private const val KEY_PENDING_CLEANUP_AT = "pending_cleanup_at"
+        private const val KEY_PENDING_CLEANUP_OWNER = "pending_cleanup_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         const val KEY_OWNER_ID = "owner_user_id"
         const val KEY_ACCESS_PIN = "access_pin"
@@ -1641,6 +1644,19 @@ class PreferencesManager(context: Context) {
     var restoreConfirmedDeadline: Long
         get() = prefLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_RESTORE_CONFIRMED_DEADLINE, value).apply()
+
+    // Tahap konfirmasi bersihkan media (issue #1542).
+    var pendingCleanupSpec: String
+        get() = prefString(KEY_PENDING_CLEANUP_SPEC, "")
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_CLEANUP_SPEC, value).apply()
+
+    var pendingCleanupAt: Long
+        get() = prefLong(KEY_PENDING_CLEANUP_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEANUP_AT, value).apply()
+
+    var pendingCleanupOwner: String
+        get() = prefString(KEY_PENDING_CLEANUP_OWNER, "")
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_CLEANUP_OWNER, value).apply()
 
     var pendingClearQueueAt: Long
         get() = prefLong(KEY_PENDING_CLEAR_AT, 0L)

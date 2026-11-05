@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perintah bersihkan media kini juga meminta konfirmasi dua tahap seperti buang antrean: penghapusan media belum-terkirim tidak lagi terjadi dalam satu ketukan.
+
 - Balasan perintah sensitif (kontak, SMS terakhir, pelacakan, dll.) kini kembali ke chat pribadi tempat perintah diketik bila chat tujuan utama adalah grup, agar isinya tidak terlihat anggota grup lain.
 
 - Foto hasil perintah manual yang nyaris tanpa detail kini disertai catatan 'mungkin buram atau lensa kotor' pada laporannya: sebelumnya foto sangat buram terlaporkan sebagai sukses penuh tanpa catatan apa pun.
