@@ -164,6 +164,7 @@
     <string name="setup_status_heartbeat_off">off</string>
     <string name="liveness_watchdog_fmt">%1$d min (%2$s)</string>
     <string name="liveness_watchdog_urgent">alert mode</string>
+    <string name="liveness_watchdog_doze">; during deep sleep (Doze) the system may stretch this to about 9 min</string>
     <string name="liveness_watchdog_screen_on">screen on</string>
     <string name="liveness_watchdog_screen_off">screen off</string>
     <string name="setup_status_auth_failed">Auth: FAILED (%1$s) — check the bot token</string>

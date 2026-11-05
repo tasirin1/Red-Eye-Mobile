@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Teks interval penjaga keaktifan kini jujur soal Doze: interval waspada 3 menit disebut bisa memanjang menjadi sekitar 9 menit saat HP tidur nyenyak, bukan dibaca sebagai janji pasti.
+
 - Balasan /photo dengan pilihan lensa kini menyebut bahwa lensa bawaan ikut berganti dan berlaku juga untuk foto terjadwal: sebelumnya perubahan tetap itu terjadi tanpa disebut sama sekali.
 
 - Mode hemat baterai bawaan Android kini ikut dihormati: saat pemilik menyalakannya, perlambatan hemat daya yang sama berlaku untuk foto otomatis dan patroli.

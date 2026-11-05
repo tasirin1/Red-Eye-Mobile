@@ -57,7 +57,13 @@ object Liveness {
             SCREEN_ON_INTERVAL_MS -> "layar nyala"
             else -> "layar mati"
         }
-        return (ms / 60_000L).toString() + " mnt (" + label + ")"
+        // Kejujuran Doze (issue #1502): alarm while-idle
+        // dibatasi platform selama Doze (±1 tembakan per
+        // 9 menit), jadi interval waspada 3 menit bisa
+        // nyata lebih lama di HP tidur nyenyak — teks
+        // menyebutkannya agar tak dibaca sebagai janji.
+        val caveat = if (ms == URGENT_INTERVAL_MS) "; saat tidur nyenyak (Doze) sistem bisa memanjangkannya jadi sekitar 9 mnt" else ""
+        return (ms / 60_000L).toString() + " mnt (" + label + ")" + caveat
     }
 
     fun intervalTextLocalized(context: Context): String {
@@ -67,7 +73,9 @@ object Liveness {
             SCREEN_ON_INTERVAL_MS -> context.getString(R.string.liveness_watchdog_screen_on)
             else -> context.getString(R.string.liveness_watchdog_screen_off)
         }
-        return context.getString(R.string.liveness_watchdog_fmt, ms / 60_000L, label)
+        val dasar = context.getString(R.string.liveness_watchdog_fmt, ms / 60_000L, label)
+        // Kejujuran Doze (issue #1502): lihat intervalText.
+        return if (ms == URGENT_INTERVAL_MS) dasar + context.getString(R.string.liveness_watchdog_doze) else dasar
     }
 
     fun noteKillDetected() {
