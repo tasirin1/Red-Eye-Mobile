@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Deskripsi admin perangkat yang tampil di layar persetujuan sistem kini netral bergaya aplikasi biasa dan tidak lagi menyebut adanya perintah kunci jarak jauh, menjaga penyamaran tetap konsisten.
+
 - Kalkulator tersamar kini menampilkan hasil bulat negatif besar secara utuh sama seperti positifnya: sebelumnya hasil seperti -999999999999 tampil dalam notasi ilmiah terbulatkan yang mengaburkan nilainya.
 
 - Kegagalan lokasi pada pemeriksaan pagar wilayah kini ikut tercatat sebagai kegagalan lokasi: buta lokasi total tidak lagi luput dari laporan kesehatan perangkat.
