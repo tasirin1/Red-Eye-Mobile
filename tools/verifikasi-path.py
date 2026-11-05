@@ -430,6 +430,17 @@ def himpun_definisi():
     """Kembalikan (definisi, acuan): nama sumber daya terdefinisi vs terpakai."""
     definisi = {}
     acuan = {}
+    # Mode rentang menilai pohon ujung REF_POHON (issue
+    # #1490): dulu himpunan ini selalu membaca berkas
+    # KERJA — pemeriksaan rentang dari pohon kotor bisa
+    # salah vonis dua arah. _jalan_pohon/_baca_pohon jatuh
+    # ke berkas kerja bila REF_POHON tak dipasang, dan
+    # _baca_pohon jatuh ke baca() yang sama dengan
+    # baca_teks, jadi mode bawaan tak berubah.
+    _jalan = _jalan_pohon
+
+    def _isi(path):
+        return _baca_pohon(path) or ""
     # Titik pada nama style (Theme.A.B) menjadi garis bawah di R (aturan aapt).
     def rapikan(jenis, nama):
         # Styleable ikut dirapikan (issue #1421): nama
@@ -447,8 +458,8 @@ def himpun_definisi():
         definisi.setdefault(kunci, set()).add(rapikan(kunci, nama))
 
     akar_res = os.path.join(MAIN, "res")
-    for path in jalan_repo(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
-        isi = kupas_komentar_xml(baca_teks(path))
+    for path in _jalan(os.path.join("app", "src", "main", "res"), ext=(".xml",)):
+        isi = kupas_komentar_xml(_isi(path))
         for jenis, nama in pola_def.findall(isi):
             tambah(jenis, nama)
         for jenis, nama in pola_array.findall(isi):
@@ -520,10 +531,10 @@ def himpun_definisi():
         r"@style/(Widget[._]|ThemeOverlay[._]|TextAppearance[._]|Animation[._]|ShapeAppearance[._]|ShapeAppearanceOverlay[._]"
         r"|Theme\.Material|Theme_Material|Theme\.AppCompat|Theme_AppCompat"
         r"|Theme\.Design|Theme_Design)[A-Za-z0-9_.]*")
-    pemindai = [p for p in jalan_repo("app", ext=EKSTENSI_KODE + (".xml",))]
+    pemindai = [p for p in _jalan("app", ext=EKSTENSI_KODE + (".xml",))]
     pemindai.append("app/src/main/AndroidManifest.xml")
     for path in pemindai:
-        isi = baca_teks(path)
+        isi = _isi(path)
         if not isi:
             continue
         # Sisi acuan mengupas komentar seperti sisi definisi
