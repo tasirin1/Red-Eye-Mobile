@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Antrean foto/video/audio yang belum terkirim kini disimpan di direktori berkas aplikasi, bukan lagi direktori cache: sebelumnya Android bisa menghapus isi cache kapan pun penyimpanan menipis sehingga foto yang menunggu terkirim lenyap tanpa kabar apa pun. Berkas lama di cache dipindahkan sekali jalan.
+
 ## [1.6.625] - 2026-11-05
 
 ### Fixed

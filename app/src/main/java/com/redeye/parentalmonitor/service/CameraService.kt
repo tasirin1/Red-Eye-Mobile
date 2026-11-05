@@ -111,14 +111,14 @@ class CameraService(private val context: Context) {
     init {
         Thread {
             try {
-                context.cacheDir?.listFiles { f ->
+                com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context).listFiles { f ->
                     f.isFile && f.name.endsWith(".tmp") &&
                         (f.name.startsWith("camera_") || f.name.startsWith("screenshot_") ||
                             f.name.startsWith("video_") || f.name.startsWith("audio_"))
                 }?.forEach {
                     try { it.delete() } catch (_: Exception) { }
                 }
-                context.cacheDir?.listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
+                com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context).listFiles { f -> f.isFile && f.name.startsWith("video_") && f.name.endsWith(".mp4") && f.length() == 0L }?.forEach {
                     try { it.delete() } catch (_: Exception) { }
                 }
             } catch (_: Exception) {
@@ -646,8 +646,8 @@ class CameraService(private val context: Context) {
                 return
             }
             val videoSize = chooseVideoSize(cameraManager, cameraId)
-            val outFile = File(context.cacheDir, "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
-            val tmpFile = File(context.cacheDir, outFile.name + ".tmp")
+            val outFile = File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "video_" + TimeFmt.fileStamp(System.currentTimeMillis()) + "_" + java.util.UUID.randomUUID() + ".mp4")
+            val tmpFile = File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), outFile.name + ".tmp")
             pendingOut = tmpFile
             val rec = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 android.media.MediaRecorder(context)
@@ -1119,8 +1119,8 @@ class CameraService(private val context: Context) {
     private fun saveImage(image: Image): File {
         val buffer: ByteBuffer = image.planes[0].buffer
         val timestamp = TimeFmt.fileStamp(System.currentTimeMillis())
-        val file = File(context.cacheDir, "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
-        val tmp = File(context.cacheDir, file.name + ".tmp")
+        val file = File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "camera_${timestamp}_${java.util.UUID.randomUUID()}.jpg")
+        val tmp = File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), file.name + ".tmp")
         try {
             java.io.BufferedOutputStream(FileOutputStream(tmp), 8192).use { output ->
                 val chunk = ByteArray(8192)

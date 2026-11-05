@@ -880,7 +880,7 @@ class SetupActivity : AppCompatActivity() {
                 try { prefs.cameraInterval = 1 } catch (_: Exception) { }
                 try { prefs.patrolInterval = 30 } catch (_: Exception) { }
                 try {
-                    cacheDir?.listFiles { f ->
+                    com.redeye.parentalmonitor.utils.MediaDirs.queueDir(this@SetupActivity).listFiles { f ->
                         f.isFile && (f.name.startsWith("camera_") || f.name.startsWith("video_") || f.name.startsWith("audio_") || f.name.startsWith("screenshot_"))
                     }?.forEach {
                         try { it.delete() } catch (_: Exception) { }
