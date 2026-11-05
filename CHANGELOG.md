@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Pemasang kait kini memperlakukan catatan rantai lama yang bernilai persis penanda kegagalan cadangan sebagai rantai rusak yang dibuang (dengan peringatan), bukan sebagai kegagalan cadangan: sebelumnya kait racikan tertentu bisa membatalkan pemasangan dengan pesan yang keliru.
+
 - Saklar cek uji pada mode rentang alat verifikasi tidak lagi dimatikan oleh ketiadaan direktori uji di pohon ujung rentang: keadaan itu justru berarti cakupan uji nol dan setiap metode baru paling layak diperingatkan.
 
 - Peringatan proteksi tamper kini hanya mengklaim 'layar ditutup' bila aksi menutup layarnya benar-benar berhasil: sebelumnya hasil aksi itu tidak diperiksa, sehingga kegagalan (mis. layanan aksesibilitas sedang terputus) tetap dilaporkan seolah perlindungan berhasil.

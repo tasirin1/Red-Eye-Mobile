@@ -97,6 +97,16 @@ siapkan_rantai() {
         fi
     elif [ -f "$1" ]; then
         LAMA="$(sed -n 's/^K_LAMA="\(.*\)"$/\1/p' "$1" 2>/dev/null | head -n 1)"
+        if [ "$LAMA" = "__CADANGAN_GAGAL__" ]; then
+            # Nilai ekstrak yang persis penanda (issue #1440):
+            # tanpa cabang ini, kait racikan dengan catatan
+            # rantai senilai penanda (+ berkas senama di
+            # direktori kerja) membuat nilai itu lahir dari
+            # jalur NORMAL dan pemasangan batal dengan pesan
+            # keliru. Perlakukan sebagai rantai rusak: buang.
+            echo "PERINGATAN: catatan rantai kait lama rusak (bernilai penanda cadangan) — rantai dibuang; kait lama itu tidak dirantai lagi." >&2
+            LAMA=""
+        fi
         if [ -n "$LAMA" ] && [ -f "$LAMA" ]; then
             printf '%s' "$LAMA"
         elif [ -n "$LAMA" ]; then
