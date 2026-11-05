@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Slot argumen anotasi pada kedua pengenal deklarasi alat verifikasi kini menerima kurung bersarang dua tingkat di samping string: anotasi yang argumennya anotasi berargumen tidak lagi lolos dari peringatan uji di Kotlin maupun Java.
+
 - Penguraian '~' pada pemasang kait dikoreksi mengikuti perilaku Git yang terbukti: Git memakai nilai HOME apa adanya (HOME kosong berarti kait dicari di akar filesystem; HOME tak terpasang membuat Git sendiri gagal), sehingga cadangan lewat entri passwd yang sempat ditambahkan kini dicabut karena memberi sukses palsu — dan perbaikan serupa untuk bentuk '~/...' ikut dibatalkan atas bukti yang sama.
 
 - Pemasang kait tidak lagi mati dalam senyap bila perintah pembaca nama pengguna tidak tersedia di lingkungan minimal: kegagalan itu kini ditampung dan pemasangan berhenti dengan pesan yang menjelaskan bahwa direktori rumah tak bisa diuraikan.
