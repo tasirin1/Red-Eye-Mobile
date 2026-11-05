@@ -1632,15 +1632,26 @@ object A11yMonitor {
         // tercatat sebagai aplikasi biasa (ikut akru + penilaian
         // malam) selama sisa cache. Resolusi HOME murah dan fungsi
         // ini hanya dipanggil pada pergantian jendela.
-        if (launcherPackage.isNotEmpty() && System.currentTimeMillis() - launcherPackageAt < 60_000L) return launcherPackage
-        launcherPackage = try {
+        // Pasangan (paket, cap waktu) dibaca dan ditulis atomik
+        // di bawah monitor labels (issue #1668): dulu tanpa
+        // kunci dan tanpa @Volatile sama sekali, dan satu
+        // pemanggil (handleWindow) berada di luar gate — paket
+        // resolusi satu utas bisa berpasangan dengan cap waktu
+        // utas lain dan mengunci launcher yang salah 60 detik.
+        synchronized(labels) {
+            if (launcherPackage.isNotEmpty() && System.currentTimeMillis() - launcherPackageAt < 60_000L) return launcherPackage
+        }
+        val resolved = try {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName.orEmpty()
         } catch (_: Exception) {
             ""
         }
-        launcherPackageAt = System.currentTimeMillis()
-        return launcherPackage
+        synchronized(labels) {
+            launcherPackage = resolved
+            launcherPackageAt = System.currentTimeMillis()
+        }
+        return resolved
     }
 
     private fun isLaunchable(context: Context, pkg: String): Boolean {
