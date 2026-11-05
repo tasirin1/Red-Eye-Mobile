@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Tangkapan layar aksesibilitas tidak lagi menyalin bitmap resolusi penuh sebelum diperkecil: penskalaan ke lebar maks 720 piksel kini langsung dari bitmap perangkat keras (lonjakan memori sesaat s.d. ±25 MB di layar besar hilang), dengan jalur salin lama sebagai cadangan bila penskalaan langsung gagal (#1576).
+
 - Sesi tangkapan layar MediaProjection kini dilepas sesudah setiap percobaan jepretan (berhasil maupun gagal): VirtualDisplay cermin dan dua buffer gambarnya (±9,2 MB) tidak lagi berdiri permanen selama layanan hidup; izin tangkapan layar yang tersimpan tetap dipertahankan sehingga jepretan berikutnya membangun sesi lagi dari izin yang sama (#1575).
 
 - Mode hemat kini memperlambat kamera otomatis empat kali (sebelumnya dua kali): pada interval bawaan 1 menit, jepretan otomatis saat baterai rendah/Battery Saver aktif turun dari 30 menjadi 15 kali per jam, menghemat putaran termahal aplikasi (kamera + JPEG + unggah) tepat saat baterai paling berharga (#1574).

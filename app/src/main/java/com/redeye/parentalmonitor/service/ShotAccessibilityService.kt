@@ -146,6 +146,32 @@ object ShotA11yCapture {
             try {
                 val wrapped = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
                 try {
+                    if (wrapped != null && wrapped.width > MAX_WIDTH) {
+                        // Skala langsung dari bitmap perangkat
+                        // keras (issue #1576): jalur lama
+                        // menyalin resolusi PENUH ke bitmap
+                        // lunak dulu (lonjakan sesaat s.d.
+                        // ±25 MB di layar 1080px) baru
+                        // memperkecil. Hasil skala yang masih
+                        // berkonfigurasi keras disalin pada
+                        // ukuran kecilnya; gagal skala -> jalur
+                        // salin penuh lama di bawah.
+                        val scale = MAX_WIDTH.toFloat() / wrapped.width
+                        val targetH = (wrapped.height * scale).toInt().coerceAtLeast(1)
+                        val scaled = try { Bitmap.createScaledBitmap(wrapped, MAX_WIDTH, targetH, true) } catch (_: Exception) { null }
+                        if (scaled != null) {
+                            @Suppress("DEPRECATION")
+                            if (scaled.config == Bitmap.Config.HARDWARE) {
+                                val lunak = try { scaled.copy(Bitmap.Config.ARGB_8888, false) } catch (_: Exception) { null }
+                                if (lunak != null) {
+                                    try { scaled.recycle() } catch (_: Exception) { }
+                                    return lunak
+                                }
+                            } else {
+                                return scaled
+                            }
+                        }
+                    }
                     val copy = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
                     if (copy == null || copy.width <= MAX_WIDTH) {
                         copy
