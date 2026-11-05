@@ -18,7 +18,14 @@ object UsageEventsSummary {
             when (e.type) {
                 TYPE_KEYGUARD_HIDDEN -> {
                     unlocks++
-                    if (first == 0L || (e.at > 0L && e.at < first)) first = e.at
+                    // Hanya cap waktu positif yang boleh
+                    // menjadi "pertama" (issue #1662):
+                    // klausa lama membiarkan event pertama
+                    // bercap <= 0 meracuni first selamanya
+                    // (tak ada cap valid yang bisa lebih
+                    // kecil dari negatif), selaras saringan
+                    // firstUnlockToday di bawah.
+                    if (e.at > 0L && (first == 0L || e.at < first)) first = e.at
                 }
                 TYPE_RESUMED -> {
                     val pkg = e.pkg
