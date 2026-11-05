@@ -5,8 +5,6 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -52,7 +50,6 @@ object A11yMonitor {
     private val usageType = object : TypeToken<MutableMap<String, AppUsage>>() {}.type
     private val alertType = object : TypeToken<MutableMap<String, Long>>() {}.type
     private val gate = Any()
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val lastTamperAlert = HashMap<String, Long>()
     private var tamperStateLoaded = false
     private val lastContentScan = HashMap<String, Long>()

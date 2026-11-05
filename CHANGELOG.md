@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Field `mainHandler` yang tak terpakai dihapus dari A11yMonitor beserta impor Handler/Looper-nya (issue #1654): objek Handler dibuat tiap konstruksi layanan aksesibilitas lalu tak pernah disentuh sejak refactor lama — hanya membingungkan pembaca seolah ada antrean utas utama di kelas itu.
 - String resource `never` yang yatim dihapus dari kedua locale (issue #1653): tak ada rujukan `R.string.never`/`@string/never` di seluruh repo dan tak ada pemuatan string dinamis — sisa opsi antarmuka yang sudah lama dihapus, ikut terbit ke APK tanpa guna. Paritas EN/IN tetap 196=196.
 - State kata pantau A11yMonitor kini diubah di dalam kunci `gate` (issue #1652): pola serah-tugas bisa menjalankan dua `handleContent` sejajar (utas utama sebaris saat antrean executor jenuh + utas executor), dan HashMap jeda + penghitung cap hariannya berlomba tanpa kunci — iterasi `toJson` saat menyimpan bisa menabrak ubahan sejajar dan peta jeda persisten tersimpan kosong, membuat alert menembak lebih rapat dari seharusnya. Urutan baca-ubah-simpan dan rollback-nya kini terserialisasi, meniru disiplin `handleWindow`.
 - Dua field jendela terakhir A11yMonitor kini `@Volatile` (issue #1651): `lastWindowCls` dan `lastSensitivePkg` sebelumnya polos (anotasi hanya menempel pada properti tepat di bawahnya) padahal ditulis di utas utama dan dibaca di utas IO jalur /resume tanpa kunci — putar-ulang sesi bisa memakai nama kelas basi/kosong. Keempat field jendela/sensitif kini konsisten terlihat lintas utas.
