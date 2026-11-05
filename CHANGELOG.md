@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cache label aplikasi di layanan utama kini LRU sejati (buang entri terlama dipakai satu per satu pada batas 300), bukan dikosongkan seluruhnya begitu melewati batas yang memaksa ratusan resolusi ulang ke PackageManager (#1597).
+
 - Antrean dua pool tugas latar (kritis dan luapan receiver) kini terbatas 64 seperti pool receiver utama — satu tugas yang menggantung tidak lagi bisa menumpuk pekerjaan tanpa batas di memori; pada batasnya tugas berjalan di benang pemanggil sebagai tekanan balik (#1596).
 
 - Peta kunci login per pengirim kini ikut dipangkas seperti peta cap lainnya: entri kedaluwarsa disapu dan ukuran dibatasi 200 entri, tidak lagi tumbuh tanpa batas selama proses hidup (#1595).

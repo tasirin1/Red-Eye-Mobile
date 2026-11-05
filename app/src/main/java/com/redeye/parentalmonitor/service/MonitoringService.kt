@@ -523,7 +523,15 @@ class MonitoringService : Service() {
         private const val STORAGE_LOSS_NOTIF_ID = 6
         @Volatile
         var isRunning = false
-        private val appLabelCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, String>>()
+        // LRU 300 berkunci (issue #1597): dulu ConcurrentHashMap
+        // yang DIKOSONGKAN TOTAL begitu melewati 300 entri —
+        // sesudahnya ratusan resolusi PackageManager berulang
+        // untuk label yang sama. Kini entri terlama-terpakai
+        // terbuang satu-satu seperti cache label saudaranya
+        // di A11yMonitor/NotificationForwarder.
+        private val appLabelCache: MutableMap<String, Pair<Boolean, String>> = java.util.Collections.synchronizedMap(object : java.util.LinkedHashMap<String, Pair<Boolean, String>>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Boolean, String>>?): Boolean = size > 300
+        })
         @Volatile
         private var appsCacheAt = 0L
         @Volatile
@@ -5712,7 +5720,6 @@ class MonitoringService : Service() {
             val info = packageManager.getApplicationInfo(pkg, 0)
             val label = packageManager.getApplicationLabel(info).toString().ifEmpty { pkg }
             val launchable = try { packageManager.getLaunchIntentForPackage(pkg) != null } catch (_: Exception) { false }
-            if (appLabelCache.size > 300) appLabelCache.clear()
             appLabelCache[pkg] = launchable to label
             label
         } catch (_: Exception) {
