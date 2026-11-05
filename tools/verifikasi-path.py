@@ -621,12 +621,20 @@ def _bebas_yatim_style_kode(nama):
     return any(seg in SEGMEN_PUSTAKA_STYLE for seg in nama.split("_"))
 
 
-def cek_acuan_yatim(gagal):
+def cek_acuan_yatim(gagal, peringatan=None):
     definisi, acuan = himpun_definisi()
     for jenis, dipakai in sorted(acuan.items()):
         ada = definisi.get(jenis, set())
         yatim = sorted(n for n in dipakai
                        if n not in ada and not n.startswith(AWALAN_PUSTAKA)
+                       # Style berawalan pustaka tak divonis
+                       # yatim di sini (issue #1468): yang
+                       # segmennya dikenal dibebaskan
+                       # _bebas_yatim_style_kode; yang tak
+                       # dikenal turun jadi peringatan di bawah —
+                       # acuan kode R.style.* toh dijamin
+                       # kompiler menunjuk style yang ada.
+                       and not (jenis == "style" and n.startswith(AWALAN_STYLE_PUSTAKA))
                        # Keluarga Base.* pustaka (issue #1402):
                        # Base.Theme.AppCompat dsb. adalah bentuk
                        # baku pewarisan tema AppCompat/Material;
@@ -638,6 +646,26 @@ def cek_acuan_yatim(gagal):
         if yatim:
             gagal.append("Acuan %s yatim (dipakai tapi tak terdefinisi): %s"
                          % (jenis, ", ".join(yatim[:10])))
+        # Style berawalan pustaka ber-segmen TAK dikenal
+        # (issue #1468): dulu ikut divonis GAGAL "yatim" —
+        # bump dependensi ber-segmen baru + acuan kode sah
+        # akan memblokir push dengan pesan yang menyesatkan
+        # (mengarahkan ke definisi XML yang memang tak ada).
+        # Kini PERINGATAN yang menamai obatnya.
+        if jenis == "style" and peringatan is not None:
+            tak_dikenal = sorted(
+                n for n in dipakai
+                if n not in definisi.get(jenis, set())
+                and n.startswith(AWALAN_STYLE_PUSTAKA)
+                and not n.startswith("Base_")
+                and not _bebas_yatim_style_kode(n))
+            for n in tak_dikenal[:10]:
+                peringatan.append(
+                    "Acuan style %s berawalan pustaka tetapi segmen "
+                    "ruang-namanya belum dikenal — bila ini style "
+                    "pustaka sah dari dependensi baru, tambahkan "
+                    "segmennya ke SEGMEN_PUSTAKA_STYLE (bukan vonis "
+                    "yatim)." % n)
 
 
 def _kupas_komentar_kode(teks, bersarang=True):
@@ -3163,7 +3191,7 @@ def utama():
     # keadaan yang justru paling layak diperingatkan.
     ada_uji = True if REF_POHON else os.path.isdir(UJI)
     cek_xml(gagal)
-    cek_acuan_yatim(gagal)
+    cek_acuan_yatim(gagal, peringatan)
     cek_manifest(gagal)
     cek_duplikat_definisi(gagal)
     cek_builder_legacy(gagal)

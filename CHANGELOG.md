@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Acuan style berawalan pustaka yang segmen ruang-namanya belum dikenal alat verifikasi kini cukup diperingatkan (dengan petunjuk menambah segmennya), bukan lagi divonis gagal sebagai 'yatim': dependensi baru ber-segmen baru tidak lagi memblokir push dengan pesan yang menyesatkan.
+
 - Alternatif kurung terdalam pada slot anotasi alat verifikasi kini juga sadar-string (string berisi kurung di tingkat mana pun tertangkap), dan batas kedalaman slot itu kini dituliskan di komentar desainnya.
 
 - Sesudah monitoring dimulai, aplikasi kini menyebut dengan jelas akses apa saja yang masih mati (aksesibilitas, listener notifikasi, akses penggunaan, admin perangkat, tangkap layar) dalam satu dialog: sebelumnya kelimanya hanya tampil sebagai baris status kecil, sehingga monitoring bisa terasa aktif padahal fitur intinya tidak bekerja.
