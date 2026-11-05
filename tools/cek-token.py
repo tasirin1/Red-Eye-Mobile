@@ -24,6 +24,18 @@ import sys
 
 POLA = re.compile(r"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
 _POLA_HEX = re.compile(r"[0-9a-fA-F]+\Z")
+# Penanda contoh eksplisit (issue #1530): teks di antara
+# dua penanda ini adalah CONTOH token terdokumentasi dan
+# disamarkan sebelum pemindaian, di kedua permukaan.
+# Tanpa penanda, contoh kanonis BotFather hanya selamat
+# karena ekornya 34 aksara (satu di bawah ambang) —
+# kebetulan aritmetika, bukan kebijakan. Penanda tampil
+# mencolok saat peninjauan, jadi bukan jalur sembunyi.
+_POLA_CONTOH = re.compile(r"CONTOH-TOKEN-MULAI.*?CONTOH-TOKEN-SELESAI", re.S)
+
+
+def _samarkan_contoh(teks):
+    return _POLA_CONTOH.sub("[contoh-token]", teks)
 
 
 def _pola_mentah_cocok(teks):
@@ -209,6 +221,7 @@ def mengandung_token_pesan(teks):
     sempit daripada isi berkas."""
     if not teks:
         return False
+    teks = _samarkan_contoh(teks)
     if _pola_mentah_cocok(teks):
         return True
     tanpa_spasi = re.sub(r"\s+", "", teks)
@@ -233,6 +246,7 @@ def mengandung_token_pesan(teks):
 def mengandung_token(teks):
     if not teks:
         return False
+    teks = _samarkan_contoh(teks)
     if _pola_mentah_cocok(teks):
         return True
     rapat = _padatkan(teks)

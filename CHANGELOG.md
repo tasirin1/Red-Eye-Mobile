@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perbaikan perkakas gerbang kualitas internal: contoh token pada dokumentasi kini bisa ditandai secara eksplisit agar tidak dituduh sebagai token sungguhan.
+
 - Perbaikan perkakas gerbang kualitas internal: pesan yang mengutip nomor proses CI rapat dengan kode hash tidak lagi dituduh memuat token bot.
 
 - Perbaikan perkakas gerbang kualitas internal: keadaan pemeriksaan kini dibersihkan di awal setiap pemeriksaan agar pemeriksaan kedua dalam satu proses tidak menilai dengan data basi pemeriksaan pertama.
