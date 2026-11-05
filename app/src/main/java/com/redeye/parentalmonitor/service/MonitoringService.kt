@@ -2205,6 +2205,11 @@ class MonitoringService : Service() {
     // null bila kedua kunci tak didapat sampai tenggat adopsi.
     private suspend fun <T> withAdoptionLocks(block: suspend () -> T): T? {
         var held = false
+        // Jeda tunggu merampa (issue #1647): putaran 50 ms
+        // tetap untuk persaingan normal yang selesai dalam
+        // milidetik, tetapi penunggu yang sial tak lagi
+        // bangun 20x/detik sampai tenggat 15 menit.
+        var tungguMs = 50L
         val deadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
         while (!held) {
             if (controlLock.tryLock()) {
@@ -2216,7 +2221,8 @@ class MonitoringService : Service() {
             }
             if (!held) {
                 if (android.os.SystemClock.elapsedRealtime() >= deadline) return null
-                delay(50)
+                delay(tungguMs)
+                tungguMs = minOf(tungguMs * 2, 500L)
             }
         }
         return try {
@@ -3221,6 +3227,7 @@ class MonitoringService : Service() {
                             try {
                                 if (adoptionWait) {
                                     val waitDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
+                                    var tungguMs = 50L
                                     while (true) {
                                         val loginPending = loginJobSnapshot?.isActive == true && !isOwner(senderId)
                                         val myTurn = synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull()?.first == update.updateId }
@@ -3229,7 +3236,8 @@ class MonitoringService : Service() {
                                             adoptionRejected = true
                                             break
                                         }
-                                        delay(50)
+                                        delay(tungguMs)
+                                        tungguMs = minOf(tungguMs * 2, 500L)
                                     }
                                     if (adoptionRejected && isOwner(senderId) &&
                                         synchronized(adoptionGateLock) { adoptionWaiters.firstOrNull()?.first == update.updateId }) {
@@ -3256,13 +3264,15 @@ class MonitoringService : Service() {
                                     val courtesyDeadline = android.os.SystemClock.elapsedRealtime() + ADOPTION_WAIT_DEADLINE_MS
                                     val courtesyStartMs = android.os.SystemClock.elapsedRealtime()
                                     var courtesyWaited = false
+                                    var tungguMs = 50L
                                     while (synchronized(adoptionGateLock) { adoptionWaiters.any { it.second == senderId && it.first < update.updateId } }) {
                                         courtesyWaited = true
                                         if (android.os.SystemClock.elapsedRealtime() >= courtesyDeadline) {
                                             android.util.Log.w("MonitoringService", "Perintah kontrol owner mendahului penunggu adopsi lama sesudah tenggat kesopanan gerbang")
                                             break
                                         }
-                                        delay(50)
+                                        delay(tungguMs)
+                                        tungguMs = minOf(tungguMs * 2, 500L)
                                     }
                                     if (courtesyWaited && ownerOk && isOwner(senderId)) {
                                         val waitedSec = (android.os.SystemClock.elapsedRealtime() - courtesyStartMs) / 1000L
