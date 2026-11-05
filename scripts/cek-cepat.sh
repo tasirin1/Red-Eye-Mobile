@@ -98,8 +98,28 @@ done
 if git diff --cached --name-only --diff-filter=d | grep -iE '\.(apk|aab|ap_|dex|jks|keystore|p12|pfx|pem|key)$|local\.properties$|((^|/)\.env(\.[^/]*)?|\.env|(^|/)\.envrc(\.[^/]*)?)$' >/dev/null; then
   echo "GAGAL: binary/APK/secret ikut staged (keystore|p12|local.properties|.env dilarang)"; gagal=1;
 fi
-# 4. Token bot asli jangan ikut staged (tanpa pengecualian baris regex).
-if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' >/dev/null; then
+# Konfirmasi pemindai bersama (issue #1544): grep mentah di
+# langkah 4/5/5b/5c/nama adalah pra-saring cepat yang buta
+# pengecualian hash (#1529/#1543) dan penanda contoh
+# (#1530). Tuduhan hanya sah bila cek-token — pemilik
+# kedua pengecualian itu — ikut menuduh. Berkas biner
+# dikecualikan: cek-token tak menilai biner, jadi vonis
+# grep mentahnya berlaku (grep -I tak mencocokkan biner).
+# Tanpa cek-token.py, vonis grep berlaku apa adanya.
+konfirmasi_berkas() {
+  if ! grep -qI -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$1" 2>/dev/null; then
+    return 0
+  fi
+  [ -f tools/cek-token.py ] || return 0
+  printf '%s\0' "$1" | python3 tools/cek-token.py --berkas 2>/dev/null | grep -q .
+}
+konfirmasi_teks() {
+  [ -f tools/cek-token.py ] || return 0
+  printf '%s' "$1" | python3 tools/cek-token.py --teks 2>/dev/null | grep -q 'DITEMUKAN'
+}
+# 4. Token bot asli jangan ikut staged.
+tambah_baris=$(git diff --cached -U0 2>/dev/null | grep -E '^\+' | grep -v '^+++' || true)
+if printf '%s' "$tambah_baris" | grep -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' >/dev/null && konfirmasi_teks "$tambah_baris"; then
   echo "GAGAL: kemungkinan token bot asli ikut staged (hanya via input SetupActivity)"; gagal=1;
 fi
 # 4b. Bentuk base64/terbelah di staged (issue #765): regex literal poin 4
@@ -123,7 +143,10 @@ sisa_kontrol=$( { git ls-files -z; git diff --cached --name-only -z; } | tr -d '
 if [ "$sisa_kontrol" -gt 0 ]; then
   echo "GAGAL: nama berkas mengandung karakter kontrol (newline/tab di nama dilarang)"; gagal=1;
 fi
-pohon_token=$(git grep -l -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null || true)
+pohon_token=$(git grep -l -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- . 2>/dev/null | while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if konfirmasi_berkas "$f"; then printf '%s ' "$f"; fi
+done || true)
 if [ -n "$pohon_token" ]; then
   echo "GAGAL: kemungkinan token bot asli terlacak di repo pada: $pohon_token (berkas biner dilaporkan per nama — deret byte mirip token; hanya via input SetupActivity)"; gagal=1;
 fi
@@ -131,7 +154,7 @@ fi
 tak_lacak_token=""
 while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
-  if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then tak_lacak_token="$f"; break; fi
+  if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null && konfirmasi_berkas "$f"; then tak_lacak_token="$f"; break; fi
 done < <(git ls-files --others --exclude-standard -z 2>/dev/null || true)
 if [ -n "$tak_lacak_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas tak terlacak $tak_lacak_token (hanya via input SetupActivity)"; gagal=1;
@@ -150,7 +173,7 @@ while IFS= read -r -d '' f; do
     # tengah path mana pun (docs/__pycache__/ lolos).
     build/*|app/build/*|.gradle/*|app/.gradle/*|__pycache__/*|tools/__pycache__/*) continue ;;
   esac
-  if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null; then ign_token=$f; break; fi
+  if grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' -- "$f" 2>/dev/null && konfirmasi_berkas "$f"; then ign_token=$f; break; fi
 done < <(git ls-files --others -i --exclude-standard -z 2>/dev/null || true)
 if [ -n "$ign_token" ]; then
   echo "GAGAL: kemungkinan token bot asli di berkas terabaikan $ign_token (hanya via input SetupActivity)"; gagal=1;
@@ -197,7 +220,9 @@ daftar_tmp=$(mktemp)
 while IFS= read -r -d '' f; do
   [ -n "$f" ] || continue
   gabung=$(printf '%s' "$f" | tr -d '/')
-  if printf '%s' "$f" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' || printf '%s' "$gabung" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then nama_token="$f"; break; fi
+  if printf '%s' "$f" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}' || printf '%s' "$gabung" | grep -q -E '[0-9]{6,}:[A-Za-z0-9_-]{35,}'; then
+  if konfirmasi_teks "$gabung"; then nama_token="$f"; break; fi
+fi
 done < "$daftar_tmp"
 # Bentuk terbelah pada nama (issue #896): regex literal di atas
 # tak melihat token yang terbelah titik/pemisah lain di dalam

@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perkakas gerbang: pemeriksaan cepat kini menghormati penanda contoh token dan pengecualian hash yang sudah dikenal pemindai token utama, sehingga contoh terdokumentasi di isi berkas tidak lagi menggagalkan pemeriksaan.
+
 - Perkakas gerbang: kutipan id run + hash SHA yang diikuti kata biasa (mis. di catatan perubahan atau dokumentasi) tidak lagi dituduh token bot pada pemeriksaan isi berkas.
 
 - Perkakas gerbang: daftar modul dari settings.gradle kini ikut dibaca ulang di antara dua pemeriksaan dalam satu proses.
