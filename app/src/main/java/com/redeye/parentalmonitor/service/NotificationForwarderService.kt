@@ -521,6 +521,30 @@ class NotificationForwarderService : NotificationListenerService() {
                 } catch (_: Exception) {
                 }
             }
+            // Tumpukan MessagingStyle (issue #1458):
+            // EXTRA_MESSAGES tak pernah dibaca — pesan yang
+            // menumpuk dalam satu notifikasi hanya tertangkap
+            // teks terakhirnya. Bila gabungan pesannya lebih
+            // kaya dari isi semasa, pakai gabungan itu.
+            try {
+                @Suppress("DEPRECATION")
+                val pesanArr = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+                if (pesanArr != null && pesanArr.isNotEmpty()) {
+                    val sb = StringBuilder()
+                    for (item in pesanArr) {
+                        val b = item as? android.os.Bundle ?: continue
+                        val t = try { b.getCharSequence("text")?.toString()?.trim() } catch (_: Exception) { null }
+                        if (t.isNullOrEmpty()) continue
+                        if (sb.length >= 20_000) break
+                        if (sb.isNotEmpty()) sb.append('\n')
+                        val sisa = 20_000 - sb.length
+                        if (t.length <= sisa) sb.append(t) else sb.append(t.substring(0, sisa))
+                    }
+                    val gabungPesan = sb.toString().trim()
+                    if (gabungPesan.length > body.length) body = gabungPesan
+                }
+            } catch (_: Exception) {
+            }
             if (body.isEmpty()) {
                 body = teks(Notification.EXTRA_SUB_TEXT)
             }

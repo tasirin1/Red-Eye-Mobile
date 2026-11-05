@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penerusan notifikasi kini juga membaca tumpukan pesan bergaya percakapan (MessagingStyle): bila beberapa pesan menumpuk dalam satu notifikasi, seluruh tumpukannya diteruskan, bukan hanya pesan terakhir.
+
 - Penerusan notifikasi tidak lagi menelan pesan kedua yang isinya kebetulan sama dengan pesan sebelumnya: penyaring duplikat kini membedakan notifikasi yang sama dikirim ulang dari pesan baru berisi identik (mis. dua balasan 'ok' berurutan), keduanya kini sampai.
 
 - Dokumentasi repo (AGENTS dan README) diselaraskan dengan kebijakan rilis sekarang: halaman Releases hanya berisi APK varian release, bukan lagi kedua varian seperti yang masih tertulis.
