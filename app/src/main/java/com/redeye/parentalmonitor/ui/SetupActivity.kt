@@ -253,6 +253,7 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private val shotRequestBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val pairingLinkBusy = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -1211,10 +1212,17 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun copyPairingLink() {
+        // Penjaga in-flight (issue #1437): jalur ini async
+        // (IO + getMe) dan dulu tanpa CAS, jadi ketukan ganda
+        // menumpuk dua dialog tautan yang sama. Pola yang
+        // sama dengan shotRequestBusy; flag dilepas lewat
+        // invokeOnCompletion agar semua jalan keluar blok
+        // launch (banyak return@launch) ikut terliput.
+        if (!pairingLinkBusy.compareAndSet(false, true)) return
         val rawToken = botTokenInput.text?.toString()?.trim().orEmpty()
         val rawChat = chatIdInput.text?.toString()?.trim().orEmpty()
         val rawAccessPin = accessPinInput.text?.toString()?.trim().orEmpty()
-        lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
+        val pairingJob = lifecycleScope.launch(ioExceptionHandler + kotlinx.coroutines.Dispatchers.IO) {
             if (!fieldsLoaded) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Toast.makeText(this@SetupActivity, getString(R.string.setup_loading), Toast.LENGTH_SHORT).show()
@@ -1293,6 +1301,9 @@ class SetupActivity : AppCompatActivity() {
                         .also { amankanJendelaDialog(it) }
                 }
             }
+        }
+        pairingJob.invokeOnCompletion {
+            try { pairingLinkBusy.set(false) } catch (_: Exception) { }
         }
     }
 

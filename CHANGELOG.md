@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Tombol salin tautan pasangan di Setup kini punya penjaga sedang-berjalan: ketukan ganda sebelumnya menumpuk dua dialog tautan yang sama (dan dua panggilan jaringan).
+
 - Dialog izin tangkap layar tidak lagi bisa terbit dua kali bila aktivitasnya dibuat ulang sistem di tengah permintaan (mis. pergantian bahasa perangkat): keadaan 'sudah minta' kini disimpan dan dipulihkan, sehingga instance baru cukup menunggu hasil yang memang akan diantar sistem kepadanya.
 
 - Jendela bangun tak terlihat sesudah reboot kini tidak lagi menelan ketukan pengguna atau menjeda aplikasi di bawahnya selama beberapa detik pertama: jendelanya kini dinyatakan tidak menerima sentuhan dan fokus.
