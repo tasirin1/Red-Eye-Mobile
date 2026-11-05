@@ -51,18 +51,49 @@ object ContentQuery {
         return cursor
     }
 
-    private class LimitedCursor(delegate: android.database.Cursor, private val maxRows: Int) : android.database.CursorWrapper(delegate) {
-        override fun getCount(): Int = minOf(super.getCount(), maxRows)
+    // Matematika klem LimitedCursor sebagai logika murni
+    // (issue #1692): pembungkusnya terikat
+    // android.database.Cursor sehingga tak teruji JVM;
+    // keputusan hitung/posisi/geraknya kini di sini dan
+    // dikunci uji. LimitedCursor hanya menerjemahkan
+    // keputusan ke panggilan delegasi.
+    internal object Clamp {
+        enum class Move { PASSTHROUGH, PARK_END, DIRECT }
 
-        override fun getPosition(): Int = minOf(super.getPosition(), count)
+        fun limitedCount(total: Int, maxRows: Int): Int = minOf(total, maxRows)
+
+        fun clampedPosition(rawPosition: Int, total: Int, maxRows: Int): Int =
+            minOf(rawPosition, limitedCount(total, maxRows))
+
+        fun moveDecision(position: Int, maxRows: Int): Move = when {
+            position < 0 -> Move.PASSTHROUGH
+            position >= maxRows -> Move.PARK_END
+            else -> Move.DIRECT
+        }
+
+        fun isAfterLast(rawPosition: Int, total: Int, maxRows: Int): Boolean =
+            clampedPosition(rawPosition, total, maxRows) >= limitedCount(total, maxRows)
+
+        fun isLast(rawPosition: Int, total: Int, maxRows: Int): Boolean {
+            val c = limitedCount(total, maxRows)
+            return c > 0 && clampedPosition(rawPosition, total, maxRows) == c - 1
+        }
+    }
+
+    private class LimitedCursor(delegate: android.database.Cursor, private val maxRows: Int) : android.database.CursorWrapper(delegate) {
+        override fun getCount(): Int = Clamp.limitedCount(super.getCount(), maxRows)
+
+        override fun getPosition(): Int = Clamp.clampedPosition(super.getPosition(), super.getCount(), maxRows)
 
         override fun moveToPosition(position: Int): Boolean {
-            if (position < 0) return super.moveToPosition(position)
-            if (position >= maxRows) {
-                super.moveToPosition(super.getCount())
-                return false
+            return when (Clamp.moveDecision(position, maxRows)) {
+                Clamp.Move.PASSTHROUGH -> super.moveToPosition(position)
+                Clamp.Move.PARK_END -> {
+                    super.moveToPosition(super.getCount())
+                    false
+                }
+                Clamp.Move.DIRECT -> super.moveToPosition(position)
             }
-            return super.moveToPosition(position)
         }
 
         override fun move(offset: Int): Boolean = moveToPosition(position + offset)
@@ -75,8 +106,8 @@ object ContentQuery {
 
         override fun moveToLast(): Boolean = moveToPosition(count - 1)
 
-        override fun isAfterLast(): Boolean = position >= count
+        override fun isAfterLast(): Boolean = Clamp.isAfterLast(super.getPosition(), super.getCount(), maxRows)
 
-        override fun isLast(): Boolean = count > 0 && position == count - 1
+        override fun isLast(): Boolean = Clamp.isLast(super.getPosition(), super.getCount(), maxRows)
     }
 }
