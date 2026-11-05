@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengiriman ulang media yang hasil pengiriman sebelumnya tidak terkonfirmasi (misalnya koneksi putus di tengah jalan) kini berlabel 'mungkin duplikat' pada keterangannya, agar salinan ganda tidak membingungkan.
+
 - Antrean kirim kini menua dengan adil: pesan biasa yang sudah menunggu lebih dari satu jam naik mendahului pesan baru, sehingga arus pesan prioritas yang ramai tidak lagi membuat laporan biasa kelaparan sampai kedaluwarsa.
 
 - Pesan prioritas dan darurat dalam antrean kini berumur 30 hari sebelum kedaluwarsa, bukan 7 hari seperti laporan biasa: HP yang lama offline tidak lagi menguapkan peringatan terpenting lebih dulu.

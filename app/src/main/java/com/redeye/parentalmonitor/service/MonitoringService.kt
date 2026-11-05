@@ -12647,7 +12647,7 @@ class MonitoringService : Service() {
             val audioPart = MultipartBody.Part.createFormData("audio", audioFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             val ambilAudioMs = try { TimeFmt.mediaNameTimeMs(audioFile.name) } catch (_: Exception) { -1L }
-            val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(if (ambilAudioMs > 0L) ambilAudioMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val caption = ("\uD83C\uDF99\uFE0F " + TimeFmt.full(if (ambilAudioMs > 0L) ambilAudioMs else System.currentTimeMillis()) + labelUlangTakPasti(audioFile)).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendAudio"
             // Kunci terjaga selama unggahan (issue #1265):
             // jalur flush memanggil fungsi ini tanpa kunci
@@ -12663,6 +12663,7 @@ class MonitoringService : Service() {
             }
             if (response.isSuccessful && response.body()?.ok == true) {
                 noteSendOk()
+                bersihkanCatatanUnggah(audioFile)
                 deleteQuietly(audioFile)
                 return MediaSendOutcome.SENT
             }
@@ -12677,6 +12678,7 @@ class MonitoringService : Service() {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending audio to Telegram: ${redactToken(e.message)}")
+            catatUnggahTakPasti(audioFile)
             return MediaSendOutcome.KEPT
         }
     }
@@ -12882,7 +12884,7 @@ class MonitoringService : Service() {
             val videoPart = MultipartBody.Part.createFormData("video", videoFile.name, requestFile)
             val chatIdBody = chatId.toRequestBody("text/plain".toMediaTypeOrNull())
             val ambilVideoMs = try { TimeFmt.mediaNameTimeMs(videoFile.name) } catch (_: Exception) { -1L }
-            val caption = ("🎥 " + TimeFmt.full(if (ambilVideoMs > 0L) ambilVideoMs else System.currentTimeMillis())).toRequestBody("text/plain".toMediaTypeOrNull())
+            val caption = ("🎥 " + TimeFmt.full(if (ambilVideoMs > 0L) ambilVideoMs else System.currentTimeMillis()) + labelUlangTakPasti(videoFile)).toRequestBody("text/plain".toMediaTypeOrNull())
             val url = "https://api.telegram.org/bot$botToken/sendVideo"
             // Kunci terjaga selama unggahan (issue #1265):
             // sama seperti audio di atas — jalur flush tak
@@ -12896,6 +12898,7 @@ class MonitoringService : Service() {
             if (response.isSuccessful && response.body()?.ok == true) {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Video sent successfully!")
                 noteSendOk()
+                bersihkanCatatanUnggah(videoFile)
                 deleteQuietly(videoFile)
                 return MediaSendOutcome.SENT
             }
@@ -12910,6 +12913,7 @@ class MonitoringService : Service() {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending video to Telegram: ${redactToken(e.message)}")
+            catatUnggahTakPasti(videoFile)
             return MediaSendOutcome.KEPT
         }
     }
@@ -13287,6 +13291,50 @@ class MonitoringService : Service() {
         return CacheStats(bytes, photos, audios, videos)
     }
 
+    // Jurnal unggah tak pasti (issue #1514): pengiriman
+    // media yang melempar pengecualian SESUDAH permintaan
+    // berangkat berstatus tak diketahui — server mungkin
+    // sudah menerima. Jurnal persisten (nama|ukuran)
+    // membuat pengiriman ulang berikutnya berlabel
+    // 'mungkin duplikat' di caption, dan catatan dibersihkan
+    // saat hasil akhirnya terkonfirmasi.
+    private fun jurnalUnggahFile(): java.io.File = java.io.File(antreMedia(), "media_coba.txt")
+
+    @Synchronized
+    private fun catatUnggahTakPasti(file: java.io.File) {
+        try {
+            val j = jurnalUnggahFile()
+            val kunci = file.name + "|" + file.length()
+            val lama = try { if (j.exists()) j.readLines() else emptyList() } catch (_: Exception) { emptyList() }
+            if (kunci !in lama) j.writeText((lama + kunci).takeLast(50).joinToString("\n"))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun unggahTakPasti(file: java.io.File): Boolean {
+        return try {
+            val j = jurnalUnggahFile()
+            j.exists() && j.readLines().contains(file.name + "|" + file.length())
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    @Synchronized
+    private fun bersihkanCatatanUnggah(file: java.io.File) {
+        try {
+            val j = jurnalUnggahFile()
+            if (!j.exists()) return
+            val kunci = file.name + "|" + file.length()
+            val sisa = j.readLines().filter { it != kunci }
+            if (sisa.isEmpty()) j.delete() else j.writeText(sisa.joinToString("\n"))
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun labelUlangTakPasti(file: java.io.File): String =
+        if (unggahTakPasti(file)) " (pengiriman ulang — salinan sebelumnya mungkin sudah sampai)" else ""
+
     private suspend fun sendPhotoFile(photoFile: File): MediaSendOutcome =
         photoSendMutex.withLock { sendPhotoFileUnlocked(photoFile) }
 
@@ -13322,7 +13370,7 @@ class MonitoringService : Service() {
             // waktu flush-nya.
             val ambilFotoMs = try { TimeFmt.mediaNameTimeMs(photoFile.name) } catch (_: Exception) { -1L }
             val timestamp = TimeFmt.full(if (ambilFotoMs > 0L) ambilFotoMs else System.currentTimeMillis())
-            val caption = "📸 $timestamp".toRequestBody("text/plain".toMediaTypeOrNull())
+            val caption = ("📸 $timestamp" + labelUlangTakPasti(photoFile)).toRequestBody("text/plain".toMediaTypeOrNull())
 
             val url = "https://api.telegram.org/bot$botToken/sendPhoto"
 
@@ -13348,6 +13396,7 @@ class MonitoringService : Service() {
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) android.util.Log.i("MonitoringService", "✓ Photo sent successfully!")
                 noteSendOk()
                 try { preferencesManager.lastPhotoTime = System.currentTimeMillis() } catch (_: Exception) { }
+                bersihkanCatatanUnggah(photoFile)
                 deleteQuietly(photoFile)
                 return MediaSendOutcome.SENT
             }
@@ -13362,6 +13411,7 @@ class MonitoringService : Service() {
             throw e
         } catch (e: Exception) {
             android.util.Log.e("MonitoringService", "✗ Error sending photo to Telegram: ${redactToken(e.message)}")
+            catatUnggahTakPasti(photoFile)
             return MediaSendOutcome.KEPT
         }
     }
