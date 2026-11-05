@@ -831,6 +831,13 @@ class PreferencesManager(context: Context) {
                     .putLong(KEY_OWNER_ID, 0L)
                     .putString(KEY_ACCESS_PIN, "")
                     .putLong(KEY_LAST_UPDATE_ID, 0L)
+                    // Hapus lokal juga membatalkan catatan
+                    // restore tertahan (issue #1600): tanpa
+                    // ini cadangan terkonfirmasi bisa bangkit
+                    // dan menghidupkan lagi kredensial yang
+                    // baru dihapus pemilik lewat Setup.
+                    .putString(KEY_RESTORE_CONFIRMED_JSON, "")
+                    .putLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
                 bumpCredentialGeneration(editor)
                 editor.commit()
             }
@@ -2890,6 +2897,16 @@ class PreferencesManager(context: Context) {
                     if (newAccessPin != accessPin) bumpCredentialGeneration(editor)
                     editor.putString(KEY_ACCESS_PIN, newAccessPin)
                 }
+                // Simpan kredensial membatalkan catatan
+                // restore tertahan (issue #1600): cadangan
+                // terkonfirmasi via Telegram tidak boleh
+                // bangkit menimpa kredensial yang baru
+                // dipilih pemilik di perangkat ini. Jalur
+                // penerapan Telegram sudah mengklaim
+                // (mengosongkan) catatannya sebelum sampai
+                // ke sini, jadi di sana ini no-op.
+                editor.putString(KEY_RESTORE_CONFIRMED_JSON, "")
+                editor.putLong(KEY_RESTORE_CONFIRMED_DEADLINE, 0L)
                 editor.commit()
             } catch (_: Exception) {
                 false
