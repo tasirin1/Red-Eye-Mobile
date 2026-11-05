@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Notifikasi percakapan yang menumpuk tidak lagi meneruskan ulang seluruh riwayat tumpukannya setiap ada pesan baru: kini hanya pesan barunya saja yang diteruskan.
+
 - Laporan 'rekaman terputus' tidak lagi keliru bunyi untuk rekaman yang sebenarnya sudah selesai dan utuh: penanda rekaman berjalan kini dicabut tepat sesudah rekaman selesai difinalkan, bukan menunggu seluruh proses unggah beres.
 
 - Penopengan OTP/bank kini juga berlaku untuk SMS: kode OTP yang tiba lewat SMS (saluran OTP paling umum) tidak lagi tampil utuh di Telegram saat setelan masking menyala — sebelumnya setelan itu hanya menutupi notifikasi.

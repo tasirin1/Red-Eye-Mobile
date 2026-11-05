@@ -469,6 +469,13 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private data class NotifText(val title: String, val text: String, val rawTitle: String, val rawBody: String)
+    // Gabungan tumpukan MessagingStyle terakhir per kunci
+    // notifikasi (issue #1472): pesan baru hanya meneruskan
+    // ekor barunya, bukan seluruh tumpukan berulang.
+    // kunciTumpukanAktif diisi handlePosted (utas serial
+    // yang sama) tepat sebelum notifTitleText dipanggil.
+    private val tumpukanDulu = HashMap<String, String>()
+    private var kunciTumpukanAktif = ""
 
     private fun notifTitleText(notification: Notification): NotifText {
         return try {
@@ -492,6 +499,7 @@ class NotificationForwarderService : NotificationListenerService() {
             } catch (_: Exception) {
                 ""
             }
+            var tumpukanGabung = ""
             val title = teks(Notification.EXTRA_TITLE)
             var body = teks(Notification.EXTRA_TEXT)
             if (body.isEmpty()) {
@@ -541,12 +549,35 @@ class NotificationForwarderService : NotificationListenerService() {
                         if (t.length <= sisa) sb.append(t) else sb.append(t.substring(0, sisa))
                     }
                     val gabungPesan = sb.toString().trim()
-                    if (gabungPesan.length > body.length) body = gabungPesan
+                    if (gabungPesan.length > body.length) {
+                        body = gabungPesan
+                        tumpukanGabung = gabungPesan
+                    }
                 }
             } catch (_: Exception) {
             }
             if (body.isEmpty()) {
                 body = teks(Notification.EXTRA_SUB_TEXT)
+            }
+            // Potong ekor tumpukan (issue #1472): bila
+            // gabungan tumpukan ini meneruskan gabungan
+            // terakhir untuk notifikasi yang sama, body
+            // menjadi sisa barunya saja (penopengan di
+            // bawah tetap berlaku atas sisa itu).
+            if (tumpukanGabung.isNotEmpty() && kunciTumpukanAktif.isNotEmpty()) {
+                try {
+                    val kunci = kunciTumpukanAktif
+                    val prev = synchronized(tumpukanDulu) { tumpukanDulu[kunci] }
+                    synchronized(tumpukanDulu) {
+                        if (tumpukanDulu.size > 100) tumpukanDulu.clear()
+                        tumpukanDulu[kunci] = tumpukanGabung
+                    }
+                    if (prev != null && prev.isNotEmpty() && tumpukanGabung.startsWith(prev)) {
+                        val sisa = tumpukanGabung.removePrefix(prev).removePrefix("\n")
+                        if (sisa.isNotEmpty()) body = sisa
+                    }
+                } catch (_: Exception) {
+                }
             }
             var safeTitle = title
             var safeBody = body
@@ -587,7 +618,8 @@ class NotificationForwarderService : NotificationListenerService() {
         if (!cfgEnabled) {
             return
         }
-        val nf = notifTitleText(notification)
+        kunciTumpukanAktif = sbnKey
+        val nf = try { notifTitleText(notification) } finally { kunciTumpukanAktif = "" }
         val title = nf.title
         val text = nf.text
         if (title.isEmpty() && text.isEmpty()) return
