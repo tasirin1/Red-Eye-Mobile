@@ -11825,17 +11825,31 @@ class MonitoringService : Service() {
                 if (rowWidth == width) {
                     bmp.copyPixelsFromBuffer(plane.buffer)
                 } else if (stride == 4) {
+                    // Salin baris demi baris (issue #1587):
+                    // jalur lama mengalokasi ByteBuffer kedua
+                    // sebesar SELURUH frame (±4 MB sesaat) hanya
+                    // untuk membuang padding antarbaris. Kini
+                    // cukup satu buffer baris yang dipakai ulang
+                    // (±2,8 KB) + setPixels per baris.
                     val src = plane.buffer
                     val rowBytes = width * 4
-                    val packed = java.nio.ByteBuffer.allocateDirect(rowBytes * height)
+                    val rowArr = ByteArray(rowBytes)
+                    val rowInts = IntArray(width)
                     for (y in 0 until height) {
                         src.position(y * plane.rowStride)
                         val slice = src.slice()
                         slice.limit(rowBytes)
-                        packed.put(slice)
+                        slice.get(rowArr)
+                        for (x in 0 until width) {
+                            val o = x * 4
+                            val r = rowArr[o].toInt() and 0xFF
+                            val g = rowArr[o + 1].toInt() and 0xFF
+                            val b = rowArr[o + 2].toInt() and 0xFF
+                            val al = rowArr[o + 3].toInt() and 0xFF
+                            rowInts[x] = (al shl 24) or (r shl 16) or (g shl 8) or b
+                        }
+                        bmp.setPixels(rowInts, 0, width, 0, y, width, 1)
                     }
-                    packed.flip()
-                    bmp.copyPixelsFromBuffer(packed)
                 } else {
                     try { bmp.recycle() } catch (_: Exception) { }
                     return null

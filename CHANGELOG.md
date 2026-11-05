@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penyalinan bingkai tangkapan layar pada perangkat dengan stride berpadding kini baris demi baris memakai satu buffer baris kecil, bukan mengalokasi buffer kedua sebesar seluruh bingkai (±4 MB) pada setiap jepretan (#1587).
+
 - Mode waspada Liveness (irama 3 menit sesudah layanan terdeteksi mati) kini berakhir lebih awal begitu layanan terbukti stabil — tiga pemeriksaan sehat beruntun (±9 menit) mengakhiri mode waspada, tidak menunggu jendela 60 menitnya habis (#1586).
 
 - Loop penjaga di layanan penerus notifikasi kini berirama 5 menit selama layanan utama sehat (sebelumnya 60 detik); irama 60 detik dipertahankan hanya saat layanan utama mati dan perlu dihidupkan ulang (#1585).
