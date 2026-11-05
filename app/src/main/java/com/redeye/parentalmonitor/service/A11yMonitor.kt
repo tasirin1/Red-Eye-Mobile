@@ -59,9 +59,17 @@ object A11yMonitor {
     // Jejak jendela terakhir untuk cek ulang tamper (issue #922).
     @Volatile
     private var lastWindowPkg = ""
+    // Keempatnya @Volatile (issue #1651): anotasi hanya
+    // menempel pada properti tepat di bawahnya, jadi
+    // lastWindowCls/lastSensitivePkg sebelumnya polos
+    // padahal ditulis utas utama dan dibaca utas IO
+    // (onMonitoringResumed) tanpa kunci — kelas
+    // visibilitas yang sama dengan issue #1017.
+    @Volatile
     private var lastWindowCls = ""
     @Volatile
     private var lastSensitiveCls = ""
+    @Volatile
     private var lastSensitivePkg = ""
     @Volatile
     private var contentEventsOn: Boolean? = null
