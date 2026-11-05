@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Balasan perintah /flush kini menyebut terang-terangan bila foto/video/rekaman masih ditahan hemat kuota dan tidak ikut terkirim, bukan hanya melaporkan antrean teks.
+
 - Pekerja pemulih boot kini juga membatalkan alarm penjaga-hidup pada perangkat yang pemantauannya dimatikan atau belum dikonfigurasi, bukan hanya pengawas berkala — tidak ada lagi satu kebangunan tak diundang sesudahnya.
 
 - Membuat cadangan kini ditolak dengan penjelasan bila penyimpanan kredensial terdeteksi rusak, agar tidak menghasilkan berkas cadangan timpang yang tampak sah.

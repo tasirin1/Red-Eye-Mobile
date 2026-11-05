@@ -6244,10 +6244,18 @@ class MonitoringService : Service() {
             }
         }
         val scheduled = MessageScheduler.scheduleMessageSend(this)
+        // Keadaan tahan media disebut terang-terangan
+        // (issue #1564): flush media kembali diam-diam
+        // saat hemat kuota menahan, dan balasan lama hanya
+        // melaporkan antrean teks — pemilik bisa mengira
+        // foto ikut berangkat padahal tidak.
+        val catatanTahan = try {
+            if (dataSaverDeferMedia()) "\n📶 Media (foto/video/rekaman) masih DITAHAN hemat kuota — /flush tidak memaksanya. Matikan /datasaver untuk mengirimnya sekarang." else ""
+        } catch (_: Exception) { "" }
         if (scheduled) {
-            sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online.")
+            sendToTelegram("\uD83D\uDCE4 Flush dijadwalkan ($queued menunggu). Dikirim saat online." + catatanTahan)
         } else {
-            sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu).")
+            sendToTelegram("⚠️ Tak bisa menjadwalkan flush ($queued menunggu)." + catatanTahan)
         }
     }
 
