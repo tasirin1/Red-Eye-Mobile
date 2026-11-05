@@ -566,6 +566,19 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // Tepati batas startForeground LEBIH DULU (issue
+        // #1623): inisialisasi prefs terenkripsi sesudah
+        // ini bisa menunggu monitor companion yang sedang
+        // dipakai pemanasan Application (keystore lambat
+        // di perangkat kelas bawah) — bila itu melewati
+        // batas ±5 detik startForegroundService, proses
+        // celaka sebelum sempat foreground. Notifikasi
+        // foreground statis dan tangga tipenya menurun
+        // aman ke tipe dasar bila izin/konsen belum
+        // terbaca, jadi percobaan awal ini aman; jalur
+        // startForegroundImmediate penuh di bawah tetap
+        // menilai ulang sesudah init.
+        tryForegroundEarly()
         try {
             preferencesManager = PreferencesManager.getInstance(this)
             // Epoch restore dimuat dari simpanan persisten
@@ -929,6 +942,22 @@ class MonitoringService : Service() {
         cachedForegroundNotification = built
         cachedNotificationLocale = localeTag
         return built
+    }
+
+    // Percobaan foreground paling awal (issue #1623):
+    // hanya menegakkan startForeground + mencatatnya,
+    // TANPA jalur gagal startForegroundImmediate (yang
+    // menjadwalkan jaring dan stopSelf) — kegagalan di
+    // sini cukup diabaikan karena penilaian penuh tetap
+    // berjalan sesudah inisialisasi inti.
+    private fun tryForegroundEarly() {
+        try {
+            val notification = buildForegroundNotification()
+            if (applyForegroundTypes(notification)) {
+                foregroundEstablished = true
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun startForegroundImmediate(): Boolean {
