@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Perintah buang antrean kini meminta konfirmasi dua tahap seperti kirim SMS: ketukan pertama hanya memperingatkan, antrean benar-benar dibuang sesudah konfirmasi kedua dari peminta yang sama dalam 5 menit.
+
+
 ## [1.6.631] - 2026-11-05
 
 ### Fixed

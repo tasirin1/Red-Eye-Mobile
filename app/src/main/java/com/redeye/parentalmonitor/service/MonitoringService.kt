@@ -4133,7 +4133,7 @@ class MonitoringService : Service() {
                 }
             }
             "/flush" -> handleFlushCommand()
-            "/clearqueue" -> handleClearQueueCommand()
+            "/clearqueue" -> handleClearQueueCommand(senderId)
             "/lock" -> handleLockCommand()
             "/ring" -> handleRingCommand(arg)
             "/ping" -> handlePingCommand(arg, sentAtSec, senderOk, chatOk, senderId, privateChat)
@@ -6038,8 +6038,34 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun handleClearQueueCommand() {
+    private suspend fun handleClearQueueCommand(senderId: String) {
         val queued = messageQueue.getQueueSize()
+        // Konfirmasi dua tahap (issue #1531): membuang
+        // SELURUH antrean — termasuk peringatan prioritas
+        // ber-TTL 30 hari — tak boleh satu salah ketuk
+        // (tombolnya bersebelahan dengan Kirim antrean).
+        // Pola /sms: tahap pertama menahan 5 menit terikat
+        // peminta; tahap kedua dari peminta yang sama yang
+        // mengeksekusi.
+        val stagedAt = try { preferencesManager.pendingClearQueueAt } catch (_: Exception) { 0L }
+        val stagedBy = try { preferencesManager.pendingClearQueueOwner } catch (_: Exception) { "" }
+        val nowMs = System.currentTimeMillis()
+        val tahapDua = stagedAt > 0L && nowMs - stagedAt in 0..(5 * 60_000L) &&
+            (stagedBy.isEmpty() || stagedBy == senderId)
+        if (!tahapDua) {
+            try {
+                preferencesManager.pendingClearQueueAt = nowMs
+                preferencesManager.pendingClearQueueOwner = senderId
+            } catch (_: Exception) {
+            }
+            sendToTelegram("⚠️ Buang SELURUH antrean ($queued pesan belum terkirim, termasuk peringatan prioritas)? Tindakan ini tidak bisa dibatalkan.\nKetuk 🗑️ Buang antrean lagi (atau kirim /clearqueue) dalam 5 menit untuk konfirmasi.", null, true)
+            return
+        }
+        try {
+            preferencesManager.pendingClearQueueAt = 0L
+            preferencesManager.pendingClearQueueOwner = ""
+        } catch (_: Exception) {
+        }
         val cleared = try {
             messageQueue.clearQueue()
         } catch (_: Exception) {

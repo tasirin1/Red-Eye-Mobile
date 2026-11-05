@@ -506,6 +506,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_SMS_TEXT = "pending_sms_text"
         private const val KEY_PENDING_SMS_AT = "pending_sms_at"
         private const val KEY_PENDING_SMS_OWNER = "pending_sms_owner"
+        private const val KEY_PENDING_CLEAR_AT = "pending_clear_at"
+        private const val KEY_PENDING_CLEAR_OWNER = "pending_clear_owner"
         private const val KEY_LAST_SMS_SEND_AT = "last_sms_send_at"
         const val KEY_OWNER_ID = "owner_user_id"
         const val KEY_ACCESS_PIN = "access_pin"
@@ -1623,6 +1625,16 @@ class PreferencesManager(context: Context) {
     var pendingPromptAt: Long
         get() = prefLong(KEY_PENDING_PROMPT_AT, 0L)
         set(value) = sharedPreferences.edit().putLong(KEY_PENDING_PROMPT_AT, value).apply()
+
+    // Tahap konfirmasi buang antrean (issue #1531):
+    // /clearqueue dua tahap terikat pemilik seperti /sms.
+    var pendingClearQueueAt: Long
+        get() = prefLong(KEY_PENDING_CLEAR_AT, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_PENDING_CLEAR_AT, value).apply()
+
+    var pendingClearQueueOwner: String
+        get() = prefString(KEY_PENDING_CLEAR_OWNER, "")
+        set(value) = sharedPreferences.edit().putString(KEY_PENDING_CLEAR_OWNER, value).apply()
 
     var pendingSmsNumber: String
         get() = prefString(KEY_PENDING_SMS_NUMBER, "")
