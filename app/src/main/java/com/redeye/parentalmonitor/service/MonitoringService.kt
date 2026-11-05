@@ -1564,6 +1564,7 @@ class MonitoringService : Service() {
     private fun startCameraLoop() {
         val camera = serviceScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             val self = coroutineContext[Job]
+            var resumeLiftGagal = 0
             while (isActive && (cameraJob == null || cameraJob === self)) {
                 try {
                     if (cachedCameraInterval < 0) refreshLoopConfig()
@@ -1598,8 +1599,23 @@ class MonitoringService : Service() {
                                 delayMs(2 * 60_000L)
                             } else {
                                 try { resumePhotosAfterPolicyLift() } catch (_: Exception) { }
-                                cameraCycleMs = 2_000L
-                                delayMs(2_000L)
+                                if (cachedPhotoPausedUntil == 0L) {
+                                    resumeLiftGagal = 0
+                                    cameraCycleMs = 2_000L
+                                    delayMs(2_000L)
+                                } else {
+                                    // Pembersihan status gagal
+                                    // (issue #1649): setPhotoPause
+                                    // menelan pengecualiannya
+                                    // sendiri, jadi tanpa eskalasi
+                                    // cabang ini berputar 2 detik
+                                    // selamanya. Mundur bertahap
+                                    // sampai irama cabang kebijakan.
+                                    resumeLiftGagal++
+                                    val mundur = minOf(2_000L shl minOf(resumeLiftGagal, 6), 2 * 60_000L)
+                                    cameraCycleMs = mundur
+                                    delayMs(mundur)
+                                }
                             }
                         } else {
                             val remaining = cachedPhotoPausedUntil - System.currentTimeMillis()
