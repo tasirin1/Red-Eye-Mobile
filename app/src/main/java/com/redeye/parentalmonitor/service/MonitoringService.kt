@@ -13256,6 +13256,16 @@ class MonitoringService : Service() {
                 val now = System.currentTimeMillis()
                 var batchProgress = false
                 for (file in pending) {
+                    // Cek ulang keadaan terukur per berkas
+                    // (issue #1550): dulu keadaan hanya
+                    // dinilai sekali di pintu flush — jaringan
+                    // berpindah ke seluler di tengah flush
+                    // membuat sisa unggahan besar berjalan
+                    // lewat kuota seluler. Cache 15 dtk pada
+                    // dataSaverDeferMedia membatasi keter-
+                    // lambatan deteksi tanpa memanggil API
+                    // jaringan per berkas.
+                    if (dataSaverDeferMedia()) break@drain
                     if (isMediaActive(file)) continue
                     // Umur negatif (cap masa depan sesudah
                     // jam dimundurkan) BUKAN 'terlalu baru'
@@ -13743,6 +13753,16 @@ class MonitoringService : Service() {
                 val now = System.currentTimeMillis()
                 var batchProgress = false
                 for (file in pending) {
+                    // Cek ulang keadaan terukur per berkas
+                    // (issue #1550): dulu keadaan hanya
+                    // dinilai sekali di pintu flush — jaringan
+                    // berpindah ke seluler di tengah flush
+                    // membuat sisa unggahan besar berjalan
+                    // lewat kuota seluler. Cache 15 dtk pada
+                    // dataSaverDeferMedia membatasi keter-
+                    // lambatan deteksi tanpa memanggil API
+                    // jaringan per berkas.
+                    if (dataSaverDeferMedia()) break@drain
                     if (isMediaActive(file)) continue
                     // Umur negatif (cap masa depan sesudah
                     // jam dimundurkan) BUKAN 'terlalu baru'

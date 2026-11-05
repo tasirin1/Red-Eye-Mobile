@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengiriman media tertahan kini berhenti di tengah jalan bila jaringan berpindah ke seluler saat pengiriman berlangsung, bukan hanya dicek sekali di awal — sisa unggahan besar tidak lagi menguras kuota.
+
 - Skrip cek cepat tidak lagi memercayai vonis "bersih" dari pemindai token yang rusak: kesehatan pemindai diuji dengan kontrol positif dulu, dan bila pemindai mati semua tuduhan mentah berlaku apa adanya (gagal-aman).
 
 - Foto, video, dan rekaman hasil perintah sensitif kini ikut terkirim ke chat pribadi peminta (bukan hanya teks balasannya) bila perintah diketik dari chat pribadi yang berbeda dari chat utama.
