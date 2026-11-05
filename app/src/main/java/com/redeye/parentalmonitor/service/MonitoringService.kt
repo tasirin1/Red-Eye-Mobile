@@ -8709,8 +8709,15 @@ class MonitoringService : Service() {
             // balik VPN menandakan jalur sungguhan tak
             // terukur — VPN di atas seluler tetap
             // terukur karena transportnya seluler.
-            if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)) return false
+            // Gerbang VPN WAJIB (issue #1599): tanpa VPN,
+            // Wi-Fi yang ditandai terukur oleh pengguna
+            // (hotspot ponsel) harus tetap terukur sesuai
+            // kapabilitas di atas — override transport
+            // polos membuat hemat kuota berhenti menahan
+            // media di Wi-Fi terukur mana pun.
+            if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) &&
+                (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))) return false
             true
         } catch (_: Exception) {
             false

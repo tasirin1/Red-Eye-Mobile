@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Penilaian jaringan terukur kini hanya melonggarkan untuk VPN di atas Wi-Fi/ethernet: Wi-Fi yang ditandai terukur oleh pengguna (mis. hotspot ponsel) kembali dihormati sebagai terukur, sehingga hemat kuota tetap menahan media di sana (#1599).
+
 ## [1.6.634] - 2026-11-05
 
 ### Fixed
