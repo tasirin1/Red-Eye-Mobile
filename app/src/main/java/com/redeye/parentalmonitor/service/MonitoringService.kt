@@ -12801,6 +12801,16 @@ class MonitoringService : Service() {
             recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
             recorder.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
             recorder.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+            // Mutu bicara hemat (issue #1577): tanpa setelan
+            // ini bawaan OEM ±128 kbps stereo membuat berkas
+            // 5-8x lebih besar dari kebutuhan suara — boros
+            // radio saat unggah dan kuota. 32 kbps mono
+            // 22,05 kHz jernih untuk bicara/lingkungan;
+            // penolakan OEM atas satu nilai tak menggagalkan
+            // rekaman (bawaan pabrik berlaku untuk nilai itu).
+            try { recorder.setAudioEncodingBitRate(32_000) } catch (_: Exception) { }
+            try { recorder.setAudioSamplingRate(22_050) } catch (_: Exception) { }
+            try { recorder.setAudioChannels(1) } catch (_: Exception) { }
             recorder.setOutputFile(audioTmp.absolutePath)
             // Pendengar galat perekam (issue #1462): dulu
             // galat tengah rekam (mic direbut aplikasi lain,

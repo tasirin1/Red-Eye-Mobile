@@ -671,6 +671,11 @@ class CameraService(private val context: Context) {
             rec.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
             rec.setVideoEncoder(android.media.MediaRecorder.VideoEncoder.H264)
             rec.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+            // Trek audio hemat seperti perekam suara
+            // (issue #1577): 32 kbps mono 22,05 kHz.
+            try { rec.setAudioEncodingBitRate(32_000) } catch (_: Exception) { }
+            try { rec.setAudioSamplingRate(22_050) } catch (_: Exception) { }
+            try { rec.setAudioChannels(1) } catch (_: Exception) { }
             rec.setVideoSize(videoSize.first, videoSize.second)
             try {
                 rec.setOrientationHint(getJpegOrientation(cameraManager, cameraId, lensFacing))
