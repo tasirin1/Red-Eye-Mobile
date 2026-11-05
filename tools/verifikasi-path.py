@@ -600,13 +600,25 @@ AWALAN_STYLE_PUSTAKA = (
 # build.
 PENANDA_PUSTAKA_STYLE = ("Material", "AppCompat", "Design", "Mdc")
 
+# Segmen ruang-nama pustaka yang dikenal persis (issue
+# #1449): penanda substring bebas membebaskan nama seperti
+# Widget_DesignKu / Widget_TombolDesign, dan tiga awalan
+# Theme_* memuat penandanya sendiri sehingga uji penanda
+# di sana vakum. Kini penanda wajib tampil sebagai SEGMEN
+# garis-bawah utuh dari himpunan dikenal (MaterialComponents
+# & Material3 adalah segmen baku Material; sisanya persis).
+SEGMEN_PUSTAKA_STYLE = frozenset({
+    "Material", "Material3", "MaterialComponents",
+    "MaterialExpressive", "AppCompat", "Design", "Mdc",
+})
+
 
 def _bebas_yatim_style_kode(nama):
     if nama.startswith("Platform_"):
         return True
     if not nama.startswith(AWALAN_STYLE_PUSTAKA):
         return False
-    return any(t in nama for t in PENANDA_PUSTAKA_STYLE)
+    return any(seg in SEGMEN_PUSTAKA_STYLE for seg in nama.split("_"))
 
 
 def cek_acuan_yatim(gagal):

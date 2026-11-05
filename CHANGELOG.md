@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Penanda ruang-nama pada pengecualian style pustaka alat verifikasi kini wajib berupa segmen nama yang utuh dan dikenal, bukan substring di mana pun: nama berkedok seperti berakhiran nama sendiri sesudah kata pustaka kini tetap divonis.
+
 - Halaman rilis kini hanya memuat APK varian release: varian debug (yang bisa dibaca aplikasi lain lewat adb) sebelumnya ikut diterbitkan berdampingan dan berisiko salah pasang; varian debug tetap tersedia sebagai artefak hasil build di Actions.
 
 - Catatan foto tertahan yang rusak/tak terbaca kini dibatasi jumlahnya saat daftar dibersihkan: sebelumnya catatan seperti itu dipertahankan tanpa batas dan tak bisa dilepas atau dibersihkan oleh jalur mana pun, sehingga data rusak menumpuk permanen di penyimpanan.
