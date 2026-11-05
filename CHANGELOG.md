@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pengukuran cahaya kamera kini menunggu beberapa frame pratinjau sebelum menjepret, bukan menerima frame pertama: pada perangkat yang tidak melaporkan keadaan paparannya (atau yang meminta kilat), foto dulu bisa terambil sebelum paparan sempat mapan dan hasilnya terlalu gelap.
+
 - Perintah dengan spasi ganda di dalam argumen (lazim dari dikte atau tempel) kini berjalan normal: argumen diruntuhkan ke spasi tunggal saat diurai, sehingga perintah seperti mode patroli dan notifikasi tak lagi salah dibalas petunjuk cara pakai.
 
 - Pemasang kait kini juga menguraikan core.hooksPath berbentuk '~/...' dengan benar saat variabel HOME kosong: sebelumnya bentuk itu memakai HOME mentah dan diam-diam memasang kait ke direktori di akar filesystem sambil melaporkan sukses, padahal Git tak pernah membacanya di sana.

@@ -935,6 +935,14 @@ class CameraService(private val context: Context) {
             val previewSurface = meteringSurface ?: run { onError(Exception("Kamera ditutup")); return }
             meteringBuilder.addTarget(previewSurface)
             meteringBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            // Jumlah frame pratinjau minimum sebelum metering
+            // dinilai mapan (issue #1446): keadaan AE null
+            // (perangkat tak mengisi CONTROL_AE_STATE) dan
+            // FLASH_REQUIRED dulu diterima pada frame PERTAMA,
+            // sehingga pemanasan paparan terlewati total dan
+            // foto kurang terang bisa lolos. Jaring timeout
+            // 3 detik di atas tetap batas kerasnya.
+            val bingkaiMetering = java.util.concurrent.atomic.AtomicInteger(0)
             session.setRepeatingRequest(
                 meteringBuilder.build(),
                 object : CameraCaptureSession.CaptureCallback() {
@@ -944,6 +952,7 @@ class CameraService(private val context: Context) {
                         result: TotalCaptureResult
                     ) {
                         val aeState = result.get(CaptureResult.CONTROL_AE_STATE)
+                        if (bingkaiMetering.incrementAndGet() < 3) return
                         if (aeState == null ||
                             aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED ||
                             aeState == CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED ||
