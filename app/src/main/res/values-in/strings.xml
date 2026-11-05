@@ -122,6 +122,8 @@
     <string name="setup_test_connected_as">Terhubung sebagai @%1$s</string>
     <string name="restore_done">Backup dimuat (hanya kredensial &amp; interval utama — kata pantau, pagar, patroli dll. tetap bawaan), periksa lalu tap Simpan</string>
     <string name="restore_legacy_warn">Backup ini format lama yang lebih lemah. Sesudah menyimpan, ganti PIN aksesmu dan pertimbangkan token bot baru, lalu ekspor backup baru.</string>
+    <string name="restore_newer_warn">Cadangan ini dibuat versi aplikasi yang LEBIH BARU — sebagian isinya mungkin tidak dikenal versi ini dan terabaikan.</string>
+    <string name="restore_pin_dropped_warn">PIN akses di cadangan TIDAK memenuhi syarat dan dibuang — PIN perangkat ini tetap dipakai.</string>
     <string name="restore_bad">Backup tak bisa dibuka (PIN salah atau file rusak)</string>
     <string name="restore_same_attempt">Berkas + PIN ini sudah dicoba dan tetap gagal. Bila PIN yakin benar, kemungkinan berkas cadangannya rusak — buat ekspor baru.</string>
     <string name="restore_pin_locked">PIN backup dikunci sementara karena terlalu banyak percobaan salah. Coba lagi 15 menit.</string>

@@ -192,6 +192,16 @@ class SetupActivity : AppCompatActivity() {
                             } catch (_: Exception) {
                             }
                             Toast.makeText(this@SetupActivity, getString(R.string.restore_done), Toast.LENGTH_LONG).show()
+                            // Tanda #1559 juga dilaporkan di
+                            // permukaan lokal (issue #1604):
+                            // jalur Telegram sudah, Setup dulu
+                            // mengabaikan keduanya.
+                            if (data.newerVersion) {
+                                Toast.makeText(this@SetupActivity, getString(R.string.restore_newer_warn), Toast.LENGTH_LONG).show()
+                            }
+                            if (data.pinDropped) {
+                                Toast.makeText(this@SetupActivity, getString(R.string.restore_pin_dropped_warn), Toast.LENGTH_LONG).show()
+                            }
                             if (data.legacy) {
                                 // Format warisan lemah (issue #1169):
                                 // blob bocor bisa ditebak luring, jadi

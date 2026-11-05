@@ -122,6 +122,8 @@
     <string name="setup_test_connected_as">Connected as @%1$s</string>
     <string name="restore_done">Backup loaded (credentials &amp; main intervals only — watched words, fences, patrol etc. stay at defaults), check then tap Save</string>
     <string name="restore_legacy_warn">This backup uses the old, weaker format. After saving, change your access PIN and consider a new bot token, then export a fresh backup.</string>
+    <string name="restore_newer_warn">This backup was made by a NEWER app version — some of its contents may be unknown to this version and ignored.</string>
+    <string name="restore_pin_dropped_warn">The backup's access PIN did not meet the requirements and was dropped — this device's current PIN stays in use.</string>
     <string name="restore_bad">Cannot open backup (wrong PIN or corrupt file)</string>
     <string name="restore_same_attempt">This exact file + PIN was already tried and failed. If the PIN is surely right, the backup file is likely corrupt — export a fresh one.</string>
     <string name="restore_pin_locked">Backup PIN is temporarily locked after too many wrong attempts. Try again in 15 minutes.</string>

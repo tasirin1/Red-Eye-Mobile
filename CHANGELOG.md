@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Impor cadangan lokal di Setup kini juga melaporkan dua tanda dari #1559 — cadangan yang dibuat versi aplikasi lebih baru dan PIN cadangan yang dibuang karena tak memenuhi syarat — sama seperti jalur Telegram, bukan lagi selesai dengan toast biasa tanpa penjelasan (#1604).
+
 - Pindai riwayat pada gerbang kini mengonfirmasi setiap tuduhan grep mentah dengan pemindai token bersama sebelum menyatakan gagal, sehingga commit sah berisi contoh bertanda atau kutipan hash tidak lagi membuat gerbang merah permanen (#1603).
 
 - Gerbang token kini menolak pengecualian "hash + kata prosa" bila sisa sesudah hash cukup panjang untuk memuat ekor token utuh (≥35 aksara): ekor token asli yang menempel rapat sesudah kutipan hash — bentuk lazim dari tempelan log/JSON — tidak lagi lolos di semua permukaan pindai (#1602).
