@@ -119,7 +119,7 @@ class MessageQueue private constructor(context: Context) {
         }
     }
     companion object {
-        private const val QUEUE_PREFS_NAME = "encrypted_queue"
+        const val QUEUE_PREFS_NAME = "encrypted_queue" // publik: jalur reset penyimpanan PreferencesManager wajib memakai konstanta yang sama (issue #1686, pola #1659)
         private const val KEY_QUEUE = "queued_messages"
         private const val KEY_WIPE_PENDING = "queue_wipe_pending"
         private const val KEY_QUEUE_BAK = "queued_messages_bak"
