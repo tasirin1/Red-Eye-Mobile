@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.6.631] - 2026-11-05
+
 ### Fixed
 
 - Perbaikan perkakas gerbang kualitas internal: contoh token pada dokumentasi kini bisa ditandai secara eksplisit agar tidak dituduh sebagai token sungguhan.
