@@ -1,40 +1,25 @@
 ## [Unreleased]
 
+## [1.6.627] - 2026-11-05
+
 ### Fixed
 
 - Pemeriksaan token pada pesan commit di cek-cepat kini menjangkau seluruh commit yang belum ada di remote mana pun saat tidak ada upstream: sebelumnya cadangan pemeriksaannya hanya membaca pesan commit paling ujung, sehingga token di commit tengah rangkaian lolos pada push pertama cabang baru.
-
 - Acuan style berawalan pustaka yang segmen ruang-namanya belum dikenal alat verifikasi kini cukup diperingatkan (dengan petunjuk menambah segmennya), bukan lagi divonis gagal sebagai 'yatim': dependensi baru ber-segmen baru tidak lagi memblokir push dengan pesan yang menyesatkan.
-
 - Alternatif kurung terdalam pada slot anotasi alat verifikasi kini juga sadar-string (string berisi kurung di tingkat mana pun tertangkap), dan batas kedalaman slot itu kini dituliskan di komentar desainnya.
-
 - Sesudah monitoring dimulai, aplikasi kini menyebut dengan jelas akses apa saja yang masih mati (aksesibilitas, listener notifikasi, akses penggunaan, admin perangkat, tangkap layar) dalam satu dialog: sebelumnya kelimanya hanya tampil sebagai baris status kecil, sehingga monitoring bisa terasa aktif padahal fitur intinya tidak bekerja.
-
 - Ikatan pemilik pada hasil impor cadangan tidak lagi hilang diam-diam bila aplikasi mati dan dibuat ulang di tengah pemulihan: untuk cadangan tanpa PIN akses, kecocokan chat yang tersimpan kini cukup untuk memulihkan pemilik impor (cadangan ber-PIN tetap tertahan aman seperti sebelumnya).
-
 - Memulai impor cadangan kini membatalkan proses simpan/tes yang sedang berjalan: sebelumnya penyelesaian simpan lama bisa menimpa hasil impor dan membatalkannya diam-diam sesudah impor selesai.
-
 - Pemilik kini diperingatkan (sekali per proses) bila izin Status Telepon belum diberikan saat mulai merekam: deteksi panggilan yang menghentikan rekaman di tengah sebelumnya mati diam-diam tanpa izin itu.
-
 - Perekam suara kini memasang pendengar galat: gangguan di tengah rekaman (mikrofon direbut aplikasi lain, penyimpanan penuh) kini dilaporkan dengan sebabnya, bukan hanya pesan gagal umum saat perekaman berakhir.
-
 - Rekaman yang terputus karena aplikasi/proses mati di tengah kini dilaporkan saat aplikasi menyala lagi: sebelumnya berkas rekaman setengah jadi dibuang dan kehilangannya tak pernah sampai ke pemilik (berkasnya sendiri memang tidak bisa diselamatkan karena belum final).
-
 - Listener notifikasi kini memindai notifikasi yang masih aktif setiap kali tersambung: notifikasi yang muncul selama listener terlepas tidak lagi hilang tanpa jejak (yang sudah pernah diteruskan tetap ditahan penyaring duplikat).
-
 - Kata pantau pada notifikasi kini dinilai dari isi pesannya saja, bukan gabungan judul dan isi: kata yang kebetulan cocok dengan nama grup/percakapan tidak lagi membuat semua pesan dari grup itu bertanda pantau dan naik prioritas selamanya.
-
 - Penerusan notifikasi kini juga membaca tumpukan pesan bergaya percakapan (MessagingStyle): bila beberapa pesan menumpuk dalam satu notifikasi, seluruh tumpukannya diteruskan, bukan hanya pesan terakhir.
-
 - Penerusan notifikasi tidak lagi menelan pesan kedua yang isinya kebetulan sama dengan pesan sebelumnya: penyaring duplikat kini membedakan notifikasi yang sama dikirim ulang dari pesan baru berisi identik (mis. dua balasan 'ok' berurutan), keduanya kini sampai.
-
 - Dokumentasi repo (AGENTS dan README) diselaraskan dengan kebijakan rilis sekarang: halaman Releases hanya berisi APK varian release, bukan lagi kedua varian seperti yang masih tertulis.
-
 - Pemindahan antrean media dari cache kini menyalin lewat berkas sementara dan hanya mengganti nama sesudah salinan utuh: penyalinan yang gagal di tengah (mis. penyimpanan penuh) tidak lagi meninggalkan berkas terpotong yang menghalangi pemindahan berikutnya.
-
 - Rekaman suara kini memeriksa sinyalnya sendiri: tipe layanan latar mikrofon dibangkitkan otomatis seperti kamera, dan rekaman yang selesai tanpa sinyal suara sama sekali (tanda mikrofon dibisukan sistem, lazim sesudah perangkat menyala ulang) kini dilaporkan apa adanya dengan saran membuka aplikasi sekali — bukan lagi dilaporkan terkirim begitu saja.
-
-
 ## [1.6.626] - 2026-11-05
 
 ### Fixed
