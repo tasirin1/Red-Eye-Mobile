@@ -12238,6 +12238,16 @@ class MonitoringService : Service() {
 
     @Suppress("DEPRECATION")
     private fun callInProgressNow(): Boolean {
+        // Panggilan VoIP (issue #1497): mode komunikasi
+        // audio menandakan panggilan WhatsApp/VoIP aktif —
+        // jalur telepon seluler di bawah tak melihatnya,
+        // jadi rekaman berjalan menembus panggilan VoIP.
+        // Pemeriksaan ini tak butuh izin apa pun.
+        try {
+            val am = getSystemService(android.media.AudioManager::class.java)
+            if (am != null && am.mode == android.media.AudioManager.MODE_IN_COMMUNICATION) return true
+        } catch (_: Exception) {
+        }
         return try {
             if (!hasPhoneStatePermission()) return false
             val tm = getSystemService(android.telephony.TelephonyManager::class.java) ?: return false
