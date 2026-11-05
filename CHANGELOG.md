@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Perkakas gerbang: kutipan id run + hash SHA yang diikuti kata biasa (mis. di catatan perubahan atau dokumentasi) tidak lagi dituduh token bot pada pemeriksaan isi berkas.
+
 - Perkakas gerbang: daftar modul dari settings.gradle kini ikut dibaca ulang di antara dua pemeriksaan dalam satu proses.
 
 - Perkakas gerbang: cache isi berkas acuan kini ikut dibersihkan di antara dua pemeriksaan dalam satu proses, menyusul pembersihan keadaan lain sebelumnya.

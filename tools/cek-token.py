@@ -53,6 +53,23 @@ def _pola_mentah_cocok(teks):
         ekor = m.group(0).split(":", 1)[1]
         if len(ekor) in (40, 64) and _POLA_HEX.match(ekor):
             continue
+        # Kelanjutan #1529 (issue #1543): pada teks
+        # TERPADATKAN, kata sesudah hash tersambung
+        # menjadi ekor campuran ('<sha40>gagal') sehingga
+        # pengecualian di atas kalah di permukaan berkas.
+        # Ekor yang 40/64 aksara pertamanya hex murni dan
+        # sisanya huruf kecil semua adalah hash + kata
+        # berikutnya, bukan token (ekor token asli 35
+        # aksara campuran entropi tinggi).
+        lolos_hash_kata = False
+        for n in (40, 64):
+            if len(ekor) > n and _POLA_HEX.match(ekor[:n]):
+                sisa = ekor[n:]
+                if sisa.isalpha() and sisa.islower():
+                    lolos_hash_kata = True
+                    break
+        if lolos_hash_kata:
+            continue
         return True
     return False
 POLA_BYTE = re.compile(rb"[0-9]{6,}:[A-Za-z0-9_-]{35,}")
