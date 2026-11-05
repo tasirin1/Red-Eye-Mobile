@@ -3119,7 +3119,18 @@ def utama():
     parser.add_argument("--rentang", default="", help="rentang diff A...B (dipakai CI)")
     args = parser.parse_args()
 
-    global REF_BENIH, REF_POHON
+    global REF_BENIH, REF_POHON, _isi_strings_wajib
+    # Reset keadaan modul di awal lari (issue #1528):
+    # REF_POHON/REF_BENIH hanya dipasang cabang --rentang
+    # dan tak pernah dikembalikan, baca() ter-lru_cache,
+    # dan memo _isi_strings_wajib abadi — satu proses yang
+    # menjalankan gerbang dua kali (impor harness) menilai
+    # lari kedua dengan pohon & isi basi dari lari pertama
+    # dan vonis bisa hilang senyap.
+    REF_BENIH = None
+    REF_POHON = None
+    _isi_strings_wajib = None
+    baca.cache_clear()
     gagal = []
     peringatan = []
     diff = ""
