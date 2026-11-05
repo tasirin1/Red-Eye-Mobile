@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Balapan pengambilan lokasi tidak lagi membakar GPS sampai timeout 20 detik untuk pemanggil bervonis kasar: patroli, fallback pagar, dan cek jam malam kini menerima fix jaringan berakurasi s.d. 300 m sebagai penyelesaian awal (tiba dalam 1–3 detik), sementara perintah presisi (/lokasi, mode hilang, darurat, gagal buka kunci) tetap menunggu fix terbaik seperti sebelumnya (#1578).
+
 - Rekaman suara dan trek audio pada rekaman video kini memakai setelan hemat 32 kbps mono 22,05 kHz (sebelumnya mengikuti bawaan pabrik ±128 kbps stereo): berkas rekaman menyusut sekitar 5–8 kali untuk kejernihan bicara yang sama, menghemat baterai radio saat mengunggah dan kuota (#1577).
 
 - Tangkapan layar aksesibilitas tidak lagi menyalin bitmap resolusi penuh sebelum diperkecil: penskalaan ke lebar maks 720 piksel kini langsung dari bitmap perangkat keras (lonjakan memori sesaat s.d. ±25 MB di layar besar hilang), dengan jalur salin lama sebagai cadangan bila penskalaan langsung gagal (#1576).

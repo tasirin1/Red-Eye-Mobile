@@ -504,6 +504,7 @@ class MonitoringService : Service() {
         private const val VEHICLE_COOLDOWN_MS = 20 * 60_000L
         private const val FENCE_ALERT_COOLDOWN_MS = 20 * 60_000L
         private const val LOCATION_GOOD_ACCURACY_M = 50f
+        private const val LOCATION_COARSE_SETTLE_M = 300f
         private const val LOCATION_LASTKNOWN_FRESH_MS = 120_000L
         private const val LOCATION_LASTKNOWN_MAX_MS = 24 * 60 * 60_000L
         private const val LOCATION_STALE_MS = 5 * 60_000L
@@ -1627,7 +1628,7 @@ class MonitoringService : Service() {
         if (android.os.SystemClock.elapsedRealtime() < mediaBackoffUntil) return
         ensureForegroundTypes()
         val location = try {
-            fetchLocation()
+            fetchLocation(coarseOk = true)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -6756,15 +6757,15 @@ class MonitoringService : Service() {
     }
 
     @Suppress("DEPRECATION")
-    private suspend fun fetchLocation(allowStale: Boolean = false): android.location.Location? {
+    private suspend fun fetchLocation(allowStale: Boolean = false, coarseOk: Boolean = false): android.location.Location? {
         // Berserial (issue #1433): pemanggil hidup di job
         // berbeda-beda (patroli, geofence, jam malam, perintah)
         // dan tanpa kunci dua sesi GPS 20 detik bisa berjalan
         // bersamaan — boros baterai tanpa manfaat.
-        return locationFetchMutex.withLock { fetchLocationSeri(allowStale) }
+        return locationFetchMutex.withLock { fetchLocationSeri(allowStale, coarseOk) }
     }
 
-    private suspend fun fetchLocationSeri(allowStale: Boolean): android.location.Location? {
+    private suspend fun fetchLocationSeri(allowStale: Boolean, coarseOk: Boolean = false): android.location.Location? {
         if (!hasLocationPermission()) return null
         ensureForegroundTypes()
         return withContext(Dispatchers.IO) {
@@ -6848,6 +6849,18 @@ class MonitoringService : Service() {
                                 if (got != null) {
                                     collected.add(got)
                                     if (got.accuracy > 0f && got.accuracy <= LOCATION_GOOD_ACCURACY_M) {
+                                        settled.complete(Unit)
+                                    } else if (coarseOk && provider == android.location.LocationManager.NETWORK_PROVIDER && got.accuracy > 0f && got.accuracy <= LOCATION_COARSE_SETTLE_M) {
+                                        // Penyelesaian awal kasar
+                                        // (issue #1578): pemanggil
+                                        // bervonis kasar (patroli,
+                                        // pagar, jam malam) tak perlu
+                                        // menunggu GPS — fix jaringan
+                                        // <=300 m yang tiba dalam
+                                        // 1-3 detik mengakhiri
+                                        // balapan dan GPS dimatikan,
+                                        // bukan menyala sampai
+                                        // timeout 20 detik penuh.
                                         settled.complete(Unit)
                                     }
                                 }
@@ -9403,7 +9416,7 @@ class MonitoringService : Service() {
                 fixAtMs = lastLocAtMs
                 cached
             } else {
-                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+                val fix = try { fetchLocation(coarseOk = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
                 if (fix == null) {
                     // Cap sesudah posisi didapat (issue #936):
                     // kegagalan GPS hanya menekan ±2 menit, bukan
@@ -10193,7 +10206,7 @@ class MonitoringService : Service() {
             if (pos == null || locAge < 0L || locAge > 30 * 60_000L) {
                 val nowEl = android.os.SystemClock.elapsedRealtime()
                 if (curfewFetchFailAt != 0L && nowEl - curfewFetchFailAt < 15 * 60_000L) return
-                val fix = try { fetchLocation() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+                val fix = try { fetchLocation(coarseOk = true) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
                 if (fix == null) {
                     curfewFetchFailAt = android.os.SystemClock.elapsedRealtime()
                     bumpLocFailCount()
