@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pemasang kait tidak lagi mati dalam senyap bila perintah pembaca nama pengguna tidak tersedia di lingkungan minimal: kegagalan itu kini ditampung dan pemasangan berhenti dengan pesan yang menjelaskan bahwa direktori rumah tak bisa diuraikan.
+
 - Pengenal deklarasi Java di alat verifikasi kini memakai slot anotasi yang sama canggihnya dengan pengenal Kotlin: anotasi bersarang dan tanda kurung di dalam string argumen tidak lagi membuatnya lolos dari peringatan uji.
 
 - Penanda ruang-nama pada pengecualian style pustaka alat verifikasi kini wajib berupa segmen nama yang utuh dan dikenal, bukan substring di mana pun: nama berkedok seperti berakhiran nama sendiri sesudah kata pustaka kini tetap divonis.

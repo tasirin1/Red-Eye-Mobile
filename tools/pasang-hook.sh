@@ -29,25 +29,15 @@ direktori_kait() {
     case "$1" in
         "~")
             # '~' polos (issue #1424): Git mengembangkannya
-            # ke $HOME; tanpa lengan ini ia jatuh ke lengan
-            # ~pengguna dengan nama KOSONG dan terpasang ke
-            # direktori semu dalam repo.
-            # HOME kosong (issue #1441): Git beralih ke
-            # entri passwd pengguna; tiru lewat rantai
-            # getent -> awk yang sama dengan lengan ~pengguna.
-            if [ -n "$HOME" ]; then
-                printf '%s' "$HOME"
-            else
-                pengguna_kait="$(id -un 2>/dev/null)"
-                rumah_kait=""
-                if [ -n "$pengguna_kait" ]; then
-                    rumah_kait="$(getent passwd "$pengguna_kait" 2>/dev/null | cut -d: -f6)"
-                    if [ -z "$rumah_kait" ] && [ -r /etc/passwd ]; then
-                        rumah_kait="$(awk -F: -v u="$pengguna_kait" '$1 == u { print $6 }' /etc/passwd 2>/dev/null)" || rumah_kait=""
-                    fi
-                fi
-                printf '%s' "$rumah_kait"
-            fi ;;
+            # ke rumah pengguna; tanpa lengan ini ia jatuh
+            # ke lengan ~pengguna dengan nama KOSONG dan
+            # terpasang ke direktori semu dalam repo.
+            # Penguraian rumah memakai helper rumah_sendiri
+            # (issue #1441 + #1451): rantai di dalamnya
+            # menampung kegagalan id/getent/awk dengan ||
+            # agar set -e tak membunuh naskah dalam senyap
+            # (penyakit #1407 yang sempat kambuh di sini).
+            printf '%s' "$(rumah_sendiri)" ;;
         "~"/*) printf '%s/%s' "$(rumah_sendiri)" "${1#\~/}" ;;
         "~"*)
             # Bentuk ~pengguna/ (issue #1403): Git
