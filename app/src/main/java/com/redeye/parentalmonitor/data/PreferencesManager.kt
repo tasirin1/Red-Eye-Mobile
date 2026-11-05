@@ -509,6 +509,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_PENDING_CLEAR_AT = "pending_clear_at"
         private const val KEY_PENDING_CLEAR_OWNER = "pending_clear_owner"
         private const val KEY_RESTORE_CONFIRMED_JSON = "restore_confirmed_json"
+        private const val KEY_RESTORE_EPOCH = "restore_epoch"
         private const val KEY_RESTORE_CONFIRMED_DEADLINE = "restore_confirmed_deadline"
         private const val KEY_PENDING_CLEANUP_SPEC = "pending_cleanup_spec"
         private const val KEY_PENDING_CLEANUP_AT = "pending_cleanup_at"
@@ -1637,6 +1638,15 @@ class PreferencesManager(context: Context) {
     // (issue #1534): JSON data cadangan tervalidasi +
     // tenggat dindingnya, agar jendela batal 60 detik
     // tidak gugur senyap saat proses mati di tengahnya.
+    // Epoch restore yang PERSISTEN (issue #1547): epoch
+    // murni memori mulai dari 0 tiap proses sehingga
+    // salinan di catatan restore tertahan selalu cocok
+    // sesudah restart — logout yang mematikan restore
+    // bisa hidup lagi. Kini disimpan dan hanya naik.
+    var restoreEpochPersisted: Long
+        get() = prefLong(KEY_RESTORE_EPOCH, 0L)
+        set(value) = sharedPreferences.edit().putLong(KEY_RESTORE_EPOCH, value).apply()
+
     var restoreConfirmedJson: String
         get() = prefString(KEY_RESTORE_CONFIRMED_JSON, "")
         set(value) = sharedPreferences.edit().putString(KEY_RESTORE_CONFIRMED_JSON, value).apply()

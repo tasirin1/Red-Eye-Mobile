@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Fixed
+
+- Pemulihan setelan yang sudah dibatalkan lewat logout tidak lagi bisa hidup lagi sesudah aplikasi dimulai ulang: penanda pembatalannya kini tersimpan permanen, dan catatan pemulihan yang gugur ikut dibersihkan.
+
+
 ## [1.6.632] - 2026-11-05
 
 ### Fixed

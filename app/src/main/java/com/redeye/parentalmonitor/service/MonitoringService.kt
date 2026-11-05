@@ -540,6 +540,10 @@ class MonitoringService : Service() {
         super.onCreate()
         try {
             preferencesManager = PreferencesManager.getInstance(this)
+            // Epoch restore dimuat dari simpanan persisten
+            // (issue #1547) sebelum pemeriksa restore
+            // tertahan menilai catatannya.
+            ownerEpoch = try { preferencesManager.restoreEpochPersisted.toInt() } catch (_: Exception) { 0 }
         } catch (_: Exception) {
             try {
                 Liveness.schedule(this)
@@ -2355,7 +2359,10 @@ class MonitoringService : Service() {
             pendingInputChat = ""
         }
         clearPendingPromptMarker()
-        synchronized(restoreLock) { ownerEpoch++ }
+        synchronized(restoreLock) {
+            ownerEpoch++
+            try { preferencesManager.restoreEpochPersisted = ownerEpoch.toLong() } catch (_: Exception) { }
+        }
         val queueCleared = try { messageQueue.clearQueue() } catch (_: Exception) { false }
         try { NotificationForwarderService.clearHistory() } catch (_: Exception) {
         }
@@ -4888,6 +4895,15 @@ class MonitoringService : Service() {
                     restoreApplying = false
                 }
             } else if (zombie) {
+                // Catatan persisten ikut dibersihkan (issue
+                // #1547): tanpa ini pemeriksa startup di
+                // proses berikutnya bisa menerapkan restore
+                // yang sudah dimatikan ini.
+                try {
+                    preferencesManager.restoreConfirmedJson = ""
+                    preferencesManager.restoreConfirmedDeadline = 0L
+                } catch (_: Exception) {
+                }
                 audit("restore konfirmasi gugur (epoch berubah)", "private")
             }
         }
