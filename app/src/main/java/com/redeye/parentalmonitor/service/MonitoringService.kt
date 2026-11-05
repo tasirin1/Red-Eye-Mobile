@@ -1161,7 +1161,16 @@ class MonitoringService : Service() {
                     }
                 } catch (_: Exception) {
                 }
-                return START_NOT_STICKY
+                // STICKY, bukan NOT_STICKY (issue #1636):
+                // pemeriksaan ulang asinkron di atas bisa
+                // memanggil startMonitoring() sesudah fungsi
+                // ini kembali — instance yang berjalan
+                // sebagai monitoring tak boleh ber kontrak
+                // NOT_STICKY, atau kematian proses berikutnya
+                // kehilangan penghidupan ulang oleh sistem.
+                // Bila pemeriksaan memutuskan tak lanjut,
+                // ia stopSelfResult sendiri di jalurnya.
+                return START_STICKY
             }
             }
         } catch (_: Exception) {

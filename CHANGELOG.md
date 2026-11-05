@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Cabang else onStartCommand kini mengembalikan START_STICKY, sejajar kemungkinan pemeriksaan asinkronnya menyalakan monitoring — instance aktif tak lagi berisiko kehilangan penghidupan ulang sistem (#1636).
+
 - BootReceiver tidak lagi membuang seluruh peristiwa boot bila goAsync() gagal; handler tetap berjalan seperti receiver saudara (#1635).
 
 - Polling perintah yang ditolak Telegram dengan HTTP 400 non-offset kini mendapat backoff 60 detik (5 menit + kabar terbatas sekali per jam pada kegagalan ketiga), bukan berputar tiap 10–30 detik selamanya tanpa kabar (#1634).
