@@ -566,6 +566,21 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            // Penanda video (issue #1509): padanan penanda
+            // audio di atas untuk rekam video CameraService.
+            val penandaVideo = java.io.File(
+                com.redeye.parentalmonitor.utils.MediaDirs.queueDir(this), "rekam_video_aktif.txt"
+            )
+            if (penandaVideo.exists()) {
+                penandaVideo.delete()
+                serviceScope.launch {
+                    try {
+                        com.redeye.parentalmonitor.data.MessageQueue.getInstance(this@MonitoringService).addMessage("⚠️ Rekaman VIDEO sebelumnya terputus di tengah jalan (aplikasi/proses mati) — berkasnya belum final dan tidak bisa diselamatkan.")
+                        MessageScheduler.scheduleMessageSend(this@MonitoringService)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
         } catch (_: Exception) {
         }
         if (!startForegroundImmediate()) {

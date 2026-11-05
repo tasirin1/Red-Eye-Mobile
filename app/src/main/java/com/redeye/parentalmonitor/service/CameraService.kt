@@ -167,6 +167,7 @@ class CameraService(private val context: Context) {
             try {
                 val staleVideo = activeVideoFile
                 activeVideoFile = null
+                try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "rekam_video_aktif.txt").delete() } catch (_: Exception) { }
                 if (staleVideo != null && staleVideo.exists()) staleVideo.delete()
             } catch (_: Exception) {
             }
@@ -571,6 +572,11 @@ class CameraService(private val context: Context) {
                         pendingOut = null
                         activeVideoFile = null
                         activeRecorder = null
+                        // Galat sesi ini sudah berkabar lewat
+                        // jalurnya sendiri — penanda jangan
+                        // ikut memicu laporan 'terputus' palsu
+                        // di start berikutnya (issue #1509).
+                        try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "rekam_video_aktif.txt").delete() } catch (_: Exception) { }
                         if (stale != null && stale.exists()) stale.delete()
                     } catch (_: Exception) {
                     }
@@ -607,6 +613,7 @@ class CameraService(private val context: Context) {
                 releaseSurface()
                 pendingOut = null
                 if (activeVideoFile === finishedFile || activeVideoFile === file) activeVideoFile = null
+                try { java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "rekam_video_aktif.txt").delete() } catch (_: Exception) { }
                 if (activeRecorder === finishedRecorder) activeRecorder = null
                 onVideoTaken(file)
                 if (com.redeye.parentalmonitor.BuildConfig.DEBUG) Log.i(TAG, "Video saved")
@@ -699,6 +706,16 @@ class CameraService(private val context: Context) {
                     // (issue #676).
                     activeVideoFile = tmpFile
                     activeRecorder = rec
+                    // Penanda rekam video (issue #1509):
+                    // padanan penanda audio #1461 — kematian
+                    // proses di tengah rekam video dulu
+                    // hilang senyap (.tmp dibuang init tanpa
+                    // kabar); kini proses berikutnya membaca
+                    // penanda ini dan melaporkannya.
+                    try {
+                        java.io.File(com.redeye.parentalmonitor.utils.MediaDirs.queueDir(context), "rekam_video_aktif.txt").writeText(System.currentTimeMillis().toString())
+                    } catch (_: Exception) {
+                    }
                 }
             }
             if (superseded) {

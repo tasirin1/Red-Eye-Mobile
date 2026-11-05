@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Rekaman video yang terputus karena aplikasi atau proses mati kini juga berkabar saat aplikasi jalan lagi, sama seperti rekaman suara: sebelumnya berkasnya hilang tanpa kabar apa pun.
+
 - Sisa berkas salinan migrasi media yang terputus di tengah jalan kini ikut dibersihkan saat layanan kamera mulai: sebelumnya berkas yatim itu bisa menetap permanen tanpa terlihat.
 
 - Calon tumpukan pesan kini bertanda postingan pembuatnya dan kedaluwarsa dalam 10 menit: pengiriman postingan lain tidak lagi mengesahkan tumpukan basi sebagai patokan.
