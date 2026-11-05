@@ -1220,9 +1220,16 @@ class NotificationForwarderService : NotificationListenerService() {
 
     override fun onDestroy() {
         if (activeInstance === this) activeInstance = null
-        // Selamatkan sisa flush yang sedang berjalan SEBELUM scope.cancel()
-        // (issue #704) — jalur tangkap asinkron tak selalu sempat jalan
-        // bila proses mati tepat sesudah onDestroy.
+        // Batalkan scope DULU (issue #1670): flush yang masih
+        // hidup tidak memulai kiriman baru selama jendela
+        // penyelamatan sinkron di bawah — kiriman yang mulai
+        // sesudah klaim salvage menggandakan batch. Jaminan
+        // #704 tetap utuh: salvageInFlight() di bawah ini
+        // sinkron dan tidak bergantung pada scope, jadi sisa
+        // flush tetap terselamatkan walau jalur tangkap
+        // asinkron tak sempat jalan bila proses mati; keduanya
+        // saling mengecualikan lewat flushSalvageClaimed.
+        try { scope.cancel() } catch (_: Exception) { }
         try { salvageInFlight() } catch (_: Exception) { }
         try {
             synchronized(dropWriteLock) {
@@ -1240,7 +1247,6 @@ class NotificationForwarderService : NotificationListenerService() {
         try { wakeJob?.cancel() } catch (_: Exception) { }
         try { rebindHandler.removeCallbacks(rebindRunnable) } catch (_: Exception) { }
         try { fwdCredsListener?.let { prefsRef?.unregisterChangeListener(it) } } catch (_: Exception) { }
-        scope.cancel()
         super.onDestroy()
     }
 
@@ -1840,6 +1846,12 @@ class NotificationForwarderService : NotificationListenerService() {
     // bendera kehilangan jalurnya — dikuras paling akhir dan
     // tereviksi lebih dulu saat antrean penuh.
     private suspend fun forwardLocked(message: String, msgCount: Int = 1, queueOnCancel: Boolean = true, priority: Boolean = false): Boolean {
+        // Jalur flush batch (queueOnCancel=false): bila onDestroy
+        // sudah mengklaim penyelamatan, teks yang sama sudah
+        // masuk antrean persisten lewat salvage — kirim langsung
+        // lagi di sini menggandakannya (issue #1670). Laporkan
+        // terkirim: penyampaiannya diambil alih antrean.
+        if (!queueOnCancel && synchronized(batchLock) { flushSalvageClaimed }) return true
         try {
             val prefs = prefsRef ?: try {
                 PreferencesManager.getInstance(this).also { adoptPrefs(it) }
