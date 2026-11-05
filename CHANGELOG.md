@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Pesan panjang yang sisa potongannya gagal diantrekan ulang tidak lagi dicatat sebagai 'ditolak server': pesan asal dipertahankan untuk dicoba lagi, bukan dibuang dengan label sebab yang salah.
+
 - Pengiriman ulang media yang hasil pengiriman sebelumnya tidak terkonfirmasi (misalnya koneksi putus di tengah jalan) kini berlabel 'mungkin duplikat' pada keterangannya, agar salinan ganda tidak membingungkan.
 
 - Antrean kirim kini menua dengan adil: pesan biasa yang sudah menunggu lebih dari satu jam naik mendahului pesan baru, sehingga arus pesan prioritas yang ramai tidak lagi membuat laporan biasa kelaparan sampai kedaluwarsa.

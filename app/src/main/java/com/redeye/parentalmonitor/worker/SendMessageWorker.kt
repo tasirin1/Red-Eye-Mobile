@@ -864,7 +864,14 @@ class SendMessageWorker(
         if (authCode != 0) return SendOutcome.AuthFailed(authCode)
         if (remainderQueued) return SendOutcome.Sent
         if (failed > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
-        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Rejected
+        // Sisa potongan yang GAGAL diantrekan ulang (issue
+        // #1515): vonis Rejected akan membuang pesan asal
+        // & menghitungnya 'ditolak HTTP 4xx', padahal sebab
+        // gugurnya antre LOKAL — sisanya hilang dengan label
+        // salah. Vonis Failed mempertahankan pesan asal
+        // untuk dicoba lagi (anggaran percobaan antrean
+        // tetap membatasinya), statistik tetap jujur.
+        if (rejected > 0) return if (failedKept) SendOutcome.Sent else SendOutcome.Failed
         return SendOutcome.Sent
     }
 
