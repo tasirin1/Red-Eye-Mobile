@@ -2,6 +2,8 @@
 
 ### Fixed
 
+- Tidur panjang loop monitor kini diiris per 5 menit (sejajar irama cek berkala), bukan per 30 detik — kebangkitan timer saat perangkat diam turun dari s.d. 40 menjadi s.d. 4 per tidur 20 menit (#1630).
+
 - Layar status Setup kini menilai aksesibilitas dari tercantum DAN terhubung (seperti permukaan status lain sejak #1606), bukan tercantum saja (#1629).
 
 - Baris "Malam ini" pada ringkasan layar kini memakai jendela malam yang sedang berjalan pada pukul 22.00–24.00 (paruh malam hari ini), bukan jendela tuntas kemarin yang membuang pemakaian sejak 22.00 (#1628).

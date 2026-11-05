@@ -1771,7 +1771,15 @@ class MonitoringService : Service() {
         var remaining = totalMs.coerceAtLeast(0L)
         var sejakCek = 0L
         while (remaining > 0L) {
-            val slice = remaining.coerceAtMost(30_000L)
+            // Irisan sejajar irama cek berkala (issue
+            // #1630): dulu 30 detik, sehingga tidur idle
+            // 20 menit terbangun s.d. 40 kali hanya untuk
+            // membaca dua bendera memori, padahal cek
+            // sungguhan berirama 5 menit. Kini irisan
+            // dibatasi 5 menit — reaksi jeda/ganti interval
+            // paling lambat satu irama cek, kebangkitan
+            // timer turun sepuluh kali lipat.
+            val slice = remaining.coerceAtMost(5 * 60_000L)
             delay(slice)
             remaining -= slice
             if (cachedMonitoringPaused != pausedAtStart || loopConfigGen != genAtStart) return
